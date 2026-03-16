@@ -5,6 +5,22 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - status
+          - command
+      command:
+        description: 'Custom command (only when action=command)'
+        required: false
+        default: ''
+        type: string
 
 env:
   NODE_VERSION: '20'
@@ -14,6 +30,7 @@ jobs:
   test:
     name: Test & Type-check
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -37,9 +54,10 @@ jobs:
 
   deploy:
     name: Deploy to VPS
-    needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy')
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -50,33 +68,79 @@ jobs:
           script_stop: true
           script: |
             set -e
-            echo "=== ETIP Deploy Started ==="
+            echo "=== ETIP Deploy ==="
             echo "Time: $(date -u)"
 
-            echo "Existing site containers:"
+            echo "Existing site:"
             docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
 
             cd /opt/intelwatch
             git fetch origin master
             git reset --hard origin/master
 
-            echo "Deploying ETIP containers..."
             docker compose -p etip -f docker-compose.etip.yml pull 2>/dev/null || true
             docker compose -p etip -f docker-compose.etip.yml up -d
 
-            echo "Waiting for services..."
             sleep 15
-
-            echo "Health check..."
-            curl -sf http://127.0.0.1:8080/health || echo "Warning: health pending"
+            curl -sf http://127.0.0.1:8080/health || echo "Health pending"
 
             echo ""
             echo "ETIP containers:"
             docker compose -p etip -f docker-compose.etip.yml ps
 
             echo ""
-            echo "Existing site (should be unchanged):"
+            echo "Existing site (unchanged):"
             docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
 
             docker image prune -f 2>/dev/null || true
-            echo "=== ETIP Deploy Complete ==="
+            echo "=== Deploy Complete ==="
+
+  status:
+    name: VPS Status Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'status'
+    steps:
+      - name: Check VPS status
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "=== VPS Status ==="
+            echo "Hostname: $(hostname)"
+            echo "Uptime: $(uptime)"
+            echo ""
+            echo "Memory:"
+            free -h
+            echo ""
+            echo "Disk:"
+            df -h /
+            echo ""
+            echo "ETIP containers:"
+            docker compose -p etip -f /opt/intelwatch/docker-compose.etip.yml ps 2>/dev/null || echo "Not running"
+            echo ""
+            echo "Existing site:"
+            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -10 || true
+            echo ""
+            echo "Health:"
+            curl -sf http://127.0.0.1:8080/health 2>/dev/null && echo "" || echo "ETIP not responding"
+            echo "=== End ==="
+
+  run_command:
+    name: Run VPS Command
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'command'
+    steps:
+      - name: Execute command on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            echo "=== Running command ==="
+            cd /opt/intelwatch
+            ${{ github.event.inputs.command }}
+            echo "=== Command complete ==="
