@@ -1,0 +1,82 @@
+name: ETIP CI/CD
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  test:
+    name: Test & Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm -r typecheck
+
+      - name: Run tests
+        run: pnpm -r test
+
+  deploy:
+    name: Deploy to VPS
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            echo "=== ETIP Deploy Started ==="
+            echo "Time: $(date -u)"
+
+            echo "Existing site containers:"
+            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
+
+            cd /opt/intelwatch
+            git fetch origin master
+            git reset --hard origin/master
+
+            echo "Deploying ETIP containers..."
+            docker compose -p etip -f docker-compose.etip.yml pull 2>/dev/null || true
+            docker compose -p etip -f docker-compose.etip.yml up -d
+
+            echo "Waiting for services..."
+            sleep 15
+
+            echo "Health check..."
+            curl -sf http://127.0.0.1:8080/health || echo "Warning: health pending"
+
+            echo ""
+            echo "ETIP containers:"
+            docker compose -p etip -f docker-compose.etip.yml ps
+
+            echo ""
+            echo "Existing site (should be unchanged):"
+            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
+
+            docker image prune -f 2>/dev/null || true
+            echo "=== ETIP Deploy Complete ==="
