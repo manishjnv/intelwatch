@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>IntelWatch — Enterprise Threat Intelligence Platform</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{
+  background:#04060e;
+  color:#e0e0e0;
+  font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* Animated gradient mesh background */
+.bg-mesh{
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%,rgba(0,255,136,0.07) 0%,transparent 70%),
+    radial-gradient(ellipse 60% 50% at 85% 110%,rgba(0,120,255,0.06) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 40% at 15% 80%,rgba(120,0,255,0.04) 0%,transparent 60%);
+}
+
+/* Subtle grid overlay */
+.grid-overlay{
+  position:fixed;inset:0;z-index:1;
+  background-image:
+    linear-gradient(rgba(0,255,136,0.015) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,255,136,0.015) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,black 30%,transparent 70%);
+  -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,black 30%,transparent 70%);
+}
+
+/* Floating orbs */
+.orb{
+  position:fixed;border-radius:50%;filter:blur(80px);z-index:0;
+  animation:float 8s ease-in-out infinite;
+}
+.orb-1{
+  width:400px;height:400px;top:-100px;right:-100px;
+  background:radial-gradient(circle,rgba(0,255,136,0.08),transparent 70%);
+  animation-delay:0s;
+}
+.orb-2{
+  width:300px;height:300px;bottom:-80px;left:-80px;
+  background:radial-gradient(circle,rgba(0,120,255,0.06),transparent 70%);
+  animation-delay:-4s;animation-duration:10s;
+}
+.orb-3{
+  width:200px;height:200px;top:40%;left:60%;
+  background:radial-gradient(circle,rgba(120,0,255,0.04),transparent 70%);
+  animation-delay:-2s;animation-duration:12s;
+}
+@keyframes float{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-30px) scale(1.05)}
+}
+
+/* Radar ring animation */
+.radar-container{
+  position:absolute;z-index:1;
+  width:500px;height:500px;
+  opacity:0.06;
+}
+.radar-ring{
+  position:absolute;inset:0;
+  border:1px solid #00ff88;
+  border-radius:50%;
+  animation:radar-pulse 4s ease-out infinite;
+}
+.radar-ring:nth-child(2){animation-delay:1s}
+.radar-ring:nth-child(3){animation-delay:2s}
+.radar-ring:nth-child(4){animation-delay:3s}
+@keyframes radar-pulse{
+  0%{transform:scale(0.3);opacity:1}
+  100%{transform:scale(1.2);opacity:0}
+}
+
+/* Main content */
+.container{
+  text-align:center;
+  position:relative;z-index:10;
+  padding:2rem;
+}
+
+/* IntelWatch title */
+h1{
+  font-size:clamp(3.2rem,8vw,6rem);
+  font-weight:800;
+  letter-spacing:-0.02em;
+  margin-bottom:1.5rem;
+  line-height:1;
+  background:linear-gradient(135deg,#00ff88 0%,#00ddff 40%,#00ff88 80%,#00ddff 100%);
+  background-size:300% auto;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:gradient-shift 6s ease infinite;
+  filter:drop-shadow(0 0 40px rgba(0,255,136,0.15));
+}
+@keyframes gradient-shift{
+  0%{background-position:0% center}
+  50%{background-position:100% center}
+  100%{background-position:0% center}
+}
+
+/* Subtitle with ETIP highlight */
+.subtitle{
+  font-size:clamp(1rem,2.2vw,1.4rem);
+  color:#4a5568;
+  margin-bottom:2.5rem;
+  font-weight:300;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+}
+.subtitle .hl{
+  color:#00ff88;
+  font-weight:700;
+  text-shadow:0 0 20px rgba(0,255,136,0.3);
+  position:relative;
+}
+
+/* Divider line */
+.divider{
+  width:80px;height:1px;
+  background:linear-gradient(90deg,transparent,#00ff8844,transparent);
+  margin:0 auto 2rem;
+}
+
+/* Status pill */
+.status-pill{
+  display:inline-flex;
+  align-items:center;gap:10px;
+  padding:0.6rem 2rem;
+  border:1px solid rgba(0,255,136,0.12);
+  border-radius:100px;
+  color:rgba(0,255,136,0.8);
+  font-size:0.8rem;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  font-weight:500;
+  backdrop-filter:blur(10px);
+  background:rgba(0,255,136,0.02);
+  box-shadow:0 0 30px rgba(0,255,136,0.03),inset 0 0 30px rgba(0,255,136,0.02);
+}
+.status-pill .dot{
+  width:6px;height:6px;
+  border-radius:50%;
+  background:#00ff88;
+  box-shadow:0 0 10px #00ff88;
+  animation:blink 2s ease-in-out infinite;
+}
+@keyframes blink{
+  0%,100%{opacity:1}
+  50%{opacity:0.3}
+}
+
+/* Version */
+.version{
+  color:#1a1f2e;
+  font-size:0.7rem;
+  margin-top:2.5rem;
+  letter-spacing:0.15em;
+  text-transform:uppercase;
+}
+
+/* Scan line effect */
+.scanline{
+  position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,255,136,0.003) 2px,
+    rgba(0,255,136,0.003) 4px
+  );
+}
+
+/* Corner accents */
+.corner{
+  position:fixed;z-index:3;
+  width:40px;height:40px;
+  border-color:rgba(0,255,136,0.1);
+  border-style:solid;
+}
+.corner-tl{top:20px;left:20px;border-width:1px 0 0 1px}
+.corner-tr{top:20px;right:20px;border-width:1px 1px 0 0}
+.corner-bl{bottom:20px;left:20px;border-width:0 0 1px 1px}
+.corner-br{bottom:20px;right:20px;border-width:0 1px 1px 0}
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div class="grid-overlay"></div>
+<div class="scanline"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+<div class="radar-container">
+  <div class="radar-ring"></div>
+  <div class="radar-ring"></div>
+  <div class="radar-ring"></div>
+  <div class="radar-ring"></div>
+</div>
+<div class="container">
+  <h1>IntelWatch</h1>
+  <p class="subtitle"><span class="hl">E</span>nterprise&ensp;<span class="hl">T</span>hreat&ensp;<span class="hl">I</span>ntelligence&ensp;<span class="hl">P</span>latform</p>
+  <div class="divider"></div>
+  <div class="status-pill"><span class="dot"></span> Systems Operational</div>
+  <p class="version">v4.0.0</p>
+</div>
+</body>
+</html>
