@@ -1,0 +1,22 @@
+{
+  "name": "@etip/user-service",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "prisma": { "schema": "../../prisma/schema.prisma" },
+  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit", "build": "tsc" },
+  "dependencies": {
+    "@prisma/client": "^5.18.0",
+    "zod": "^3.23.0",
+    "@etip/shared-types": "workspace:*",
+    "@etip/shared-utils": "workspace:*",
+    "@etip/shared-auth": "workspace:*"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "rimraf": "^6.0.0"
+  }
+}
