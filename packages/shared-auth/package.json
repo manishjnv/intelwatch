@@ -1,0 +1,33 @@
+{
+  "name": "@etip/shared-auth",
+  "version": "1.0.0",
+  "description": "JWT authentication, RBAC middleware, password hashing, and service-to-service JWT for ETIP",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^2.4.3",
+    "zod": "^3.23.0",
+    "@etip/shared-types": "workspace:*",
+    "@etip/shared-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/bcryptjs": "^2.4.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "rimraf": "^6.0.0"
+  },
+  "files": ["dist"],
+  "license": "UNLICENSED"
+}
