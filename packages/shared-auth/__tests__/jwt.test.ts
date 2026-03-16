@@ -170,6 +170,30 @@ describe('JWT Module', () => {
       const tampered = token.slice(0, -5) + 'ZZZZZ';
       expect(() => verifyRefreshToken(tampered)).toThrow('Invalid refresh token');
     });
+
+    // Matrix #19: Refresh tokens have longer expiry than access tokens
+    it('refresh token expiry is longer than access token expiry', () => {
+      const accessToken = signAccessToken(SAMPLE_PARAMS);
+      const refreshToken = signRefreshToken({
+        userId: SAMPLE_PARAMS.userId,
+        tenantId: SAMPLE_PARAMS.tenantId,
+        sessionId: SAMPLE_PARAMS.sessionId,
+      });
+      const accessPayload = verifyAccessToken(accessToken);
+      const refreshPayload = verifyRefreshToken(refreshToken);
+      expect(refreshPayload.exp).toBeGreaterThan(accessPayload.exp);
+    });
+
+    // Matrix #20: Access and refresh tokens are structurally different
+    it('access and refresh tokens have different structure', () => {
+      const accessToken = signAccessToken(SAMPLE_PARAMS);
+      const refreshToken = signRefreshToken({ userId: SAMPLE_PARAMS.userId, tenantId: SAMPLE_PARAMS.tenantId, sessionId: SAMPLE_PARAMS.sessionId });
+      // Different tokens (different payloads — refresh has type:'refresh')
+      expect(accessToken).not.toBe(refreshToken);
+      // Refresh token decodes as refresh, not access
+      const refreshPayload = verifyRefreshToken(refreshToken);
+      expect(refreshPayload.type).toBe('refresh');
+    });
   });
 
   describe('getJwtConfig', () => {
