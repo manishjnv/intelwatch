@@ -1,0 +1,267 @@
+# ═══════════════════════════════════════════════════════════════════════
+# ETIP v4.0 — Docker Compose (Development / Staging)
+# ═══════════════════════════════════════════════════════════════════════
+# ALWAYS deploy with: docker compose -p etip -f docker-compose.etip.yml up -d
+# NEVER modify the host's existing docker-compose.yml
+# ═══════════════════════════════════════════════════════════════════════
+
+name: etip
+
+services:
+  etip_postgres:
+    image: postgres:16-alpine
+    container_name: etip_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TI_POSTGRES_DB:-etip}
+      POSTGRES_USER: ${TI_POSTGRES_USER:-etip_user}
+      POSTGRES_PASSWORD: ${TI_POSTGRES_PASSWORD:?TI_POSTGRES_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "${TI_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - etip_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TI_POSTGRES_USER:-etip_user} -d ${TI_POSTGRES_DB:-etip}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  etip_redis:
+    image: redis:7-alpine
+    container_name: etip_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+        --requirepass ${TI_REDIS_PASSWORD:?TI_REDIS_PASSWORD is required}
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --appendonly yes
+        --appendfsync everysec
+    ports:
+      - "${TI_REDIS_PORT:-6380}:6379"
+    volumes:
+      - etip_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${TI_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+
+  etip_elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: etip_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - ELASTIC_PASSWORD=${TI_ELASTICSEARCH_PASSWORD:?TI_ELASTICSEARCH_PASSWORD is required}
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - cluster.name=etip-cluster
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "${TI_ELASTICSEARCH_PORT:-9201}:9200"
+    volumes:
+      - etip_elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:${TI_ELASTICSEARCH_PASSWORD} http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  etip_neo4j:
+    image: neo4j:5-community
+    container_name: etip_neo4j
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=neo4j/${TI_NEO4J_PASSWORD:?TI_NEO4J_PASSWORD is required}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_server_memory_heap_initial__size=256m
+      - NEO4J_server_memory_heap_max__size=512m
+      - NEO4J_server_memory_pagecache_size=128m
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+    ports:
+      - "${TI_NEO4J_HTTP_PORT:-7475}:7474"
+      - "${TI_NEO4J_BOLT_PORT:-7688}:7687"
+    volumes:
+      - etip_neo4j_data:/data
+      - etip_neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p ${TI_NEO4J_PASSWORD} 'RETURN 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  etip_minio:
+    image: minio/minio:latest
+    container_name: etip_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${TI_MINIO_ACCESS_KEY:-etip_minio_admin}
+      MINIO_ROOT_PASSWORD: ${TI_MINIO_SECRET_KEY:?TI_MINIO_SECRET_KEY is required}
+    ports:
+      - "${TI_MINIO_API_PORT:-9001}:9000"
+      - "${TI_MINIO_CONSOLE_PORT:-9002}:9001"
+    volumes:
+      - etip_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  etip_prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: etip_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "${TI_PROMETHEUS_PORT:-9190}:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - etip_prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  etip_grafana:
+    image: grafana/grafana:11.1.0
+    container_name: etip_grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${TI_GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${TI_GRAFANA_PASSWORD:-etip_grafana_admin}
+      - GF_SERVER_ROOT_URL=http://localhost:${TI_GRAFANA_PORT:-3101}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "${TI_GRAFANA_PORT:-3101}:3000"
+    volumes:
+      - etip_grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      etip_prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  etip_nginx:
+    image: nginx:1.27-alpine
+    container_name: etip_nginx
+    restart: unless-stopped
+    ports:
+      - "${TI_NGINX_HTTP_PORT:-8080}:80"
+      - "${TI_NGINX_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - etip_nginx_logs:/var/log/nginx
+    depends_on:
+      etip_postgres:
+        condition: service_healthy
+      etip_redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+volumes:
+  etip_postgres_data:
+    name: etip_postgres_data
+  etip_redis_data:
+    name: etip_redis_data
+  etip_elasticsearch_data:
+    name: etip_elasticsearch_data
+  etip_neo4j_data:
+    name: etip_neo4j_data
+  etip_neo4j_logs:
+    name: etip_neo4j_logs
+  etip_minio_data:
+    name: etip_minio_data
+  etip_prometheus_data:
+    name: etip_prometheus_data
+  etip_grafana_data:
+    name: etip_grafana_data
+  etip_nginx_logs:
+    name: etip_nginx_logs
+
+networks:
+  etip_network:
+    name: etip_network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
