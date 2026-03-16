@@ -33,24 +33,16 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Type-check
-        run: pnpm -r typecheck
-
-      - name: Run tests
-        run: pnpm -r test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r test
 
   deploy:
     name: Deploy to VPS
@@ -69,10 +61,6 @@ jobs:
           script: |
             set -e
             echo "=== ETIP Deploy ==="
-            echo "Time: $(date -u)"
-
-            echo "Existing site:"
-            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
 
             cd /opt/intelwatch
             git fetch origin master
@@ -81,19 +69,17 @@ jobs:
             docker compose -p etip -f docker-compose.etip.yml pull 2>/dev/null || true
             docker compose -p etip -f docker-compose.etip.yml up -d
 
-            sleep 15
+            # Reconnect etip_nginx to Caddy's network (required after recreate)
+            docker network connect ti-platform_default etip_nginx 2>/dev/null || true
+            docker restart ti-platform-caddy-1
+
+            sleep 10
             curl -sf http://127.0.0.1:8080/health || echo "Health pending"
 
-            echo ""
-            echo "ETIP containers:"
-            docker compose -p etip -f docker-compose.etip.yml ps
-
-            echo ""
-            echo "Existing site (unchanged):"
-            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
-
+            echo "ETIP:" && docker compose -p etip -f docker-compose.etip.yml ps --format 'table {{.Name}}\t{{.Status}}' 2>/dev/null || true
+            echo "Existing:" && docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
             docker image prune -f 2>/dev/null || true
-            echo "=== Deploy Complete ==="
+            echo "=== Done ==="
 
   status:
     name: VPS Status Check
@@ -108,22 +94,11 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             echo "=== VPS Status ==="
-            echo "Hostname: $(hostname)"
             echo "Uptime: $(uptime)"
-            echo ""
-            echo "Memory:"
-            free -h
-            echo ""
-            echo "Disk:"
-            df -h /
-            echo ""
-            echo "ETIP containers:"
-            docker compose -p etip -f /opt/intelwatch/docker-compose.etip.yml ps 2>/dev/null || echo "Not running"
-            echo ""
-            echo "Existing site:"
-            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -10 || true
-            echo ""
-            echo "Health:"
+            free -h | head -2
+            df -h / | tail -1
+            echo "ETIP:" && docker compose -p etip -f /opt/intelwatch/docker-compose.etip.yml ps --format 'table {{.Name}}\t{{.Status}}' 2>/dev/null || echo "Not running"
+            echo "Existing:" && docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -10 || true
             curl -sf http://127.0.0.1:8080/health 2>/dev/null && echo "" || echo "ETIP not responding"
             echo "=== End ==="
 
