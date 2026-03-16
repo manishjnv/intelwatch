@@ -1,41 +1,32 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.egg-info/
-*.egg
+node_modules/
+.pnpm-store/
 dist/
 build/
-.eggs/
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# Environment variables (never commit secrets)
+*.tsbuildinfo
 .env
 .env.local
 .env.*.local
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-
-# IDE
-.vscode/
+!.env.example
 .idea/
+.vscode/
 *.swp
 *.swo
-
-# OS
+*~
 .DS_Store
 Thumbs.db
-
-# Docker volumes
-feeds_pgdata/
-
-# Alembic (keep migrations folder, ignore runtime files)
-alembic/versions/*.pyc
+coverage/
+.vitest/
+*.lcov
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+docker-compose.override.yml
+prisma/*.db
+prisma/*.db-journal
+*.tgz
+*.pid
+*.seed
+.cache/
+tmp/
+temp/
