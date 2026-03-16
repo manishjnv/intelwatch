@@ -1,0 +1,46 @@
+{
+  "name": "@etip/api-gateway",
+  "version": "1.0.0",
+  "description": "ETIP API Gateway — Fastify server with auth, rate limiting, and routing",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "prisma": {
+    "schema": "../../prisma/schema.prisma"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/helmet": "^11.0.0",
+    "@fastify/sensible": "^5.6.0",
+    "@prisma/client": "^5.18.0",
+    "pino": "^9.3.0",
+    "zod": "^3.23.0",
+    "@etip/shared-types": "workspace:*",
+    "@etip/shared-utils": "workspace:*",
+    "@etip/shared-auth": "workspace:*",
+    "@etip/user-service": "workspace:*"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0",
+    "typescript": "^5.5.0",
+    "tsx": "^4.16.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "@types/node": "^20.14.0",
+    "rimraf": "^6.0.0"
+  },
+  "files": ["dist"],
+  "license": "UNLICENSED"
+}
