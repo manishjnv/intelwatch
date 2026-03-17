@@ -1,5 +1,6 @@
 # ── Stage 1: Install dependencies ──────────────────────────────
 FROM node:20-alpine AS deps
+RUN apk add --no-cache openssl openssl-dev
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
@@ -20,20 +21,15 @@ COPY packages/ packages/
 COPY apps/ apps/
 COPY prisma/ prisma/
 
-# Generate Prisma client
 RUN pnpm exec prisma generate --schema=prisma/schema.prisma
-
-# Build all packages (topological order via -r)
 RUN pnpm -r build 2>&1 || true
-
-# Verify critical dist exists
-RUN ls apps/api-gateway/dist/index.js 2>/dev/null || echo "WARN: api-gateway dist not found, will retry" && \
-    cd apps/api-gateway && pnpm exec tsc -p tsconfig.json 2>&1 || true
+RUN ls apps/api-gateway/dist/index.js 2>/dev/null || \
+    (cd apps/api-gateway && pnpm exec tsc -p tsconfig.json 2>&1 || true)
 
 # ── Stage 3: Production ───────────────────────────────────────
 FROM node:20-alpine AS production
+RUN apk add --no-cache curl openssl
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
-RUN apk add --no-cache curl
 
 WORKDIR /app
 COPY --from=build /app/ ./
