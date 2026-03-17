@@ -11,19 +11,25 @@ env:
 
 jobs:
   test:
-    name: Test
+    name: Test + Typecheck + Lint
     runs-on: ubuntu-latest
     if: github.event_name != 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: '9.15.0'
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile 2>/dev/null || pnpm install --no-frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - run: pnpm exec prisma generate --schema=prisma/schema.prisma
       - run: pnpm -r test
+      - run: pnpm -r run typecheck
+      - run: pnpm -r run lint
+      - run: pnpm audit --audit-level=high
+        continue-on-error: true
 
   deploy:
     name: Deploy to VPS
@@ -41,11 +47,12 @@ jobs:
           script: |
             set -x
             echo "=== ETIP Deploy ==="
-            
+
             cd /opt/intelwatch
             git fetch origin master
             git reset --hard origin/master
-            
+
+            # Ensure .env has required vars
             touch .env
             grep -q TI_POSTGRES_PASSWORD .env || echo 'TI_POSTGRES_PASSWORD=etip_pg_S3cur3_2026!' >> .env
             grep -q TI_REDIS_PASSWORD .env || echo 'TI_REDIS_PASSWORD=etip_redis_S3cur3_2026!' >> .env
@@ -55,18 +62,18 @@ jobs:
             grep -q TI_JWT_SECRET .env || echo 'TI_JWT_SECRET=etip-jwt-secret-change-me-in-production-2026-v4!' >> .env
             grep -q TI_SERVICE_JWT_SECRET .env || echo 'TI_SERVICE_JWT_SECRET=etip-svc-jwt-2026-internal!' >> .env
             grep -q TI_GRAFANA_PASSWORD .env || echo 'TI_GRAFANA_PASSWORD=etip_grafana_2026!' >> .env
-            
+
             echo "=== Build Images ==="
-            docker compose -p etip -f docker-compose.etip.yml build --no-cache etip_api
-            docker compose -p etip -f docker-compose.etip.yml build --no-cache etip_frontend
-            
+            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -30
+            docker compose -p etip -f docker-compose.etip.yml build etip_frontend 2>&1 | tail -30
+
             echo "=== Start Infrastructure ==="
             docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis 2>&1
             sleep 10
-            
+
             echo "=== Start API ==="
             docker compose -p etip -f docker-compose.etip.yml up -d etip_api 2>&1
-            
+
             echo "=== Wait for API health ==="
             for i in $(seq 1 12); do
               if curl -sf http://127.0.0.1:3001/health >/dev/null 2>&1; then
@@ -76,35 +83,29 @@ jobs:
               echo "  waiting... ($i/12)"
               sleep 10
             done
-            
+
             echo "=== Prisma DB Push ==="
             docker exec etip_api npx prisma db push --schema=prisma/schema.prisma --accept-data-loss 2>&1 || echo "Prisma note"
-            
-            echo "=== Start Frontend + Remaining ==="
+
+            echo "=== Start Frontend + Nginx ==="
             docker compose -p etip -f docker-compose.etip.yml up -d etip_frontend 2>&1
             sleep 5
-            
-            echo "=== Start Nginx ==="
             docker compose -p etip -f docker-compose.etip.yml up -d etip_nginx 2>&1
             sleep 3
-            
-            echo "=== Reconnect Nginx to Caddy ==="
-            # Network connection now handled by docker-compose.etip.yml (caddy_network)
-            # Caddy restart still needed to re-resolve upstream after nginx recreate
+
+            # Caddy restart needed to re-resolve upstream after nginx recreate
+            # Network is now handled by docker-compose (caddy_network)
             docker restart ti-platform-caddy-1 2>/dev/null || true
             sleep 5
-            
-            echo "=== Start Remaining (ES, Neo4j, MinIO, Prometheus, Grafana) ==="
+
+            echo "=== Start Remaining ==="
             docker compose -p etip -f docker-compose.etip.yml up -d 2>&1
-            
+
             echo "=== Health Checks ==="
             curl -sf http://127.0.0.1:3001/health 2>/dev/null && echo "" || echo "API: UNHEALTHY"
             curl -sf -o /dev/null -w "Frontend via nginx: HTTP %{http_code}\n" http://127.0.0.1:8080/login 2>/dev/null || echo "Frontend: UNREACHABLE"
-            
+
             echo "=== Container Status ==="
             docker compose -p etip -f docker-compose.etip.yml ps 2>&1
-            
-            echo "=== API Logs (last 5) ==="
-            docker logs etip_api --tail 5 2>&1
-            
+
             echo "=== Done ==="
