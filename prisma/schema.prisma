@@ -1,0 +1,170 @@
+// ═══════════════════════════════════════════════════════════════════════
+// ETIP v4.0 — Prisma Schema (Phase 1: Foundation)
+// ═══════════════════════════════════════════════════════════════════════
+// Tables: tenants, users, sessions, api_keys, audit_logs
+// Multi-tenant: every row scoped by tenant_id, RLS enforced at DB level
+// ═══════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("TI_DATABASE_URL")
+}
+
+// ─── Tenant (Organization) ───────────────────────────────────────────
+model Tenant {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String   @db.VarChar(255)
+  slug             String   @unique @db.VarChar(63)
+  plan             Plan     @default(free)
+  maxUsers         Int      @default(5) @map("max_users")
+  maxFeedsPerDay   Int      @default(10) @map("max_feeds_per_day")
+  maxIOCs          Int      @default(10000) @map("max_iocs")
+  aiCreditsMonthly Int      @default(100) @map("ai_credits_monthly")
+  aiCreditsUsed    Int      @default(0) @map("ai_credits_used")
+  settings         Json     @default("{}")
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users     User[]
+  sessions  Session[]
+  apiKeys   ApiKey[]
+  auditLogs AuditLog[]
+
+  @@map("tenants")
+}
+
+enum Plan {
+  free
+  pro
+  enterprise
+
+  @@map("plan_enum")
+}
+
+// ─── User ────────────────────────────────────────────────────────────
+model User {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String       @map("tenant_id") @db.Uuid
+  email          String       @db.VarChar(255)
+  displayName    String       @db.VarChar(255) @map("display_name")
+  avatarUrl      String?      @map("avatar_url") @db.Text
+  role           Role         @default(viewer)
+  authProvider   AuthProvider @default(email) @map("auth_provider")
+  authProviderId String?      @map("auth_provider_id") @db.VarChar(255)
+  passwordHash   String?      @map("password_hash") @db.VarChar(255)
+  mfaEnabled     Boolean      @default(false) @map("mfa_enabled")
+  mfaSecret      String?      @map("mfa_secret") @db.VarChar(255)
+  lastLoginAt    DateTime?    @map("last_login_at")
+  loginCount     Int          @default(0) @map("login_count")
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions  Session[]
+  apiKeys   ApiKey[]
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+enum Role {
+  super_admin
+  tenant_admin
+  analyst
+  viewer
+  api_only
+
+  @@map("role_enum")
+}
+
+enum AuthProvider {
+  email
+  google
+  saml
+  oidc
+
+  @@map("auth_provider_enum")
+}
+
+// ─── Session ─────────────────────────────────────────────────────────
+model Session {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  refreshTokenHash String    @map("refresh_token_hash") @db.VarChar(255)
+  ipAddress        String?   @map("ip_address") @db.VarChar(45)
+  userAgent        String?   @map("user_agent") @db.Text
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ─── API Key ─────────────────────────────────────────────────────────
+model ApiKey {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  name      String    @db.VarChar(255)
+  prefix    String    @db.VarChar(12)
+  keyHash   String    @map("key_hash") @db.VarChar(255)
+  scopes    String[]  @default(["ioc:read"])
+  lastUsed  DateTime? @map("last_used")
+  expiresAt DateTime? @map("expires_at")
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([prefix])
+  @@map("api_keys")
+}
+
+// ─── Audit Log (Immutable — SOC 2 compliant) ─────────────────────────
+model AuditLog {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  action       String   @db.VarChar(255)
+  entityType   String   @map("entity_type") @db.VarChar(100)
+  entityId     String?  @map("entity_id") @db.VarChar(255)
+  changes      Json?
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
