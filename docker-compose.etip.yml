@@ -281,7 +281,7 @@ services:
       etip_api:
         condition: service_healthy
       etip_frontend:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s

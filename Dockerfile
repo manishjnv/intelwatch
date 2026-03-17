@@ -14,6 +14,7 @@ COPY packages/shared-normalization/package.json packages/shared-normalization/ts
 COPY packages/shared-enrichment/package.json packages/shared-enrichment/tsconfig.json packages/shared-enrichment/
 COPY apps/api-gateway/package.json apps/api-gateway/tsconfig.json apps/api-gateway/
 COPY apps/user-service/package.json apps/user-service/tsconfig.json apps/user-service/
+COPY apps/frontend/package.json apps/frontend/
 
 RUN pnpm install --frozen-lockfile --ignore-scripts 2>/dev/null || pnpm install --no-frozen-lockfile --ignore-scripts
 

@@ -57,8 +57,9 @@ jobs:
             grep -q TI_GRAFANA_PASSWORD .env || echo 'TI_GRAFANA_PASSWORD=etip_grafana_2026!' >> .env
             
             echo "=== Build + Start ==="
-            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -5
-            docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_api 2>&1
+            docker compose -p etip -f docker-compose.etip.yml build --no-cache etip_frontend 2>&1 | tail -10
+            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -10
+            docker compose -p etip -f docker-compose.etip.yml up -d 2>&1
             sleep 20
             
             echo "=== Prisma DB Push ==="
@@ -71,11 +72,10 @@ jobs:
             echo "=== Health ==="
             curl -sf http://127.0.0.1:3001/health && echo ""
             
-            echo "=== Start Nginx ==="
-            docker compose -p etip -f docker-compose.etip.yml up -d 2>&1
-            sleep 5
+            echo "=== Reconnect Nginx to Caddy ==="
             docker network connect ti-platform_default etip_nginx 2>/dev/null || true
             docker restart ti-platform-caddy-1 2>/dev/null || true
+            sleep 5
             
             echo "=== Final ==="
             docker compose -p etip -f docker-compose.etip.yml ps 2>&1
