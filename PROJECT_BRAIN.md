@@ -3,215 +3,139 @@
 **Last Updated**: 2026-03-17
 **Current Phase**: 1 (Foundation) — IN PROGRESS
 **Skill System**: v3 (26 numbered skill files)
-**Status**: Docker Compose ✅ · Folder Structure ✅ · Shared Packages ✅ (153 tests) · Auth+Gateway+UserService ✅ (113 tests) · Prisma Schema ✅ · VPS Deployed ✅ · CI/CD Live ✅ · https://ti.intelwatch.in ✅ · **Total: 266 tests passing**
+**Status**: Docker ✅ · Shared Packages ✅ (153 tests) · Auth+Gateway+UserService ✅ (113 tests) · Prisma ✅ · **API Deployed to VPS** ✅ · DB Tables Created ✅ · 17/17 VPS prod tests ✅ · CI/CD Live ✅ · **Total: 266 unit tests + 17 production tests**
 
 ---
 
 ## SESSION START TEMPLATE
 
-Copy this into every new Claude conversation to resume context:
-
 ```
 Read E:\code\IntelWatch\PROJECT_BRAIN.md via filesystem.
 Read E:\code\IntelWatch\docker-compose.etip.yml via filesystem.
-
-Load from project knowledge files:
-1. 00-ARCHITECTURE-ROADMAP.md
-2. 00-MASTER.md
-3. [relevant module skill, e.g., 07-IOC-INTELLIGENCE.md]
-
-Task: [describe task here].
-Begin pre-task ritual per 00-CLAUDE-INSTRUCTIONS.md.
+Load from project knowledge: 00-ARCHITECTURE-ROADMAP.md, 00-MASTER.md, [relevant module skill]
+Task: [describe task here]. Begin pre-task ritual per 00-CLAUDE-INSTRUCTIONS.md.
 ```
 
 ---
 
 ## PROJECT OVERVIEW
 
-**IntelWatch ETIP v4.0** is an enterprise-grade threat intelligence platform combining automated ingestion, AI-powered enrichment, Neo4j graph analysis, and real-time alerting. It consolidates feeds (STIX/TAXII, MISP, NVD, dark web, OSINT) with enterprise integrations (15+ SIEMs, case management, ticketing) and provides hunting, digital risk protection, and compliance reporting.
+**IntelWatch ETIP v4.0** — enterprise threat intelligence platform with automated ingestion, AI enrichment, Neo4j graph, real-time alerting.
 
-**Competitive Positioning**: vs CrowdStrike (endpoint), Recorded Future (paid feeds), ThreatConnect (open-source)
-- **Unique**: Claude AI reasoner (campaign attribution, risk scoring), Neo4j graph (IOC ↔ Actor relationships), open standards (STIX/TAXII)
-- **Target**: Mid-market + enterprise security teams (100–500K IOCs/day)
-- **SLA**: Ingestion <5min, enrichment <5s, search <100ms, alerts <5min
+- **Live URL**: https://ti.intelwatch.in
+- **Repo**: https://github.com/manishjnv/intelwatch
+- **VPS**: 72.61.227.64 (Ubuntu 24.04, KVM2)
+- **Deploy path**: `/opt/intelwatch/`
 
 ---
 
 ## INFRASTRUCTURE
 
-### Local Development
-- **Machine**: Windows
-- **Project path**: `E:\code\IntelWatch\`
-- **Repo**: https://github.com/manishjnv/intelwatch
-- **Branch strategy**: main (stable) → feature/module-name
-
-### VPS Production
-- **OS**: Ubuntu 24.04 LTS
-- **Type**: KVM2
-- **IP**: 72.61.227.64
-- **SSH**: `ssh root@72.61.227.64`
-- **ETIP URL**: https://ti.intelwatch.in (LIVE)
-- **ETIP deploy path**: `/opt/intelwatch/`
-- **Reverse proxy**: Caddy (existing `ti-platform-caddy-1` container, NOT Nginx)
-- **SSL**: Auto via Caddy + Let's Encrypt
-- **DNS**: Cloudflare — `ti` A record → `72.61.227.64` (DNS only, no proxy)
-
 ### Deployment Architecture
 ```
-Internet → Caddy (ports 80/443, ti-platform-caddy-1)
-  ├── intelwatch.in     → ti-platform-api-1 / ti-platform-ui-1 (UNTOUCHED)
-  └── ti.intelwatch.in  → etip_nginx:80 → ETIP services (via ti-platform_default network)
+Internet → Caddy (ti-platform-caddy-1, ports 80/443)
+  ├── intelwatch.in     → ti-platform-* containers (NEVER TOUCH)
+  └── ti.intelwatch.in  → etip_nginx:80 (via ti-platform_default network)
+        ├── /health, /ready     → etip_api:3001
+        ├── /api/v1/auth/*      → etip_api:3001
+        └── /                   → landing page
 ```
 
-### ⚠️ CRITICAL: Caddy ↔ ETIP Nginx Networking
-After every `docker compose up -d --force-recreate etip_nginx`, you MUST reconnect:
+### ⚠️ CRITICAL: After every etip_nginx recreate:
 ```bash
 docker network connect ti-platform_default etip_nginx
 docker restart ti-platform-caddy-1
 ```
 
-### Port Allocation (ETIP-specific, conflict-safe)
+### VPS Containers (9 total, all healthy)
 
-| Service | ETIP Port | Default Port (avoid) |
-|---------|-----------|----------------------|
-| PostgreSQL | 5433 | 5432 |
-| Redis | 6380 | 6379 |
-| Elasticsearch | 9201 | 9200 |
-| Neo4j Bolt | 7688 | 7687 |
-| Neo4j HTTP | 7475 | 7474 |
-| MinIO API | 9001 | 9000 |
-| MinIO Console | 9002 | 9001 |
-| API (Fastify) | 3001 | 3000 |
-| Frontend (Vite) | 3002 | — |
-| Nginx HTTP | 8080 | 80 |
-| Prometheus | 9190 | 9090 |
-| Grafana | 3101 | 3000 |
+| Container | Image | Port | Status |
+|-----------|-------|------|--------|
+| etip_api | etip-etip_api (custom) | 3001 | ✅ Healthy |
+| etip_postgres | postgres:16-alpine | 5433 | ✅ Healthy |
+| etip_redis | redis:7-alpine | 6380 | ✅ Healthy |
+| etip_elasticsearch | elasticsearch:8.15.0 | 9201 | ✅ Healthy |
+| etip_neo4j | neo4j:5-community | 7475/7688 | ✅ Healthy |
+| etip_minio | minio/minio:latest | 9001/9002 | ✅ Healthy |
+| etip_prometheus | prom/prometheus:v2.53.0 | 9190 | ✅ Healthy |
+| etip_grafana | grafana/grafana:11.1.0 | 3101 | ✅ Healthy |
+| etip_nginx | nginx:1.27-alpine | 8080 | ✅ Running |
 
 ---
 
-## V3 MODULE REGISTRY
+## MODULE REGISTRY
 
-| # | Module | Status | Path | Phase | Tests |
-|---|--------|--------|------|-------|-------|
-| — | api-gateway | ✅ Complete | `/apps/api-gateway` | 1 | 26 |
-| 16 | user-service | ✅ Complete (Phase 1) | `/apps/user-service` | 1 | 16 |
-| — | shared-auth | ✅ Complete | `/packages/shared-auth` | 1 | 71 |
-| — | shared-types | ✅ Complete | `/packages/shared-types` | 1 | 55 |
-| — | shared-utils | ✅ Complete | `/packages/shared-utils` | 1 | 58 |
-| — | shared-cache | ✅ Complete | `/packages/shared-cache` | 1 | 40 |
-| — | prisma schema | ✅ Validated | `/prisma/schema.prisma` | 1 | — |
-| 04 | ingestion-service | Planned | `/apps/ingestion-service` | 2 | — |
-| 05 | normalization-service | Planned | `/apps/normalization-service` | 2 | — |
-| 06 | enrichment-service | Planned | `/apps/enrichment-service` | 2 | — |
-| 07 | ioc-service | Planned | `/apps/ioc-service` | 3 | — |
-| 08 | threat-actor-service | Planned | `/apps/threat-actor-service` | 3 | — |
-| 09 | malware-service | Planned | `/apps/malware-service` | 3 | — |
-| 10 | vuln-service | Planned | `/apps/vuln-service` | 3 | — |
-| 11 | drp-service | Planned | `/apps/drp-service` | 4 | — |
-| 12 | graph-service | Planned | `/apps/graph-service` | 4 | — |
-| 13 | correlation-service | Planned | `/apps/correlation-service` | 4 | — |
-| 14 | hunting-service | Planned | `/apps/hunting-service` | 4 | — |
-| 15 | integration-service | Planned | `/apps/integration-service` | 5 | — |
-| 17 | customization-service | Planned | `/apps/customization-service` | 5 | — |
-| 18 | onboarding-service | Planned | `/apps/onboarding-service` | 6 | — |
-| 19 | billing-service | Planned | `/apps/billing-service` | 6 | — |
-| 22 | admin-service | Planned | `/apps/admin-service` | 6 | — |
-| 20 | frontend | Planned | `/apps/frontend` | 8 | — |
+| # | Module | Status | Path | Tests |
+|---|--------|--------|------|-------|
+| — | api-gateway | ✅ Deployed | `/apps/api-gateway` | 26 |
+| 16 | user-service | ✅ Deployed | `/apps/user-service` | 16 |
+| — | shared-auth | ✅ Complete | `/packages/shared-auth` | 71 |
+| — | shared-types | ✅ Complete | `/packages/shared-types` | 55 |
+| — | shared-utils | ✅ Complete | `/packages/shared-utils` | 58 |
+| — | shared-cache | ✅ Complete | `/packages/shared-cache` | 40 |
+| — | prisma schema | ✅ Applied to VPS | `/prisma/schema.prisma` | — |
+| 04-22 | Remaining modules | Planned | Phase 2-8 | — |
+| 20 | frontend | Planned | `/apps/frontend` | — |
 
 ---
 
-## PHASED IMPLEMENTATION ROADMAP
-
-### Phase 1 — Foundation — 🟡 IN PROGRESS (85% complete)
+## Phase 1 — Foundation — 🟡 95% complete
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Docker Compose (8 services) | ✅ COMPLETE | `docker-compose.etip.yml` — PG, Redis, ES, Neo4j, MinIO, Prometheus, Grafana, Nginx |
-| Folder structure | ✅ COMPLETE | apps/, packages/, docs/, skills/, prisma/, config/, docker/, scripts/, .github/ |
-| Root config files | ✅ COMPLETE | package.json, pnpm-workspace.yaml, tsconfig.base.json, .gitignore, .env.example |
-| Skills v3 migration | ✅ COMPLETE | 26 skill files loaded as project knowledge |
-| Shared packages (types, utils, cache) | ✅ COMPLETE | 153 tests, 0 TS errors. Session 1. |
-| VPS deployment (8 containers) | ✅ COMPLETE | All healthy at /opt/intelwatch/ |
-| CI/CD pipeline (GitHub Actions → VPS) | ✅ COMPLETE | Auto-deploy on master push + workflow_dispatch |
-| Caddy reverse proxy + SSL | ✅ COMPLETE | ti.intelwatch.in → etip_nginx:80 |
-| Landing page | ✅ COMPLETE | Futuristic design live at https://ti.intelwatch.in |
-| Shared packages (auth) | ✅ COMPLETE | JWT (access 15min + refresh 7d), RBAC (5 roles, 30+ perms, wildcards), bcrypt (cost 12), service JWT (60s TTL). **71 tests.** |
-| API Gateway | ✅ COMPLETE | Fastify, CORS, rate-limit, Helmet, auth/RBAC middleware, error handler, health/ready, auth routes. **26 tests.** |
-| User service | ✅ COMPLETE | Register, login, refresh (token rotation + theft detection), logout, profile. Prisma mocked. **16 tests.** |
-| Prisma schema (validated) | ✅ COMPLETE | 5 tables (tenants, users, sessions, api_keys, audit_logs), 3 enums, 12 indexes, 7 relations. `prisma validate` ✅. Client generated. |
-| Pino logging setup | ✅ COMPLETE | api-gateway/src/logger.ts — Pino structured JSON, PII redaction |
-| Prisma migrations on VPS | ⬜ NOT STARTED | `prisma migrate dev --name phase1-foundation` on etip_postgres |
-| Docker: etip_api service | ⬜ NOT STARTED | Add api-gateway container to docker-compose.etip.yml |
-| Nginx proxy update | ⬜ NOT STARTED | Route `/api/` → `etip_api:3001` |
-| Frontend shell | ⬜ NOT STARTED | React 18 + Vite + shadcn/ui, login page, empty dashboard |
-
-**Exit criteria**: User can register, login, see empty dashboard. CI/CD deployed. `/health` → 200. DB migrations applied.
+| Docker Compose (9 services) | ✅ | PG, Redis, ES, Neo4j, MinIO, Prometheus, Grafana, Nginx, API |
+| Shared packages (types, utils, cache) | ✅ | 153 tests |
+| Shared packages (auth) | ✅ | 71 tests. JWT, RBAC, bcrypt, service JWT |
+| API Gateway | ✅ | 26 tests. Fastify, CORS, Helmet, rate-limit, auth/RBAC middleware |
+| User service | ✅ | 16 tests. Register, login, refresh, logout, profile |
+| Prisma schema | ✅ | 5 tables, 3 enums. Applied via `prisma db push` |
+| Dockerfile + build pipeline | ✅ | Multi-stage: install → build TS → production (node) |
+| Nginx proxy to API | ✅ | /health, /ready, /api/* → etip_api:3001 |
+| CI/CD (test → deploy) | ✅ | 266 tests in CI, auto-deploy + prisma push + Caddy reconnect |
+| VPS production verified | ✅ | 17/17 prod tests |
+| Pino logging + PII redaction | ✅ | Structured JSON, secrets redacted |
+| **Frontend shell** | ⬜ | React 18 + Vite + shadcn/ui, login page |
 
 ---
 
-### Phase 2 — Data Pipeline — ⬜ PLANNED
+## PRISMA SCHEMA (SOURCE OF TRUTH — Applied to VPS)
 
-| Task | Module | Priority |
-|------|--------|----------|
-| Normalization engine | 05-normalization | P0 |
-| AI Enrichment service | 06-ai-enrichment | P0 |
-| Ingestion service | 04-ingestion | P0 |
-| BullMQ pipeline wiring | 21-module-integration | P0 |
-| Feed management API + UI | 04-ingestion | P0 |
-| Caching layer (Redis L1) | 23-caching-archival | P1 |
-
----
-
-### Phases 3–8 — See 00-ARCHITECTURE-ROADMAP.md
+| Table | Key Fields |
+|-------|-----------|
+| `tenants` | id, name, slug (unique), plan, maxUsers, maxIOCs, aiCredits, active |
+| `users` | id, tenantId (FK), email (unique per tenant), role, authProvider, passwordHash |
+| `sessions` | id, userId (FK), refreshTokenHash, ipAddress, expiresAt, revokedAt |
+| `api_keys` | id, tenantId, userId, name (unique per tenant), prefix, keyHash, scopes[] |
+| `audit_logs` | id, tenantId, userId, action, entityType, entityId, changes (immutable) |
 
 ---
 
-## PRISMA SCHEMA (SOURCE OF TRUTH)
+## SECURITY FEATURES
 
-> **The authoritative Phase 1 database schema is `prisma/schema.prisma`.**
-
-| Table | Key Fields | Notes |
-|-------|-----------|-------|
-| `tenants` | id, name, slug (unique), plan, maxUsers, maxIOCs, aiCredits, settings, active | Multi-tenant with plan limits |
-| `users` | id, tenantId (FK), email, displayName, role, authProvider, passwordHash, mfaEnabled | Unique on (tenantId, email) |
-| `sessions` | id, userId (FK), tenantId, refreshTokenHash, ipAddress, userAgent, expiresAt, revokedAt | Token rotation + theft detection |
-| `api_keys` | id, tenantId, userId, name, prefix, keyHash, scopes[], lastUsed, expiresAt, active | Unique on (tenantId, name) |
-| `audit_logs` | id, tenantId, userId, action, entityType, entityId, changes, ipAddress, userAgent | Immutable (no updatedAt) |
-
-| Enum | Values |
-|------|--------|
-| Plan | free, pro, enterprise |
-| Role | super_admin, tenant_admin, analyst, viewer, api_only |
-| AuthProvider | email, google, saml, oidc |
+| Feature | Location |
+|---------|----------|
+| JWT access (15min) + refresh (7d) with rotation | shared-auth, user-service |
+| Token theft detection (revoke all) | user-service |
+| bcrypt cost 12, RBAC 5 roles 30+ perms | shared-auth |
+| Service JWT (60s TTL), PII redaction | shared-auth, api-gateway |
+| Rate limiting (100/min), Zod validation | api-gateway |
+| CORS + Helmet | api-gateway |
 
 ---
 
-## PROJECT CONSTANTS
+## DEPLOYMENT RCA (Session 2)
 
-```typescript
-const MODELS = { default: 'claude-sonnet-4-20250514', fast: 'claude-haiku-4-5-20251001', heavy: 'claude-opus-4-6' }
-const CACHE_TTL = { dashboard: 172800, iocSearch: 3600, enrichment: { ip: 3600, domain: 86400, hash: 604800, cve: 43200 }, userSession: 900, feedData: 1800 }
-const ARCHIVE_AFTER_DAYS = 60
-const MAX_FILE_LINES = 400
-const API_VERSION = 'v1'
-```
+See `docs/DEPLOYMENT_RCA.md` — 8 issues resolved:
+1. pnpm version conflict (packageManager vs action param)
+2. prisma CLI not at workspace root
+3. Stale lockfile
+4. MODULE_NOT_FOUND (no TS build in Docker)
+5. Unused imports blocking tsc strict
+6. SSH timeout (transient)
+7. OpenSSL missing for Prisma on Alpine
+8. workflow_dispatch skipping deploy
 
----
-
-## SECURITY FEATURES (SESSION 2)
-
-| Feature | Implementation | Location |
-|---------|---------------|----------|
-| JWT access tokens (15min) | jsonwebtoken + Zod validation | shared-auth/jwt.ts |
-| JWT refresh tokens (7d) | Single-use rotation, sha256 hash stored | user-service/service.ts |
-| Token theft detection | Revokes ALL sessions on hash mismatch | user-service/service.ts |
-| bcrypt password hashing | Cost factor 12, unique salts | shared-auth/password.ts |
-| RBAC (5 roles, 30+ perms) | Wildcard matching (*, resource:*) | shared-auth/permissions.ts |
-| Service-to-service JWT | 60s TTL, issuer validation | shared-auth/service-jwt.ts |
-| PII redaction in logs | Pino redact (passwords, tokens, secrets) | api-gateway/logger.ts |
-| Rate limiting | Per-user/IP via @fastify/rate-limit | api-gateway/app.ts |
-| Input validation | Zod schemas on all routes | api-gateway/routes/auth.ts |
-| CORS + Helmet | @fastify/cors, @fastify/helmet | api-gateway/app.ts |
+**Key Docker rule**: Alpine + Prisma needs `apk add openssl`. Always `pnpm -r build` before `node dist/`.
 
 ---
 
@@ -219,39 +143,30 @@ const API_VERSION = 'v1'
 
 | Date | Entry |
 |------|-------|
-| 2026-03-15 | **v3 Migration**: 26 skill files, docker-compose, folder structure, root configs. |
-| 2026-03-16 | **PROJECT_BRAIN v3**: 8-phase roadmap, v3 service names, conflict-safe ports. |
-| 2026-03-17 | **Session 1 — Shared packages**: shared-types (55), shared-utils (58), shared-cache (40). 153 tests. |
-| 2026-03-17 | **VPS Infra**: 8 containers, Caddy proxy, SSL, landing page, CI/CD pipeline. |
-| 2026-03-17 | **Session 2 — Auth+Gateway+UserService**: shared-auth (71), api-gateway (26), user-service (16), prisma validated. 113 new tests (266 total). 34 files, 3,022 lines. Matrix-verified. |
-| 2026-03-17 | **Prisma Phase 1**: 5 tables, 3 enums, 12 indexes, 7 relations, cascade deletes. Prisma is source of truth. |
-| 2026-03-17 | **Security**: Token rotation, theft detection, bcrypt cost 12, PII redaction, service JWT, RBAC wildcards. |
-| 2026-03-17 | **Docs update**: PROJECT_BRAIN v4.0, README (266 tests), .env.example (TI_SERVICE_JWT_SECRET). |
+| 2026-03-15 | v3 Migration: 26 skill files, docker-compose, folder structure. |
+| 2026-03-17 | Session 1: shared-types (55), shared-utils (58), shared-cache (40). 153 tests. |
+| 2026-03-17 | VPS Infra: 8 containers, Caddy proxy, SSL, landing page, CI/CD. |
+| 2026-03-17 | Session 2 Code: shared-auth (71), api-gateway (26), user-service (16), prisma. 113 tests. |
+| 2026-03-17 | Session 2 Deploy: Dockerfile, etip_api service, nginx proxy. 8 issues resolved (RCA). |
+| 2026-03-17 | **VPS LIVE**: 9 containers healthy. DB tables created. 17/17 prod tests. Full auth flow verified. |
 
 ---
 
 ## NEXT ACTIONS
 
 ### Session 2 — COMPLETE ✅
-- ~~shared-auth~~ ✅ 71 tests · ~~api-gateway~~ ✅ 26 tests · ~~prisma~~ ✅ · ~~user-service~~ ✅ 16 tests · ~~pino logging~~ ✅
+All code + deploy + prod tests done.
 
 ### Next — Phase 1 Session 3
-1. **Prisma migrations** — Apply to etip_postgres on VPS
-2. **Docker: etip_api** — Add api-gateway to docker-compose.etip.yml (port 3001)
-3. **Nginx proxy** — Route `/api/` → `etip_api:3001`
-4. **Deploy + verify** — `GET https://ti.intelwatch.in/health` → 200
-5. **Frontend shell** — React 18 + Vite + shadcn/ui, login page
-6. **Shared packages** — shared-audit, shared-normalization, shared-enrichment
+1. **Frontend shell** — React 18 + Vite + shadcn/ui, login page, empty dashboard
+2. **Shared packages** — shared-audit, shared-normalization, shared-enrichment
+3. **Phase 1 Gate** → Phase 2
 
 ### Phase 1 Gate Check
-- [ ] Prisma migrations applied
-- [ ] etip_api container running
-- [ ] /health → 200 at ti.intelwatch.in
-- [ ] Register + login endpoints working
-- [ ] Frontend shell visible
-- [ ] 266 tests passing
-- [ ] CI/CD deploys updated stack
+- [x] Prisma applied · [x] API healthy · [x] Nginx proxy · [x] /health → 200
+- [x] Register → 201 · [x] Login → 200 · [x] Refresh → 200 · [x] /me → 200 · [x] Logout → 204
+- [x] 266 unit tests · [x] CI/CD auto-deploys · [ ] Frontend shell
 
 ---
 
-**Version**: 4.0 · **Last Updated**: 2026-03-17
+**Version**: 4.1 · **Last Updated**: 2026-03-17
