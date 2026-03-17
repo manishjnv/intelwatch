@@ -38,19 +38,17 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script_stop: true
+          script_stop: false
           command_timeout: 10m
           script: |
-            set -e
-            echo "=== ETIP Deploy Started ==="
-            
-            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
+            set -x
+            echo "=== ETIP Deploy ==="
             
             cd /opt/intelwatch
             git fetch origin master
             git reset --hard origin/master
             
-            # Ensure .env has all required vars
+            # Ensure .env
             touch .env
             grep -q TI_POSTGRES_PASSWORD .env || echo 'TI_POSTGRES_PASSWORD=etip_pg_S3cur3_2026!' >> .env
             grep -q TI_REDIS_PASSWORD .env || echo 'TI_REDIS_PASSWORD=etip_redis_S3cur3_2026!' >> .env
@@ -60,29 +58,34 @@ jobs:
             grep -q TI_JWT_SECRET .env || echo 'TI_JWT_SECRET=etip-jwt-secret-change-me-in-production-2026-v4!' >> .env
             grep -q TI_SERVICE_JWT_SECRET .env || echo 'TI_SERVICE_JWT_SECRET=etip-svc-jwt-2026-internal!' >> .env
             grep -q TI_GRAFANA_PASSWORD .env || echo 'TI_GRAFANA_PASSWORD=etip_grafana_2026!' >> .env
-            echo ".env verified"
             
-            echo "Building etip_api..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -20
+            echo "=== Building etip_api ==="
+            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -10
             
-            echo "Starting services..."
+            echo "=== Starting only infra (no nginx dependency on api) ==="
+            docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_api
+            
+            echo "=== Waiting 20s for startup ==="
+            sleep 20
+            
+            echo "=== etip_api container logs ==="
+            docker logs etip_api --tail 50 2>&1
+            
+            echo "=== etip_api container state ==="
+            docker inspect etip_api --format '{{.State.Status}} {{.State.ExitCode}} {{.State.Error}}' 2>&1
+            
+            echo "=== Try health check ==="
+            curl -sf http://127.0.0.1:3001/health 2>&1 || echo "Health check failed"
+            
+            echo "=== If API is healthy, start nginx ==="
             docker compose -p etip -f docker-compose.etip.yml up -d
             
-            sleep 15
-            
-            echo "Running Prisma migrations..."
-            docker exec etip_api npx prisma migrate deploy --schema=prisma/schema.prisma 2>&1 || \
-              docker exec etip_api npx prisma db push --schema=prisma/schema.prisma 2>&1 || \
-              echo "Migration: will retry on next deploy"
-            
+            sleep 5
             docker network connect ti-platform_default etip_nginx 2>/dev/null || true
             docker restart ti-platform-caddy-1 2>/dev/null || true
             
-            sleep 10
-            
-            echo "=== Health Checks ==="
-            curl -sf http://127.0.0.1:3001/health && echo "" || echo "API: starting..."
-            curl -sf http://127.0.0.1:8080/health && echo "" || echo "Nginx: starting..."
-            echo ""
-            docker compose -p etip -f docker-compose.etip.yml ps
-            echo "=== Deploy Complete ==="
+            echo "=== Final status ==="
+            docker compose -p etip -f docker-compose.etip.yml ps 2>&1
+            curl -sf http://127.0.0.1:3001/health 2>&1 || echo "API still unhealthy"
+            curl -sf http://127.0.0.1:8080/health 2>&1 || echo "Nginx proxy unhealthy"
+            echo "=== Done ==="
