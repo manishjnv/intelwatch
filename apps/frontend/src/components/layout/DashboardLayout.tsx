@@ -1,6 +1,8 @@
 /**
  * @module components/layout/DashboardLayout
- * Locked components: TopStatsBar (h-9), GlobalSearch (Cmd+K)
+ * Uses locked components from @etip/shared-ui:
+ *   - TopStatsBar (h-9, item order, live indicator) — always visible, scrollable on mobile
+ *   - GlobalSearch (Cmd+K / Ctrl+K trigger)
  */
 import { useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
@@ -14,27 +16,28 @@ import {
 import { TopStatsBar } from '@etip/shared-ui/components/TopStatsBar'
 import { GlobalSearch, useGlobalSearch } from '@etip/shared-ui/components/GlobalSearch'
 
-const NAV_ITEMS = [
+interface NavItem { label:string; path:string; icon:React.ReactNode; phase?:string }
+
+const NAV_ITEMS: NavItem[] = [
   { label:'Dashboard',       path:'/dashboard',     icon:<LayoutDashboard className="w-4 h-4"/> },
-  { label:'IOC Intelligence',path:'/iocs',          icon:<Shield className="w-4 h-4"/>,         phase:'Phase 3' },
-  { label:'Threat Actors',   path:'/threat-actors', icon:<Users className="w-4 h-4"/>,          phase:'Phase 3' },
-  { label:'Malware',         path:'/malware',       icon:<Bug className="w-4 h-4"/>,            phase:'Phase 3' },
+  { label:'IOC Intelligence',path:'/iocs',           icon:<Shield className="w-4 h-4"/>,        phase:'Phase 3' },
+  { label:'Threat Actors',   path:'/threat-actors',  icon:<Users className="w-4 h-4"/>,         phase:'Phase 3' },
+  { label:'Malware',         path:'/malware',        icon:<Bug className="w-4 h-4"/>,            phase:'Phase 3' },
   { label:'Vulnerabilities', path:'/vulnerabilities',icon:<AlertTriangle className="w-4 h-4"/>, phase:'Phase 3' },
-  { label:'Threat Graph',    path:'/graph',         icon:<Network className="w-4 h-4"/>,        phase:'Phase 4' },
-  { label:'Threat Hunting',  path:'/hunting',       icon:<Search className="w-4 h-4"/>,         phase:'Phase 4' },
-  { label:'Feed Management', path:'/feeds',         icon:<Activity className="w-4 h-4"/>,       phase:'Phase 2' },
-  { label:'Integrations',    path:'/integrations',  icon:<Settings className="w-4 h-4"/>,       phase:'Phase 5' },
-  { label:'Settings',        path:'/settings',      icon:<Settings className="w-4 h-4"/>,       phase:'Phase 5' },
+  { label:'Threat Graph',    path:'/graph',          icon:<Network className="w-4 h-4"/>,        phase:'Phase 4' },
+  { label:'Threat Hunting',  path:'/hunting',        icon:<Search className="w-4 h-4"/>,         phase:'Phase 4' },
+  { label:'Feed Management', path:'/feeds',          icon:<Activity className="w-4 h-4"/>,       phase:'Phase 2' },
+  { label:'Integrations',    path:'/integrations',   icon:<Settings className="w-4 h-4"/>,       phase:'Phase 5' },
+  { label:'Settings',        path:'/settings',       icon:<Settings className="w-4 h-4"/>,       phase:'Phase 5' },
 ]
 
 export function DashboardLayout() {
-  const [collapsed, setCollapsed]   = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const user    = useAuthStore(s => s.user)
-  const tenant  = useAuthStore(s => s.tenant)
+  const user = useAuthStore((s) => s.user)
+  const tenant = useAuthStore((s) => s.tenant)
   const logoutMutation = useLogout()
   const location = useLocation()
-  // LOCKED: GlobalSearch Cmd+K / Ctrl+K
   const { open: searchOpen, setOpen: setSearchOpen } = useGlobalSearch()
 
   return (
@@ -43,13 +46,11 @@ export function DashboardLayout() {
         <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={()=>setMobileOpen(false)}/>
       )}
 
-      {/* Sidebar */}
       <aside className={cn(
         'fixed lg:static inset-y-0 left-0 z-50 flex flex-col bg-bg-primary border-r border-border transition-all duration-200',
         collapsed ? 'w-16' : 'w-60',
         mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       )}>
-        {/* Logo */}
         <div className="h-14 flex items-center px-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2 overflow-hidden">
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
@@ -67,7 +68,6 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        {/* Search hint */}
         {!collapsed && (
           <button onClick={()=>setSearchOpen(true)}
             className="mx-2 mt-2 mb-1 flex items-center gap-2 px-3 py-1.5 rounded-md bg-bg-secondary border border-border text-xs text-text-muted hover:text-text-secondary hover:border-border-strong transition-colors">
@@ -77,19 +77,18 @@ export function DashboardLayout() {
           </button>
         )}
 
-        {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-2 px-2">
-          {NAV_ITEMS.map(item => {
-            const isActive   = location.pathname === item.path
+          {NAV_ITEMS.map((item) => {
+            const isActive  = location.pathname === item.path
             const isDisabled = !!item.phase
             return (
               <NavLink key={item.path} to={isDisabled ? '#' : item.path}
-                onClick={e => { if (isDisabled) e.preventDefault(); setMobileOpen(false) }}
+                onClick={(e)=>{ if (isDisabled) e.preventDefault(); setMobileOpen(false) }}
                 className={cn(
                   'group flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
                   isActive && !isDisabled ? 'bg-accent/10 text-accent'
-                    : isDisabled           ? 'text-text-muted/40 cursor-not-allowed'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover',
+                  : isDisabled ? 'text-text-muted/40 cursor-not-allowed'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover',
                 )}
                 title={isDisabled ? `Coming in ${item.phase}` : item.label}>
                 <span className={cn('shrink-0', isActive && !isDisabled && 'text-accent')}>{item.icon}</span>
@@ -102,7 +101,6 @@ export function DashboardLayout() {
           })}
         </nav>
 
-        {/* User */}
         <div className="border-t border-border p-3 shrink-0">
           {!collapsed && user && (
             <div className="flex items-center gap-2 mb-2">
@@ -123,7 +121,6 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        {/* Collapse toggle */}
         <button onClick={()=>setCollapsed(!collapsed)}
           className="hidden lg:flex items-center justify-center h-8 border-t border-border text-text-muted hover:text-text-primary transition-colors"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
@@ -131,9 +128,7 @@ export function DashboardLayout() {
         </button>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile header */}
         <div className="lg:hidden h-10 bg-bg-primary border-b border-border flex items-center px-3 shrink-0">
           <button onClick={()=>setMobileOpen(true)} className="p-1 -ml-1 text-text-muted hover:text-text-primary">
             <Menu className="w-4 h-4"/>
@@ -144,9 +139,9 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        {/* LOCKED: TopStatsBar — always visible, scrolls on mobile (overflow-x-auto) */}
+        {/* TopStatsBar — always visible, scrolls horizontally on mobile (scrollbar-hide) */}
         <div className="overflow-x-auto shrink-0 scrollbar-hide">
-          <TopStatsBar />
+          <TopStatsBar/>
         </div>
 
         <main className="flex-1 overflow-y-auto">
@@ -154,7 +149,6 @@ export function DashboardLayout() {
         </main>
       </div>
 
-      {/* LOCKED: GlobalSearch */}
       <GlobalSearch open={searchOpen} onClose={()=>setSearchOpen(false)}/>
     </div>
   )

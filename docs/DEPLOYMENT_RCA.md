@@ -149,3 +149,27 @@ Deploy startup order:
   docker network connect ti-platform_default etip_nginx
   docker restart ti-platform-caddy-1
 ```
+
+---
+
+### Issue 13: Frontend container built without `packages/shared-ui/` — stale image served
+**Error**: Live site shows old landing page with no CTA buttons; DashboardPage imports fail silently.
+**Root Cause**: `Dockerfile.frontend` only copied `apps/frontend/` but never `packages/shared-ui/`.
+Vite alias `'@etip/shared-ui' → '../../packages/shared-ui/src'` pointed to a path that didn't
+exist in the Docker build context. The live container ran a stale pre-shared-ui image.
+**Fix**: Added `COPY packages/shared-ui/package.json packages/shared-ui/` before `pnpm install`,
+and `COPY packages/shared-ui/ packages/shared-ui/` before `vite build`.
+**Commit**: fix: copy shared-ui into frontend Docker build context — ref DEPLOYMENT_RCA.md
+**Prevention**:
+- RULE: When a frontend Vite alias points into packages/*, that package MUST be COPY'd in Dockerfile.frontend.
+- Mirror Issue 11 rule: every workspace member referenced by vite aliases must appear in Dockerfile.frontend.
+
+### Issue 14: Radar rings rendered at top-left corner instead of center
+**Error**: Radar rings (4 pulsing concentric circles) appeared at top-left of the landing page.
+**Root Cause**: In landing.html the `.radar-container` was a flex child of body (flex centered).
+In React `.lp-radar` uses `position: absolute` inside a fixed root with no explicit left/top.
+An absolute element without explicit positioning defaults to its static flow position (top-left).
+**Fix**: Added `left: 50%; top: 50%; transform: translate(-50%, -50%)` to `.lp-radar`.
+**Commit**: fix: center radar rings in React LandingPage — ref DEPLOYMENT_RCA.md
+**Prevention**: When porting HTML flex-centered layouts to React, verify that absolutely positioned
+elements don't rely on implicit flex centering — add explicit centering if they use position:absolute.

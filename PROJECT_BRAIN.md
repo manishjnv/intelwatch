@@ -169,4 +169,16 @@ All code + deploy + prod tests done.
 
 ---
 
-**Version**: 4.1 · **Last Updated**: 2026-03-17
+---
+
+## Session Log (additions)
+
+| Date | Change |
+|---|---|
+| 2026-03-18 | **UI Design Lock + shared-ui scaffold**: 10 locked components built. UI_DESIGN_LOCK.md enforced. Full frontend shell with LandingPage, DashboardLayout, DashboardPage. |
+| 2026-03-18 | **UI Gap Audit**: Confirmed all 9 reported gaps already resolved. Fixed TopStatsBar hidden on mobile → `overflow-x-auto scrollbar-hide`. |
+| 2026-03-18 | **Docker fix**: `Dockerfile.frontend` now copies `packages/shared-ui/` into build context (Issue 13). Radar rings centered in LandingPage (Issue 14). |
+
+**Status**: Phase 1 COMPLETE ✅ · Frontend shell deployed · shared-ui design-locked · Ready for Phase 2
+
+**Version**: 5.2 · **Last Updated**: 2026-03-18
