@@ -1,6 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { AppError } from '@etip/shared-utils';
 import { authenticate, getUser } from '../plugins/auth.js';
 
 const RegisterBodySchema = z.object({

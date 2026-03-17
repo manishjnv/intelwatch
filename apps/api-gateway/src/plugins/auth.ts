@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { verifyAccessToken, type JwtConfig } from '@etip/shared-auth';
+import { verifyAccessToken } from '@etip/shared-auth';
 import type { JwtPayload } from '@etip/shared-types';
 import { AppError } from '@etip/shared-utils';
 

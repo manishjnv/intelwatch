@@ -3,8 +3,6 @@ dist
 coverage
 .git
 .github
-*.md
-!README.md
 docker
 infrastructure
 skills
@@ -13,8 +11,7 @@ docs
 scripts
 config
 .env
-.env.*
-!.env.example
+.env.local
 **/*.test.ts
 **/*.spec.ts
 **/__tests__
