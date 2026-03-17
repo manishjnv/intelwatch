@@ -85,3 +85,12 @@ Post-Push (CI handles):
   [ ] Reconnect nginx to Caddy network
   [ ] Health check /health → 200
 ```
+
+### 9. Landing page UI regression
+- **Error**: Futuristic landing page replaced with minimal inline HTML after nginx config update
+- **Cause**: When updating `default.conf` for API proxy, the `location /` block was rewritten with `return 200 '<minimal html>'` instead of serving the file-based `landing.html`
+- **Fix**: Restored file-based serving: `root /usr/share/nginx/html; try_files $uri /index.html`. Volume mount: `landing.html:/usr/share/nginx/html/index.html:ro`
+- **Prevention**: 
+  - **RULE**: Landing page is ALWAYS `docker/nginx/landing.html` mounted as a volume. NEVER use inline `return 200` HTML in nginx config for `/`
+  - Comment added to `default.conf`: "NEVER replace with inline HTML"
+  - When modifying nginx config, only touch `location /api/`, `/health`, `/ready`, `/ws/` blocks. Leave `location /` as file-based serving
