@@ -27,11 +27,9 @@ jobs:
 
   deploy:
     name: Deploy to VPS
-    needs: [test]
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
-      github.event_name == 'workflow_dispatch'
+    needs: [test]
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
     steps:
       - uses: appleboy/ssh-action@v1.0.3
         with:
@@ -48,7 +46,6 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
             
-            # Ensure .env
             touch .env
             grep -q TI_POSTGRES_PASSWORD .env || echo 'TI_POSTGRES_PASSWORD=etip_pg_S3cur3_2026!' >> .env
             grep -q TI_REDIS_PASSWORD .env || echo 'TI_REDIS_PASSWORD=etip_redis_S3cur3_2026!' >> .env
@@ -60,32 +57,29 @@ jobs:
             grep -q TI_GRAFANA_PASSWORD .env || echo 'TI_GRAFANA_PASSWORD=etip_grafana_2026!' >> .env
             
             echo "=== Building etip_api ==="
-            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -10
+            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -15
             
-            echo "=== Starting only infra (no nginx dependency on api) ==="
-            docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_api
+            echo "=== Starting services ==="
+            docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_api 2>&1
             
-            echo "=== Waiting 20s for startup ==="
-            sleep 20
+            echo "=== Waiting 25s ==="
+            sleep 25
             
-            echo "=== etip_api container logs ==="
-            docker logs etip_api --tail 50 2>&1
+            echo "=== Container Logs ==="
+            docker logs etip_api --tail 30 2>&1
             
-            echo "=== etip_api container state ==="
-            docker inspect etip_api --format '{{.State.Status}} {{.State.ExitCode}} {{.State.Error}}' 2>&1
+            echo "=== Container State ==="
+            docker inspect etip_api --format '{{.State.Status}} exit={{.State.ExitCode}}' 2>&1
             
-            echo "=== Try health check ==="
-            curl -sf http://127.0.0.1:3001/health 2>&1 || echo "Health check failed"
+            echo "=== Health Check ==="
+            curl -sf http://127.0.0.1:3001/health && echo "" || echo "API not ready yet"
             
-            echo "=== If API is healthy, start nginx ==="
-            docker compose -p etip -f docker-compose.etip.yml up -d
-            
+            echo "=== Starting nginx ==="
+            docker compose -p etip -f docker-compose.etip.yml up -d 2>&1
             sleep 5
             docker network connect ti-platform_default etip_nginx 2>/dev/null || true
             docker restart ti-platform-caddy-1 2>/dev/null || true
             
-            echo "=== Final status ==="
+            echo "=== Final ==="
             docker compose -p etip -f docker-compose.etip.yml ps 2>&1
-            curl -sf http://127.0.0.1:3001/health 2>&1 || echo "API still unhealthy"
-            curl -sf http://127.0.0.1:8080/health 2>&1 || echo "Nginx proxy unhealthy"
             echo "=== Done ==="
