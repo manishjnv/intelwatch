@@ -1,0 +1,33 @@
+name: VPS Command
+
+on:
+  workflow_dispatch:
+    inputs:
+      cmd:
+        description: 'Shell command to run on VPS (runs as root in /opt/intelwatch)'
+        required: true
+        type: string
+
+jobs:
+  run:
+    name: Run on VPS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute command on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 5m
+          script_stop: false
+          script: |
+            set -e
+            cd /opt/intelwatch
+            echo "=== VPS Command Runner ==="
+            echo "Time: $(date -u)"
+            echo "CMD: ${{ inputs.cmd }}"
+            echo "========================="
+            ${{ inputs.cmd }}
+            echo "========================="
+            echo "Done"
