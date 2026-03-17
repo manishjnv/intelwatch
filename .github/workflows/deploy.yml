@@ -56,25 +56,22 @@ jobs:
             grep -q TI_SERVICE_JWT_SECRET .env || echo 'TI_SERVICE_JWT_SECRET=etip-svc-jwt-2026-internal!' >> .env
             grep -q TI_GRAFANA_PASSWORD .env || echo 'TI_GRAFANA_PASSWORD=etip_grafana_2026!' >> .env
             
-            echo "=== Building etip_api ==="
-            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -15
-            
-            echo "=== Starting services ==="
+            echo "=== Build + Start ==="
+            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -5
             docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_api 2>&1
+            sleep 20
             
-            echo "=== Waiting 25s ==="
-            sleep 25
+            echo "=== Prisma DB Push ==="
+            docker exec etip_api npx prisma db push --schema=prisma/schema.prisma --accept-data-loss 2>&1
             
-            echo "=== Container Logs ==="
-            docker logs etip_api --tail 30 2>&1
-            
-            echo "=== Container State ==="
+            echo "=== Container Status ==="
+            docker logs etip_api --tail 10 2>&1
             docker inspect etip_api --format '{{.State.Status}} exit={{.State.ExitCode}}' 2>&1
             
-            echo "=== Health Check ==="
-            curl -sf http://127.0.0.1:3001/health && echo "" || echo "API not ready yet"
+            echo "=== Health ==="
+            curl -sf http://127.0.0.1:3001/health && echo ""
             
-            echo "=== Starting nginx ==="
+            echo "=== Start Nginx ==="
             docker compose -p etip -f docker-compose.etip.yml up -d 2>&1
             sleep 5
             docker network connect ti-platform_default etip_nginx 2>/dev/null || true
