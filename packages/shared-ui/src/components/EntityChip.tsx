@@ -1,5 +1,5 @@
 // DESIGN LOCKED — see UI_DESIGN_LOCK.md
-import React, { useState } from 'react'
+
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives/popover'
 import { Copy, Search, ExternalLink, GitBranch, Plus, Globe } from 'lucide-react'
 
