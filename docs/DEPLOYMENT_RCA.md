@@ -108,6 +108,17 @@
 ---
 
 
+### Issue 16: API container crashing — shared-auth dist missing after pnpm-lock.yaml update
+**Error**: `etip_api` in restart loop. `docker logs etip_api`: `Cannot find module '/app/apps/api-gateway/node_modules/@etip/shared-auth/dist/index.js'`.
+**Root Cause**: When `pnpm-lock.yaml` was regenerated to include `@etip/shared-ui` and frontend deps, the API `Dockerfile` deps stage was not updated. It lacked `COPY packages/shared-ui/package.json` and `COPY apps/frontend/package.json`. So `pnpm install --frozen-lockfile` failed and the `--no-frozen-lockfile` fallback didn't correctly wire workspace symlinks. `shared-auth` TypeScript compiled against broken paths, produced no `dist/`. The `|| true` on every `tsc` step suppressed these errors silently.
+**Fix**: Added missing COPY lines to Dockerfile deps stage. Removed `|| true` from all tsc RUN steps.
+**Commit**: fix: add shared-ui + frontend package.json to API Dockerfile deps stage - ref DEPLOYMENT_RCA.md
+**Prevention**:
+- RULE: Every pnpm-lock.yaml update adding workspace members requires matching COPY lines in BOTH Dockerfile AND Dockerfile.frontend.
+- RULE: Never use `|| true` on TypeScript compile steps in Docker.
+
+---
+
 ### Issue 15: Vite build silently failed — shared-ui imported @tanstack/react-query across package boundary
 **Error**: Live site bundle unchanged after two deploys. `docker compose build etip_frontend` exit code 1 was silently swallowed by `| tail -20` pipe in deploy.yml. Vite output: `Rollup failed to resolve import "@tanstack/react-query" from packages/shared-ui/src/components/TopStatsBar.tsx` (and GlobalSearch.tsx).
 **Root Cause**: `TopStatsBar` and `GlobalSearch` in `packages/shared-ui` imported `useQuery` from `@tanstack/react-query`. That package is not in `shared-ui`'s own `package.json`. When Vite resolves the `@etip/shared-ui` path alias, Rollup treats cross-package-boundary imports as unresolvable and errors. The build failure was invisible because `docker compose build | tail -20` in deploy.yml caused bash to ignore the non-zero exit code (pipe breaks pipefail).
