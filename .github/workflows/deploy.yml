@@ -89,7 +89,8 @@ jobs:
             sleep 3
             
             echo "=== Reconnect Nginx to Caddy ==="
-            docker network connect ti-platform_default etip_nginx 2>/dev/null || true
+            # Network connection now handled by docker-compose.etip.yml (caddy_network)
+            # Caddy restart still needed to re-resolve upstream after nginx recreate
             docker restart ti-platform-caddy-1 2>/dev/null || true
             sleep 5
             
