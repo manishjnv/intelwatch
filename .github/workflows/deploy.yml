@@ -8,7 +8,6 @@ on:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '9'
 
 jobs:
   test:
@@ -18,8 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -47,7 +44,6 @@ jobs:
             set -e
             echo "=== ETIP Deploy Started ==="
             
-            # Safety: check existing site
             docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
             
             cd /opt/intelwatch
@@ -66,16 +62,12 @@ jobs:
             grep -q TI_GRAFANA_PASSWORD .env || echo 'TI_GRAFANA_PASSWORD=etip_grafana_2026!' >> .env
             echo ".env verified"
             
-            # Build API container
             echo "Building etip_api..."
             docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -20
             
-            # Start all services
             echo "Starting services..."
             docker compose -p etip -f docker-compose.etip.yml up -d
             
-            # Wait for postgres+redis healthy, then run migrations
-            echo "Waiting for DB..."
             sleep 15
             
             echo "Running Prisma migrations..."
@@ -83,7 +75,6 @@ jobs:
               docker exec etip_api npx prisma db push --schema=prisma/schema.prisma 2>&1 || \
               echo "Migration: will retry on next deploy"
             
-            # Reconnect nginx to Caddy
             docker network connect ti-platform_default etip_nginx 2>/dev/null || true
             docker restart ti-platform-caddy-1 2>/dev/null || true
             
