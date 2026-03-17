@@ -57,8 +57,8 @@ jobs:
             grep -q TI_GRAFANA_PASSWORD .env || echo 'TI_GRAFANA_PASSWORD=etip_grafana_2026!' >> .env
             
             echo "=== Build Images ==="
-            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -10
-            docker compose -p etip -f docker-compose.etip.yml build etip_frontend 2>&1 | tail -10
+            docker compose -p etip -f docker-compose.etip.yml build --no-cache etip_api
+            docker compose -p etip -f docker-compose.etip.yml build --no-cache etip_frontend
             
             echo "=== Start Infrastructure ==="
             docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis 2>&1

@@ -41,7 +41,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     max: config.TI_RATE_LIMIT_MAX_REQUESTS,
     timeWindow: config.TI_RATE_LIMIT_WINDOW_MS,
     keyGenerator: (req) => {
-      const user = (req as Record<string, unknown>).user as { sub?: string } | undefined;
+      const user = (req as unknown as Record<string, unknown>).user as { sub?: string } | undefined;
       return user?.sub ?? req.ip;
     },
   });
@@ -49,9 +49,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(sensible);
   registerErrorHandler(app);
 
-  app.addHook('onRequest', async (req) => { (req as Record<string, unknown>)._startTime = Date.now(); });
+  app.addHook('onRequest', async (req) => { (req as unknown as Record<string, unknown>)._startTime = Date.now(); });
   app.addHook('onResponse', async (req, reply) => {
-    const startTime = (req as Record<string, unknown>)._startTime as number | undefined;
+    const startTime = (req as unknown as Record<string, unknown>)._startTime as number | undefined;
     if (startTime) {
       req.log.info({ method: req.method, url: req.url, statusCode: reply.statusCode, duration: Date.now() - startTime }, 'request completed');
     }
