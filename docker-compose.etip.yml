@@ -254,7 +254,7 @@ services:
     container_name: etip_frontend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      test: ["CMD-SHELL", "printf 'GET / HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' | nc -w2 localhost 80 | head -1 | grep -q HTTP"]
       interval: 30s
       timeout: 5s
       retries: 3
