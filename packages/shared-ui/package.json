@@ -1,0 +1,21 @@
+{
+  "name": "@etip/shared-ui",
+  "version": "1.0.0",
+  "description": "LOCKED design system — see UI_DESIGN_LOCK.md before modifying anything here",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "dependencies": {
+    "framer-motion": "^10.0.0",
+    "@floating-ui/react": "^0.26.0",
+    "lucide-react": "^0.400.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0"
+  }
+}

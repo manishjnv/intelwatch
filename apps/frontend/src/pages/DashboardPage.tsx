@@ -1,57 +1,90 @@
-import { useAuthStore } from '@/stores/auth-store';
+/**
+ * @module pages/DashboardPage
+ * Locked: IntelCard (3D hover), PageStatsBar, TooltipHelp, InlineHelp
+ */
+import { useAuthStore } from '@/stores/auth-store'
+import { cn } from '@/lib/utils'
+import { Shield, Activity, Search, AlertTriangle, Globe, Cpu, Network, Bug, Users, Zap, BarChart3, Lock } from 'lucide-react'
+import { IntelCard }                from '@etip/shared-ui/components/IntelCard'
+import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
+import { TooltipHelp }              from '@etip/shared-ui/components/TooltipHelp'
+import { InlineHelp }               from '@etip/shared-ui/components/InlineHelp'
 
 const FEATURES = [
-  { title: 'IOC Intelligence', desc: 'Search, pivot, and manage indicators of compromise.', phase: 'Phase 3', color: 'text-blue-400' },
-  { title: 'Feed Ingestion', desc: 'Connect STIX, MISP, CSV, and REST feeds.', phase: 'Phase 2', color: 'text-green-400' },
-  { title: 'AI Enrichment', desc: 'Claude-powered analysis with VT & AbuseIPDB.', phase: 'Phase 2', color: 'text-purple-400' },
-  { title: 'Threat Graph', desc: 'Interactive knowledge graph visualization.', phase: 'Phase 4', color: 'text-cyan-400' },
-  { title: 'Threat Actors', desc: 'Track APT groups, campaigns, and TTPs.', phase: 'Phase 3', color: 'text-orange-400' },
-  { title: 'Malware Analysis', desc: 'Malware family tracking and behavioral indicators.', phase: 'Phase 3', color: 'text-red-400' },
-  { title: 'Vulnerability Intel', desc: 'CVE tracking with EPSS scoring.', phase: 'Phase 3', color: 'text-yellow-400' },
-  { title: 'Threat Hunting', desc: 'YARA & Sigma rule management with NL queries.', phase: 'Phase 4', color: 'text-emerald-400' },
-  { title: 'Digital Risk Protection', desc: 'Dark web monitoring and credential leak detection.', phase: 'Phase 4', color: 'text-rose-400' },
-  { title: 'Correlation Engine', desc: 'Automated cross-entity correlation with alerts.', phase: 'Phase 4', color: 'text-amber-400' },
-  { title: 'Enterprise Integrations', desc: 'SIEM, SOAR, ticketing, and API integrations.', phase: 'Phase 5', color: 'text-sky-400' },
-  { title: 'RBAC & SSO', desc: 'Role-based access with Google SSO and SAML.', phase: 'Phase 5', color: 'text-indigo-400' },
-];
+  { title:'IOC Intelligence',       description:'Search, pivot, and manage indicators of compromise with full lifecycle tracking.',     icon:<Shield className="w-5 h-5"/>,     phase:'Phase 3', color:'text-accent',      help:'Track IPs, domains, hashes, URLs, emails, and CVEs with automated enrichment.' },
+  { title:'Feed Ingestion',         description:'Connect STIX, MISP, CSV, and REST feeds. Automated normalization pipeline.',          icon:<Activity className="w-5 h-5"/>,    phase:'Phase 2', color:'text-sev-low',     help:'Connects to external threat intelligence feeds and normalizes data automatically.' },
+  { title:'AI Enrichment',          description:'Claude-powered analysis with VirusTotal & AbuseIPDB correlation.',                     icon:<Cpu className="w-5 h-5"/>,         phase:'Phase 2', color:'text-purple-400',  help:'Uses AI to generate risk assessments, context summaries, and correlation insights.' },
+  { title:'Threat Graph',           description:'Interactive knowledge graph visualizing relationships between entities.',               icon:<Network className="w-5 h-5"/>,     phase:'Phase 4', color:'text-cyan-400',    help:'Neo4j-backed graph showing connections between IOCs, actors, malware, and campaigns.' },
+  { title:'Threat Actors',          description:'Track APT groups, campaigns, TTPs, and attribution with MITRE ATT&CK mapping.',        icon:<Users className="w-5 h-5"/>,       phase:'Phase 3', color:'text-sev-high',    help:'Profiles of nation-state and criminal threat actors with TTP mapping.' },
+  { title:'Malware Analysis',       description:'Malware family tracking, sample analysis, and behavioral indicators.',                 icon:<Bug className="w-5 h-5"/>,         phase:'Phase 3', color:'text-sev-critical', help:'Track malware families, their variants, and associated indicators.' },
+  { title:'Vulnerability Intel',    description:'CVE tracking with EPSS scoring, exploit availability, and patch status.',              icon:<AlertTriangle className="w-5 h-5"/>,phase:'Phase 3', color:'text-sev-medium',  help:'Monitors CVEs with prioritization based on exploitability and your asset exposure.' },
+  { title:'Threat Hunting',         description:'YARA & Sigma rule management with natural language query interface.',                   icon:<Search className="w-5 h-5"/>,      phase:'Phase 4', color:'text-emerald-400', help:'Create and manage detection rules with an AI-assisted natural language query builder.' },
+  { title:'Digital Risk Protection',description:'Dark web monitoring, brand protection, and credential leak detection.',                icon:<Globe className="w-5 h-5"/>,       phase:'Phase 4', color:'text-rose-400',    help:'Monitors external attack surface including dark web, paste sites, and social media.' },
+  { title:'Correlation Engine',     description:'Automated cross-entity correlation with alert prioritization.',                        icon:<Zap className="w-5 h-5"/>,         phase:'Phase 4', color:'text-yellow-400',  help:'Automatically links related entities and generates prioritized alerts.' },
+  { title:'Enterprise Integrations',description:'SIEM, SOAR, ticketing, and API integrations for your security stack.',                icon:<BarChart3 className="w-5 h-5"/>,   phase:'Phase 5', color:'text-sky-400',     help:'Bi-directional integration with Splunk, Sentinel, ServiceNow, and more.' },
+  { title:'RBAC & SSO',             description:'Role-based access control with Google SSO, SAML, and OIDC support.',                  icon:<Lock className="w-5 h-5"/>,        phase:'Phase 5', color:'text-indigo-400',  help:'Enterprise-grade access control with 5 roles and 30+ granular permissions.' },
+]
 
 export function DashboardPage() {
-  const user = useAuthStore((s) => s.user);
-  const tenant = useAuthStore((s) => s.tenant);
-
+  const user   = useAuthStore(s => s.user)
+  const tenant = useAuthStore(s => s.tenant)
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-lg sm:text-xl font-semibold text-text-primary">Welcome back, {user?.displayName ?? 'Analyst'}</h1>
-        <p className="text-sm text-text-muted mt-0.5">{tenant?.name ?? 'Your organization'} &middot; Free tier</p>
-      </div>
+    <div>
+      {/* LOCKED: PageStatsBar */}
+      <PageStatsBar>
+        <CompactStat label="Total IOCs"     value="—"/>
+        <CompactStat label="Active Feeds"   value="—"/>
+        <CompactStat label="Enriched Today" value="—"/>
+        <CompactStat label="Open Alerts"    value="—"/>
+      </PageStatsBar>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {[['Total IOCs', '—', 'Phase 2'], ['Active Feeds', '—', 'Phase 2'], ['Enriched Today', '—', 'Phase 2'], ['Open Alerts', '—', 'Phase 4']].map(([label, value, sub]) => (
-          <div key={label} className="bg-bg-primary border border-border rounded-lg p-3">
-            <div className="text-[10px] text-text-muted uppercase tracking-wider">{label}</div>
-            <div className="text-lg font-semibold text-text-primary mt-0.5">{value}</div>
-            <div className="text-[10px] text-text-muted mt-0.5">Coming {sub}</div>
-          </div>
-        ))}
-      </div>
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-lg sm:text-xl font-semibold text-text-primary">Welcome back, {user?.displayName ?? 'Analyst'}</h1>
+          <p className="text-sm text-text-muted mt-0.5">{tenant?.name ?? 'Your organization'} · Free tier</p>
+        </div>
 
-      <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
-        <h3 className="text-sm font-medium text-text-primary">Phase 1 Complete — Foundation Ready</h3>
-        <p className="text-xs text-text-secondary mt-0.5">Authentication, API gateway, and infrastructure are live. The data pipeline is coming in Phase 2.</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {FEATURES.map((f) => (
-          <div key={f.title} className="card-3d bg-bg-primary border border-border rounded-xl p-4 shadow-card cursor-default">
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <h3 className={'text-sm font-medium ' + f.color}>{f.title}</h3>
-              <span className="text-[10px] text-text-muted bg-bg-elevated px-1.5 py-0.5 rounded shrink-0">{f.phase}</span>
+        <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Zap className="w-4 h-4 text-accent"/>
             </div>
-            <p className="text-xs text-text-secondary line-clamp-2">{f.desc}</p>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-medium text-text-primary">Phase 1 Complete — Foundation Ready</h3>
+                <TooltipHelp message="Phase 1 includes authentication, API gateway, database schema, and CI/CD pipeline. All passing 372+ tests."/>
+              </div>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Authentication, API gateway, and infrastructure are live. The data pipeline (feed ingestion, normalization, AI enrichment) is coming in Phase 2.
+              </p>
+              <InlineHelp message="Press Cmd+K (Mac) or Ctrl+K (Win) at any time to search across all intelligence."/>
+            </div>
           </div>
-        ))}
+        </div>
+
+        {/* LOCKED: IntelCard with Framer Motion 3D hover */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {FEATURES.map(f => (
+            <IntelCard key={f.title} className="cursor-default">
+              <div className="flex items-start gap-3">
+                <div className={cn('w-9 h-9 rounded-lg bg-[var(--bg-elevated)] flex items-center justify-center shrink-0', f.color)}>
+                  {f.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1">
+                      <h3 className="text-sm font-medium text-[var(--text-primary)] truncate">{f.title}</h3>
+                      <TooltipHelp message={f.help} size={3}/>
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded shrink-0">{f.phase}</span>
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">{f.description}</p>
+                </div>
+              </div>
+            </IntelCard>
+          ))}
+        </div>
       </div>
     </div>
-  );
+  )
 }
