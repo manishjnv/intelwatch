@@ -1,11 +1,11 @@
 /**
  * @module components/layout/DashboardLayout
- * Uses locked components from @etip/shared-ui:
- *   - TopStatsBar (h-9, item order, live indicator) — always visible, scrollable on mobile
- *   - GlobalSearch (Cmd+K / Ctrl+K trigger)
+ * Locked components: TopStatsBar (h-9), GlobalSearch (Cmd+K)
+ * Data fetching for TopStatsBar lives here (not in shared-ui).
  */
 import { useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useLogout } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
@@ -13,32 +13,65 @@ import {
   LayoutDashboard, Shield, Activity, Search, Users, Settings,
   LogOut, ChevronLeft, ChevronRight, Menu, X, AlertTriangle, Bug, Network,
 } from 'lucide-react'
-import { TopStatsBar } from '@etip/shared-ui/components/TopStatsBar'
-import { GlobalSearch, useGlobalSearch } from '@etip/shared-ui/components/GlobalSearch'
+import { TopStatsBar }                          from '@etip/shared-ui/components/TopStatsBar'
+import { GlobalSearch, useGlobalSearch }         from '@etip/shared-ui/components/GlobalSearch'
+import type { SearchResult }                     from '@etip/shared-ui/components/GlobalSearch'
 
-interface NavItem { label:string; path:string; icon:React.ReactNode; phase?:string }
+interface PlatformStats {
+  totalIOCs: number; criticalIOCs: number
+  activeFeeds: number; enrichedToday: number; lastIngestTime: string
+}
 
-const NAV_ITEMS: NavItem[] = [
-  { label:'Dashboard',       path:'/dashboard',     icon:<LayoutDashboard className="w-4 h-4"/> },
-  { label:'IOC Intelligence',path:'/iocs',           icon:<Shield className="w-4 h-4"/>,        phase:'Phase 3' },
-  { label:'Threat Actors',   path:'/threat-actors',  icon:<Users className="w-4 h-4"/>,         phase:'Phase 3' },
-  { label:'Malware',         path:'/malware',        icon:<Bug className="w-4 h-4"/>,            phase:'Phase 3' },
-  { label:'Vulnerabilities', path:'/vulnerabilities',icon:<AlertTriangle className="w-4 h-4"/>, phase:'Phase 3' },
-  { label:'Threat Graph',    path:'/graph',          icon:<Network className="w-4 h-4"/>,        phase:'Phase 4' },
-  { label:'Threat Hunting',  path:'/hunting',        icon:<Search className="w-4 h-4"/>,         phase:'Phase 4' },
-  { label:'Feed Management', path:'/feeds',          icon:<Activity className="w-4 h-4"/>,       phase:'Phase 2' },
-  { label:'Integrations',    path:'/integrations',   icon:<Settings className="w-4 h-4"/>,       phase:'Phase 5' },
-  { label:'Settings',        path:'/settings',       icon:<Settings className="w-4 h-4"/>,       phase:'Phase 5' },
+const NAV_ITEMS = [
+  { label:'Dashboard',        path:'/dashboard',      icon:<LayoutDashboard className="w-4 h-4"/> },
+  { label:'IOC Intelligence', path:'/iocs',           icon:<Shield className="w-4 h-4"/>,         phase:'Phase 3' },
+  { label:'Threat Actors',    path:'/threat-actors',  icon:<Users className="w-4 h-4"/>,          phase:'Phase 3' },
+  { label:'Malware',          path:'/malware',        icon:<Bug className="w-4 h-4"/>,            phase:'Phase 3' },
+  { label:'Vulnerabilities',  path:'/vulnerabilities',icon:<AlertTriangle className="w-4 h-4"/>,  phase:'Phase 3' },
+  { label:'Threat Graph',     path:'/graph',          icon:<Network className="w-4 h-4"/>,        phase:'Phase 4' },
+  { label:'Threat Hunting',   path:'/hunting',        icon:<Search className="w-4 h-4"/>,         phase:'Phase 4' },
+  { label:'Feed Management',  path:'/feeds',          icon:<Activity className="w-4 h-4"/>,       phase:'Phase 2' },
+  { label:'Integrations',     path:'/integrations',   icon:<Settings className="w-4 h-4"/>,       phase:'Phase 5' },
+  { label:'Settings',         path:'/settings',       icon:<Settings className="w-4 h-4"/>,       phase:'Phase 5' },
 ]
 
 export function DashboardLayout() {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed]   = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const user = useAuthStore((s) => s.user)
-  const tenant = useAuthStore((s) => s.tenant)
+  const user           = useAuthStore(s => s.user)
+  const tenant         = useAuthStore(s => s.tenant)
   const logoutMutation = useLogout()
-  const location = useLocation()
+  const location       = useLocation()
+
+  // LOCKED: GlobalSearch Cmd+K / Ctrl+K
   const { open: searchOpen, setOpen: setSearchOpen } = useGlobalSearch()
+
+  // Platform stats for TopStatsBar — data fetch lives in app layer, not shared-ui
+  const { data: stats } = useQuery<PlatformStats>({
+    queryKey: ['platform-stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/stats/platform')
+      if (!res.ok) throw new Error('stats fetch failed')
+      return res.json()
+    },
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+  })
+
+  // Global search results — data fetch lives in app layer, not shared-ui
+  const [searchQuery, setSearchQuery] = useState('')
+  const { data: searchResults } = useQuery<SearchResult[]>({
+    queryKey: ['global-search', searchQuery],
+    queryFn: async () => {
+      if (!searchQuery.trim() || searchQuery.length < 2) return []
+      const res = await fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}&limit=20`)
+      if (!res.ok) return []
+      return res.json()
+    },
+    enabled: searchQuery.length >= 2,
+    staleTime: 30_000,
+    retry: false,
+  })
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg-base">
@@ -46,11 +79,13 @@ export function DashboardLayout() {
         <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={()=>setMobileOpen(false)}/>
       )}
 
+      {/* Sidebar */}
       <aside className={cn(
         'fixed lg:static inset-y-0 left-0 z-50 flex flex-col bg-bg-primary border-r border-border transition-all duration-200',
         collapsed ? 'w-16' : 'w-60',
         mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       )}>
+        {/* Logo */}
         <div className="h-14 flex items-center px-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2 overflow-hidden">
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
@@ -68,6 +103,7 @@ export function DashboardLayout() {
           </button>
         </div>
 
+        {/* Search hint */}
         {!collapsed && (
           <button onClick={()=>setSearchOpen(true)}
             className="mx-2 mt-2 mb-1 flex items-center gap-2 px-3 py-1.5 rounded-md bg-bg-secondary border border-border text-xs text-text-muted hover:text-text-secondary hover:border-border-strong transition-colors">
@@ -77,18 +113,19 @@ export function DashboardLayout() {
           </button>
         )}
 
+        {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-2 px-2">
-          {NAV_ITEMS.map((item) => {
-            const isActive  = location.pathname === item.path
+          {NAV_ITEMS.map(item => {
+            const isActive   = location.pathname === item.path
             const isDisabled = !!item.phase
             return (
               <NavLink key={item.path} to={isDisabled ? '#' : item.path}
-                onClick={(e)=>{ if (isDisabled) e.preventDefault(); setMobileOpen(false) }}
+                onClick={e => { if (isDisabled) e.preventDefault(); setMobileOpen(false) }}
                 className={cn(
                   'group flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
                   isActive && !isDisabled ? 'bg-accent/10 text-accent'
-                  : isDisabled ? 'text-text-muted/40 cursor-not-allowed'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover',
+                    : isDisabled           ? 'text-text-muted/40 cursor-not-allowed'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover',
                 )}
                 title={isDisabled ? `Coming in ${item.phase}` : item.label}>
                 <span className={cn('shrink-0', isActive && !isDisabled && 'text-accent')}>{item.icon}</span>
@@ -101,6 +138,7 @@ export function DashboardLayout() {
           })}
         </nav>
 
+        {/* User */}
         <div className="border-t border-border p-3 shrink-0">
           {!collapsed && user && (
             <div className="flex items-center gap-2 mb-2">
@@ -121,6 +159,7 @@ export function DashboardLayout() {
           </button>
         </div>
 
+        {/* Collapse toggle */}
         <button onClick={()=>setCollapsed(!collapsed)}
           className="hidden lg:flex items-center justify-center h-8 border-t border-border text-text-muted hover:text-text-primary transition-colors"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
@@ -128,7 +167,9 @@ export function DashboardLayout() {
         </button>
       </aside>
 
+      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile header */}
         <div className="lg:hidden h-10 bg-bg-primary border-b border-border flex items-center px-3 shrink-0">
           <button onClick={()=>setMobileOpen(true)} className="p-1 -ml-1 text-text-muted hover:text-text-primary">
             <Menu className="w-4 h-4"/>
@@ -139,9 +180,15 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        {/* TopStatsBar — always visible, scrolls horizontally on mobile (scrollbar-hide) */}
+        {/* LOCKED: TopStatsBar — always visible, scrolls on mobile */}
         <div className="overflow-x-auto shrink-0 scrollbar-hide">
-          <TopStatsBar/>
+          <TopStatsBar
+            totalIOCs={stats?.totalIOCs}
+            criticalIOCs={stats?.criticalIOCs}
+            activeFeeds={stats?.activeFeeds}
+            enrichedToday={stats?.enrichedToday}
+            lastIngestTime={stats?.lastIngestTime}
+          />
         </div>
 
         <main className="flex-1 overflow-y-auto">
@@ -149,7 +196,13 @@ export function DashboardLayout() {
         </main>
       </div>
 
-      <GlobalSearch open={searchOpen} onClose={()=>setSearchOpen(false)}/>
+      {/* LOCKED: GlobalSearch — data owned here, not in shared-ui */}
+      <GlobalSearch
+        open={searchOpen}
+        onClose={()=>setSearchOpen(false)}
+        results={searchResults}
+        onQueryChange={setSearchQuery}
+      />
     </div>
   )
 }

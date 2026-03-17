@@ -107,6 +107,22 @@
 
 ---
 
+
+### Issue 15: Vite build silently failed — shared-ui imported @tanstack/react-query across package boundary
+**Error**: Live site bundle unchanged after two deploys. `docker compose build etip_frontend` exit code 1 was silently swallowed by `| tail -20` pipe in deploy.yml. Vite output: `Rollup failed to resolve import "@tanstack/react-query" from packages/shared-ui/src/components/TopStatsBar.tsx` (and GlobalSearch.tsx).
+**Root Cause**: `TopStatsBar` and `GlobalSearch` in `packages/shared-ui` imported `useQuery` from `@tanstack/react-query`. That package is not in `shared-ui`'s own `package.json`. When Vite resolves the `@etip/shared-ui` path alias, Rollup treats cross-package-boundary imports as unresolvable and errors. The build failure was invisible because `docker compose build | tail -20` in deploy.yml caused bash to ignore the non-zero exit code (pipe breaks pipefail).
+**Fix**:
+1. Removed `@tanstack/react-query` from all `packages/shared-ui` components. `TopStatsBar` now accepts stats as props (`TopStatsBarProps` interface). `GlobalSearch` now accepts `results` and `onQueryChange` as props.
+2. `DashboardLayout` (in `apps/frontend`) now owns both `useQuery` calls and passes data down to the presentational components.
+3. Removed `| tail -20` pipe from deploy.yml build steps so Docker build failures fail the deploy correctly.
+**Commit**: fix: move @tanstack/react-query out of shared-ui into DashboardLayout
+**Prevention**:
+- **RULE**: `packages/shared-ui` must be pure presentational — zero data fetching, zero API calls. Only `lucide-react`, `framer-motion`, `@floating-ui/react`, `clsx`, `tailwind-merge` are allowed deps.
+- **RULE**: Never pipe `docker compose build` output to `tail` or any filter. Build failures must propagate.
+- Test `vite build` locally before every push that touches `packages/shared-ui`.
+
+---
+
 ## Deployment Checklist (Updated for Session 3)
 
 ```
