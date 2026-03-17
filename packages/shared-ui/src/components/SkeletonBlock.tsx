@@ -1,4 +1,4 @@
-import React from 'react'
+
 interface SkeletonBlockProps { rows?: number; widths?: string[]; height?: string; className?: string }
 export function SkeletonBlock({ rows=3, widths=['100%','80%','60%'], height='h-3', className='' }: SkeletonBlockProps) {
   return (

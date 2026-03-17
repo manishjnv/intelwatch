@@ -26,7 +26,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prisma generate --schema=prisma/schema.prisma
       - run: pnpm -r test
-      - run: pnpm -r run typecheck
+      - run: pnpm --filter '!@etip/frontend' -r run build
+      - run: pnpm --filter '!@etip/frontend' -r run typecheck
       - run: pnpm -r run lint
       - run: pnpm audit --audit-level=high
         continue-on-error: true

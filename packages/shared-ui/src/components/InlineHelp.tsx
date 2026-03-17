@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { Info } from 'lucide-react'
 interface InlineHelpProps { message: string; className?: string }
 export function InlineHelp({ message, className = '' }: InlineHelpProps) {

@@ -1,7 +1,7 @@
 {
   "name": "@etip/shared-ui",
   "version": "1.0.0",
-  "description": "LOCKED design system — see UI_DESIGN_LOCK.md before modifying anything here",
+  "description": "LOCKED design system \u2014 see UI_DESIGN_LOCK.md before modifying anything here",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
@@ -17,5 +17,10 @@
     "lucide-react": "^0.400.0",
     "clsx": "^2.0.0",
     "tailwind-merge": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.0"
   }
 }
