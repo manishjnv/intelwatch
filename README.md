@@ -3,6 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-1%20foundation-00aaff)
+![Tests](https://img.shields.io/badge/tests-266%20passing-00ff88)
 
 **Live**: https://ti.intelwatch.in
 
@@ -10,122 +11,79 @@
 
 ## What is ETIP?
 
-An enterprise-grade threat intelligence platform combining automated ingestion, AI-powered enrichment (Claude), Neo4j graph analysis, and real-time alerting. It consolidates feeds (STIX/TAXII, MISP, NVD, dark web, OSINT) with enterprise integrations (15+ SIEMs, case management, ticketing) and provides hunting, digital risk protection, and compliance reporting.
+An enterprise-grade threat intelligence platform combining automated ingestion, AI-powered enrichment (Claude), Neo4j graph analysis, and real-time alerting.
 
 ## Current Status
 
-| Component | Status |
-|-----------|--------|
-| Shared packages (types, utils, cache) | ✅ 153 tests passing |
-| Infrastructure (8 Docker containers) | ✅ Running on VPS |
-| CI/CD (GitHub Actions → VPS) | ✅ Auto-deploy on merge |
-| SSL + Domain (ti.intelwatch.in) | ✅ Caddy + Let's Encrypt |
-| Landing page | ✅ Live |
-| Auth + API Gateway | ⬜ Next |
-
-## Tech Stack
-
-```
-Backend:    Node.js 20 · Fastify · Prisma · TypeScript (strict)
-Database:   PostgreSQL 16 · Redis 7 · Elasticsearch 8 · Neo4j 5
-Storage:    MinIO (S3-compatible)
-AI:         Anthropic Claude (Sonnet/Haiku/Opus — configurable per module)
-Queue:      BullMQ (Redis-backed)
-Frontend:   React 18 · Vite · shadcn/ui · Tailwind · Framer Motion
-Auth:       Google OAuth2 · Magic Code · SAML2 · OIDC · TOTP MFA · API Keys
-Monitoring: Prometheus · Grafana
-Deploy:     GitHub Actions → SSH → Docker Compose on VPS
-```
-
-## Architecture
-
-```
-Internet → Caddy (SSL) → etip_nginx → ETIP services
-                                        ├── api-gateway (Fastify)
-                                        ├── user-service
-                                        ├── ingestion-service
-                                        ├── normalization-service
-                                        ├── enrichment-service (Claude AI)
-                                        ├── ioc-service
-                                        └── ... (16 microservices total)
-
-Data stores:
-  PostgreSQL (primary) · Redis (cache/queue) · Elasticsearch (search)
-  Neo4j (graph) · MinIO (archival)
-```
+| Component | Status | Tests |
+|-----------|--------|-------|
+| Shared packages (types, utils, cache) | ✅ Complete | 153 |
+| Auth package (JWT, RBAC, bcrypt, service JWT) | ✅ Complete | 71 |
+| API Gateway (Fastify, middleware, health) | ✅ Complete | 26 |
+| User Service (register, login, refresh, profile) | ✅ Complete | 16 |
+| Prisma Schema (5 tables, 3 enums, 12 indexes) | ✅ Validated | — |
+| Infrastructure (8 Docker containers) | ✅ Running on VPS | — |
+| CI/CD (GitHub Actions → VPS) | ✅ Auto-deploy | — |
+| SSL + Domain (ti.intelwatch.in) | ✅ Caddy + Let's Encrypt | — |
+| DB Migrations + Docker deploy | ⬜ Next | — |
+| Frontend shell (React + Vite) | ⬜ Next | — |
+| **Total** | **Phase 1: 85%** | **266** |
 
 ## Monorepo Structure
 
 ```
-├── apps/                   # Microservices (api-gateway, user-service, etc.)
+├── apps/
+│   ├── api-gateway/        # Fastify, auth/RBAC middleware (26 tests) ✅
+│   ├── user-service/       # Register, login, refresh, profile (16 tests) ✅
+│   └── frontend/           # React 18 + Vite (planned)
 ├── packages/
-│   ├── shared-types/       # Zod schemas + TypeScript types (55 tests)
-│   ├── shared-utils/       # Helpers: errors, hash, IP, dates (58 tests)
-│   └── shared-cache/       # Redis client, TTLs, key patterns (40 tests)
-├── docker/                 # Nginx, Postgres, Prometheus, Grafana configs
-├── infrastructure/         # VPS setup scripts, Nginx server blocks
-├── prisma/                 # Schema + migrations
-├── .github/workflows/      # CI/CD pipeline
+│   ├── shared-types/       # Zod schemas + types (55 tests) ✅
+│   ├── shared-utils/       # Errors, hash, IP, dates (58 tests) ✅
+│   ├── shared-cache/       # Redis client, TTLs (40 tests) ✅
+│   └── shared-auth/        # JWT, RBAC, bcrypt, service JWT (71 tests) ✅
+├── prisma/schema.prisma    # tenants, users, sessions, api_keys, audit_logs ✅
 ├── docker-compose.etip.yml # 8 infrastructure services
-└── PROJECT_BRAIN.md        # Complete project state + roadmap
+└── PROJECT_BRAIN.md        # Project state + roadmap
 ```
 
-## Infrastructure (Docker)
+## API Endpoints (Phase 1)
 
-| Service | Container | Port |
-|---------|-----------|------|
-| PostgreSQL 16 | etip_postgres | 5433 |
-| Redis 7 | etip_redis | 6380 |
-| Elasticsearch 8 | etip_elasticsearch | 9201 |
-| Neo4j 5 | etip_neo4j | 7475/7688 |
-| MinIO | etip_minio | 9001/9002 |
-| Prometheus | etip_prometheus | 9190 |
-| Grafana | etip_grafana | 3101 |
-| Nginx | etip_nginx | 8080 |
+| Endpoint | Method | Auth | Purpose |
+|----------|--------|------|---------|
+| `/health` | GET | — | Health check |
+| `/ready` | GET | — | Readiness probe |
+| `/api/v1/auth/register` | POST | — | Create tenant + admin user |
+| `/api/v1/auth/login` | POST | — | Email/password → JWT tokens |
+| `/api/v1/auth/refresh` | POST | — | Rotate refresh token |
+| `/api/v1/auth/logout` | POST | JWT | Invalidate session |
+| `/api/v1/auth/me` | GET | JWT | Current user profile |
 
 ## Development
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Run tests
-pnpm -r test
-
-# Type-check
-pnpm -r typecheck
-
-# Start infrastructure
-docker compose -p etip -f docker-compose.etip.yml up -d
+pnpm exec prisma generate --schema=prisma/schema.prisma
+pnpm -r test    # 266 tests
 ```
 
-## Deployment
+## Security
 
-Merging to `master` auto-deploys to VPS via GitHub Actions. Manual triggers available:
+- JWT access (15min) + refresh (7d) with single-use rotation and theft detection
+- bcrypt cost 12 · RBAC 5 roles, 30+ perms · Service JWT 60s TTL
+- PII redaction · Rate limiting · Zod validation · CORS + Helmet
 
-```bash
-# Manual deploy
-gh workflow run deploy.yml -f action=deploy
-
-# Check VPS status
-gh workflow run deploy.yml -f action=status
-
-# Run custom command
-gh workflow run deploy.yml -f action=command -f command="docker compose -p etip ps"
-```
-
-## Roadmap (8 Phases)
+## Roadmap
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| 1 | Foundation (infra, auth, API gateway) | 🟡 60% |
-| 2 | Data Pipeline (ingestion, normalization, AI enrichment) | ⬜ |
-| 3 | Core Intelligence (IOC, actors, malware, vulns) | ⬜ |
-| 4 | Advanced Intel (graph, correlation, hunting) | ⬜ |
-| 5 | Platform (SIEM integration, RBAC, SSO) | ⬜ |
-| 6 | Growth (onboarding, billing, admin) | ⬜ |
-| 7 | Performance (caching, archival, load testing) | ⬜ |
-| 8 | UI Polish (parallel with all phases) | ⬜ |
+| 1 | Foundation (infra, auth, gateway, schema) | 🟡 85% |
+| 2 | Data Pipeline (ingestion, normalization, AI) | ⬜ |
+| 3 | Core Intel (IOC, actors, malware, vulns) | ⬜ |
+| 4 | Advanced (graph, correlation, hunting) | ⬜ |
+| 5 | Platform (SIEM, SSO, MFA) | ⬜ |
+| 6 | Growth (onboarding, billing) | ⬜ |
+| 7 | Performance (caching, archival) | ⬜ |
+| 8 | UI Polish (parallel) | ⬜ |
 
 ---
 
