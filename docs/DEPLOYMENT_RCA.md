@@ -200,3 +200,29 @@ An absolute element without explicit positioning defaults to its static flow pos
 **Commit**: fix: center radar rings in React LandingPage — ref DEPLOYMENT_RCA.md
 **Prevention**: When porting HTML flex-centered layouts to React, verify that absolutely positioned
 elements don't rely on implicit flex centering — add explicit centering if they use position:absolute.
+
+### Issue 15: SSH port 22 unreachable from external IPs
+**Error**: `ssh root@72.61.227.64` times out from Claude sandbox and local machines, but GitHub Actions (Azure IPs) can SSH fine.
+**Root Cause**: The hosting provider's network filters SSH (port 22) to known IP ranges. VPS-side SSH daemon is active, UFW allows port 22, fail2ban has 0 bans, but the provider's upstream firewall blocks most non-cloud IPs.
+**Fix**: Added SSH ingress to existing Cloudflare Tunnel (`ssh.intelwatch.in → ssh://localhost:22`). Access via `cloudflared access ssh --hostname ssh.intelwatch.in`.
+**Commit**: fix: add cloudflare tunnel SSH + permanent nginx-caddy network — ref DEPLOYMENT_RCA.md
+**Prevention**: 
+- Always use Cloudflare Tunnel for SSH on shared hosting — never rely on direct port 22.
+- SSH config: `ProxyCommand cloudflared access ssh --hostname %h`
+
+### Issue 16: etip_nginx loses Caddy network after every recreate
+**Error**: After `docker compose up -d` recreates etip_nginx, `ti.intelwatch.in` returns 502 because nginx is no longer on the `ti-platform_default` Docker network where Caddy routes to it.
+**Root Cause**: `docker-compose.etip.yml` only listed `etip_network`. Caddy routes via `ti-platform_default`, which nginx joined manually via `docker network connect`. Container recreate drops non-compose networks.
+**Fix**: Added `caddy_network` (external: `ti-platform_default`) to etip_nginx's networks list in docker-compose.etip.yml. Removed manual `docker network connect` from deploy.yml.
+**Commit**: fix: add cloudflare tunnel SSH + permanent nginx-caddy network — ref DEPLOYMENT_RCA.md
+**Prevention**: RULE: Any container that must be reachable from a network outside its compose project MUST declare that network as `external: true` in the compose file — never rely on manual `docker network connect`.
+
+### Issue 17: 41% CI/CD failure rate caused by no local Docker testing
+**Error**: 21 of 32 push commits were fixes, 38 of 92 total CI runs failed. Most failures were Docker build issues discovered only after push.
+**Root Cause**: No local Docker build+test step existed. Developers pushed code and waited for CI to discover Docker-specific failures (missing COPY, Alpine deps, lockfile staleness, TS build ordering).
+**Fix**: Added `Makefile` with `docker-test` target (lint → build → start → health-check), `scripts/docker-lint.sh` (checks Dockerfile deps, lockfile, Alpine compat), `scripts/wait-healthy.sh`, `scripts/health-check.sh`.
+**Commit**: fix: add cloudflare tunnel SSH + permanent nginx-caddy network — ref DEPLOYMENT_RCA.md
+**Prevention**:
+- RULE: `make docker-test` MUST pass before every `git push origin master`.
+- RULE: `make pre-push` runs tests + typecheck + lint + Docker build + health check.
+- The Makefile's `push` target enforces this automatically.
