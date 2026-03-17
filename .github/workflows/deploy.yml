@@ -45,23 +45,53 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            echo "=== ETIP Deploy ==="
+            echo "=== ETIP Deploy Started ==="
+            
+            # Safety: check existing site
+            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
+            
             cd /opt/intelwatch
             git fetch origin master
             git reset --hard origin/master
+            
+            # Ensure .env has all required vars
+            touch .env
+            grep -q TI_POSTGRES_PASSWORD .env || echo 'TI_POSTGRES_PASSWORD=etip_pg_S3cur3_2026!' >> .env
+            grep -q TI_REDIS_PASSWORD .env || echo 'TI_REDIS_PASSWORD=etip_redis_S3cur3_2026!' >> .env
+            grep -q TI_ELASTICSEARCH_PASSWORD .env || echo 'TI_ELASTICSEARCH_PASSWORD=etip_es_S3cur3_2026!' >> .env
+            grep -q TI_NEO4J_PASSWORD .env || echo 'TI_NEO4J_PASSWORD=etip_neo4j_S3cur3_2026!' >> .env
+            grep -q TI_MINIO_SECRET_KEY .env || echo 'TI_MINIO_SECRET_KEY=etip_minio_S3cur3_2026!' >> .env
+            grep -q TI_JWT_SECRET .env || echo 'TI_JWT_SECRET=etip-jwt-secret-change-me-in-production-2026-v4!' >> .env
+            grep -q TI_SERVICE_JWT_SECRET .env || echo 'TI_SERVICE_JWT_SECRET=etip-svc-jwt-2026-internal!' >> .env
+            grep -q TI_GRAFANA_PASSWORD .env || echo 'TI_GRAFANA_PASSWORD=etip_grafana_2026!' >> .env
+            echo ".env verified"
+            
+            # Build API container
             echo "Building etip_api..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -10
+            docker compose -p etip -f docker-compose.etip.yml build etip_api 2>&1 | tail -20
+            
+            # Start all services
             echo "Starting services..."
             docker compose -p etip -f docker-compose.etip.yml up -d
-            echo "Running migrations..."
-            docker exec etip_api npx prisma migrate deploy --schema=prisma/schema.prisma 2>&1 || echo "Migration: may need initial setup"
-            echo "Reconnecting nginx..."
+            
+            # Wait for postgres+redis healthy, then run migrations
+            echo "Waiting for DB..."
+            sleep 15
+            
+            echo "Running Prisma migrations..."
+            docker exec etip_api npx prisma migrate deploy --schema=prisma/schema.prisma 2>&1 || \
+              docker exec etip_api npx prisma db push --schema=prisma/schema.prisma 2>&1 || \
+              echo "Migration: will retry on next deploy"
+            
+            # Reconnect nginx to Caddy
             docker network connect ti-platform_default etip_nginx 2>/dev/null || true
             docker restart ti-platform-caddy-1 2>/dev/null || true
+            
             sleep 10
-            echo "=== Health ==="
-            curl -sf http://127.0.0.1:3001/health || echo "API: starting..."
-            curl -sf http://127.0.0.1:8080/health || echo "Nginx: starting..."
+            
+            echo "=== Health Checks ==="
+            curl -sf http://127.0.0.1:3001/health && echo "" || echo "API: starting..."
+            curl -sf http://127.0.0.1:8080/health && echo "" || echo "Nginx: starting..."
             echo ""
             docker compose -p etip -f docker-compose.etip.yml ps
-            echo "=== Done ==="
+            echo "=== Deploy Complete ==="
