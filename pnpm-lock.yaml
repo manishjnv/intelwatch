@@ -8,12 +8,18 @@ importers:
 
   .:
     devDependencies:
+      '@prisma/client':
+        specifier: ^5.18.0
+        version: 5.22.0(prisma@5.22.0)
       '@types/node':
         specifier: ^20.14.0
         version: 20.19.37
       prettier:
         specifier: ^3.3.0
         version: 3.8.1
+      prisma:
+        specifier: ^5.18.0
+        version: 5.22.0
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
