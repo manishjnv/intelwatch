@@ -1,96 +1,151 @@
-# ETIP Deployment RCA — Session 2 VPS Deployment Issues
+# ETIP Deployment RCA — VPS Deployment Issues
 
 **Date**: 2026-03-17
-**Deployed**: Packages 1-4 (shared-auth, prisma, api-gateway, user-service)
-**Final Status**: All 17 production tests passing
+**Sessions**: 2 (initial deploy) + 3 (frontend + shared packages)
+**Final Status**: ✅ 10 containers running, React frontend live, 365 tests passing
 
 ---
 
-## Issues Encountered & Resolved (8 total)
+## Issue Timeline
 
-### 1. pnpm version conflict
-- **Error**: `Multiple versions of pnpm specified`
-- **Cause**: `pnpm/action-setup@v4` `version` param conflicts with `packageManager` in package.json
-- **Fix**: Remove `version` param from action — reads packageManager automatically
+### Issue 1: CI pnpm version conflict
+**Error**: `Multiple versions of pnpm specified`
+**Root Cause**: `pnpm/action-setup@v4` errors when both `version` param AND `package.json` `packageManager` field are set.
+**Fix**: Removed `version` param from `pnpm/action-setup@v4` step.
+**Commit**: `542b6a2`
+**Prevention**: Never set `version` in pnpm/action-setup when `packageManager` exists in package.json.
 
-### 2. prisma CLI not found in CI
-- **Error**: `Command "prisma" not found`
-- **Cause**: prisma only in app devDeps, not workspace root
-- **Fix**: Add `prisma` + `@prisma/client` to root devDependencies
+### Issue 2: CI prisma CLI not found
+**Error**: `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "prisma" not found`
+**Root Cause**: `prisma` was only a devDependency of `apps/api-gateway`, not the workspace root.
+**Fix**: Added `prisma` and `@prisma/client` as root devDependencies.
+**Commit**: `b15b146`
+**Prevention**: Any CLI tool used in root `pnpm exec` commands must be a root devDependency.
 
-### 3. Stale lockfile
-- **Error**: `pnpm install --frozen-lockfile` fails
-- **Cause**: pnpm-lock.yaml from Session 1, missing new packages
-- **Fix**: Regenerate lockfile with `pnpm install --no-frozen-lockfile`
+### Issue 3: CI lockfile stale
+**Error**: `pnpm install --frozen-lockfile` failed — lockfile was from Session 1.
+**Root Cause**: Session 2 packages were committed but lockfile was never regenerated.
+**Fix**: Ran `pnpm install --no-frozen-lockfile` to regenerate `pnpm-lock.yaml`.
+**Commit**: `99ad206`
+**Prevention**: Always commit updated `pnpm-lock.yaml` when adding new workspace packages.
 
-### 4. MODULE_NOT_FOUND in container
-- **Error**: `Cannot find module dist/index.js`
-- **Cause**: Dockerfile used tsx runtime without building TypeScript — dist/ didn't exist
-- **Fix**: Added `pnpm -r build` to Dockerfile, CMD uses `node dist/index.js`
+### Issue 4: Container crash — MODULE_NOT_FOUND
+**Error**: `Cannot find module '@etip/shared-utils/dist/index.js'`
+**Root Cause**: Dockerfile used `tsx` runtime without building TypeScript first. `dist/` directories didn't exist.
+**Fix**: Changed Dockerfile to build all TypeScript packages before running. Changed CMD to `node dist/index.js`.
+**Commit**: `9cf8b1a`
+**Prevention**: Always build TypeScript in Docker. Never rely on tsx/ts-node in production.
 
-### 5. Unused imports blocking tsc
-- **Error**: `TS6133: 'JwtConfig' is declared but never read`
-- **Cause**: Strict TypeScript (`noUnusedLocals: true`) fails on unused imports
-- **Fix**: Removed unused imports from auth.ts and routes/auth.ts
+### Issue 5: Unused TypeScript imports blocking tsc
+**Error**: `error TS6133: 'JwtConfig' is declared but its value is never read`
+**Root Cause**: Unused imports with `noUnusedLocals: true` in tsconfig.
+**Fix**: Removed unused imports.
+**Commit**: `9cf8b1a`
+**Prevention**: Run `pnpm -r typecheck` locally before committing. CI now catches this.
 
-### 6. SSH timeout
-- **Error**: `dial tcp: i/o timeout`
-- **Cause**: Transient VPS network issue
-- **Fix**: `script_stop: false` + retry via workflow_dispatch
+### Issue 6: SSH timeout during deploy
+**Error**: `dial tcp ***:22: i/o timeout`
+**Root Cause**: Transient VPS network issue.
+**Fix**: Set `script_stop: false` in SSH action. Retried via `workflow_dispatch`.
+**Commit**: `e020a4f`
+**Prevention**: Use `workflow_dispatch` to manually retry on transient failures.
 
-### 7. Prisma OpenSSL missing
-- **Error**: `Could not parse schema engine response`
-- **Cause**: Alpine Linux lacks OpenSSL, required by Prisma engine
-- **Fix**: `apk add --no-cache openssl openssl-dev` in Dockerfile
+### Issue 7: Prisma DB push failed — OpenSSL missing
+**Error**: `Could not parse schema engine response`
+**Root Cause**: Prisma's schema engine requires OpenSSL. Alpine Linux doesn't include it.
+**Fix**: Added `apk add --no-cache openssl openssl-dev` to Dockerfile.
+**Commit**: `4c457a8`
+**Prevention**: Always install `openssl` in Alpine-based Docker images when using Prisma.
 
-### 8. workflow_dispatch skipping deploy
-- **Error**: Deploy job `skipped`
-- **Cause**: `needs: [test]` but test skips on workflow_dispatch
-- **Fix**: `if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')`
+### Issue 8: workflow_dispatch skipping deploy
+**Error**: Deploy job was `skipped` when triggered via `workflow_dispatch`.
+**Root Cause**: Deploy job had `needs: [test]` but test job skips on workflow_dispatch.
+**Fix**: Changed deploy `if` to handle skipped test dependency.
+**Commit**: `030354d`
+**Prevention**: Use `always()` condition when a job needs to run even if dependencies are skipped.
+
+### Issue 9: Landing page UI regression
+**Error**: Futuristic landing page replaced with minimal inline HTML.
+**Root Cause**: Nginx `location /` block was changed from file-based serving to inline `return 200`.
+**Fix**: Restored file-based serving with volume mount for `landing.html`.
+**Commit**: `48e288d`
+**Prevention**: Landing page is ALWAYS file-based. NEVER use inline HTML in nginx config.
+**NOTE**: As of Session 3, the landing page is superseded by the React frontend. `location /` now proxies to `etip_frontend:80`.
 
 ---
 
-## Docker Requirements for Prisma on Alpine
+## Session 3 Issues (Frontend + Shared Packages Deploy)
 
-```dockerfile
-RUN apk add --no-cache openssl openssl-dev  # deps stage
-RUN apk add --no-cache curl openssl          # production stage
-RUN pnpm -r build                            # compile TypeScript
-CMD ["node", "apps/api-gateway/dist/index.js"] # NOT tsx
-```
+### Issue 10: docker-compose — etip_frontend service missing, bad dependency
+**Error**: `service "etip_api" depends on undefined service "etip_frontend": invalid compose project`
+**Root Cause**: Python `str.replace()` was used to modify `docker-compose.etip.yml`. The target `depends_on` pattern appeared in multiple service blocks (both `etip_api` and `etip_nginx`). `str.replace` matched **all** occurrences, so `etip_frontend` was added as a dependency of `etip_api` (wrong) instead of `etip_nginx` (correct). Additionally, the `etip_frontend` service definition block was never inserted because the insertion point was miscalculated.
+**Fix**: Rewrote `docker-compose.etip.yml` from scratch for the three affected services. Validated with `yaml.safe_load()` before committing.
+**Commit**: `dd8e5b4`
+**Prevention**:
+- **RULE**: Never use `str.replace()` on YAML files where the target pattern appears in multiple locations. Use a YAML parser or rewrite the section entirely.
+- Always validate compose files with `docker compose config --services` or `yaml.safe_load()` before committing.
+- Dependency graph: `etip_api → [postgres, redis]`, `etip_nginx → [api, frontend]`, `etip_frontend → []`.
 
-## VPS .env Required Variables
+### Issue 11: API crash — MODULE_NOT_FOUND after adding frontend to workspace
+**Error**: `Error: Cannot find module '@etip/shared-utils'` — `etip_api` container exits with code 1, enters restart loop.
+**Root Cause**: When `apps/frontend/` was added to the pnpm workspace, `pnpm install` regenerated `pnpm-lock.yaml` to include frontend dependencies. However, the API `Dockerfile` did not COPY `apps/frontend/package.json` in the deps stage. This caused `pnpm install --frozen-lockfile` to fail inside Docker (lockfile references a workspace package whose `package.json` doesn't exist). The fallback `--no-frozen-lockfile` resolved dependencies differently, breaking workspace symlinks for `@etip/shared-utils`.
+**Fix**: Added `COPY apps/frontend/package.json apps/frontend/` to the API Dockerfile deps stage.
+**Commit**: `1853aff`
+**Prevention**:
+- **RULE**: When adding a new workspace package, ALWAYS add its `package.json` to the API Dockerfile COPY lines. The deps stage must mirror the complete `pnpm-workspace.yaml` membership.
+- Test Docker build locally before pushing: `docker build -t etip-test .`
 
-```
-TI_POSTGRES_PASSWORD, TI_REDIS_PASSWORD, TI_ELASTICSEARCH_PASSWORD,
-TI_NEO4J_PASSWORD, TI_MINIO_SECRET_KEY, TI_JWT_SECRET (min 32 chars),
-TI_SERVICE_JWT_SECRET (min 16 chars), TI_GRAFANA_PASSWORD
-```
+### Issue 12: 502 Bad Gateway — race condition in docker compose up
+**Error**: `https://ti.intelwatch.in/` returned HTTP 502. Nginx couldn't connect to backend containers.
+**Root Cause**: `docker compose up -d` starts all services simultaneously. `etip_nginx` started before `etip_api` and `etip_frontend` were healthy. Nginx upstream resolution failed because backends hadn't bound to their ports yet. Caddy network reconnection also happened before nginx was operational.
+**Fix**: Rewrote deploy script with sequential startup: (1) postgres + redis, wait 10s, (2) API, wait for `/health` (12 retries × 10s), (3) frontend, wait 5s, (4) nginx, (5) Caddy reconnect, (6) remaining services.
+**Commit**: `160ec6b`
+**Prevention**:
+- **RULE**: Never use `docker compose up -d` to start ALL services at once. Start infrastructure first, then app services, then reverse proxy last.
+- Add explicit health-check polling in the deploy script (don't rely on `sleep` alone).
+- Startup order: `postgres + redis → API (wait healthy) → frontend → nginx → Caddy reconnect → remaining`.
 
-## Deployment Checklist
+---
+
+## Deployment Checklist (Updated for Session 3)
 
 ```
 Pre-Push:
-  [ ] pnpm -r test passes
-  [ ] pnpm -r typecheck passes (no unused imports)
-  [ ] pnpm-lock.yaml up to date
-  [ ] No hardcoded secrets
+- [ ] All tests pass (pnpm -r test) — currently 365 tests
+- [ ] TypeScript compiles (pnpm -r typecheck)
+- [ ] pnpm-lock.yaml up to date (pnpm install)
+- [ ] Dockerfile builds (docker build -t test .)
+- [ ] Dockerfile.frontend builds (docker build -f Dockerfile.frontend -t test-fe .)
+- [ ] docker-compose validates (docker compose config --services)
+- [ ] All workspace package.json files listed in Dockerfile COPY
+- [ ] No hardcoded secrets
 
-Post-Push (CI handles):
-  [ ] pnpm install + prisma generate
-  [ ] 266 tests pass
-  [ ] Docker build etip_api
-  [ ] docker compose up -d
-  [ ] prisma db push
-  [ ] Reconnect nginx to Caddy network
-  [ ] Health check /health → 200
+Post-Deploy Verification:
+- [ ] curl https://ti.intelwatch.in/health → 200 (API)
+- [ ] curl https://ti.intelwatch.in/login → React HTML (contains "vite", "module")
+- [ ] Register + Login + Dashboard flow works
+- [ ] All 10 containers healthy (docker compose ps)
 ```
 
-### 9. Landing page UI regression
-- **Error**: Futuristic landing page replaced with minimal inline HTML after nginx config update
-- **Cause**: When updating `default.conf` for API proxy, the `location /` block was rewritten with `return 200 '<minimal html>'` instead of serving the file-based `landing.html`
-- **Fix**: Restored file-based serving: `root /usr/share/nginx/html; try_files $uri /index.html`. Volume mount: `landing.html:/usr/share/nginx/html/index.html:ro`
-- **Prevention**: 
-  - **RULE**: Landing page is ALWAYS `docker/nginx/landing.html` mounted as a volume. NEVER use inline `return 200` HTML in nginx config for `/`
-  - Comment added to `default.conf`: "NEVER replace with inline HTML"
-  - When modifying nginx config, only touch `location /api/`, `/health`, `/ready`, `/ws/` blocks. Leave `location /` as file-based serving
+## Network Architecture (Updated Session 3)
+
+```
+Internet → Caddy (ti-platform-caddy-1, ports 80/443)
+  ├── intelwatch.in     → ti-platform-* containers (NEVER TOUCH)
+  └── ti.intelwatch.in  → etip_nginx:80
+        ├── /health, /ready     → etip_api:3001
+        ├── /api/v1/*           → etip_api:3001
+        ├── /ws/                → etip_api:3001 (upgrade)
+        └── /                   → etip_frontend:80 (React SPA)
+
+Deploy startup order:
+  1. etip_postgres + etip_redis (wait healthy)
+  2. etip_api (wait for /health 200)
+  3. etip_frontend (wait 5s)
+  4. etip_nginx (start + reconnect to Caddy)
+  5. etip_elasticsearch, etip_neo4j, etip_minio, etip_prometheus, etip_grafana
+
+⚠️ After every etip_nginx recreate:
+  docker network connect ti-platform_default etip_nginx
+  docker restart ti-platform-caddy-1
+```
