@@ -9,6 +9,9 @@ COPY packages/shared-types/package.json packages/shared-types/tsconfig.json pack
 COPY packages/shared-utils/package.json packages/shared-utils/tsconfig.json packages/shared-utils/
 COPY packages/shared-cache/package.json packages/shared-cache/tsconfig.json packages/shared-cache/
 COPY packages/shared-auth/package.json packages/shared-auth/tsconfig.json packages/shared-auth/
+COPY packages/shared-audit/package.json packages/shared-audit/tsconfig.json packages/shared-audit/
+COPY packages/shared-normalization/package.json packages/shared-normalization/tsconfig.json packages/shared-normalization/
+COPY packages/shared-enrichment/package.json packages/shared-enrichment/tsconfig.json packages/shared-enrichment/
 COPY apps/api-gateway/package.json apps/api-gateway/tsconfig.json apps/api-gateway/
 COPY apps/user-service/package.json apps/user-service/tsconfig.json apps/user-service/
 

@@ -1,0 +1,29 @@
+{
+  "name": "@etip/shared-normalization",
+  "version": "1.0.0",
+  "description": "IOC type detection, value normalization, and confidence scoring for ETIP",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "zod": "^3.23.0",
+    "@etip/shared-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "rimraf": "^6.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "UNLICENSED"
+}
