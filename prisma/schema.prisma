@@ -1,12 +1,9 @@
-// ═══════════════════════════════════════════════════════════════════════
 // ETIP v4.0 — Prisma Schema (Phase 1: Foundation)
-// ═══════════════════════════════════════════════════════════════════════
 // Tables: tenants, users, sessions, api_keys, audit_logs
-// Multi-tenant: every row scoped by tenant_id, RLS enforced at DB level
-// ═══════════════════════════════════════════════════════════════════════
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -14,7 +11,6 @@ datasource db {
   url      = env("TI_DATABASE_URL")
 }
 
-// ─── Tenant (Organization) ───────────────────────────────────────────
 model Tenant {
   id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name             String   @db.VarChar(255)
@@ -29,13 +25,12 @@ model Tenant {
   active           Boolean  @default(true)
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  users     User[]
-  sessions  Session[]
-  apiKeys   ApiKey[]
-  auditLogs AuditLog[]
-
+  users       User[]
+  sessions    Session[]
+  apiKeys     ApiKey[]
+  auditLogs   AuditLog[]
+  feedSources FeedSource[]
+  iocs        Ioc[]
   @@map("tenants")
 }
 
@@ -43,11 +38,9 @@ enum Plan {
   free
   pro
   enterprise
-
   @@map("plan_enum")
 }
 
-// ─── User ────────────────────────────────────────────────────────────
 model User {
   id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId       String       @map("tenant_id") @db.Uuid
@@ -65,13 +58,10 @@ model User {
   active         Boolean      @default(true)
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
-
-  // Relations
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sessions  Session[]
   apiKeys   ApiKey[]
   auditLogs AuditLog[]
-
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([email])
@@ -84,7 +74,6 @@ enum Role {
   analyst
   viewer
   api_only
-
   @@map("role_enum")
 }
 
@@ -93,11 +82,9 @@ enum AuthProvider {
   google
   saml
   oidc
-
   @@map("auth_provider_enum")
 }
 
-// ─── Session ─────────────────────────────────────────────────────────
 model Session {
   id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId           String    @map("user_id") @db.Uuid
@@ -108,18 +95,14 @@ model Session {
   expiresAt        DateTime  @map("expires_at")
   revokedAt        DateTime? @map("revoked_at")
   createdAt        DateTime  @default(now()) @map("created_at")
-
-  // Relations
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
   @@index([userId])
   @@index([tenantId])
   @@index([expiresAt])
   @@map("sessions")
 }
 
-// ─── API Key ─────────────────────────────────────────────────────────
 model ApiKey {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId  String    @map("tenant_id") @db.Uuid
@@ -133,11 +116,8 @@ model ApiKey {
   active    Boolean   @default(true)
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
-
-  // Relations
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([tenantId, name])
   @@index([tenantId])
   @@index([userId])
@@ -145,7 +125,6 @@ model ApiKey {
   @@map("api_keys")
 }
 
-// ─── Audit Log (Immutable — SOC 2 compliant) ─────────────────────────
 model AuditLog {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid
@@ -157,14 +136,157 @@ model AuditLog {
   ipAddress    String?  @map("ip_address") @db.VarChar(45)
   userAgent    String?  @map("user_agent") @db.Text
   createdAt    DateTime @default(now()) @map("created_at")
-
-  // Relations
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-
   @@index([tenantId])
   @@index([userId])
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// ─── Phase 2: Data Pipeline ───────────────────────────────────────────────────
+
+enum FeedType {
+  stix
+  taxii
+  misp
+  rss
+  rest_api
+  nvd
+  csv_upload
+  json_upload
+  webhook
+  email_imap
+  @@map("feed_type_enum")
+}
+
+enum FeedStatus {
+  active
+  paused
+  error
+  disabled
+  @@map("feed_status_enum")
+}
+
+model FeedSource {
+  id                   String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String     @map("tenant_id") @db.Uuid
+  name                 String     @db.VarChar(255)
+  description          String?    @db.Text
+  feedType             FeedType   @map("feed_type")
+  url                  String?    @db.Text
+  schedule             String?    @db.VarChar(100)   // cron expression
+  headers              Json       @default("{}")
+  authConfig           Json       @default("{}") @map("auth_config")  // encrypted at app layer
+  parseConfig          Json       @default("{}") @map("parse_config")
+  status               FeedStatus @default(active)
+  enabled              Boolean    @default(true)
+  // Health metrics
+  lastFetchAt          DateTime?  @map("last_fetch_at")
+  lastErrorAt          DateTime?  @map("last_error_at")
+  lastErrorMessage     String?    @db.Text @map("last_error_message")
+  consecutiveFailures  Int        @default(0) @map("consecutive_failures")
+  totalItemsIngested   Int        @default(0) @map("total_items_ingested")
+  itemsIngested24h     Int        @default(0) @map("items_ingested_24h")
+  itemsRelevant24h     Int        @default(0) @map("items_relevant_24h")
+  avgProcessingTimeMs  Int        @default(0) @map("avg_processing_time_ms")
+  feedReliability      Int        @default(50) @map("feed_reliability") // 0-100
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  iocs     Ioc[]
+  @@index([tenantId])
+  @@index([status])
+  @@index([feedType])
+  @@map("feed_sources")
+}
+
+enum IocType {
+  ip
+  ipv6
+  domain
+  fqdn
+  url
+  email
+  hash_md5
+  hash_sha1
+  hash_sha256
+  hash_sha512
+  cve
+  asn
+  cidr
+  bitcoin_address
+  unknown
+  @@map("ioc_type_enum")
+}
+
+enum IocLifecycle {
+  new
+  active
+  aging
+  expired
+  archived
+  false_positive
+  revoked
+  @@map("ioc_lifecycle_enum")
+}
+
+enum Severity {
+  info
+  low
+  medium
+  high
+  critical
+  @@map("severity_enum")
+}
+
+enum TLP {
+  white
+  green
+  amber
+  red
+  @@map("tlp_enum")
+}
+
+model Ioc {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String       @map("tenant_id") @db.Uuid
+  feedSourceId     String?      @map("feed_source_id") @db.Uuid
+  // Core fields
+  iocType          IocType      @map("ioc_type")
+  value            String       @db.Text
+  normalizedValue  String       @map("normalized_value") @db.Text
+  dedupeHash       String       @unique @map("dedupe_hash") @db.VarChar(64)
+  // Classification
+  severity         Severity     @default(medium)
+  tlp              TLP          @default(amber)
+  confidence       Int          @default(50)   // 0-100
+  lifecycle        IocLifecycle @default(new)
+  // Intel metadata
+  tags             String[]     @default([])
+  mitreAttack      String[]     @default([]) @map("mitre_attack")
+  malwareFamilies  String[]     @default([]) @map("malware_families")
+  threatActors     String[]     @default([]) @map("threat_actors")
+  // Enrichment
+  enrichmentData   Json?        @map("enrichment_data")   // EnrichmentOutput JSON
+  enrichedAt       DateTime?    @map("enriched_at")
+  // Timestamps
+  firstSeen        DateTime     @default(now()) @map("first_seen")
+  lastSeen         DateTime     @default(now()) @map("last_seen")
+  expiresAt        DateTime?    @map("expires_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  feedSource FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
+  @@index([tenantId])
+  @@index([tenantId, iocType])
+  @@index([tenantId, severity])
+  @@index([tenantId, lifecycle])
+  @@index([normalizedValue])
+  @@index([firstSeen])
+  @@index([lastSeen])
+  @@map("iocs")
+}
+
+
