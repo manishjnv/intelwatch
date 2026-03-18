@@ -6,7 +6,7 @@ interface AuthState { accessToken: string | null; refreshToken: string | null; u
 
 const KEY = 'etip_auth';
 function load(): Partial<AuthState> { try { const r = localStorage.getItem(KEY); if (!r) return {}; const p = JSON.parse(r); if (p.accessToken) return { accessToken: p.accessToken, refreshToken: p.refreshToken, user: p.user, tenant: p.tenant, isAuthenticated: true }; } catch { localStorage.removeItem(KEY); } return {}; }
-function save(s: Partial<AuthState>) { try { localStorage.setItem(KEY, JSON.stringify({ accessToken: s.accessToken, refreshToken: s.refreshToken, user: s.user, tenant: s.tenant })); } catch {} }
+function save(s: Partial<AuthState>) { try { localStorage.setItem(KEY, JSON.stringify({ accessToken: s.accessToken, refreshToken: s.refreshToken, user: s.user, tenant: s.tenant })); } catch { /* storage full or unavailable — non-critical */ } }
 
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null, refreshToken: null, user: null, tenant: null, isAuthenticated: false, ...load(),

@@ -18,6 +18,7 @@ export function sanitizeLLMInput(raw: string): SanitizeResult {
       sanitized = sanitized.replace(new RegExp(pattern.source, pattern.flags), '[FILTERED]');
     }
   }
+  // eslint-disable-next-line no-control-regex
   sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
   if (sanitized.length > MAX_INPUT_CHARS) { sanitized = sanitized.slice(0, MAX_INPUT_CHARS) + '\n[TRUNCATED]'; }
   return { sanitized, injectionDetected: matchedPatterns.length > 0, matchedPatterns };
