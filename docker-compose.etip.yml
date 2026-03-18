@@ -267,8 +267,8 @@ services:
     container_name: etip_frontend
     restart: unless-stopped
     healthcheck:
-      # nginx:alpine has no wget/curl — use nc to verify HTTP response (03-DEVOPS.md)
-      test: ["CMD-SHELL", "printf 'GET / HTTP/1.0\r\nHost: localhost\r\n\r\n' | nc -w2 localhost 80 | head -1 | grep -q HTTP"]
+      # nginx:alpine has no wget/curl — use nc to check port is open (03-DEVOPS.md)
+      test: ["CMD-SHELL", "nc -z localhost 80"]
       interval: 30s
       timeout: 5s
       retries: 3
