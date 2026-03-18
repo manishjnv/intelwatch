@@ -42,7 +42,8 @@ RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 # The '...' suffix builds all transitive workspace deps in topological order:
 #   shared-types → shared-utils → shared-auth → user-service → api-gateway
 # No '|| true' — failures must fail the image build visibly. (Issue 15 — DEPLOYMENT_RCA.md)
-RUN pnpm --filter @etip/api-gateway... run build
+# --workspace-concurrency=1 ensures topological build order (shared-types → shared-utils → shared-auth → ...)
+RUN pnpm --filter @etip/api-gateway... --workspace-concurrency=1 run build
 
 # ── Stage 3: Production (lean — only runtime deps) ─────────────────
 # Only copies what the API needs at runtime:
