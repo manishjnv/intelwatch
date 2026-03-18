@@ -30,7 +30,6 @@ on:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '9'
 
 jobs:
   # ─── Test ─────────────────────────────────────────────────
@@ -43,9 +42,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      # v4 reads pnpm version from package.json "packageManager" field automatically
+      # NEVER set 'version' param — conflicts with packageManager (RCA Issue #1)
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
         with:
