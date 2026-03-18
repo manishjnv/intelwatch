@@ -30,7 +30,7 @@ Task: [describe task here]. Begin pre-task ritual per 00-CLAUDE-INSTRUCTIONS.md.
 
 ---
 
-## ⚠️ DOCKER & BUILD RULES (MANDATORY — learned from 17 RCA issues)
+## ⚠️ DOCKER & BUILD RULES (MANDATORY — learned from 24 RCA issues)
 
 These rules are **non-negotiable**. Breaking any of them will cause CI/deploy failures.
 
@@ -134,6 +134,7 @@ Internet → Caddy (ti-platform-caddy-1, ports 80/443)
 | 2026-03-18 | **Docker refactor**: node:20-slim, scoped --filter builds, 3-stage Dockerfile, strict frozen-lockfile, caddy_network permanent. |
 | 2026-03-18 | **CI fix**: ESLint 8 + .eslintrc.json, shared-ui tsconfig, unused imports fixed. CI fully green. |
 | 2026-03-18 | **Tooling**: Makefile (docker-test, pre-push), docker-lint.sh, health-check.sh, wait-healthy.sh. |
+| 2026-03-18 | **Session 4: Pipeline Optimization Deployed** — tsc -b with project references (composite:true + tsconfig.build.json), strict --frozen-lockfile (no fallback), Docker build validation in CI, force-recreate app containers, always() for workflow_dispatch, frontend healthcheck wget 127.0.0.1 (IPv6 fix). 8 new RCA issues (#17-#24). CI: test→build→typecheck→lint→audit→Docker API→Docker Frontend. VPS production verified. |
 
 ---
 

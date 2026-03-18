@@ -226,3 +226,63 @@ elements don't rely on implicit flex centering — add explicit centering if the
 - RULE: `make docker-test` MUST pass before every `git push origin master`.
 - RULE: `make pre-push` runs tests + typecheck + lint + Docker build + health check.
 - The Makefile's `push` target enforces this automatically.
+
+---
+
+## Session 4 Issues (Docker/CI/CD Pipeline Optimization — 10 Recommendations)
+
+### Issue 17: CI pnpm version conflict (recurring RCA #1)
+**Error**: `Multiple versions of pnpm specified: version 9 in GitHub Action config AND pnpm@9.15.0 in package.json packageManager`
+**Root Cause**: `pnpm/action-setup@v4` with `version: ${{ env.PNPM_VERSION }}` conflicts with `packageManager: "pnpm@9.15.0"` in package.json. Same as Issue #1 — the rule was documented but the code was never fixed.
+**Fix**: Removed `version` param from `pnpm/action-setup@v4`. Removed unused `PNPM_VERSION` env var.
+**Commit**: `75aab93`
+**Prevention**: **RULE**: NEVER set `version` param in `pnpm/action-setup@v4` when `packageManager` exists in package.json.
+
+### Issue 18: CI typecheck fails — cross-package .d.ts missing
+**Error**: `packages/shared-enrichment typecheck: error TS2307: Cannot find module '@etip/shared-utils'`
+**Root Cause**: `pnpm -r run typecheck` (tsc --noEmit) needs `.d.ts` declaration files from compiled workspace deps. Without a build step first, cross-package types can't resolve.
+**Fix**: Added `pnpm exec tsc -b --force tsconfig.build.json` step before typecheck in CI.
+**Commit**: `c26c2c1`
+**Prevention**: **RULE**: CI pipeline order MUST be: test → **build** → typecheck → lint.
+
+### Issue 19: Docker build fails — pnpm parallel build race condition
+**Error**: `packages/shared-auth build: error TS2307: Cannot find module '@etip/shared-utils'`
+**Root Cause**: `pnpm -r run build` and `pnpm --filter ... run build` execute packages in parallel. shared-auth starts before shared-types/shared-utils produce .d.ts files.
+**Fix**: Replaced with `pnpm exec tsc -b --force tsconfig.build.json` — project references guarantee strict topological order.
+**Commit**: `c234093`
+**Prevention**: **RULE**: NEVER use `pnpm -r build` in Dockerfiles. Always use `tsc -b` with project references.
+
+### Issue 20: Docker buildx incompatible with pnpm workspace symlinks
+**Error**: Same TS2307 errors inside buildx builder context.
+**Root Cause**: Docker buildx uses a separate builder with different filesystem layer handling. pnpm symlinks break inside it.
+**Fix**: Reverted to plain `docker build` for CI. Buildx deferred.
+**Commit**: `630f05f`
+**Prevention**: Use plain `docker build` until image-based deploy.
+
+### Issue 21: Deploy job skipped on workflow_dispatch (recurring RCA #8)
+**Error**: Deploy job `skipped` on `workflow_dispatch`.
+**Root Cause**: `needs: [test]` blocks when test is skipped.
+**Fix**: Added `always() && (needs.test.result == 'success' || needs.test.result == 'skipped')`.
+**Commit**: `244df1a`
+**Prevention**: Deploy job must use `always()` with conditional needs.
+
+### Issue 22: tsc -b produces zero output — --force required
+**Error**: All `dist/` directories missing. tsc -b completed in 0.7s.
+**Root Cause**: `tsc -b` may skip builds in incremental mode. Non-deterministic in fresh Docker layers.
+**Fix**: Added `--force` flag: `pnpm exec tsc -b --force tsconfig.build.json`
+**Commit**: `fd3534e`
+**Prevention**: **RULE**: Always `--force` with `tsc -b` in Docker.
+
+### Issue 23: API crash — Cannot find module 'zod' (lean production stage)
+**Error**: `Error: Cannot find module 'zod'` — API crashes on startup.
+**Root Cause**: Selective COPY of `dist/` per package breaks pnpm's symlink-based node_modules. External deps like zod resolve via `.pnpm/` store symlinks.
+**Fix**: Reverted to `COPY --from=build /app/ ./`. Lean optimization deferred.
+**Commit**: `4f19eb7`
+**Prevention**: **RULE**: NEVER selectively copy node_modules in pnpm workspaces.
+
+### Issue 24: Frontend healthcheck — localhost resolves to IPv6 ::1
+**Error**: `etip_frontend` unhealthy. `wget http://localhost/` → `Connecting to localhost ([::1]:80) — Connection refused`.
+**Root Cause**: Alpine maps `localhost` to `::1` (IPv6). nginx binds `0.0.0.0:80` (IPv4 only). Also busybox `nc` doesn't support `-z`.
+**Fix**: `wget -q -O /dev/null http://127.0.0.1/ || exit 1`
+**Commit**: `8644977`
+**Prevention**: **RULE**: ALWAYS use `127.0.0.1` (not `localhost`) in Alpine healthchecks. Use `wget` not `nc -z`.
