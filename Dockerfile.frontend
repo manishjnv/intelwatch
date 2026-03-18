@@ -1,46 +1,39 @@
 # ═══════════════════════════════════════════════════════════════
 # ETIP v4.0 — Frontend Dockerfile
-# Build: node:20-slim + pnpm --filter @etip/frontend build
-# Serve: nginx:alpine (fine here — no node native deps)
+# Multi-stage: install → build Vite → serve via nginx
 # ═══════════════════════════════════════════════════════════════
 
-# ── Stage 1: Install + Build ──────────────────────────────────
+# ── Stage 1: Install + Build ───────────────────────────────────
+# RULE: NEVER use Alpine for Node build stages (DEPLOYMENT_RCA Issue #7)
 FROM node:20-slim AS build
-
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
-# Copy workspace manifests (pnpm needs all workspace members for lockfile)
+# Copy workspace manifests (root + workspaces that frontend depends on)
+# packages/shared-ui MUST be listed here — vite.config.ts has a path alias:
+#   '@etip/shared-ui' → '../../packages/shared-ui/src'
+# Without copying this package first, the Vite build fails to resolve the alias.
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY apps/frontend/package.json      apps/frontend/
+COPY apps/frontend/package.json     apps/frontend/
 COPY packages/shared-ui/package.json packages/shared-ui/
 
-# Stub out backend packages — pnpm frozen-lockfile needs every member
-# referenced in the lockfile, but we only need their manifest, not source.
-COPY packages/shared-types/package.json         packages/shared-types/
-COPY packages/shared-utils/package.json         packages/shared-utils/
-COPY packages/shared-cache/package.json         packages/shared-cache/
-COPY packages/shared-auth/package.json          packages/shared-auth/
-COPY packages/shared-audit/package.json         packages/shared-audit/
-COPY packages/shared-normalization/package.json packages/shared-normalization/
-COPY packages/shared-enrichment/package.json    packages/shared-enrichment/
-COPY apps/api-gateway/package.json              apps/api-gateway/
-COPY apps/user-service/package.json             apps/user-service/
+# RULE: strict --frozen-lockfile, NO fallback. Stale lockfile = build MUST fail. (Issues #11, #16)
+RUN pnpm install --frozen-lockfile
 
-# Install only frontend + shared-ui deps
-RUN pnpm install --frozen-lockfile --ignore-scripts
-
-# Copy frontend + shared-ui source (Vite aliases resolve into shared-ui)
+# Copy sources — frontend + shared-ui (required by vite alias at build time)
 COPY apps/frontend/   apps/frontend/
 COPY packages/shared-ui/ packages/shared-ui/
 
-# Build the SPA
-RUN pnpm --filter @etip/frontend run build
+# Build: skip tsc type-check in Docker (CI handles it), run Vite only
+RUN cd apps/frontend && npx vite build
 
 # ── Stage 2: Serve via nginx ──────────────────────────────────
 FROM nginx:1.27-alpine AS production
 
+# Remove default nginx content
 RUN rm -rf /usr/share/nginx/html/*
+
+# Copy built assets
 COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html
 
 # SPA routing: all paths → index.html
@@ -49,12 +42,19 @@ RUN printf 'server {\n\
   server_name _;\n\
   root /usr/share/nginx/html;\n\
   index index.html;\n\
-  location / { try_files $uri $uri/ /index.html; }\n\
-  location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; }\n\
+  \n\
+  location / {\n\
+    try_files $uri $uri/ /index.html;\n\
+  }\n\
+  \n\
+  location /assets/ {\n\
+    expires 1y;\n\
+    add_header Cache-Control "public, immutable";\n\
+  }\n\
 }\n' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
-# nginx:alpine has nc (busybox netcat) — use it for healthcheck
+# curl is not available in nginx:alpine — use wget via sh or just check port open
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD printf "GET / HTTP/1.0\r\nHost: localhost\r\n\r\n" | nc -w2 localhost 80 | head -1 | grep -q "HTTP"
+  CMD sh -c 'printf "GET / HTTP/1.0\r\nHost: localhost\r\n\r\n" | nc -w2 localhost 80 | head -1 | grep -q "HTTP"'
