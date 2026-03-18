@@ -60,8 +60,8 @@ jobs:
       - name: Run tests
         run: pnpm -r test
 
-      - name: Build (required before typecheck — generates .d.ts for cross-package imports)
-        run: pnpm --filter '!@etip/frontend' -r run build
+      - name: Build (tsc -b — strict dependency order, generates .d.ts for cross-package imports)
+        run: pnpm exec tsc -b tsconfig.build.json
 
       - name: Type-check (excludes frontend — Vite aliases incompatible with tsc)
         run: pnpm --filter '!@etip/frontend' -r run typecheck

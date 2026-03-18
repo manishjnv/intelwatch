@@ -13,7 +13,7 @@ WORKDIR /app
 # EVERY workspace member listed in pnpm-lock.yaml MUST have its
 # package.json here — otherwise frozen-lockfile install fails.
 # (Issue 11, 16 — see docs/DEPLOYMENT_RCA.md)
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json tsconfig.build.json ./
 COPY packages/shared-types/package.json       packages/shared-types/tsconfig.json        packages/shared-types/
 COPY packages/shared-utils/package.json       packages/shared-utils/tsconfig.json        packages/shared-utils/
 COPY packages/shared-cache/package.json       packages/shared-cache/tsconfig.json        packages/shared-cache/
@@ -38,12 +38,10 @@ COPY prisma/   prisma/
 
 RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 
-# Debug: inspect workspace symlinks
-RUN echo "=== node_modules/@etip/ ===" && ls -la node_modules/@etip/ && echo "=== shared-utils exists ===" && ls -la packages/shared-utils/ && echo "=== symlink target ===" && readlink -f node_modules/@etip/shared-utils
-
-# Build all backend packages in dependency order (exclude frontend — built by Dockerfile.frontend)
+# tsc -b (build mode) compiles all projects in strict dependency order via references.
+# Guarantees .d.ts files exist before dependents compile. No race conditions.
 # No '|| true' — failures must fail the image build visibly. (Issue 15 — DEPLOYMENT_RCA.md)
-RUN pnpm --filter '!@etip/frontend' -r run build
+RUN pnpm exec tsc -b tsconfig.build.json
 
 # ── Stage 3: Production (lean — only runtime deps) ─────────────────
 # Only copies what the API needs at runtime:
