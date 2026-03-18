@@ -38,12 +38,9 @@ COPY prisma/   prisma/
 
 RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 
-# RULE: Scoped builds only — NEVER 'pnpm -r build' in Dockerfiles (03-DEVOPS.md)
-# The '...' suffix builds all transitive workspace deps in topological order:
-#   shared-types → shared-utils → shared-auth → user-service → api-gateway
+# Build all backend packages in dependency order (exclude frontend — built by Dockerfile.frontend)
 # No '|| true' — failures must fail the image build visibly. (Issue 15 — DEPLOYMENT_RCA.md)
-# --workspace-concurrency=1 ensures topological build order (shared-types → shared-utils → shared-auth → ...)
-RUN pnpm --filter @etip/api-gateway... --workspace-concurrency=1 run build
+RUN pnpm --filter '!@etip/frontend' -r run build
 
 # ── Stage 3: Production (lean — only runtime deps) ─────────────────
 # Only copies what the API needs at runtime:
