@@ -73,26 +73,11 @@ jobs:
         run: pnpm audit --audit-level=high
         continue-on-error: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Docker build validation (API)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          push: false
-          cache-from: type=gha,scope=etip-api
-          cache-to: type=gha,mode=max,scope=etip-api
+        run: docker build -f Dockerfile -t etip-api-ci:test .
 
       - name: Docker build validation (Frontend)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.frontend
-          push: false
-          cache-from: type=gha,scope=etip-frontend
-          cache-to: type=gha,mode=max,scope=etip-frontend
+        run: docker build -f Dockerfile.frontend -t etip-frontend-ci:test .
 
   # ─── Deploy (on master push or workflow_dispatch) ──────────
   deploy:
