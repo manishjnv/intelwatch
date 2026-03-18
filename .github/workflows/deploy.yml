@@ -122,8 +122,13 @@ jobs:
             echo "Building etip_frontend image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_frontend
 
-            echo "Starting all ETIP services..."
-            docker compose -p etip -f docker-compose.etip.yml up -d
+            # Start infra services (no recreate — preserves uptime)
+            echo "Starting infrastructure..."
+            docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_elasticsearch etip_neo4j etip_minio etip_prometheus etip_grafana
+
+            # Force recreate app containers (picks up new images + compose config)
+            echo "Recreating app containers..."
+            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate etip_api etip_frontend etip_nginx
 
             # ── Run Prisma migrations ──
             echo "Running Prisma migrations..."
