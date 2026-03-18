@@ -1,12 +1,23 @@
+# ═══════════════════════════════════════════════════════════════
+# ETIP v4.0 — .gitignore
+# ═══════════════════════════════════════════════════════════════
+
+# ─── Dependencies ───
 node_modules/
 .pnpm-store/
+
+# ─── Build Output ───
 dist/
 build/
 *.tsbuildinfo
+
+# ─── Environment ───
 .env
 .env.local
 .env.*.local
 !.env.example
+
+# ─── IDE ───
 .idea/
 .vscode/
 *.swp
@@ -14,19 +25,38 @@ build/
 *~
 .DS_Store
 Thumbs.db
+
+# ─── Test & Coverage ───
 coverage/
 .vitest/
 *.lcov
+
+# ─── Logs ───
 logs/
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# ─── Docker ───
 docker-compose.override.yml
+
+# ─── Prisma ───
 prisma/*.db
 prisma/*.db-journal
+
+# ─── OS ───
+.DS_Store
+Desktop.ini
+ehthumbs.db
+
+# ─── Misc ───
 *.tgz
 *.pid
 *.seed
 .cache/
 tmp/
 temp/
+
+# ─── Claude Code ───
+.claude/settings.local.json
+.claude/.session_*
