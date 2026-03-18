@@ -41,7 +41,8 @@ RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 # tsc -b (build mode) compiles all projects in strict dependency order via references.
 # Guarantees .d.ts files exist before dependents compile. No race conditions.
 # No '|| true' — failures must fail the image build visibly. (Issue 15 — DEPLOYMENT_RCA.md)
-RUN pnpm exec tsc -b tsconfig.build.json
+# --force: always rebuild all projects (no .tsbuildinfo cache in fresh Docker layer)
+RUN pnpm exec tsc -b --force tsconfig.build.json
 
 # ── Stage 3: Production (lean — only runtime deps) ─────────────────
 # Only copies what the API needs at runtime:
