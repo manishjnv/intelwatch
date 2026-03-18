@@ -44,40 +44,12 @@ RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 # --force: always rebuild all projects (no .tsbuildinfo cache in fresh Docker layer)
 RUN pnpm exec tsc -b --force tsconfig.build.json
 
-# ── Stage 3: Production (lean — only runtime deps) ─────────────────
-# Only copies what the API needs at runtime:
-#   node_modules (pnpm store + workspace symlinks)
-#   dist/ + package.json per package in the dependency chain
-#   prisma/ (schema for migrations)
-# Excludes: src/, tests, tsconfigs, shared-ui, shared-cache, shared-audit,
-#   shared-normalization, shared-enrichment, apps/frontend
+# ── Stage 3: Production ───────────────────────────────────────
 FROM node:20-slim AS production
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-# Root workspace files + node_modules (pnpm store + workspace symlinks)
-COPY --from=build /app/package.json /app/pnpm-workspace.yaml ./
-COPY --from=build /app/node_modules ./node_modules
-
-# Prisma schema (for runtime migrations)
-COPY --from=build /app/prisma ./prisma
-
-# API dependency chain: package.json + dist/ only
-# shared-types
-COPY --from=build /app/packages/shared-types/package.json ./packages/shared-types/
-COPY --from=build /app/packages/shared-types/dist ./packages/shared-types/dist
-# shared-utils
-COPY --from=build /app/packages/shared-utils/package.json ./packages/shared-utils/
-COPY --from=build /app/packages/shared-utils/dist ./packages/shared-utils/dist
-# shared-auth
-COPY --from=build /app/packages/shared-auth/package.json ./packages/shared-auth/
-COPY --from=build /app/packages/shared-auth/dist ./packages/shared-auth/dist
-# user-service
-COPY --from=build /app/apps/user-service/package.json ./apps/user-service/
-COPY --from=build /app/apps/user-service/dist ./apps/user-service/dist
-# api-gateway
-COPY --from=build /app/apps/api-gateway/package.json ./apps/api-gateway/
-COPY --from=build /app/apps/api-gateway/dist ./apps/api-gateway/dist
+COPY --from=build /app/ ./
 
 ENV NODE_ENV=production
 ENV TI_API_PORT=3001
