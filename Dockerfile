@@ -38,6 +38,9 @@ COPY prisma/   prisma/
 
 RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 
+# Debug: inspect workspace symlinks
+RUN echo "=== node_modules/@etip/ ===" && ls -la node_modules/@etip/ && echo "=== shared-utils exists ===" && ls -la packages/shared-utils/ && echo "=== symlink target ===" && readlink -f node_modules/@etip/shared-utils
+
 # Build all backend packages in dependency order (exclude frontend — built by Dockerfile.frontend)
 # No '|| true' — failures must fail the image build visibly. (Issue 15 — DEPLOYMENT_RCA.md)
 RUN pnpm --filter '!@etip/frontend' -r run build
