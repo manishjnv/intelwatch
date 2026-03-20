@@ -10,7 +10,7 @@ export const FEED_STATUSES = ['active', 'paused', 'error', 'disabled'] as const;
 export const FeedTypeEnum = z.enum(FEED_TYPES);
 export const FeedStatusEnum = z.enum(FEED_STATUSES);
 
-const cronRegex = /^[\d\s*\/\-,]+$/;
+const cronRegex = /^[\d\s*/\-,]+$/;
 
 export const CreateFeedSchema = z.object({
   name: z.string().min(1).max(255),
