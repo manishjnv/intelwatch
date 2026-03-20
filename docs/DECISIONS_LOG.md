@@ -82,3 +82,17 @@
 **Decision:** Updated /session-start command to explicitly load skills/00-CLAUDE-INSTRUCTIONS.md, skills/00-MASTER.md, and the module-specific skills/XX-MODULE.md for the declared target module each session.
 **Alternatives:** Merge skills/ into .claude/skills/ as native skills (too large, would bloat context), rely on CLAUDE.md only (insufficient detail for module-level specs)
 **Consequences:** Every session starts with full context: core rules + module spec + scope lock. docs/SESSION_TEMPLATE.md provides copy-paste prompts for all scenarios.
+
+### DECISION-012: Ingestion service follows api-gateway Fastify pattern
+**Date:** 2026-03-20 | **Status:** Accepted
+**Context:** Building first Phase 2 microservice. Needed to decide whether to reuse the api-gateway's Fastify pattern or adopt a different architecture.
+**Decision:** Mirror the api-gateway pattern exactly: Fastify + helmet/cors/rate-limit/sensible, Pino logger, Zod validation, AppError error handler, JWT auth via shared-auth, RBAC preHandlers.
+**Alternatives:** Express (slower), standalone workers only (no HTTP API), gRPC (overkill for internal service)
+**Consequences:** Consistent patterns across all services. Same middleware, same error handling, same auth. New services can copy the ingestion template.
+
+### DECISION-013: 6 competitive improvement modules as in-memory services
+**Date:** 2026-03-20 | **Status:** Accepted
+**Context:** Implementing corroboration, triage feedback, dedup, reliability scoring, context extraction, cost tracking. Needed to decide between DB-backed state vs in-memory state.
+**Decision:** All 6 modules use in-memory state (Maps/Sets) for Phase 2. Will migrate to DB-backed persistence when deploying as production containers with horizontal scaling.
+**Alternatives:** DB-backed from day one (premature — adds Prisma migration complexity before validating the algorithms), Redis-backed (extra dep coupling)
+**Consequences:** Fast iteration on algorithms. Tests don't need DB. Trade-off: state lost on service restart. Acceptable for Phase 2 validation. Migration to DB is straightforward — replace Map with Prisma queries.

@@ -27,7 +27,7 @@
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | 🔨 Shell only | 2026-03-15 | Needs dashboard layout |
-| ingestion | 2 | 📋 Not started | - | Phase 2 gate |
+| ingestion | 2 | 🔨 In progress | 2026-03-20 | PR #17 open, CI green, needs container setup |
 | normalization | 2 | 📋 Not started | - | Depends on ingestion |
 | ai-enrichment | 2 | 📋 Not started | - | Depends on normalization |
 | ioc-intelligence | 3 | 📋 Not started | - | Phase 3 gate |
@@ -57,7 +57,7 @@ shared-normalization  → shared-utils
 shared-enrichment     → shared-utils
 user-service          → shared-types, shared-utils, shared-auth
 api-gateway           → shared-types, shared-utils, shared-auth, user-service
-ingestion             → shared-types, shared-utils, shared-auth (Phase 2)
+ingestion             → shared-types, shared-utils, shared-auth, shared-cache, shared-audit, shared-enrichment, shared-normalization (Phase 2)
 normalization         → shared-types, shared-utils, shared-normalization (Phase 2)
 ai-enrichment         → shared-types, shared-utils, shared-enrichment (Phase 2)
 frontend              → shared-types, shared-ui (Phase 1+)
@@ -94,10 +94,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 1 COMPLETE — audit passed, ready for Phase 2
-- **Last session outcome:** Phase 1 audit + dashboard UI + branding session (2026-03-20). Fixed 5 audit issues (RCA #25-29). Built dashboard UI: clickable module cards, ComingSoonPage placeholders, sidebar nav all clickable, dark/light theme toggle, 3D cyber orb collapse button, ambient grid overlay, count-up animations, quick-action pills, visual phase hierarchy. Created branding suite: cyber shield logo (SVG), favicon, apple touch icon, web manifest, LogoMark React component. Created 13 custom cyber-themed module icons (ModuleIcons.tsx) with colorful sidebar. Tailwind colors migrated to CSS variables for theme reactivity. 3 deploys to VPS, all green.
-- **Known issues:** Raw GH_TOKEN + SSH key were previously committed in git history — credentials have been rotated. Old git history not yet purged. apps/ingestion excluded from CI (scaffold tests, Phase 2 not started).
-- **Next task:** Phase 2 — start with ingestion service (skill 04-INGESTION.md)
+- **Current phase:** Phase 2 IN PROGRESS — ingestion service built
+- **Last session outcome:** Session 6 (2026-03-20). Built ingestion service: Fastify microservice with 10 API endpoints (feed CRUD, trigger, health, stats), JWT auth + RBAC. Implemented 6 competitive improvement modules: Corroboration Engine (cross-feed confidence boost), Adaptive Triage (per-tenant feedback loop), IOC Context Extractor (±1 sentence windowing), Feed Reliability Auto-Tuner (4-metric EMA), 3-Layer Dedup (Bloom+Jaccard+LLM), Cost Tracker (per-article per-stage). 101 tests, 8 test files, CI green. PR #17 open on feat/phase2-ingestion-service.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. Ingestion excluded from CI test/typecheck (intentional). Ingestion has no container in docker-compose yet (needs etip_ingestion service definition + nginx proxy rules).
+- **Next tasks:** (1) Merge PR #17 to master. (2) Add etip_ingestion container to docker-compose.etip.yml. (3) Add nginx proxy for /api/v1/feeds/*. (4) Deploy to VPS. (5) Implement feed connectors (RSS, STIX, TAXII parsers) as next chunk. (6) Implement BullMQ workers for feed-fetch queue.
 
 ## Environment Notes
 - VPS: 72.61.227.64, 8GB RAM (5.2GB used by 10 containers), 96GB disk (26% used)
