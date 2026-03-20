@@ -424,3 +424,17 @@ Deploy order:
 **Root Cause**: `DEFANGED_URL_RE` was `/^h[tx]{2}ps?\[:\]\/\//i` — requires `[:]` after protocol. The pattern `hxxp://` (defanged protocol without defanged colon) didn't match.
 **Fix**: Changed regex to `/^h[tx]{2}ps?(?:\[:\]|:)\/\//i` — accepts both `[:]` and `:` after the defanged protocol prefix.
 **Prevention**: **RULE**: Defanged URLs can have partial defanging (protocol only, colon only, or both). Test all variants: `hxxps[:]//`, `hxxps://`, `hxxp://`.
+
+---
+
+## Session 8 Issues (Ingestion Connectors + Workers — 2026-03-21)
+
+### Issue 30: Scheduler crashes service on missing DB table
+**Error**: `etip_ingestion` container unhealthy. Logs: `PrismaClientKnownRequestError: The table public.feed_sources does not exist in the current database` (P2021).
+**Root Cause**: `FeedScheduler.start()` called `await this.syncFeeds()` without try/catch. `syncFeeds()` calls `repo.findAllActive()` which queries the `feed_sources` table. No Prisma migration has been run on VPS for the ingestion schema, so the table doesn't exist. The unhandled error propagated to `main()` and crashed the process.
+**Fix**: Wrapped initial `syncFeeds()` in try/catch — logs a warning and continues. The periodic cron (every 5min) already had `.catch()`. The service starts successfully and serves /health while waiting for DB migration.
+**Commit**: `032a263`
+**Prevention**:
+- **RULE**: Any startup code that queries the database MUST be wrapped in try/catch. Services should start and serve health checks even if optional features (scheduler, background jobs) fail.
+- **RULE**: Before deploying a service that uses new DB tables, ensure `prisma migrate deploy` runs. The deploy script should include migration before container startup.
+- Background services (schedulers, workers) should degrade gracefully — log + retry, never crash the main process.
