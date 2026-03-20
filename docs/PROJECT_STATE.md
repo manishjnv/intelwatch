@@ -95,9 +95,9 @@ frontend              → shared-types, shared-ui (Phase 1+)
 
 ## Work In Progress
 - **Current phase:** Phase 2 IN PROGRESS — ingestion pipeline wired
-- **Last session outcome:** Session 9 (2026-03-21). Wired all 11 improvement modules into feed-fetch pipeline (pipeline.ts orchestrator). Added Article Prisma model with per-stage cost tracking. Article persistence in feed-fetch worker. Article API routes (GET /articles, GET /articles/:id). Nginx proxy for /api/v1/articles. 222 tests across 18 files, all passing. Typecheck + lint clean.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons.
-- **Next tasks:** (1) Deploy session 9 to VPS. (2) E2E test: create feed → trigger → worker fetches + processes → articles stored in DB → query articles API. (3) Wire Claude Haiku for real triage (currently rule-based). (4) STIX/TAXII connectors. (5) Normalization service (Phase 2 next module).
+- **Last session outcome:** Sessions 9-11 (2026-03-21). Pipeline orchestrator wires all 11 modules. Article Prisma model + persistence + API. IOC detection expanded 6→20+ types. Claude Haiku triage + Sonnet deep extraction (dual-mode). 3-layer AI gate (env→DB→budget). deploy.yml syncs AI secrets from GitHub. 276 tests across 20 files, all passing. Deployed commits 530689e→837f044.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. AI currently ON on VPS — user switching to false.
+- **Next tasks:** (1) Module 05: Normalization Service (Phase 2 next module). (2) E2E test: create feed → trigger → worker fetches + pipeline processes → articles stored → query API. (3) Module 06: Enrichment Service + VT/AbuseIPDB. (4) BullMQ cross-service wiring. (5) STIX/TAXII connectors (deferred).
 
 ## Environment Notes
 - VPS: 72.61.227.64, 8GB RAM (~5.5GB used by 11 containers), 96GB disk (26% used)
