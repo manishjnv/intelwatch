@@ -95,8 +95,8 @@ frontend              → shared-types, shared-ui (Phase 1+)
 
 ## Work In Progress
 - **Current phase:** Phase 1 COMPLETE — audit passed, ready for Phase 2
-- **Last session outcome:** Phase 1 audit + fix session (2026-03-20). Ran full test/typecheck/lint audit across all 10 Phase 1 modules. Fixed 5 issues (RCA #25-29): ESLint v9 flat config, shared-ui tsconfig + types, user-service Prisma type, shared-enrichment test assertions, shared-normalization defanged URL regex. Final state: 375 tests passing, tsc -b clean, lint clean (0 errors, 3 warnings). VPS: 10 containers healthy.
-- **Known issues:** Raw GH_TOKEN + SSH key were previously committed in git history — credentials have been rotated. Old git history not yet purged. apps/ingestion has 2 failing scaffold tests (expected — Phase 2 not started).
+- **Last session outcome:** Phase 1 audit + dashboard UI + branding session (2026-03-20). Fixed 5 audit issues (RCA #25-29). Built dashboard UI: clickable module cards, ComingSoonPage placeholders, sidebar nav all clickable, dark/light theme toggle, 3D cyber orb collapse button, ambient grid overlay, count-up animations, quick-action pills, visual phase hierarchy. Created branding suite: cyber shield logo (SVG), favicon, apple touch icon, web manifest, LogoMark React component. Created 13 custom cyber-themed module icons (ModuleIcons.tsx) with colorful sidebar. Tailwind colors migrated to CSS variables for theme reactivity. 3 deploys to VPS, all green.
+- **Known issues:** Raw GH_TOKEN + SSH key were previously committed in git history — credentials have been rotated. Old git history not yet purged. apps/ingestion excluded from CI (scaffold tests, Phase 2 not started).
 - **Next task:** Phase 2 — start with ingestion service (skill 04-INGESTION.md)
 
 ## Environment Notes
