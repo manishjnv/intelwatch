@@ -438,3 +438,24 @@ Deploy order:
 - **RULE**: Any startup code that queries the database MUST be wrapped in try/catch. Services should start and serve health checks even if optional features (scheduler, background jobs) fail.
 - **RULE**: Before deploying a service that uses new DB tables, ensure `prisma migrate deploy` runs. The deploy script should include migration before container startup.
 - Background services (schedulers, workers) should degrade gracefully — log + retry, never crash the main process.
+
+### Issue 31: Deploy health checks are fake — single-pass with no retry
+**Error**: Deploy succeeds even when services are down. Health check prints "PENDING" and continues.
+**Root Cause**: `sleep 10; curl ... || echo "PENDING"` — one attempt, errors swallowed, deploy never fails on unhealthy services.
+**Fix**: Replaced with retry loop: 12 attempts × 5s = 60s max. If API fails after 60s, deploy **fails** (exit 1) and prints container logs for debugging. Nginx gets 30s (6 attempts).
+**Commit**: `b5ad65a`
+**Prevention**: **RULE**: Health checks in deploy.yml MUST use retry loops with `exit 1` on failure. Never use `|| echo "PENDING"` or `|| true` for critical health checks.
+
+### Issue 32: feed_sources table missing — no Prisma migration existed
+**Error**: `P2021: The table public.feed_sources does not exist` — ingestion scheduler crashes on startup.
+**Root Cause**: `prisma/migrations/` was empty (only `.gitkeep`). Schema was defined but never tracked as a migration. `prisma migrate deploy` on VPS did nothing. Phase 1 tables existed via `prisma db push` but Phase 2 tables (feed_sources, iocs) were never created.
+**Fix**: (1) Added initial migration SQL (`0001_init`). (2) Changed deploy from `prisma migrate deploy` to `prisma db push --accept-data-loss` which is idempotent — creates missing tables, skips existing ones. Added 5-attempt retry loop.
+**Commit**: `b5ad65a`
+**Prevention**: **RULE**: Use `prisma db push` in deploy.yml (not `migrate deploy`) until production migration workflow is established. db push is idempotent and handles schema drift gracefully.
+
+### Issue 33: Nginx starts before API is ready → 502 errors
+**Error**: 502 Bad Gateway intermittently after deploy. Nginx proxies to `etip_api:3001` but API hasn't finished starting.
+**Root Cause**: `docker-compose.etip.yml` had nginx depending on `etip_postgres`, `etip_redis`, `etip_frontend`, `etip_ingestion` — but NOT on `etip_api`. Nginx started before API was healthy.
+**Fix**: Changed nginx `depends_on` to: `etip_api: service_healthy`, `etip_frontend: service_healthy`, `etip_ingestion: service_healthy`. Removed postgres/redis deps (nginx doesn't connect to them directly).
+**Commit**: `b5ad65a`
+**Prevention**: **RULE**: Nginx must depend on ALL upstream services it proxies to. Check `default.conf` upstream blocks and ensure matching `depends_on` entries.
