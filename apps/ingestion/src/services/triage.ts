@@ -65,7 +65,7 @@ Rules:
 - priority: critical (active exploitation/0-day), high (new threat/campaign), normal (routine advisory), low (background noise)
 - estimated_ioc_count: how many IOCs (IPs, hashes, domains, CVEs, emails) you see in the excerpt`;
 
-const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+const DEFAULT_HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_FEEDBACK_PER_TENANT = 50;
 const EXCERPT_LENGTH = 300;
 
@@ -81,20 +81,25 @@ export class TriageService {
   private feedbackStore: Map<string, FeedbackRecord[]> = new Map();
   private client: Anthropic | null = null;
   private logger: pino.Logger | null = null;
+  private model: string = DEFAULT_HAIKU_MODEL;
+  private aiEnabled: boolean = false;
 
-  /** Initialize with optional API key + logger. If no key, falls back to rule-based. */
-  init(apiKey?: string, logger?: pino.Logger): void {
+  /** Initialize with optional API key + logger. If no key or AI disabled, falls back to rule-based. */
+  init(apiKey?: string, logger?: pino.Logger, opts?: { aiEnabled?: boolean; model?: string }): void {
     this.logger = logger ?? null;
-    if (apiKey) {
+    this.aiEnabled = opts?.aiEnabled ?? false;
+    this.model = opts?.model ?? DEFAULT_HAIKU_MODEL;
+    if (apiKey && this.aiEnabled) {
       this.client = new Anthropic({ apiKey });
-      this.logger?.info('Triage: Claude Haiku mode (API key set)');
+      this.logger?.info({ model: this.model }, 'Triage: Claude Haiku mode (AI enabled)');
     } else {
-      this.logger?.info('Triage: Rule-based mode (no API key — set TI_ANTHROPIC_API_KEY for Haiku)');
+      this.client = null;
+      this.logger?.info('Triage: Rule-based mode (AI disabled or no API key)');
     }
   }
 
   /** Whether Haiku mode is active */
-  get isHaikuMode(): boolean { return this.client !== null; }
+  get isHaikuMode(): boolean { return this.client !== null && this.aiEnabled; }
 
   /**
    * Triage an article — returns classification result.
@@ -120,7 +125,7 @@ export class TriageService {
 
     try {
       const response = await this.client!.messages.create({
-        model: HAIKU_MODEL,
+        model: this.model,
         max_tokens: 256,
         system: prompt.system,
         messages,

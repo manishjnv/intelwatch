@@ -38,7 +38,7 @@ export interface CTIExtractionResult {
   outputTokens: number;
 }
 
-const SONNET_MODEL = 'claude-sonnet-4-20250514';
+const DEFAULT_SONNET_MODEL = 'claude-sonnet-4-20250514';
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a cyber threat intelligence analyst performing deep extraction from a CTI article.
 
@@ -67,19 +67,24 @@ Rules:
 export class ExtractionService {
   private client: Anthropic | null = null;
   private logger: pino.Logger | null = null;
+  private model: string = DEFAULT_SONNET_MODEL;
+  private aiEnabled: boolean = false;
 
   /** Initialize with optional API key. Falls back to regex-only extraction. */
-  init(apiKey?: string, logger?: pino.Logger): void {
+  init(apiKey?: string, logger?: pino.Logger, opts?: { aiEnabled?: boolean; model?: string }): void {
     this.logger = logger ?? null;
-    if (apiKey) {
+    this.aiEnabled = opts?.aiEnabled ?? false;
+    this.model = opts?.model ?? DEFAULT_SONNET_MODEL;
+    if (apiKey && this.aiEnabled) {
       this.client = new Anthropic({ apiKey });
-      this.logger?.info('Extraction: Claude Sonnet mode (API key set)');
+      this.logger?.info({ model: this.model }, 'Extraction: Claude Sonnet mode (AI enabled)');
     } else {
-      this.logger?.info('Extraction: Regex-only mode (no API key — set TI_ANTHROPIC_API_KEY for Sonnet)');
+      this.client = null;
+      this.logger?.info('Extraction: Regex-only mode (AI disabled or no API key)');
     }
   }
 
-  get isSonnetMode(): boolean { return this.client !== null; }
+  get isSonnetMode(): boolean { return this.client !== null && this.aiEnabled; }
 
   /** Extract structured CTI from article text */
   async extract(title: string, content: string, source: string): Promise<CTIExtractionResult> {
@@ -96,7 +101,7 @@ export class ExtractionService {
 
     try {
       const response = await this.client!.messages.create({
-        model: SONNET_MODEL,
+        model: this.model,
         max_tokens: 1024,
         system: EXTRACTION_SYSTEM_PROMPT,
         messages: [{

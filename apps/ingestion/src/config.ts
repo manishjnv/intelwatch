@@ -18,7 +18,22 @@ const EnvSchema = z.object({
   TI_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   TI_MAX_FEEDS_PER_TENANT: z.coerce.number().int().default(50),
   TI_MAX_CONSECUTIVE_FAILURES: z.coerce.number().int().default(5),
+
+  // ── AI Configuration ────────────────────────────────────────────────
+  // API key — set in .env on VPS. If empty, AI stages use rule-based fallback.
   TI_ANTHROPIC_API_KEY: z.string().optional(),
+  // AI usage enabled — master switch. Set to 'false' to disable all LLM calls.
+  TI_AI_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  // Daily AI budget per tenant (USD). 0 = unlimited. Default $0.50 for dev.
+  TI_AI_DAILY_BUDGET_USD: z.coerce.number().min(0).default(0.50),
+  // Max articles to triage with AI per feed fetch. Limits Haiku calls.
+  TI_AI_MAX_TRIAGE_PER_FETCH: z.coerce.number().int().min(0).default(10),
+  // Max articles for deep extraction per feed fetch. Limits Sonnet calls.
+  TI_AI_MAX_EXTRACTION_PER_FETCH: z.coerce.number().int().min(0).default(5),
+  // Triage model override (for future admin panel control)
+  TI_AI_TRIAGE_MODEL: z.string().default('claude-haiku-4-5-20251001'),
+  // Extraction model override
+  TI_AI_EXTRACTION_MODEL: z.string().default('claude-sonnet-4-20250514'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

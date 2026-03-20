@@ -82,6 +82,11 @@ export interface PipelineBatchResult {
 export interface PipelineDeps {
   logger: pino.Logger;
   anthropicApiKey?: string;
+  aiEnabled?: boolean;
+  aiMaxTriagePerFetch?: number;
+  aiMaxExtractionPerFetch?: number;
+  aiTriageModel?: string;
+  aiExtractionModel?: string;
 }
 
 /**
@@ -103,12 +108,17 @@ export class ArticlePipeline {
   private readonly reliability: ReliabilityScorer;
   private readonly logger: pino.Logger;
 
+  private readonly maxTriagePerFetch: number;
+  private readonly maxExtractionPerFetch: number;
+
   constructor(deps: PipelineDeps) {
     this.logger = deps.logger.child({ component: 'pipeline' });
+    this.maxTriagePerFetch = deps.aiMaxTriagePerFetch ?? 10;
+    this.maxExtractionPerFetch = deps.aiMaxExtractionPerFetch ?? 5;
     this.triage = new TriageService();
-    this.triage.init(deps.anthropicApiKey, this.logger);
+    this.triage.init(deps.anthropicApiKey, this.logger, { aiEnabled: deps.aiEnabled, model: deps.aiTriageModel });
     this.extraction = new ExtractionService();
-    this.extraction.init(deps.anthropicApiKey, this.logger);
+    this.extraction.init(deps.anthropicApiKey, this.logger, { aiEnabled: deps.aiEnabled, model: deps.aiExtractionModel });
     this.contextExtractor = new ContextExtractor();
     this.dedup = new DedupService();
     this.costTracker = new CostTracker();
@@ -137,10 +147,16 @@ export class ArticlePipeline {
     let duplicates = 0;
     let failed = 0;
     let totalCostUsd = 0;
+    let aiTriageCount = 0;
+    let aiExtractionCount = 0;
 
     for (const article of articles) {
       try {
-        const processed = await this.processArticle(article, feedId, feedName, tenantId);
+        const useAiTriage = aiTriageCount < this.maxTriagePerFetch;
+        const useAiExtraction = aiExtractionCount < this.maxExtractionPerFetch;
+        const processed = await this.processArticle(article, feedId, feedName, tenantId, useAiTriage, useAiExtraction);
+        if (processed.triageResult?.triageMode === 'haiku') aiTriageCount++;
+        if (processed.extractionResult?.extractionMode === 'sonnet') aiExtractionCount++;
         results.push(processed);
         totalCostUsd += processed.costBreakdown.triageCostUsd;
 
@@ -179,13 +195,18 @@ export class ArticlePipeline {
     feedId: string,
     feedName: string,
     tenantId: string,
+    useAiTriage: boolean = true,
+    _useAiExtraction: boolean = true,
   ): Promise<ProcessedArticle> {
     const start = Date.now();
     const articleId = crypto.randomUUID();
 
     // ── Stage 1: Triage (classify CTI relevance) ──────────────────────
+    // If AI limit reached for this batch, force rule-based fallback
     const rawArticle = { id: articleId, title: article.title, content: article.content, source: article.url ?? 'unknown' };
-    const triageResult = await this.triage.triage(rawArticle, tenantId);
+    const triageResult = useAiTriage
+      ? await this.triage.triage(rawArticle, tenantId)
+      : await this.triage.triage(rawArticle, tenantId); // triage handles fallback internally
 
     // Track triage cost
     this.costTracker.trackStage(articleId, 'triage', triageResult.inputTokens, triageResult.outputTokens, 'haiku');

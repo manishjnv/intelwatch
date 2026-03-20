@@ -39,7 +39,15 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
   const password = decodeURIComponent(url.password || '');
 
   const rssConnector = new RSSConnector(logger);
-  const pipeline = new ArticlePipeline({ logger, anthropicApiKey: config.TI_ANTHROPIC_API_KEY });
+  const pipeline = new ArticlePipeline({
+    logger,
+    anthropicApiKey: config.TI_ANTHROPIC_API_KEY,
+    aiEnabled: config.TI_AI_ENABLED,
+    aiMaxTriagePerFetch: config.TI_AI_MAX_TRIAGE_PER_FETCH,
+    aiMaxExtractionPerFetch: config.TI_AI_MAX_EXTRACTION_PER_FETCH,
+    aiTriageModel: config.TI_AI_TRIAGE_MODEL,
+    aiExtractionModel: config.TI_AI_EXTRACTION_MODEL,
+  });
 
   const queueName = QUEUES.FEED_FETCH.replace(/:/g, '-');
 

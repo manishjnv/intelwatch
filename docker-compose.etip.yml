@@ -286,6 +286,14 @@ services:
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
       TI_MAX_FEEDS_PER_TENANT: ${TI_MAX_FEEDS_PER_TENANT:-50}
       TI_MAX_CONSECUTIVE_FAILURES: ${TI_MAX_CONSECUTIVE_FAILURES:-5}
+      # AI Configuration — defaults are conservative for development
+      TI_ANTHROPIC_API_KEY: ${TI_ANTHROPIC_API_KEY:-}
+      TI_AI_ENABLED: ${TI_AI_ENABLED:-false}
+      TI_AI_DAILY_BUDGET_USD: ${TI_AI_DAILY_BUDGET_USD:-0.50}
+      TI_AI_MAX_TRIAGE_PER_FETCH: ${TI_AI_MAX_TRIAGE_PER_FETCH:-10}
+      TI_AI_MAX_EXTRACTION_PER_FETCH: ${TI_AI_MAX_EXTRACTION_PER_FETCH:-5}
+      TI_AI_TRIAGE_MODEL: ${TI_AI_TRIAGE_MODEL:-claude-haiku-4-5-20251001}
+      TI_AI_EXTRACTION_MODEL: ${TI_AI_EXTRACTION_MODEL:-claude-sonnet-4-20250514}
     depends_on:
       etip_postgres:
         condition: service_healthy
