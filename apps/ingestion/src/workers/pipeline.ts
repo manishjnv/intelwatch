@@ -14,6 +14,7 @@ import type pino from 'pino';
 import type { FetchedArticle } from '../connectors/rss.js';
 import { IOC_PATTERNS, isPrivateIP, isCommonDomain } from './ioc-patterns.js';
 import { TriageService, type TriageResult } from '../services/triage.js';
+import { ExtractionService, type CTIExtractionResult } from '../services/extraction.js';
 import { ContextExtractor, type IOCContext } from '../services/context-extractor.js';
 import { DedupService, type DedupResult, type DedupArticle } from '../services/dedup.js';
 import { CostTracker } from '../services/cost-tracker.js';
@@ -38,10 +39,12 @@ export interface ProcessedArticle {
   triageResult: TriageResult | null;
   /** Extracted IOC contexts (Stage 2) */
   iocContexts: IOCContext[];
+  /** Deep CTI extraction result (Stage 2) — null if not CTI-relevant */
+  extractionResult: CTIExtractionResult | null;
   /** Deduplication result (Stage 3) */
   dedupResult: DedupResult | null;
   /** Per-stage cost breakdown */
-  costBreakdown: { triageTokens: number; triageCostUsd: number };
+  costBreakdown: { triageTokens: number; triageCostUsd: number; extractionTokens: number; extractionCostUsd: number };
   /** IOC-level enrichment results */
   iocResults: IOCProcessingResult[];
   /** Processing time in ms */
@@ -78,6 +81,7 @@ export interface PipelineBatchResult {
 
 export interface PipelineDeps {
   logger: pino.Logger;
+  anthropicApiKey?: string;
 }
 
 /**
@@ -86,6 +90,7 @@ export interface PipelineDeps {
  */
 export class ArticlePipeline {
   private readonly triage: TriageService;
+  private readonly extraction: ExtractionService;
   private readonly contextExtractor: ContextExtractor;
   private readonly dedup: DedupService;
   private readonly costTracker: CostTracker;
@@ -101,6 +106,9 @@ export class ArticlePipeline {
   constructor(deps: PipelineDeps) {
     this.logger = deps.logger.child({ component: 'pipeline' });
     this.triage = new TriageService();
+    this.triage.init(deps.anthropicApiKey, this.logger);
+    this.extraction = new ExtractionService();
+    this.extraction.init(deps.anthropicApiKey, this.logger);
     this.contextExtractor = new ContextExtractor();
     this.dedup = new DedupService();
     this.costTracker = new CostTracker();
@@ -176,31 +184,29 @@ export class ArticlePipeline {
     const articleId = crypto.randomUUID();
 
     // ── Stage 1: Triage (classify CTI relevance) ──────────────────────
-    const triageResult = this.runTriage(article, tenantId);
+    const rawArticle = { id: articleId, title: article.title, content: article.content, source: article.url ?? 'unknown' };
+    const triageResult = await this.triage.triage(rawArticle, tenantId);
 
-    // Track triage cost (estimated — Haiku ~256 tokens output)
-    const triageInputTokens = Math.ceil((article.title.length + Math.min(article.content.length, 500)) / 4);
-    const triageOutputTokens = 64;
-    this.costTracker.trackStage(articleId, 'triage', triageInputTokens, triageOutputTokens, 'haiku');
+    // Track triage cost
+    this.costTracker.trackStage(articleId, 'triage', triageResult.inputTokens, triageResult.outputTokens, 'haiku');
     const triageCost = this.costTracker.getArticleCost(articleId);
+    const emptyCostBreakdown = { triageTokens: triageResult.inputTokens + triageResult.outputTokens, triageCostUsd: triageCost.totalCostUsd, extractionTokens: 0, extractionCostUsd: 0 };
 
     if (!triageResult.isCtiRelevant) {
       return {
-        original: article,
-        pipelineStatus: 'triaged',
-        isCtiRelevant: false,
-        triageResult,
-        iocContexts: [],
-        dedupResult: null,
-        costBreakdown: { triageTokens: triageInputTokens + triageOutputTokens, triageCostUsd: triageCost.totalCostUsd },
-        iocResults: [],
-        processingTimeMs: Date.now() - start,
-        skipped: true,
-        skipReason: 'not_cti_relevant',
+        original: article, pipelineStatus: 'triaged', isCtiRelevant: false,
+        triageResult, extractionResult: null, iocContexts: [], dedupResult: null,
+        costBreakdown: emptyCostBreakdown, iocResults: [],
+        processingTimeMs: Date.now() - start, skipped: true, skipReason: 'not_cti_relevant',
       };
     }
 
-    // ── Stage 2: Context Extraction (IOC windowing) ──────────────────
+    // ── Stage 2: Deep CTI Extraction (Sonnet or regex) ───────────────
+    const extractionResult = await this.extraction.extract(article.title, article.content, article.url ?? 'unknown');
+    this.costTracker.trackStage(articleId, 'extraction', extractionResult.inputTokens, extractionResult.outputTokens, 'sonnet');
+    const extractionCost = this.costTracker.getArticleCost(articleId);
+
+    // ── Stage 2b: IOC Context Extraction (regex windowing) ───────────
     const iocContexts = this.runContextExtraction(article.content);
 
     // ── Stage 3: Deduplication (3-layer) ─────────────────────────────
@@ -213,19 +219,19 @@ export class ArticlePipeline {
     const dedupResult = this.dedup.dedup(dedupArticle, []);
     this.dedup.bloomAdd(`${tenantId}:${article.title}:${article.url ?? ''}`);
 
+    const fullCostBreakdown = {
+      triageTokens: triageResult.inputTokens + triageResult.outputTokens,
+      triageCostUsd: triageCost.totalCostUsd,
+      extractionTokens: extractionResult.inputTokens + extractionResult.outputTokens,
+      extractionCostUsd: extractionCost.totalCostUsd - triageCost.totalCostUsd,
+    };
+
     if (dedupResult.isDuplicate && dedupResult.action === 'skip') {
       return {
-        original: article,
-        pipelineStatus: 'deduplicated',
-        isCtiRelevant: true,
-        triageResult,
-        iocContexts,
-        dedupResult,
-        costBreakdown: { triageTokens: triageInputTokens + triageOutputTokens, triageCostUsd: triageCost.totalCostUsd },
-        iocResults: [],
-        processingTimeMs: Date.now() - start,
-        skipped: true,
-        skipReason: 'duplicate',
+        original: article, pipelineStatus: 'deduplicated', isCtiRelevant: true,
+        triageResult, extractionResult, iocContexts, dedupResult,
+        costBreakdown: fullCostBreakdown, iocResults: [],
+        processingTimeMs: Date.now() - start, skipped: true, skipReason: 'duplicate',
       };
     }
 
@@ -233,61 +239,10 @@ export class ArticlePipeline {
     const iocResults = this.processIOCs(iocContexts, feedId, feedName, tenantId);
 
     return {
-      original: article,
-      pipelineStatus: 'deduplicated',
-      isCtiRelevant: true,
-      triageResult,
-      iocContexts,
-      dedupResult,
-      costBreakdown: { triageTokens: triageInputTokens + triageOutputTokens, triageCostUsd: triageCost.totalCostUsd },
-      iocResults,
-      processingTimeMs: Date.now() - start,
-      skipped: false,
-    };
-  }
-
-  /**
-   * Stage 1: Triage — classify article as CTI-relevant using prompt-based heuristic.
-   * In production, this calls Claude Haiku. For now, uses rule-based classification.
-   */
-  private runTriage(article: FetchedArticle, tenantId: string): TriageResult {
-    const prompt = this.triage.buildTriagePrompt(
-      { id: crypto.randomUUID(), title: article.title, content: article.content, source: article.url ?? 'unknown' },
-      tenantId,
-    );
-
-    // Rule-based triage until Claude API is wired (no API key required)
-    const content = `${article.title} ${article.content}`.toLowerCase();
-    const ctiKeywords = [
-      'malware', 'ransomware', 'phishing', 'vulnerability', 'cve-', 'exploit',
-      'threat actor', 'apt', 'campaign', 'ioc', 'indicator', 'c2', 'command and control',
-      'backdoor', 'trojan', 'botnet', 'zero-day', 'attack', 'breach', 'compromise',
-      'ttps', 'mitre', 'att&ck', 'lateral movement', 'exfiltration', 'persistence',
-    ];
-    const matchCount = ctiKeywords.filter((kw) => content.includes(kw)).length;
-    const isCtiRelevant = matchCount >= 2;
-    const confidence = Math.min(1, matchCount * 0.15);
-
-    const articleType = matchCount >= 4 ? 'threat_report' as const
-      : matchCount >= 2 ? 'vulnerability_advisory' as const
-      : matchCount >= 1 ? 'news' as const
-      : 'irrelevant' as const;
-
-    const priority = matchCount >= 5 ? 'critical' as const
-      : matchCount >= 3 ? 'high' as const
-      : matchCount >= 2 ? 'normal' as const
-      : 'low' as const;
-
-    // Log the prompt construction for debugging (prompt is ready for Claude when API key is added)
-    this.logger.debug({ tenantId, promptLength: prompt.system.length + prompt.userMessage.length }, 'Triage prompt built');
-
-    return {
-      isCtiRelevant,
-      confidence,
-      detectedLanguage: 'en',
-      articleType,
-      estimatedIocCount: matchCount,
-      priority,
+      original: article, pipelineStatus: 'deduplicated', isCtiRelevant: true,
+      triageResult, extractionResult, iocContexts, dedupResult,
+      costBreakdown: fullCostBreakdown, iocResults,
+      processingTimeMs: Date.now() - start, skipped: false,
     };
   }
 
@@ -418,9 +373,10 @@ export class ArticlePipeline {
       pipelineStatus: 'failed',
       isCtiRelevant: false,
       triageResult: null,
+      extractionResult: null,
       iocContexts: [],
       dedupResult: null,
-      costBreakdown: { triageTokens: 0, triageCostUsd: 0 },
+      costBreakdown: { triageTokens: 0, triageCostUsd: 0, extractionTokens: 0, extractionCostUsd: 0 },
       iocResults: [],
       processingTimeMs: 0,
       skipped: false,

@@ -18,6 +18,7 @@ const EnvSchema = z.object({
   TI_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   TI_MAX_FEEDS_PER_TENANT: z.coerce.number().int().default(50),
   TI_MAX_CONSECUTIVE_FAILURES: z.coerce.number().int().default(5),
+  TI_ANTHROPIC_API_KEY: z.string().optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

@@ -6,8 +6,13 @@
  *
  * Differentiator: No competing TI platform offers per-tenant adaptive triage.
  * Recorded Future/Mandiant use one-size-fits-all classifiers.
+ *
+ * Dual-mode: calls Claude Haiku when API key is set, falls back to
+ * rule-based keyword matching when no key is available (dev/test).
  */
+import Anthropic from '@anthropic-ai/sdk';
 import { sanitizeLLMInput } from '@etip/shared-enrichment';
+import type pino from 'pino';
 
 export type ArticleType = 'threat_report' | 'vulnerability_advisory' | 'news' | 'blog' | 'irrelevant';
 export type Priority = 'critical' | 'high' | 'normal' | 'low';
@@ -28,6 +33,9 @@ export interface TriageResult {
   articleType: ArticleType;
   estimatedIocCount: number;
   priority: Priority;
+  triageMode: 'haiku' | 'rule_based';
+  inputTokens: number;
+  outputTokens: number;
 }
 
 export interface FeedbackRecord {
@@ -46,14 +54,120 @@ export interface TriagePrompt {
   userMessage: string;
 }
 
-const SYSTEM_PROMPT = `You are a CTI triage analyst. Classify if this article contains actionable threat intelligence (IOCs, TTPs, threat actors, vulnerabilities). Return JSON only:
-{"is_cti_relevant": boolean, "confidence": number, "detected_language": string, "article_type": string, "estimated_ioc_count": number, "priority": string}`;
+const SYSTEM_PROMPT = `You are a CTI triage analyst. Classify if this article contains actionable cyber threat intelligence (IOCs, TTPs, threat actors, vulnerabilities, malware, campaigns, exploits).
 
+Return ONLY valid JSON (no markdown, no explanation):
+{"is_cti_relevant": boolean, "confidence": number, "detected_language": "en", "article_type": "threat_report|vulnerability_advisory|news|blog|irrelevant", "estimated_ioc_count": number, "priority": "critical|high|normal|low"}
+
+Rules:
+- confidence is 0.0-1.0 (how sure you are about is_cti_relevant)
+- article_type: threat_report (APT/campaign/malware analysis), vulnerability_advisory (CVE/patch/exploit), news (general security news), blog (opinion/overview), irrelevant (not CTI)
+- priority: critical (active exploitation/0-day), high (new threat/campaign), normal (routine advisory), low (background noise)
+- estimated_ioc_count: how many IOCs (IPs, hashes, domains, CVEs, emails) you see in the excerpt`;
+
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_FEEDBACK_PER_TENANT = 50;
 const EXCERPT_LENGTH = 300;
 
+const CTI_KEYWORDS = [
+  'malware', 'ransomware', 'phishing', 'vulnerability', 'cve-', 'exploit',
+  'threat actor', 'apt', 'campaign', 'ioc', 'indicator', 'c2', 'command and control',
+  'backdoor', 'trojan', 'botnet', 'zero-day', 'attack', 'breach', 'compromise',
+  'ttps', 'mitre', 'att&ck', 'lateral movement', 'exfiltration', 'persistence',
+  'cobalt strike', 'beacon', 'implant', 'loader', 'dropper', 'stealer',
+];
+
 export class TriageService {
   private feedbackStore: Map<string, FeedbackRecord[]> = new Map();
+  private client: Anthropic | null = null;
+  private logger: pino.Logger | null = null;
+
+  /** Initialize with optional API key + logger. If no key, falls back to rule-based. */
+  init(apiKey?: string, logger?: pino.Logger): void {
+    this.logger = logger ?? null;
+    if (apiKey) {
+      this.client = new Anthropic({ apiKey });
+      this.logger?.info('Triage: Claude Haiku mode (API key set)');
+    } else {
+      this.logger?.info('Triage: Rule-based mode (no API key — set TI_ANTHROPIC_API_KEY for Haiku)');
+    }
+  }
+
+  /** Whether Haiku mode is active */
+  get isHaikuMode(): boolean { return this.client !== null; }
+
+  /**
+   * Triage an article — returns classification result.
+   * Uses Claude Haiku when API key is set, rule-based fallback otherwise.
+   */
+  async triage(article: RawArticle, tenantId: string): Promise<TriageResult> {
+    if (this.client) {
+      return this.triageWithHaiku(article, tenantId);
+    }
+    return this.triageRuleBased(article);
+  }
+
+  /** Claude Haiku triage — ~$0.001/article */
+  private async triageWithHaiku(article: RawArticle, tenantId: string): Promise<TriageResult> {
+    const prompt = this.buildTriagePrompt(article, tenantId);
+
+    const messages: Anthropic.MessageParam[] = [];
+    if (prompt.fewShot) {
+      messages.push({ role: 'user', content: `Here are examples of previous triage decisions:\n${prompt.fewShot}` });
+      messages.push({ role: 'assistant', content: 'Understood. I will use these examples to inform my triage.' });
+    }
+    messages.push({ role: 'user', content: prompt.userMessage });
+
+    try {
+      const response = await this.client!.messages.create({
+        model: HAIKU_MODEL,
+        max_tokens: 256,
+        system: prompt.system,
+        messages,
+      });
+
+      const text = response.content[0]?.type === 'text' ? response.content[0].text : '';
+      const result = this.parseTriageResponse(text);
+      result.triageMode = 'haiku';
+      result.inputTokens = response.usage.input_tokens;
+      result.outputTokens = response.usage.output_tokens;
+
+      this.logger?.debug(
+        { articleTitle: article.title, relevant: result.isCtiRelevant, confidence: result.confidence, tokens: result.inputTokens + result.outputTokens },
+        'Haiku triage complete',
+      );
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger?.warn({ error: message, articleTitle: article.title }, 'Haiku triage failed — falling back to rule-based');
+      return this.triageRuleBased(article);
+    }
+  }
+
+  /** Rule-based triage fallback — keyword matching */
+  private triageRuleBased(article: RawArticle): TriageResult {
+    const content = `${article.title} ${article.content}`.toLowerCase();
+    const matchCount = CTI_KEYWORDS.filter((kw) => content.includes(kw)).length;
+    const isCtiRelevant = matchCount >= 2;
+    const confidence = Math.min(1, matchCount * 0.12);
+
+    const articleType = matchCount >= 4 ? 'threat_report' as const
+      : matchCount >= 2 ? 'vulnerability_advisory' as const
+      : matchCount >= 1 ? 'news' as const
+      : 'irrelevant' as const;
+
+    const priority = matchCount >= 5 ? 'critical' as const
+      : matchCount >= 3 ? 'high' as const
+      : matchCount >= 2 ? 'normal' as const
+      : 'low' as const;
+
+    return {
+      isCtiRelevant, confidence, detectedLanguage: 'en',
+      articleType, estimatedIocCount: matchCount, priority,
+      triageMode: 'rule_based', inputTokens: 0, outputTokens: 0,
+    };
+  }
 
   /** Record analyst feedback for an article */
   recordFeedback(
@@ -64,15 +178,11 @@ export class TriageService {
       this.feedbackStore.set(tenantId, []);
     }
     const records = this.feedbackStore.get(tenantId)!;
-
     records.push({
       articleId, tenantId, title,
       excerpt: excerpt.slice(0, EXCERPT_LENGTH),
-      originalResult, analystAction: action,
-      timestamp: new Date(),
+      originalResult, analystAction: action, timestamp: new Date(),
     });
-
-    // Keep only most recent feedback per tenant
     if (records.length > MAX_FEEDBACK_PER_TENANT) {
       records.splice(0, records.length - MAX_FEEDBACK_PER_TENANT);
     }
@@ -82,16 +192,12 @@ export class TriageService {
   buildFewShotExamples(tenantId: string, limit: number = 5): string {
     const records = this.feedbackStore.get(tenantId);
     if (!records || records.length === 0) return '';
-
-    // Select diverse examples: mix of FP and confirmed
     const fps = records.filter((r) => r.analystAction === 'false_positive').slice(-2);
     const confirmed = records.filter((r) => r.analystAction === 'confirmed_relevant' || r.analystAction === 'escalated').slice(-3);
     const examples = [...fps, ...confirmed].slice(0, limit);
-
     if (examples.length === 0) return '';
-
     return examples.map((ex) => {
-      const correctLabel = ex.analystAction === 'false_positive' ? false : true;
+      const correctLabel = ex.analystAction !== 'false_positive';
       return `Example: Title: "${ex.title}" Excerpt: "${ex.excerpt}" → is_cti_relevant: ${correctLabel}`;
     }).join('\n');
   }
@@ -101,23 +207,19 @@ export class TriageService {
     const { sanitized } = sanitizeLLMInput(article.content);
     const excerpt = sanitized.slice(0, 500);
     const fewShot = this.buildFewShotExamples(tenantId);
-
     const userMessage = `Title: ${article.title}\nSource: ${article.source}\nExcerpt (500 chars): ${excerpt}`;
-
-    return {
-      system: SYSTEM_PROMPT,
-      fewShot,
-      userMessage,
-    };
+    return { system: SYSTEM_PROMPT, fewShot, userMessage };
   }
 
   /** Parse LLM triage response into typed result */
   parseTriageResponse(rawJson: string): TriageResult {
+    // Strip markdown code fences if Claude wraps them
+    const cleaned = rawJson.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(rawJson) as Record<string, unknown>;
+      parsed = JSON.parse(cleaned) as Record<string, unknown>;
     } catch {
-      throw new Error(`Failed to parse triage response as JSON: ${rawJson.slice(0, 100)}`);
+      throw new Error(`Failed to parse triage response as JSON: ${rawJson.slice(0, 200)}`);
     }
     return {
       isCtiRelevant: Boolean(parsed.is_cti_relevant),
@@ -126,18 +228,12 @@ export class TriageService {
       articleType: validateArticleType(parsed.article_type),
       estimatedIocCount: Math.max(0, Number(parsed.estimated_ioc_count) || 0),
       priority: validatePriority(parsed.priority),
+      triageMode: 'haiku', inputTokens: 0, outputTokens: 0,
     };
   }
 
-  /** Get feedback count for a tenant */
-  getFeedbackCount(tenantId: string): number {
-    return this.feedbackStore.get(tenantId)?.length ?? 0;
-  }
-
-  /** Clear feedback for testing */
-  clearFeedback(tenantId: string): void {
-    this.feedbackStore.delete(tenantId);
-  }
+  getFeedbackCount(tenantId: string): number { return this.feedbackStore.get(tenantId)?.length ?? 0; }
+  clearFeedback(tenantId: string): void { this.feedbackStore.delete(tenantId); }
 }
 
 function validateArticleType(value: unknown): ArticleType {

@@ -89,13 +89,16 @@ describe('ArticlePipeline', () => {
       expect(processed.iocContexts.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('tracks triage cost for each article', async () => {
+    it('tracks triage cost breakdown for each article', async () => {
       const articles = [makeCTIArticle()];
       const result = await pipeline.processBatch(articles, FEED_ID, FEED_NAME, TENANT_ID);
 
       const processed = result.articles[0];
-      expect(processed.costBreakdown.triageTokens).toBeGreaterThan(0);
+      // Rule-based mode: 0 tokens (no LLM call). Haiku mode: >0 tokens.
+      expect(processed.costBreakdown.triageTokens).toBeGreaterThanOrEqual(0);
       expect(processed.costBreakdown.triageCostUsd).toBeGreaterThanOrEqual(0);
+      expect(processed.costBreakdown.extractionTokens).toBeGreaterThanOrEqual(0);
+      expect(processed.costBreakdown.extractionCostUsd).toBeGreaterThanOrEqual(0);
     });
 
     it('processes mixed batch: CTI and irrelevant articles', async () => {

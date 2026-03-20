@@ -39,7 +39,7 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
   const password = decodeURIComponent(url.password || '');
 
   const rssConnector = new RSSConnector(logger);
-  const pipeline = new ArticlePipeline({ logger });
+  const pipeline = new ArticlePipeline({ logger, anthropicApiKey: config.TI_ANTHROPIC_API_KEY });
 
   const queueName = QUEUES.FEED_FETCH.replace(/:/g, '-');
 
@@ -233,9 +233,11 @@ async function persistArticles(
       triageConfidence: a.triageResult?.confidence ?? 0,
       triagePriority: a.triageResult?.priority ?? null,
       triageResult: a.triageResult as object ?? undefined,
-      extractionResult: a.iocResults.length > 0 ? a.iocResults as unknown as object : undefined,
+      extractionResult: a.extractionResult as object ?? undefined,
       stage1TriageTokens: a.costBreakdown.triageTokens,
       stage1TriageCostUsd: a.costBreakdown.triageCostUsd,
+      stage2ExtractionTokens: a.costBreakdown.extractionTokens,
+      stage2ExtractionCostUsd: a.costBreakdown.extractionCostUsd,
       iocsExtracted: a.iocContexts.length,
       processingTimeMs: a.processingTimeMs,
       dedupResult: a.dedupResult as object ?? undefined,
