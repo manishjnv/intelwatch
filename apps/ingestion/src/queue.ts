@@ -9,7 +9,9 @@ export function createFeedFetchQueue(): Queue {
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
 
-  _queue = new Queue(QUEUES.FEED_FETCH, {
+  // BullMQ v5.71+ forbids ':' in queue names; use dashes instead
+  const queueName = QUEUES.FEED_FETCH.replace(/:/g, '-');
+  _queue = new Queue(queueName, {
     connection: {
       host: url.hostname,
       port: Number(url.port) || 6379,
