@@ -31,8 +31,12 @@ export class FeedScheduler {
 
     this.deps.logger.info('Feed scheduler starting');
 
-    // Initial sync
-    await this.syncFeeds();
+    // Initial sync — catch errors so missing DB tables don't crash the service
+    try {
+      await this.syncFeeds();
+    } catch (err) {
+      this.deps.logger.warn({ error: (err as Error).message }, 'Initial feed sync failed — will retry on next interval');
+    }
 
     // Periodic re-sync to pick up new/updated/deleted feeds
     this.syncTask = cron.schedule(SYNC_INTERVAL_CRON, () => {
