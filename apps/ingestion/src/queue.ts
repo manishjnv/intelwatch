@@ -7,12 +7,16 @@ let _queue: Queue | null = null;
 export function createFeedFetchQueue(): Queue {
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
+  const password = decodeURIComponent(url.password || '');
 
   _queue = new Queue(QUEUES.FEED_FETCH, {
     connection: {
       host: url.hostname,
       port: Number(url.port) || 6379,
-      password: url.password || undefined,
+      password: password || undefined,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      lazyConnect: true,
     },
     defaultJobOptions: {
       attempts: 3,
