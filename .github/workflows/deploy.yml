@@ -116,8 +116,8 @@ jobs:
             # ── Sync AI config to .env (from GitHub Secrets) ──
             # Ensures VPS .env always has latest AI settings without manual SSH
             grep -q '^TI_ANTHROPIC_API_KEY=' .env 2>/dev/null && \
-              sed -i 's|^TI_ANTHROPIC_API_KEY=.*|TI_ANTHROPIC_API_KEY=${{ secrets.TI_ANTHROPIC_API_KEY }}|' .env || \
-              echo 'TI_ANTHROPIC_API_KEY=${{ secrets.TI_ANTHROPIC_API_KEY }}' >> .env
+              sed -i 's|^TI_ANTHROPIC_API_KEY=.*|TI_ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}|' .env || \
+              echo 'TI_ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}' >> .env
             grep -q '^TI_AI_ENABLED=' .env 2>/dev/null && \
               sed -i 's|^TI_AI_ENABLED=.*|TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}|' .env || \
               echo 'TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}' >> .env
