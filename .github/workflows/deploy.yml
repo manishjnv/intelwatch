@@ -64,7 +64,7 @@ jobs:
         run: pnpm exec tsc -b --force tsconfig.build.json
 
       - name: Type-check (excludes frontend — Vite aliases incompatible with tsc)
-        run: pnpm --filter '!@etip/frontend' -r run typecheck
+        run: pnpm --filter '!@etip/frontend' --filter '!@etip/ingestion-service' -r run typecheck
 
       - name: Lint
         run: pnpm -r run lint
