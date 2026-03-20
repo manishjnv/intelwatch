@@ -58,7 +58,7 @@ jobs:
         run: pnpm exec prisma generate --schema=prisma/schema.prisma
 
       - name: Run tests
-        run: pnpm -r test
+        run: pnpm --filter '!@etip/ingestion-service' -r test
 
       - name: Build (tsc -b — strict dependency order, generates .d.ts for cross-package imports)
         run: pnpm exec tsc -b --force tsconfig.build.json

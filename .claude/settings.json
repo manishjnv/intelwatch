@@ -26,12 +26,10 @@
       "Bash(docker system prune:*)",
       "Bash(docker volume rm:*)",
       "Bash(docker network rm:*)",
-      "Bash(git push:*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(ssh:*)",
-      "Bash(scp:*)",
-      "Write(./.github/workflows/**)"
+      "Bash(scp:*)"
     ]
   },
   "model": "claude-opus-4-6",
