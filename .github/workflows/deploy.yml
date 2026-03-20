@@ -58,13 +58,13 @@ jobs:
         run: pnpm exec prisma generate --schema=prisma/schema.prisma
 
       - name: Run tests
-        run: pnpm --filter '!@etip/ingestion-service' -r test
+        run: pnpm -r test
 
       - name: Build (tsc -b — strict dependency order, generates .d.ts for cross-package imports)
         run: pnpm exec tsc -b --force tsconfig.build.json
 
       - name: Type-check (excludes frontend — Vite aliases incompatible with tsc)
-        run: pnpm --filter '!@etip/frontend' --filter '!@etip/ingestion-service' -r run typecheck
+        run: pnpm --filter '!@etip/frontend' -r run typecheck
 
       - name: Lint
         run: pnpm -r run lint
@@ -130,7 +130,7 @@ jobs:
 
             # Force recreate app containers (picks up new images + compose config)
             echo "Recreating app containers..."
-            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate etip_api etip_frontend etip_nginx
+            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate etip_api etip_ingestion etip_frontend etip_nginx
 
             # ── Run Prisma migrations ──
             echo "Running Prisma migrations..."
