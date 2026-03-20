@@ -20,27 +20,29 @@
 | Prisma Schema (5 tables applied) | ✅ **Applied to DB** | — |
 | Infrastructure (9 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → deploy) | ✅ Auto-deploy | — |
+| SSL (ti.intelwatch.in) | ✅ Caddy + LE | — |
 | Production tests (VPS) | ✅ 17/17 passing | 17 |
 | Frontend shell | ⬜ Next | — |
 | **Phase 1 Progress** | **95%** | **266 + 17** |
 
-## Live API
+## Live API Endpoints
 
 ```bash
 # Health
 curl https://ti.intelwatch.in/health
+# → {"status":"ok","service":"api-gateway","version":"1.0.0","uptime":...}
 
 # Register
 curl -X POST https://ti.intelwatch.in/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com","password":"YourSecurePass12!","displayName":"Name","tenantName":"Org","tenantSlug":"my-org"}'
+  -d '{"email":"you@example.com","password":"YourSecurePass12!","displayName":"Your Name","tenantName":"Your Org","tenantSlug":"your-org"}'
 
-# Login → returns accessToken + refreshToken
+# Login
 curl -X POST https://ti.intelwatch.in/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com","password":"YourSecurePass12!"}'
 
-# Profile
+# Profile (with token from login)
 curl -H "Authorization: Bearer <accessToken>" https://ti.intelwatch.in/api/v1/auth/me
 ```
 
@@ -49,20 +51,31 @@ curl -H "Authorization: Bearer <accessToken>" https://ti.intelwatch.in/api/v1/au
 ```
 Internet → Caddy (SSL) → etip_nginx → etip_api:3001 (Fastify)
                                          ↕
-                                   etip_postgres · etip_redis
+                                   etip_postgres:5432
+                                   etip_redis:6379
 ```
 
-9 containers: PostgreSQL, Redis, Elasticsearch, Neo4j, MinIO, Prometheus, Grafana, Nginx, API
+9 containers: PostgreSQL 16, Redis 7, Elasticsearch 8, Neo4j 5, MinIO, Prometheus, Grafana, Nginx, **API Gateway**
+
+## Development
+
+```bash
+pnpm install
+pnpm exec prisma generate --schema=prisma/schema.prisma
+pnpm -r test    # 266 tests
+```
 
 ## Security
 
-JWT access (15min) + refresh (7d) with rotation & theft detection · bcrypt cost 12 · RBAC 5 roles · PII redaction · Rate limiting · Zod validation · CORS + Helmet
+- JWT access (15min) + refresh (7d) with single-use rotation and theft detection
+- bcrypt cost 12 · RBAC 5 roles, 30+ perms · Service JWT 60s TTL
+- PII redaction · Rate limiting 100/min · Zod validation · CORS + Helmet
 
 ## Deployment
 
-Push to `master` → 266 tests → auto-deploy → prisma db push → health check.
-See [Deployment RCA](docs/DEPLOYMENT_RCA.md) for troubleshooting.
+Push to `master` → CI runs 266 tests → auto-deploys to VPS → prisma db push → health check.
+See `docs/DEPLOYMENT_RCA.md` for deployment troubleshooting guide.
 
 ---
 
-**Built with Claude** · [Architecture](PROJECT_BRAIN.md) · [Deployment RCA](docs/DEPLOYMENT_RCA.md)
+**Built with Claude** · [Architecture Details](PROJECT_BRAIN.md) · [Deployment RCA](docs/DEPLOYMENT_RCA.md)

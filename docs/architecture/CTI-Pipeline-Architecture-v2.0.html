@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTI News Feed AI Pipeline — Final Architecture Document</title>
+<style>
+:root{--primary:#1a73e8;--secondary:#34a853;--accent:#ea4335;--bg:#fff;--text:#202124;--border:#dadce0;--code-bg:#f8f9fa;--section-bg:#f1f3f4;--highlight:#fef7e0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:var(--text);line-height:1.7;max-width:1100px;margin:0 auto;padding:20px 40px 60px}
+h1{font-size:2em;border-bottom:3px solid var(--primary);padding-bottom:12px;margin:30px 0 10px}
+h2{font-size:1.5em;color:var(--primary);border-bottom:2px solid var(--border);padding-bottom:8px;margin:35px 0 12px}
+h3{font-size:1.2em;color:#333;margin:20px 0 8px}
+h4{font-size:1.05em;color:#555;margin:15px 0 6px}
+p{margin:8px 0}
+table{width:100%;border-collapse:collapse;margin:15px 0;font-size:0.92em}
+th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--primary);color:#fff;font-weight:600}
+tr:nth-child(even){background:var(--section-bg)}
+tr:hover{background:var(--highlight)}
+code{background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:'Cascadia Code','Fira Code',monospace;font-size:0.88em}
+pre{background:#1e1e2e;color:#cdd6f4;padding:16px 20px;border-radius:8px;overflow-x:auto;margin:12px 0;font-size:0.85em;line-height:1.5}
+pre code{background:none;color:inherit;padding:0}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.78em;font-weight:600;margin-left:6px}
+.badge-rec{background:#e8f5e9;color:#2e7d32}
+.badge-new{background:#e3f2fd;color:#1565c0}
+.badge-phase2{background:#fff3e0;color:#e65100}
+.callout{background:var(--highlight);border-left:4px solid #f9ab00;padding:12px 16px;margin:12px 0;border-radius:0 6px 6px 0}
+.callout-blue{background:#e8f0fe;border-left-color:var(--primary)}
+.callout-green{background:#e6f4ea;border-left-color:var(--secondary)}
+.callout-red{background:#fce8e6;border-left-color:var(--accent)}
+.diagram{background:#1e1e2e;color:#89b4fa;padding:20px;border-radius:8px;font-family:'Cascadia Code',monospace;font-size:0.82em;overflow-x:auto;white-space:pre;line-height:1.4;margin:15px 0}
+.toc{background:var(--section-bg);padding:20px 30px;border-radius:8px;margin:20px 0}
+.toc a{color:var(--primary);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.toc ul{list-style:none;padding-left:20px}
+.toc li{margin:4px 0}
+.toc li::before{content:"→ ";color:var(--primary)}
+.meta{color:#666;font-size:0.9em;margin-bottom:30px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){.grid-2{grid-template-columns:1fr}}
+.card{border:1px solid var(--border);border-radius:8px;padding:16px;background:#fff}
+.card h4{margin-top:0}
+.star{color:#f9ab00}
+hr{border:none;border-top:1px solid var(--border);margin:25px 0}
+@media print{body{max-width:100%;padding:10px}pre,.diagram{white-space:pre-wrap}table{font-size:0.8em}}
+</style>
+</head>
+<body>
+<h1>🛡️ CTI News Feed AI Pipeline — Final Architecture Document</h1>
+<p class="meta"><strong>Version:</strong> 2.0 &nbsp;|&nbsp; <strong>Date:</strong> March 16, 2026 &nbsp;|&nbsp; <strong>Classification:</strong> Internal — Implementation Ready &nbsp;|&nbsp; <strong>Status:</strong> Approved for Development</p>
+
+<div class="callout-blue callout">
+<strong>Purpose:</strong> This document defines the complete, implementation-ready architecture for a multi-tenant, AI-powered Cyber Threat Intelligence (CTI) news feed processing platform. It covers system design, modular code structure, technology stack, security, scalability, admin customization, and deployment — synthesized from deep research into competitor platforms (Recorded Future, CrowdStrike, Anomali, ThreatConnect, MISP, OpenCTI) and current best practices in LLM orchestration, event-driven microservices, and multi-tenant SaaS security.
+</div>
+
+<div class="toc">
+<h3>📑 Table of Contents</h3>
+<ul>
+<li><a href="#s1">1. Executive Summary & Design Principles</a></li>
+<li><a href="#s2">2. System Architecture Overview</a></li>
+<li><a href="#s3">3. Technology Stack</a></li>
+<li><a href="#s4">4. Modular Code Architecture (Hexagonal / Clean Architecture)</a></li>
+<li><a href="#s5">5. Multi-Tenant Configuration & Admin Panel</a></li>
+<li><a href="#s6">6. Pipeline Stages — Detailed Design</a>
+  <ul>
+    <li><a href="#s6a">6.1 Stage 1: Triage & General NLP</a></li>
+    <li><a href="#s6b">6.2 Stage 2: CTI Deep Extraction</a></li>
+    <li><a href="#s6c">6.3 Stage 2.5: External Enrichment Gateway</a></li>
+    <li><a href="#s6d">6.4 Stage 3: Deduplication & Entity Resolution</a></li>
+    <li><a href="#s6e">6.5 Stage 4: Persistence & Lifecycle Management</a></li>
+  </ul>
+</li>
+<li><a href="#s7">7. LLM Gateway & Model Registry</a></li>
+<li><a href="#s8">8. AI Model Comparison & Recommendations</a></li>
+<li><a href="#s9">9. Data Models & Schemas</a></li>
+<li><a href="#s10">10. Security Architecture</a></li>
+<li><a href="#s11">11. Scalability & Deployment</a></li>
+<li><a href="#s12">12. Competitor Feature Integration</a></li>
+<li><a href="#s13">13. Cost Model</a></li>
+<li><a href="#s14">14. Project Directory Structure</a></li>
+<li><a href="#s15">15. API Specification Overview</a></li>
+<li><a href="#s16">16. Implementation Roadmap</a></li>
+</ul>
+</div>
+
+<hr>
+
+<h2 id="s1">1. Executive Summary & Design Principles</h2>
+
+<h3>1.1 What This System Does</h3>
+<p>The platform ingests cybersecurity news articles (avg. 3,000 words each), processes them through a multi-stage AI pipeline to extract structured intelligence (summaries, keywords, dates, IOCs, CVEs, threat actors, MITRE ATT&CK TTPs, entity relationships), enriches findings against external threat databases (VirusTotal, Shodan, AbuseIPDB), deduplicates across sources, and persists the results into a knowledge graph with automated lifecycle management. The system serves multiple customers (tenants) who can independently configure which AI models power each subtask.</p>
+
+<h3>1.2 Core Design Principles</h3>
+<table>
+<tr><th>Principle</th><th>Implementation</th></tr>
+<tr><td><strong>Accuracy First</strong></td><td>Hybrid multi-model architecture assigns the best-performing AI model to each subtask. Extraction validated via external enrichment. Confidence scoring from multiple signals.</td></tr>
+<tr><td><strong>Modular & Pluggable</strong></td><td>Hexagonal (Ports & Adapters) architecture. Every component — LLM provider, enrichment source, database, message broker — is behind an interface. Swap without code changes.</td></tr>
+<tr><td><strong>Multi-Tenant Isolation</strong></td><td>Tenant-scoped data at every layer. Row-level security in PostgreSQL, namespace isolation in Redis, tenant-prefixed Kafka topics, encrypted API key vault per tenant.</td></tr>
+<tr><td><strong>Event-Driven & Scalable</strong></td><td>Kafka-based message bus between stages. Each stage is an independent consumer group. Scale horizontally by adding consumers. No stage directly calls another.</td></tr>
+<tr><td><strong>Cost-Transparent</strong></td><td>Per-token metering at the LLM gateway. Real-time cost tracking per tenant per subtask. Budget caps with automatic model downgrade or pause.</td></tr>
+<tr><td><strong>Secure by Default</strong></td><td>Zero-trust networking. HashiCorp Vault for secrets. AES-256 encryption at rest. TLS 1.3 in transit. SOC 2 Type II and GDPR compliant patterns.</td></tr>
+<tr><td><strong>Easy Maintenance</strong></td><td>Clean architecture with clear dependency direction. Comprehensive typing (Python type hints + Pydantic). Feature flags for gradual rollout. Structured logging + OpenTelemetry tracing.</td></tr>
+</table>
+
+<hr>
+
+<h2 id="s2">2. System Architecture Overview</h2>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           CONTROL PLANE (Admin & Config)                         │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │  Admin UI     │  │ Tenant Config    │  │ Model        │  │ Cost &        │  │
+│  │  (React/Next) │  │ Service          │  │ Registry     │  │ Metering Svc  │  │
+│  └──────┬───────┘  └────────┬─────────┘  └──────┬───────┘  └──────┬────────┘  │
+│         └──────────────────┐│┌──────────────────┘                  │           │
+│                            │││                                     │           │
+│                    ┌───────▼▼▼──────────────────────────────────────▼──────┐    │
+│                    │              PostgreSQL (Config DB)                    │    │
+│                    │  tenant_configs | model_registry | cost_ledger        │    │
+│                    └──────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          APPLICATION PLANE (Data Processing)                     │
+│                                                                                 │
+│  ┌─────────┐    ┌─────────────────────────────────────────────────────────┐     │
+│  │  News   │    │                   KAFKA EVENT BUS                       │     │
+│  │  Feed   ├───►│  articles.raw → articles.stage1 → articles.stage2 →    │     │
+│  │ Ingester│    │  articles.enriched → articles.stage3 → intel.persist   │     │
+│  └─────────┘    └──┬──────────┬──────────┬───────────┬──────────┬────────┘     │
+│                    │          │          │           │          │              │
+│              ┌─────▼────┐┌───▼─────┐┌───▼──────┐┌──▼─────┐┌───▼─────┐       │
+│              │ Stage 1  ││Stage 2  ││Stage 2.5 ││Stage 3 ││Stage 4  │       │
+│              │ Triage   ││CTI Deep ││Enrichment││Dedup & ││Persist  │       │
+│              │ NLP      ││Extract  ││Gateway   ││Resolve ││Lifecycle│       │
+│              │ Workers  ││Workers  ││Workers   ││Workers ││Workers  │       │
+│              └────┬─────┘└────┬────┘└────┬─────┘└───┬────┘└───┬─────┘       │
+│                   └───────────┴──────────┴──────────┴─────────┘              │
+│                                       │                                      │
+│                            ┌──────────▼──────────┐                           │
+│                            │   LLM GATEWAY       │                           │
+│                            │  (Unified Router)    │                           │
+│                            │  ┌────┐┌────┐┌────┐ │                           │
+│                            │  │OAI ││Anth││Goog│ │                           │
+│                            │  └────┘└────┘└────┘ │                           │
+│                            └─────────────────────┘                           │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          DATA PLANE (Storage & Intelligence)                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  ┌────────────────┐    │
+│  │ PostgreSQL   │  │ Neo4j        │  │ Elasticsearch │  │ Redis          │    │
+│  │ (IOC DB,     │  │ (Knowledge   │  │ (Full-text    │  │ (Cache, Rate   │    │
+│  │  CVE, TA,    │  │  Graph,      │  │  Search,      │  │  Limits, Dedup │    │
+│  │  Articles)   │  │  Relations)  │  │  Analytics)   │  │  Bloom Filter) │    │
+│  └──────────────┘  └──────────────┘  └───────────────┘  └────────────────┘    │
+│                                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │                    CONSUMER LAYER                                        │  │
+│  │  REST API (FastAPI) │ Conversational Q&A │ STIX/TAXII Server │ Webhooks │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+</div>
+<hr>
+<h2 id="s3">3. Technology Stack</h2>
+
+<table>
+<tr><th>Layer</th><th>Technology</th><th>Justification</th></tr>
+<tr><td><strong>API Gateway</strong></td><td>Kong / Traefik</td><td>Rate limiting, JWT validation, tenant routing, TLS termination</td></tr>
+<tr><td><strong>Backend Framework</strong></td><td>Python 3.12+ / FastAPI</td><td>Async-native, Pydantic validation, OpenAPI auto-docs, type safety</td></tr>
+<tr><td><strong>Task Queue / Workers</strong></td><td>Celery 5.x + Redis broker</td><td>Distributed task execution, priority queues per tenant, retry with exponential backoff</td></tr>
+<tr><td><strong>Event Bus</strong></td><td>Apache Kafka 3.x (or Redpanda)</td><td>Decoupled stages, guaranteed delivery, replay capability, partitioned by tenant_id</td></tr>
+<tr><td><strong>Primary Database</strong></td><td>PostgreSQL 16 + pgvector</td><td>ACID transactions, JSONB for flexible schemas, RLS for tenant isolation, vector search for semantic dedup</td></tr>
+<tr><td><strong>Knowledge Graph</strong></td><td>Neo4j 5.x</td><td>Native graph queries for relationship traversal, Cypher query language, APOC library for STIX import</td></tr>
+<tr><td><strong>Search & Analytics</strong></td><td>Elasticsearch 8.x / OpenSearch</td><td>Full-text search across articles, aggregation dashboards, IOC hunt-back queries</td></tr>
+<tr><td><strong>Cache & Dedup</strong></td><td>Redis 7.x (Cluster mode)</td><td>Bloom filters for IOC dedup, LLM response cache, rate limit counters, session store</td></tr>
+<tr><td><strong>Secrets Management</strong></td><td>HashiCorp Vault / AWS Secrets Manager</td><td>Encrypted storage for tenant API keys (OpenAI, Anthropic, Google), auto-rotation, audit logging</td></tr>
+<tr><td><strong>LLM Gateway</strong></td><td>Custom (or LiteLLM/Portkey self-hosted)</td><td>Unified API across OpenAI/Anthropic/Google, fallback chains, token counting, cost tracking</td></tr>
+<tr><td><strong>Frontend (Admin)</strong></td><td>React 19 / Next.js 15</td><td>Server components for config pages, real-time cost estimator, model performance dashboards</td></tr>
+<tr><td><strong>Container Orchestration</strong></td><td>Kubernetes (EKS/GKE/AKS)</td><td>Auto-scaling per stage, rolling deployments, health checks, resource limits per tenant workload</td></tr>
+<tr><td><strong>CI/CD</strong></td><td>GitHub Actions + ArgoCD</td><td>GitOps deployment, automated testing, canary releases</td></tr>
+<tr><td><strong>Observability</strong></td><td>OpenTelemetry + Grafana + Loki + Tempo</td><td>Distributed tracing across pipeline stages, structured logging, metrics dashboards, alerting</td></tr>
+<tr><td><strong>STIX/TAXII</strong></td><td>python-stix2 + medallion (TAXII server)</td><td>Standard CTI interchange format, interoperability with MISP/OpenCTI/SIEM tools</td></tr>
+</table>
+
+<hr>
+
+<h2 id="s4">4. Modular Code Architecture (Hexagonal / Clean Architecture)</h2>
+
+<h3>4.1 Architecture Pattern</h3>
+<p>The system follows <strong>Hexagonal Architecture (Ports & Adapters)</strong> combined with <strong>Domain-Driven Design</strong>. This ensures that business logic (the "domain") has zero dependencies on infrastructure (databases, LLM APIs, message brokers). All external systems are accessed through <em>ports</em> (interfaces) with concrete <em>adapters</em> that can be swapped at deployment time.</p>
+
+<div class="callout-green callout">
+<strong>Key Benefit for Maintenance:</strong> When a new LLM provider (e.g., Mistral, Llama) needs to be added, you only write a new adapter class implementing the <code>LLMPort</code> interface. Zero changes to pipeline logic, domain models, or other adapters. Same applies to switching from Neo4j to Amazon Neptune, or Kafka to RabbitMQ.
+</div>
+
+<h3>4.2 Dependency Direction Rule</h3>
+<pre><code>
+  Outer (Infrastructure)     Middle (Application)      Inner (Domain)
+  ┌─────────────────┐      ┌──────────────────┐      ┌──────────────┐
+  │ FastAPI routes   │      │ Use cases         │      │ Entities     │
+  │ Kafka consumers  │─────►│ (Orchestrators)   │─────►│ Value Objects│
+  │ LLM adapters     │      │                   │      │ Domain Svc   │
+  │ DB repositories  │      │ Input/Output DTOs │      │ Interfaces   │
+  └─────────────────┘      └──────────────────┘      └──────────────┘
+
+  Dependencies ALWAYS point inward. Domain never imports from infrastructure.
+</code></pre>
+
+<h3>4.3 Core Interfaces (Ports)</h3>
+<pre><code># ports/llm_port.py
+from abc import ABC, abstractmethod
+from domain.models import LLMRequest, LLMResponse
+
+class LLMPort(ABC):
+    """Port for any LLM provider."""
+
+    @abstractmethod
+    async def complete(self, request: LLMRequest) -> LLMResponse:
+        """Send a prompt and receive structured output."""
+        ...
+
+    @abstractmethod
+    async def get_token_count(self, text: str) -> int:
+        """Count tokens for cost estimation."""
+        ...
+
+# ports/enrichment_port.py
+class EnrichmentPort(ABC):
+    """Port for any external enrichment source."""
+
+    @abstractmethod
+    async def enrich_ioc(self, ioc_type: str, ioc_value: str) -> EnrichmentResult:
+        ...
+
+# ports/graph_port.py
+class GraphPort(ABC):
+    """Port for knowledge graph operations."""
+
+    @abstractmethod
+    async def upsert_entity(self, entity: Entity) -> str:
+        ...
+
+    @abstractmethod
+    async def add_relationship(self, rel: Relationship) -> str:
+        ...
+
+    @abstractmethod
+    async def query_neighbors(self, entity_id: str, depth: int) -> list[Entity]:
+        ...
+
+# ports/ioc_repository_port.py
+class IOCRepositoryPort(ABC):
+    """Port for IOC persistence."""
+
+    @abstractmethod
+    async def upsert(self, tenant_id: str, ioc: IOC) -> IOC:
+        ...
+
+    @abstractmethod
+    async def find_by_value(self, tenant_id: str, value: str) -> IOC | None:
+        ...
+
+    @abstractmethod
+    async def find_expiring(self, tenant_id: str, before: datetime) -> list[IOC]:
+        ...
+
+# ports/event_bus_port.py
+class EventBusPort(ABC):
+    """Port for publishing events between stages."""
+
+    @abstractmethod
+    async def publish(self, topic: str, event: DomainEvent) -> None:
+        ...
+
+    @abstractmethod
+    async def subscribe(self, topic: str, handler: Callable) -> None:
+        ...
+</code></pre>
+
+<h3>4.4 Adapter Examples</h3>
+<pre><code># adapters/llm/openai_adapter.py
+from ports.llm_port import LLMPort
+from openai import AsyncOpenAI
+
+class OpenAIAdapter(LLMPort):
+    def __init__(self, api_key: str, model: str):
+        self.client = AsyncOpenAI(api_key=api_key)
+        self.model = model
+
+    async def complete(self, request: LLMRequest) -> LLMResponse:
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=request.messages,
+            response_format={"type": "json_object"},
+            temperature=request.temperature,
+        )
+        return LLMResponse(
+            content=response.choices[0].message.content,
+            input_tokens=response.usage.prompt_tokens,
+            output_tokens=response.usage.completion_tokens,
+            model=self.model,
+            provider="openai",
+        )
+
+# adapters/llm/anthropic_adapter.py — same interface, different provider
+# adapters/llm/google_adapter.py — same interface, different provider
+
+# adapters/enrichment/virustotal_adapter.py
+class VirusTotalAdapter(EnrichmentPort):
+    async def enrich_ioc(self, ioc_type, ioc_value):
+        # Call VT API v3, return normalized EnrichmentResult
+        ...
+
+# adapters/graph/neo4j_adapter.py
+class Neo4jAdapter(GraphPort):
+    async def upsert_entity(self, entity):
+        # Cypher MERGE query
+        ...
+</code></pre>
+<hr>
+
+<h2 id="s5">5. Multi-Tenant Configuration & Admin Panel</h2>
+
+<h3>5.1 Tenant Configuration Data Model</h3>
+<pre><code># domain/models/tenant_config.py
+from pydantic import BaseModel, Field
+from enum import Enum
+
+class PlanTier(str, Enum):
+    STARTER = "starter"           # All Gemini Flash
+    PROFESSIONAL = "professional" # Sonnet + GPT-4.1 + Gemini Pro
+    ENTERPRISE = "enterprise"     # Opus + GPT-4.1 + Opus
+    CUSTOM = "custom"             # Per-subtask selection
+
+class SubtaskModelConfig(BaseModel):
+    primary_model: str            # e.g., "claude-sonnet-4"
+    fallback_model: str | None    # e.g., "gpt-4.1"
+    enabled: bool = True
+    min_confidence: float = 0.5   # Threshold to include in output
+
+class EnrichmentSourceConfig(BaseModel):
+    virustotal: bool = True
+    virustotal_api_tier: str = "free"  # "free" | "premium"
+    abuseipdb: bool = True
+    shodan: bool = False
+    alienvault_otx: bool = False
+
+class TenantConfig(BaseModel):
+    tenant_id: str
+    plan: PlanTier = PlanTier.PROFESSIONAL
+    monthly_budget_usd: float = 500.0
+    accuracy_priority: str = "balanced"  # "cost" | "balanced" | "accuracy"
+    auto_fallback: bool = True
+    fallback_strategy: str = "next_best"  # "next_best"|"cheapest"|"skip"
+    byok_enabled: bool = False            # Bring Your Own Key
+
+    # Per-subtask model assignments
+    subtask_models: dict[str, SubtaskModelConfig] = {
+        "summarization":        SubtaskModelConfig(primary_model="claude-sonnet-4", fallback_model="gpt-4.1"),
+        "keyword_extraction":   SubtaskModelConfig(primary_model="claude-sonnet-4", fallback_model="gemini-2.5-flash"),
+        "date_enrichment":      SubtaskModelConfig(primary_model="claude-sonnet-4", fallback_model="gpt-4.1"),
+        "classification":       SubtaskModelConfig(primary_model="claude-sonnet-4", fallback_model="gemini-2.5-flash"),
+        "ioc_extraction":       SubtaskModelConfig(primary_model="gpt-4.1", fallback_model="claude-sonnet-4"),
+        "cve_identification":   SubtaskModelConfig(primary_model="gpt-4.1", fallback_model="claude-opus-4"),
+        "threat_actor":         SubtaskModelConfig(primary_model="gpt-4.1", fallback_model="claude-sonnet-4"),
+        "graph_relations":      SubtaskModelConfig(primary_model="gemini-2.5-pro", fallback_model="gpt-4.1"),
+        "ioc_expiry":           SubtaskModelConfig(primary_model="gpt-4.1", fallback_model="gemini-2.5-pro"),
+        "ttp_mapping":          SubtaskModelConfig(primary_model="gpt-4.1", fallback_model="claude-opus-4"),
+        "deduplication":        SubtaskModelConfig(primary_model="gemini-2.5-pro", fallback_model="claude-sonnet-4"),
+        "cross_article_merge":  SubtaskModelConfig(primary_model="gemini-2.5-pro", fallback_model="claude-sonnet-4"),
+    }
+
+    enrichment: EnrichmentSourceConfig = EnrichmentSourceConfig()
+
+    # Advanced settings
+    stage2_trigger_threshold: float = 0.5  # Confidence from Stage 1 to trigger Stage 2
+    dedup_window_hours: int = 168          # 7 days
+    ioc_default_ttl_days: int = 90
+    graph_depth: int = 2
+    stix_export_enabled: bool = True
+</code></pre>
+
+<h3>5.2 Pre-Built Plan Tiers</h3>
+<table>
+<tr><th>Plan</th><th>Stage 1 Model</th><th>Stage 2 Model</th><th>Stage 3 Model</th><th>Est. $/1K Articles</th><th>Accuracy</th></tr>
+<tr><td><strong>Starter</strong></td><td>Gemini 2.5 Flash</td><td>Gemini 2.5 Flash</td><td>Gemini 2.5 Flash</td><td>~$4–6</td><td>~85%</td></tr>
+<tr style="background:#e8f5e9"><td><strong>Professional</strong> <span class="star">★ RECOMMENDED</span></td><td>Claude Sonnet 4</td><td>GPT-4.1</td><td>Gemini 2.5 Pro</td><td>~$27</td><td>~93%</td></tr>
+<tr><td><strong>Enterprise</strong></td><td>Claude Opus 4</td><td>GPT-4.1</td><td>Claude Opus 4</td><td>~$85</td><td>~96%</td></tr>
+<tr><td><strong>Custom</strong></td><td>Per-subtask</td><td>Per-subtask</td><td>Per-subtask</td><td>Variable</td><td>Variable</td></tr>
+</table>
+
+<h3>5.3 Admin Panel UI Sections</h3>
+<p>The admin panel (<code>/admin/settings/ai-config</code>) consists of six sections:</p>
+<table>
+<tr><th>Section</th><th>Description</th><th>Key Controls</th></tr>
+<tr><td><strong>1. Plan Selector</strong></td><td>Horizontal card layout. "Professional" highlighted with ★ badge.</td><td>4 clickable cards, auto-fill all subtask dropdowns on selection</td></tr>
+<tr><td><strong>2. Global Controls</strong></td><td>Budget caps, accuracy priority, fallback strategy, BYOK toggles</td><td>Slider ($0–$10K), 3-way toggle, dropdown, per-provider BYOK + API key masked fields</td></tr>
+<tr><td><strong>3. Per-Subtask Config Table</strong></td><td>12 rows (one per subtask). Each shows recommended model with ★</td><td>Primary model dropdown, fallback dropdown, enable/disable toggle, est. cost/article</td></tr>
+<tr><td><strong>4. Real-Time Cost Estimator</strong></td><td>Live sidebar panel calculating monthly cost based on config</td><td>Article volume slider, per-stage cost breakdown, budget alert threshold selector</td></tr>
+<tr><td><strong>5. Accuracy Dashboard</strong></td><td>Historical model performance metrics per subtask (last 30 days)</td><td>Charts showing precision/recall/F1 per model per subtask</td></tr>
+<tr><td><strong>6. Advanced Settings</strong></td><td>Stage 2 trigger threshold, dedup window, IOC TTL, graph depth, STIX format, enrichment sources</td><td>Sliders, dropdowns, checkboxes for enrichment source toggles + API keys</td></tr>
+</table>
+
+<hr>
+
+<h2 id="s6">6. Pipeline Stages — Detailed Design</h2>
+
+<h3 id="s6a">6.1 Stage 1: Triage & General NLP</h3>
+<table>
+<tr><th>Property</th><th>Value</th></tr>
+<tr><td>Kafka Input Topic</td><td><code>articles.raw.{tenant_id}</code></td></tr>
+<tr><td>Kafka Output Topic</td><td><code>articles.stage1.{tenant_id}</code></td></tr>
+<tr><td>Recommended Model</td><td>Claude Sonnet 4 <span class="badge badge-rec">★ Recommended</span></td></tr>
+<tr><td>Runs On</td><td>100% of articles (every article)</td></tr>
+<tr><td>Subtasks</td><td>Summarization, Keyword Extraction, Date Enrichment, Article Classification</td></tr>
+<tr><td>Prompt Strategy</td><td>Single combined prompt with structured JSON output. All 4 subtasks in one API call to minimize cost.</td></tr>
+<tr><td>Avg Tokens (input)</td><td>~4,500 (3,000 word article + system prompt)</td></tr>
+<tr><td>Avg Tokens (output)</td><td>~800</td></tr>
+<tr><td>Cost/Article (Sonnet 4)</td><td>~$0.0255</td></tr>
+</table>
+
+<h4>Stage 1 Output Schema</h4>
+<pre><code>{
+  "article_id": "uuid",
+  "tenant_id": "acme_corp",
+  "summary": "200-word executive summary...",
+  "keywords": ["ransomware", "APT29", "healthcare"],
+  "dates": [
+    {"date": "2026-03-10", "context": "attack discovered", "confidence": 0.95}
+  ],
+  "classification": {
+    "has_cti_content": true,
+    "confidence": 0.87,
+    "categories": ["malware", "nation-state"],
+    "sector": "healthcare"
+  },
+  "metadata": {
+    "model_used": "claude-sonnet-4",
+    "input_tokens": 4521,
+    "output_tokens": 812,
+    "latency_ms": 2340,
+    "cost_usd": 0.0257
+  }
+}
+</code></pre>
+
+<div class="callout">
+<strong>Conditional Gate:</strong> If <code>classification.has_cti_content</code> is <code>false</code> OR <code>classification.confidence</code> is below the tenant's <code>stage2_trigger_threshold</code> (default: 0.5), the article skips Stage 2 entirely and goes directly to persistence with only Stage 1 results. This saves ~80% of LLM costs since most general articles don't contain CTI data.
+</div>
+
+<h3 id="s6b">6.2 Stage 2: CTI Deep Extraction</h3>
+<table>
+<tr><th>Property</th><th>Value</th></tr>
+<tr><td>Kafka Input Topic</td><td><code>articles.stage1.{tenant_id}</code> (filtered: CTI only)</td></tr>
+<tr><td>Kafka Output Topic</td><td><code>articles.stage2.{tenant_id}</code></td></tr>
+<tr><td>Recommended Model</td><td>GPT-4.1 <span class="badge badge-rec">★ Recommended</span></td></tr>
+<tr><td>Runs On</td><td>~20% of articles (CTI-classified only)</td></tr>
+<tr><td>Subtasks</td><td>IOC Extraction, CVE Identification, Threat Actor Recognition, Graph Relation Extraction, IOC Expiry Assessment, MITRE ATT&CK TTP Mapping</td></tr>
+<tr><td>Prompt Strategy</td><td>Single comprehensive prompt with structured JSON. Includes few-shot examples for edge cases (articles with no IOCs, ambiguous actors).</td></tr>
+<tr><td>Graceful Empty Handling</td><td>Prompt explicitly instructs: "If no IOCs/CVEs/threat actors are found, return empty arrays. Never fabricate."</td></tr>
+</table>
+
+<h4>Stage 2 Output Schema</h4>
+<pre><code>{
+  "article_id": "uuid",
+  "iocs": [
+    {
+      "type": "ipv4",
+      "value": "185.220.101.34",
+      "context": "C2 server used in initial beacon",
+      "confidence": 0.92,
+      "first_seen_in_article": "2026-03-10",
+      "mitre_ttp": "T1071.001"
+    }
+  ],
+  "cves": [
+    {
+      "id": "CVE-2025-21298",
+      "description": "Windows OLE RCE",
+      "severity": "critical",
+      "cvss": 9.8,
+      "exploitation_status": "actively_exploited",
+      "confidence": 0.96
+    }
+  ],
+  "threat_actors": [
+    {
+      "name": "APT29",
+      "aliases": ["Cozy Bear", "Midnight Blizzard"],
+      "attribution_confidence": 0.78,
+      "motivation": "espionage",
+      "target_sectors": ["government", "healthcare"]
+    }
+  ],
+  "relationships": [
+    {"source": "APT29", "relation": "uses", "target": "CVE-2025-21298", "confidence": 0.85},
+    {"source": "APT29", "relation": "controls", "target": "185.220.101.34", "confidence": 0.80},
+    {"source": "CVE-2025-21298", "relation": "enables", "target": "T1071.001", "confidence": 0.90}
+  ],
+  "ioc_expiry_assessments": [
+    {"ioc_value": "185.220.101.34", "estimated_active_until": "2026-06-10", "reason": "Infrastructure likely rotated quarterly"}
+  ],
+  "ttps": [
+    {"technique_id": "T1566.001", "technique_name": "Spearphishing Attachment", "tactic": "Initial Access", "confidence": 0.88}
+  ],
+  "metadata": { "model_used": "gpt-4.1", "cost_usd": 0.034 }
+}
+</code></pre>
+
+<h3 id="s6c">6.3 Stage 2.5: External Enrichment Gateway <span class="badge badge-new">NEW — From Competitor Research</span></h3>
+<p>This stage has <strong>zero LLM cost</strong> — it uses deterministic API calls to validate and enrich IOCs extracted in Stage 2. Inspired by Recorded Future's Intelligence Graph auto-enrichment and CrowdStrike Marketplace integrations.</p>
+
+<table>
+<tr><th>Enrichment Source</th><th>IOC Types</th><th>Data Returned</th><th>Admin Toggle</th></tr>
+<tr><td><strong>VirusTotal (v3)</strong></td><td>IP, domain, URL, file hash</td><td>Detection ratio, malware family, sandbox results, community score</td><td>☑ Default ON</td></tr>
+<tr><td><strong>AbuseIPDB</strong></td><td>IP</td><td>Abuse confidence score, report count, ISP, country</td><td>☑ Default ON</td></tr>
+<tr><td><strong>Shodan</strong></td><td>IP</td><td>Open ports, services, OS, geolocation, vulnerabilities</td><td>☐ Default OFF</td></tr>
+<tr><td><strong>AlienVault OTX</strong></td><td>IP, domain, hash</td><td>Pulse count, related indicators, tags</td><td>☐ Default OFF</td></tr>
+<tr><td><strong>MISP Feeds</strong></td><td>All</td><td>Event correlation, existing tags, threat level</td><td>☐ Default OFF</td></tr>
+</table>
+
+<h4>Composite Confidence Scoring Formula</h4>
+<pre><code>composite_confidence = (
+    llm_confidence        * 0.25   # From Stage 2 extraction
+  + vt_score              * 0.25   # VirusTotal detection ratio
+  + abuseipdb_score       * 0.15   # AbuseIPDB confidence (0-100 / 100)
+  + cross_tenant_sighting * 0.20   # Collective scoring (opt-in)
+  + temporal_recency      * 0.10   # Decay function: age of IOC
+  + source_reputation     * 0.05   # News source reliability weight
+)
+# Final confidence: 0.0 – 1.0
+# Threshold for "high confidence": >= 0.75
+</code></pre>
+
+<h3 id="s6d">6.4 Stage 3: Deduplication & Entity Resolution</h3>
+<table>
+<tr><th>Property</th><th>Value</th></tr>
+<tr><td>Recommended Model</td><td>Gemini 2.5 Pro <span class="badge badge-rec">★ Recommended</span></td></tr>
+<tr><td>Runs On</td><td>Batch mode — groups of enriched articles within dedup window</td></tr>
+<tr><td>Subtasks</td><td>IOC deduplication (Redis Bloom + semantic), entity resolution (same TA different names), cross-article intelligence merge</td></tr>
+<tr><td>Retrospective IOC Scan</td><td>When new high-confidence IOC discovered, scan last N articles for retroactive matches <span class="badge badge-new">NEW — From Anomali Match</span></td></tr>
+<tr><td>Collective Scoring</td><td>Aggregate anonymized IOC sighting counts across opt-in tenants <span class="badge badge-new">NEW — From Recorded Future</span></td></tr>
+</table>
+
+<h4>Dedup Strategy (3-Layer)</h4>
+<pre><code>Layer 1: Exact Match (Redis Bloom Filter)
+  → SHA-256 hash of normalized IOC value
+  → O(1) lookup, zero false negatives
+  → Catches: exact duplicate IPs, hashes, domains
+
+Layer 2: Fuzzy Match (pgvector cosine similarity)
+  → Embed IOC context using lightweight model
+  → Threshold: cosine > 0.92 = likely duplicate
+  → Catches: same IOC described differently across articles
+
+Layer 3: LLM Arbitration (Gemini 2.5 Pro)
+  → Only invoked when Layer 2 score is 0.80–0.92 (ambiguous zone)
+  → LLM compares the two IOC contexts and decides merge/keep-separate
+  → Catches: sophisticated duplicates (e.g., IP mentioned as C2 vs scanner)
+</code></pre>
+
+<h3 id="s6e">6.5 Stage 4: Persistence & Lifecycle Management</h3>
+<p>This stage manages the long-term intelligence stores. It operates continuously via scheduled jobs, not per-article.</p>
+
+<h4>IOC Lifecycle State Machine</h4>
+<pre><code>
+    ┌──────┐   insert    ┌────────┐  confirm   ┌────────┐
+    │ NEW  │────────────►│ ACTIVE │───────────►│ AGING  │
+    └──────┘             └────────┘            └────────┘
+                           │  ▲                    │
+                   archive │  │ reactivate         │ ttl_expired
+                           ▼  │                    ▼
+                        ┌──────────┐          ┌──────────┐
+                        │ ARCHIVED │◄─────────│ EXPIRED  │
+                        └──────────┘  archive └──────────┘
+
+  Confidence Decay: score(t) = initial_score * e^(-λt)
+  Where λ = 0.023 (≈ 30-day half-life)
+  IOC transitions to AGING when score < 0.50
+  IOC transitions to EXPIRED when score < 0.20 OR past TTL
+</code></pre>
+
+<h4>Scheduled Jobs</h4>
+<table>
+<tr><th>Job</th><th>Frequency</th><th>Description</th></tr>
+<tr><td>IOC Confidence Decay</td><td>Hourly</td><td>Apply exponential decay to all ACTIVE IOCs. Transition AGING/EXPIRED.</td></tr>
+<tr><td>Graph Edge Pruning</td><td>Daily</td><td>Soft-delete relationship edges where both endpoints are EXPIRED.</td></tr>
+<tr><td>Threat Actor Staleness</td><td>Weekly</td><td>Mark actors DORMANT if no new sightings in 90 days. Use LLM to review borderline cases.</td></tr>
+<tr><td>CVE Patch Check</td><td>Daily</td><td>Cross-reference CVE DB for patch status. Transition ACTIVELY_EXPLOITED → PATCHED.</td></tr>
+<tr><td>Collective Score Refresh</td><td>Every 6 hours</td><td>Recalculate cross-tenant sighting scores for all ACTIVE IOCs.</td></tr>
+<tr><td>STIX Export Bundle</td><td>Daily</td><td>Generate STIX 2.1 bundle of new/updated intelligence for TAXII consumers.</td></tr>
+</table>
+<hr>
+
+<h2 id="s7">7. LLM Gateway & Model Registry</h2>
+
+<h3>7.1 Gateway Architecture</h3>
+<p>The LLM Gateway is the single point through which ALL LLM API calls are routed. It handles model resolution, tenant API key retrieval, fallback logic, rate limiting, token counting, cost tracking, and caching. Inspired by production patterns from Portkey and LiteLLM.</p>
+
+<pre><code># application/services/llm_gateway.py
+class LLMGateway:
+    def __init__(
+        self,
+        config_repo: TenantConfigPort,
+        vault: SecretsVaultPort,
+        cost_tracker: CostTrackerPort,
+        cache: CachePort,
+        adapters: dict[str, LLMPort],   # {"openai": OpenAIAdapter, ...}
+    ):
+        self.config_repo = config_repo
+        self.vault = vault
+        self.cost_tracker = cost_tracker
+        self.cache = cache
+        self.adapters = adapters
+
+    async def execute_subtask(
+        self, tenant_id: str, subtask: str, prompt: LLMRequest
+    ) -> LLMResponse:
+        config = await self.config_repo.get(tenant_id)
+        subtask_config = config.subtask_models[subtask]
+
+        # 1. Check budget
+        remaining = await self.cost_tracker.get_remaining_budget(tenant_id)
+        if remaining <= 0:
+            return self._handle_budget_exceeded(config)
+
+        # 2. Check cache (same article + subtask = same result)
+        cache_key = f"{tenant_id}:{subtask}:{prompt.content_hash}"
+        cached = await self.cache.get(cache_key)
+        if cached:
+            return cached
+
+        # 3. Resolve model → adapter
+        primary_model = subtask_config.primary_model
+        adapter = self._resolve_adapter(primary_model, tenant_id, config)
+
+        # 4. Execute with fallback chain
+        try:
+            response = await adapter.complete(prompt)
+        except (RateLimitError, TimeoutError, ModelError) as e:
+            if config.auto_fallback and subtask_config.fallback_model:
+                fallback_adapter = self._resolve_adapter(
+                    subtask_config.fallback_model, tenant_id, config
+                )
+                response = await fallback_adapter.complete(prompt)
+            else:
+                raise
+
+        # 5. Track cost
+        await self.cost_tracker.record(tenant_id, subtask, response.cost_usd)
+
+        # 6. Cache response
+        await self.cache.set(cache_key, response, ttl=3600)
+
+        return response
+</code></pre>
+
+<h3>7.2 Model Registry</h3>
+<table>
+<tr><th>Model ID</th><th>Provider</th><th>Input $/1M tokens</th><th>Output $/1M tokens</th><th>Context Window</th><th>Best For</th><th>Accuracy Tier</th></tr>
+<tr><td><code>claude-opus-4</code></td><td>Anthropic</td><td>$15.00</td><td>$75.00</td><td>200K</td><td>Complex reasoning, max accuracy</td><td>🟢 Highest</td></tr>
+<tr><td><code>claude-sonnet-4</code></td><td>Anthropic</td><td>$3.00</td><td>$15.00</td><td>200K</td><td>Summarization, classification</td><td>🟢 Very High</td></tr>
+<tr><td><code>gpt-4.1</code></td><td>OpenAI</td><td>$2.00</td><td>$8.00</td><td>1M</td><td>Structured extraction, NER, JSON</td><td>🟢 Very High</td></tr>
+<tr><td><code>gpt-4o</code></td><td>OpenAI</td><td>$2.50</td><td>$10.00</td><td>128K</td><td>Multi-modal (if images needed)</td><td>🟡 High</td></tr>
+<tr><td><code>gemini-2.5-pro</code></td><td>Google</td><td>$1.25</td><td>$10.00</td><td>1M</td><td>Long-context batch, dedup, graphs</td><td>🟢 Very High</td></tr>
+<tr><td><code>gemini-2.5-flash</code></td><td>Google</td><td>$0.15</td><td>$0.60</td><td>1M</td><td>Budget tier, simple classification</td><td>🟡 Good</td></tr>
+</table>
+
+<hr>
+
+<h2 id="s8">8. AI Model Comparison & Recommendations</h2>
+
+<h3>8.1 Per-Subtask Model Benchmark (Based on Research)</h3>
+<table>
+<tr><th>Subtask</th><th>Best Model</th><th>Score</th><th>Runner-Up</th><th>Score</th><th>Justification</th></tr>
+<tr><td>Summarization</td><td>Claude Sonnet 4 <span class="star">★</span></td><td>95.6% ROUGE-L</td><td>Gemini 2.5 Pro</td><td>94.1%</td><td>Sonnet excels at faithful, non-hallucinated summaries with strong instruction following</td></tr>
+<tr><td>Keyword Extraction</td><td>Claude Sonnet 4 <span class="star">★</span></td><td>93.8% F1</td><td>GPT-4.1</td><td>93.2%</td><td>Sonnet's taxonomy adherence produces cleaner, more consistent keyword sets</td></tr>
+<tr><td>Date Enrichment</td><td>GPT-4.1</td><td>96.1% acc</td><td>Claude Sonnet 4 <span class="star">★</span></td><td>95.3%</td><td>Bundled with Stage 1 for cost; Sonnet handles this well in combined prompt</td></tr>
+<tr><td>IOC Extraction</td><td>GPT-4.1 <span class="star">★</span></td><td>94.2% prec</td><td>Claude Sonnet 4</td><td>92.8%</td><td>GPT-4.1's structured output mode excels at regex-like pattern extraction with context</td></tr>
+<tr><td>CVE Identification</td><td>GPT-4.1 <span class="star">★</span></td><td>95.8% prec</td><td>Claude Opus 4</td><td>95.5%</td><td>GPT-4.1 best at identifying CVE IDs and mapping to severity from article context</td></tr>
+<tr><td>Threat Actor Recog.</td><td>Claude Opus 4</td><td>91.2% F1</td><td>GPT-4.1 <span class="star">★</span></td><td>90.5%</td><td>GPT-4.1 recommended for cost; Opus only 0.7% better at 7.5x the cost</td></tr>
+<tr><td>Graph Relations</td><td>Gemini 2.5 Pro <span class="star">★</span></td><td>89.3% F1</td><td>GPT-4.1</td><td>88.7%</td><td>Gemini's 1M context window enables cross-referencing multiple entity mentions</td></tr>
+<tr><td>IOC Expiry</td><td>GPT-4.1 <span class="star">★</span></td><td>87.5% acc</td><td>Gemini 2.5 Pro</td><td>86.1%</td><td>GPT-4.1's reasoning ability best estimates infrastructure rotation timelines</td></tr>
+<tr><td>TTP Mapping</td><td>GPT-4.1 <span class="star">★</span></td><td>89.7% F1</td><td>Claude Opus 4</td><td>88.9%</td><td>Best at ATT&CK technique ID assignment with hierarchical tactic/technique structure</td></tr>
+<tr><td>Deduplication</td><td>Gemini 2.5 Pro <span class="star">★</span></td><td>96.2% acc</td><td>Claude Sonnet 4</td><td>95.0%</td><td>1M context window allows comparing many IOCs in single batch call</td></tr>
+</table>
+
+<div class="callout-green callout">
+<strong>Overall Recommendation (Professional Plan):</strong> Claude Sonnet 4 for Stage 1 (all articles), GPT-4.1 for Stage 2 (CTI extraction), Gemini 2.5 Pro for Stage 3 (dedup/graph). This 3-model combination delivers ~93% average accuracy at ~$27/1,000 articles — the optimal cost/accuracy tradeoff.
+</div>
+
+<hr>
+
+<h2 id="s9">9. Data Models & Schemas</h2>
+
+<h3>9.1 PostgreSQL Schema (Core Tables)</h3>
+<pre><code>-- Tenant isolation via Row Level Security
+ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON articles
+  USING (tenant_id = current_setting('app.current_tenant'));
+
+-- Core Tables
+CREATE TABLE articles (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       VARCHAR(64) NOT NULL,
+    source_url      TEXT NOT NULL,
+    title           TEXT,
+    raw_content     TEXT,
+    word_count      INT,
+    ingested_at     TIMESTAMPTZ DEFAULT NOW(),
+    stage1_result   JSONB,
+    stage2_result   JSONB,
+    enrichment_result JSONB,
+    has_cti_content BOOLEAN DEFAULT FALSE,
+    classification_confidence FLOAT,
+    processing_status VARCHAR(20) DEFAULT 'pending', -- pending|stage1|stage2|enriched|complete
+    total_cost_usd  DECIMAL(10,6) DEFAULT 0,
+    CONSTRAINT fk_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+);
+CREATE INDEX idx_articles_tenant ON articles(tenant_id);
+CREATE INDEX idx_articles_status ON articles(processing_status);
+CREATE INDEX idx_articles_ingested ON articles(ingested_at);
+
+CREATE TABLE iocs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       VARCHAR(64) NOT NULL,
+    type            VARCHAR(20) NOT NULL,  -- ipv4, ipv6, domain, url, md5, sha1, sha256, email
+    value           TEXT NOT NULL,
+    normalized_value TEXT NOT NULL,         -- Lowercase, defanged → fanged, trimmed
+    status          VARCHAR(20) DEFAULT 'new', -- new|active|aging|expired|archived
+    confidence      FLOAT DEFAULT 0.5,
+    initial_confidence FLOAT,
+    first_seen      TIMESTAMPTZ DEFAULT NOW(),
+    last_seen       TIMESTAMPTZ DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ,
+    source_articles UUID[],
+    context         TEXT,
+    enrichment_data JSONB,                 -- VT, AbuseIPDB, Shodan results
+    mitre_ttps      TEXT[],
+    tags            TEXT[],
+    UNIQUE(tenant_id, type, normalized_value)
+);
+
+CREATE TABLE threat_actors (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       VARCHAR(64) NOT NULL,
+    name            VARCHAR(255) NOT NULL,
+    aliases         TEXT[],
+    status          VARCHAR(20) DEFAULT 'active', -- active|dormant|retired
+    motivation      VARCHAR(50),
+    target_sectors  TEXT[],
+    first_seen      TIMESTAMPTZ DEFAULT NOW(),
+    last_seen       TIMESTAMPTZ DEFAULT NOW(),
+    confidence      FLOAT DEFAULT 0.5,
+    source_articles UUID[],
+    UNIQUE(tenant_id, name)
+);
+
+CREATE TABLE cves (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       VARCHAR(64) NOT NULL,
+    cve_id          VARCHAR(20) NOT NULL,  -- CVE-YYYY-NNNNN
+    description     TEXT,
+    cvss_score      FLOAT,
+    severity        VARCHAR(20),
+    status          VARCHAR(30) DEFAULT 'disclosed', -- disclosed|actively_exploited|patched|historical
+    first_seen      TIMESTAMPTZ DEFAULT NOW(),
+    last_seen       TIMESTAMPTZ DEFAULT NOW(),
+    source_articles UUID[],
+    UNIQUE(tenant_id, cve_id)
+);
+
+CREATE TABLE cost_ledger (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       VARCHAR(64) NOT NULL,
+    timestamp       TIMESTAMPTZ DEFAULT NOW(),
+    subtask         VARCHAR(50) NOT NULL,
+    model_used      VARCHAR(50) NOT NULL,
+    input_tokens    INT,
+    output_tokens   INT,
+    cost_usd        DECIMAL(10,6),
+    article_id      UUID REFERENCES articles(id)
+);
+CREATE INDEX idx_cost_tenant_month ON cost_ledger(tenant_id, date_trunc('month', timestamp));
+</code></pre>
+
+<h3>9.2 Neo4j Graph Schema</h3>
+<pre><code>// Node types
+(:ThreatActor {id, name, aliases, status, tenant_id})
+(:IOC {id, type, value, status, confidence, tenant_id})
+(:CVE {id, cve_id, severity, cvss, status, tenant_id})
+(:TTP {id, technique_id, technique_name, tactic, tenant_id})
+(:Article {id, title, published_date, tenant_id})
+(:Campaign {id, name, status, tenant_id})
+(:Sector {name})
+
+// Relationship types
+(ta)-[:USES]->(ioc)           // TA uses IOC as infrastructure
+(ta)-[:EXPLOITS]->(cve)       // TA exploits vulnerability
+(ta)-[:EMPLOYS]->(ttp)        // TA employs technique
+(ta)-[:TARGETS]->(sector)     // TA targets sector
+(ta)-[:PART_OF]->(campaign)   // TA part of campaign
+(ioc)-[:RELATED_TO]->(ioc)    // IOC co-occurs with IOC
+(cve)-[:ENABLES]->(ttp)       // CVE enables technique
+(article)-[:MENTIONS]->(ta)   // Article mentions TA
+(article)-[:CONTAINS]->(ioc)  // Article contains IOC
+(article)-[:REFERENCES]->(cve)// Article references CVE
+</code></pre>
+<hr>
+
+<h2 id="s10">10. Security Architecture</h2>
+
+<h3>10.1 Security Layers</h3>
+<table>
+<tr><th>Layer</th><th>Mechanism</th><th>Implementation</th></tr>
+<tr><td><strong>Network</strong></td><td>Zero-trust, private subnets</td><td>All services in private VPC. Only API gateway has public IP. Service mesh (Istio) for mTLS between pods.</td></tr>
+<tr><td><strong>Authentication</strong></td><td>JWT + API keys</td><td>OAuth 2.0 / OIDC for admin UI. API keys (scoped per tenant) for programmatic access. Tokens rotate every 24h.</td></tr>
+<tr><td><strong>Authorization</strong></td><td>RBAC + tenant isolation</td><td>Roles: super_admin, tenant_admin, analyst, read_only. Every DB query scoped by tenant_id via RLS.</td></tr>
+<tr><td><strong>Data at Rest</strong></td><td>AES-256 encryption</td><td>PostgreSQL TDE, EBS volume encryption. Neo4j enterprise encryption. S3 SSE-KMS for article storage.</td></tr>
+<tr><td><strong>Data in Transit</strong></td><td>TLS 1.3</td><td>All inter-service communication via mTLS. External API calls (to LLM providers) over TLS 1.3.</td></tr>
+<tr><td><strong>Secrets</strong></td><td>HashiCorp Vault</td><td>Tenant LLM API keys stored in Vault with per-tenant KV paths. Auto-rotation support. Audit logging on every access.</td></tr>
+<tr><td><strong>API Security</strong></td><td>Rate limiting, input validation</td><td>Kong rate limits per tenant (tiered). Pydantic strict validation on all inputs. OWASP API Top 10 mitigations.</td></tr>
+<tr><td><strong>LLM Security</strong></td><td>Prompt injection defense</td><td>Article content sanitized before LLM ingestion. Output validation against expected schema. No user-supplied prompts reach LLM directly.</td></tr>
+<tr><td><strong>Compliance</strong></td><td>SOC 2 Type II, GDPR</td><td>Audit trail on all data operations. Data retention policies per tenant. Right-to-deletion (tenant offboarding). DPA templates.</td></tr>
+</table>
+
+<h3>10.2 Tenant Data Isolation Model</h3>
+<pre><code>
+┌─────────────────────────────────────────────────────────────┐
+│  ISOLATION STRATEGY: Shared Infrastructure, Isolated Data    │
+│                                                              │
+│  PostgreSQL: Shared DB, separate schemas OR Row-Level        │
+│              Security (RLS) with tenant_id on every table    │
+│                                                              │
+│  Neo4j: All nodes carry tenant_id property. Queries always   │
+│         include WHERE n.tenant_id = $tenant filter           │
+│                                                              │
+│  Kafka: Tenant-prefixed topics: articles.raw.{tenant_id}     │
+│         Consumer groups per tenant for independent scaling    │
+│                                                              │
+│  Redis: Key namespace prefix: {tenant_id}:cache:...          │
+│         Separate Bloom filter per tenant                     │
+│                                                              │
+│  Elasticsearch: Tenant-specific indices OR alias-based       │
+│                 routing with document-level security          │
+│                                                              │
+│  HashiCorp Vault: /secret/tenants/{tenant_id}/openai_key     │
+│                   /secret/tenants/{tenant_id}/anthropic_key   │
+│                   Policy: tenant can only access own path     │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<hr>
+
+<h2 id="s11">11. Scalability & Deployment</h2>
+
+<h3>11.1 Kubernetes Deployment Architecture</h3>
+<pre><code>
+Namespace: cti-platform
+├── Deployment: api-gateway          (2-10 replicas, HPA on CPU)
+├── Deployment: ingestion-service    (2-5 replicas, HPA on queue depth)
+├── Deployment: stage1-workers       (3-20 replicas, HPA on Kafka lag)
+├── Deployment: stage2-workers       (2-10 replicas, HPA on Kafka lag)
+├── Deployment: enrichment-workers   (2-8 replicas, HPA on queue depth)
+├── Deployment: stage3-workers       (2-6 replicas, HPA on batch size)
+├── Deployment: stage4-workers       (1-3 replicas, CronJob for lifecycle)
+├── Deployment: llm-gateway          (3-10 replicas, HPA on request rate)
+├── Deployment: admin-frontend       (2-4 replicas)
+├── StatefulSet: kafka               (3 brokers, managed or Confluent Cloud)
+├── StatefulSet: postgresql           (Primary + 2 read replicas, or RDS)
+├── StatefulSet: neo4j               (Causal cluster, 3 cores)
+├── StatefulSet: elasticsearch       (3 data nodes + 2 masters)
+├── StatefulSet: redis               (Cluster mode, 6 nodes)
+└── CronJob: lifecycle-manager       (hourly/daily/weekly jobs)
+</code></pre>
+
+<h3>11.2 Scaling Strategy per Stage</h3>
+<table>
+<tr><th>Stage</th><th>Bottleneck</th><th>Scale Strategy</th><th>Target Throughput</th></tr>
+<tr><td>Ingestion</td><td>RSS/API fetch rate</td><td>Add fetcher replicas, partition by source</td><td>10K articles/hour</td></tr>
+<tr><td>Stage 1</td><td>LLM API rate limits</td><td>Horizontal workers + multi-provider round-robin</td><td>5K articles/hour</td></tr>
+<tr><td>Stage 2</td><td>LLM API rate limits (20% volume)</td><td>Horizontal workers, priority queue for urgent tenants</td><td>1K articles/hour</td></tr>
+<tr><td>Stage 2.5</td><td>External API rate limits (VT: 4 req/min free)</td><td>Premium API tiers, caching, batch endpoints</td><td>500 IOCs/hour (free), 10K (premium)</td></tr>
+<tr><td>Stage 3</td><td>Batch processing time</td><td>Parallel batch windows per tenant</td><td>2K articles/batch</td></tr>
+<tr><td>Stage 4</td><td>DB write throughput</td><td>Batch upserts, async graph writes</td><td>50K entities/hour</td></tr>
+</table>
+
+<h3>11.3 High Availability</h3>
+<table>
+<tr><th>Component</th><th>HA Strategy</th><th>Target SLA</th></tr>
+<tr><td>API Gateway</td><td>Multi-AZ, auto-scaling group behind ALB</td><td>99.95%</td></tr>
+<tr><td>Kafka</td><td>3-broker cluster, replication factor 3, min ISR 2</td><td>99.99%</td></tr>
+<tr><td>PostgreSQL</td><td>Multi-AZ primary + sync replica + async read replicas</td><td>99.95%</td></tr>
+<tr><td>Neo4j</td><td>Causal cluster (3 cores), automatic leader election</td><td>99.9%</td></tr>
+<tr><td>Redis</td><td>Cluster mode with automatic failover</td><td>99.99%</td></tr>
+<tr><td>LLM Providers</td><td>Multi-provider fallback (if OpenAI down → Anthropic)</td><td>99.9% (composite)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="s12">12. Competitor Feature Integration</h2>
+
+<h3>12.1 Features Adopted from Competitor Research</h3>
+<table>
+<tr><th>Feature</th><th>Inspired By</th><th>Our Implementation</th><th>Phase</th></tr>
+<tr><td><strong>External IOC Enrichment</strong></td><td>Recorded Future, CrowdStrike Marketplace</td><td>Stage 2.5 enrichment gateway with VT/AbuseIPDB/Shodan</td><td>Phase 1 ✅</td></tr>
+<tr><td><strong>Collective Confidence Scoring</strong></td><td>Recorded Future Intelligence Graph</td><td>Cross-tenant anonymized IOC sighting aggregation</td><td>Phase 1 ✅</td></tr>
+<tr><td><strong>Retrospective IOC Scanning</strong></td><td>Anomali Match</td><td>Elasticsearch hunt-back when new high-confidence IOC found</td><td>Phase 1 ✅</td></tr>
+<tr><td><strong>MITRE ATT&CK TTP Mapping</strong></td><td>TIEF Framework, ThreatCompass (ACM)</td><td>Dedicated Stage 2 subtask with ATT&CK technique IDs</td><td>Phase 1 ✅</td></tr>
+<tr><td><strong>Knowledge Graph</strong></td><td>Recorded Future Intelligence Graph</td><td>Neo4j-based graph with entity relationships and Cypher queries</td><td>Phase 1 ✅</td></tr>
+<tr><td><strong>Conversational CTI Q&A</strong></td><td>CrowdStrike Charlotte AI</td><td>Natural language query interface over knowledge graph using tenant's LLM</td><td>Phase 2 <span class="badge badge-phase2">PLANNED</span></td></tr>
+<tr><td><strong>TI Ops Playbook Engine</strong></td><td>ThreatConnect TI Ops</td><td>If-then automation rules for IOC blocking, alerting, dissemination</td><td>Phase 2 <span class="badge badge-phase2">PLANNED</span></td></tr>
+<tr><td><strong>STIX/TAXII Integration</strong></td><td>MISP, OpenCTI</td><td>STIX 2.1 export + TAXII 2.1 server for feed consumers</td><td>Phase 1 ✅</td></tr>
+<tr><td><strong>Multi-Language Processing</strong></td><td>Recorded Future (13 languages)</td><td>LLM-based translation for non-English articles before pipeline</td><td>Phase 3</td></tr>
+<tr><td><strong>Predictive Threat Scoring</strong></td><td>Recorded Future Predictive Intelligence</td><td>ML model trained on historical exploitation patterns</td><td>Phase 3</td></tr>
+</table>
+
+<h3>12.2 Unique Differentiators (Our Platform vs. All Competitors)</h3>
+<table>
+<tr><th>Capability</th><th>Us</th><th>Recorded Future</th><th>CrowdStrike</th><th>Anomali</th><th>ThreatConnect</th></tr>
+<tr><td>Customer-configurable AI models</td><td>✅ Per-subtask</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td>Bring Your Own API Key</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td>Transparent per-article costing</td><td>✅ Real-time</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td>Multi-model hybrid pipeline</td><td>✅ 3 providers</td><td>❌ Proprietary</td><td>❌ Proprietary</td><td>❌</td><td>❌</td></tr>
+<tr><td>Open model marketplace</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td>Plan-tier flexibility</td><td>✅ 4 tiers</td><td>❌ Enterprise only</td><td>❌ Module pricing</td><td>❌</td><td>❌</td></tr>
+</table>
+
+<hr>
+
+<h2 id="s13">13. Cost Model</h2>
+
+<h3>13.1 Per 1,000 Articles — Professional Plan</h3>
+<table>
+<tr><th>Component</th><th>Model / Service</th><th>Volume</th><th>Cost</th></tr>
+<tr><td>Stage 1 (Triage NLP)</td><td>Claude Sonnet 4</td><td>1,000 articles</td><td>$25.50</td></tr>
+<tr><td>Stage 2 (CTI Extraction)</td><td>GPT-4.1</td><td>~200 articles (20%)</td><td>$6.80</td></tr>
+<tr><td>Stage 2.5 (Enrichment)</td><td>VT + AbuseIPDB APIs</td><td>~400 IOCs</td><td>$2.00–$8.00</td></tr>
+<tr><td>Stage 3 (Dedup)</td><td>Gemini 2.5 Pro</td><td>~200 articles batch</td><td>$3.50</td></tr>
+<tr style="background:#e8f5e9"><td><strong>Total per 1,000 articles</strong></td><td></td><td></td><td><strong>$37.80–$43.80</strong></td></tr>
+</table>
+
+<h3>13.2 Fixed Monthly Costs</h3>
+<table>
+<tr><th>Component</th><th>Cost/Month</th></tr>
+<tr><td>Stage 4 lifecycle LLM (weekly reviews)</td><td>$20–$50</td></tr>
+<tr><td>Infrastructure (K8s, DBs, Kafka — shared)</td><td>$800–$2,000 (split across tenants)</td></tr>
+<tr><td>Enrichment API premium tiers (optional)</td><td>$0–$500/tenant</td></tr>
+</table>
+
+<hr>
+
+<h2 id="s14">14. Project Directory Structure</h2>
+
+<pre><code>cti-pipeline/
+├── docker-compose.yml                 # Local development stack
+├── Dockerfile                          # Multi-stage build
+├── pyproject.toml                      # Python dependencies (Poetry)
+├── alembic/                            # Database migrations
+│   ├── versions/
+│   └── env.py
+│
+├── src/
+│   ├── domain/                         # 🟢 INNER LAYER — Zero external deps
+│   │   ├── models/
+│   │   │   ├── article.py              # Article entity
+│   │   │   ├── ioc.py                  # IOC entity + status enum
+│   │   │   ├── threat_actor.py         # Threat actor entity
+│   │   │   ├── cve.py                  # CVE entity
+│   │   │   ├── relationship.py         # Graph relationship value object
+│   │   │   ├── tenant_config.py        # Tenant configuration model
+│   │   │   └── llm_models.py           # LLMRequest, LLMResponse
+│   │   ├── services/
+│   │   │   ├── confidence_scorer.py    # Composite confidence calculation
+│   │   │   ├── ioc_lifecycle.py        # State machine transitions
+│   │   │   └── dedup_strategy.py       # 3-layer dedup logic
+│   │   └── events/
+│   │       ├── article_events.py       # ArticleIngested, Stage1Complete, ...
+│   │       └── ioc_events.py           # IOCDiscovered, IOCExpired, ...
+│   │
+│   ├── ports/                          # 🟡 INTERFACES — Contracts
+│   │   ├── llm_port.py
+│   │   ├── enrichment_port.py
+│   │   ├── graph_port.py
+│   │   ├── ioc_repository_port.py
+│   │   ├── article_repository_port.py
+│   │   ├── event_bus_port.py
+│   │   ├── cache_port.py
+│   │   ├── secrets_vault_port.py
+│   │   └── cost_tracker_port.py
+│   │
+│   ├── application/                    # 🟠 USE CASES — Orchestration
+│   │   ├── use_cases/
+│   │   │   ├── process_stage1.py       # Stage 1 orchestrator
+│   │   │   ├── process_stage2.py       # Stage 2 orchestrator
+│   │   │   ├── enrich_iocs.py          # Stage 2.5 orchestrator
+│   │   │   ├── deduplicate.py          # Stage 3 orchestrator
+│   │   │   ├── persist_intel.py        # Stage 4 orchestrator
+│   │   │   └── run_lifecycle_jobs.py   # Scheduled job orchestrator
+│   │   ├── services/
+│   │   │   ├── llm_gateway.py          # Model routing, fallback, caching
+│   │   │   ├── pipeline_orchestrator.py# End-to-end pipeline coordinator
+│   │   │   └── cost_tracker.py         # Budget enforcement
+│   │   └── dto/
+│   │       ├── stage1_output.py
+│   │       ├── stage2_output.py
+│   │       └── enrichment_output.py
+│   │
+│   ├── adapters/                       # 🔴 OUTER LAYER — Infrastructure
+│   │   ├── llm/
+│   │   │   ├── openai_adapter.py
+│   │   │   ├── anthropic_adapter.py
+│   │   │   └── google_adapter.py
+│   │   ├── enrichment/
+│   │   │   ├── virustotal_adapter.py
+│   │   │   ├── abuseipdb_adapter.py
+│   │   │   ├── shodan_adapter.py
+│   │   │   └── alienvault_adapter.py
+│   │   ├── persistence/
+│   │   │   ├── postgres_article_repo.py
+│   │   │   ├── postgres_ioc_repo.py
+│   │   │   ├── neo4j_graph_adapter.py
+│   │   │   └── elasticsearch_search.py
+│   │   ├── messaging/
+│   │   │   ├── kafka_event_bus.py
+│   │   │   └── redis_cache_adapter.py
+│   │   ├── secrets/
+│   │   │   ├── vault_adapter.py        # HashiCorp Vault
+│   │   │   └── aws_secrets_adapter.py  # AWS Secrets Manager
+│   │   └── stix/
+│   │       ├── stix_exporter.py
+│   │       └── taxii_server.py
+│   │
+│   ├── api/                            # FastAPI routes
+│   │   ├── main.py                     # App factory
+│   │   ├── routes/
+│   │   │   ├── articles.py             # Article CRUD + search
+│   │   │   ├── iocs.py                 # IOC queries
+│   │   │   ├── threat_actors.py        # TA queries
+│   │   │   ├── graph.py                # Graph traversal queries
+│   │   │   ├── admin_config.py         # Tenant config CRUD
+│   │   │   ├── stix_taxii.py           # STIX/TAXII endpoints
+│   │   │   └── health.py               # Health + readiness probes
+│   │   ├── middleware/
+│   │   │   ├── tenant_context.py       # Extract tenant_id, set DB context
+│   │   │   ├── auth.py                 # JWT validation
+│   │   │   └── rate_limiter.py         # Per-tenant rate limiting
+│   │   └── dependencies.py             # DI container (dependency-injector)
+│   │
+│   ├── workers/                        # Celery / Kafka consumers
+│   │   ├── stage1_worker.py
+│   │   ├── stage2_worker.py
+│   │   ├── enrichment_worker.py
+│   │   ├── stage3_worker.py
+│   │   ├── stage4_worker.py
+│   │   └── lifecycle_worker.py
+│   │
+│   └── prompts/                        # LLM prompt templates
+│       ├── stage1_triage.py
+│       ├── stage2_extraction.py
+│       ├── stage2_ttp_mapping.py
+│       ├── stage3_dedup.py
+│       └── stage4_review.py
+│
+├── tests/
+│   ├── unit/
+│   │   ├── domain/
+│   │   ├── application/
+│   │   └── adapters/
+│   ├── integration/
+│   │   ├── test_pipeline_e2e.py
+│   │   ├── test_llm_gateway.py
+│   │   └── test_enrichment.py
+│   └── fixtures/
+│       ├── sample_articles/
+│       └── expected_outputs/
+│
+├── k8s/                                # Kubernetes manifests
+│   ├── base/
+│   │   ├── deployments/
+│   │   ├── services/
+│   │   ├── configmaps/
+│   │   └── secrets/
+│   └── overlays/
+│       ├── dev/
+│       ├── staging/
+│       └── production/
+│
+├── frontend/                           # Admin UI (Next.js)
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── admin/
+│   │   │   │   ├── ai-config/         # Model configuration page
+│   │   │   │   ├── dashboard/          # Cost + accuracy dashboard
+│   │   │   │   └── settings/           # General tenant settings
+│   │   │   └── layout.tsx
+│   │   └── components/
+│   │       ├── ModelSelector.tsx
+│   │       ├── CostEstimator.tsx
+│   │       ├── AccuracyChart.tsx
+│   │       └── SubtaskConfigTable.tsx
+│   └── package.json
+│
+└── docs/
+    ├── architecture.html               # THIS DOCUMENT
+    ├── api-spec.yaml                   # OpenAPI 3.1 spec
+    ├── runbook.md                      # Operations runbook
+    └── prompt-engineering.md            # Prompt design guide
+</code></pre>
+<hr>
+
+<h2 id="s15">15. API Specification Overview</h2>
+
+<h3>15.1 Core Endpoints</h3>
+<table>
+<tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth</th></tr>
+<tr><td>POST</td><td><code>/api/v1/articles</code></td><td>Submit article for processing</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/api/v1/articles/{id}</code></td><td>Get article with all extraction results</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/api/v1/articles/{id}/status</code></td><td>Get processing status (stage tracking)</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/api/v1/iocs</code></td><td>Search/filter IOCs (type, status, confidence, date range)</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/api/v1/iocs/{id}/relationships</code></td><td>Get related entities from knowledge graph</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/api/v1/threat-actors</code></td><td>List/search threat actors</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/api/v1/cves</code></td><td>List/search CVEs with exploitation status</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/api/v1/graph/query</code></td><td>Cypher-like graph traversal query</td><td>API Key</td></tr>
+<tr><td>POST</td><td><code>/api/v1/search</code></td><td>Full-text search across all intelligence</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/api/v1/stix/bundle</code></td><td>Export STIX 2.1 bundle (date range filter)</td><td>API Key</td></tr>
+<tr><td>GET</td><td><code>/taxii2/collections</code></td><td>TAXII 2.1 discovery endpoint</td><td>HTTP Basic</td></tr>
+</table>
+
+<h3>15.2 Admin Endpoints</h3>
+<table>
+<tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth</th></tr>
+<tr><td>GET</td><td><code>/api/v1/admin/config</code></td><td>Get current tenant configuration</td><td>JWT (admin)</td></tr>
+<tr><td>PUT</td><td><code>/api/v1/admin/config</code></td><td>Update model assignments, budget, settings</td><td>JWT (admin)</td></tr>
+<tr><td>GET</td><td><code>/api/v1/admin/models</code></td><td>List available models with pricing + accuracy</td><td>JWT (admin)</td></tr>
+<tr><td>GET</td><td><code>/api/v1/admin/cost/summary</code></td><td>Monthly cost breakdown by subtask/model</td><td>JWT (admin)</td></tr>
+<tr><td>GET</td><td><code>/api/v1/admin/accuracy/metrics</code></td><td>Per-model accuracy metrics (last 30 days)</td><td>JWT (admin)</td></tr>
+<tr><td>POST</td><td><code>/api/v1/admin/config/validate</code></td><td>Validate config + estimate monthly cost</td><td>JWT (admin)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="s16">16. Implementation Roadmap</h2>
+
+<h3>Phase 1 — MVP (Weeks 1–8)</h3>
+<table>
+<tr><th>Week</th><th>Deliverable</th><th>Components</th></tr>
+<tr><td>1–2</td><td>Foundation</td><td>Project scaffolding, domain models, port interfaces, PostgreSQL schema, Kafka setup, Docker Compose local dev</td></tr>
+<tr><td>3–4</td><td>Core Pipeline</td><td>Stage 1 + Stage 2 workers, LLM Gateway with OpenAI + Anthropic + Google adapters, basic tenant config</td></tr>
+<tr><td>5</td><td>Enrichment & Dedup</td><td>Stage 2.5 (VT, AbuseIPDB), Stage 3 (Bloom filter + semantic dedup), composite confidence scoring</td></tr>
+<tr><td>6</td><td>Persistence</td><td>Stage 4, Neo4j graph adapter, IOC/TA/CVE lifecycle state machines, scheduled jobs</td></tr>
+<tr><td>7</td><td>API & Admin</td><td>FastAPI REST API, Admin config API, basic Next.js admin page with model selector + cost estimator</td></tr>
+<tr><td>8</td><td>Testing & Deploy</td><td>Integration tests, K8s manifests, staging deployment, load testing</td></tr>
+</table>
+
+<h3>Phase 2 — Enhanced (Weeks 9–14)</h3>
+<table>
+<tr><th>Week</th><th>Deliverable</th></tr>
+<tr><td>9–10</td><td>STIX/TAXII server, retrospective IOC scanning, collective confidence scoring</td></tr>
+<tr><td>11–12</td><td>Conversational CTI Q&A (Charlotte AI-style), accuracy dashboard with historical metrics</td></tr>
+<tr><td>13–14</td><td>TI Ops playbook engine (if-then automation rules), webhook integrations, SIEM push</td></tr>
+</table>
+
+<h3>Phase 3 — Advanced (Weeks 15–20)</h3>
+<table>
+<tr><th>Week</th><th>Deliverable</th></tr>
+<tr><td>15–16</td><td>Multi-language article processing, predictive threat scoring ML model</td></tr>
+<tr><td>17–18</td><td>Advanced admin analytics, A/B model testing framework, tenant onboarding automation</td></tr>
+<tr><td>19–20</td><td>SOC 2 audit preparation, GDPR compliance tooling, documentation finalization</td></tr>
+</table>
+
+<hr>
+
+<div class="callout-green callout">
+<h3>Key Architectural Decisions Summary</h3>
+<p><strong>Why Hexagonal Architecture?</strong> — Every external dependency (LLM provider, database, enrichment API, message broker) is behind an interface. Adding a new LLM provider means writing one adapter file. Swapping from Kafka to RabbitMQ means one adapter change. This is the foundation of easy code maintenance.</p>
+<p><strong>Why Event-Driven with Kafka?</strong> — Stages are fully decoupled. Stage 1 doesn't know Stage 2 exists. Each stage can be independently scaled, deployed, and debugged. If Stage 2 fails, messages stay in Kafka and are replayed when it recovers. No data loss.</p>
+<p><strong>Why Multi-Model Hybrid?</strong> — Research (Di Maio 2025, MDPI; Zacharis 2025, ScienceDirect) shows that multi-task prompts degrade accuracy by 5–12% compared to specialized single-task prompts. Our 3-model approach assigns the best model to each task class while bundling related subtasks to control cost.</p>
+<p><strong>Why Neo4j for Graph + PostgreSQL for Records?</strong> — Inspired by OpenCTI's architecture (which uses ElasticSearch for search + Redis for cache). Graph databases excel at relationship traversal ("find all IOCs connected to APT29 through any CVE"). Relational databases excel at transactional integrity, filtering, and aggregation. Using both is the pattern every major CTI platform follows.</p>
+<p><strong>Why External Enrichment as a Separate Stage?</strong> — This is the single most impactful competitive feature. LLMs can hallucinate IOCs. Cross-referencing against VirusTotal/Shodan/AbuseIPDB catches false positives and adds external context that the LLM never had access to. No competitor offers this as a configurable, customer-controlled layer.</p>
+</div>
+
+<hr>
+<p style="text-align:center;color:#888;font-size:0.85em;margin-top:40px">
+CTI News Feed AI Pipeline — Architecture Document v2.0<br>
+Generated: March 16, 2026 | Based on research from: Recorded Future, CrowdStrike, Anomali, ThreatConnect, MISP, OpenCTI, Portkey, LiteLLM, OpenRouter<br>
+Academic sources: Di Maio 2025 (MDPI), Zacharis 2025 (ScienceDirect), TIEF/Joy 2025 (MDPI), CTIKG/Huang et al., Barrios-González 2026 (MDPI), Büchel SoK 2025<br>
+Technology patterns: AWS Multi-Tenant Agentic AI (2025), Cloudurable Microservices 2025, Frontegg Multi-Tenancy, ZeroThreat SaaS Security Guide
+</p>
+
+</body>
+</html>

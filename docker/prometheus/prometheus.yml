@@ -6,3 +6,9 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+
+  # Uncomment when api-gateway is deployed
+  # - job_name: 'etip-api-gateway'
+  #   static_configs:
+  #     - targets: ['etip_api_gateway:3001']
+  #   metrics_path: /metrics

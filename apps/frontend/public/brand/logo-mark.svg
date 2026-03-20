@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00ff88"/>
+      <stop offset="45%" stop-color="#00ddff"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#050709"/>
+    </linearGradient>
+    <radialGradient id="core-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00ff88" stop-opacity="1"/>
+      <stop offset="40%" stop-color="#00ddff" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aura" cx="50%" cy="46%" r="55%">
+      <stop offset="0%" stop-color="#00ddff" stop-opacity="0.06"/>
+      <stop offset="60%" stop-color="#00ff88" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <filter id="glow-sm">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-lg">
+      <feGaussianBlur stdDeviation="12" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- Hex pattern for inner texture -->
+    <pattern id="hex" x="0" y="0" width="30" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+      <path d="M15 0 L30 7.5 L30 18.5 L15 26 L0 18.5 L0 7.5 Z" fill="none" stroke="#00ff88" stroke-width="0.5" opacity="0.06"/>
+    </pattern>
+  </defs>
+
+  <!-- Ambient aura behind shield -->
+  <ellipse cx="256" cy="246" rx="220" ry="230" fill="url(#aura)"/>
+
+  <!-- Shield — curved modern shape -->
+  <path d="M256 52
+    C256 52, 260 52, 264 53
+    L420 124
+    C426 127, 428 132, 428 138
+    L428 276
+    C428 320, 412 360, 380 395
+    C348 430, 296 458, 260 466
+    C258 467, 254 467, 252 466
+    C216 458, 164 430, 132 395
+    C100 360, 84 320, 84 276
+    L84 138
+    C84 132, 86 127, 92 124
+    L248 53
+    C252 52, 256 52, 256 52 Z"
+    fill="url(#g2)" stroke="url(#g1)" stroke-width="2.5"/>
+
+  <!-- Hex texture fill inside shield -->
+  <path d="M256 68
+    L412 136 L412 272
+    C412 340, 340 420, 256 448
+    C172 420, 100 340, 100 272
+    L100 136 Z"
+    fill="url(#hex)" opacity="0.8"/>
+
+  <!-- Inner shield bevel line -->
+  <path d="M256 82
+    L400 145 L400 268
+    C400 332, 332 406, 256 434
+    C180 406, 112 332, 112 268
+    L112 145 Z"
+    fill="none" stroke="url(#g1)" stroke-width="0.8" opacity="0.2"/>
+
+  <!-- Scanning eye — centered at shield visual center -->
+  <!-- Outer ring with dashes for tech feel -->
+  <circle cx="256" cy="246" r="100" fill="none" stroke="url(#g1)" stroke-width="2" opacity="0.25"
+    stroke-dasharray="8 4"/>
+  <!-- Solid ring -->
+  <circle cx="256" cy="246" r="80" fill="none" stroke="url(#g1)" stroke-width="2.5" opacity="0.5"/>
+  <!-- Middle ring -->
+  <circle cx="256" cy="246" r="52" fill="none" stroke="url(#g1)" stroke-width="1.8" opacity="0.35"/>
+  <!-- Inner ring -->
+  <circle cx="256" cy="246" r="28" fill="none" stroke="url(#g1)" stroke-width="1.2" opacity="0.25"/>
+
+  <!-- Radar sweep arc wedge -->
+  <path d="M256 246 L340 206 A100 100 0 0 1 350 246 Z"
+    fill="url(#g1)" opacity="0.12"/>
+  <path d="M256 246 L340 206 A100 100 0 0 1 350 246"
+    fill="none" stroke="#00ff88" stroke-width="2" opacity="0.6" stroke-linecap="round"/>
+
+  <!-- Core iris — multi-layer glow -->
+  <circle cx="256" cy="246" r="24" fill="url(#core-glow)" opacity="0.3" filter="url(#glow-lg)"/>
+  <circle cx="256" cy="246" r="14" fill="url(#g1)" filter="url(#glow-sm)"/>
+  <circle cx="256" cy="246" r="6" fill="#ffffff" opacity="0.95"/>
+  <!-- Highlight catch light -->
+  <circle cx="252" cy="242" r="2.5" fill="#ffffff" opacity="0.6"/>
+
+  <!-- Crosshair markers — longer, more visible -->
+  <line x1="256" y1="130" x2="256" y2="150" stroke="url(#g1)" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+  <line x1="256" y1="342" x2="256" y2="362" stroke="url(#g1)" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+  <line x1="140" y1="246" x2="160" y2="246" stroke="url(#g1)" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+  <line x1="352" y1="246" x2="372" y2="246" stroke="url(#g1)" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+
+  <!-- Hex data nodes at cardinal points on outer ring -->
+  <!-- Top -->
+  <path d="M256 142 L263 146 L263 154 L256 158 L249 154 L249 146 Z" fill="#00ff88" opacity="0.7" filter="url(#glow-sm)"/>
+  <!-- Right -->
+  <path d="M360 246 L367 250 L367 258 L360 262 L353 258 L353 250 Z" fill="#00ddff" opacity="0.6" filter="url(#glow-sm)"/>
+  <!-- Bottom -->
+  <path d="M256 338 L263 342 L263 350 L256 354 L249 350 L249 342 Z" fill="#3b82f6" opacity="0.6" filter="url(#glow-sm)"/>
+  <!-- Left -->
+  <path d="M152 246 L159 250 L159 258 L152 262 L145 258 L145 250 Z" fill="#00ff88" opacity="0.5" filter="url(#glow-sm)"/>
+
+  <!-- Circuit traces from hex nodes outward -->
+  <!-- Top node upward -->
+  <line x1="256" y1="142" x2="256" y2="100" stroke="#00ff88" stroke-width="1" opacity="0.3" stroke-linecap="round"/>
+  <circle cx="256" cy="100" r="2" fill="#00ff88" opacity="0.5"/>
+  <!-- Right node outward -->
+  <line x1="367" y1="254" x2="392" y2="254" stroke="#00ddff" stroke-width="1" opacity="0.3" stroke-linecap="round"/>
+  <line x1="392" y1="254" x2="392" y2="230" stroke="#00ddff" stroke-width="1" opacity="0.3" stroke-linecap="round"/>
+  <circle cx="392" cy="230" r="2" fill="#00ddff" opacity="0.5"/>
+  <!-- Left node outward -->
+  <line x1="145" y1="254" x2="120" y2="254" stroke="#00ff88" stroke-width="1" opacity="0.3" stroke-linecap="round"/>
+  <line x1="120" y1="254" x2="120" y2="278" stroke="#00ff88" stroke-width="1" opacity="0.3" stroke-linecap="round"/>
+  <circle cx="120" cy="278" r="2" fill="#3b82f6" opacity="0.5"/>
+
+  <!-- Shield apex node (keystone) -->
+  <circle cx="256" cy="52" r="5" fill="#00ff88" opacity="0.9" filter="url(#glow-sm)"/>
+  <!-- Side anchor nodes -->
+  <circle cx="428" cy="200" r="3.5" fill="#00ddff" opacity="0.6"/>
+  <circle cx="84" cy="200" r="3.5" fill="#3b82f6" opacity="0.6"/>
+</svg>

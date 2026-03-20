@@ -1,5 +1,7 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
+    /* ─── Strict Type Safety (MANDATORY — never relax) ─── */
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
@@ -8,6 +10,8 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": false,
     "forceConsistentCasingInFileNames": true,
+
+    /* ─── Module System ─── */
     "target": "ES2022",
     "module": "Node16",
     "moduleResolution": "Node16",
@@ -15,14 +19,26 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+
+    /* ─── Output ─── */
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
     "rootDir": "src",
+
+    /* ─── Paths ─── */
     "baseUrl": ".",
+
+    /* ─── Misc ─── */
     "skipLibCheck": true,
     "incremental": true
   },
-  "exclude": ["node_modules", "dist", "coverage", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }

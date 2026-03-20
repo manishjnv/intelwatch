@@ -1,79 +1,40 @@
 {
   "permissions": {
     "allow": [
-      "Read(./apps/**)",
-      "Read(./packages/**)",
-      "Read(./docs/**)",
-      "Read(./prisma/**)",
-      "Read(./infrastructure/**)",
-      "Read(./*.json)",
-      "Read(./*.yaml)",
-      "Read(./*.yml)",
-      "Read(./*.md)",
-      "Read(./Makefile)",
-      "Read(./.github/**)",
-
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git branch:*)",
-      "Bash(git checkout:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git stash:*)",
-      "Bash(git tag:*)",
-
-      "Bash(pnpm install:*)",
-      "Bash(pnpm -r test:*)",
-      "Bash(pnpm exec tsc:*)",
-      "Bash(pnpm -r run typecheck:*)",
-      "Bash(pnpm -r run lint:*)",
-      "Bash(pnpm audit:*)",
-      "Bash(make:*)",
-      "Bash(npx prisma:*)",
-      "Bash(npx vite:*)",
-
-      "Bash(docker ps:*)",
-      "Bash(docker logs:*)",
-      "Bash(docker compose ps:*)",
-      "Bash(docker compose logs:*)",
-      "Bash(docker inspect:*)",
-
+      "Bash(*)",
+      "Read",
       "Write(./apps/**)",
       "Write(./packages/**)",
       "Write(./docs/**)",
       "Write(./prisma/**)",
       "Write(./__tests__/**)",
-      "Write(./infrastructure/docker/**)"
+      "Write(./infrastructure/docker/**)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Skill(session-end)",
+      "Skill(session-end:*)"
     ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./secrets/**)",
-
       "Write(./docker-compose.yml)",
       "Write(./docker-compose.yaml)",
-
       "Bash(rm -rf:*)",
       "Bash(docker rm:*)",
       "Bash(docker rmi:*)",
       "Bash(docker system prune:*)",
       "Bash(docker volume rm:*)",
       "Bash(docker network rm:*)",
-
       "Bash(git push:*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
-
       "Bash(ssh:*)",
       "Bash(scp:*)",
-
       "Write(./.github/workflows/**)"
     ]
   },
-
-  "autoMemoryEnabled": true,
-
+  "model": "claude-opus-4-6",
   "hooks": {
     "PreToolUse": [
       {
@@ -95,7 +56,6 @@
         ]
       }
     ],
-
     "PostToolUse": [
       {
         "matcher": "Write(*.ts)",
@@ -116,7 +76,6 @@
         ]
       }
     ],
-
     "SessionStart": [
       {
         "hooks": [
@@ -127,5 +86,7 @@
         ]
       }
     ]
-  }
+  },
+  "alwaysThinkingEnabled": true,
+  "autoMemoryEnabled": true
 }

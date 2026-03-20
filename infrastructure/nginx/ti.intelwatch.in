@@ -1,12 +1,21 @@
+# ═══════════════════════════════════════════════════════════════
+# ti.intelwatch.in — Host Nginx server block
+# ═══════════════════════════════════════════════════════════════
+# Install on VPS: /etc/nginx/sites-available/ti.intelwatch.in
+# This is a NEW file — does NOT touch existing intelwatch.in config.
+# ═══════════════════════════════════════════════════════════════
+
 server {
     listen 80;
     listen [::]:80;
     server_name ti.intelwatch.in;
 
+    # Certbot ACME challenge
     location /.well-known/acme-challenge/ {
         root /var/www/html;
     }
 
+    # Proxy all traffic to ETIP's internal Nginx (port 8080)
     location / {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;

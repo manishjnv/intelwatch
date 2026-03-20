@@ -1,3 +1,16 @@
+/**
+ * @module components/layout/ProtectedRoute
+ * @description Route wrapper that redirects to /login if not authenticated.
+ */
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth-store';
-export function ProtectedRoute() { const isAuth = useAuthStore((s) => s.isAuthenticated); if (!isAuth) return <Navigate to="/login" replace />; return <Outlet />; }
+
+export function ProtectedRoute() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
+}

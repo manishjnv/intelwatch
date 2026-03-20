@@ -1,14 +1,23 @@
+/**
+ * @module @etip/shared-types/intel
+ * @description Schemas for threat actors, malware, vulnerabilities, and
+ * the generic NormalizedIntel wrapper used across the pipeline.
+ */
 import { z } from 'zod';
 import { TlpSchema, SeveritySchema, SourceRefSchema } from './ioc.js';
 
+/** Threat actor motivation categories */
 export const ACTOR_MOTIVATIONS = [
-  'financial', 'espionage', 'hacktivism', 'sabotage', 'ideology', 'unknown',
+  'financial', 'espionage', 'hacktivism', 'sabotage',
+  'ideology', 'unknown',
 ] as const;
 
+/** Threat actor sophistication levels */
 export const ACTOR_SOPHISTICATION = [
   'none', 'minimal', 'intermediate', 'advanced', 'expert', 'strategic',
 ] as const;
 
+/** Canonical Threat Actor schema */
 export const CanonicalThreatActorSchema = z.object({
   id: z.string().uuid(),
   tenantId: z.string().min(1),
@@ -34,6 +43,7 @@ export const CanonicalThreatActorSchema = z.object({
 });
 export type CanonicalThreatActor = z.infer<typeof CanonicalThreatActorSchema>;
 
+/** Canonical Malware schema */
 export const CanonicalMalwareSchema = z.object({
   id: z.string().uuid(),
   tenantId: z.string().min(1),
@@ -60,8 +70,10 @@ export const CanonicalMalwareSchema = z.object({
 });
 export type CanonicalMalware = z.infer<typeof CanonicalMalwareSchema>;
 
+/** CVSS severity string levels */
 export const CVSS_SEVERITY = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 
+/** Canonical Vulnerability schema */
 export const CanonicalVulnerabilitySchema = z.object({
   id: z.string().uuid(),
   tenantId: z.string().min(1),
@@ -90,10 +102,17 @@ export const CanonicalVulnerabilitySchema = z.object({
 });
 export type CanonicalVulnerability = z.infer<typeof CanonicalVulnerabilitySchema>;
 
-export const ENTITY_TYPES = ['ioc', 'threat_actor', 'malware', 'vulnerability'] as const;
+/** Entity categories flowing through the pipeline */
+export const ENTITY_TYPES = [
+  'ioc', 'threat_actor', 'malware', 'vulnerability',
+] as const;
 export const EntityTypeSchema = z.enum(ENTITY_TYPES);
 export type EntityType = z.infer<typeof EntityTypeSchema>;
 
+/**
+ * NormalizedIntel — generic wrapper for any intelligence entity
+ * flowing through the pipeline (normalize → enrich → store).
+ */
 export const NormalizedIntelSchema = z.object({
   entityType: EntityTypeSchema,
   entityId: z.string().uuid(),

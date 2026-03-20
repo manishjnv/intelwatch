@@ -61,3 +61,24 @@
 **Decision:** Stay on ESLint 8 with .eslintrc.json classic config
 **Alternatives:** ESLint 9 flat config (plugin compatibility issues at time of decision)
 **Consequences:** Classic config at root. Will migrate to flat config when plugin ecosystem catches up. @typescript-eslint v7.
+
+### DECISION-009: claude-opus-4-6 with extended thinking as project model
+**Date:** 2026-03-20 | **Status:** Accepted
+**Context:** Need consistent, highest-quality model for complex multi-module implementation sessions
+**Decision:** Set `model: claude-opus-4-6` + `alwaysThinkingEnabled: true` in .claude/settings.json (project-scoped)
+**Alternatives:** claude-sonnet-4-6 (faster, cheaper but less capable for architecture decisions), per-session model selection (inconsistent)
+**Consequences:** All Claude Code sessions in this project use Opus 4.6 with extended thinking by default. Higher token cost per session but better architectural reasoning.
+
+### DECISION-010: Secrets stored in .claude/settings.local.json + .claude/secrets/
+**Date:** 2026-03-20 | **Status:** Accepted
+**Context:** GH_TOKEN and SSH private key were hardcoded in skills/00-CLAUDE-INSTRUCTIONS.md (committed to git). Credentials exposed in git history.
+**Decision:** Move all secrets to gitignored locations: env vars in .claude/settings.local.json, SSH key file in .claude/secrets/deploy_key. Reference by env var name in all docs.
+**Alternatives:** .env file (not automatically available to Claude Code sessions), OS keychain (not portable across machines)
+**Consequences:** .claude/settings.local.json and .claude/secrets/ are gitignored. Claude Code sessions have secrets available via $ENV_VAR. Credentials rotated after exposure. Git history purge still pending.
+
+### DECISION-011: /session-start loads module-specific skill files from skills/ folder
+**Date:** 2026-03-20 | **Status:** Accepted
+**Context:** The .claude/skills/ (2 native skills) and skills/ (25+ spec docs) were disconnected — module specs never loaded automatically, causing Claude to miss pipeline integration rules and UI requirements.
+**Decision:** Updated /session-start command to explicitly load skills/00-CLAUDE-INSTRUCTIONS.md, skills/00-MASTER.md, and the module-specific skills/XX-MODULE.md for the declared target module each session.
+**Alternatives:** Merge skills/ into .claude/skills/ as native skills (too large, would bloat context), rely on CLAUDE.md only (insufficient detail for module-level specs)
+**Consequences:** Every session starts with full context: core rules + module spec + scope lock. docs/SESSION_TEMPLATE.md provides copy-paste prompts for all scenarios.

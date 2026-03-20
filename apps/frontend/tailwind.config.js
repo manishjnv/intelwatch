@@ -1,11 +1,45 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  darkMode: 'class',
-  theme: { extend: {
-    colors: { 'bg-base': '#07090e', 'bg-primary': '#0d1117', 'bg-secondary': '#131920', 'bg-elevated': '#1a2332', 'bg-hover': '#1e2a3a', 'bg-active': '#243244', border: '#1e2d42', 'border-strong': '#2a3f5a', 'border-focus': '#3b82f6', 'text-primary': '#e2e8f0', 'text-secondary': '#94a3b8', 'text-muted': '#64748b', 'text-link': '#60a5fa', accent: '#3b82f6', 'accent-hover': '#2563eb', 'sev-critical': '#ef4444', 'sev-high': '#f97316', 'sev-medium': '#eab308', 'sev-low': '#22c55e', 'sev-info': '#64748b' },
-    boxShadow: { 'glow-blue': '0 0 20px rgba(59,130,246,0.2)', card: '0 4px 6px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.4)', 'card-hover': '0 10px 25px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.4)' },
-    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
-  }},
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+    '../../packages/shared-ui/src/**/*.{js,ts,jsx,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        'bg-base':      'var(--bg-base)',
+        'bg-primary':   'var(--bg-primary)',
+        'bg-secondary': 'var(--bg-secondary)',
+        'bg-elevated':  'var(--bg-elevated)',
+        'bg-hover':     'var(--bg-hover)',
+        'bg-active':    'var(--bg-active)',
+        border:         'var(--border)',
+        'border-strong':'var(--border-strong)',
+        'border-focus': 'var(--border-focus)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary':'var(--text-secondary)',
+        'text-muted':   'var(--text-muted)',
+        'text-link':    'var(--text-link)',
+        accent:         'var(--accent)',
+        'accent-hover': 'var(--accent-hover)',
+        'sev-critical': 'var(--sev-critical)',
+        'sev-high':     'var(--sev-high)',
+        'sev-medium':   'var(--sev-medium)',
+        'sev-low':      'var(--sev-low)',
+        'sev-info':     'var(--sev-info)',
+      },
+      boxShadow: {
+        'glow-blue':  'var(--shadow-glow-blue)',
+        'glow-red':   'var(--shadow-glow-red)',
+        'card':       'var(--shadow-md)',
+        'card-hover': 'var(--shadow-lg)',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
+    },
+  },
   plugins: [],
 };

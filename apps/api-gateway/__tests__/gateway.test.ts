@@ -1,10 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
+import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { loadJwtConfig, signAccessToken, signRefreshToken } from '@etip/shared-auth';
 import { authenticate, getUser } from '../src/plugins/auth.js';
 import { rbac, rbacAll, rbacAny } from '../src/plugins/rbac.js';
 import { registerErrorHandler } from '../src/plugins/error-handler.js';
 import { healthRoutes } from '../src/routes/health.js';
+import { loadConfig } from '../src/config.js';
 import { AppError } from '@etip/shared-utils';
 
 const TEST_JWT_ENV = {
@@ -257,54 +260,131 @@ describe('API Gateway', () => {
       expect(res.json().error.code).toBe('NOT_FOUND');
     });
   });
-});
 
-// ── Additional Tests (Session 3) ────────────────────────────────
+  // ── Rate Limit 429 Test ───────────────────────────────────────────
 
-import rateLimit from '@fastify/rate-limit';
-import cors from '@fastify/cors';
-import { loadConfig } from '../src/config.js';
+  describe('rate limiting', () => {
+    it('returns 429 after exceeding rate limit', async () => {
+      // Build a separate app with very low rate limit for testing
+      const rateLimitApp = Fastify({ logger: false });
+      registerErrorHandler(rateLimitApp);
+      await rateLimitApp.register(rateLimit, { max: 3, timeWindow: 60000 });
+      rateLimitApp.get('/test/limited', async () => ({ ok: true }));
+      await rateLimitApp.ready();
 
-describe('rate limiting', () => {
-  it('returns 429 after exceeding rate limit', async () => {
-    const rlApp = Fastify({ logger: false });
-    registerErrorHandler(rlApp);
-    await rlApp.register(rateLimit, { max: 3, timeWindow: 60000 });
-    rlApp.get('/test/limited', async () => ({ ok: true }));
-    await rlApp.ready();
-    for (let i = 0; i < 3; i++) { const r = await rlApp.inject({ method: 'GET', url: '/test/limited' }); expect(r.statusCode).toBe(200); }
-    const blocked = await rlApp.inject({ method: 'GET', url: '/test/limited' });
-    expect(blocked.statusCode).toBe(429);
-    expect(blocked.json().error.code).toBe('RATE_LIMITED');
-    await rlApp.close();
+      // Make requests up to the limit
+      for (let i = 0; i < 3; i++) {
+        const res = await rateLimitApp.inject({ method: 'GET', url: '/test/limited' });
+        expect(res.statusCode).toBe(200);
+      }
+
+      // Next request should be rate limited
+      const blocked = await rateLimitApp.inject({ method: 'GET', url: '/test/limited' });
+      expect(blocked.statusCode).toBe(429);
+      expect(blocked.json().error.code).toBe('RATE_LIMITED');
+
+      await rateLimitApp.close();
+    });
   });
-});
 
-describe('CORS headers', () => {
-  it('returns correct CORS headers for allowed origin', async () => {
-    const corsApp = Fastify({ logger: false });
-    await corsApp.register(cors, { origin: ['https://ti.intelwatch.in'], credentials: true });
-    corsApp.get('/test/cors', async () => ({ ok: true }));
-    await corsApp.ready();
-    const r = await corsApp.inject({ method: 'GET', url: '/test/cors', headers: { origin: 'https://ti.intelwatch.in' } });
-    expect(r.headers['access-control-allow-origin']).toBe('https://ti.intelwatch.in');
-    expect(r.headers['access-control-allow-credentials']).toBe('true');
-    await corsApp.close();
-  });
-  it('handles OPTIONS preflight', async () => {
-    const corsApp = Fastify({ logger: false });
-    await corsApp.register(cors, { origin: ['https://ti.intelwatch.in'], credentials: true, allowedHeaders: ['Content-Type', 'Authorization'] });
-    corsApp.get('/test/cors', async () => ({ ok: true }));
-    await corsApp.ready();
-    const r = await corsApp.inject({ method: 'OPTIONS', url: '/test/cors', headers: { origin: 'https://ti.intelwatch.in', 'access-control-request-method': 'POST' } });
-    expect(r.statusCode).toBe(204);
-    await corsApp.close();
-  });
-});
+  // ── CORS Headers Test ─────────────────────────────────────────────
 
-describe('config validation', () => {
-  it('throws when DATABASE_URL missing', () => { expect(() => loadConfig({ TI_JWT_SECRET: 'test-secret-key-at-least-32-characters-long!!', TI_SERVICE_JWT_SECRET: 'service-secret-16chars', TI_REDIS_URL: 'redis://localhost:6379' })).toThrow('Invalid environment configuration'); });
-  it('throws when JWT_SECRET too short', () => { expect(() => loadConfig({ TI_DATABASE_URL: 'postgresql://localhost/test', TI_JWT_SECRET: 'short', TI_SERVICE_JWT_SECRET: 'service-secret-16chars', TI_REDIS_URL: 'redis://localhost:6379' })).toThrow('Invalid environment configuration'); });
-  it('throws when REDIS_URL missing', () => { expect(() => loadConfig({ TI_DATABASE_URL: 'postgresql://localhost/test', TI_JWT_SECRET: 'test-secret-key-at-least-32-characters-long!!', TI_SERVICE_JWT_SECRET: 'service-secret-16chars' })).toThrow('Invalid environment configuration'); });
-  it('loads valid config with defaults', () => { const c = loadConfig({ TI_DATABASE_URL: 'postgresql://localhost/test', TI_JWT_SECRET: 'test-secret-key-at-least-32-characters-long!!', TI_SERVICE_JWT_SECRET: 'service-secret-16chars', TI_REDIS_URL: 'redis://localhost:6379' }); expect(c.TI_API_PORT).toBe(3001); expect(c.TI_LOG_LEVEL).toBe('info'); });
+  describe('CORS headers', () => {
+    it('returns Access-Control-Allow-Origin for allowed origin', async () => {
+      const corsApp = Fastify({ logger: false });
+      await corsApp.register(cors, {
+        origin: ['https://ti.intelwatch.in'],
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Service-Token'],
+      });
+      corsApp.get('/test/cors', async () => ({ ok: true }));
+      await corsApp.ready();
+
+      const res = await corsApp.inject({
+        method: 'GET',
+        url: '/test/cors',
+        headers: { origin: 'https://ti.intelwatch.in' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['access-control-allow-origin']).toBe('https://ti.intelwatch.in');
+      expect(res.headers['access-control-allow-credentials']).toBe('true');
+
+      await corsApp.close();
+    });
+
+    it('handles OPTIONS preflight with correct headers', async () => {
+      const corsApp = Fastify({ logger: false });
+      await corsApp.register(cors, {
+        origin: ['https://ti.intelwatch.in'],
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+      });
+      corsApp.get('/test/cors', async () => ({ ok: true }));
+      await corsApp.ready();
+
+      const res = await corsApp.inject({
+        method: 'OPTIONS',
+        url: '/test/cors',
+        headers: {
+          origin: 'https://ti.intelwatch.in',
+          'access-control-request-method': 'POST',
+          'access-control-request-headers': 'Authorization',
+        },
+      });
+
+      expect(res.statusCode).toBe(204);
+      expect(res.headers['access-control-allow-origin']).toBe('https://ti.intelwatch.in');
+      expect(res.headers['access-control-allow-methods']).toBeDefined();
+
+      await corsApp.close();
+    });
+  });
+
+  // ── Config Validation Tests ───────────────────────────────────────
+
+  describe('config validation', () => {
+    it('throws CONFIG_ERROR when TI_DATABASE_URL is missing', () => {
+      expect(() => loadConfig({
+        TI_JWT_SECRET: 'test-secret-key-at-least-32-characters-long!!',
+        TI_SERVICE_JWT_SECRET: 'service-secret-16chars',
+        TI_REDIS_URL: 'redis://localhost:6379',
+        // TI_DATABASE_URL intentionally missing
+      })).toThrow('Invalid environment configuration');
+    });
+
+    it('throws CONFIG_ERROR when TI_JWT_SECRET is too short', () => {
+      expect(() => loadConfig({
+        TI_DATABASE_URL: 'postgresql://localhost/test',
+        TI_JWT_SECRET: 'short',
+        TI_SERVICE_JWT_SECRET: 'service-secret-16chars',
+        TI_REDIS_URL: 'redis://localhost:6379',
+      })).toThrow('Invalid environment configuration');
+    });
+
+    it('throws CONFIG_ERROR when TI_REDIS_URL is missing', () => {
+      expect(() => loadConfig({
+        TI_DATABASE_URL: 'postgresql://localhost/test',
+        TI_JWT_SECRET: 'test-secret-key-at-least-32-characters-long!!',
+        TI_SERVICE_JWT_SECRET: 'service-secret-16chars',
+        // TI_REDIS_URL intentionally missing
+      })).toThrow('Invalid environment configuration');
+    });
+
+    it('loads valid config with defaults applied', () => {
+      const config = loadConfig({
+        TI_DATABASE_URL: 'postgresql://localhost/test',
+        TI_JWT_SECRET: 'test-secret-key-at-least-32-characters-long!!',
+        TI_SERVICE_JWT_SECRET: 'service-secret-16chars',
+        TI_REDIS_URL: 'redis://localhost:6379',
+      });
+      expect(config.TI_API_PORT).toBe(3001);
+      expect(config.TI_NODE_ENV).toBe('development');
+      expect(config.TI_LOG_LEVEL).toBe('info');
+      expect(config.TI_RATE_LIMIT_MAX_REQUESTS).toBe(100);
+      expect(config.TI_RATE_LIMIT_WINDOW_MS).toBe(60000);
+    });
+  });
 });

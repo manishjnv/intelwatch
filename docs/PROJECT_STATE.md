@@ -1,5 +1,5 @@
 # ETIP Project State
-**Last updated:** 2026-03-18 (update at end of EVERY session via /session-end)
+**Last updated:** 2026-03-20 (update at end of EVERY session via /session-end)
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -94,10 +94,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 1 COMPLETE — preparing for Phase 2
-- **Last session outcome:** Docker setup finalized, CI/CD green, all Phase 1 services deployed
-- **Known issues:** None open
-- **Next task:** Start Phase 2 — ingestion service scaffold
+- **Current phase:** Phase 1 COMPLETE — audit passed, ready for Phase 2
+- **Last session outcome:** Phase 1 audit + fix session (2026-03-20). Ran full test/typecheck/lint audit across all 10 Phase 1 modules. Fixed 5 issues (RCA #25-29): ESLint v9 flat config, shared-ui tsconfig + types, user-service Prisma type, shared-enrichment test assertions, shared-normalization defanged URL regex. Final state: 375 tests passing, tsc -b clean, lint clean (0 errors, 3 warnings). VPS: 10 containers healthy.
+- **Known issues:** Raw GH_TOKEN + SSH key were previously committed in git history — credentials have been rotated. Old git history not yet purged. apps/ingestion has 2 failing scaffold tests (expected — Phase 2 not started).
+- **Next task:** Phase 2 — start with ingestion service (skill 04-INGESTION.md)
 
 ## Environment Notes
 - VPS: 72.61.227.64, 8GB RAM (5.2GB used by 10 containers), 96GB disk (26% used)

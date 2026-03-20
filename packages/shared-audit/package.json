@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src/",
     "clean": "rimraf dist"
   },
@@ -22,8 +23,6 @@
     "@vitest/coverage-v8": "^2.0.0",
     "rimraf": "^6.0.0"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "license": "UNLICENSED"
 }

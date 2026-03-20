@@ -22,7 +22,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
       const statusCode = error.statusCode;
       if (statusCode === 429) {
         logger.warn({ ip: req.ip }, 'Rate limit exceeded');
-        return reply.status(429).send({ error: { code: 'RATE_LIMITED', message: 'Too many requests' } });
+        return reply.status(429).send({ error: { code: 'RATE_LIMITED', message: 'Too many requests — please slow down' } });
       }
       logger.warn({ statusCode, message: error.message }, 'Fastify error');
       return reply.status(statusCode).send({ error: { code: 'REQUEST_ERROR', message: error.message } });
