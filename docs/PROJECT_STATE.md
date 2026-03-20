@@ -27,7 +27,7 @@
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | 🔨 Shell only | 2026-03-15 | Needs dashboard layout |
-| ingestion | 2 | 🔨 In progress | 2026-03-20 | PR #17 open, CI green, needs container setup |
+| ingestion | 2 | 🔨 Deployed | 2026-03-20 | Container running on VPS, needs connectors + workers |
 | normalization | 2 | 📋 Not started | - | Depends on ingestion |
 | ai-enrichment | 2 | 📋 Not started | - | Depends on normalization |
 | ioc-intelligence | 3 | 📋 Not started | - | Phase 3 gate |
@@ -94,13 +94,13 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 2 IN PROGRESS — ingestion service built
-- **Last session outcome:** Session 6 (2026-03-20). Built ingestion service: Fastify microservice with 10 API endpoints (feed CRUD, trigger, health, stats), JWT auth + RBAC. Implemented 6 competitive improvement modules: Corroboration Engine (cross-feed confidence boost), Adaptive Triage (per-tenant feedback loop), IOC Context Extractor (±1 sentence windowing), Feed Reliability Auto-Tuner (4-metric EMA), 3-Layer Dedup (Bloom+Jaccard+LLM), Cost Tracker (per-article per-stage). 101 tests, 8 test files, CI green. PR #17 open on feat/phase2-ingestion-service.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. Ingestion excluded from CI test/typecheck (intentional). Ingestion has no container in docker-compose yet (needs etip_ingestion service definition + nginx proxy rules).
-- **Next tasks:** (1) Merge PR #17 to master. (2) Add etip_ingestion container to docker-compose.etip.yml. (3) Add nginx proxy for /api/v1/feeds/*. (4) Deploy to VPS. (5) Implement feed connectors (RSS, STIX, TAXII parsers) as next chunk. (6) Implement BullMQ workers for feed-fetch queue.
+- **Current phase:** Phase 2 IN PROGRESS — ingestion service deployed
+- **Last session outcome:** Session 7 (2026-03-20). Merged PR #17 to master. Deployed etip_ingestion container to VPS (port 3004, healthy). Added nginx proxy /api/v1/feeds → ingestion. Included ingestion in CI. Fixed 3 deployment issues: BullMQ queue name colon restriction, missing image build in deploy script, Redis connection options. 11 containers on VPS, all healthy.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons.
+- **Next tasks:** (1) Implement RSS feed connector using rss-parser. (2) Implement BullMQ feed-fetch worker. (3) Implement feed scheduler (node-cron). (4) End-to-end test: create feed → trigger → worker fetches → articles stored. (5) Wire improvement modules into pipeline. (6) STIX/TAXII connectors.
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (5.2GB used by 10 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~5.5GB used by 11 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
