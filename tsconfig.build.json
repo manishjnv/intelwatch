@@ -11,6 +11,7 @@
     { "path": "packages/shared-enrichment" },
     { "path": "apps/user-service" },
     { "path": "apps/api-gateway" },
-    { "path": "apps/ingestion" }
+    { "path": "apps/ingestion" },
+    { "path": "apps/normalization" }
   ]
 }

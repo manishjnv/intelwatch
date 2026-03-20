@@ -13,11 +13,16 @@ const mockWorkerInstance = {
   on: vi.fn(),
   close: vi.fn(),
 };
+const mockQueueInstance = {
+  add: vi.fn().mockResolvedValue({ id: 'mock-job' }),
+  close: vi.fn(),
+};
 vi.mock('bullmq', () => ({
   Worker: vi.fn().mockImplementation((_name: string, processor: unknown) => {
     mockWorkerInstance._processor = processor;
     return mockWorkerInstance;
   }),
+  Queue: vi.fn().mockImplementation(() => mockQueueInstance),
 }));
 
 // Mock RSS connector

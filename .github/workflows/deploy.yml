@@ -133,6 +133,9 @@ jobs:
             echo "Building etip_ingestion image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_ingestion
 
+            echo "Building etip_normalization image..."
+            docker compose -p etip -f docker-compose.etip.yml build etip_normalization
+
             echo "Building etip_frontend image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_frontend
 
@@ -142,7 +145,7 @@ jobs:
 
             # Force recreate app containers (picks up new images + compose config)
             echo "Recreating app containers..."
-            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate etip_api etip_ingestion etip_frontend etip_nginx
+            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate etip_api etip_ingestion etip_normalization etip_frontend etip_nginx
 
             # ── Sync database schema (idempotent — creates missing tables, skips existing) ──
             echo "Syncing database schema..."
@@ -175,6 +178,19 @@ jobs:
               if [ $i -eq 12 ]; then
                 echo "❌ FAILED after 60s"
                 docker logs etip_api --tail 20 2>&1 || true
+                exit 1
+              fi
+              sleep 5
+            done
+            echo -n "Normalization: "
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              if curl -sf http://127.0.0.1:3005/health > /dev/null 2>&1; then
+                echo "✅ healthy after $((i * 5))s"
+                break
+              fi
+              if [ $i -eq 12 ]; then
+                echo "❌ FAILED after 60s"
+                docker logs etip_normalization --tail 20 2>&1 || true
                 exit 1
               fi
               sleep 5

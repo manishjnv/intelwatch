@@ -1,4 +1,4 @@
-import { Worker, type Job } from 'bullmq';
+import { Worker, Queue, type Job } from 'bullmq';
 import { QUEUES, AppError } from '@etip/shared-utils';
 import type pino from 'pino';
 import type { PrismaClient } from '@prisma/client';
@@ -37,6 +37,25 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
+
+  // Create normalize queue producer (for cross-service IOC handoff)
+  const normalizeQueueName = QUEUES.NORMALIZE.replace(/:/g, '-');
+  const normalizeQueue = new Queue(normalizeQueueName, {
+    connection: {
+      host: url.hostname,
+      port: Number(url.port) || 6379,
+      password: password || undefined,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      lazyConnect: true,
+    },
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: 100,
+      removeOnFail: 500,
+    },
+  });
 
   const rssConnector = new RSSConnector(logger);
   const pipeline = new ArticlePipeline({
@@ -86,6 +105,9 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
 
         // ── Persist processed articles to DB ──────────────────────
         await persistArticles(db, pipelineResult, feedId, tenantId);
+
+        // ── Enqueue IOCs to normalization service ───────────────
+        await enqueueIOCsForNormalization(normalizeQueue, pipelineResult, feedId, feed.name, tenantId, logger);
 
         // ── Update feed health on success ─────────────────────────
         await repo.updateHealth(tenantId, feedId, {
@@ -257,4 +279,56 @@ async function persistArticles(
 
   // Use createMany for batch insert performance
   await db.article.createMany({ data: articlesToCreate });
+}
+
+/**
+ * Enqueue extracted IOCs from processed articles to the normalization queue.
+ * Creates one batch job per article (groups all IOCs from that article).
+ * Only enqueues for CTI-relevant, non-duplicate articles with IOCs.
+ */
+async function enqueueIOCsForNormalization(
+  normalizeQueue: Queue,
+  pipelineResult: PipelineBatchResult,
+  feedId: string,
+  feedName: string,
+  tenantId: string,
+  logger: pino.Logger,
+): Promise<void> {
+  let totalEnqueued = 0;
+
+  for (const article of pipelineResult.articles) {
+    // Only enqueue for articles that passed triage, are not duplicates, and have IOCs
+    if (!article.isCtiRelevant || article.skipped || article.iocResults.length === 0) continue;
+
+    const articleId = crypto.randomUUID();
+    const iocs = article.iocResults.map((r) => ({
+      rawValue: r.iocValue,
+      rawType: r.iocType,
+      calibratedConfidence: r.calibratedConfidence,
+      corroborationCount: r.corroborationCount,
+      context: article.iocContexts.find((c) => c.iocValue === r.iocValue)?.context,
+      extractionMeta: article.extractionResult ? {
+        threatActors: article.extractionResult.threatActors,
+        malwareFamilies: article.extractionResult.malwareFamilies,
+        mitreAttack: article.extractionResult.mitreTechniques,
+        tlp: article.extractionResult.tlp,
+      } : undefined,
+    }));
+
+    try {
+      await normalizeQueue.add(
+        `normalize-${articleId}`,
+        { articleId, feedSourceId: feedId, tenantId, feedName, iocs },
+        { priority: article.triageResult?.priority === 'critical' ? 1 : 3 },
+      );
+      totalEnqueued += iocs.length;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error({ articleId, feedId, error: message }, 'Failed to enqueue IOCs for normalization');
+    }
+  }
+
+  if (totalEnqueued > 0) {
+    logger.info({ feedId, feedName, totalEnqueued }, 'IOCs enqueued for normalization');
+  }
 }

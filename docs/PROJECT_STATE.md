@@ -28,7 +28,7 @@
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | 🔨 Shell only | 2026-03-15 | Needs dashboard layout |
 | ingestion | 2 | 🔨 Deployed | 2026-03-21 | Full pipeline wired: 11 modules → feed-fetch worker. Article model + persistence + API routes. 222 tests across 18 files. Needs: STIX connectors, Claude Haiku triage, deploy session 9 |
-| normalization | 2 | 📋 Not started | - | Depends on ingestion |
+| normalization | 2 | 🔨 Built | 2026-03-21 | Fastify on port 3005. BullMQ worker + IOC upsert + 6 accuracy improvements. 95 tests. Wired to ingestion. |
 | ai-enrichment | 2 | 📋 Not started | - | Depends on normalization |
 | ioc-intelligence | 3 | 📋 Not started | - | Phase 3 gate |
 | threat-actor-intel | 3 | 📋 Not started | - | Phase 3 gate |
@@ -94,10 +94,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 2 IN PROGRESS — ingestion pipeline wired
-- **Last session outcome:** Sessions 9-11 (2026-03-21). Pipeline orchestrator wires all 11 modules. Article Prisma model + persistence + API. IOC detection expanded 6→20+ types. Claude Haiku triage + Sonnet deep extraction (dual-mode). 3-layer AI gate (env→DB→budget). deploy.yml syncs AI secrets from GitHub. 276 tests across 20 files, all passing. Deployed commits 530689e→837f044.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. AI currently ON on VPS — user switching to false.
-- **Next tasks:** (1) Module 05: Normalization Service (Phase 2 next module). (2) E2E test: create feed → trigger → worker fetches + pipeline processes → articles stored → query API. (3) Module 06: Enrichment Service + VT/AbuseIPDB. (4) BullMQ cross-service wiring. (5) STIX/TAXII connectors (deferred).
+- **Current phase:** Phase 2 IN PROGRESS — normalization service built
+- **Last session outcome:** Session 12 (2026-03-21). Normalization service (Module 05) fully built with 6 accuracy improvements: (1) live confidence decay on re-sighting, (2) feed reliability from DB, (3) sighting count + source diversity tracking, (4) IOC lifecycle transitions (NEW→ACTIVE→REACTIVATED), (5) bogon/safe-domain/placeholder quality filters, (6) auto-severity classification from context. Ingestion wired to queue IOCs to QUEUES.NORMALIZE. 95 normalization tests + 774 total across monorepo. Docker/nginx/deploy.yml registered.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. AI currently OFF on VPS.
+- **Next tasks:** (1) Deploy normalization service to VPS (push to master). (2) Module 06: AI Enrichment Service + VT/AbuseIPDB. (3) IOC lifecycle cron job (ACTIVE→AGING→EXPIRED auto-transitions). (4) Elasticsearch IOC indexing. (5) E2E test: feed → ingest → normalize → query IOCs API.
 
 ## Environment Notes
 - VPS: 72.61.227.64, 8GB RAM (~5.5GB used by 11 containers), 96GB disk (26% used)
