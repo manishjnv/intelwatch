@@ -115,7 +115,8 @@ export class FeedRepository {
     };
   }
 
-  async updateHealth(id: string, data: Prisma.FeedSourceUpdateInput): Promise<FeedSource> {
+  async updateHealth(tenantId: string, id: string, data: Prisma.FeedSourceUpdateInput): Promise<FeedSource> {
+    await this.ensureOwnership(tenantId, id);
     return this.db.feedSource.update({ where: { id }, data });
   }
 

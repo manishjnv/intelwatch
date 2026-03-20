@@ -113,7 +113,12 @@ export class TriageService {
 
   /** Parse LLM triage response into typed result */
   parseTriageResponse(rawJson: string): TriageResult {
-    const parsed = JSON.parse(rawJson);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(rawJson) as Record<string, unknown>;
+    } catch {
+      throw new Error(`Failed to parse triage response as JSON: ${rawJson.slice(0, 100)}`);
+    }
     return {
       isCtiRelevant: Boolean(parsed.is_cti_relevant),
       confidence: Math.min(1, Math.max(0, Number(parsed.confidence) || 0)),

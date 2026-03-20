@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { QUEUES } from '@etip/shared-utils';
+import { QUEUES, AppError } from '@etip/shared-utils';
 import { getConfig } from './config.js';
 
 let _queue: Queue | null = null;
@@ -26,7 +26,7 @@ export function createFeedFetchQueue(): Queue {
 }
 
 export function getFeedFetchQueue(): Queue {
-  if (!_queue) throw new Error('Feed fetch queue not initialized — call createFeedFetchQueue() first');
+  if (!_queue) throw new AppError(500, 'Feed fetch queue not initialized — call createFeedFetchQueue() first', 'QUEUE_NOT_INITIALIZED');
   return _queue;
 }
 
