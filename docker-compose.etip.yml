@@ -337,6 +337,8 @@ services:
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
       TI_NORMALIZATION_BATCH_SIZE: ${TI_NORMALIZATION_BATCH_SIZE:-500}
       TI_NORMALIZATION_CONCURRENCY: ${TI_NORMALIZATION_CONCURRENCY:-3}
+    ports:
+      - "3005:3005"
     depends_on:
       etip_postgres:
         condition: service_healthy
