@@ -1,5 +1,5 @@
-import type { PrismaClient, FeedSource, Prisma } from '@prisma/client';
-import type { ListFeedsQuery } from './schema.js';
+import type { PrismaClient, FeedSource, Article, Prisma } from '@prisma/client';
+import type { ListFeedsQuery, ListArticlesQuery } from './schema.js';
 
 export type CreateFeedData = Omit<Prisma.FeedSourceCreateInput, 'tenant' | 'iocs'>;
 
@@ -125,6 +125,48 @@ export class FeedRepository {
   async updateHealth(tenantId: string, id: string, data: Prisma.FeedSourceUpdateInput): Promise<FeedSource> {
     await this.ensureOwnership(tenantId, id);
     return this.db.feedSource.update({ where: { id }, data });
+  }
+
+  // ─── Article Queries ───────────────────────────────────────────────────────
+
+  async findArticles(tenantId: string, query: ListArticlesQuery): Promise<Article[]> {
+    const where: Prisma.ArticleWhereInput = { tenantId };
+    if (query.feedId) where.feedSourceId = query.feedId;
+    if (query.pipelineStatus) where.pipelineStatus = query.pipelineStatus;
+    if (query.isCtiRelevant !== undefined) where.isCtiRelevant = query.isCtiRelevant;
+    if (query.articleType) where.articleType = query.articleType;
+    if (query.search) where.title = { contains: query.search, mode: 'insensitive' };
+
+    return this.db.article.findMany({
+      where,
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, tenantId: true, feedSourceId: true, title: true, url: true,
+        publishedAt: true, author: true, language: true,
+        pipelineStatus: true, isCtiRelevant: true, articleType: true,
+        triageConfidence: true, triagePriority: true,
+        iocsExtracted: true, processingTimeMs: true, totalCostUsd: true,
+        createdAt: true, updatedAt: true,
+        // Exclude heavy fields: content, triageResult, extractionResult, dedupResult, rawMeta
+      } as Record<string, boolean>,
+    }) as unknown as Article[];
+  }
+
+  async countArticles(tenantId: string, query?: Partial<ListArticlesQuery>): Promise<number> {
+    const where: Prisma.ArticleWhereInput = { tenantId };
+    if (query?.feedId) where.feedSourceId = query.feedId;
+    if (query?.pipelineStatus) where.pipelineStatus = query.pipelineStatus;
+    if (query?.isCtiRelevant !== undefined) where.isCtiRelevant = query.isCtiRelevant;
+    if (query?.articleType) where.articleType = query.articleType;
+    if (query?.search) where.title = { contains: query.search, mode: 'insensitive' };
+
+    return this.db.article.count({ where });
+  }
+
+  async findArticleById(tenantId: string, id: string): Promise<Article | null> {
+    return this.db.article.findFirst({ where: { id, tenantId } });
   }
 
   private async ensureOwnership(tenantId: string, id: string): Promise<void> {

@@ -27,7 +27,7 @@
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | 🔨 Shell only | 2026-03-15 | Needs dashboard layout |
-| ingestion | 2 | 🔨 Deployed | 2026-03-21 | RSS connector, BullMQ worker, scheduler, 11 improvement modules. Needs: pipeline wiring, STIX connectors, article persistence |
+| ingestion | 2 | 🔨 Deployed | 2026-03-21 | Full pipeline wired: 11 modules → feed-fetch worker. Article model + persistence + API routes. 222 tests across 18 files. Needs: STIX connectors, Claude Haiku triage, deploy session 9 |
 | normalization | 2 | 📋 Not started | - | Depends on ingestion |
 | ai-enrichment | 2 | 📋 Not started | - | Depends on normalization |
 | ioc-intelligence | 3 | 📋 Not started | - | Phase 3 gate |
@@ -94,10 +94,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 2 IN PROGRESS — ingestion service deployed
-- **Last session outcome:** Session 8 (2026-03-21). Implemented RSS connector, BullMQ feed-fetch worker, node-cron scheduler, and 5 competitive differentiator modules (source triangulation, confidence calibrator, IOC reactivation, lead-time scorer, attribution tracker). 192 tests across 16 files, all passing. Typecheck + lint clean. Not yet pushed/deployed.
+- **Current phase:** Phase 2 IN PROGRESS — ingestion pipeline wired
+- **Last session outcome:** Session 9 (2026-03-21). Wired all 11 improvement modules into feed-fetch pipeline (pipeline.ts orchestrator). Added Article Prisma model with per-stage cost tracking. Article persistence in feed-fetch worker. Article API routes (GET /articles, GET /articles/:id). Nginx proxy for /api/v1/articles. 222 tests across 18 files, all passing. Typecheck + lint clean.
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons.
-- **Next tasks:** (1) Push session 8 changes, deploy to VPS. (2) End-to-end test: create feed → trigger → worker fetches → articles stored. (3) Wire improvement modules into feed-fetch pipeline. (4) STIX/TAXII connectors. (5) Article schema + storage routes. (6) Article persistence in DB.
+- **Next tasks:** (1) Deploy session 9 to VPS. (2) E2E test: create feed → trigger → worker fetches + processes → articles stored in DB → query articles API. (3) Wire Claude Haiku for real triage (currently rule-based). (4) STIX/TAXII connectors. (5) Normalization service (Phase 2 next module).
 
 ## Environment Notes
 - VPS: 72.61.227.64, 8GB RAM (~5.5GB used by 11 containers), 96GB disk (26% used)

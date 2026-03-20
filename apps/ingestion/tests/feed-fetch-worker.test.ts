@@ -48,7 +48,15 @@ function createMockRepo() {
 }
 
 function createMockLogger() {
-  return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), fatal: vi.fn() };
+  const logger: Record<string, unknown> = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), fatal: vi.fn() };
+  logger.child = vi.fn().mockReturnValue(logger);
+  return logger;
+}
+
+function createMockDb() {
+  return {
+    article: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+  };
 }
 
 const TENANT_ID = 'tenant-uuid-1';
@@ -87,7 +95,7 @@ describe('FeedFetchWorker', () => {
   });
 
   function getProcessor() {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     // Get the processor function passed to Worker constructor
     const workerCtor = Worker as unknown as ReturnType<typeof vi.fn>;
     const processorFn = workerCtor.mock.calls[0][1];
@@ -95,7 +103,7 @@ describe('FeedFetchWorker', () => {
   }
 
   it('creates a Worker with correct queue name (dashes, not colons)', () => {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const workerCtor = Worker as unknown as ReturnType<typeof vi.fn>;
     expect(workerCtor.mock.calls[0][0]).toBe('etip-feed-fetch');
   });
@@ -121,7 +129,7 @@ describe('FeedFetchWorker', () => {
     }));
 
     // Re-create to pick up the mock
-    const worker = createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    const worker = createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const latestProcessor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
     const result = await latestProcessor(makeJob({ feedId: FEED_ID, tenantId: TENANT_ID, triggeredBy: 'manual' }));
@@ -135,7 +143,7 @@ describe('FeedFetchWorker', () => {
   });
 
   it('skips disabled feeds', async () => {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
     repo.findById.mockResolvedValue(makeFeed({ enabled: false }));
@@ -148,7 +156,7 @@ describe('FeedFetchWorker', () => {
   });
 
   it('throws when feed not found', async () => {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
     repo.findById.mockResolvedValue(null);
@@ -164,7 +172,7 @@ describe('FeedFetchWorker', () => {
       fetch: vi.fn().mockRejectedValue(new Error('Connection timeout')),
     }));
 
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
     repo.findById.mockResolvedValue(makeFeed({ consecutiveFailures: 2 }));
@@ -189,7 +197,7 @@ describe('FeedFetchWorker', () => {
       fetch: vi.fn().mockRejectedValue(new Error('DNS failure')),
     }));
 
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
     // Feed already at 4 failures, this will be the 5th (= max)
@@ -212,7 +220,7 @@ describe('FeedFetchWorker', () => {
     const RSSCtor = RSSConnector as unknown as ReturnType<typeof vi.fn>;
     RSSCtor.mockImplementation(() => ({ fetch: vi.fn() }));
 
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
     repo.findById.mockResolvedValue(makeFeed({ feedType: 'stix' }));
@@ -225,7 +233,7 @@ describe('FeedFetchWorker', () => {
   });
 
   it('registers event handlers on the worker', () => {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never });
+    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     expect(mockWorkerInstance.on).toHaveBeenCalledWith('failed', expect.any(Function));
     expect(mockWorkerInstance.on).toHaveBeenCalledWith('error', expect.any(Function));
   });

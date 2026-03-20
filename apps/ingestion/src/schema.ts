@@ -50,3 +50,31 @@ export const ListFeedsQuerySchema = z.object({
   search: z.string().max(100).optional(),
 });
 export type ListFeedsQuery = z.infer<typeof ListFeedsQuerySchema>;
+
+// ─── Article Schemas ──────────────────────────────────────────────────────────
+
+export const PIPELINE_STATUSES = [
+  'ingested', 'triaged', 'extracted', 'enriched', 'deduplicated', 'persisted', 'failed',
+] as const;
+
+export const ARTICLE_TYPES = [
+  'threat_report', 'vulnerability_advisory', 'news', 'blog', 'irrelevant',
+] as const;
+
+export const PipelineStatusEnum = z.enum(PIPELINE_STATUSES);
+export const ArticleTypeEnum = z.enum(ARTICLE_TYPES);
+
+export const ArticleIdParamsSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export const ListArticlesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(500).default(50),
+  feedId: z.string().uuid().optional(),
+  pipelineStatus: PipelineStatusEnum.optional(),
+  isCtiRelevant: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
+  articleType: ArticleTypeEnum.optional(),
+  search: z.string().max(200).optional(),
+});
+export type ListArticlesQuery = z.infer<typeof ListArticlesQuerySchema>;

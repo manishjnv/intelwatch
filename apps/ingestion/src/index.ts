@@ -25,8 +25,8 @@ async function main(): Promise<void> {
 
   const app = await buildApp({ config, repo, queue });
 
-  // Start BullMQ worker to process feed fetch jobs
-  const worker = createFeedFetchWorker({ repo, logger });
+  // Start BullMQ worker to process feed fetch jobs (with DB for article persistence)
+  const worker = createFeedFetchWorker({ repo, logger, db: prisma });
 
   // Start cron scheduler to enqueue feeds on their schedule
   const scheduler = new FeedScheduler({ repo, queue, logger });

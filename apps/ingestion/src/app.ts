@@ -8,6 +8,7 @@ import { createLogger } from './logger.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { feedRoutes } from './routes/feeds.js';
+import { articleRoutes } from './routes/articles.js';
 import { FeedRepository } from './repository.js';
 import { FeedService } from './service.js';
 import type { Queue } from 'bullmq';
@@ -67,6 +68,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(feedRoutes(service), { prefix: '/api/v1/feeds' });
+  await app.register(articleRoutes(repo), { prefix: '/api/v1/articles' });
 
   logger.info('Ingestion service configured successfully');
   return app;

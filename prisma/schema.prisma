@@ -31,6 +31,7 @@ model Tenant {
   auditLogs   AuditLog[]
   feedSources FeedSource[]
   iocs        Ioc[]
+  articles    Article[]
   @@map("tenants")
 }
 
@@ -194,12 +195,60 @@ model FeedSource {
   feedReliability      Int        @default(50) @map("feed_reliability") // 0-100
   createdAt            DateTime   @default(now()) @map("created_at")
   updatedAt            DateTime   @updatedAt @map("updated_at")
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   iocs     Ioc[]
+  articles Article[]
   @@index([tenantId])
   @@index([status])
   @@index([feedType])
   @@map("feed_sources")
+}
+
+model Article {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String         @map("tenant_id") @db.Uuid
+  feedSourceId        String         @map("feed_source_id") @db.Uuid
+  // Raw content
+  title               String         @db.VarChar(1000)
+  content             String         @db.Text
+  url                 String?        @db.Text
+  publishedAt         DateTime?      @map("published_at")
+  author              String?        @db.VarChar(500)
+  language            String         @default("en") @db.VarChar(5)
+  // Pipeline state
+  pipelineStatus      PipelineStatus @default(ingested) @map("pipeline_status")
+  isCtiRelevant       Boolean        @default(false) @map("is_cti_relevant")
+  articleType         ArticleType    @default(irrelevant) @map("article_type")
+  triageConfidence    Float          @default(0) @map("triage_confidence")
+  triagePriority      String?        @map("triage_priority") @db.VarChar(20)
+  triageResult        Json?          @map("triage_result")
+  extractionResult    Json?          @map("extraction_result")
+  // Cost tracking per stage
+  stage1TriageTokens      Int        @default(0) @map("stage1_triage_tokens")
+  stage1TriageCostUsd     Float      @default(0) @map("stage1_triage_cost_usd")
+  stage2ExtractionTokens  Int        @default(0) @map("stage2_extraction_tokens")
+  stage2ExtractionCostUsd Float      @default(0) @map("stage2_extraction_cost_usd")
+  stage3DedupTokens       Int        @default(0) @map("stage3_dedup_tokens")
+  stage3DedupCostUsd      Float      @default(0) @map("stage3_dedup_cost_usd")
+  externalApiCalls        Int        @default(0) @map("external_api_calls")
+  totalCostUsd            Float      @default(0) @map("total_cost_usd")
+  // Extraction results
+  iocsExtracted       Int            @default(0) @map("iocs_extracted")
+  processingTimeMs    Int            @default(0) @map("processing_time_ms")
+  dedupResult         Json?          @map("dedup_result")
+  // Metadata
+  rawMeta             Json?          @map("raw_meta")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  feedSource FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+  @@index([tenantId])
+  @@index([tenantId, pipelineStatus])
+  @@index([tenantId, isCtiRelevant])
+  @@index([feedSourceId])
+  @@index([publishedAt])
+  @@index([createdAt])
+  @@map("articles")
 }
 
 enum IocType {
@@ -229,7 +278,28 @@ enum IocLifecycle {
   archived
   false_positive
   revoked
+  reactivated
   @@map("ioc_lifecycle_enum")
+}
+
+enum PipelineStatus {
+  ingested
+  triaged
+  extracted
+  enriched
+  deduplicated
+  persisted
+  failed
+  @@map("pipeline_status_enum")
+}
+
+enum ArticleType {
+  threat_report
+  vulnerability_advisory
+  news
+  blog
+  irrelevant
+  @@map("article_type_enum")
 }
 
 enum Severity {
