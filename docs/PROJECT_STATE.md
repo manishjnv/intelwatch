@@ -27,7 +27,7 @@
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | 🔨 Shell only | 2026-03-15 | Needs dashboard layout |
-| ingestion | 2 | 🔨 Deployed | 2026-03-20 | Container running on VPS, needs connectors + workers |
+| ingestion | 2 | 🔨 Deployed | 2026-03-21 | RSS connector, BullMQ worker, scheduler, 11 improvement modules. Needs: pipeline wiring, STIX connectors, article persistence |
 | normalization | 2 | 📋 Not started | - | Depends on ingestion |
 | ai-enrichment | 2 | 📋 Not started | - | Depends on normalization |
 | ioc-intelligence | 3 | 📋 Not started | - | Phase 3 gate |
