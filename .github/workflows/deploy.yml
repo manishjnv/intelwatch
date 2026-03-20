@@ -121,6 +121,9 @@ jobs:
             echo "Building etip_api image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_api
 
+            echo "Building etip_ingestion image..."
+            docker compose -p etip -f docker-compose.etip.yml build etip_ingestion
+
             echo "Building etip_frontend image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_frontend
 
