@@ -1,5 +1,5 @@
 # ETIP Project State
-**Last updated:** 2026-03-18 (update at end of EVERY session via /session-end)
+**Last updated:** 2026-03-20 (update at end of EVERY session via /session-end)
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -94,10 +94,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 1 COMPLETE — preparing for Phase 2
-- **Last session outcome:** Docker setup finalized, CI/CD green, all Phase 1 services deployed
-- **Known issues:** None open
-- **Next task:** Start Phase 2 — ingestion service scaffold
+- **Current phase:** Phase 1 COMPLETE — Phase 1 audit pending before Phase 2 start
+- **Last session outcome:** Tooling/config session (2026-03-20). Set project model to claude-opus-4-6 with extended thinking. Secured all secrets (GH_TOKEN, VPS credentials, SSH key) into gitignored .claude/settings.local.json and .claude/secrets/. Scrubbed raw credentials from skills/00-CLAUDE-INSTRUCTIONS.md. Upgraded /session-start command to load module-specific skill files and declare scope lock. Created docs/SESSION_TEMPLATE.md with copy-paste prompts for all scenarios. Added pnpm --filter and curl to bash allow list. Verified GitHub + VPS connectivity via vps-cmd.yml.
+- **Known issues:** Raw GH_TOKEN + SSH key were previously committed in git history — credentials have been rotated. Old git history not yet purged.
+- **Next task:** Phase 1 audit session — run /session-start with the Phase 1 review prompt in docs/SESSION_TEMPLATE.md, test all 10 Phase 1 modules (shared packages + user-service + api-gateway), produce scorecard before starting Phase 2
 
 ## Environment Notes
 - VPS: 72.61.227.64, 8GB RAM (5.2GB used by 10 containers), 96GB disk (26% used)

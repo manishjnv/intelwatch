@@ -60,3 +60,4 @@ temp/
 # ─── Claude Code ───
 .claude/settings.local.json
 .claude/.session_*
+.claude/secrets/
