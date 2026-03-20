@@ -338,9 +338,7 @@ services:
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - etip_nginx_logs:/var/log/nginx
     depends_on:
-      etip_postgres:
-        condition: service_healthy
-      etip_redis:
+      etip_api:
         condition: service_healthy
       etip_frontend:
         condition: service_healthy

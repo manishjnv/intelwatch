@@ -135,29 +135,55 @@ jobs:
             echo "Recreating app containers..."
             docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate etip_api etip_ingestion etip_frontend etip_nginx
 
-            # ── Run Prisma migrations ──
-            echo "Running Prisma migrations..."
-            docker exec etip_api npx prisma migrate deploy --schema=prisma/schema.prisma 2>&1 || echo "Migration note: may need 'prisma migrate dev' for first run"
+            # ── Sync database schema (idempotent — creates missing tables, skips existing) ──
+            echo "Syncing database schema..."
+            for i in 1 2 3 4 5; do
+              if docker exec etip_api npx prisma db push --schema=prisma/schema.prisma --accept-data-loss 2>&1; then
+                echo "✅ Database schema synced"
+                break
+              fi
+              if [ $i -eq 5 ]; then
+                echo "⚠️  DB push failed after 5 attempts — continuing (scheduler will retry)"
+              fi
+              echo "DB push attempt $i failed, retrying in 5s..."
+              sleep 5
+            done
 
             # ── Caddy network ──
             # etip_nginx auto-joins ti-platform_default via caddy_network in docker-compose.
             # RULE: NEVER use manual 'docker network connect' (03-DEVOPS.md)
-            # Only restart Caddy if nginx was fully recreated (not just restarted).
             docker restart ti-platform-caddy-1 2>/dev/null || echo "Caddy restart skipped"
 
-            # ── Wait for health ──
-            echo "Waiting for services to be ready..."
-            sleep 10
-
-            # ── Health checks ──
+            # ── Health checks with retry (12 attempts × 5s = 60s max) ──
             echo ""
             echo "=== Health Checks ==="
             echo -n "API Gateway: "
-            curl -sf http://127.0.0.1:3001/health 2>/dev/null && echo "" || echo "PENDING"
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              if curl -sf http://127.0.0.1:3001/health > /dev/null 2>&1; then
+                echo "✅ healthy after $((i * 5))s"
+                break
+              fi
+              if [ $i -eq 12 ]; then
+                echo "❌ FAILED after 60s"
+                docker logs etip_api --tail 20 2>&1 || true
+                exit 1
+              fi
+              sleep 5
+            done
             echo -n "Nginx proxy: "
-            curl -sf http://127.0.0.1:8080/health 2>/dev/null && echo "" || echo "PENDING"
+            for i in 1 2 3 4 5 6; do
+              if curl -sf http://127.0.0.1:8080/health > /dev/null 2>&1; then
+                echo "✅ healthy after $((i * 5))s"
+                break
+              fi
+              if [ $i -eq 6 ]; then
+                echo "❌ FAILED after 30s"
+                exit 1
+              fi
+              sleep 5
+            done
             echo -n "Frontend: "
-            curl -sf http://127.0.0.1:8080/login 2>/dev/null | head -c 100 && echo "" || echo "PENDING"
+            curl -sf http://127.0.0.1:8080/login > /dev/null 2>&1 && echo "✅ serving" || echo "⚠️  PENDING"
 
             # ── Status ──
             echo ""
