@@ -41,6 +41,7 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
   const rssConnector = new RSSConnector(logger);
   const pipeline = new ArticlePipeline({
     logger,
+    db,
     anthropicApiKey: config.TI_ANTHROPIC_API_KEY,
     aiEnabled: config.TI_AI_ENABLED,
     aiMaxTriagePerFetch: config.TI_AI_MAX_TRIAGE_PER_FETCH,

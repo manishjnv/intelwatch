@@ -25,7 +25,9 @@ import { IOCReactivationDetector, type ReactivationEvent } from '../services/ioc
 import { LeadTimeScorer } from '../services/lead-time-scorer.js';
 import { AttributionTracker } from '../services/attribution-tracker.js';
 import { ReliabilityScorer, type FeedMetrics } from '../services/reliability.js';
+import { AIGate } from '../services/ai-gate.js';
 import { detectIOCType, normalizeIOCValue } from '@etip/shared-normalization';
+import type { PrismaClient } from '@prisma/client';
 
 /** Result of processing a single article through the pipeline */
 export interface ProcessedArticle {
@@ -81,6 +83,7 @@ export interface PipelineBatchResult {
 
 export interface PipelineDeps {
   logger: pino.Logger;
+  db?: PrismaClient;
   anthropicApiKey?: string;
   aiEnabled?: boolean;
   aiMaxTriagePerFetch?: number;
@@ -108,6 +111,7 @@ export class ArticlePipeline {
   private readonly reliability: ReliabilityScorer;
   private readonly logger: pino.Logger;
 
+  private readonly aiGate: AIGate | null;
   private readonly maxTriagePerFetch: number;
   private readonly maxExtractionPerFetch: number;
 
@@ -115,6 +119,7 @@ export class ArticlePipeline {
     this.logger = deps.logger.child({ component: 'pipeline' });
     this.maxTriagePerFetch = deps.aiMaxTriagePerFetch ?? 10;
     this.maxExtractionPerFetch = deps.aiMaxExtractionPerFetch ?? 5;
+    this.aiGate = deps.db ? new AIGate(deps.db, deps.aiEnabled ?? false, this.logger) : null;
     this.triage = new TriageService();
     this.triage.init(deps.anthropicApiKey, this.logger, { aiEnabled: deps.aiEnabled, model: deps.aiTriageModel });
     this.extraction = new ExtractionService();
@@ -201,12 +206,19 @@ export class ArticlePipeline {
     const start = Date.now();
     const articleId = crypto.randomUUID();
 
+    // ── Runtime AI gate check (reads tenant.settings from DB, cached 60s) ──
+    let aiAllowed = useAiTriage;
+    if (this.aiGate && aiAllowed) {
+      const gate = await this.aiGate.check(tenantId, 'triage');
+      if (!gate.allowed) {
+        aiAllowed = false;
+        this.logger.debug({ tenantId, reason: gate.reason }, 'AI gate blocked triage');
+      }
+    }
+
     // ── Stage 1: Triage (classify CTI relevance) ──────────────────────
-    // If AI limit reached for this batch, force rule-based fallback
     const rawArticle = { id: articleId, title: article.title, content: article.content, source: article.url ?? 'unknown' };
-    const triageResult = useAiTriage
-      ? await this.triage.triage(rawArticle, tenantId)
-      : await this.triage.triage(rawArticle, tenantId); // triage handles fallback internally
+    const triageResult = await this.triage.triage(rawArticle, tenantId);
 
     // Track triage cost
     this.costTracker.trackStage(articleId, 'triage', triageResult.inputTokens, triageResult.outputTokens, 'haiku');
