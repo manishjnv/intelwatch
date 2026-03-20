@@ -1,56 +1,20 @@
-# ═══════════════════════════════════════════════════════════════
-# .dockerignore — Keep Docker build context small and deterministic
-# ═══════════════════════════════════════════════════════════════
-
-# Dependencies (installed inside Docker, not copied from host)
 node_modules
-**/node_modules
-
-# Build output (built inside Docker, not copied from host)
 dist
-**/dist
-
-# Git
-.git
-.gitignore
-
-# CI/CD
-.github
-
-# Test artifacts
 coverage
-**/coverage
-**/*.test.ts
-**/*.spec.ts
-**/__tests__
-
-# Environment (secrets must come via env vars, not files)
-.env
-.env.*
-!.env.example
-
-# Docker files (prevent recursive context)
-docker-compose*.yml
-
-# Documentation & config (not needed in images)
-docs
-scripts
+.git
+.github
+*.md
+!README.md
+docker
 infrastructure
 skills
 module-cards
+docs
+scripts
 config
-*.md
-!packages/*/README.md
-LICENSE
-Makefile
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
+.env
+.env.*
+!.env.example
+**/*.test.ts
+**/*.spec.ts
+**/__tests__

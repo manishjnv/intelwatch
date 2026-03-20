@@ -1,4 +1,4 @@
-// DESIGN LOCKED — see UI_DESIGN_LOCK.md
+// ⛔ DESIGN LOCKED — see UI_DESIGN_LOCK.md
 // FROZEN: h-9, bg-bg-secondary, item order, live indicator rightmost
 // Architecture: pure presentational — no data fetching in shared-ui.
 // Parent (DashboardLayout) passes stats as props; '—' shown when undefined.
@@ -31,7 +31,7 @@ function StatDivider() {
   return <span className="text-[var(--border-strong)]">·</span>
 }
 
-// FROZEN: h-9, bg-bg-secondary border-b border-border, item order, live indicator rightmost
+// ⛔ FROZEN: h-9, bg-bg-secondary border-b border-border, item order, live indicator rightmost
 // min-w-max ensures single-line scroll on mobile (parent wraps in overflow-x-auto)
 export function TopStatsBar({
   totalIOCs, criticalIOCs, activeFeeds, enrichedToday, lastIngestTime,
@@ -47,7 +47,7 @@ export function TopStatsBar({
       <StatItem icon={<Zap className="w-3 h-3 text-yellow-400"/>}                       label="Enriched today" value={typeof enrichedToday === 'number' ? enrichedToday.toLocaleString() : enrichedToday}/>
       <StatDivider/>
       <StatItem icon={<Clock className="w-3 h-3 text-[var(--text-muted)]"/>}            label="Last ingest"    value={lastIngestTime}/>
-      {/* FROZEN: live indicator — always ml-auto rightmost, exact classes */}
+      {/* ⛔ FROZEN: live indicator — always ml-auto rightmost, exact classes */}
       <div className="ml-auto flex items-center gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>
         <span className="text-[var(--text-muted)]">Live</span>

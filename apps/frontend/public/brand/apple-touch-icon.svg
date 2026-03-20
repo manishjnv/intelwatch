@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <defs>
+    <linearGradient id="ag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00ff88"/>
+      <stop offset="45%" stop-color="#00ddff"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="abg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#050709"/>
+    </linearGradient>
+    <radialGradient id="acg" cx="50%" cy="48%" r="25%">
+      <stop offset="0%" stop-color="#00ff88"/>
+      <stop offset="100%" stop-color="#00ddff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="ahex" x="0" y="0" width="18" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+      <path d="M9 0 L18 4.5 L18 11.5 L9 16 L0 11.5 L0 4.5 Z" fill="none" stroke="#00ff88" stroke-width="0.4" opacity="0.08"/>
+    </pattern>
+    <filter id="agl">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="180" height="180" rx="36" fill="url(#abg)"/>
+  <rect x="2" y="2" width="176" height="176" rx="34" fill="none" stroke="url(#ag)" stroke-width="1.5" opacity="0.35"/>
+  <!-- Shield -->
+  <path d="M90 28 C90 28,92 28,93 28.5
+    L148 50 C149 50.5,150 52,150 53
+    L150 102 C150 120,140 138,125 150
+    C112 160,95 166,91 167
+    C90 167.5,89 167,89 167
+    C85 166,68 160,55 150
+    C40 138,30 120,30 102
+    L30 53 C30 52,31 50.5,32 50
+    L87 28.5 C88 28,90 28,90 28 Z"
+    fill="url(#abg)" stroke="url(#ag)" stroke-width="2"/>
+  <!-- Hex texture -->
+  <path d="M90 38 L142 56 L142 100 C142 130,120 152,90 160 C60 152,38 130,38 100 L38 56 Z"
+    fill="url(#ahex)"/>
+  <!-- Dashed outer ring -->
+  <circle cx="90" cy="92" r="40" fill="none" stroke="url(#ag)" stroke-width="1.2" opacity="0.2"
+    stroke-dasharray="5 3"/>
+  <!-- Solid ring -->
+  <circle cx="90" cy="92" r="30" fill="none" stroke="url(#ag)" stroke-width="1.8" opacity="0.5"/>
+  <!-- Inner ring -->
+  <circle cx="90" cy="92" r="16" fill="none" stroke="url(#ag)" stroke-width="1.2" opacity="0.3"/>
+  <!-- Core -->
+  <circle cx="90" cy="92" r="10" fill="url(#acg)" opacity="0.4"/>
+  <circle cx="90" cy="92" r="7" fill="url(#ag)" filter="url(#agl)"/>
+  <circle cx="90" cy="92" r="3" fill="#ffffff" opacity="0.95"/>
+  <circle cx="88" cy="90" r="1.5" fill="#ffffff" opacity="0.5"/>
+  <!-- Radar sweep arc -->
+  <path d="M90 92 L120 78 A35 35 0 0 1 125 92" fill="url(#ag)" opacity="0.1"/>
+  <path d="M90 92 L120 78" stroke="#00ff88" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+  <!-- Crosshairs -->
+  <line x1="90" y1="48" x2="90" y2="56" stroke="url(#ag)" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+  <line x1="90" y1="128" x2="90" y2="136" stroke="url(#ag)" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+  <line x1="46" y1="92" x2="54" y2="92" stroke="url(#ag)" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+  <line x1="126" y1="92" x2="134" y2="92" stroke="url(#ag)" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+  <!-- Hex nodes at cardinal points -->
+  <path d="M90 46 L94 48.5 L94 53.5 L90 56 L86 53.5 L86 48.5 Z" fill="#00ff88" opacity="0.6" filter="url(#agl)"/>
+  <path d="M134 92 L138 94.5 L138 99.5 L134 102 L130 99.5 L130 94.5 Z" fill="#00ddff" opacity="0.5" filter="url(#agl)"/>
+  <!-- Keystone -->
+  <circle cx="90" cy="28" r="3.5" fill="#00ff88" opacity="0.9" filter="url(#agl)"/>
+</svg>

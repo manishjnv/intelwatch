@@ -1,0 +1,21 @@
+{
+  "name": "IntelWatch ETIP",
+  "short_name": "IntelWatch",
+  "description": "Enterprise Threat Intelligence Platform",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#07090e",
+  "theme_color": "#07090e",
+  "icons": [
+    {
+      "src": "/brand/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/brand/apple-touch-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml"
+    }
+  ]
+}

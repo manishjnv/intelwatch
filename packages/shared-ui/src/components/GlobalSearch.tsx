@@ -1,4 +1,4 @@
-// DESIGN LOCKED — see UI_DESIGN_LOCK.md
+// ⛔ DESIGN LOCKED — see UI_DESIGN_LOCK.md
 // FROZEN: Cmd+K/Ctrl+K trigger, category ORDER, online fallback ORDER
 // Architecture: pure presentational — data fetching belongs in app layer.
 // Parent passes results and onQueryChange; GlobalSearch handles only UI.
@@ -10,7 +10,7 @@ export interface SearchResult {
   label?: string; severity?: string; category: SearchCategory
 }
 
-// FROZEN — category order
+// ⛔ FROZEN — category order
 export type SearchCategory =
   | 'iocs' | 'actors' | 'malware' | 'campaigns'
   | 'vulnerabilities' | 'investigations' | 'online'
@@ -25,7 +25,7 @@ const SEARCH_CATEGORIES: { key: SearchCategory; heading: string; icon: React.Ele
   { key:'online',          heading:'Search Online',            icon:Globe       },
 ]
 
-// FROZEN — online fallback order
+// ⛔ FROZEN — online fallback order
 const ONLINE_FALLBACKS = (q: string) => [
   { label:'VirusTotal',          url:`https://www.virustotal.com/gui/search/${encodeURIComponent(q)}`               },
   { label:'MITRE ATT&CK',       url:`https://attack.mitre.org/techniques/?query=${encodeURIComponent(q)}`         },
@@ -53,7 +53,7 @@ export function GlobalSearch({ open, onClose, results, onQueryChange }: GlobalSe
     onQueryChange?.(q)
   }, [onQueryChange])
 
-  // FROZEN: Escape closes, arrow keys navigate, Enter selects
+  // ⛔ FROZEN: Escape closes, arrow keys navigate, Enter selects
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -85,7 +85,7 @@ export function GlobalSearch({ open, onClose, results, onQueryChange }: GlobalSe
           <kbd className="text-[10px] text-[var(--text-muted)] border border-[var(--border)] px-1.5 py-0.5 rounded">ESC</kbd>
         </div>
 
-        {/* Results — FROZEN category order */}
+        {/* Results — ⛔ FROZEN category order */}
         <div className="max-h-[60vh] overflow-y-auto divide-y divide-[var(--border)]">
           {SEARCH_CATEGORIES.map(cat => {
             const items = cat.key === 'online' ? [] : grouped[cat.key] ?? []
@@ -137,7 +137,7 @@ export function GlobalSearch({ open, onClose, results, onQueryChange }: GlobalSe
   )
 }
 
-// FROZEN: Cmd+K / Ctrl+K only
+// ⛔ FROZEN: Cmd+K / Ctrl+K only
 export function useGlobalSearch() {
   const [open, setOpen] = useState(false)
   useEffect(() => {

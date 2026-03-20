@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETIP v4.0 — Next-Generation Threat Intelligence Platform Architecture</title>
+<style>
+:root {
+  --bg-base: #07090e;
+  --bg-primary: #0d1117;
+  --bg-secondary: #131920;
+  --bg-elevated: #1a2332;
+  --bg-hover: #1e2a3a;
+  --border: #1e2d42;
+  --border-strong: #2a3f5a;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #22d3ee;
+  --accent-green: #22c55e;
+  --accent-amber: #eab308;
+  --accent-red: #ef4444;
+  --accent-purple: #a855f7;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-base); color: var(--text-primary); line-height: 1.7; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* Hero */
+.hero { background: linear-gradient(135deg, #0d1117 0%, #1a1a2e 50%, #16213e 100%); padding: 80px 0 60px; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; top: -50%; right: -20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); }
+.hero h1 { font-size: 2.8rem; font-weight: 800; background: linear-gradient(135deg, #60a5fa, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px; }
+.hero .subtitle { font-size: 1.15rem; color: var(--text-secondary); max-width: 700px; }
+.hero .version { display: inline-block; margin-top: 16px; padding: 4px 14px; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); border-radius: 20px; font-size: 0.85rem; color: var(--accent-blue); }
+
+/* Nav */
+.toc { background: var(--bg-primary); border-bottom: 1px solid var(--border); padding: 16px 0; position: sticky; top: 0; z-index: 100; }
+.toc-inner { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.toc a { white-space: nowrap; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; font-weight: 500; color: var(--text-secondary); transition: all 0.2s; }
+.toc a:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+/* Sections */
+section { padding: 60px 0; border-bottom: 1px solid var(--border); }
+section:last-child { border-bottom: none; }
+h2 { font-size: 1.9rem; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); }
+h2 .num { color: var(--accent-blue); margin-right: 8px; font-weight: 800; }
+h3 { font-size: 1.3rem; font-weight: 600; margin: 32px 0 12px; color: var(--text-primary); }
+h4 { font-size: 1.05rem; font-weight: 600; margin: 20px 0 8px; color: var(--accent-cyan); }
+p { margin-bottom: 16px; color: var(--text-secondary); }
+.section-desc { font-size: 1rem; color: var(--text-muted); margin-bottom: 32px; }
+
+/* Cards */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin: 20px 0; }
+.card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; transition: all 0.25s; }
+.card:hover { border-color: var(--border-strong); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.card-title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.card-body { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* Badges */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+.badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+.badge-amber { background: rgba(234,179,8,0.15); color: #facc15; }
+.badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
+.badge-purple { background: rgba(168,85,247,0.15); color: #c084fc; }
+.badge-cyan { background: rgba(34,211,238,0.15); color: #67e8f9; }
+
+/* Code */
+pre { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 20px; overflow-x: auto; margin: 16px 0; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85rem; line-height: 1.6; color: #e2e8f0; }
+code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85rem; }
+.inline-code { background: var(--bg-elevated); padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; color: var(--accent-cyan); }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+th { background: var(--bg-elevated); padding: 12px 16px; text-align: left; font-size: 0.82rem; font-weight: 600; color: var(--text-primary); border-bottom: 2px solid var(--border-strong); }
+td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 0.88rem; color: var(--text-secondary); }
+tr:hover td { background: var(--bg-secondary); }
+
+/* Diagrams */
+.diagram { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 32px; margin: 24px 0; overflow-x: auto; }
+.diagram pre { background: transparent; border: none; padding: 0; margin: 0; text-align: center; color: var(--accent-cyan); }
+
+/* Callouts */
+.callout { border-left: 3px solid; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+.callout-blue { border-color: var(--accent-blue); background: rgba(59,130,246,0.06); }
+.callout-green { border-color: var(--accent-green); background: rgba(34,197,94,0.06); }
+.callout-amber { border-color: var(--accent-amber); background: rgba(234,179,8,0.06); }
+.callout-red { border-color: var(--accent-red); background: rgba(239,68,68,0.06); }
+.callout-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-primary); }
+
+/* Lists */
+ul, ol { margin: 12px 0 16px 24px; color: var(--text-secondary); }
+li { margin-bottom: 8px; font-size: 0.92rem; }
+li strong { color: var(--text-primary); }
+
+/* Flow */
+.flow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+.flow-step { background: var(--bg-elevated); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 500; white-space: nowrap; }
+.flow-arrow { color: var(--accent-blue); font-weight: bold; }
+
+/* Pillar grid */
+.pillar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
+@media (max-width: 900px) { .pillar-grid { grid-template-columns: 1fr; } .card-grid { grid-template-columns: 1fr; } }
+.pillar { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center; }
+.pillar-icon { font-size: 2rem; margin-bottom: 12px; }
+.pillar h4 { color: var(--text-primary); margin-bottom: 8px; font-size: 1rem; }
+.pillar p { font-size: 0.85rem; color: var(--text-muted); }
+
+/* Comparison highlight */
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+.vs-old, .vs-new { padding: 20px; border-radius: 10px; }
+.vs-old { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); }
+.vs-new { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); }
+.vs-label { font-weight: 700; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px; }
+.vs-old .vs-label { color: var(--accent-red); }
+.vs-new .vs-label { color: var(--accent-green); }
+
+/* Phase timeline */
+.timeline { position: relative; margin: 30px 0; padding-left: 40px; }
+.timeline::before { content: ''; position: absolute; left: 16px; top: 0; bottom: 0; width: 2px; background: var(--border-strong); }
+.timeline-item { position: relative; margin-bottom: 24px; }
+.timeline-item::before { content: ''; position: absolute; left: -30px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-blue); border: 2px solid var(--bg-base); }
+.timeline-item h4 { color: var(--text-primary); margin-bottom: 4px; }
+.timeline-item p { font-size: 0.88rem; }
+.timeline-item .weeks { font-size: 0.78rem; color: var(--accent-cyan); font-weight: 600; }
+
+.footer { padding: 40px 0; text-align: center; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+<div class="container">
+  <h1>ETIP v4.0 Architecture Blueprint</h1>
+  <p class="subtitle">Next-Generation Enterprise Threat Intelligence Platform — built with Claude AI, designed to outperform CrowdStrike Falcon X, Recorded Future, and ThreatConnect through superior architecture, AI-native enrichment, and graph-first intelligence.</p>
+  <span class="version">Architecture v4.0 &middot; March 2026 &middot; Claude Opus 4.6</span>
+</div>
+</div>
+
+<!-- NAV -->
+<div class="toc">
+<div class="container">
+  <div class="toc-inner">
+    <a href="#pillars">Design Pillars</a>
+    <a href="#whats-new">What's New in v4</a>
+    <a href="#architecture">System Architecture</a>
+    <a href="#tech-stack">Tech Stack</a>
+    <a href="#data-pipeline">Data Pipeline</a>
+    <a href="#data-models">Data Models</a>
+    <a href="#ai-engine">AI Engine</a>
+    <a href="#graph">Living Graph</a>
+    <a href="#modules">Modules</a>
+    <a href="#multi-tenancy">Multi-Tenancy</a>
+    <a href="#security">Security</a>
+    <a href="#api">API Design</a>
+    <a href="#ui-ux">UI/UX</a>
+    <a href="#performance">Performance</a>
+    <a href="#differentiators">Differentiators</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#deployment">Deployment</a>
+    <a href="#skills">Skills System</a>
+  </div>
+</div>
+</div>
+
+<!-- 1. DESIGN PILLARS -->
+<section id="pillars">
+<div class="container">
+  <h2><span class="num">01</span>Design Pillars</h2>
+  <p class="section-desc">Seven non-negotiable architectural pillars, synthesized from analysis of 9 world-leading TI platforms and your existing v3 skill architecture.</p>
+
+  <div class="pillar-grid">
+    <div class="pillar"><div class="pillar-icon">&#9889;</div><h4>Scalability</h4><p>100K+ daily intel items, 1,000+ concurrent analysts, horizontal scaling from day one. Event-driven async architecture throughout.</p></div>
+    <div class="pillar"><div class="pillar-icon">&#128274;</div><h4>Zero-Trust Security</h4><p>mTLS between services, short-lived JWTs, ABAC, field-level encryption, immutable audit logs. Zero hardcoded secrets.</p></div>
+    <div class="pillar"><div class="pillar-icon">&#9889;</div><h4>Speed</h4><p>IOC lookup &lt;100ms cached, &lt;500ms live. Feed-to-alert &lt;5 min. Dashboard load &lt;2s. Multi-layer caching.</p></div>
+    <div class="pillar"><div class="pillar-icon">&#128640;</div><h4>Future-Proof</h4><p>Modular plugin architecture. STIX 2.1 native. TAXII 2.1 server/client. MITRE ATT&CK integrated. OpenCTI federation-ready.</p></div>
+    <div class="pillar"><div class="pillar-icon">&#129302;</div><h4>AI-Native</h4><p>Claude API at every layer. Batch API 50% savings. Prompt caching 80%+ hit rate. Model tiering. Token budgets per tenant.</p></div>
+    <div class="pillar"><div class="pillar-icon">&#128200;</div><h4>Graph-First Intelligence</h4><p>Living knowledge graph re-scores ALL connected entities on new intel. Retroactive risk propagation. Not just a flat IOC database.</p></div>
+  </div>
+  <div class="pillar-grid" style="grid-template-columns: repeat(1, 1fr); max-width: 400px;">
+    <div class="pillar"><div class="pillar-icon">&#127919;</div><h4>Competitive Edge</h4><p>Features that don't exist in any competing platform: Analyst Reasoning Trails, Cost-Transparent AI, Living Graph, Agentic Hunting.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- 2. WHAT'S NEW -->
+<section id="whats-new">
+<div class="container">
+  <h2><span class="num">02</span>What's New in v4.0 vs Your Existing Architecture</h2>
+  <p class="section-desc">After deep analysis of your v2 master prompt, v3 skills system, and competitive landscape research across CrowdStrike, Recorded Future, Mandiant, ThreatConnect, OpenCTI, and others, here are the critical upgrades.</p>
+
+  <div class="vs">
+    <div class="vs-old">
+      <div class="vs-label">v2/v3 Architecture</div>
+      <ul>
+        <li>Python FastAPI + Celery (v2) <em>or</em> Node/Fastify + BullMQ (v3) &mdash; inconsistent</li>
+        <li>Single VPS KVM2 (4 vCPU, 8GB RAM) only</li>
+        <li>REST API only</li>
+        <li>Basic Redis caching</li>
+        <li>Neo4j graph with manual queries</li>
+        <li>Single enrichment pipeline</li>
+        <li>No agentic capabilities</li>
+        <li>No ASM integration</li>
+        <li>No federation protocol</li>
+        <li>No IOA (Indicators of Activity)</li>
+      </ul>
+    </div>
+    <div class="vs-new">
+      <div class="vs-label">v4.0 Architecture</div>
+      <ul>
+        <li><strong>Unified Node.js/Fastify + BullMQ</strong> (2x throughput, type-safe end-to-end)</li>
+        <li><strong>Scale-ready</strong>: VPS start, Kubernetes graduation path</li>
+        <li><strong>REST + GraphQL hybrid API</strong> (like OpenCTI + CrowdStrike)</li>
+        <li><strong>3-layer cache</strong>: Redis L1 + Browser SWR + CDN edge</li>
+        <li><strong>Agentic Graph Intelligence</strong> with autonomous risk propagation</li>
+        <li><strong>Dual enrichment</strong>: real-time + batch (50% cost saving)</li>
+        <li><strong>Agentic threat hunting</strong> (Claude-powered autonomous hunts)</li>
+        <li><strong>Attack Surface Management</strong> module integrated</li>
+        <li><strong>MISP federation + TAXII 2.1 bidirectional</strong></li>
+        <li><strong>IOA + IOC dual model</strong> (behavioral + indicator intelligence)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-blue">
+    <div class="callout-title">Key Architecture Decision: Node.js Unification</div>
+    <p>Your v2 used Python/FastAPI while v3 shifted to Node.js/Fastify. v4 commits fully to <strong>Node.js + Fastify + TypeScript</strong> end-to-end. Rationale: 2x throughput vs Express, single language for full-stack, Prisma type-safety, shared Zod schemas between frontend and backend, and the v3 skill system already committed to this stack. Python NLP workloads run as isolated microservices callable via BullMQ.</p>
+  </div>
+</div>
+</section>
+
+<!-- 3. SYSTEM ARCHITECTURE -->
+<section id="architecture">
+<div class="container">
+  <h2><span class="num">03</span>System Architecture</h2>
+  <p class="section-desc">Four-layer architecture with shared infrastructure, designed for VPS deployment with Kubernetes graduation path.</p>
+
+  <div class="diagram">
+<pre>
+ ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                              ETIP v4.0 — PRODUCTION ARCHITECTURE                                 │
+ ├────────────────────┬──────────────────────┬──────────────────────┬────────────────────────────────┤
+ │   INGESTION LAYER  │  PROCESSING PIPELINE │  INTELLIGENCE ENGINE │       DELIVERY LAYER           │
+ ├────────────────────┼──────────────────────┼──────────────────────┼────────────────────────────────┤
+ │                    │                      │                      │                                │
+ │  STIX/TAXII 2.1   │  NLP Extraction      │  Neo4j Knowledge     │  React SPA (Vite + TS)        │
+ │  MISP Federation   │  (spaCy Workers)     │  Graph               │  Real-time Dashboard          │
+ │  RSS/Atom/JSON     │                      │                      │                                │
+ │  NVD/CVE/EPSS     │  IOC Extraction      │  Living Risk         │  GraphQL + REST API           │
+ │  Dark Web Feeds    │  (Regex + ML)        │  Propagation         │                                │
+ │  Social OSINT      │                      │                      │  Alert Engine                  │
+ │  Manual Upload     │  Normalization       │  AI Enrichment       │  (multi-channel)              │
+ │  Webhook Ingest    │  (Zod Canonical)     │  (Claude Batch +     │                                │
+ │  Syslog/CEF       │                      │   Cache + Agentic)   │  SIEM/SOAR Connectors         │
+ │                    │  Deduplication       │                      │  Webhook Dispatch              │
+ │  ASM Scanner      │  (SHA256 composite)  │  Correlation Engine  │  TAXII 2.1 Server             │
+ │  (Attack Surface)  │                      │  (Rule + AI)         │  Email/Slack/Teams/PagerDuty  │
+ │                    │  STIX 2.1 Mapping    │                      │                                │
+ │                    │  Entity Linking       │  IOA Behavior Engine │  STIX/TAXII Export            │
+ │                    │                      │  (Activity Patterns) │  PDF/CSV Report Generation    │
+ │                    │                      │                      │                                │
+ └────────────────────┴──────────────────────┴──────────────────────┴────────────────────────────────┘
+         │                      │                       │                        │
+         └──────────────────────┴───────────────────────┴────────────────────────┘
+                                            │
+            ┌───────────────────────────────┴───────────────────────────────┐
+            │                    SHARED INFRASTRUCTURE                       │
+            │                                                               │
+            │   PostgreSQL 16 (RLS)  │  Redis 7 (Cache + Queue + Sessions) │
+            │   Neo4j 5 (Graph)      │  Elasticsearch 8 (Search + Analytics)│
+            │   BullMQ (Job Queue)   │  MinIO/S3 (Archive + Objects)       │
+            │   Prisma 5 (ORM)       │  Prometheus + Grafana (Monitoring)  │
+            │   Nginx (Reverse Proxy) │  Vault/Env (Secrets Management)    │
+            │                                                               │
+            │   ┌─── CROSS-CUTTING CONCERNS ───┐                           │
+            │   │ Multi-Tenant RBAC/ABAC        │                           │
+            │   │ Immutable Audit Log           │                           │
+            │   │ Token Budget Enforcement      │                           │
+            │   │ Rate Limiting + DDoS (CF)     │                           │
+            │   │ WebSocket (Socket.IO rooms)   │                           │
+            │   └───────────────────────────────┘                           │
+            └───────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+
+  <h3>Request Flow (End-to-End)</h3>
+  <div class="flow">
+    <span class="flow-step">Cloudflare Edge</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Nginx (TLS + Headers)</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">API Gateway (Auth + Rate Limit)</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Service Router</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Module Service</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Prisma + Redis</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Response</span>
+  </div>
+
+  <h3>Data Pipeline Flow</h3>
+  <div class="flow">
+    <span class="flow-step">Raw Feed</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Ingest Queue</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Normalize (Zod)</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Dedup (SHA256)</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">AI Enrich (Claude)</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Store (PG + ES)</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Graph (Neo4j)</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Correlate</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Alert</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Integrate</span>
+  </div>
+</div>
+</section>
+
+<!-- 4. TECH STACK -->
+<section id="tech-stack">
+<div class="container">
+  <h2><span class="num">04</span>Unified Tech Stack</h2>
+  <p class="section-desc">Every technology choice justified against competitive platforms and your resource constraints.</p>
+
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Version</th><th>Rationale</th><th>Competitive Parity</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Runtime</strong></td><td>Node.js</td><td>20 LTS</td><td>Async-native, single language full-stack</td><td>OpenCTI, ThreatConnect</td></tr>
+      <tr><td><strong>API Framework</strong></td><td>Fastify</td><td>4.x</td><td>2x throughput vs Express, built-in schema validation</td><td>Superior to most competitors</td></tr>
+      <tr><td><strong>ORM</strong></td><td>Prisma</td><td>5.x</td><td>Type-safe queries, auto-migrations, multi-DB support</td><td>Modern equivalent to Django ORM</td></tr>
+      <tr><td><strong>Primary DB</strong></td><td>PostgreSQL</td><td>16</td><td>RLS for multi-tenancy, JSONB for flexible intel, table partitioning</td><td>OpenCTI, ThreatConnect</td></tr>
+      <tr><td><strong>Graph DB</strong></td><td>Neo4j</td><td>5.x</td><td>Best-in-class relationship queries, APOC library, Cypher</td><td>CrowdStrike Enterprise Graph, Recorded Future Intelligence Graph</td></tr>
+      <tr><td><strong>Search</strong></td><td>Elasticsearch</td><td>8.x</td><td>IOC lookup &lt;100ms, full-text search, faceted filtering</td><td>All top platforms use ES or equivalent</td></tr>
+      <tr><td><strong>Cache/Queue</strong></td><td>Redis</td><td>7.x</td><td>L1 cache (48hr dashboard), sessions, BullMQ backend</td><td>Universal standard</td></tr>
+      <tr><td><strong>Job Queue</strong></td><td>BullMQ</td><td>4.x</td><td>Reliable job processing, retries, priority queues, cron</td><td>Better than Celery for Node.js stack</td></tr>
+      <tr><td><strong>Frontend</strong></td><td>React + Vite + TypeScript</td><td>18.x / 5.x / 5.x</td><td>Fast HMR, component ecosystem, type safety</td><td>OpenCTI uses React</td></tr>
+      <tr><td><strong>Server State</strong></td><td>TanStack Query</td><td>5.x</td><td>Auto cache, deduplication, SWR, pagination</td><td>Best-in-class for data-heavy UIs</td></tr>
+      <tr><td><strong>Client State</strong></td><td>Zustand</td><td>4.x</td><td>Lightweight, no boilerplate</td><td>Superior to Redux for this use case</td></tr>
+      <tr><td><strong>UI Library</strong></td><td>shadcn/ui + Tailwind</td><td>Latest / 3.x</td><td>Composable, accessible, dark-mode native</td><td>Modern security platform standard</td></tr>
+      <tr><td><strong>Graph Viz</strong></td><td>React Flow + D3</td><td>Latest</td><td>Interactive knowledge graph, custom nodes, N-hop exploration</td><td>Matches CrowdStrike/Recorded Future graph UIs</td></tr>
+      <tr><td><strong>AI Runtime</strong></td><td>Anthropic Claude API</td><td>Latest</td><td>Sonnet (complex) + Haiku (simple), batch + prompt cache</td><td>Unique: most competitors use proprietary ML</td></tr>
+      <tr><td><strong>NLP</strong></td><td>spaCy (Python microservice)</td><td>3.x</td><td>Entity extraction, IOC detection. Isolated worker via BullMQ</td><td>Recorded Future NLP-first approach</td></tr>
+      <tr><td><strong>Auth</strong></td><td>Passport.js + JWT</td><td>0.7.x</td><td>SSO (Google/SAML/OIDC), MFA, API keys, magic code</td><td>Enterprise SSO standard</td></tr>
+      <tr><td><strong>Object Storage</strong></td><td>MinIO (S3-compatible)</td><td>Latest</td><td>Self-hosted archive, Parquet cold storage</td><td>AWS S3 equivalent, self-hostable</td></tr>
+      <tr><td><strong>Monitoring</strong></td><td>Prometheus + Grafana</td><td>Latest</td><td>VPS metrics, app metrics, AI token usage, alert dashboards</td><td>Industry standard</td></tr>
+      <tr><td><strong>Standards</strong></td><td>STIX 2.1 + TAXII 2.1</td><td>OASIS</td><td>Native data model, not bolt-on. Bidirectional sharing.</td><td>Anomali native, OpenCTI complete, MISP export</td></tr>
+      <tr><td><strong>Validation</strong></td><td>Zod</td><td>3.x</td><td>Runtime + compile-time type safety, shared schemas</td><td>Superior to Pydantic in TS ecosystem</td></tr>
+      <tr><td><strong>Containers</strong></td><td>Docker Compose &rarr; Kubernetes</td><td>Latest</td><td>VPS start, K8s graduation path</td><td>OpenCTI Docker+K8s pattern</td></tr>
+      <tr><td><strong>Edge</strong></td><td>Cloudflare + Nginx</td><td>Latest</td><td>DDoS protection, TLS termination, rate limiting, security headers</td><td>Enterprise standard</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- 5. DATA PIPELINE -->
+<section id="data-pipeline">
+<div class="container">
+  <h2><span class="num">05</span>Intelligence Data Pipeline</h2>
+  <p class="section-desc">Every piece of intelligence follows this exact 11-step pipeline. No raw data is ever stored directly. Every step is auditable.</p>
+
+  <div class="diagram">
+<pre>
+  ┌──────────┐   ┌───────────┐   ┌──────────┐   ┌──────────┐   ┌───────────┐
+  │ 1. RAW   │──▶│ 2. INGEST │──▶│ 3. NORM  │──▶│ 4. DEDUP │──▶│ 5. ENRICH │
+  │  SOURCES │   │   QUEUE   │   │  (Zod)   │   │ (SHA256) │   │  (Claude) │
+  └──────────┘   └───────────┘   └──────────┘   └──────────┘   └─────┬─────┘
+                                                                       │
+  ┌──────────┐   ┌───────────┐   ┌──────────┐   ┌──────────┐   ┌─────▼─────┐
+  │11. PUSH  │◀──│10. INTEG  │◀──│ 9. ALERT │◀──│ 8. CORR  │◀──│ 6. STORE  │
+  │  (WS)   │   │  (SIEM)   │   │  ENGINE  │   │  ENGINE  │   │ (PG+ES)   │
+  └──────────┘   └───────────┘   └──────────┘   └──────────┘   └─────┬─────┘
+                                                                       │
+                                                                 ┌─────▼─────┐
+                                                                 │ 7. GRAPH  │
+                                                                 │  (Neo4j)  │
+                                                                 └───────────┘
+</pre>
+  </div>
+
+  <h3>Step Details</h3>
+  <table>
+    <thead><tr><th>#</th><th>Step</th><th>Technology</th><th>SLA</th><th>Details</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>Source Collection</strong></td><td>Feed connectors</td><td>Per schedule</td><td>STIX/TAXII 2.1, MISP, RSS, NVD, EPSS, Dark Web, Social OSINT, Manual, Webhook, Syslog/CEF</td></tr>
+      <tr><td>2</td><td><strong>Ingestion Queue</strong></td><td>BullMQ</td><td>&lt;1s queue</td><td>Rate-limited per feed, dead-letter queue for failures, health metrics</td></tr>
+      <tr><td>3</td><td><strong>Normalization</strong></td><td>Zod + shared-normalization</td><td>&lt;50ms/item</td><td>Auto-detect IOC type, timestamp normalization, TLP/PAP mapping, confidence normalization, MITRE ATT&CK ID extraction</td></tr>
+      <tr><td>4</td><td><strong>Deduplication</strong></td><td>SHA256(type:value:tenantId)</td><td>&lt;10ms</td><td>Composite hash, upsert on match, lastSeen update on duplicate</td></tr>
+      <tr><td>5</td><td><strong>AI Enrichment</strong></td><td>Claude API + VT + AbuseIPDB</td><td>&lt;5s batch</td><td>Parallel external APIs, Claude analysis, weighted scoring (VT 35% + AbuseIPDB 30% + AI 35%), type-specific prompts</td></tr>
+      <tr><td>6</td><td><strong>Storage</strong></td><td>PostgreSQL + Elasticsearch</td><td>&lt;100ms</td><td>Prisma upsert with RLS, ES index per tenant per entity type</td></tr>
+      <tr><td>7</td><td><strong>Graph</strong></td><td>Neo4j</td><td>&lt;200ms</td><td>Create/update node, establish relationships (USES, CONDUCTS, CONTROLS, etc.), risk propagation trigger</td></tr>
+      <tr><td>8</td><td><strong>Correlation</strong></td><td>Rule engine + Claude</td><td>&lt;2s</td><td>Rule-based: shared C2, IOC reuse, TTP similarity, temporal waves. AI: cluster analysis</td></tr>
+      <tr><td>9</td><td><strong>Alert</strong></td><td>Alert engine</td><td>&lt;1s</td><td>Check enabled integrations + triggers per tenant, enqueue sends</td></tr>
+      <tr><td>10</td><td><strong>Integration</strong></td><td>Connector framework</td><td>&lt;5s</td><td>Splunk, Sentinel, QRadar, ServiceNow, Jira, Slack, Teams, Email, PagerDuty, webhook</td></tr>
+      <tr><td>11</td><td><strong>UI Push</strong></td><td>Socket.IO</td><td>&lt;100ms</td><td>Tenant-room-isolated WebSocket push, dashboard cache invalidation</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- 6. DATA MODELS -->
+<section id="data-models">
+<div class="container">
+  <h2><span class="num">06</span>Canonical Data Models (STIX 2.1 Native)</h2>
+  <p class="section-desc">All internal data models are STIX 2.1 objects first. Every entity has a canonical Zod schema shared between frontend and backend.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-blue">Core</span> Canonical IOC</div>
+      <div class="card-body">
+        <p>14 IOC types: ip, ipv6, domain, fqdn, url, email, md5, sha1, sha256, sha512, asn, cidr, cve, bitcoin_address</p>
+        <p><strong>Key fields:</strong> id, tenantId, type, value, normalized_value, firstSeen, lastSeen, tlp, confidence (0-100), severity (5 levels), tags, mitreAttack[], malwareFamilies[], threatActors[], sourceRefs[], aiEnrichment, graphNodeId</p>
+        <p><strong>Lifecycle:</strong> active &rarr; expired &rarr; revoked &rarr; false_positive</p>
+        <p><strong>Auto-expire:</strong> IP=30d, Domain=90d, Hash=never</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-red">Intel</span> Threat Actor</div>
+      <div class="card-body">
+        <p><strong>Types:</strong> nation_state, criminal, hacktivist, insider, unknown</p>
+        <p><strong>Key fields:</strong> name, aliases[], type, motivation[], sophistication (low&rarr;very_high), targetIndustries[], targetRegions[], ttps[] (MITRE IDs), associatedMalware[], attributionConfidence (0-100), campaigns[]</p>
+        <p><strong>Attribution scoring:</strong> infrastructure 35% + code 30% + TTPs 20% + victimology 15%</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-purple">Intel</span> Malware Family</div>
+      <div class="card-body">
+        <p><strong>Types:</strong> trojan, ransomware, backdoor, loader, stealer, wiper, rootkit, botnet, rat, worm</p>
+        <p><strong>Key fields:</strong> familyName, aliases[], platforms[], capabilities[], c2Servers[], variants[], campaigns[], relatedIOCs[]</p>
+        <p><strong>AI feature:</strong> Extract IOCs from pasted threat report text via Claude</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-amber">Intel</span> Vulnerability (CVE)</div>
+      <div class="card-body">
+        <p><strong>Sources:</strong> NVD API, CISA KEV, EPSS API, GitHub Advisories</p>
+        <p><strong>Priority score:</strong> CVSS*10 + EPSS*30 + KEV+20 + exploit+15</p>
+        <p><strong>Key fields:</strong> cveId, cvssV3 (0-10), epss (0-100), cisaKev (bool), exploitedInWild, patchAvailable, affectedSoftware[], cmdbAssets[]</p>
+        <p><strong>Integration:</strong> Auto-create ITSM ticket for CRITICAL CVEs</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-cyan">NEW</span> Indicator of Activity (IOA)</div>
+      <div class="card-body">
+        <p><strong>Inspired by:</strong> Mandiant's 2025 IOC&rarr;IOA strategic pivot</p>
+        <p><strong>Fields:</strong> behaviorPattern, detectionLogic (Sigma/YARA), attackPhase (MITRE tactic), temporalPattern, actorCorrelation</p>
+        <p><strong>Purpose:</strong> Behavioral anomaly detection that survives IOC rotation. Linked to actors, campaigns, and TTPs in the graph.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-green">DRP</span> Digital Risk Protection</div>
+      <div class="card-body">
+        <p><strong>Monitored assets:</strong> domain, brand_name, email_domain, social_handle, mobile_app</p>
+        <p><strong>Alert types:</strong> phishing_domain, typosquat, credential_leak, fake_social, rogue_app, dark_web_mention</p>
+        <p><strong>AI enrichment:</strong> Hosting provider detection, takedown contact lookup, recommended actions</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Graph Relationships (Neo4j)</h3>
+  <table>
+    <thead><tr><th>Source Node</th><th>Relationship</th><th>Target Node</th><th>Properties</th></tr></thead>
+    <tbody>
+      <tr><td>ThreatActor</td><td>USES</td><td>Malware</td><td>confidence, firstSeen, lastSeen</td></tr>
+      <tr><td>ThreatActor</td><td>CONDUCTS</td><td>Campaign</td><td>role, timeframe</td></tr>
+      <tr><td>Campaign</td><td>TARGETS</td><td>Victim/Industry</td><td>impact, sector</td></tr>
+      <tr><td>Malware</td><td>CONTROLS</td><td>IOC (C2)</td><td>protocol, port</td></tr>
+      <tr><td>IOC</td><td>RESOLVES_TO</td><td>IOC</td><td>recordType, ttl</td></tr>
+      <tr><td>IOC</td><td>HOSTED_ON</td><td>Infrastructure</td><td>asn, provider</td></tr>
+      <tr><td>ThreatActor</td><td>EXPLOITS</td><td>Vulnerability</td><td>technique, zeroDay</td></tr>
+      <tr><td>IOA</td><td>INDICATES</td><td>ThreatActor</td><td>confidence, behavior</td></tr>
+      <tr><td>IOC</td><td>OBSERVED_IN</td><td>IOA</td><td>timestamp, context</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- 7. AI ENGINE -->
+<section id="ai-engine">
+<div class="container">
+  <h2><span class="num">07</span>AI-Native Intelligence Engine</h2>
+  <p class="section-desc">Claude API powers every layer of the platform. Cost-optimized with batch processing (50% savings), prompt caching (80%+ hit rate), and model tiering.</p>
+
+  <h3>Model Tiering Strategy</h3>
+  <table>
+    <thead><tr><th>Task</th><th>Model</th><th>Rationale</th><th>Token Budget</th></tr></thead>
+    <tbody>
+      <tr><td>IOC enrichment, Campaign analysis, Actor profiling</td><td><span class="badge badge-blue">claude-sonnet-4-20250514</span></td><td>Complex reasoning, multi-step analysis</td><td>1,024 max output</td></tr>
+      <tr><td>Correlation cluster analysis, Hunting suggestions</td><td><span class="badge badge-blue">claude-sonnet-4-20250514</span></td><td>Relationship reasoning, hypothesis generation</td><td>2,048 max output</td></tr>
+      <tr><td>IOC classification, Tag extraction, Severity labeling</td><td><span class="badge badge-green">claude-haiku-4-5-20251001</span></td><td>Fast, cheap, simple extraction</td><td>512 max output</td></tr>
+      <tr><td>Report summarization, NLP assist</td><td><span class="badge badge-green">claude-haiku-4-5-20251001</span></td><td>Bulk text processing</td><td>1,024 max output</td></tr>
+      <tr><td>Development conversations only</td><td><span class="badge badge-purple">claude-opus-4-6</span></td><td>Never in production runtime</td><td>N/A</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Three Enrichment Patterns</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-green">Pattern 1</span> Batch Enrichment</div>
+      <div class="card-body">
+        <p><strong>50% cost reduction</strong> via Anthropic Batch API. For non-real-time enrichment of 10+ items.</p>
+        <p>System prompt + MITRE ATT&CK corpus cached with <code class="inline-code">cache_control: {"type": "ephemeral"}</code>. Minimum batch size: 10 items. Results parsed and stored async.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-blue">Pattern 2</span> Real-Time + Cache</div>
+      <div class="card-body">
+        <p><strong>Redis-first, Claude-second.</strong> Check Redis cache &rarr; if miss, call Claude with prompt caching (90% input token savings after first call).</p>
+        <p>Cache TTLs by type: hash=7d, domain=24h, ip=1h, cve=12h, url=1h, email=24h.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-cyan">Pattern 3 (NEW)</span> Agentic Hunting</div>
+      <div class="card-body">
+        <p><strong>Autonomous multi-step investigation.</strong> Claude generates investigation hypotheses, executes graph traversals, correlates findings, and suggests next actions.</p>
+        <p>Inspired by CrowdStrike AIDR and Recorded Future Autonomous Hunting. Human-in-the-loop approval for actions.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Reasoning Trail (Competitive Differentiator)</h3>
+  <div class="callout callout-green">
+    <div class="callout-title">Every AI enrichment output is fully auditable</div>
+    <p>Unlike competitors that output a score with no explanation, ETIP's enrichment includes: <strong>score_justification</strong> (2-3 sentences citing evidence), <strong>evidence_sources</strong> (specific MITRE techniques or known campaigns), and <strong>uncertainty_factors</strong> (what would change this score). This makes every risk score defensible in SOC reviews.</p>
+  </div>
+
+  <h3>Enrichment Output Schema (Enforced JSON)</h3>
+<pre>{
+  "risk_score": 0-100,
+  "confidence": 0.0-1.0,
+  "threat_categories": ["category"],
+  "attributed_actors": ["actor_name"],
+  "reasoning": {
+    "score_justification": "2-3 sentences citing specific evidence",
+    "evidence_sources": ["MITRE T1059.001", "APT28 infrastructure overlap"],
+    "uncertainty_factors": ["Limited historical data", "Shared hosting"]
+  },
+  "recommended_actions": ["Block at firewall", "Monitor related domains"],
+  "stix_labels": ["malicious-activity"],
+  "isFalsePositive": false,
+  "falsePositiveReason": null
+}</pre>
+
+  <h3>Cost Controls (Non-Negotiable)</h3>
+  <table>
+    <thead><tr><th>Control</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Per-tenant daily token budget</td><td>Tracked in Redis, enforced before every API call. Alert at 80%, hard-stop or fallback-to-Haiku at 100%.</td></tr>
+      <tr><td>Per-module budget allocation</td><td>Enrichment: 500K/day, Correlation: 200K/day, Hunting: 100K/day. Configurable per tenant.</td></tr>
+      <tr><td>Real-time cost visibility</td><td>Analysts see token cost of every enrichment action. Admins see per-analyst, per-team, per-module dashboards.</td></tr>
+      <tr><td>Prompt caching target</td><td>80%+ cache hit rate on system prompts + MITRE ATT&CK corpus (200K+ tokens cached).</td></tr>
+      <tr><td>Batch API preference</td><td>All non-real-time enrichment batched (minimum 10 items). 50% cost reduction.</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- 8. LIVING GRAPH -->
+<section id="graph">
+<div class="container">
+  <h2><span class="num">08</span>Living Graph Intelligence</h2>
+  <p class="section-desc">The platform's most powerful differentiator. Unlike static IOC databases, ETIP's graph continuously re-evaluates ALL connected entities when new intel arrives.</p>
+
+  <div class="callout callout-blue">
+    <div class="callout-title">How it works: Retroactive Risk Propagation</div>
+    <p>When a node's risk score changes (e.g., an IP is newly attributed to APT28), the graph engine traverses up to 3 hops of connected nodes, applying a decay factor (0.7^distance) weighted by relationship confidence. This means historical IOCs get smarter as new intelligence arrives &mdash; a domain from 6 months ago that shares infrastructure with a newly-discovered C2 server automatically gets re-scored.</p>
+  </div>
+
+  <h3>Graph Query Capabilities</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Entity + N-Hop Neighbors</div>
+      <div class="card-body"><code class="inline-code">GET /api/v1/graph/entity/:id?hops=3</code><br>Returns entity with all connected nodes up to N hops. Configurable depth slider in UI (1-5).</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Shortest Path</div>
+      <div class="card-body"><code class="inline-code">GET /api/v1/graph/path?from=:id1&to=:id2</code><br>Find how two entities are connected. Critical for attribution analysis.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Actor/Campaign Cluster</div>
+      <div class="card-body"><code class="inline-code">GET /api/v1/graph/cluster/:actorId</code><br>Full 2+ hop cluster around an actor showing all infrastructure, malware, campaigns, and IOCs.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Risk Propagation</div>
+      <div class="card-body">Automatic BullMQ job on every risk score change. Traverses connected nodes, applies weighted decay, updates scores. Results visible in real-time via WebSocket.</div>
+    </div>
+  </div>
+
+  <h3>Frontend Visualization</h3>
+  <p>React Flow + D3 with color-coded nodes by entity type: <span class="badge badge-red">ThreatActor (hexagon)</span> <span class="badge badge-amber">Campaign (rectangle)</span> <span class="badge badge-blue">IOC (ellipse)</span> <span class="badge badge-purple">Malware (diamond)</span> <span class="badge badge-green">Vulnerability (triangle)</span>. Node size scales with risk score. Edge labels show relationship type and confidence.</p>
+</div>
+</section>
+
+<!-- 9. MODULES -->
+<section id="modules">
+<div class="container">
+  <h2><span class="num">09</span>Platform Modules (22 Total)</h2>
+  <p class="section-desc">Each module is self-contained with its own routes, controller, service, schema, repository, queue worker, README, and tests. Maximum 400 lines per file.</p>
+
+  <table>
+    <thead><tr><th>#</th><th>Module</th><th>Purpose</th><th>Key Endpoints</th><th>Competitive Note</th></tr></thead>
+    <tbody>
+      <tr><td>01</td><td><strong>API Gateway</strong></td><td>Auth, rate limiting, routing</td><td>All routes proxied</td><td>Kong/Apigee equivalent</td></tr>
+      <tr><td>04</td><td><strong>Ingestion</strong></td><td>Feed collection (STIX, MISP, RSS, API, TAXII)</td><td>Feed CRUD, status, health</td><td>Recorded Future-style multi-source</td></tr>
+      <tr><td>05</td><td><strong>Normalization</strong></td><td>Raw &rarr; canonical Zod schemas</td><td>Internal pipeline step</td><td>STIX 2.1 native mapping</td></tr>
+      <tr><td>06</td><td><strong>AI Enrichment</strong></td><td>Claude + VT + AbuseIPDB + Shodan</td><td>Enrich single/batch</td><td>Unique: auditable reasoning trails</td></tr>
+      <tr><td>07</td><td><strong>IOC Intelligence</strong></td><td>Full IOC lifecycle</td><td>CRUD, search, pivot, export, bulk</td><td>14 IOC types, auto-expire rules</td></tr>
+      <tr><td>08</td><td><strong>Threat Actor Intel</strong></td><td>Actor profiles, attribution</td><td>CRUD, cluster, alias merge</td><td>Diamond Model via AI</td></tr>
+      <tr><td>09</td><td><strong>Malware Intel</strong></td><td>Family taxonomy, variants</td><td>CRUD, extract-iocs from reports</td><td>AI-powered IOC extraction from text</td></tr>
+      <tr><td>10</td><td><strong>Vulnerability Intel</strong></td><td>CVE tracking (CVSS+EPSS+KEV)</td><td>CRUD, search, affected-assets</td><td>Priority scoring formula</td></tr>
+      <tr><td>11</td><td><strong>Digital Risk Protection</strong></td><td>External threat monitoring</td><td>Asset CRUD, alert management</td><td>Typosquat detection, takedown gen</td></tr>
+      <tr><td>12</td><td><strong>Threat Graph</strong></td><td>Neo4j knowledge graph</td><td>Entity, path, cluster, expand</td><td>Living risk propagation</td></tr>
+      <tr><td>13</td><td><strong>Correlation Engine</strong></td><td>Rule + AI pattern matching</td><td>Correlation list, rule CRUD</td><td>AI cluster analysis via Claude</td></tr>
+      <tr><td>14</td><td><strong>Threat Hunting</strong></td><td>Investigation workspaces</td><td>Investigation CRUD, pivot, AI suggestions</td><td>Agentic hunting (NEW)</td></tr>
+      <tr><td>15</td><td><strong>Enterprise Integration</strong></td><td>SIEM/SOAR/ITSM connectors</td><td>Config, test, send, logs</td><td>15+ connector types</td></tr>
+      <tr><td>16</td><td><strong>User Management</strong></td><td>Auth, RBAC, sessions</td><td>Register, login, SSO, MFA, API keys</td><td>6 auth methods</td></tr>
+      <tr><td>17</td><td><strong>Customization</strong></td><td>Tenant config, feature flags</td><td>Module toggles, branding, weights</td><td>White-label + custom taxonomy</td></tr>
+      <tr><td>18</td><td><strong>Onboarding</strong></td><td>8-step guided wizard</td><td>Wizard state, readiness check</td><td>Demo data seeding (150+ items)</td></tr>
+      <tr><td>19</td><td><strong>Billing</strong></td><td>Free/Starter/Pro/Enterprise tiers</td><td>Plans, usage, Stripe checkout</td><td>Smart upgrade triggers</td></tr>
+      <tr><td>20</td><td><strong>UI/UX</strong></td><td>React SPA with dark-first design</td><td>All frontend pages</td><td>3D card effects, mobile at 375px</td></tr>
+      <tr><td>21</td><td><strong>Module Integration</strong></td><td>Event bus, shared contracts</td><td>Internal event routing</td><td>BullMQ event-driven architecture</td></tr>
+      <tr><td>22</td><td><strong>Admin Platform</strong></td><td>Super-admin + tenant admin</td><td>Health, AI config, tenants, audit</td><td>AI cost tracking dashboard</td></tr>
+      <tr><td>23</td><td><strong>Caching & Archival</strong></td><td>Multi-layer cache, hot/warm/cold</td><td>Cache stats, archive retrieve</td><td>60-day auto-archive to Parquet</td></tr>
+      <tr><td><span class="badge badge-cyan">NEW</span></td><td><strong>ASM (Attack Surface)</strong></td><td>External asset discovery</td><td>Asset scan, exposure scoring</td><td>Bitsight/CyCognito-style integration</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- 10. MULTI-TENANCY -->
+<section id="multi-tenancy">
+<div class="container">
+  <h2><span class="num">10</span>Multi-Tenancy Architecture</h2>
+  <p class="section-desc">Isolation enforced at every layer &mdash; database, cache, search, graph, WebSocket, and AI budgets.</p>
+
+  <table>
+    <thead><tr><th>Layer</th><th>Isolation Strategy</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td><strong>PostgreSQL</strong></td><td>Row-Level Security (RLS)</td><td>Every table has tenant_id. RLS policy auto-filters all queries. Cannot be bypassed at application level.</td></tr>
+      <tr><td><strong>Redis</strong></td><td>Key namespacing</td><td>All keys: <code class="inline-code">{tenantId}:{resourceType}:{id}</code></td></tr>
+      <tr><td><strong>Elasticsearch</strong></td><td>Index per tenant</td><td><code class="inline-code">etip_{tenantId}_iocs</code>, <code class="inline-code">etip_{tenantId}_actors</code>, etc.</td></tr>
+      <tr><td><strong>Neo4j</strong></td><td>Node property filtering</td><td>All nodes include tenantId. All Cypher queries: <code class="inline-code">WHERE n.tenantId = $tenantId</code></td></tr>
+      <tr><td><strong>WebSocket</strong></td><td>Socket.IO room isolation</td><td>Each tenant joins its own room. Events only broadcast within tenant room.</td></tr>
+      <tr><td><strong>AI Budgets</strong></td><td>Per-tenant token caps</td><td>Monthly caps tracked in Redis. Alert at 80%, hard-stop or Haiku-fallback at 100%.</td></tr>
+      <tr><td><strong>Audit Logs</strong></td><td>Tenant-tagged immutable logs</td><td>Every action logged with tenantId, userId, action, resource, outcome, timestamp.</td></tr>
+      <tr><td><strong>Object Storage</strong></td><td>Prefix isolation</td><td>MinIO path: <code class="inline-code">{tenantId}/ioc/{year}/{month}/{file}.parquet</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Tenant Customization</h3>
+  <p>Each tenant can independently configure: module toggles (enable/disable any module), white-label branding (logo, colors, platform name), risk scoring weights, alert thresholds, custom taxonomy for entity types, field visibility per entity, IP whitelist, AI model selection per use case, and token budgets.</p>
+</div>
+</section>
+
+<!-- 11. SECURITY -->
+<section id="security">
+<div class="container">
+  <h2><span class="num">11</span>Zero-Trust Security Architecture</h2>
+  <p class="section-desc">Every request is untrusted until proven otherwise. Defense in depth at every layer.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-red">Auth</span> 6 Authentication Methods</div>
+      <div class="card-body">
+        <p>Email+Password (bcrypt), Google SSO (admin), Magic Code (6-digit OTP), Customer SAML 2.0/OIDC, TOTP MFA (10 backup codes), API Keys (bcrypt hashed, scoped, revocable)</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-amber">RBAC</span> 6 Roles + Permission Strings</div>
+      <div class="card-body">
+        <p><strong>Roles:</strong> super_admin, admin, analyst, hunter, viewer, api_only</p>
+        <p><strong>Permissions:</strong> <code class="inline-code">module:action</code> (e.g., ioc:read, ioc:delete)</p>
+        <p><strong>Enforcement:</strong> <code class="inline-code">rbac('role')</code> middleware on every route</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-blue">Token</span> JWT + Refresh Token Rotation</div>
+      <div class="card-body">
+        <p>Access token: 15-minute expiry. Refresh token: 7-day, stored in Redis, revocable. Rotation on every refresh.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-green">Data</span> Encryption & Validation</div>
+      <div class="card-body">
+        <p>Integration credentials: AES-256 encrypted. All API input: Zod validation. SQL: parameterized only (Prisma). CORS: explicit origin allowlist.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Mandatory Security Checklist (Per Module)</h3>
+  <ul>
+    <li>No secrets in source code or git history</li>
+    <li>All endpoints behind authentication (except <code class="inline-code">/health</code>)</li>
+    <li>Rate limiting on all public-facing routes</li>
+    <li>Input validation via Zod on every API input</li>
+    <li>Parameterized queries only (Prisma) &mdash; no string interpolation</li>
+    <li>CORS configured restrictively (explicit origin allowlist)</li>
+    <li>Security headers in Nginx: HSTS, CSP, X-Frame-Options, X-Content-Type-Options</li>
+    <li>Dependencies audited: <code class="inline-code">npm audit</code></li>
+    <li>All mutations &rarr; immutable audit log</li>
+    <li>Session management: revocable, viewable per user</li>
+  </ul>
+</div>
+</section>
+
+<!-- 12. API DESIGN -->
+<section id="api">
+<div class="container">
+  <h2><span class="num">12</span>API Design (REST + GraphQL Hybrid)</h2>
+  <p class="section-desc">REST for simple entity lookups (legacy compat), GraphQL for complex relationship queries (modern). Both OAuth2-secured. Following CrowdStrike + OpenCTI best practices.</p>
+
+  <div class="vs">
+    <div class="vs-old" style="background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.2);">
+      <div class="vs-label" style="color: var(--accent-blue);">REST API (v1)</div>
+      <ul>
+        <li><code class="inline-code">GET /api/v1/ioc</code> &mdash; paginated list</li>
+        <li><code class="inline-code">POST /api/v1/ioc/search</code> &mdash; ES full-text</li>
+        <li><code class="inline-code">GET /api/v1/ioc/:id/pivot</code> &mdash; graph neighbors</li>
+        <li><code class="inline-code">POST /api/v1/ioc/export</code> &mdash; CSV/JSON/STIX2</li>
+        <li><code class="inline-code">GET /api/v1/graph/path</code> &mdash; shortest path</li>
+        <li><code class="inline-code">POST /api/v1/investigation</code> &mdash; create hunt</li>
+      </ul>
+    </div>
+    <div class="vs-new" style="background: rgba(168,85,247,0.06); border-color: rgba(168,85,247,0.2);">
+      <div class="vs-label" style="color: var(--accent-purple);">GraphQL API (NEW)</div>
+      <ul>
+        <li><code class="inline-code">query { ioc(id) { ...fields, relatedActors { ...}, malware { ...} } }</code></li>
+        <li><code class="inline-code">query { graphTraversal(from, hops, types) { nodes, edges } }</code></li>
+        <li><code class="inline-code">query { correlation(entityIds) { matches, confidence } }</code></li>
+        <li><code class="inline-code">subscription { iocCreated(severity: HIGH) { ...fields } }</code></li>
+        <li>Complex nested queries in single request</li>
+        <li>Real-time subscriptions via WebSocket</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Standard Response Shapes</h3>
+<pre>// Success (list)
+{ "data": [...], "total": 1000, "page": 1, "limit": 50 }
+
+// Success (single)
+{ "data": { ...entity } }
+
+// Error
+{ "error": { "code": "NOT_FOUND", "message": "IOC not found", "details": {} } }
+
+// STIX 2.1 export
+{ "type": "bundle", "id": "bundle--uuid", "objects": [...stix_objects] }</pre>
+
+  <h3>TAXII 2.1 Server (Built-in)</h3>
+  <p>Full TAXII 2.1 server implementation for bidirectional intelligence sharing. Discovery endpoint, API roots, collections, objects. Compatible with Anomali STAXX, MISP, OpenCTI, and any TAXII 2.1 client.</p>
+</div>
+</section>
+
+<!-- 13. UI/UX -->
+<section id="ui-ux">
+<div class="container">
+  <h2><span class="num">13</span>UI/UX Architecture</h2>
+  <p class="section-desc">Dark-first, data-dense, entity-first design. Full functionality at 375px mobile. Inspired by CrowdStrike's premium feel with OpenCTI's graph-native navigation.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">EntityChip (Everywhere)</div>
+      <div class="card-body">Every IOC/actor/CVE is a clickable, color-coded chip. Hover = mini quick-view. Click = detail page. Right-click = local search, internet search (VT/Shodan/MITRE), copy. 14 IOC types color-coded.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">TopStatsBar (Global)</div>
+      <div class="card-body">Always visible: Total IOCs, Critical IOCs, Active Feeds, Enriched Today, Last Ingest, Platform Health. Green pulsing dot for live status. 30-min cache.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">3D IntelCards</div>
+      <div class="card-body">Framer Motion 3D tilt on hover, scale 1.015, glow color by severity (critical=red, high=orange, medium=yellow). Premium security platform feel.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Global Search (Cmd+K)</div>
+      <div class="card-body">Command palette: search IOCs, CVEs, actors, malware across platform. Also offers internet search (VirusTotal, Shodan, MITRE ATT&CK) inline.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Investigation Panel</div>
+      <div class="card-body">Right sidebar on entity click: related IOCs, threat actors, malware families, timeline, collapsible sections. Never leaves context.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Responsive (375px+)</div>
+      <div class="card-body">Mobile: bottom tab nav, card layout. Tablet: sidebar + cards. Desktop: full sidebar + tables + graph. Tables collapse to cards on &lt;768px.</div>
+    </div>
+  </div>
+
+  <h3>Color System</h3>
+  <table>
+    <thead><tr><th>Element</th><th>Color</th><th>Hex</th></tr></thead>
+    <tbody>
+      <tr><td>Background (base)</td><td style="color:#07090e;">&#9632;&#9632;&#9632;</td><td>#07090e</td></tr>
+      <tr><td>Background (card)</td><td style="color:#131920;">&#9632;&#9632;&#9632;</td><td>#131920</td></tr>
+      <tr><td>Severity: Critical</td><td style="color:#ef4444;">&#9632;&#9632;&#9632;</td><td>#ef4444</td></tr>
+      <tr><td>Severity: High</td><td style="color:#f97316;">&#9632;&#9632;&#9632;</td><td>#f97316</td></tr>
+      <tr><td>Severity: Medium</td><td style="color:#eab308;">&#9632;&#9632;&#9632;</td><td>#eab308</td></tr>
+      <tr><td>Severity: Low</td><td style="color:#22c55e;">&#9632;&#9632;&#9632;</td><td>#22c55e</td></tr>
+      <tr><td>Accent (primary)</td><td style="color:#3b82f6;">&#9632;&#9632;&#9632;</td><td>#3b82f6</td></tr>
+      <tr><td>Accent (info)</td><td style="color:#22d3ee;">&#9632;&#9632;&#9632;</td><td>#22d3ee</td></tr>
+      <tr><td>TLP:RED</td><td style="color:#ef4444;">&#9632;&#9632;&#9632;</td><td>#ef4444</td></tr>
+      <tr><td>TLP:AMBER</td><td style="color:#eab308;">&#9632;&#9632;&#9632;</td><td>#eab308</td></tr>
+      <tr><td>TLP:GREEN</td><td style="color:#22c55e;">&#9632;&#9632;&#9632;</td><td>#22c55e</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- 14. PERFORMANCE -->
+<section id="performance">
+<div class="container">
+  <h2><span class="num">14</span>Performance Architecture</h2>
+  <p class="section-desc">Multi-layer caching, hot/warm/cold storage lifecycle, and aggressive pre-computation.</p>
+
+  <h3>3-Layer Cache Strategy</h3>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>TTL</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><strong>L1: Redis</strong></td><td>Redis 7</td><td>48hr (dashboard), 30min (stats), 1hr (search), type-specific (enrichment)</td><td>Server-side hot cache for all frequently-accessed data</td></tr>
+      <tr><td><strong>L2: Browser SWR</strong></td><td>TanStack Query</td><td>staleTime: 30min, gcTime: 48hr</td><td>Client-side stale-while-revalidate. Background refetch every 30min.</td></tr>
+      <tr><td><strong>L3: CDN Edge</strong></td><td>Cloudflare</td><td>1 year (static assets)</td><td>Edge caching for static resources, Cache-Control headers on API responses.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Data Lifecycle (Hot/Warm/Cold)</h3>
+  <table>
+    <thead><tr><th>Age</th><th>Tier</th><th>Storage</th><th>Access</th></tr></thead>
+    <tbody>
+      <tr><td>0-60 days</td><td><span class="badge badge-red">HOT</span></td><td>PostgreSQL + Elasticsearch + Redis</td><td>Full query performance, all features, cached</td></tr>
+      <tr><td>60-180 days</td><td><span class="badge badge-amber">WARM</span></td><td>Auto-archived to MinIO (Parquet, 10x compression)</td><td>Tombstone in PG, retrievable on-demand</td></tr>
+      <tr><td>180+ days</td><td><span class="badge badge-blue">COLD</span></td><td>MinIO only</td><td>Background retrieval, "archived" badge in UI</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Performance SLAs</h3>
+  <table>
+    <thead><tr><th>Operation</th><th>Target</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td>IOC lookup (cached)</td><td>&lt;100ms</td><td>Redis L1 + Elasticsearch</td></tr>
+      <tr><td>IOC lookup (live)</td><td>&lt;500ms</td><td>Elasticsearch query + enrichment cache</td></tr>
+      <tr><td>Dashboard initial load</td><td>&lt;2 seconds</td><td>48hr Redis cache + browser SWR</td></tr>
+      <tr><td>Feed ingestion to alert</td><td>&lt;5 minutes</td><td>Async BullMQ pipeline, parallel enrichment</td></tr>
+      <tr><td>Graph traversal (3 hops)</td><td>&lt;500ms</td><td>Neo4j indexed + Redis cluster cache</td></tr>
+      <tr><td>AI enrichment (single)</td><td>&lt;5 seconds</td><td>Parallel external APIs + cached Claude</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- 15. DIFFERENTIATORS -->
+<section id="differentiators">
+<div class="container">
+  <h2><span class="num">15</span>Competitive Differentiators</h2>
+  <p class="section-desc">Features that do not exist in CrowdStrike Falcon X, Recorded Future, ThreatConnect, or any other competing platform.</p>
+
+  <div class="card-grid">
+    <div class="card" style="border-color: rgba(59,130,246,0.3);">
+      <div class="card-title"><span class="badge badge-blue">Unique</span> Living Graph Intelligence</div>
+      <div class="card-body">Continuously re-scores ALL existing IOCs when new intel arrives. Graph relationships propagate risk retroactively with weighted decay. Historical IOCs get smarter over time. No competitor does retroactive rescoring at this depth.</div>
+    </div>
+    <div class="card" style="border-color: rgba(34,197,94,0.3);">
+      <div class="card-title"><span class="badge badge-green">Unique</span> Analyst Reasoning Trails</div>
+      <div class="card-body">Every AI enrichment includes cited evidence, score justification, and uncertainty factors. Every risk score is auditable and defensible in SOC reviews. Competitors output scores without explanation.</div>
+    </div>
+    <div class="card" style="border-color: rgba(168,85,247,0.3);">
+      <div class="card-title"><span class="badge badge-purple">Unique</span> Cost-Transparent AI</div>
+      <div class="card-body">Analysts see token cost of every enrichment action in real time. Admins set per-analyst, per-team, per-module token budgets. No other platform shows AI operational costs to users.</div>
+    </div>
+    <div class="card" style="border-color: rgba(234,179,8,0.3);">
+      <div class="card-title"><span class="badge badge-amber">Unique</span> Plug-and-Play Modules</div>
+      <div class="card-body">Each tenant independently enables/disables/configures modules. A small MSSP and a Fortune 500 SOC use the same platform with entirely different feature surfaces. Custom taxonomy, risk weights, and AI models per tenant.</div>
+    </div>
+    <div class="card" style="border-color: rgba(34,211,238,0.3);">
+      <div class="card-title"><span class="badge badge-cyan">Unique</span> Agentic Threat Hunting</div>
+      <div class="card-body">Claude-powered autonomous investigation: generates hypotheses, executes graph traversals, correlates across entities, suggests 3-5 next hunting actions. Human-in-the-loop for action approval. Inspired by CrowdStrike AIDR but built on Claude.</div>
+    </div>
+    <div class="card" style="border-color: rgba(239,68,68,0.3);">
+      <div class="card-title"><span class="badge badge-red">Unique</span> IOA + IOC Dual Model</div>
+      <div class="card-body">Combines traditional Indicators of Compromise with Indicators of Activity (behavioral patterns). IOAs survive IOC rotation, providing persistent detection capabilities. Inspired by Mandiant's 2025 strategic pivot.</div>
+    </div>
+  </div>
+
+  <h3>Competitive Comparison</h3>
+  <table>
+    <thead><tr><th>Feature</th><th>ETIP v4</th><th>CrowdStrike</th><th>Recorded Future</th><th>ThreatConnect</th><th>OpenCTI</th></tr></thead>
+    <tbody>
+      <tr><td>Living Graph (retroactive rescore)</td><td style="color:#22c55e;">&#10003;</td><td>Partial</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td></tr>
+      <tr><td>AI Reasoning Trails</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td></tr>
+      <tr><td>Cost-Transparent AI</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td><td>N/A</td></tr>
+      <tr><td>IOA + IOC Dual Model</td><td style="color:#22c55e;">&#10003;</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td></tr>
+      <tr><td>STIX 2.1 Native</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td><td style="color:#22c55e;">&#10003;</td></tr>
+      <tr><td>GraphQL API</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td><td style="color:#22c55e;">&#10003;</td></tr>
+      <tr><td>Agentic Hunting</td><td style="color:#22c55e;">&#10003;</td><td style="color:#22c55e;">&#10003;</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td></tr>
+      <tr><td>Per-Tenant Module Toggle</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>Partial</td><td>Partial</td></tr>
+      <tr><td>White-Label</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>Partial</td><td>&#10007;</td></tr>
+      <tr><td>Self-Hosted Option</td><td style="color:#22c55e;">&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td><td style="color:#22c55e;">&#10003;</td></tr>
+      <tr><td>Open-Source Core</td><td>Planned</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td><td style="color:#22c55e;">&#10003;</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- 16. ROADMAP -->
+<section id="roadmap">
+<div class="container">
+  <h2><span class="num">16</span>Implementation Roadmap (8 Phases, 24 Weeks)</h2>
+  <p class="section-desc">Extended from your v3 7-phase plan to include new v4 capabilities: ASM, agentic hunting, GraphQL, IOA model, and MISP federation.</p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <span class="weeks">WEEKS 1-2</span>
+      <h4>Phase 1: Foundation</h4>
+      <p>Monorepo scaffold (apps/ + packages/), Docker Compose, Nginx, shared packages (shared-types, shared-auth, shared-cache, shared-audit, shared-utils), API Gateway, User Management service, Google SSO, basic React SPA shell.</p>
+      <p><strong>Gate:</strong> All services healthy, SSO working, first API call succeeds.</p>
+    </div>
+    <div class="timeline-item">
+      <span class="weeks">WEEKS 3-4</span>
+      <h4>Phase 2: Data Pipeline</h4>
+      <p>Normalization engine (Zod canonical schemas), AI Enrichment service (Claude + VT + AbuseIPDB), Ingestion service (RSS, JSON, CSV, STIX), BullMQ queue wiring, Feed management UI, Redis caching layer.</p>
+      <p><strong>Gate:</strong> 1K items/day flowing end-to-end through pipeline.</p>
+    </div>
+    <div class="timeline-item">
+      <span class="weeks">WEEKS 5-8</span>
+      <h4>Phase 3: Core Intelligence</h4>
+      <p>IOC module (14 types, lifecycle, bulk), Threat Actor module (profiles, attribution), Malware module (family taxonomy, IOC extraction), Vulnerability module (CVSS+EPSS+KEV), Elasticsearch search, Global search (Cmd+K), Investigation workspace UI.</p>
+      <p><strong>Gate:</strong> All 4 intel modules CRUD operational, search &lt;500ms.</p>
+    </div>
+    <div class="timeline-item">
+      <span class="weeks">WEEKS 9-12</span>
+      <h4>Phase 4: Advanced Intelligence</h4>
+      <p>Neo4j threat graph (7 node types, 9 relationship types), Correlation engine (rule + AI), Threat hunting with AI suggestions, DRP module, Caching &amp; archival (hot/warm/cold), React Flow graph visualization.</p>
+      <p><strong>Gate:</strong> Graph renders, living risk propagation working, 60-day archival active.</p>
+    </div>
+    <div class="timeline-item">
+      <span class="weeks">WEEKS 13-16</span>
+      <h4>Phase 5: Platform & Integrations</h4>
+      <p>Enterprise integrations (15+ connectors: ServiceNow, Splunk, Sentinel, QRadar, Jira, Slack, Teams, PagerDuty), Fine-grained RBAC (6 roles), Customer SSO (SAML/OIDC), Module customization, MFA, Admin infrastructure monitoring.</p>
+      <p><strong>Gate:</strong> Alert fires within 5 min, all integration connectors tested.</p>
+    </div>
+    <div class="timeline-item">
+      <span class="weeks">WEEKS 17-20</span>
+      <h4>Phase 6: Growth & Monetization</h4>
+      <p>Onboarding wizard (8 steps, demo data seeding), Billing tiers (Free/Starter/Pro/Enterprise), Stripe integration, Upgrade triggers, Email drip sequences, White-label branding UI.</p>
+      <p><strong>Gate:</strong> 2nd tenant fully isolated, billing flow works end-to-end.</p>
+    </div>
+    <div class="timeline-item">
+      <span class="weeks">WEEKS 21-22</span>
+      <h4>Phase 7: v4 Innovations</h4>
+      <p><span class="badge badge-cyan">NEW</span> GraphQL API layer, IOA (Indicators of Activity) model, Agentic threat hunting (Claude-driven autonomous investigation), Attack Surface Management module, MISP federation protocol, TAXII 2.1 bidirectional server.</p>
+      <p><strong>Gate:</strong> GraphQL queries working, IOA linked to graph, agentic hunt with human approval loop.</p>
+    </div>
+    <div class="timeline-item">
+      <span class="weeks">WEEKS 23-24</span>
+      <h4>Phase 8: Performance & Polish</h4>
+      <p>48hr dashboard Redis caching tuned, Mobile optimization (375px), 3D card effects (Framer Motion), Accessibility audit (WCAG), Load testing (k6: 1000 concurrent), Security penetration testing, Documentation finalization.</p>
+      <p><strong>Gate:</strong> All SLAs met, security audit passed, mobile fully functional.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- 17. DEPLOYMENT -->
+<section id="deployment">
+<div class="container">
+  <h2><span class="num">17</span>Deployment Architecture</h2>
+  <p class="section-desc">Start on VPS KVM2, graduate to Kubernetes when scale demands it.</p>
+
+  <h3>VPS KVM2 Resource Allocation (Initial)</h3>
+  <table>
+    <thead><tr><th>Service</th><th>RAM</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>PostgreSQL 16</td><td>2 GB</td><td>RLS, table partitioning, JSONB</td></tr>
+      <tr><td>Elasticsearch 8</td><td>1.5 GB</td><td>Heap: 750MB</td></tr>
+      <tr><td>Neo4j 5</td><td>1 GB</td><td>Community Edition</td></tr>
+      <tr><td>Redis 7</td><td>512 MB</td><td>Cache + BullMQ + sessions</td></tr>
+      <tr><td>BullMQ Workers (x2)</td><td>1 GB</td><td>512MB each</td></tr>
+      <tr><td>Fastify API</td><td>512 MB</td><td>Main application</td></tr>
+      <tr><td>Nginx</td><td>64 MB</td><td>Reverse proxy + TLS</td></tr>
+      <tr><td>spaCy NLP Worker</td><td>512 MB</td><td>Python microservice</td></tr>
+      <tr><td><strong>Total</strong></td><td><strong>~7.1 GB</strong></td><td>~900MB headroom on 8GB VPS</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Kubernetes Graduation Path</h3>
+  <p>When you outgrow VPS: each module becomes its own deployment, BullMQ upgrades to distributed mode, PostgreSQL moves to managed (RDS/Cloud SQL), Elasticsearch to managed (Elastic Cloud), Neo4j to Neo4j Aura. Helm charts provided for each service.</p>
+
+  <h3>CI/CD Pipeline</h3>
+  <div class="flow">
+    <span class="flow-step">Git Push</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">GitHub Actions</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Lint + Type Check</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Unit Tests (80%+)</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Integration Tests</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Security Audit</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Docker Build</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">GHCR Push</span><span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Deploy to VPS</span>
+  </div>
+</div>
+</section>
+
+<!-- 18. SKILLS SYSTEM -->
+<section id="skills">
+<div class="container">
+  <h2><span class="num">18</span>Claude Skills System for Development</h2>
+  <p class="section-desc">Your v3 skills system (27 skill files) is your development accelerator. Here's how to optimize it for v4 development with Claude.</p>
+
+  <h3>Recommended Skill Architecture for v4</h3>
+  <table>
+    <thead><tr><th>Skill</th><th>Purpose</th><th>When to Load</th></tr></thead>
+    <tbody>
+      <tr><td><strong>00-master</strong></td><td>Architecture state, project constants, cross-cutting rules</td><td>Every session (always first)</td></tr>
+      <tr><td><strong>00-architecture-roadmap</strong></td><td>Phase tracking, graduation criteria</td><td>Phase transitions, architecture reviews</td></tr>
+      <tr><td><strong>00-claude-instructions</strong></td><td>Claude-specific coding conventions</td><td>Every coding session</td></tr>
+      <tr><td><strong>02-testing</strong></td><td>Test pyramid, fixtures, CI gates</td><td>After any module implementation</td></tr>
+      <tr><td><strong>03-devops</strong></td><td>Docker, CI/CD, monitoring</td><td>Infrastructure changes</td></tr>
+      <tr><td><strong>04-23 (Module Skills)</strong></td><td>Module-specific patterns, schemas, endpoints</td><td>When working on that module</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-green">
+    <div class="callout-title">Development Workflow with Claude</div>
+    <p><strong>Per-session ritual:</strong> 1) Load master skill &rarr; 2) Read PROJECT_BRAIN.md &rarr; 3) Check file structure &rarr; 4) State current context &rarr; 5) Load module skill &rarr; 6) Implement &rarr; 7) Test &rarr; 8) Update PROJECT_BRAIN.md. This ensures Claude always has full architectural context before writing code.</p>
+  </div>
+
+  <h3>New Skills Needed for v4</h3>
+  <ul>
+    <li><strong>24-graphql</strong> &mdash; GraphQL schema design, resolver patterns, subscription implementation</li>
+    <li><strong>25-ioa-engine</strong> &mdash; Indicators of Activity model, behavioral detection, Sigma/YARA integration</li>
+    <li><strong>26-agentic-hunting</strong> &mdash; Claude-powered autonomous investigation, hypothesis generation, human-in-loop patterns</li>
+    <li><strong>27-asm</strong> &mdash; Attack Surface Management, external asset discovery, exposure scoring</li>
+    <li><strong>28-federation</strong> &mdash; MISP federation protocol, TAXII 2.1 bidirectional, OpenCTI interop</li>
+  </ul>
+</div>
+</section>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="container">
+    <p><strong>ETIP v4.0 Architecture Blueprint</strong> &middot; Prepared for Manish &middot; March 2026</p>
+    <p>Synthesized from: Your v2 Master Prompt + v3 Skills System (27 files) + Competitive Research (9 platforms, 50+ sources)</p>
+    <p>Designed for development with Claude Opus 4.6 via Cowork Mode</p>
+  </div>
+</div>
+
+</body>
+</html>

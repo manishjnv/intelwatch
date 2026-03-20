@@ -1,10 +1,21 @@
 {
   "name": "@etip/user-service",
   "version": "1.0.0",
+  "description": "ETIP User Service — registration, login, JWT, RBAC, session management",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "prisma": { "schema": "../../prisma/schema.prisma" },
-  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit", "build": "tsc" },
+  "prisma": {
+    "schema": "../../prisma/schema.prisma"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "clean": "rimraf dist"
+  },
   "dependencies": {
     "@prisma/client": "^5.18.0",
     "zod": "^3.23.0",
@@ -18,5 +29,7 @@
     "vitest": "^2.0.0",
     "@vitest/coverage-v8": "^2.0.0",
     "rimraf": "^6.0.0"
-  }
+  },
+  "files": ["dist"],
+  "license": "UNLICENSED"
 }

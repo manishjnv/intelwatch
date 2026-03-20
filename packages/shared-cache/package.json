@@ -1,5 +1,27 @@
-{ "name": "@etip/shared-cache", "version": "1.0.0", "main": "dist/index.js", "types": "dist/index.d.ts",
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "test": "vitest run", "clean": "rimraf dist" },
-  "dependencies": { "ioredis": "^5.4.0" },
-  "devDependencies": { "typescript": "^5.5.0", "vitest": "^2.0.0", "@vitest/coverage-v8": "^2.0.0" },
-  "license": "UNLICENSED" }
+{
+  "name": "@etip/shared-cache",
+  "version": "1.0.0",
+  "description": "Redis cache service with type-safe methods and tenant namespacing for ETIP",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "rimraf": "^6.0.0"
+  },
+  "files": ["dist"],
+  "license": "UNLICENSED"
+}

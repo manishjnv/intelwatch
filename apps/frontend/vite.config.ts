@@ -14,9 +14,18 @@ export default defineConfig({
     port: 3002,
     host: '0.0.0.0',
     proxy: {
-      '/api': { target: 'http://localhost:3001', changeOrigin: true },
-      '/health': { target: 'http://localhost:3001', changeOrigin: true },
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
-  build: { outDir: 'dist', sourcemap: true },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  },
 });
