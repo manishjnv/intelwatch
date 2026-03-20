@@ -4,18 +4,22 @@
  * Used by DashboardPage (cards), DashboardLayout (sidebar nav),
  * ComingSoonPage (placeholders), and App.tsx (routing).
  */
-import type { LucideIcon } from 'lucide-react'
 import {
-  Shield, Activity, Cpu, Network, Users, Bug,
-  AlertTriangle, Search, Globe, Zap, BarChart3, Lock,
-} from 'lucide-react'
+  IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
+  IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
+} from '@/components/brand/ModuleIcons'
+
+export interface IconComponentProps {
+  size?: number
+  className?: string
+}
 
 export interface ModuleConfig {
   id: string
   title: string
   description: string
   helpText: string
-  icon: LucideIcon
+  icon: React.FC<IconComponentProps>
   color: string
   phase: number
   route: string
@@ -27,7 +31,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'IOC Intelligence',
     description: 'Search, pivot, and manage indicators of compromise with full lifecycle tracking.',
     helpText: 'Track IPs, domains, hashes, URLs, emails, and CVEs with automated enrichment.',
-    icon: Shield,
+    icon: IconIOC,
     color: 'text-accent',
     phase: 3,
     route: '/iocs',
@@ -37,7 +41,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Feed Ingestion',
     description: 'Connect STIX, MISP, CSV, and REST feeds. Automated normalization pipeline.',
     helpText: 'Connects to external threat intelligence feeds and normalizes data automatically.',
-    icon: Activity,
+    icon: IconFeed,
     color: 'text-sev-low',
     phase: 2,
     route: '/feeds',
@@ -47,7 +51,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'AI Enrichment',
     description: 'Claude-powered analysis with VirusTotal & AbuseIPDB correlation.',
     helpText: 'Uses AI to generate risk assessments, context summaries, and correlation insights.',
-    icon: Cpu,
+    icon: IconAI,
     color: 'text-purple-400',
     phase: 2,
     route: '/enrichment',
@@ -57,7 +61,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Threat Graph',
     description: 'Interactive knowledge graph visualizing relationships between entities.',
     helpText: 'Neo4j-backed graph showing connections between IOCs, actors, malware, and campaigns.',
-    icon: Network,
+    icon: IconGraph,
     color: 'text-cyan-400',
     phase: 4,
     route: '/graph',
@@ -67,7 +71,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Threat Actors',
     description: 'Track APT groups, campaigns, TTPs, and attribution with MITRE ATT&CK mapping.',
     helpText: 'Profiles of nation-state and criminal threat actors with TTP mapping.',
-    icon: Users,
+    icon: IconActors,
     color: 'text-sev-high',
     phase: 3,
     route: '/threat-actors',
@@ -77,7 +81,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Malware Analysis',
     description: 'Malware family tracking, sample analysis, and behavioral indicators.',
     helpText: 'Track malware families, their variants, and associated indicators.',
-    icon: Bug,
+    icon: IconMalware,
     color: 'text-sev-critical',
     phase: 3,
     route: '/malware',
@@ -87,7 +91,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Vulnerability Intel',
     description: 'CVE tracking with EPSS scoring, exploit availability, and patch status.',
     helpText: 'Monitors CVEs with prioritization based on exploitability and your asset exposure.',
-    icon: AlertTriangle,
+    icon: IconVuln,
     color: 'text-sev-medium',
     phase: 3,
     route: '/vulnerabilities',
@@ -97,7 +101,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Threat Hunting',
     description: 'YARA & Sigma rule management with natural language query interface.',
     helpText: 'Create and manage detection rules with an AI-assisted natural language query builder.',
-    icon: Search,
+    icon: IconHunting,
     color: 'text-emerald-400',
     phase: 4,
     route: '/hunting',
@@ -107,7 +111,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Digital Risk Protection',
     description: 'Dark web monitoring, brand protection, and credential leak detection.',
     helpText: 'Monitors external attack surface including dark web, paste sites, and social media.',
-    icon: Globe,
+    icon: IconDRP,
     color: 'text-rose-400',
     phase: 4,
     route: '/drp',
@@ -117,7 +121,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Correlation Engine',
     description: 'Automated cross-entity correlation with alert prioritization.',
     helpText: 'Automatically links related entities and generates prioritized alerts.',
-    icon: Zap,
+    icon: IconCorrelation,
     color: 'text-yellow-400',
     phase: 4,
     route: '/correlation',
@@ -127,7 +131,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'Enterprise Integrations',
     description: 'SIEM, SOAR, ticketing, and API integrations for your security stack.',
     helpText: 'Bi-directional integration with Splunk, Sentinel, ServiceNow, and more.',
-    icon: BarChart3,
+    icon: IconIntegrations,
     color: 'text-sky-400',
     phase: 5,
     route: '/integrations',
@@ -137,7 +141,7 @@ export const MODULES: ModuleConfig[] = [
     title: 'RBAC & SSO',
     description: 'Role-based access control with Google SSO, SAML, and OIDC support.',
     helpText: 'Enterprise-grade access control with 5 roles and 30+ granular permissions.',
-    icon: Lock,
+    icon: IconRBAC,
     color: 'text-indigo-400',
     phase: 5,
     route: '/settings',

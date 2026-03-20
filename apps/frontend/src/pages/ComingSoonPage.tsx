@@ -55,7 +55,7 @@ export function ComingSoonPage() {
             'w-14 h-14 rounded-xl flex items-center justify-center shrink-0',
             phaseBg,
           )}>
-            <Icon className={cn('w-7 h-7', mod.color)} />
+            <Icon size={28} className={mod.color} />
           </div>
           <div>
             <div className="flex items-center gap-2">

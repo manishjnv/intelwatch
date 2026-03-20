@@ -13,9 +13,9 @@ import { useLogout } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import {
-  LayoutDashboard, Search,
-  LogOut, Menu, X, Sun, Moon,
+  Search, LogOut, Menu, X, Sun, Moon,
 } from 'lucide-react'
+import { IconDashboard } from '@/components/brand/ModuleIcons'
 import { LogoMark } from '@/components/brand/LogoMark'
 import { TopStatsBar }                          from '@etip/shared-ui/components/TopStatsBar'
 import { GlobalSearch, useGlobalSearch }         from '@etip/shared-ui/components/GlobalSearch'
@@ -74,8 +74,8 @@ function SidebarCollapseToggle({ collapsed, onClick }: { collapsed: boolean; onC
 /* Derive sidebar nav from modules config + dashboard entry            */
 /* ------------------------------------------------------------------ */
 const NAV_ITEMS = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, phase: 0 },
-  ...MODULES.map(m => ({ label: m.title, path: m.route, icon: m.icon, phase: m.phase })),
+  { label: 'Dashboard', path: '/dashboard', icon: IconDashboard, phase: 0, color: 'text-accent' },
+  ...MODULES.map(m => ({ label: m.title, path: m.route, icon: m.icon, phase: m.phase, color: m.color })),
 ]
 
 export function DashboardLayout() {
@@ -183,8 +183,8 @@ export function DashboardLayout() {
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover',
                 )}
                 title={isFuture ? `${item.label} — Phase ${item.phase}` : item.label}>
-                <span className={cn('shrink-0', isActive && 'text-accent')}>
-                  <Icon className="w-4 h-4" />
+                <span className={cn('shrink-0', isActive ? 'text-accent' : item.color)}>
+                  <Icon size={18} />
                 </span>
                 {!collapsed && <span className="truncate">{item.label}</span>}
                 {!collapsed && isFuture && (

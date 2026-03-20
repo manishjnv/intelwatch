@@ -168,7 +168,7 @@ export function DashboardPage() {
                     'bg-[var(--bg-elevated)] group-hover:scale-110 transition-transform duration-200',
                     mod.color,
                   )}>
-                    <Icon className="w-5 h-5" />
+                    <Icon size={20} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
