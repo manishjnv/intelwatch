@@ -1,6 +1,6 @@
-# Ingestion Service — 6 Accuracy & Differentiation Modules
+# Ingestion Service — 11 Accuracy & Differentiation Modules
 
-**Status:** Implemented (Chunk 2) | **Tests:** 68 tests across 6 modules | **Date:** 2026-03-20
+**Status:** Implemented (Chunks 2-3) | **Tests:** 133 tests across 11 modules | **Date:** 2026-03-21
 
 ## Architecture Overview
 
@@ -125,3 +125,123 @@ Per-article per-stage AI cost tracking with tenant budget alerting.
 - `checkBudgetAlert(tenantId, dailyLimitUsd)` — returns `BudgetAlert` with `isOverBudget`, `percentUsed`
 
 **Pipeline Stages:** `triage`, `extraction`, `enrichment`, `dedup_llm`, `external_api`
+
+---
+
+## Module 7: Source Triangulation (Competitive Differentiator #1)
+
+**File:** `src/services/source-triangulation.ts` | **Tests:** 12
+
+Independence-weighted corroboration. Two feeds scraping the same upstream blog are NOT independent corroboration — this module tracks co-occurrence patterns and discounts correlated sources.
+
+**Key Concepts:**
+- **Feed Overlap Matrix:** Tracks `|A∩B| / min(|A|, |B|)` per feed pair
+- **Independence Weight:** 1.0 at <20% overlap, 0.2 at >70% overlap (linear interpolation)
+- **Effective Source Count:** Sum of independence weights (first source always 1.0)
+- **Genuine Corroboration:** Requires effectiveSources >= 2.0
+
+**Key Methods:**
+- `recordSighting(feedId, iocValue)` — registers what each feed reports
+- `recordCooccurrence(feedA, feedB, iocValue)` — tracks shared IOCs
+- `getOverlap(feedA, feedB)` — returns overlap stats + independence weight
+- `triangulate(iocValue, feedIds, baseConfidence)` — independence-weighted confidence boost
+
+**Why it matters:** No major TIP does source independence weighting. Most count raw sighting numbers, inflating confidence when correlated feeds report the same upstream data.
+
+---
+
+## Module 8: Confidence Calibrator (Competitive Differentiator #2)
+
+**File:** `src/services/confidence-calibrator.ts` | **Tests:** 13
+
+Calibrated probability bands for triage. A "0.85 confidence" should mean "85% of articles scored 0.85 are actually CTI-relevant."
+
+**Key Concepts:**
+- **10 Decile Bands:** 0.0-0.1, 0.1-0.2, ..., 0.9-1.0
+- **Per-Tenant Calibration:** Each tenant's analyst feedback shapes their own curve
+- **Blend Formula:** `calibrated = raw * (1-w) + precision * w` where `w = min(0.8, samples/100)`
+- **Calibration Error:** Mean absolute |precision - midpoint| across populated bands
+
+**Key Methods:**
+- `recordOutcome(tenantId, confidence, wasRelevant)` — accumulates TP/FP per band
+- `calibrate(tenantId, rawConfidence)` — returns calibrated score with band data
+- `getSummary(tenantId)` — full calibration curve with reliability indicator
+
+**Thresholds:** Min 10 samples/band, min 50 total for reliable calibration.
+
+---
+
+## Module 9: IOC Reactivation Detection (Competitive Differentiator #3)
+
+**File:** `src/services/ioc-reactivation.ts` | **Tests:** 16
+
+Detects when expired/aging IOCs reappear in fresh reports. APT groups routinely re-use infrastructure after cooldown periods.
+
+**Lifecycle State Machine:**
+```
+NEW → ACTIVE → AGING → EXPIRED → ARCHIVED
+                                → FALSE_POSITIVE
+       EXPIRED/AGING/ARCHIVED → REACTIVATED → ACTIVE (confirmed)
+```
+
+**Aging Thresholds (days since last seen):**
+| IOC Type | Aging | Expired (2x) | Never Ages |
+|----------|-------|-------------|------------|
+| IP | 30 | 60 | — |
+| Domain | 90 | 180 | — |
+| URL | 60 | 120 | — |
+| Hash | — | — | Yes |
+| CVE | — | — | Yes |
+
+**Priority Boost on Reactivation:**
+- 3+ reactivations OR >90d cooldown → `critical`
+- 2 reactivations OR >30d cooldown → `high`
+- Otherwise → `normal`
+
+**Key Methods:**
+- `recordSighting(iocValue, iocType, tenantId, confidence)` — returns `ReactivationEvent` if reactivated
+- `ageIOCs(tenantId)` — periodic aging (call daily)
+- `getReactivated(tenantId)` — all currently reactivated IOCs for alerting
+
+---
+
+## Module 10: Predictive Lead-time Scorer (Competitive Differentiator #4)
+
+**File:** `src/services/lead-time-scorer.ts` | **Tests:** 11
+
+Measures how early each feed reports IOCs. Feeds that report 48hrs before mainstream are exponentially more valuable. Surfaced as "Early Warning Score" in the UI.
+
+**Key Concepts:**
+- **Lead Time:** Hours ahead of second reporter (first feed gets positive score)
+- **First Report Rate:** % of IOCs where this feed was the global first reporter
+- **Early Warning Score:** 0-100, weighted 60% time + 40% first-report rate
+- **Log Scale:** 48h early = 100, 0h = 50, -48h late = 0
+
+**Key Methods:**
+- `recordSighting(feedId, iocValue, iocType, seenAt)` — returns `LeadTimeEvent`
+- `getFeedStats(feedId)` — avg/median lead time, early warning score, distribution
+- `rankFeeds()` — all feeds ranked by early warning score
+
+**Min IOCs for scoring:** 5 (prevents noisy scores from small samples)
+
+---
+
+## Module 11: Attribution Tracker (Competitive Differentiator #5)
+
+**File:** `src/services/attribution-tracker.ts` | **Tests:** 13
+
+Preserves provenance chain during deduplication. When merging near-duplicates, tracks which feed reported first and which added unique context.
+
+**Key Concepts:**
+- **Attribution Chain:** Full history of which feeds contributed what for each IOC
+- **Context Deduplication:** Normalized comparison (lowercase, trim, collapse whitespace)
+- **TLP Enforcement:** Effective TLP = most restrictive across all contributing feeds
+- **Primary Attribution:** Automatically tracks earliest reporter as original source
+
+**Key Methods:**
+- `addAttribution(iocValue, iocType, tenantId, attribution)` — builds/extends chain
+- `mergeAttributions(iocValues, tenantId, feed, contexts, tlp)` — batch merge for near-dupes
+- `getChain(iocValue, iocType, tenantId)` — full provenance chain
+- `getContributors(iocValue, iocType, tenantId)` — feeds sorted by report time
+
+**Why it matters:** Competitors merge and lose provenance. Keeping the full chain enables TLP compliance, legal defensibility, and analyst trust

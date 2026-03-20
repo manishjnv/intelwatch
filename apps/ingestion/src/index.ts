@@ -5,6 +5,8 @@ import { buildApp } from './app.js';
 import { prisma, disconnectPrisma } from './prisma.js';
 import { FeedRepository } from './repository.js';
 import { createFeedFetchQueue, closeFeedFetchQueue } from './queue.js';
+import { createFeedFetchWorker } from './workers/feed-fetch.js';
+import { FeedScheduler } from './workers/scheduler.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -23,7 +25,16 @@ async function main(): Promise<void> {
 
   const app = await buildApp({ config, repo, queue });
 
+  // Start BullMQ worker to process feed fetch jobs
+  const worker = createFeedFetchWorker({ repo, logger });
+
+  // Start cron scheduler to enqueue feeds on their schedule
+  const scheduler = new FeedScheduler({ repo, queue, logger });
+  await scheduler.start();
+
   app.addHook('onClose', async () => {
+    await scheduler.stop();
+    await worker.close();
     await closeFeedFetchQueue();
     await disconnectPrisma();
   });

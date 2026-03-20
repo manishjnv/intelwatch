@@ -95,9 +95,9 @@ frontend              → shared-types, shared-ui (Phase 1+)
 
 ## Work In Progress
 - **Current phase:** Phase 2 IN PROGRESS — ingestion service deployed
-- **Last session outcome:** Session 7 (2026-03-20). Merged PR #17 to master. Deployed etip_ingestion container to VPS (port 3004, healthy). Added nginx proxy /api/v1/feeds → ingestion. Included ingestion in CI. Fixed 3 deployment issues: BullMQ queue name colon restriction, missing image build in deploy script, Redis connection options. 11 containers on VPS, all healthy.
+- **Last session outcome:** Session 8 (2026-03-21). Implemented RSS connector, BullMQ feed-fetch worker, node-cron scheduler, and 5 competitive differentiator modules (source triangulation, confidence calibrator, IOC reactivation, lead-time scorer, attribution tracker). 192 tests across 16 files, all passing. Typecheck + lint clean. Not yet pushed/deployed.
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons.
-- **Next tasks:** (1) Implement RSS feed connector using rss-parser. (2) Implement BullMQ feed-fetch worker. (3) Implement feed scheduler (node-cron). (4) End-to-end test: create feed → trigger → worker fetches → articles stored. (5) Wire improvement modules into pipeline. (6) STIX/TAXII connectors.
+- **Next tasks:** (1) Push session 8 changes, deploy to VPS. (2) End-to-end test: create feed → trigger → worker fetches → articles stored. (3) Wire improvement modules into feed-fetch pipeline. (4) STIX/TAXII connectors. (5) Article schema + storage routes. (6) Article persistence in DB.
 
 ## Environment Notes
 - VPS: 72.61.227.64, 8GB RAM (~5.5GB used by 11 containers), 96GB disk (26% used)

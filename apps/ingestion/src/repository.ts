@@ -115,6 +115,13 @@ export class FeedRepository {
     };
   }
 
+  async findAllActive(): Promise<FeedSource[]> {
+    return this.db.feedSource.findMany({
+      where: { enabled: true, status: 'active' },
+      select: { id: true, tenantId: true, schedule: true } as Record<string, boolean>,
+    }) as unknown as FeedSource[];
+  }
+
   async updateHealth(tenantId: string, id: string, data: Prisma.FeedSourceUpdateInput): Promise<FeedSource> {
     await this.ensureOwnership(tenantId, id);
     return this.db.feedSource.update({ where: { id }, data });
