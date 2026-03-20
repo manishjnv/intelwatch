@@ -113,6 +113,15 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
 
+            # ── Sync AI config to .env (from GitHub Secrets) ──
+            # Ensures VPS .env always has latest AI settings without manual SSH
+            grep -q '^TI_ANTHROPIC_API_KEY=' .env 2>/dev/null && \
+              sed -i 's|^TI_ANTHROPIC_API_KEY=.*|TI_ANTHROPIC_API_KEY=${{ secrets.TI_ANTHROPIC_API_KEY }}|' .env || \
+              echo 'TI_ANTHROPIC_API_KEY=${{ secrets.TI_ANTHROPIC_API_KEY }}' >> .env
+            grep -q '^TI_AI_ENABLED=' .env 2>/dev/null && \
+              sed -i 's|^TI_AI_ENABLED=.*|TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}|' .env || \
+              echo 'TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}' >> .env
+
             # ── Build ETIP containers (with layer caching) ──
             # Issue 15/16 root cause was piping build output to 'tail' (hiding failures)
             # and --no-frozen-lockfile fallback (divergent deps). Both are now fixed.
