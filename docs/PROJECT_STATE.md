@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-21 (update at end of EVERY session via /session-end)
-**Session counter:** 14
+**Session counter:** 15
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -14,6 +14,7 @@
 | etip_normalization | ✅ Running | 0.1.0 | 2026-03-21 | IOC upsert + 18 accuracy improvements |
 | etip_enrichment | ✅ Running | 0.1.0 | 2026-03-21 | VT + AbuseIPDB, AI OFF by default |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements |
+| etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -36,7 +37,7 @@
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
-| threat-actor-intel | 3 | 🔨 WIP | 2026-03-21 | Scaffold complete, port 3008 |
+| threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
 | malware-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | vulnerability-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | digital-risk-protection | 4 | 📋 Not started | - | Phase 4 gate |
@@ -101,10 +102,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 3 IN PROGRESS — ioc-intelligence deployed, 3 modules remaining (threat-actor, malware, vulnerability)
-- **Last session outcome:** Session 14 (2026-03-21). Built and deployed IOC Intelligence Service (Module 07). 3 chunks: scaffold + CRUD → 11 accuracy improvements → C1 search + C3 campaigns. Commits: f62dba7, d6f04b6. 15 API endpoints, 13 accuracy improvements (infrastructure density, confidence trend, actionability score, recency ranking, FP propagation, analyst override, feed accuracy report, provenance export, export profiles, campaign detection, multi-dimensional search). 119 module tests, 970 total. 15 containers on VPS, all healthy.
+- **Current phase:** Phase 3 IN PROGRESS — ioc-intelligence + threat-actor-intel deployed, 2 modules remaining (malware, vulnerability)
+- **Last session outcome:** Session 15 (2026-03-21). Built and deployed Threat Actor Intel Service (Module 08). Commit: 22793db. 28 API endpoints, 15 accuracy improvements (P0: explainable attribution, alias clustering, corroboration, dormancy detection, link strength. P1: attribution decay, TTP evolution, infra sharing, provenance, MITRE heatmap. P2: Diamond Model, false flags, victimology prediction, actor comparison, feed accuracy). ThreatActorProfile Prisma model with 3 enums. 190 module tests, 1160 total. 16 containers on VPS.
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing.
-- **Next tasks:** (1) Phase 3: Threat Actor Intel Service (Module 08). (2) Phase 3: Malware Intel Service (Module 09). (3) Phase 3: Vulnerability Intel Service (Module 10). (4) Elasticsearch IOC indexing (ES container running but no code integration). (5) Dashboard frontend — IOC list page, feed management UI.
+- **Next tasks:** (1) Phase 3: Malware Intel Service (Module 09). (2) Phase 3: Vulnerability Intel Service (Module 10). (3) Elasticsearch IOC indexing (ES container running but no code integration). (4) Dashboard frontend — IOC list page, feed management UI, actor list page.
 
 ## Deployment Log
 
@@ -116,6 +117,7 @@ frontend              → shared-types, shared-ui (Phase 1+)
 | 12 | 2026-03-21 | etip_normalization added | ✅ All healthy | 69fbddf, 5d035f6 | IOC normalization, 6 improvements |
 | 13 | 2026-03-21 | etip_normalization, etip_enrichment, etip_api, etip_frontend, etip_nginx | ✅ All 14 healthy | b859075→056c837 | 12 more improvements + AI enrichment service. E2E verified: 301 IOCs |
 | 14 | 2026-03-21 | etip_ioc_intelligence added, all app containers recreated | ✅ All 15 healthy | f62dba7, d6f04b6 | IOC Intelligence Service: 15 endpoints, 13 accuracy improvements, 119 tests |
+| 15 | 2026-03-21 | etip_threat_actor_intel added, all app containers recreated | pending CI | 22793db | Threat Actor Intel Service: 28 endpoints, 15 accuracy improvements, 190 tests |
 
 ## E2E Verification Results (Session 13)
 
@@ -130,7 +132,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~6.5GB used by 15 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~7GB estimated by 16 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel

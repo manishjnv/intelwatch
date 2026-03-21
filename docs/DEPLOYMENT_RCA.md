@@ -505,3 +505,5 @@ All 33 issues are FIXED. This table tracks which session fixed each issue and co
 **Session 13 deploys:** No new RCA issues. All 14 containers healthy. E2E pipeline verified with 301 real IOCs.
 
 **Session 14 deploys:** No new RCA issues. etip_ioc_intelligence added (port 3007). All 15 containers healthy. Two deploys (f62dba7, d6f04b6), both green CI + healthy VPS.
+
+**Session 15 deploys:** No new RCA issues. etip_threat_actor_intel added (port 3008). 16 containers expected. Commit 22793db pushed, CI deploy pending.
