@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeConfidenceTrend, computeActionability, computeRecencyBoost,
-  computeRelevanceScore, classifyInfrastructureDensity, inferRelationships,
-  EXPORT_PROFILES,
+  computeRelevanceScore, computeSearchRelevance, classifyInfrastructureDensity,
+  inferRelationships, EXPORT_PROFILES,
 } from '../src/scoring.js';
 
 describe('IOC Scoring — A2: Confidence Trend', () => {
@@ -173,6 +173,50 @@ describe('IOC Scoring — A4: Relationship Inference', () => {
     const result = inferRelationships('url', 'hxxps://evil.com/path');
     expect(result).toHaveLength(1); // falls back to regex
     expect(result[0].relatedValue).toBe('evil.com');
+  });
+});
+
+describe('IOC Scoring — C1: Search Relevance', () => {
+  const now = new Date('2026-03-21');
+  const baseIoc = {
+    normalizedValue: '185.220.101.34', confidence: 80, severity: 'high' as const,
+    lastSeen: now, malwareFamilies: ['LockBit'], threatActors: ['APT28'],
+    enrichmentData: { velocityScore: 50 }, mitreAttack: ['T1486'],
+  };
+
+  it('scores exact match higher than partial match', () => {
+    const exact = computeSearchRelevance(baseIoc, '185.220.101.34', now);
+    const partial = computeSearchRelevance(baseIoc, '185.220', now);
+    expect(exact.relevanceScore).toBeGreaterThan(partial.relevanceScore);
+    expect(exact.components.textMatch).toBe(100);
+    expect(partial.components.textMatch).toBe(70);
+  });
+
+  it('scores high-confidence IOC higher than low-confidence', () => {
+    const highConf = computeSearchRelevance({ ...baseIoc, confidence: 95 }, 'test', now);
+    const lowConf = computeSearchRelevance({ ...baseIoc, confidence: 20 }, 'test', now);
+    expect(highConf.relevanceScore).toBeGreaterThan(lowConf.relevanceScore);
+  });
+
+  it('scores recent IOC higher than old IOC', () => {
+    const recent = computeSearchRelevance({ ...baseIoc, lastSeen: now }, 'test', now);
+    const old = computeSearchRelevance({ ...baseIoc, lastSeen: new Date('2026-01-01') }, 'test', now);
+    expect(recent.relevanceScore).toBeGreaterThan(old.relevanceScore);
+  });
+
+  it('scores critical severity higher than info', () => {
+    const critical = computeSearchRelevance({ ...baseIoc, severity: 'critical' }, 'test', now);
+    const info = computeSearchRelevance({ ...baseIoc, severity: 'info' }, 'test', now);
+    expect(critical.relevanceScore).toBeGreaterThan(info.relevanceScore);
+  });
+
+  it('includes all 5 component signals in result', () => {
+    const result = computeSearchRelevance(baseIoc, 'test', now);
+    expect(result.components).toHaveProperty('textMatch');
+    expect(result.components).toHaveProperty('confidenceSignal');
+    expect(result.components).toHaveProperty('recencySignal');
+    expect(result.components).toHaveProperty('actionabilitySignal');
+    expect(result.components).toHaveProperty('severitySignal');
   });
 });
 

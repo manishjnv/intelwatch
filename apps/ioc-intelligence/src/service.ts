@@ -7,9 +7,11 @@ import type {
 } from './schemas/ioc.js';
 import {
   computeConfidenceTrend, computeActionability, computeRelevanceScore,
-  classifyInfrastructureDensity, inferRelationships, EXPORT_PROFILES,
+  computeSearchRelevance, classifyInfrastructureDensity, inferRelationships,
+  EXPORT_PROFILES,
   type ConfidenceTrend, type ActionabilityResult, type InfrastructureDensity,
 } from './scoring.js';
+import { CampaignDetector, type CampaignCluster } from './campaigns.js';
 
 // ── Severity / TLP ranking for escalation ───────────────────────
 
@@ -203,9 +205,19 @@ export class IOCService {
     if (!result) throw new AppError(404, 'IOC not found', 'NOT_FOUND');
   }
 
-  /** Full-text search across IOC fields. */
+  /** C1: Full-text search with multi-dimensional relevance ranking. */
   async searchIocs(tenantId: string, body: SearchIocsBody): Promise<{ items: unknown[]; total: number }> {
-    return this.repo.search(tenantId, body);
+    const result = await this.repo.search(tenantId, body);
+    const now = new Date();
+    const ranked = (result.items as IocRecord[]).map((ioc) => {
+      const relevance = computeSearchRelevance({
+        ...ioc,
+        enrichmentData: (ioc.enrichmentData ?? null) as Record<string, unknown> | null,
+      }, body.query, now);
+      return { ...ioc, relevance };
+    });
+    ranked.sort((a, b) => b.relevance.relevanceScore - a.relevance.relevanceScore);
+    return { items: ranked, total: result.total };
   }
 
   /** Pivot: find IOCs related to a given IOC (enhanced with A4 inferred relationships). */
@@ -340,6 +352,12 @@ export class IOCService {
     }
 
     return { affected };
+  }
+
+  /** C3: Auto-detect campaign clusters from IOCs sharing threat actors/malware across feeds. */
+  async getCampaigns(tenantId: string, minFeeds: number, limit: number): Promise<CampaignCluster[]> {
+    const detector = new CampaignDetector(this.repo['prisma'] as import('@prisma/client').PrismaClient);
+    return detector.detectCampaigns(tenantId, minFeeds, limit);
   }
 
   /** B3: Per-feed accuracy report — exposes auto-tuned reliability to analysts. */

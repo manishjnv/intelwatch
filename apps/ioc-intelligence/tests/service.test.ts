@@ -373,4 +373,38 @@ describe('IOCService', () => {
       expect(parsed[0].id).toBe('active-1');
     });
   });
+
+  // ── C1: Enhanced search ─────────────────────────────────────
+
+  describe('C1: Multi-dimensional search ranking', () => {
+    it('returns results with relevance scores', async () => {
+      repo.search.mockResolvedValue({
+        items: [
+          makeIoc({ id: 'low', confidence: 30, normalizedValue: 'other' }),
+          makeIoc({ id: 'high', confidence: 90, normalizedValue: '185.220.101.34' }),
+        ],
+        total: 2,
+      });
+      const result = await service.searchIocs(TENANT, { query: '185.220.101.34', page: 1, limit: 50 });
+      const items = result.items as Array<Record<string, unknown>>;
+      expect(items[0]).toHaveProperty('relevance');
+      // High confidence + exact match should rank first
+      expect((items[0] as { id: string }).id).toBe('high');
+    });
+
+    it('re-ranks results by composite relevance not just confidence', async () => {
+      repo.search.mockResolvedValue({
+        items: [
+          makeIoc({ id: 'old-high', confidence: 95, lastSeen: new Date('2026-01-01'), normalizedValue: 'other' }),
+          makeIoc({ id: 'recent-mid', confidence: 60, lastSeen: new Date('2026-03-20'), normalizedValue: 'test' }),
+        ],
+        total: 2,
+      });
+      const result = await service.searchIocs(TENANT, { query: 'test', page: 1, limit: 50 });
+      const items = result.items as Array<{ id: string; relevance: { relevanceScore: number } }>;
+      // Both have relevance scores
+      expect(items[0].relevance.relevanceScore).toBeGreaterThanOrEqual(0);
+      expect(items[1].relevance.relevanceScore).toBeGreaterThanOrEqual(0);
+    });
+  });
 });

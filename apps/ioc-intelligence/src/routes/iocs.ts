@@ -4,7 +4,7 @@ import type { IOCService } from '../service.js';
 import {
   ListIocsQuerySchema, CreateIocBodySchema, UpdateIocBodySchema,
   BulkOperationSchema, SearchIocsBodySchema, ExportIocsBodySchema,
-  IocIdParamSchema,
+  IocIdParamSchema, CampaignQuerySchema,
 } from '../schemas/ioc.js';
 
 /** Creates the IOC routes plugin bound to a service instance. */
@@ -59,6 +59,14 @@ export function iocRoutes(service: IOCService): FastifyPluginCallback {
         .header('Content-Type', result.contentType)
         .header('Content-Disposition', `attachment; filename="${result.filename}"`)
         .send(result.data);
+    });
+
+    // ── GET /campaigns — C3: Auto-detected campaign clusters ─────
+    app.get('/campaigns', { preHandler: [authenticate] }, async (req, reply) => {
+      const user = getUser(req);
+      const query = CampaignQuerySchema.parse(req.query);
+      const campaigns = await service.getCampaigns(user.tenantId, query.minFeeds, query.limit);
+      return reply.send({ data: campaigns, total: campaigns.length });
     });
 
     // ── GET /feed-accuracy — B3: Per-feed accuracy report ────────

@@ -23,6 +23,7 @@ function createMockService() {
     getIoc: vi.fn().mockResolvedValue({ id: 'ioc-1', iocType: 'ip', normalizedValue: '1.2.3.4' }),
     getIocDetail: vi.fn().mockResolvedValue({ id: 'ioc-1', iocType: 'ip', computed: { confidenceTrend: {}, actionability: {} } }),
     getFeedAccuracy: vi.fn().mockResolvedValue([{ feedSourceId: 'f1', totalIocs: 50, falsePositiveRate: 2.5 }]),
+    getCampaigns: vi.fn().mockResolvedValue([{ clusterId: 'threat_actor:apt28', label: 'apt28', iocCount: 5 }]),
     createIoc: vi.fn().mockResolvedValue({ id: 'new-1', iocType: 'ip', normalizedValue: '1.2.3.4' }),
     updateIoc: vi.fn().mockResolvedValue({ id: 'ioc-1', severity: 'high' }),
     deleteIoc: vi.fn().mockResolvedValue(undefined),
@@ -170,6 +171,16 @@ describe('IOC Intelligence — Routes', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.data).toHaveProperty('byFeed');
+  });
+
+  // ── Campaigns (C3) ─────────────────────────────────────────
+
+  it('GET /api/v1/ioc/campaigns — returns campaign clusters', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/v1/ioc/campaigns', headers: AUTH });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].clusterId).toBe('threat_actor:apt28');
   });
 
   // ── Feed Accuracy (B3) ──────────────────────────────────────

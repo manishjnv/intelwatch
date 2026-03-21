@@ -156,3 +156,12 @@ export const IocIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 export type IocIdParam = z.infer<typeof IocIdParamSchema>;
+
+// ── Campaign schemas ────────────────────────────────────────────
+
+/** GET /api/v1/ioc/campaigns query parameters. */
+export const CampaignQuerySchema = z.object({
+  minFeeds: z.coerce.number().int().min(1).max(20).default(2),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type CampaignQuery = z.infer<typeof CampaignQuerySchema>;

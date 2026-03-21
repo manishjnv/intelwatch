@@ -233,6 +233,56 @@ export function inferRelationships(iocType: string, normalizedValue: string): In
   return relationships;
 }
 
+// ── C1: Multi-Dimensional Search Relevance ──────────────────────
+
+const SEVERITY_WEIGHT: Record<string, number> = { critical: 100, high: 75, medium: 50, low: 25, info: 10 };
+
+export interface SearchRelevanceResult {
+  relevanceScore: number;
+  components: {
+    textMatch: number;
+    confidenceSignal: number;
+    recencySignal: number;
+    actionabilitySignal: number;
+    severitySignal: number;
+  };
+}
+
+/**
+ * C1: Computes multi-dimensional relevance for search result ranking.
+ * Weights: textMatch 30% + confidence 25% + recency 20% + actionability 15% + severity 10%
+ * textMatch is 100 for exact match, 70 for contains, 40 for tag/actor match.
+ */
+export function computeSearchRelevance(
+  ioc: { normalizedValue: string; confidence: number; severity: string; lastSeen: Date;
+    malwareFamilies: string[]; threatActors: string[]; enrichmentData: Record<string, unknown> | null; mitreAttack: string[] },
+  query: string,
+  now: Date = new Date(),
+): SearchRelevanceResult {
+  // Text match quality (0-100)
+  const lowerQuery = query.toLowerCase();
+  const lowerValue = ioc.normalizedValue.toLowerCase();
+  let textMatch: number;
+  if (lowerValue === lowerQuery) textMatch = 100;
+  else if (lowerValue.includes(lowerQuery)) textMatch = 70;
+  else textMatch = 40; // matched via tag/actor/malware (search already filtered)
+
+  const confidenceSignal = ioc.confidence;
+  const recencySignal = Math.round((computeRecencyBoost(ioc.lastSeen, now) - 1.0) * 200); // 0-100
+  const actionabilitySignal = computeActionability(ioc).score;
+  const severitySignal = SEVERITY_WEIGHT[ioc.severity] ?? 50;
+
+  const relevanceScore = Math.round(
+    textMatch * 0.30 + confidenceSignal * 0.25 + recencySignal * 0.20 +
+    actionabilitySignal * 0.15 + severitySignal * 0.10,
+  );
+
+  return {
+    relevanceScore,
+    components: { textMatch, confidenceSignal, recencySignal, actionabilitySignal, severitySignal },
+  };
+}
+
 // ── D2: Export Threshold Profiles ────────────────────────────────
 
 export interface ExportProfile {

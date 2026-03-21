@@ -1,6 +1,6 @@
 # IOC Intelligence Service (Module 07)
 
-**Port:** 3007 | **Queue:** N/A (reads from DB) | **Status:** 🔨 WIP | **Tests:** 105
+**Port:** 3007 | **Queue:** N/A (reads from DB) | **Status:** 🔨 WIP | **Tests:** 119
 
 ## What It Does
 Analyst-facing CRUD, search, pivot, lifecycle management, export, and bulk operations for IOCs.
@@ -31,6 +31,8 @@ IOC Intelligence :3007 → reads IOCs, provides analyst CRUD/search/pivot/export
 | Scoring (A3) | scoring.ts | Actionability: ransomware 30% + APT 25% + MITRE 20% + enrichment 15% + velocity 10% |
 | Scoring (A4) | scoring.ts | Relationship inference: URL→domain, email→domain (pure string parsing) |
 | Scoring (A5) | scoring.ts | Recency boost: 1.0 + 0.5×e^(-days/7) multiplied with confidence |
+| Search ranking (C1) | scoring.ts + service.ts | 5-signal relevance: text 30% + confidence 25% + recency 20% + actionability 15% + severity 10% |
+| Campaign detection (C3) | campaigns.ts | Auto-detect clusters from shared actors/malware across 2+ feeds |
 | FP propagation (B1) | service.ts | On false_positive → tag related IOCs with fp_review_suggested |
 | Analyst override (B2) | repository.ts | Store confidence override with reason + audit trail in enrichmentData |
 | Feed accuracy (B3) | service.ts + routes | Per-feed report: total, avgConfidence, FP rate, revoked count |
@@ -48,6 +50,7 @@ IOC Intelligence :3007 → reads IOCs, provides analyst CRUD/search/pivot/export
 | GET | /api/v1/ioc/stats | JWT | Counts by type/severity/lifecycle + avg confidence |
 | POST | /api/v1/ioc/search | JWT | Full-text search across value, tags, actors, malware |
 | POST | /api/v1/ioc/export | JWT | CSV/JSON with profiles (D2) + provenance (D1) |
+| GET | /api/v1/ioc/campaigns | JWT | C3: Auto-detected campaign clusters |
 | GET | /api/v1/ioc/feed-accuracy | JWT | B3: Per-feed accuracy report |
 | GET | /api/v1/ioc/:id | JWT | Detail with computed signals (A1-A5) |
 | PUT | /api/v1/ioc/:id | JWT+RBAC | Update + B1 FP propagation + B2 analyst override |
