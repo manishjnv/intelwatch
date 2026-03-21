@@ -1,14 +1,17 @@
 # ETIP Project State
-**Last updated:** 2026-03-20 (update at end of EVERY session via /session-end)
+**Last updated:** 2026-03-21 (update at end of EVERY session via /session-end)
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
-| etip_api | ✅ Running | 0.1.0 | 2026-03-15 | Health check passing |
-| etip_frontend | ✅ Running | 0.1.0 | 2026-03-15 | Shell only, no dashboard yet |
-| etip_nginx | ✅ Running | - | 2026-03-15 | Reverse proxy for ti.intelwatch.in |
+| etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
+| etip_frontend | ✅ Running | 0.1.0 | 2026-03-21 | Shell only, no dashboard yet |
+| etip_nginx | ✅ Running | - | 2026-03-21 | Reverse proxy for ti.intelwatch.in |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
+| etip_ingestion | ✅ Running | 0.1.0 | 2026-03-21 | Feed pipeline + 11 modules |
+| etip_normalization | ✅ Running | 0.1.0 | 2026-03-21 | IOC upsert + 18 accuracy improvements |
+| etip_enrichment | ✅ Running | 0.1.0 | 2026-03-21 | VT + AbuseIPDB, AI OFF by default |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -27,9 +30,9 @@
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | 🔨 Shell only | 2026-03-15 | Needs dashboard layout |
-| ingestion | 2 | 🔨 Deployed | 2026-03-21 | Full pipeline wired: 11 modules → feed-fetch worker. Article model + persistence + API routes. 222 tests across 18 files. Needs: STIX connectors, Claude Haiku triage, deploy session 9 |
-| normalization | 2 | 🔨 Built | 2026-03-21 | Fastify on port 3005. BullMQ worker + IOC upsert + 6 accuracy improvements. 95 tests. Wired to ingestion. |
-| ai-enrichment | 2 | 📋 Not started | - | Depends on normalization |
+| ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
+| normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
+| ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |
 | ioc-intelligence | 3 | 📋 Not started | - | Phase 3 gate |
 | threat-actor-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | malware-intel | 3 | 📋 Not started | - | Phase 3 gate |
@@ -58,8 +61,8 @@ shared-enrichment     → shared-utils
 user-service          → shared-types, shared-utils, shared-auth
 api-gateway           → shared-types, shared-utils, shared-auth, user-service
 ingestion             → shared-types, shared-utils, shared-auth, shared-cache, shared-audit, shared-enrichment, shared-normalization (Phase 2)
-normalization         → shared-types, shared-utils, shared-normalization (Phase 2)
-ai-enrichment         → shared-types, shared-utils, shared-enrichment (Phase 2)
+normalization         → shared-types, shared-utils, shared-normalization, shared-auth (Phase 2)
+ai-enrichment         → shared-types, shared-utils, shared-auth, shared-enrichment (Phase 2)
 frontend              → shared-types, shared-ui (Phase 1+)
 ```
 
@@ -94,13 +97,26 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 2 IN PROGRESS — normalization service built
-- **Last session outcome:** Session 12 (2026-03-21). Normalization service (Module 05) fully built with 6 accuracy improvements: (1) live confidence decay on re-sighting, (2) feed reliability from DB, (3) sighting count + source diversity tracking, (4) IOC lifecycle transitions (NEW→ACTIVE→REACTIVATED), (5) bogon/safe-domain/placeholder quality filters, (6) auto-severity classification from context. Ingestion wired to queue IOCs to QUEUES.NORMALIZE. 95 normalization tests + 774 total across monorepo. Docker/nginx/deploy.yml registered.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. AI currently OFF on VPS.
-- **Next tasks:** (1) Deploy normalization service to VPS (push to master). (2) Module 06: AI Enrichment Service + VT/AbuseIPDB. (3) IOC lifecycle cron job (ACTIVE→AGING→EXPIRED auto-transitions). (4) Elasticsearch IOC indexing. (5) E2E test: feed → ingest → normalize → query IOCs API.
+- **Current phase:** Phase 2 COMPLETE — all 3 pipeline services deployed (ingestion → normalization → enrichment)
+- **Last session outcome:** Session 13 (2026-03-21). Deployed normalization (18 accuracy improvements) + built & deployed AI Enrichment Service (Module 06). Full pipeline wired: ingestion → QUEUES.NORMALIZE → normalization → QUEUES.ENRICH_REALTIME → enrichment. VT + AbuseIPDB providers with rate limiting. Lifecycle cron worker (ACTIVE→AGING→EXPIRED every 6h). 851 tests total, zero failures. 14 containers on VPS, all healthy.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. AI/enrichment OFF on VPS (TI_AI_ENABLED=false, no VT/AbuseIPDB keys set yet).
+- **Next tasks:** (1) Set VT/AbuseIPDB API keys on VPS + enable TI_AI_ENABLED. (2) E2E test: create feed → fetch → ingest → normalize → enrich → query IOCs. (3) Elasticsearch IOC indexing. (4) Phase 3: IOC Intelligence Service (Module 07). (5) Dashboard frontend — IOC list page, feed management UI.
+
+## E2E Smoke Test Plan
+```
+1. Create feed:   POST /api/v1/feeds  { name: "OTX", url: "...", type: "rss" }
+2. Trigger fetch:  Scheduler auto-fetches OR POST /api/v1/feeds/:id/fetch
+3. Verify articles: GET /api/v1/articles → articles persisted
+4. Verify IOCs:    GET /api/v1/iocs → IOCs normalized, confidence scored
+5. Verify enrichment: GET /api/v1/iocs/:id → enrichmentData has VT/AbuseIPDB results
+6. Verify lifecycle: Wait 6h → IOCs without re-sighting transition to AGING
+7. Verify stats:   GET /api/v1/iocs/stats → counts by type, lifecycle, severity
+8. Verify enrich stats: GET /api/v1/enrichment/stats → enriched vs pending counts
+```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~5.5GB used by 11 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~6GB used by 14 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
+- API keys needed on VPS: TI_VIRUSTOTAL_API_KEY, TI_ABUSEIPDB_API_KEY, TI_AI_ENABLED=true
