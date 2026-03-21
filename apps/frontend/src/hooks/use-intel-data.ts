@@ -56,21 +56,21 @@ export interface IOCRecord {
 
 export function useIOCs(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
+  const empty = { data: [] as IOCRecord[], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['iocs', params],
-    queryFn: () => api<ListResponse<IOCRecord>>(`/iocs${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    queryFn: () => api<ListResponse<IOCRecord>>(`/iocs${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
-    retry: 1,
   })
   return withDemoFallback(result, DEMO_IOCS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
 }
 
 export function useIOCStats() {
+  const empty = { total: 0, byType: {}, bySeverity: {}, byLifecycle: {} }
   const result = useQuery({
     queryKey: ['ioc-stats'],
-    queryFn: () => api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number>; byLifecycle: Record<string, number> }>('/iocs/stats'),
+    queryFn: () => api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number>; byLifecycle: Record<string, number> }>('/iocs/stats').catch(() => empty),
     staleTime: 5 * 60_000,
-    retry: 1,
   })
   return withDemoFallback(result, DEMO_IOC_STATS, d => (d?.total ?? 0) > 0)
 }
@@ -174,7 +174,6 @@ export function useDashboardStats() {
       }
     },
     staleTime: 30_000,
-    retry: 1,
   })
   return withDemoFallback(result, DEMO_DASHBOARD_STATS, d => (d?.totalIOCs ?? 0) > 0)
 }
