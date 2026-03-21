@@ -21,6 +21,7 @@ import { LogoMark } from '@/components/brand/LogoMark'
 import { TopStatsBar }                          from '@etip/shared-ui/components/TopStatsBar'
 import { GlobalSearch, useGlobalSearch }         from '@etip/shared-ui/components/GlobalSearch'
 import type { SearchResult }                     from '@etip/shared-ui/components/GlobalSearch'
+import { ThreatPulseStrip }                      from '@/components/viz/ThreatPulseStrip'
 
 interface PlatformStats {
   totalIOCs: number; criticalIOCs: number
@@ -266,6 +267,9 @@ export function DashboardLayout() {
             lastIngestTime={stats?.lastIngestTime}
           />
         </div>
+
+        {/* #1: Live Threat Pulse Strip — polls recent IOCs */}
+        <ThreatPulseStrip />
 
         <main className="flex-1 overflow-y-auto">
           <Outlet/>

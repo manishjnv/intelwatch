@@ -133,3 +133,15 @@ body {
   background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+/* Ambient background pulse — used by AmbientBackground component (#15) */
+@keyframes ambient-pulse {
+  0%, 100% { opacity: 0.04; }
+  50% { opacity: 0.08; }
+}
+
+/* Threat pulse strip ticker — used by ThreatPulseStrip component (#1) */
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}

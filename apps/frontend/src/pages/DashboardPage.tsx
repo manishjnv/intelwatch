@@ -17,6 +17,12 @@ import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import { useDashboardStats } from '@/hooks/use-intel-data'
 import { Zap, ArrowRight, Search, Activity, Shield } from 'lucide-react'
 
+// UI improvements (#2, #13, #14, #15)
+import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'
+import { ParallaxCard } from '@/components/viz/ParallaxCard'
+import { ThreatTimeline } from '@/components/viz/ThreatTimeline'
+import { AmbientBackground } from '@/components/viz/AmbientBackground'
+
 // ⛔ LOCKED imports from shared-ui
 import { IntelCard } from '@etip/shared-ui/components/IntelCard'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
@@ -89,10 +95,15 @@ export function DashboardPage() {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
   }
 
+  // Derive threat level from critical IOC count
+  const threatLevel = (liveStats?.criticalIOCs ?? 0) > 20 ? 'critical' as const
+    : (liveStats?.criticalIOCs ?? 0) > 10 ? 'high' as const
+    : (liveStats?.criticalIOCs ?? 0) > 0 ? 'elevated' as const : 'normal' as const
+
   return (
     <div className="relative">
-      {/* Ambient grid overlay */}
-      <div className="fixed inset-0 bg-grid-overlay opacity-[0.06] pointer-events-none z-0" />
+      {/* #15: Ambient background — dynamic pulse based on threat level */}
+      <AmbientBackground threatLevel={threatLevel} />
 
       {/* ⛔ LOCKED: PageStatsBar — py-2, bg-bg-elevated/50, text-xs (UI_DESIGN_LOCK.md) */}
       <PageStatsBar>
@@ -151,7 +162,10 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Feature cards grid — ⛔ LOCKED: IntelCard with Framer Motion 3D hover */}
+        {/* #2: Severity Heatmap Grid */}
+        <SeverityHeatmap className="mb-6" />
+
+        {/* Feature cards grid — ⛔ LOCKED: IntelCard with Framer Motion 3D hover, WRAPPED with #13 ParallaxCard */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {MODULES.map((mod) => {
             const Icon = mod.icon
@@ -159,8 +173,8 @@ export function DashboardPage() {
             const phaseBg = getPhaseBgColor(mod.phase)
 
             return (
+              <ParallaxCard key={mod.id}>
               <IntelCard
-                key={mod.id}
                 onClick={() => navigate(mod.route)}
                 className={cn('group', getPhaseOpacity(mod.phase))}
               >
@@ -189,9 +203,13 @@ export function DashboardPage() {
                   </div>
                 </div>
               </IntelCard>
+              </ParallaxCard>
             )
           })}
         </div>
+
+        {/* #14: Threat Timeline */}
+        <ThreatTimeline className="mt-6" />
       </div>
     </div>
   )

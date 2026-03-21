@@ -19,7 +19,7 @@ export interface Column<T> {
   render: (row: T, density: Density) => React.ReactNode
 }
 
-interface DataTableProps<T> {
+export interface DataTableProps<T> {
   columns: Column<T>[]
   data: T[]
   loading?: boolean

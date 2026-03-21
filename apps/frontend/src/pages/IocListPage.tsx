@@ -14,6 +14,14 @@ import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { Shield, AlertTriangle, Activity, Clock } from 'lucide-react'
 
+// UI improvements (#3, #6, #7, #8, #9, #10)
+import { EntityPreview } from '@/components/viz/EntityPreview'
+import { SplitPane } from '@/components/viz/SplitPane'
+import { FlipDetailCard, IOCSummaryFront, IOCDetailBack } from '@/components/viz/FlipDetailCard'
+import { QuickActionToolbar } from '@/components/viz/QuickActionToolbar'
+import { SparklineCell, generateStubTrend } from '@/components/viz/SparklineCell'
+import { RelationshipGraph, generateStubRelations } from '@/components/viz/RelationshipGraph'
+
 const IOC_FILTERS: FilterOption[] = [
   { key: 'iocType', label: 'Type', options: [
     { value: 'ip', label: 'IP' }, { value: 'domain', label: 'Domain' },
@@ -76,6 +84,7 @@ export function IocListPage() {
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [showDetail, setShowDetail] = useState(false)
 
   const queryParams = useMemo(() => ({
     page, limit: 50, sortBy, sortOrder,
@@ -86,6 +95,9 @@ export function IocListPage() {
   const { data, isLoading } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
 
+  const selectedRecord = useMemo(() => data?.data?.find(r => r.id === selectedId) ?? null, [data, selectedId])
+  const stubRelations = useMemo(() => selectedRecord ? generateStubRelations(selectedRecord) : null, [selectedRecord])
+
   const handleSort = (key: string) => {
     if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
     else { setSortBy(key); setSortOrder('desc') }
@@ -93,10 +105,12 @@ export function IocListPage() {
 
   const columns: Column<IOCRecord>[] = [
     {
-      key: 'normalizedValue', label: 'Value', sortable: true, width: '30%',
+      key: 'normalizedValue', label: 'Value', sortable: true, width: '26%',
       render: (row, d) => (
-        <EntityChip type={row.iocType} value={row.normalizedValue}
-          size={d === 'ultra-dense' ? 'xs' : 'sm'} />
+        <EntityPreview type={row.iocType} value={row.normalizedValue} severity={row.severity} confidence={row.confidence} firstSeen={row.firstSeen} lastSeen={row.lastSeen} tags={row.tags}>
+          <EntityChip type={row.iocType} value={row.normalizedValue}
+            size={d === 'ultra-dense' ? 'xs' : 'sm'} />
+        </EntityPreview>
       ),
     },
     {
@@ -151,6 +165,10 @@ export function IocListPage() {
       },
     },
     {
+      key: 'trend', label: 'Trend', width: '6%',
+      render: (row, d) => d === 'ultra-dense' ? null : <SparklineCell data={generateStubTrend(row.id)} />,
+    },
+    {
       key: 'lastSeen', label: 'Last Seen', sortable: true, width: '10%',
       render: (row) => <span className="text-text-muted tabular-nums">{timeAgo(row.lastSeen)}</span>,
     },
@@ -174,28 +192,61 @@ export function IocListPage() {
         onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1) }}
       />
 
-      <div className="flex-1 overflow-hidden">
-        <DataTable
-          columns={columns}
-          data={data?.data ?? []}
-          loading={isLoading}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-          rowKey={(r) => r.id}
-          density={density}
-          severityField={(r) => r.severity}
-          selectedId={selectedId}
-          onRowClick={(r) => setSelectedId(r.id === selectedId ? null : r.id)}
-          emptyMessage="No IOCs found. Activate a feed to start ingesting threat intelligence."
-        />
-      </div>
+      {/* #7: Split-pane layout — table left, detail right */}
+      <SplitPane
+        left={
+          <DataTable
+            columns={columns}
+            data={data?.data ?? []}
+            loading={isLoading}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            rowKey={(r) => r.id}
+            density={density}
+            severityField={(r) => r.severity}
+            selectedId={selectedId}
+            onRowClick={(r) => {
+              const newId = r.id === selectedId ? null : r.id
+              setSelectedId(newId)
+              setShowDetail(!!newId)
+            }}
+            emptyMessage="No IOCs found. Activate a feed to start ingesting threat intelligence."
+          />
+        }
+        right={selectedRecord ? (
+          <div className="h-full flex flex-col">
+            {/* #6: 3D Flip detail card */}
+            <FlipDetailCard
+              isFlipped={showDetail}
+              front={<IOCSummaryFront record={selectedRecord} />}
+              back={<IOCDetailBack record={selectedRecord} onFlipBack={() => setShowDetail(false)} />}
+              className="flex-1"
+            />
+            {/* #10: Mini relationship graph */}
+            {stubRelations && (
+              <RelationshipGraph
+                nodes={stubRelations.nodes}
+                edges={stubRelations.edges}
+                className="mt-2 mx-2 mb-2"
+              />
+            )}
+          </div>
+        ) : null}
+        showRight={!!selectedId}
+      />
 
       <Pagination
         page={page} limit={50} total={data?.total ?? 0}
         onPageChange={setPage}
         density={density}
         onDensityChange={setDensity}
+      />
+
+      {/* #9: Quick-action toolbar */}
+      <QuickActionToolbar
+        selectedCount={selectedId ? 1 : 0}
+        onClear={() => { setSelectedId(null); setShowDetail(false) }}
       />
     </div>
   )
