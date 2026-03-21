@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useThemeStore } from '@/stores/theme-store'
 import { useLogout } from '@/hooks/use-auth'
+import { useDashboardStats } from '@/hooks/use-intel-data'
 import { cn } from '@/lib/utils'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import {
@@ -90,17 +91,8 @@ export function DashboardLayout() {
   // ⛔ LOCKED: GlobalSearch Cmd+K / Ctrl+K
   const { open: searchOpen, setOpen: setSearchOpen } = useGlobalSearch()
 
-  // Platform stats for TopStatsBar — data fetch lives in app layer, not shared-ui
-  const { data: stats } = useQuery<PlatformStats>({
-    queryKey: ['platform-stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/stats/platform')
-      if (!res.ok) throw new Error('stats fetch failed')
-      return res.json()
-    },
-    staleTime: 30 * 60 * 1000,
-    retry: false,
-  })
+  // Platform stats for TopStatsBar — uses aggregated hook from use-intel-data
+  const { data: stats } = useDashboardStats()
 
   // Global search results — data fetch lives in app layer, not shared-ui
   const [searchQuery, setSearchQuery] = useState('')

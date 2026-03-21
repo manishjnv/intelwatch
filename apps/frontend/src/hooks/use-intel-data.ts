@@ -1,0 +1,162 @@
+/**
+ * @module hooks/use-intel-data
+ * @description TanStack Query hooks for all intelligence services.
+ * Connects to: IOC (:3005/iocs), Feeds (:3004/feeds), Actors (:3008/actors),
+ * Malware (:3009/malware), Vulnerabilities (:3010/vulnerabilities).
+ * All queries go through nginx → backend services.
+ */
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
+
+// ─── Generic list response shape ──────────────────────────────────
+
+interface ListResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+}
+
+interface QueryParams {
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  [key: string]: string | number | boolean | undefined
+}
+
+function buildQuery(params: QueryParams): string {
+  const parts: string[] = []
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== '') parts.push(`${k}=${encodeURIComponent(String(v))}`)
+  }
+  return parts.length > 0 ? `?${parts.join('&')}` : ''
+}
+
+// ─── IOC types ──────────────────────────────────────────────────
+
+export interface IOCRecord {
+  id: string; iocType: string; normalizedValue: string; severity: string
+  confidence: number; lifecycle: string; tlp: string; tags: string[]
+  threatActors: string[]; malwareFamilies: string[]; firstSeen: string; lastSeen: string
+}
+
+export function useIOCs(params: QueryParams = {}) {
+  const query = buildQuery({ page: 1, limit: 50, ...params })
+  return useQuery({
+    queryKey: ['iocs', params],
+    queryFn: () => api<ListResponse<IOCRecord>>(`/iocs${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    staleTime: 60_000,
+  })
+}
+
+export function useIOCStats() {
+  return useQuery({
+    queryKey: ['ioc-stats'],
+    queryFn: () => api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number>; byLifecycle: Record<string, number> }>('/iocs/stats'),
+    staleTime: 5 * 60_000,
+  })
+}
+
+// ─── Feed types ─────────────────────────────────────────────────
+
+export interface FeedRecord {
+  id: string; name: string; description: string | null; feedType: string
+  url: string | null; schedule: string | null; status: string; enabled: boolean
+  lastFetchAt: string | null; lastErrorAt: string | null; lastErrorMessage: string | null
+  consecutiveFailures: number; totalItemsIngested: number; feedReliability: number
+  createdAt: string; updatedAt: string
+}
+
+export function useFeeds(params: QueryParams = {}) {
+  const query = buildQuery({ page: 1, limit: 50, ...params })
+  return useQuery({
+    queryKey: ['feeds', params],
+    queryFn: () => api<ListResponse<FeedRecord>>(`/feeds${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    staleTime: 60_000,
+  })
+}
+
+// ─── Threat Actor types ─────────────────────────────────────────
+
+export interface ActorRecord {
+  id: string; name: string; aliases: string[]; actorType: string
+  motivation: string; sophistication: string; country: string | null
+  confidence: number; tlp: string; tags: string[]; active: boolean
+  firstSeen: string | null; lastSeen: string | null
+}
+
+export function useActors(params: QueryParams = {}) {
+  const query = buildQuery({ page: 1, limit: 50, ...params })
+  return useQuery({
+    queryKey: ['actors', params],
+    queryFn: () => api<ListResponse<ActorRecord>>(`/actors${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    staleTime: 60_000,
+  })
+}
+
+// ─── Malware types ──────────────────────────────────────────────
+
+export interface MalwareRecord {
+  id: string; name: string; aliases: string[]; malwareType: string
+  platforms: string[]; capabilities: string[]; confidence: number
+  tlp: string; tags: string[]; active: boolean
+  firstSeen: string | null; lastSeen: string | null
+}
+
+export function useMalware(params: QueryParams = {}) {
+  const query = buildQuery({ page: 1, limit: 50, ...params })
+  return useQuery({
+    queryKey: ['malware', params],
+    queryFn: () => api<ListResponse<MalwareRecord>>(`/malware${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    staleTime: 60_000,
+  })
+}
+
+// ─── Vulnerability types ────────────────────────────────────────
+
+export interface VulnRecord {
+  id: string; cveId: string; description: string; cvssV3Score: number
+  cvssV3Severity: string; epssScore: number; epssPercentile: number
+  cisaKev: boolean; exploitedInWild: boolean; exploitAvailable: boolean
+  priorityScore: number; affectedProducts: string[]; affectedVendors: string[]
+  weaknessType: string | null; confidence: number; tlp: string; tags: string[]
+  active: boolean; publishedDate: string | null; firstSeen: string | null; lastSeen: string | null
+}
+
+export function useVulnerabilities(params: QueryParams = {}) {
+  const query = buildQuery({ page: 1, limit: 50, ...params })
+  return useQuery({
+    queryKey: ['vulnerabilities', params],
+    queryFn: () => api<ListResponse<VulnRecord>>(`/vulnerabilities${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    staleTime: 60_000,
+  })
+}
+
+// ─── Dashboard stats ────────────────────────────────────────────
+
+export function useDashboardStats() {
+  return useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      // Aggregate from multiple services - fail gracefully per service
+      const [iocStats, feedStats] = await Promise.allSettled([
+        api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number> }>('/iocs/stats'),
+        api<ListResponse<FeedRecord>>('/feeds?limit=1'),
+      ])
+
+      const ioc = iocStats.status === 'fulfilled' ? iocStats.value : null
+      const feeds = feedStats.status === 'fulfilled' ? feedStats.value : null
+
+      return {
+        totalIOCs: ioc?.total ?? 0,
+        criticalIOCs: ioc?.bySeverity?.['critical'] ?? 0,
+        activeFeeds: feeds?.total ?? 0,
+        enrichedToday: 0,
+        lastIngestTime: 'Live',
+      }
+    },
+    staleTime: 30_000,
+    retry: 1,
+  })
+}

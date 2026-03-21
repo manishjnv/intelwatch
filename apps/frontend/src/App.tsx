@@ -12,6 +12,11 @@ import { RegisterPage } from '@/pages/RegisterPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { IocListPage } from '@/pages/IocListPage';
+import { FeedListPage } from '@/pages/FeedListPage';
+import { ThreatActorListPage } from '@/pages/ThreatActorListPage';
+import { MalwareListPage } from '@/pages/MalwareListPage';
+import { VulnerabilityListPage } from '@/pages/VulnerabilityListPage';
 
 export function App() {
   return (
@@ -24,14 +29,15 @@ export function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          {/* Phase 2+ module pages — show ComingSoonPage until implemented */}
-          <Route path="/iocs" element={<ComingSoonPage />} />
-          <Route path="/threat-actors" element={<ComingSoonPage />} />
-          <Route path="/malware" element={<ComingSoonPage />} />
-          <Route path="/vulnerabilities" element={<ComingSoonPage />} />
+          {/* Live module pages */}
+          <Route path="/iocs" element={<IocListPage />} />
+          <Route path="/threat-actors" element={<ThreatActorListPage />} />
+          <Route path="/malware" element={<MalwareListPage />} />
+          <Route path="/vulnerabilities" element={<VulnerabilityListPage />} />
+          <Route path="/feeds" element={<FeedListPage />} />
+          {/* Phase 4+ module pages — show ComingSoonPage until implemented */}
           <Route path="/graph" element={<ComingSoonPage />} />
           <Route path="/hunting" element={<ComingSoonPage />} />
-          <Route path="/feeds" element={<ComingSoonPage />} />
           <Route path="/enrichment" element={<ComingSoonPage />} />
           <Route path="/drp" element={<ComingSoonPage />} />
           <Route path="/correlation" element={<ComingSoonPage />} />

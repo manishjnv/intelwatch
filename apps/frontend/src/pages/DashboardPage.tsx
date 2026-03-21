@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import { useCountUp } from '@/hooks/use-count-up'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
+import { useDashboardStats } from '@/hooks/use-intel-data'
 import { Zap, ArrowRight, Search, Activity, Shield } from 'lucide-react'
 
 // ⛔ LOCKED imports from shared-ui
@@ -81,6 +82,7 @@ export function DashboardPage() {
   const user = useAuthStore((s) => s.user)
   const tenant = useAuthStore((s) => s.tenant)
   const navigate = useNavigate()
+  const { data: liveStats } = useDashboardStats()
 
   // Trigger Cmd+K search
   const triggerSearch = () => {
@@ -94,10 +96,10 @@ export function DashboardPage() {
 
       {/* ⛔ LOCKED: PageStatsBar — py-2, bg-bg-elevated/50, text-xs (UI_DESIGN_LOCK.md) */}
       <PageStatsBar>
-        <AnimatedStat label="Total IOCs" value="—" route="/iocs" />
-        <AnimatedStat label="Active Feeds" value="—" route="/feeds" />
-        <AnimatedStat label="Enriched Today" value="—" route="/iocs" />
-        <AnimatedStat label="Open Alerts" value="—" route="/correlation" color="text-sev-critical" />
+        <AnimatedStat label="Total IOCs" value={liveStats?.totalIOCs ?? '—'} route="/iocs" />
+        <AnimatedStat label="Active Feeds" value={liveStats?.activeFeeds ?? '—'} route="/feeds" />
+        <AnimatedStat label="Enriched Today" value={liveStats?.enrichedToday ?? '—'} route="/iocs" />
+        <AnimatedStat label="Critical IOCs" value={liveStats?.criticalIOCs ?? '—'} route="/iocs" color="text-sev-critical" />
       </PageStatsBar>
 
       <div className="relative z-10 p-4 sm:p-6">
