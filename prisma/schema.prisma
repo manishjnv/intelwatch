@@ -34,6 +34,7 @@ model Tenant {
   articles             Article[]
   threatActorProfiles  ThreatActorProfile[]
   malwareProfiles      MalwareProfile[]
+  vulnerabilityProfiles VulnerabilityProfile[]
   @@map("tenants")
 }
 
@@ -469,4 +470,52 @@ model MalwareProfile {
   @@index([tenantId, active])
   @@index([tenantId, malwareType])
   @@map("malware_profiles")
+}
+
+// ─── Vulnerability Profiles (Module 10 — vulnerability-intel) ───────────
+
+model VulnerabilityProfile {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  cveId             String    @map("cve_id") @db.VarChar(20)
+  description       String    @default("") @db.Text
+  publishedDate     DateTime? @map("published_date")
+  modifiedDate      DateTime? @map("modified_date")
+  // CVSS v3
+  cvssV3Score       Float     @default(0) @map("cvss_v3_score")
+  cvssV3Vector      String?   @map("cvss_v3_vector") @db.VarChar(255)
+  cvssV3Severity    String    @default("none") @map("cvss_v3_severity") @db.VarChar(20)
+  // EPSS
+  epssScore         Float     @default(0) @map("epss_score")
+  epssPercentile    Float     @default(0) @map("epss_percentile")
+  // Exploit status
+  cisaKev           Boolean   @default(false) @map("cisa_kev")
+  exploitedInWild   Boolean   @default(false) @map("exploited_in_wild")
+  exploitAvailable  Boolean   @default(false) @map("exploit_available")
+  // Context
+  affectedProducts  String[]  @default([]) @map("affected_products")
+  affectedVendors   String[]  @default([]) @map("affected_vendors")
+  weaknessType      String?   @map("weakness_type") @db.VarChar(20)
+  references        String[]  @default([])
+  associatedMalware String[]  @default([]) @map("associated_malware")
+  associatedActors  String[]  @default([]) @map("associated_actors")
+  // Computed scoring
+  priorityScore     Float     @default(0) @map("priority_score")
+  // Standard fields
+  tlp               TLP       @default(amber)
+  confidence        Int       @default(50)
+  tags              String[]  @default([])
+  active            Boolean   @default(true)
+  firstSeen         DateTime? @map("first_seen")
+  lastSeen          DateTime? @map("last_seen")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, cveId])
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@index([tenantId, cvssV3Severity])
+  @@index([tenantId, cisaKev])
+  @@index([tenantId, priorityScore])
+  @@map("vulnerability_profiles")
 }

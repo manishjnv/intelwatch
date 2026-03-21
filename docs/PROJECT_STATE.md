@@ -40,7 +40,7 @@
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
 | malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
-| vulnerability-intel | 3 | 📋 Not started | - | Phase 3 gate |
+| vulnerability-intel | 3 | 🔨 WIP | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements, 119 tests. |
 | digital-risk-protection | 4 | 📋 Not started | - | Phase 4 gate |
 | threat-graph | 4 | 📋 Not started | - | Phase 4 gate |
 | correlation-engine | 4 | 📋 Not started | - | Phase 4 gate |
@@ -70,6 +70,7 @@ ai-enrichment         → shared-types, shared-utils, shared-auth, shared-enrich
 ioc-intelligence      → shared-types, shared-utils, shared-auth (Phase 3)
 threat-actor-intel    → shared-types, shared-utils, shared-auth (Phase 3)
 malware-intel         → shared-types, shared-utils, shared-auth (Phase 3)
+vulnerability-intel   → shared-types, shared-utils, shared-auth (Phase 3)
 frontend              → shared-types, shared-ui (Phase 1+)
 ```
 
