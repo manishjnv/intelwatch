@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NormalizationService, buildDedupeHash, type NormalizationResult } from '../src/service.js';
+import {
+  NormalizationService, buildDedupeHash, type NormalizationResult,
+  escalateTLP, escalateSeverity, clampConfidence, batchPenalty,
+} from '../src/service.js';
 import type { IOCRepository } from '../src/repository.js';
 import type { NormalizeBatchJob } from '../src/schema.js';
 import pino from 'pino';
@@ -511,5 +514,226 @@ describe('buildDedupeHash', () => {
     const h1 = buildDedupeHash('ip', '1.2.3.4', 'tenant-1');
     const h2 = buildDedupeHash('domain', '1.2.3.4', 'tenant-1');
     expect(h1).not.toBe(h2);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// New improvement tests
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Improvement A1: Type-specific confidence decay', () => {
+  it('hashes retain more confidence than IPs after 60 days', async () => {
+    const oldDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+    const makeExisting = (type: string, value: string) => ({
+      id: 'e-1', tenantId: '00000000-0000-0000-0000-000000000003',
+      iocType: type, value, normalizedValue: value,
+      dedupeHash: 'abc', lifecycle: 'active', severity: 'low', tlp: 'amber',
+      tags: [], mitreAttack: [], malwareFamilies: [], threatActors: [],
+      firstSeen: oldDate, lastSeen: oldDate, enrichmentData: { sightingCount: 1, sourceFeedIds: ['feed-old'] },
+    });
+
+    // Hash IOC
+    const hashRepo = mockRepo({ findByDedupeHash: vi.fn().mockResolvedValue(makeExisting('hash_sha256', 'a'.repeat(64))) });
+    const hashService = new NormalizationService(hashRepo, pino({ level: 'silent' }));
+    const hashJob = buildJob([{ rawValue: 'a'.repeat(64), rawType: 'sha256' }]);
+    await hashService.normalizeBatch(hashJob);
+    const hashConf = (hashRepo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0].confidence;
+
+    // IP IOC
+    const ipRepo = mockRepo({ findByDedupeHash: vi.fn().mockResolvedValue(makeExisting('ip', '8.8.4.4')) });
+    const ipService = new NormalizationService(ipRepo, pino({ level: 'silent' }));
+    const ipJob = buildJob([{ rawValue: '8.8.4.4', rawType: 'ip' }]);
+    await ipService.normalizeBatch(ipJob);
+    const ipConf = (ipRepo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0].confidence;
+
+    // Hash should have significantly higher confidence than IP after same time
+    expect(hashConf).toBeGreaterThan(ipConf);
+  });
+
+  it('stores decayRate in enrichmentData', async () => {
+    const repo = mockRepo();
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    const job = buildJob([{ rawValue: '44.55.66.77', rawType: 'ip' }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.enrichmentData.decayRate).toBe(0.05); // IP decay rate
+  });
+});
+
+describe('Improvement A4: TLP escalation protection', () => {
+  it('escalateTLP never downgrades', () => {
+    expect(escalateTLP('red', 'green')).toBe('red');
+    expect(escalateTLP('red', 'white')).toBe('red');
+    expect(escalateTLP('amber', 'red')).toBe('red');
+    expect(escalateTLP('green', 'amber')).toBe('amber');
+    expect(escalateTLP('white', 'white')).toBe('white');
+  });
+
+  it('preserves higher TLP on re-sighting with lower TLP', async () => {
+    const existing = {
+      id: 'e-1', tenantId: '00000000-0000-0000-0000-000000000003',
+      iocType: 'ip', value: '5.6.7.8', normalizedValue: '5.6.7.8',
+      dedupeHash: 'abc', lifecycle: 'active', severity: 'low', tlp: 'red',
+      tags: [], mitreAttack: [], malwareFamilies: [], threatActors: [],
+      firstSeen: new Date(), lastSeen: new Date(), enrichmentData: null,
+    };
+    const repo = mockRepo({ findByDedupeHash: vi.fn().mockResolvedValue(existing) });
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    const job = buildJob([{ rawValue: '5.6.7.8', rawType: 'ip', extractionMeta: { tlp: 'GREEN' } }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.tlp).toBe('red'); // preserved RED, not downgraded to GREEN
+  });
+});
+
+describe('Improvement A5: Confidence floor/ceiling per type', () => {
+  it('clampConfidence enforces floor for IP', () => {
+    expect(clampConfidence(5, 'ip')).toBe(20);   // floor 20
+    expect(clampConfidence(50, 'ip')).toBe(50);   // within range
+    expect(clampConfidence(95, 'ip')).toBe(90);   // ceiling 90
+  });
+
+  it('clampConfidence enforces floor for hash_sha256', () => {
+    expect(clampConfidence(10, 'hash_sha256')).toBe(60);  // floor 60
+    expect(clampConfidence(100, 'hash_sha256')).toBe(100); // ceiling 100
+  });
+
+  it('clampConfidence allows full range for unknown types', () => {
+    expect(clampConfidence(0, 'weird_type')).toBe(0);
+    expect(clampConfidence(100, 'weird_type')).toBe(100);
+  });
+
+  it('new IP IOC confidence is at least 20 (floor)', async () => {
+    const repo = mockRepo({ findFeedReliability: vi.fn().mockResolvedValue(10) });
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    const job = buildJob([{ rawValue: '44.55.66.77', rawType: 'ip', calibratedConfidence: 5 }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.confidence).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('Improvement A6: Batch anomaly scoring', () => {
+  it('batchPenalty returns 1.0 for small batches', () => {
+    expect(batchPenalty(1)).toBe(1.0);
+    expect(batchPenalty(10)).toBe(1.0);
+  });
+
+  it('batchPenalty penalizes medium batches', () => {
+    expect(batchPenalty(15)).toBe(0.9);
+    expect(batchPenalty(30)).toBe(0.9);
+  });
+
+  it('batchPenalty penalizes large batches', () => {
+    expect(batchPenalty(50)).toBe(0.7);
+    expect(batchPenalty(100)).toBe(0.7);
+  });
+
+  it('batchPenalty heavily penalizes bulk dumps', () => {
+    expect(batchPenalty(101)).toBe(0.5);
+    expect(batchPenalty(500)).toBe(0.5);
+  });
+
+  it('stores batchPenalty in enrichmentData', async () => {
+    const repo = mockRepo();
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    const job = buildJob([{ rawValue: '44.55.66.77', rawType: 'ip' }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.enrichmentData.batchPenalty).toBe(1.0);
+  });
+});
+
+describe('Improvement C2: 3-signal confidence weights', () => {
+  it('does not include communityVotes in enrichmentData', async () => {
+    const repo = mockRepo();
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    const job = buildJob([{ rawValue: '44.55.66.77', rawType: 'ip' }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.enrichmentData).not.toHaveProperty('communityVotes');
+  });
+});
+
+describe('Improvement C3: Severity escalation protection', () => {
+  it('escalateSeverity never downgrades', () => {
+    expect(escalateSeverity('critical', 'low')).toBe('critical');
+    expect(escalateSeverity('high', 'medium')).toBe('high');
+    expect(escalateSeverity('low', 'critical')).toBe('critical');
+    expect(escalateSeverity('info', 'info')).toBe('info');
+  });
+
+  it('preserves higher severity on re-sighting with lower context', async () => {
+    const existing = {
+      id: 'e-1', tenantId: '00000000-0000-0000-0000-000000000003',
+      iocType: 'ip', value: '5.6.7.8', normalizedValue: '5.6.7.8',
+      dedupeHash: 'abc', lifecycle: 'active', severity: 'critical', tlp: 'amber',
+      tags: [], mitreAttack: [], malwareFamilies: [], threatActors: [],
+      firstSeen: new Date(), lastSeen: new Date(), enrichmentData: null,
+    };
+    const repo = mockRepo({ findByDedupeHash: vi.fn().mockResolvedValue(existing) });
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    // Re-sighting with no threat context (would classify as LOW for IP)
+    const job = buildJob([{ rawValue: '5.6.7.8', rawType: 'ip' }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.severity).toBe('critical'); // preserved, not downgraded
+  });
+});
+
+describe('Improvement B3: Confidence history tracking', () => {
+  it('creates initial confidence history entry for new IOCs', async () => {
+    const repo = mockRepo();
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    const job = buildJob([{ rawValue: '44.55.66.77', rawType: 'ip' }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.enrichmentData.confidenceHistory).toHaveLength(1);
+    expect(call.enrichmentData.confidenceHistory[0].score).toBe(call.confidence);
+    expect(call.enrichmentData.confidenceHistory[0].source).toBe(job.feedSourceId);
+  });
+
+  it('appends to existing confidence history on re-sighting', async () => {
+    const existing = {
+      id: 'e-1', tenantId: '00000000-0000-0000-0000-000000000003',
+      iocType: 'ip', value: '5.6.7.8', normalizedValue: '5.6.7.8',
+      dedupeHash: 'abc', lifecycle: 'active', severity: 'low', tlp: 'amber',
+      tags: [], mitreAttack: [], malwareFamilies: [], threatActors: [],
+      firstSeen: new Date(), lastSeen: new Date(),
+      enrichmentData: {
+        sightingCount: 1, sourceFeedIds: ['old-feed'],
+        confidenceHistory: [{ date: '2026-03-20', score: 50, source: 'old-feed' }],
+      },
+    };
+    const repo = mockRepo({ findByDedupeHash: vi.fn().mockResolvedValue(existing) });
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    const job = buildJob([{ rawValue: '5.6.7.8', rawType: 'ip' }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.enrichmentData.confidenceHistory).toHaveLength(2);
+    expect(call.enrichmentData.confidenceHistory[0].source).toBe('old-feed');
+    expect(call.enrichmentData.confidenceHistory[1].source).toBe(job.feedSourceId);
+  });
+
+  it('caps confidence history at 20 entries', async () => {
+    const longHistory = Array.from({ length: 25 }, (_, i) => ({
+      date: `2026-03-${String(i + 1).padStart(2, '0')}`,
+      score: 50 + i,
+      source: `feed-${i}`,
+    }));
+    const existing = {
+      id: 'e-1', tenantId: '00000000-0000-0000-0000-000000000003',
+      iocType: 'ip', value: '5.6.7.8', normalizedValue: '5.6.7.8',
+      dedupeHash: 'abc', lifecycle: 'active', severity: 'low', tlp: 'amber',
+      tags: [], mitreAttack: [], malwareFamilies: [], threatActors: [],
+      firstSeen: new Date(), lastSeen: new Date(),
+      enrichmentData: { sightingCount: 25, sourceFeedIds: ['feed-1'], confidenceHistory: longHistory },
+    };
+    const repo = mockRepo({ findByDedupeHash: vi.fn().mockResolvedValue(existing) });
+    const service = new NormalizationService(repo, pino({ level: 'silent' }));
+    const job = buildJob([{ rawValue: '5.6.7.8', rawType: 'ip' }]);
+    await service.normalizeBatch(job);
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.enrichmentData.confidenceHistory.length).toBeLessThanOrEqual(20);
   });
 });

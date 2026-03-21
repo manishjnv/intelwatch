@@ -133,4 +133,54 @@ export class IOCRepository {
     });
     return feed?.feedReliability ?? null;
   }
+
+  /**
+   * Transition IOC lifecycle states based on age since lastSeen.
+   * ACTIVE → AGING after staleDays, AGING → EXPIRED after expireDays.
+   * Returns count of rows updated per transition.
+   */
+  async transitionLifecycles(opts: {
+    staleDays: number;
+    expireDays: number;
+    archiveDays: number;
+    batchSize: number;
+  }): Promise<{ aged: number; expired: number; archived: number }> {
+    const now = new Date();
+    const staleThreshold = new Date(now.getTime() - opts.staleDays * 24 * 60 * 60 * 1000);
+    const expireThreshold = new Date(now.getTime() - opts.expireDays * 24 * 60 * 60 * 1000);
+    const archiveThreshold = new Date(now.getTime() - opts.archiveDays * 24 * 60 * 60 * 1000);
+
+    // ACTIVE → AGING (not seen for staleDays)
+    const aged = await this.db.ioc.updateMany({
+      where: {
+        lifecycle: 'active' as Ioc['lifecycle'],
+        lastSeen: { lt: staleThreshold },
+      },
+      data: { lifecycle: 'aging' as Ioc['lifecycle'] },
+    });
+
+    // AGING → EXPIRED (not seen for expireDays)
+    const expired = await this.db.ioc.updateMany({
+      where: {
+        lifecycle: 'aging' as Ioc['lifecycle'],
+        lastSeen: { lt: expireThreshold },
+      },
+      data: { lifecycle: 'expired' as Ioc['lifecycle'] },
+    });
+
+    // EXPIRED → ARCHIVED (not seen for archiveDays)
+    const archived = await this.db.ioc.updateMany({
+      where: {
+        lifecycle: 'expired' as Ioc['lifecycle'],
+        lastSeen: { lt: archiveThreshold },
+      },
+      data: { lifecycle: 'archived' as Ioc['lifecycle'] },
+    });
+
+    return {
+      aged: aged.count,
+      expired: expired.count,
+      archived: archived.count,
+    };
+  }
 }

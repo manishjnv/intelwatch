@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isBogonIP,
+  isIPv6Bogon,
   isSafeDomain,
   isSafeURL,
   isPlaceholderHash,
@@ -176,5 +177,83 @@ describe('applyQualityFilters', () => {
 
   it('allows suspicious domains', () => {
     expect(applyQualityFilters('malware-drop.xyz', 'domain').passed).toBe(true);
+  });
+
+  it('filters bogon IPv6 addresses', () => {
+    const result = applyQualityFilters('::1', 'ipv6');
+    expect(result.passed).toBe(false);
+    expect(result.reason).toBe('bogon_ipv6');
+  });
+
+  it('allows public IPv6 addresses', () => {
+    expect(applyQualityFilters('2607:f8b0:4004:800::200e', 'ipv6').passed).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Improvement A2: IPv6 bogon filters
+// ═══════════════════════════════════════════════════════════════════
+
+describe('isIPv6Bogon', () => {
+  it('filters loopback ::1', () => {
+    expect(isIPv6Bogon('::1')).toBe(true);
+  });
+
+  it('filters unspecified ::', () => {
+    expect(isIPv6Bogon('::')).toBe(true);
+  });
+
+  it('filters link-local fe80::', () => {
+    expect(isIPv6Bogon('fe80::1')).toBe(true);
+    expect(isIPv6Bogon('fe80::1234:5678:abcd:ef01')).toBe(true);
+  });
+
+  it('filters unique-local fc00::/fd00::', () => {
+    expect(isIPv6Bogon('fc00::1')).toBe(true);
+    expect(isIPv6Bogon('fd12:3456::1')).toBe(true);
+  });
+
+  it('filters documentation 2001:db8::', () => {
+    expect(isIPv6Bogon('2001:db8::1')).toBe(true);
+    expect(isIPv6Bogon('2001:db8:1234::1')).toBe(true);
+  });
+
+  it('filters multicast ff00::', () => {
+    expect(isIPv6Bogon('ff02::1')).toBe(true);
+    expect(isIPv6Bogon('ff05::2')).toBe(true);
+  });
+
+  it('filters IPv4-mapped ::ffff:', () => {
+    expect(isIPv6Bogon('::ffff:192.168.1.1')).toBe(true);
+  });
+
+  it('allows public IPv6 addresses', () => {
+    expect(isIPv6Bogon('2607:f8b0:4004:800::200e')).toBe(false); // Google
+    expect(isIPv6Bogon('2001:4860:4860::8888')).toBe(false); // Google DNS
+    expect(isIPv6Bogon('2606:4700::1111')).toBe(false); // Cloudflare
+  });
+
+  it('is case-insensitive', () => {
+    expect(isIPv6Bogon('FE80::1')).toBe(true);
+    expect(isIPv6Bogon('2001:DB8::1')).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Improvement C5: Partial defang URL filter safety
+// ═══════════════════════════════════════════════════════════════════
+
+describe('isSafeURL — partial defang handling', () => {
+  it('handles fully defanged URLs', () => {
+    expect(isSafeURL('hxxps[:]//google[.]com/search')).toBe(true);
+  });
+
+  it('handles standard URLs', () => {
+    expect(isSafeURL('https://google.com/search')).toBe(true);
+    expect(isSafeURL('https://evil-c2.xyz/payload')).toBe(false);
+  });
+
+  it('returns false for non-URL strings', () => {
+    expect(isSafeURL('not-a-url')).toBe(false);
   });
 });

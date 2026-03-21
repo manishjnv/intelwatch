@@ -6,6 +6,7 @@ import { prisma, disconnectPrisma } from './prisma.js';
 import { IOCRepository } from './repository.js';
 import { createNormalizeQueue, closeNormalizeQueue } from './queue.js';
 import { createNormalizeWorker } from './workers/normalize-worker.js';
+import { createLifecycleWorker } from './workers/lifecycle-worker.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -27,7 +28,11 @@ async function main(): Promise<void> {
   // Start BullMQ worker to process normalization jobs
   const worker = createNormalizeWorker({ repo, logger });
 
+  // Start lifecycle cron worker (ACTIVE→AGING→EXPIRED→ARCHIVED)
+  const lifecycleTask = createLifecycleWorker(repo, logger);
+
   app.addHook('onClose', async () => {
+    lifecycleTask.stop();
     await worker.close();
     await closeNormalizeQueue();
     await disconnectPrisma();

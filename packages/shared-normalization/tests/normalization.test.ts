@@ -110,8 +110,34 @@ describe('normalizeIOCValue', () => {
   it('refangs defanged URLs', () => {
     expect(normalizeIOCValue('hxxps[:]//evil[.]com/payload', 'url'))
       .toBe('https://evil.com/payload');
+    // Root URL gets canonical trailing slash from URL spec
     expect(normalizeIOCValue('hxxp://evil(.)com', 'url'))
-      .toBe('http://evil.com');
+      .toBe('http://evil.com/');
+  });
+
+  it('strips tracking params from URLs for dedup', () => {
+    expect(normalizeIOCValue('https://evil.com/payload?utm_source=twitter&id=123', 'url'))
+      .toBe('https://evil.com/payload?id=123');
+    expect(normalizeIOCValue('https://evil.com/mal?fbclid=abc&cmd=run', 'url'))
+      .toBe('https://evil.com/mal?cmd=run');
+  });
+
+  it('sorts URL query params for consistent dedup', () => {
+    const url1 = normalizeIOCValue('https://evil.com/path?z=1&a=2', 'url');
+    const url2 = normalizeIOCValue('https://evil.com/path?a=2&z=1', 'url');
+    expect(url1).toBe(url2);
+  });
+
+  it('removes URL fragments and default ports', () => {
+    expect(normalizeIOCValue('http://evil.com:80/path#section', 'url'))
+      .toBe('http://evil.com/path');
+    expect(normalizeIOCValue('https://evil.com:443/path', 'url'))
+      .toBe('https://evil.com/path');
+  });
+
+  it('removes trailing slashes from non-root URL paths', () => {
+    expect(normalizeIOCValue('https://evil.com/payload/', 'url'))
+      .toBe('https://evil.com/payload');
   });
 
   it('lowercases email addresses', () => {
@@ -137,29 +163,53 @@ describe('normalizeIOCValue', () => {
 describe('calculateCompositeConfidence', () => {
   it('calculates weighted score with no decay (0 days)', () => {
     const result = calculateCompositeConfidence(
-      { feedReliability: 80, corroboration: 60, aiScore: 90, communityVotes: 70 },
+      { feedReliability: 80, corroboration: 60, aiScore: 90 },
       0,
     );
-    // 0.30*80 + 0.25*60 + 0.25*90 + 0.20*70 = 24 + 15 + 22.5 + 14 = 75.5 → 76
+    // 0.35*80 + 0.35*60 + 0.30*90 = 28 + 21 + 27 = 76
     expect(result.score).toBe(76);
     expect(result.decayFactor).toBe(1);
     expect(result.daysSinceLastSeen).toBe(0);
   });
 
-  it('applies exponential time decay', () => {
+  it('still accepts communityVotes for backward compat (ignored in calc)', () => {
     const result = calculateCompositeConfidence(
-      { feedReliability: 100, corroboration: 100, aiScore: 100, communityVotes: 100 },
-      69, // ~half-life
+      { feedReliability: 80, corroboration: 60, aiScore: 90, communityVotes: 70 },
+      0,
     );
-    // Raw = 100, decay = e^(-0.69) ≈ 0.501
+    // communityVotes is accepted but not used in weights
+    expect(result.score).toBe(76);
+  });
+
+  it('applies default exponential time decay', () => {
+    const result = calculateCompositeConfidence(
+      { feedReliability: 100, corroboration: 100, aiScore: 100 },
+      69, // e^(-0.01*69) ≈ 0.501
+    );
     expect(result.score).toBeLessThan(55);
     expect(result.score).toBeGreaterThan(45);
     expect(result.decayFactor).toBeLessThan(0.55);
   });
 
+  it('applies type-specific decay — hashes decay slowly', () => {
+    const hashResult = calculateCompositeConfidence(
+      { feedReliability: 100, corroboration: 100, aiScore: 100 },
+      60,
+      'hash_sha256', // decay rate 0.001
+    );
+    const ipResult = calculateCompositeConfidence(
+      { feedReliability: 100, corroboration: 100, aiScore: 100 },
+      60,
+      'ip', // decay rate 0.05
+    );
+    // Hash should retain much more confidence than IP after 60 days
+    expect(hashResult.score).toBeGreaterThan(90);
+    expect(ipResult.score).toBeLessThan(10);
+  });
+
   it('returns 0 score for all-zero signals', () => {
     const result = calculateCompositeConfidence(
-      { feedReliability: 0, corroboration: 0, aiScore: 0, communityVotes: 0 },
+      { feedReliability: 0, corroboration: 0, aiScore: 0 },
       0,
     );
     expect(result.score).toBe(0);
@@ -167,7 +217,7 @@ describe('calculateCompositeConfidence', () => {
 
   it('clamps score to 0-100 range', () => {
     const result = calculateCompositeConfidence(
-      { feedReliability: 100, corroboration: 100, aiScore: 100, communityVotes: 100 },
+      { feedReliability: 100, corroboration: 100, aiScore: 100 },
       0,
     );
     expect(result.score).toBeLessThanOrEqual(100);
@@ -176,7 +226,7 @@ describe('calculateCompositeConfidence', () => {
 
   it('treats negative daysSinceLastSeen as 0', () => {
     const result = calculateCompositeConfidence(
-      { feedReliability: 80, corroboration: 80, aiScore: 80, communityVotes: 80 },
+      { feedReliability: 80, corroboration: 80, aiScore: 80 },
       -5,
     );
     expect(result.decayFactor).toBe(1);
@@ -185,7 +235,7 @@ describe('calculateCompositeConfidence', () => {
   it('rejects out-of-range signal values', () => {
     expect(() =>
       calculateCompositeConfidence(
-        { feedReliability: 150, corroboration: 80, aiScore: 80, communityVotes: 80 },
+        { feedReliability: 150, corroboration: 80, aiScore: 80 },
         0,
       ),
     ).toThrow();

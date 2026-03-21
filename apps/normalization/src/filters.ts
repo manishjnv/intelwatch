@@ -31,6 +31,32 @@ const BOGON_RANGES: Array<{ prefix: number[]; mask: number }> = [
   { prefix: [255, 255, 255, 255], mask: 32 },
 ];
 
+/** IPv6 bogon/reserved prefixes */
+const IPV6_BOGON_PREFIXES = [
+  '::1',              // Loopback
+  '::',               // Unspecified (exact match only)
+  'fe80:',            // Link-local
+  'fc00:',            // Unique-local (fc00::/7 — fc00:: to fdff::)
+  'fd',               // Unique-local (fd00::/8)
+  '2001:db8:',        // Documentation (RFC 3849)
+  'ff',               // Multicast (ff00::/8)
+  '100::',            // Discard (RFC 6666)
+  '64:ff9b:',         // NAT64 well-known prefix
+  '::ffff:',          // IPv4-mapped
+  '2001:10:',         // ORCHID deprecated
+  '2001:20:',         // ORCHIDv2
+];
+
+/** Check if IPv6 falls in any bogon/reserved range */
+export function isIPv6Bogon(ip: string): boolean {
+  const lower = ip.toLowerCase().trim();
+  if (lower === '::' || lower === '::1') return true;
+  for (const prefix of IPV6_BOGON_PREFIXES) {
+    if (lower.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 /** Check if IPv4 falls in any bogon/reserved range */
 export function isBogonIP(ip: string): boolean {
   const parts = ip.split('.').map(Number);
@@ -98,12 +124,18 @@ export function isSafeDomain(domain: string): boolean {
   return false;
 }
 
-/** Check if a URL points to a safe domain */
+/** Check if a URL points to a safe domain (handles partially defanged URLs) */
 export function isSafeURL(url: string): boolean {
   try {
     const parsed = new URL(url);
     return isSafeDomain(parsed.hostname);
   } catch {
+    // Fallback: extract domain from partially defanged URLs that new URL() can't parse
+    const domainMatch = url.replace(/^h[tx]{2}ps?(?:\[:\]|:)\/\//, '').match(/^([^/\s?#]+)/);
+    if (domainMatch) {
+      const host = domainMatch[1].replace(/\[.\]/g, '.').split(':')[0];
+      return isSafeDomain(host);
+    }
     return false;
   }
 }
@@ -133,6 +165,9 @@ export function applyQualityFilters(normalizedValue: string, iocType: string): F
   switch (iocType) {
     case 'ip':
       if (isBogonIP(normalizedValue)) return { passed: false, reason: 'bogon_ip' };
+      break;
+    case 'ipv6':
+      if (isIPv6Bogon(normalizedValue)) return { passed: false, reason: 'bogon_ipv6' };
       break;
     case 'domain':
     case 'fqdn':
