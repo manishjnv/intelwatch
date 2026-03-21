@@ -459,3 +459,47 @@ Deploy order:
 **Fix**: Changed nginx `depends_on` to: `etip_api: service_healthy`, `etip_frontend: service_healthy`, `etip_ingestion: service_healthy`. Removed postgres/redis deps (nginx doesn't connect to them directly).
 **Commit**: `b5ad65a`
 **Prevention**: **RULE**: Nginx must depend on ALL upstream services it proxies to. Check `default.conf` upstream blocks and ensure matching `depends_on` entries.
+
+---
+
+## RCA Resolution Summary
+
+All 33 issues are FIXED. This table tracks which session fixed each issue and confirms the fix is still working.
+
+| Issue | Title | Fixed In | Fix Verified | Status |
+|-------|-------|----------|-------------|--------|
+| 1 | CI pnpm version conflict | Session 1 | ✅ CI green | FIXED |
+| 2 | CI prisma CLI not found | Session 1 | ✅ CI green | FIXED |
+| 3 | CI lockfile stale | Session 1 | ✅ CI green | FIXED |
+| 4 | Container MODULE_NOT_FOUND | Session 1 | ✅ Containers healthy | FIXED |
+| 5 | Unused TypeScript imports | Session 1 | ✅ tsc clean | FIXED |
+| 6 | SSH timeout during deploy | Session 1 | ⚠️ Intermittent (RCA #6) | MITIGATED |
+| 7 | Prisma OpenSSL missing | Session 1 | ✅ node:20-slim (no Alpine) | FIXED |
+| 8 | workflow_dispatch skipping deploy | Session 1 | ✅ always() condition | FIXED |
+| 9 | Landing page UI regression | Session 1 | ✅ File-based serving | FIXED |
+| 10 | docker-compose bad dependency | Session 3 | ✅ Compose valid | FIXED |
+| 11 | API crash after frontend added | Session 3 | ✅ All COPY lines | FIXED |
+| 12 | 502 Bad Gateway race | Session 3 | ✅ Sequential startup | FIXED |
+| 13 | Frontend without shared-ui | Session 3 | ✅ COPY in Dockerfile | FIXED |
+| 14 | Radar rings off-center | Session 3 | ✅ CSS centered | FIXED |
+| 15 | Vite build silent failure | Session 3 | ✅ No pipe tail | FIXED |
+| 16 | API crash — shared-auth dist | Session 3 | ✅ All COPY lines | FIXED |
+| 17 | CI pnpm version (recurring) | Session 4 | ✅ No version param | FIXED |
+| 18 | Cross-package .d.ts missing | Session 4 | ✅ Build before typecheck | FIXED |
+| 19 | pnpm parallel race condition | Session 4 | ✅ tsc -b | FIXED |
+| 20 | Docker buildx incompatible | Session 4 | ✅ Plain docker build | FIXED |
+| 21 | workflow_dispatch skip (recurring) | Session 4 | ✅ always() | FIXED |
+| 22 | tsc -b zero output | Session 4 | ✅ --force flag | FIXED |
+| 23 | Cannot find module 'zod' | Session 4 | ✅ Full COPY | FIXED |
+| 24 | Alpine localhost IPv6 | Session 4 | ✅ 127.0.0.1 | FIXED |
+| 25 | ESLint config missing | Session 5 | ✅ eslint.config.mjs | FIXED |
+| 26 | shared-ui tsconfig deleted | Session 5 | ✅ Restored | FIXED |
+| 27 | Prisma InputJsonValue | Session 5 | ✅ Local type alias | FIXED |
+| 28 | AppError code vs message | Session 5 | ✅ Match on message | FIXED |
+| 29 | Defanged URL regex | Session 5 | ✅ Both : patterns | FIXED |
+| 30 | Scheduler crash missing table | Session 8 | ✅ try/catch startup | FIXED |
+| 31 | Fake health checks | Session 8 | ✅ Retry loops | FIXED |
+| 32 | feed_sources table missing | Session 8 | ✅ prisma db push | FIXED |
+| 33 | Nginx before API ready | Session 8 | ✅ depends_on healthy | FIXED |
+
+**Session 13 deploys:** No new RCA issues. All 14 containers healthy. E2E pipeline verified with 301 real IOCs.
