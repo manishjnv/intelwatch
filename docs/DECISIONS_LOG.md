@@ -96,3 +96,31 @@
 **Decision:** All 6 modules use in-memory state (Maps/Sets) for Phase 2. Will migrate to DB-backed persistence when deploying as production containers with horizontal scaling.
 **Alternatives:** DB-backed from day one (premature — adds Prisma migration complexity before validating the algorithms), Redis-backed (extra dep coupling)
 **Consequences:** Fast iteration on algorithms. Tests don't need DB. Trade-off: state lost on service restart. Acceptable for Phase 2 validation. Migration to DB is straightforward — replace Map with Prisma queries.
+
+### DECISION-014: 3-signal confidence weights (drop communityVotes)
+**Date:** 2026-03-21 | **Status:** Accepted
+**Context:** communityVotes signal was always 0 in calculateCompositeConfidence, wasting 20% of weight. No community voting system exists yet.
+**Decision:** Redistribute to 3 signals: feedReliability 0.35, corroboration 0.35, aiScore 0.30. communityVotes kept as optional field (default 0) for backward compat.
+**Alternatives:** Keep 4 signals and wire to analyst feedback (premature — no analyst UI yet), remove communityVotes entirely (breaks ingestion callers)
+**Consequences:** Full confidence formula weight now used. Backward compatible — ingestion code that passes communityVotes still works. When analyst feedback UI ships, re-add as 4th signal.
+
+### DECISION-015: Type-specific IOC confidence decay rates
+**Date:** 2026-03-21 | **Status:** Accepted
+**Context:** All IOC types decayed at e^(-0.01 * days). But hashes are permanent artifacts (SHA-256 never changes), while IPs change hands quickly (cloud, DHCP).
+**Decision:** Per-type decay rates: hash 0.001 (near-permanent), IP 0.05 (14-day half-life), domain 0.02, URL 0.04, CVE 0.005. Stored in IOC_DECAY_RATES lookup table in shared-normalization.
+**Alternatives:** Single decay rate with per-type multiplier (less clear), no decay for hashes (not mathematically correct for very old IOCs)
+**Consequences:** IP IOCs lose relevance 50x faster than hash IOCs. Reduces false positive rate on recycled IP infrastructure. No competitor implements type-aware decay.
+
+### DECISION-016: AI Enrichment via external APIs only (no Claude AI in Phase 2)
+**Date:** 2026-03-21 | **Status:** Accepted
+**Context:** Building Module 06. Skill file specifies Claude AI enrichment, but AI budget controls and prompt templates are not ready.
+**Decision:** Phase 2 enrichment uses VirusTotal + AbuseIPDB only. Claude AI analysis deferred to Phase 3 when admin AI controls and budget UI are built.
+**Alternatives:** Include Claude from day one (risk: no budget controls → runaway costs), skip enrichment entirely (no external validation)
+**Consequences:** Enrichment service is functional without Claude dependency. VT + AbuseIPDB provide immediate value. Claude integration is additive — add provider without structural changes. TI_AI_ENABLED gate already in place.
+
+### DECISION-017: In-memory rate limiting for external API providers
+**Date:** 2026-03-21 | **Status:** Accepted
+**Context:** VT free tier = 4 req/min, AbuseIPDB = 1000 req/day. Need to enforce limits to avoid API key revocation.
+**Decision:** Sliding-window rate limiter in-memory per provider. Configurable via TI_VT_RATE_LIMIT_PER_MIN and TI_ABUSEIPDB_RATE_LIMIT_PER_DAY env vars.
+**Alternatives:** Redis-backed rate limiter (survives restarts but adds coupling), token bucket (more complex, unnecessary for 2 providers)
+**Consequences:** Rate limits reset on service restart. Acceptable for single-instance deployment. Migrate to Redis-backed when horizontal scaling.

@@ -99,7 +99,7 @@ frontend              → shared-types, shared-ui (Phase 1+)
 ## Work In Progress
 - **Current phase:** Phase 2 COMPLETE — all 3 pipeline services deployed (ingestion → normalization → enrichment)
 - **Last session outcome:** Session 13 (2026-03-21). Deployed normalization (18 accuracy improvements) + built & deployed AI Enrichment Service (Module 06). Full pipeline wired: ingestion → QUEUES.NORMALIZE → normalization → QUEUES.ENRICH_REALTIME → enrichment. VT + AbuseIPDB providers with rate limiting. Lifecycle cron worker (ACTIVE→AGING→EXPIRED every 6h). 851 tests total, zero failures. 14 containers on VPS, all healthy.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. AI/enrichment OFF on VPS (TI_AI_ENABLED=false, no VT/AbuseIPDB keys set yet).
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing.
 - **Next tasks:** (1) Set VT/AbuseIPDB API keys on VPS + enable TI_AI_ENABLED. (2) E2E test: create feed → fetch → ingest → normalize → enrich → query IOCs. (3) Elasticsearch IOC indexing. (4) Phase 3: IOC Intelligence Service (Module 07). (5) Dashboard frontend — IOC list page, feed management UI.
 
 ## E2E Smoke Test Plan
@@ -119,4 +119,4 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
-- API keys needed on VPS: TI_VIRUSTOTAL_API_KEY, TI_ABUSEIPDB_API_KEY, TI_AI_ENABLED=true
+- API keys configured: TI_VIRUSTOTAL_API_KEY (free, 4/min), TI_ABUSEIPDB_API_KEY (free, 1000/day), TI_AI_ENABLED=true
