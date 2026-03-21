@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-3%20in%20progress-00ccff)
-![Tests](https://img.shields.io/badge/tests-1160%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-1309%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -21,11 +21,12 @@
 | AI Enrichment Service (VirusTotal + AbuseIPDB) | ✅ Live on VPS | 27 |
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
+| Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Frontend shell (React 18 + Vite) | ✅ Live on VPS | — |
-| Infrastructure (16 Docker containers) | ✅ All healthy | — |
+| Infrastructure (17 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 3 Progress** | **50%** (2/4 modules) | **1160** |
+| **Phase 3 Progress** | **75%** (3/4 modules) | **1309** |
 
 ## Live API Endpoints
 

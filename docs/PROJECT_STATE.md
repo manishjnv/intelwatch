@@ -15,6 +15,7 @@
 | etip_enrichment | ✅ Running | 0.1.0 | 2026-03-21 | VT + AbuseIPDB, AI OFF by default |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements |
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
+| etip_malware_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -119,6 +120,7 @@ frontend              → shared-types, shared-ui (Phase 1+)
 | 13 | 2026-03-21 | etip_normalization, etip_enrichment, etip_api, etip_frontend, etip_nginx | ✅ All 14 healthy | b859075→056c837 | 12 more improvements + AI enrichment service. E2E verified: 301 IOCs |
 | 14 | 2026-03-21 | etip_ioc_intelligence added, all app containers recreated | ✅ All 15 healthy | f62dba7, d6f04b6 | IOC Intelligence Service: 15 endpoints, 13 accuracy improvements, 119 tests |
 | 15 | 2026-03-21 | etip_threat_actor_intel added, all app containers recreated | pending CI | 22793db | Threat Actor Intel Service: 28 endpoints, 15 accuracy improvements, 190 tests |
+| 16 | 2026-03-21 | etip_malware_intel added, all app containers recreated | pending CI | 6c327c4, 068d7dc | Malware Intel Service: 27 endpoints, 15 accuracy improvements, 149 tests |
 
 ## E2E Verification Results (Session 13)
 
@@ -133,7 +135,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~7GB estimated by 16 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~7.5GB estimated by 17 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
