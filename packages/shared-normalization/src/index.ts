@@ -19,6 +19,7 @@ export {
   DEFAULT_DECAY_RATE,
   ConfidenceSignalSchema,
   type ConfidenceSignal,
+  type ConfidenceSignalInput,
   type CompositeConfidence,
   calculateCompositeConfidence,
 } from './confidence.js';

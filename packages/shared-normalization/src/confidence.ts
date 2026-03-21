@@ -52,7 +52,10 @@ export const ConfidenceSignalSchema = z.object({
   communityVotes: z.number().min(0).max(100).optional().default(0),
 });
 
+/** Output type (after defaults applied) */
 export type ConfidenceSignal = z.infer<typeof ConfidenceSignalSchema>;
+/** Input type (communityVotes optional) — use this for function parameters */
+export type ConfidenceSignalInput = z.input<typeof ConfidenceSignalSchema>;
 
 /** Composite confidence result after weighting and decay. */
 export interface CompositeConfidence {
@@ -77,7 +80,7 @@ export interface CompositeConfidence {
  * @returns Composite confidence result
  */
 export function calculateCompositeConfidence(
-  signals: ConfidenceSignal,
+  signals: ConfidenceSignalInput,
   daysSinceLastSeen: number,
   iocType?: string,
 ): CompositeConfidence {

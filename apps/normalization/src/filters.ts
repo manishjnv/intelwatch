@@ -132,8 +132,8 @@ export function isSafeURL(url: string): boolean {
   } catch {
     // Fallback: extract domain from partially defanged URLs that new URL() can't parse
     const domainMatch = url.replace(/^h[tx]{2}ps?(?:\[:\]|:)\/\//, '').match(/^([^/\s?#]+)/);
-    if (domainMatch) {
-      const host = domainMatch[1].replace(/\[.\]/g, '.').split(':')[0];
+    if (domainMatch?.[1]) {
+      const host = domainMatch[1].replace(/\[.\]/g, '.').split(':')[0] ?? domainMatch[1];
       return isSafeDomain(host);
     }
     return false;
