@@ -34,7 +34,7 @@
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |
-| ioc-intelligence | 3 | 📋 Not started | - | Phase 3 gate |
+| ioc-intelligence | 3 | 🔨 WIP | 2026-03-21 | Scaffolded, health endpoint, port 3007 |
 | threat-actor-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | malware-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | vulnerability-intel | 3 | 📋 Not started | - | Phase 3 gate |
@@ -64,6 +64,7 @@ api-gateway           → shared-types, shared-utils, shared-auth, user-service
 ingestion             → shared-types, shared-utils, shared-auth, shared-cache, shared-audit, shared-enrichment, shared-normalization (Phase 2)
 normalization         → shared-types, shared-utils, shared-normalization, shared-auth (Phase 2)
 ai-enrichment         → shared-types, shared-utils, shared-auth, shared-enrichment (Phase 2)
+ioc-intelligence      → shared-types, shared-utils, shared-auth (Phase 3)
 frontend              → shared-types, shared-ui (Phase 1+)
 ```
 

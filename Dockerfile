@@ -27,6 +27,7 @@ COPY apps/user-service/package.json           apps/user-service/tsconfig.json   
 COPY apps/ingestion/package.json             apps/ingestion/tsconfig.json              apps/ingestion/
 COPY apps/normalization/package.json         apps/normalization/tsconfig.json          apps/normalization/
 COPY apps/ai-enrichment/package.json        apps/ai-enrichment/tsconfig.json         apps/ai-enrichment/
+COPY apps/ioc-intelligence/package.json     apps/ioc-intelligence/tsconfig.json    apps/ioc-intelligence/
 COPY apps/frontend/package.json               apps/frontend/
 
 # RULE: strict --frozen-lockfile, NO fallback. Stale lockfile = build MUST fail. (Issues #11, #16)

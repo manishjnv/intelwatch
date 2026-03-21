@@ -13,6 +13,7 @@
     { "path": "apps/api-gateway" },
     { "path": "apps/ingestion" },
     { "path": "apps/normalization" },
-    { "path": "apps/ai-enrichment" }
+    { "path": "apps/ai-enrichment" },
+    { "path": "apps/ioc-intelligence" }
   ]
 }

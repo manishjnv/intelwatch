@@ -406,6 +406,49 @@ services:
         limits:
           memory: 512M
 
+  # ─── ETIP IOC Intelligence Service (Module 07) ─────────────────
+  etip_ioc_intelligence:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: etip_ioc_intelligence
+    restart: unless-stopped
+    command: ["node", "apps/ioc-intelligence/dist/index.js"]
+    environment:
+      TI_NODE_ENV: ${TI_NODE_ENV:-production}
+      TI_IOC_INTELLIGENCE_PORT: 3007
+      TI_IOC_INTELLIGENCE_HOST: 0.0.0.0
+      TI_DATABASE_URL: postgresql://${TI_POSTGRES_USER:-etip_user}:${TI_POSTGRES_PASSWORD}@etip_postgres:5432/${TI_POSTGRES_DB:-etip}?schema=public
+      TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
+      TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
+      TI_JWT_ISSUER: ${TI_JWT_ISSUER:-intelwatch-etip}
+      TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
+      TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
+      TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
+      TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
+      TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
+    ports:
+      - "3007:3007"
+    depends_on:
+      etip_postgres:
+        condition: service_healthy
+      etip_redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:3007/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
   # ─── ETIP Frontend (React SPA via nginx) ────────────────────────
   etip_frontend:
     build:
@@ -449,6 +492,8 @@ services:
       etip_normalization:
         condition: service_healthy
       etip_enrichment:
+        condition: service_healthy
+      etip_ioc_intelligence:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "nginx", "-t"]
