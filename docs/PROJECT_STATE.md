@@ -38,7 +38,7 @@
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
-| malware-intel | 3 | 🔨 Part A done | 2026-03-21 | Port 3009. 17 endpoints, 5 P0 accuracy improvements, 97 tests. Part B pending (P1+P2). |
+| malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
 | vulnerability-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | digital-risk-protection | 4 | 📋 Not started | - | Phase 4 gate |
 | threat-graph | 4 | 📋 Not started | - | Phase 4 gate |
@@ -103,10 +103,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 3 IN PROGRESS — ioc-intelligence + threat-actor-intel deployed, malware-intel Part A complete, 1.5 modules remaining (malware Part B, vulnerability)
-- **Last session outcome:** Session 16 (2026-03-21). Built Malware Intel Service Part A (Module 09). 17 API endpoints (CRUD + IOC/actor linkage + search + export + 5 P0 improvements). MalwareProfile Prisma model with MalwareType enum (15 types). 97 module tests, 1257 total. Part B pending (P1+P2).
+- **Current phase:** Phase 3 IN PROGRESS — ioc-intelligence + threat-actor-intel + malware-intel deployed, 1 module remaining (vulnerability)
+- **Last session outcome:** Session 16 (2026-03-21). Built and deployed Malware Intel Service (Module 09) — complete (Part A + Part B). 27 API endpoints, 15 accuracy improvements. MalwareProfile Prisma model with MalwareType enum (15 types). 149 module tests, 1309 total.
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing.
-- **Next tasks:** (1) Phase 3: Malware Intel Part B (P1+P2 improvements). (2) Phase 3: Vulnerability Intel Service (Module 10). (3) Elasticsearch IOC indexing (ES container running but no code integration). (4) Dashboard frontend — IOC list page, feed management UI, actor list page, malware list page.
+- **Next tasks:** (1) Phase 3: Vulnerability Intel Service (Module 10). (2) Elasticsearch IOC indexing (ES container running but no code integration). (3) Dashboard frontend — IOC list page, feed management UI, actor list page, malware list page.
 
 ## Deployment Log
 
