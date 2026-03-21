@@ -107,7 +107,7 @@ If ANY answer raises concern:
 
 ## Step 6: Update Module README (MANDATORY)
 
-Read `apps/[module]/README.md` and update:
+Read `docs/modules/[module].md` and update:
 - **Features table**: add row for each new feature (Feature | File | Description)
 - **API table**: add row for each new endpoint (Method | Path | Auth | Description)
 - **Config table**: add row for each new env var (Var | Default | Purpose)

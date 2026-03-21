@@ -76,7 +76,7 @@ Overwrite entire file with current session's handoff:
 
 ## 5. Update Module READMEs (if module code changed)
 
-For EACH module that had code changes this session, read and update `apps/{module}/README.md`:
+For EACH module that had code changes this session, read and update `docs/modules/{module}.md`:
 - **Header line**: update test count + status if changed
 - **Features table**: add rows for new features (Feature | File | Description)
 - **API table**: add rows for new endpoints (Method | Path | Auth | Description)
@@ -153,7 +153,7 @@ Next: [specific task]
 
 ```bash
 git add docs/PROJECT_STATE.md docs/DECISIONS_LOG.md docs/SESSION_HANDOFF.md \
-       docs/DEPLOYMENT_RCA.md apps/*/README.md README.md
+       docs/DEPLOYMENT_RCA.md docs/modules/ README.md
 git commit -m "docs: session [N] end — [1-line summary]"
 git push origin master
 ```
@@ -171,7 +171,7 @@ Before closing, confirm ALL boxes:
 - [ ] DECISIONS_LOG.md — any new decisions logged
 - [ ] SESSION_HANDOFF.md — overwritten with this session's full handoff
 - [ ] DEPLOYMENT_RCA.md — resolution table updated (success or failure entry)
-- [ ] apps/{module}/README.md — features, API, config tables current for each module touched
+- [ ] docs/modules/{module}.md — features, API, config tables current for each module touched
 - [ ] README.md — test count + phase + container count current
 - [ ] memory/session{N}.md — created with key facts + frozen rules
 - [ ] memory/MEMORY.md — index updated
@@ -182,11 +182,11 @@ CRITICAL: Six systems depend on accurate state:
 1. `/session-start` reads: PROJECT_STATE, DECISIONS_LOG, DEPLOYMENT_RCA, SESSION_HANDOFF
 2. Memory system reads: MEMORY.md → session{N}.md files
 3. CLAUDE.md: rules + constants (auto-loaded every session)
-4. Module READMEs: apps/{module}/README.md — features, API, config (updated by /implement)
+4. Module READMEs: docs/modules/{module}.md — features, API, config (updated by /implement)
 5. README.md: GitHub landing page (test count, phase, containers)
 6. CI/CD: deploy.yml, docker-compose, Dockerfile (already in git)
 
 Documentation flow:
-  /new-module creates → apps/{module}/README.md (skeleton)
-  /implement updates → apps/{module}/README.md (features, API, config as code is written)
-  /session-end verifies → apps/{module}/README.md is current (safety net)
+  /new-module creates → docs/modules/{module}.md (skeleton)
+  /implement updates → docs/modules/{module}.md (features, API, config as code is written)
+  /session-end verifies → docs/modules/{module}.md is current (safety net)

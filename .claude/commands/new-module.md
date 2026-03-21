@@ -49,7 +49,7 @@ apps/$ARGUMENTS/
 
 ## Create Module README (single source of truth for module docs)
 
-Create `apps/$ARGUMENTS/README.md`:
+Create `docs/modules/$ARGUMENTS.md`:
 ```markdown
 # [Module Name]
 
