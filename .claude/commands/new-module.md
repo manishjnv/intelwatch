@@ -47,11 +47,56 @@ apps/$ARGUMENTS/
 2. `pnpm -r test` — health test must pass
 3. `git diff --stat` — review all changes
 
+## Create Documentation
+
+### Feature documentation
+Create `docs/features/$ARGUMENTS/IMPLEMENTATION.md`:
+```markdown
+# [Module Name] — Feature Documentation
+**Module:** apps/$ARGUMENTS | **Port:** [port] | **Status:** 🔨 WIP | **Tests:** 0
+
+## What It Does
+[1-2 sentence description]
+
+## Pipeline Flow
+[Data flow diagram]
+
+## Key Features
+| Feature | File | What it does |
+|---------|------|-------------|
+| Health check | src/routes/health.ts | GET /health endpoint |
+
+## API Endpoints
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+
+## Configuration
+| Env Var | Default | Purpose |
+|---------|---------|---------|
+```
+
+### API documentation
+Create `docs/api/$ARGUMENTS/API.md`:
+```markdown
+# [Module Name] API — Port [port]
+## Endpoints
+### GET /health
+- **Auth:** None
+- **Response:** `{ status: "ok", service: "$ARGUMENTS" }`
+```
+
 ## Register in Project State
 
 Update `docs/PROJECT_STATE.md`:
 - Module Development Status table: change status from 📋 to 🔨, set "Last Worked" date
 - Module Dependency Map: add the new module with its dependencies
+
+## Register in Infrastructure (for services with HTTP endpoints)
+
+1. Add nginx upstream + location block in `docker/nginx/conf.d/default.conf`
+2. Add service definition in `docker-compose.etip.yml`
+3. Add build + health check in `.github/workflows/deploy.yml`
+4. Add nginx depends_on entry for the new service
 
 ## Report
 
@@ -64,6 +109,8 @@ Dependencies: [list]
 tsconfig.build.json: updated ✅
 Dockerfile: updated ✅
 PROJECT_STATE.md: registered ✅
+docs/features/$ARGUMENTS/IMPLEMENTATION.md: created ✅
+docs/api/$ARGUMENTS/API.md: created ✅
 Health test: passing ✅
 ```
 
