@@ -4,7 +4,7 @@ import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
 import { buildApp } from './app.js';
 import { prisma, disconnectPrisma } from './prisma.js';
 import { IOCRepository } from './repository.js';
-import { createNormalizeQueue, closeNormalizeQueue } from './queue.js';
+import { createNormalizeQueue, createEnrichQueue, closeNormalizeQueue } from './queue.js';
 import { createNormalizeWorker } from './workers/normalize-worker.js';
 import { createLifecycleWorker } from './workers/lifecycle-worker.js';
 
@@ -22,6 +22,7 @@ async function main(): Promise<void> {
 
   const repo = new IOCRepository(prisma);
   createNormalizeQueue();
+  createEnrichQueue();
 
   const app = await buildApp({ config, repo });
 

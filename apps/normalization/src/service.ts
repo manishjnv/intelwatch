@@ -4,6 +4,7 @@ import { detectIOCType, normalizeIOCValue, calculateCompositeConfidence, IOC_DEC
 import type { IOCRepository } from './repository.js';
 import type { NormalizeBatchJob } from './schema.js';
 import { applyQualityFilters } from './filters.js';
+import { getEnrichQueue } from './queue.js';
 
 /** Map shared-normalization IOCType to Prisma IocType enum values */
 function mapIOCType(rawType: string): string {
@@ -440,7 +441,7 @@ export class NormalizationService {
           : incomingTLP;
 
         // Upsert IOC
-        await this.repo.upsert({
+        const upserted = await this.repo.upsert({
           tenantId: job.tenantId,
           feedSourceId: job.feedSourceId,
           iocType,
@@ -459,6 +460,22 @@ export class NormalizationService {
           lastSeen: now,
           enrichmentData: enrichmentData as object,
         });
+
+        // ── Queue IOC for AI enrichment (Module 06) ────────────
+        const enrichQueue = getEnrichQueue();
+        if (enrichQueue && upserted.id) {
+          await enrichQueue.add(`enrich-${upserted.id}`, {
+            iocId: upserted.id,
+            tenantId: job.tenantId,
+            iocType,
+            normalizedValue,
+            confidence: finalConfidence,
+            severity,
+            existingEnrichment: enrichmentData,
+          }, { priority: isReactivation ? 1 : 3 }).catch((err) => {
+            this.logger.warn({ error: err instanceof Error ? err.message : String(err), iocId: upserted.id }, 'Failed to queue enrichment job');
+          });
+        }
 
         if (isReactivation) {
           result.reactivated++;
