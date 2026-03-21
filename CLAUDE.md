@@ -102,8 +102,8 @@ If change matches known issue → apply existing fix.
 If new issue → fix first, add RCA entry, then push.
 
 ## Git
-Feature branches only. Never push directly to master.
-Commit format: "feat|fix|chore: [description]"
+Push to master with /pre-push checks. Feature branches for risky or cross-module work.
+Commit format: "feat|fix|chore|docs: [description]"
 
 ## Env Vars
 All prefixed with `TI_`. Secrets in .env only, never committed.
