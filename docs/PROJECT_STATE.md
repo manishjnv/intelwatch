@@ -34,7 +34,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | 🔨 15/15 UI complete | 2026-03-21 | 5 data pages, 15/15 UI improvements, 11 viz components, 100 tests. D3 + vitest added. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-21 | 5 data pages, 15/15 UI improvements, 11 viz components, demo data fallbacks, 154 tests. D3 + vitest added. **UI FROZEN — do not modify pages/components without explicit approval.** |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |

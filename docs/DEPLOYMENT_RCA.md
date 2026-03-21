@@ -464,7 +464,7 @@ Deploy order:
 
 ## RCA Resolution Summary
 
-All 33 issues are FIXED. This table tracks which session fixed each issue and confirms the fix is still working.
+All 36 issues are FIXED. This table tracks which session fixed each issue and confirms the fix is still working.
 
 | Issue | Title | Fixed In | Fix Verified | Status |
 |-------|-------|----------|-------------|--------|
@@ -501,6 +501,9 @@ All 33 issues are FIXED. This table tracks which session fixed each issue and co
 | 31 | Fake health checks | Session 8 | ✅ Retry loops | FIXED |
 | 32 | feed_sources table missing | Session 8 | ✅ prisma db push | FIXED |
 | 33 | Nginx before API ready | Session 8 | ✅ depends_on healthy | FIXED |
+| 34 | EntityChip hash_sha256 not in type map | Session 20 | ✅ toChipType() mapper | FIXED |
+| 35 | SeverityBadge lowercase vs UPPERCASE | Session 20 | ✅ .toUpperCase() cast | FIXED |
+| 36 | Vite proxy ECONNREFUSED → React crash | Session 20 | ✅ .catch() + ErrorBoundary | FIXED |
 
 **Session 13 deploys:** No new RCA issues. All 14 containers healthy. E2E pipeline verified with 301 real IOCs.
 
@@ -515,3 +518,26 @@ All 33 issues are FIXED. This table tracks which session fixed each issue and co
 **Session 18 deploys:** No new RCA issues. Frontend updated with 5 data-connected pages (no new containers). Commit e33072e pushed, CI deploy pending.
 
 **Session 19:** No deploy (code-only session). 11 UI/UX improvements + frontend test infra. Commit 91c92c8. Not yet pushed to VPS.
+
+**Session 20:** No deploy (code-only session). Demo data fallbacks for offline frontend. 5 bugs found and fixed:
+
+### Issue 34: EntityChip crash — backend iocType `hash_sha256` not in shared-ui type map
+**Error**: `TypeError: Cannot read properties of undefined (reading 'bg')` at EntityChip.tsx:80
+**Root Cause**: Backend normalization stores IOC type as `hash_sha256`, but shared-ui `ENTITY_TYPE_CONFIG` keys are `file_hash_sha256`. `ENTITY_TYPE_CONFIG['hash_sha256']` returns `undefined` → `cfg.bg` crashes. Latent bug — never triggered because IOC table was always empty without backend.
+**Fix**: Added `toChipType()` mapper in IocListPage that converts `hash_sha256` → `file_hash_sha256` (and sha1/md5 variants) before passing to EntityChip.
+**Commit**: `24719c6`
+**Prevention**: **RULE**: Backend IOC types use short names (`hash_sha256`), shared-ui EntityChip uses prefixed names (`file_hash_sha256`). Always map at the page layer before passing to EntityChip.
+
+### Issue 35: SeverityBadge crash — backend severity `critical` vs shared-ui key `CRITICAL`
+**Error**: `TypeError: Cannot read properties of undefined (reading 'bg')` at SeverityBadge.tsx:27
+**Root Cause**: Backend stores severity as lowercase (`critical`, `high`, etc.), but shared-ui `SEVERITY_STYLES` keys are uppercase (`CRITICAL`, `HIGH`, etc.). Same latent bug as #34.
+**Fix**: Added `.toUpperCase()` cast when passing severity to SeverityBadge in IocListPage.
+**Commit**: `24719c6`
+**Prevention**: **RULE**: Backend severity is lowercase, shared-ui expects UPPERCASE. Always `.toUpperCase()` at the page layer before passing to SeverityBadge/EntityChip severity props.
+
+### Issue 36: Vite proxy ECONNREFUSED causes unhandled fetch rejection → React crash
+**Error**: Blank page on `/iocs` when backend is down. No error visible (no ErrorBoundary).
+**Root Cause**: Vite proxy returns HTTP 500 with empty body on ECONNREFUSED. `api()` function throws `ApiError`. TanStack Query's error handling didn't prevent React tree unmount. No ErrorBoundary existed to catch render errors.
+**Fix**: (1) Added `.catch(() => empty)` in queryFn so queries always resolve. (2) Added ErrorBoundary in App.tsx to display errors visibly instead of blank page.
+**Commit**: `620bbf7`, `24719c6`
+**Prevention**: **RULE**: All `queryFn` functions that call `api()` must include `.catch()` to prevent unhandled rejections. App must have an ErrorBoundary at the root level.
