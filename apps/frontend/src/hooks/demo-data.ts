@@ -62,11 +62,11 @@ export const DEMO_IOC_RECORDS: IOCRecord[] = [
 
   // SHA-256 Hashes (5)
   ioc(14, 'hash_sha256',
-    'a3b8f2d1e4c7965fab12de34567890cfda1b2c3d4e5f67890abcdef12345678',
+    'a3b8f2d1e4c7965fab12de345678900cfda1b2c3d4e5f67890abcdef12345679',
     'critical', 90, 'new', 'red',
     ['ransomware', 'encryption'], ['Lazarus Group'], ['LockBit'], 4, 0),
   ioc(15, 'hash_sha256',
-    'f7e8d9c0b1a23456789fedcba0987654321fedcba9876543210abcdef012345',
+    'f7e8d9c0b1a234567890fedcba0987654321fedcba9876543210abcdef012345',
     'high', 80, 'active', 'amber',
     ['trojan', 'persistence'], ['APT28'], ['Cobalt Strike'], 15, 2),
   ioc(16, 'hash_sha256',
