@@ -33,6 +33,7 @@ model Tenant {
   iocs                 Ioc[]
   articles             Article[]
   threatActorProfiles  ThreatActorProfile[]
+  malwareProfiles      MalwareProfile[]
   @@map("tenants")
 }
 
@@ -421,4 +422,51 @@ model ThreatActorProfile {
   @@index([tenantId, motivation])
   @@index([tenantId, country])
   @@map("threat_actor_profiles")
+}
+
+// ─── Malware Profiles (Module 09 — malware-intel) ──────────────────────
+enum MalwareType {
+  ransomware
+  rat
+  wiper
+  backdoor
+  infostealer
+  botnet
+  rootkit
+  trojan
+  loader
+  worm
+  dropper
+  keylogger
+  adware
+  spyware
+  unknown
+  @@map("malware_type_enum")
+}
+
+model MalwareProfile {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String       @map("tenant_id") @db.Uuid
+  name              String       @db.VarChar(255)
+  aliases           String[]     @default([])
+  description       String       @default("") @db.Text
+  malwareType       MalwareType  @default(unknown) @map("malware_type")
+  platforms         String[]     @default([])
+  capabilities      String[]     @default([])
+  killChainPhases   String[]     @default([]) @map("kill_chain_phases")
+  associatedActors  String[]     @default([]) @map("associated_actors")
+  tlp               TLP          @default(amber)
+  confidence        Int          @default(50)
+  tags              String[]     @default([])
+  firstSeen         DateTime?    @map("first_seen")
+  lastSeen          DateTime?    @map("last_seen")
+  active            Boolean      @default(true)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@index([tenantId, malwareType])
+  @@map("malware_profiles")
 }

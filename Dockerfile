@@ -29,6 +29,7 @@ COPY apps/normalization/package.json         apps/normalization/tsconfig.json   
 COPY apps/ai-enrichment/package.json        apps/ai-enrichment/tsconfig.json         apps/ai-enrichment/
 COPY apps/ioc-intelligence/package.json     apps/ioc-intelligence/tsconfig.json    apps/ioc-intelligence/
 COPY apps/threat-actor-intel/package.json   apps/threat-actor-intel/tsconfig.json  apps/threat-actor-intel/
+COPY apps/malware-intel/package.json        apps/malware-intel/tsconfig.json       apps/malware-intel/
 COPY apps/frontend/package.json               apps/frontend/
 
 # RULE: strict --frozen-lockfile, NO fallback. Stale lockfile = build MUST fail. (Issues #11, #16)

@@ -15,6 +15,7 @@
     { "path": "apps/normalization" },
     { "path": "apps/ai-enrichment" },
     { "path": "apps/ioc-intelligence" },
-    { "path": "apps/threat-actor-intel" }
+    { "path": "apps/threat-actor-intel" },
+    { "path": "apps/malware-intel" }
   ]
 }
