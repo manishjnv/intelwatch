@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-21 (update at end of EVERY session via /session-end)
-**Session counter:** 17
+**Session counter:** 18
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -34,7 +34,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | 🔨 Shell only | 2026-03-15 | Needs dashboard layout |
+| frontend | 1 | 🔨 Dashboard live | 2026-03-21 | 5 data pages (IOC, Feed, Actor, Malware, Vuln). 3/15 UI improvements. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |
@@ -106,10 +106,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 3 COMPLETE — all 4 modules deployed (ioc-intelligence, threat-actor-intel, malware-intel, vulnerability-intel). Ready for Phase 4.
-- **Last session outcome:** Session 17 (2026-03-21). Built Vulnerability Intel Service (Module 10) — complete. 28 API endpoints, 15 accuracy improvements. VulnerabilityProfile Prisma model. 119 module tests, 1428 total. Commit 58b50f1.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing.
-- **Next tasks:** (1) Phase 4: Digital Risk Protection, Threat Graph, Correlation Engine, Threat Hunting. (2) Elasticsearch IOC indexing (ES container running but no code integration). (3) Dashboard frontend — IOC list page, feed management UI, actor list page, malware list page, vulnerability list page.
+- **Current phase:** Phase 3 COMPLETE. Dashboard frontend live with 5 data-connected pages. Ready for Phase 4 OR UI polish session.
+- **Last session outcome:** Session 18 (2026-03-21). Built Dashboard Frontend — 5 data-connected pages (IOC, Feed, Actor, Malware, Vuln) replacing ComingSoonPage. DataTable with 3 density modes, radial gauges, keyboard nav. Live dashboard stats. 3/15 UI improvements implemented. Commit e33072e. 1428 tests still passing.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. 11/15 UI improvements deferred (need WebSocket, D3, Framer Motion extensions, historical data endpoints).
+- **Next tasks:** (1) UI Polish session — implement remaining 11 UI improvements (Live Pulse, Heatmap, Hover Preview, Flip Cards, Split Pane, Sparklines, Action Toolbar, Mini Graph, Parallax, Timeline, Ambient). (2) Phase 4: Digital Risk Protection, Threat Graph, Correlation Engine, Threat Hunting. (3) Elasticsearch IOC indexing.
 
 ## Deployment Log
 
@@ -124,6 +124,7 @@ frontend              → shared-types, shared-ui (Phase 1+)
 | 15 | 2026-03-21 | etip_threat_actor_intel added, all app containers recreated | pending CI | 22793db | Threat Actor Intel Service: 28 endpoints, 15 accuracy improvements, 190 tests |
 | 16 | 2026-03-21 | etip_malware_intel added, all app containers recreated | pending CI | 6c327c4, 068d7dc | Malware Intel Service: 27 endpoints, 15 accuracy improvements, 149 tests |
 | 17 | 2026-03-21 | etip_vulnerability_intel added, all app containers recreated | pending CI | 58b50f1 | Vulnerability Intel Service: 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 COMPLETE. |
+| 18 | 2026-03-21 | etip_frontend updated (dashboard pages) | pending CI | e33072e | Dashboard Frontend: 5 data-connected pages, 3 UI improvements, live stats. |
 
 ## E2E Verification Results (Session 13)
 

@@ -1,166 +1,135 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-21
-**Session:** 17
-**Session Summary:** Built Vulnerability Intel Service COMPLETE (Module 10) — 28 API endpoints, 15 accuracy improvements (P0+P1+P2), 119 tests. VulnerabilityProfile Prisma model. Port 3010. 18 containers. Phase 3 COMPLETE.
+**Session:** 18
+**Session Summary:** Built Dashboard Frontend — 5 data-connected pages (IOC, Feed, Actor, Malware, Vuln) replacing ComingSoonPage placeholders. DataTable with density modes, radial gauges, keyboard nav. Live dashboard stats. 3/15 UI improvements. Commit e33072e.
 
 ---
 
 ## ✅ Changes Made
 
-### 1. Vulnerability Intel Service — Full Implementation
-**Commit:** `58b50f1` (36 files, 3601 insertions)
+### 1. Dashboard Frontend — 5 Data-Connected Pages
+**Commit:** `e33072e` (12 files, 1471 insertions)
 
-Scaffolded `apps/vulnerability-intel/` on port 3010 following Fastify pattern (DECISION-012):
+Replaced ComingSoonPage placeholders with real data-connected pages:
 
-**Source files (16):**
-- `src/index.ts` — Fastify entry point with VulnerabilityRepository + VulnerabilityService
-- `src/app.ts` — Fastify setup (helmet, cors, rate-limit, sensible) + vulnerability route registration
-- `src/config.ts` — Zod-validated env vars (port 3010)
-- `src/logger.ts` — Pino logger
-- `src/prisma.ts` — Prisma client singleton
-- `src/repository.ts` — 10 Prisma query methods: CRUD, search, stats, export
-- `src/service.ts` — 17 business logic methods: CRUD, IOC/malware/actor linkage, export + 5 P0 + 5 P1 accuracy
-- `src/scoring.ts` — Priority scoring, EPSS-CVSS quadrant, temporal decay, exploit maturity, KEV urgency, CSV export, composite confidence
-- `src/accuracy.ts` — P1: exploit confidence, product exposure, CVE-malware correlation, CVE-actor attribution, weakness analysis
-- `src/accuracy-p2.ts` — P2: vuln comparison, severity trend, feed accuracy
-- `src/service-p2.ts` — P2 service methods: provenance, comparison, confidence, trend, feed accuracy
-- `src/schemas/vulnerability.ts` — 8 Zod schemas: list, create, update, search, export, params, linked items
-- `src/routes/health.ts` — GET /health, GET /ready
-- `src/routes/vulnerabilities.ts` — 28 route handlers with JWT auth + RBAC
-- `src/plugins/auth.ts` — JWT + RBAC middleware
-- `src/plugins/error-handler.ts` — AppError + ZodError handler
+**New files (8):**
+- `src/components/data/DataTable.tsx` — Reusable sortable table: 3 density modes, severity row tinting, keyboard nav (j/k/Enter/Esc), 3D row lift on select
+- `src/components/data/Pagination.tsx` — Page controls + density toggle (comfortable/compact/ultra-dense)
+- `src/components/data/FilterBar.tsx` — Search + filter dropdowns + export buttons
+- `src/hooks/use-intel-data.ts` — TanStack Query hooks for IOC, Feed, Actor, Malware, Vuln APIs + dashboard stats aggregator
+- `src/pages/IocListPage.tsx` — 301 IOCs with EntityChip, SeverityBadge, radial confidence gauge
+- `src/pages/FeedListPage.tsx` — Feed management with status badges, reliability bars
+- `src/pages/ThreatActorListPage.tsx` — Actor profiles with type/motivation/sophistication badges
+- `src/pages/MalwareListPage.tsx` — Malware families with platform pills, capability tags
+- `src/pages/VulnerabilityListPage.tsx` — CVEs with CVSS bar, EPSS gauge, KEV/ITW/PoC badges, priority bar
 
-**Test files (8):**
-- `tests/health.test.ts` — 2 tests
-- `tests/config.test.ts` — 6 tests
-- `tests/schemas.test.ts` — 20 tests
-- `tests/scoring.test.ts` — 27 tests
-- `tests/service.test.ts` — 14 tests (with service call verification)
-- `tests/routes.test.ts` — 29 tests (with service call verification)
-- `tests/accuracy.test.ts` — 14 tests (P1: A2, B2, C2, D2, E2)
-- `tests/accuracy-p2.test.ts` — 7 tests (P2: B3, D3, E3)
-
-**Config files (3):**
-- `package.json` — @etip/vulnerability-intel
-- `tsconfig.json` — composite: true, refs to shared-types/utils/auth
-- `vitest.config.ts` — aliases for all shared packages
-
-**Infrastructure registration:**
-- `Dockerfile` — Added COPY line for vulnerability-intel
-- `tsconfig.build.json` — Added vulnerability-intel reference
-- `docker-compose.etip.yml` — Added etip_vulnerability_intel service (port 3010) + nginx depends_on
-- `docker/nginx/conf.d/default.conf` — Added upstream + /api/v1/vulnerabilities location
-- `.github/workflows/deploy.yml` — Added build step, force-recreate, health check
-
-**Prisma schema (additive):**
-- `prisma/schema.prisma` — Added VulnerabilityProfile model + Tenant relation
+**Modified files (3):**
+- `src/App.tsx` — Wired 5 new pages to routes (IOC, Feed, Actor, Malware, Vuln)
+- `src/pages/DashboardPage.tsx` — Live stats from useDashboardStats() hook
+- `src/components/layout/DashboardLayout.tsx` — Live TopStatsBar from useDashboardStats()
 
 ---
 
-## 📁 Files / Documents Affected
+## 📁 UI Improvements Status
 
-### Source Code (new files)
-| File | Purpose |
-|------|---------|
-| `apps/vulnerability-intel/src/*.ts` (16 files) | Full service implementation |
-| `apps/vulnerability-intel/tests/*.test.ts` (8 files) | 119 tests |
-| `apps/vulnerability-intel/package.json` | Module dependencies |
-| `apps/vulnerability-intel/tsconfig.json` | TypeScript config |
-| `apps/vulnerability-intel/vitest.config.ts` | Test runner config |
+### Implemented (3/15)
+| # | Improvement | Files |
+|---|------------|-------|
+| P0-4 | Density-adaptive tables (3 modes) | DataTable.tsx, Pagination.tsx |
+| P0-5 | Radial confidence gauges (SVG arc) | IocListPage.tsx |
+| P2-12 | Keyboard navigation (j/k/Enter/Esc) | DataTable.tsx |
 
-### Infrastructure (modified files)
-| File | What changed |
-|------|-------------|
-| `Dockerfile` | Added vulnerability-intel COPY line |
-| `tsconfig.build.json` | Added vulnerability-intel reference |
-| `docker-compose.etip.yml` | Added etip_vulnerability_intel service + nginx depends_on |
-| `docker/nginx/conf.d/default.conf` | Added upstream + /api/v1/vulnerabilities location |
-| `.github/workflows/deploy.yml` | Added build + force-recreate + health check |
-| `prisma/schema.prisma` | Added VulnerabilityProfile model |
-| `pnpm-lock.yaml` | Updated for new package |
-
-### Documentation
-| File | What changed |
-|------|-------------|
-| `docs/PROJECT_STATE.md` | Session 17, vulnerability-intel ✅ Deployed, Phase 3 COMPLETE |
-| `docs/modules/vulnerability-intel.md` | Full module docs: 28 endpoints, 15 improvements, 119 tests |
+### Deferred (11/15) — Need dedicated UI polish session
+| # | Improvement | Blocker |
+|---|------------|---------|
+| P0-1 | Live Threat Pulse Strip | Needs WebSocket/SSE infrastructure |
+| P0-2 | 3D Severity Heatmap Grid | Needs Framer Motion grid component |
+| P0-3 | Inline Entity Preview (Hover) | Needs floating detail card component |
+| P1-6 | 3D Flip Detail Cards | Needs Framer Motion rotateY animation |
+| P1-7 | Split-Pane Layout | Needs resizable split component |
+| P1-8 | Sparkline Trend Cells | Needs historical data endpoints |
+| P1-9 | Quick-Action Toolbar | Needs bulk selection state management |
+| P1-10 | Mini Relationship Graph | Needs D3 force layout |
+| P2-13 | Parallax Dashboard Cards | Needs multi-layer Framer Motion |
+| P2-14 | Threat Timeline | Needs horizontal scroll + event data |
+| P2-15 | Ambient Background Intelligence | Needs dynamic CSS + state-aware effects |
 
 ---
 
 ## 🔧 Decisions & Rationale
 
-No new architectural decisions. All implementation followed existing patterns:
-- DECISION-012: Fastify pattern (mirrored from malware-intel)
-- DECISION-013: In-memory scoring (priority computed on create/update)
-- TLP never-downgrade ratchet (existing pattern)
-
-One shared resource change (approved by scope declaration):
-- Added VulnerabilityProfile to prisma/schema.prisma (additive, no existing model changes)
-- Added `vulnerabilityProfiles VulnerabilityProfile[]` to Tenant model (relation array only)
+No new architectural decisions. Frontend patterns follow existing conventions:
+- TanStack Query for server state (5 min stale time)
+- Zustand for client state (auth, theme)
+- Shared-ui components are design-locked — used as-is
+- New data components (DataTable/FilterBar/Pagination) are FREE to modify
 
 ---
 
-## 🧪 Deploy Verification Results (Session 17)
+## 🧪 Build Verification
 
 ```
-CI/CD: pushed to master (58b50f1), deploy.yml triggered
-VPS: pending CI completion — 18 containers expected
-
-New container:
-  etip_vulnerability_intel: port 3010, 512M limit, curl health check
+Frontend: vite build ✅ (41s, 520KB JS bundle)
+Tests: 1428 passing across 16 packages ✅
+No new backend changes — all backend tests unaffected
 ```
 
 ---
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate (next session)
-1. **Phase 4: Pick first module** — Digital Risk Protection, Threat Graph, Correlation Engine, or Threat Hunting. Check skills/00-ARCHITECTURE-ROADMAP.md for priority.
+### Option A: UI Polish Session (11 remaining improvements)
+Build the 11 deferred UI improvements for competitor differentiation.
+Requires: Framer Motion extensions, D3, WebSocket/SSE, historical data endpoints.
+
+### Option B: Phase 4 Backend (Digital Risk Protection)
+Continue roadmap. DRP service on port 3011.
 
 ### Deferred
-2. **Elasticsearch IOC indexing** — ES container running but no code integration yet
-3. **Dashboard frontend** — IOC list page, actor list page, malware list page, vulnerability list page, feed management UI
-4. **Rotate VT/AbuseIPDB keys** — exposed in chat + GitHub Actions logs
-5. **VPS deploy verification** — confirm 18 containers healthy after CI completes
+- Elasticsearch IOC indexing (ES container running, no code integration)
+- Rotate VT/AbuseIPDB keys
+- VPS deploy verification (18 containers)
 
 ---
 
 ## 🔁 How to Resume
 
-### Quick start — Phase 4
-
+### Option A — UI Polish Session
 ```
 /session-start
 
-Scope: Phase 4 — [chosen module]
-Do not modify: shared-*, api-gateway, user-service, ingestion, normalization, ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel, vulnerability-intel (all Tier 1/2 frozen).
+Scope: Frontend UI Polish — implement remaining 11 UI/UX improvements
+Do not modify: All backend services (Tier 1/2 frozen).
 
 ## Context
-Phase 3 COMPLETE. All 4 Phase 3 modules deployed.
-18 containers on VPS. 1428 tests. 301 IOCs from US-CERT feed.
-Pipeline: Ingestion :3004 → Normalization :3005 → Enrichment :3006
-IOC Intelligence :3007 — 15 endpoints, 13 accuracy improvements.
-Threat Actor Intel :3008 — 28 endpoints, 15 accuracy improvements.
-Malware Intel :3009 — 27 endpoints, 15 accuracy improvements, 149 tests.
-Vulnerability Intel :3010 — 28 endpoints, 15 accuracy improvements, 119 tests.
+Session 18 built 5 data pages. 3/15 UI improvements done.
+11 remaining: Live Pulse, Heatmap, Hover Preview, Flip Cards,
+Split Pane, Sparklines, Action Toolbar, Mini Graph, Parallax,
+Timeline, Ambient Background.
+
+Read: memory/session18_dashboard_frontend.md for full improvement list.
 ```
 
-### Module → Skill file map
+### Option B — Phase 4 (DRP)
+```
+/session-start
 
-| Module | Skill file |
-|--------|-----------|
-| vulnerability-intel | `skills/10-VULNERABILITY-INTEL.md` |
-| malware-intel | `skills/09-MALWARE-INTEL.md` |
-| threat-actor-intel | `skills/08-THREAT-ACTOR.md` |
-| ioc-intelligence | `skills/07-IOC-INTELLIGENCE.md` |
-| frontend / ui | `skills/20-UI-UX.md` |
+Scope: Phase 4 — Digital Risk Protection Service (Module 11)
+Do not modify: shared-*, api-gateway, user-service, ingestion, normalization,
+ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel,
+vulnerability-intel (all Tier 1/2 frozen).
+
+## Context
+Phase 3 COMPLETE. Dashboard frontend live. 18 containers. 1428 tests.
+Port 3011. Skill: skills/11-DIGITAL-RISK-PROTECTION.md.
+```
 
 ### Phase roadmap
-
 ```
-Phase 1: Foundation          ✅ COMPLETE (11 modules)
-Phase 2: Data Pipeline       ✅ COMPLETE (ingestion → normalization → enrichment)
-Phase 3: Core Intel          ✅ COMPLETE (ioc ✅, threat-actor ✅, malware ✅, vulnerability ✅)
+Phase 1: Foundation          ✅ COMPLETE
+Phase 2: Data Pipeline       ✅ COMPLETE
+Phase 3: Core Intel          ✅ COMPLETE (4 modules)
+Phase 3.5: Dashboard         ✅ LIVE (5 data pages, 3/15 UI improvements)
 Phase 4-8: See skills/00-ARCHITECTURE-ROADMAP.md
 ```
