@@ -1,20 +1,23 @@
-# PROJECT BRAIN — ETIP v4.0 Enterprise Threat Intelligence Platform
+# PROJECT BRAIN — DEPRECATED
 
-**Last Updated**: 2026-03-17
-**Current Phase**: 1 (Foundation) — COMPLETE ✅
-**Skill System**: v3 (26 numbered skill files)
-**Status**: Docker ✅ · Shared Packages ✅ (9 packages) · Auth+Gateway+UserService ✅ · Prisma ✅ · **API Deployed to VPS** ✅ · DB Tables Created ✅ · 17/17 VPS prod tests ✅ · Frontend Shell ✅ · CI/CD Live ✅ · **Total: ~372 unit tests + 17 production tests**
+> **⚠️ DEPRECATED as of Session 13 (2026-03-21).**
+> This file is no longer maintained. Use these authoritative sources instead:
+>
+> | What you need | Read this |
+> |--------------|-----------|
+> | Module statuses, phase, WIP, next tasks | `docs/PROJECT_STATE.md` |
+> | Coding rules, Docker rules, constants | `CLAUDE.md` |
+> | Architectural decisions | `docs/DECISIONS_LOG.md` |
+> | Deployment failure patterns | `docs/DEPLOYMENT_RCA.md` |
+> | Last session's changes + resume prompt | `docs/SESSION_HANDOFF.md` |
+> | Session start | Run `/session-start` (reads all of the above automatically) |
+>
+> **Do NOT read this file for session context. It was last accurate on 2026-03-17 (Phase 1).**
+> **Current state: Phase 2 COMPLETE, 851 tests, 14 containers.**
 
 ---
 
-## SESSION START TEMPLATE
-
-```
-Read E:\code\IntelWatch\PROJECT_BRAIN.md via filesystem.
-Read E:\code\IntelWatch\docker-compose.etip.yml via filesystem.
-Load from project knowledge: 00-ARCHITECTURE-ROADMAP.md, 00-MASTER.md, [relevant module skill]
-Task: [describe task here]. Begin pre-task ritual per 00-CLAUDE-INSTRUCTIONS.md.
-```
+## HISTORICAL CONTENT BELOW (frozen — not updated)
 
 ---
 

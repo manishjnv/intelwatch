@@ -1,4 +1,11 @@
-# ETIP Session Start Templates
+# ETIP Session Start Templates — DEPRECATED
+
+> **⚠️ DEPRECATED as of Session 13 (2026-03-21).**
+> Session templates and module→skill map have been moved to `docs/SESSION_HANDOFF.md` (section "How to Resume").
+> Use `/session-start` command directly — it reads all context automatically.
+> This file is kept for historical reference only.
+
+---
 
 Copy-paste the appropriate template at the start of every new Claude Code session.
 

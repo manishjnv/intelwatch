@@ -230,28 +230,70 @@ Full microservice at `apps/ai-enrichment/` on port 3006:
 
 ## 🔁 How to Resume
 
-Paste this at the start of the next session:
+### Quick start (most common — new module)
 
 ```
 /session-start
 
-Scope: [your target module — e.g., ioc-intelligence, frontend, elasticsearch-indexing]
+Scope: [MODULE] — e.g., ioc-intelligence, frontend, elasticsearch-indexing
 Do not modify: shared-*, api-gateway, user-service, ingestion, normalization, ai-enrichment (all Tier 1/2 frozen).
 
 ## Context
-Phase 2 is COMPLETE. Full pipeline deployed:
-Feed → Ingestion :3004 → Normalization :3005 → Enrichment :3006
-14 containers on VPS, all healthy. 851 tests, zero failures.
-VT + AbuseIPDB keys configured. TI_AI_ENABLED=true.
+Phase 2 COMPLETE. Pipeline: Ingestion :3004 → Normalization :3005 → Enrichment :3006
+14 containers on VPS. 851 tests. VT + AbuseIPDB keys configured. TI_AI_ENABLED=true.
+301 IOCs ingested from US-CERT feed. E2E verified.
+```
 
-Read docs/SESSION_HANDOFF.md for full session 13 details.
-Read memory/session13_final_state.md for frozen code rules.
+### Other session types
 
-## Rules
-- DO NOT modify any Phase 2 service code (ingestion, normalization, ai-enrichment)
-- DO NOT modify shared-* packages unless additive
-- All new code follows the Fastify pattern (DECISION-012)
-- TDD: write tests first
-- Max 400 lines per file
-- Run /pre-push before every push
+**Continue previous work:**
+```
+/session-start
+Continuing work on {MODULE} from last session.
+Check git log, then ask me what to tackle next.
+```
+
+**Bug fix on deployed module:**
+```
+/session-start
+Bug fix on {MODULE} (Tier 2 guarded). Fix only — no new features.
+```
+
+**Frontend / UI work:**
+```
+/session-start
+Frontend session — working on {FEATURE} in apps/frontend.
+Locked: packages/shared-ui/** (needs [DESIGN-APPROVED] to modify).
+```
+
+**Deploy only:**
+```
+/session-start
+Deploy session — pushing {MODULE} to VPS. No new code.
+```
+
+### Module → Skill file map
+
+| Module | Skill file |
+|--------|-----------|
+| ioc-intelligence | `skills/07-IOC-INTELLIGENCE.md` |
+| threat-actor-intel | `skills/08-THREAT-ACTOR.md` |
+| malware-intel | `skills/09-MALWARE-INTEL.md` |
+| vulnerability-intel | `skills/10-VULNERABILITY-INTEL.md` |
+| frontend / ui | `skills/20-UI-UX.md` |
+| digital-risk-protection | `skills/11-DIGITAL-RISK-PROTECTION.md` |
+| threat-graph | `skills/12-THREAT-GRAPH.md` |
+| correlation-engine | `skills/13-CORRELATION-ENGINE.md` |
+| threat-hunting | `skills/14-THREAT-HUNTING.md` |
+| enterprise-integration | `skills/15-ENTERPRISE-INTEGRATION.md` |
+| user-management | `skills/16-USER-MANAGEMENT.md` |
+| admin-ops | `skills/22-ADMIN-PLATFORM.md` |
+
+### Phase roadmap
+
+```
+Phase 1: Foundation          ✅ COMPLETE (11 modules)
+Phase 2: Data Pipeline       ✅ COMPLETE (ingestion → normalization → enrichment)
+Phase 3: Core Intel          ← NEXT (ioc → threat-actor → malware → vulnerability)
+Phase 4-8: See skills/00-ARCHITECTURE-ROADMAP.md
 ```

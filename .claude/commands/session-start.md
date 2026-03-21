@@ -27,6 +27,13 @@ These are hard constraints. Never propose an approach that was already rejected 
 Read `docs/DEPLOYMENT_RCA.md` — note total issue count and last 3 entries.
 Before any code is written, check if the planned change matches a known failure pattern.
 
+## 4b. Load Last Session Handoff
+Read `docs/SESSION_HANDOFF.md` — this has:
+- What was built last session (commits, files)
+- Open items / next steps
+- Resume prompt with frozen module list
+- Module → skill file map
+
 ## 5. Git State
 Run: `git status` and `git log --oneline -5`
 Report: current branch, last 5 commits, any uncommitted changes.
@@ -75,7 +82,8 @@ FROZEN — will not touch:
   Tier 1 (always): shared-types, shared-utils, shared-auth,
                    shared-cache, shared-audit, shared-normalization,
                    shared-enrichment, shared-ui, api-gateway
-  Tier 2 (deployed): user-service, frontend (shell)
+  Tier 2 (deployed): user-service, frontend (shell),
+                     ingestion, normalization, ai-enrichment
   Never touch: intelwatch.in, ti-platform-* containers
 
 FREE to modify:
