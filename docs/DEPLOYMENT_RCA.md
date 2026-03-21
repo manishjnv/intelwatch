@@ -503,3 +503,5 @@ All 33 issues are FIXED. This table tracks which session fixed each issue and co
 | 33 | Nginx before API ready | Session 8 | ✅ depends_on healthy | FIXED |
 
 **Session 13 deploys:** No new RCA issues. All 14 containers healthy. E2E pipeline verified with 301 real IOCs.
+
+**Session 14 deploys:** No new RCA issues. etip_ioc_intelligence added (port 3007). All 15 containers healthy. Two deploys (f62dba7, d6f04b6), both green CI + healthy VPS.

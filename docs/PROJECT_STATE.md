@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-21 (update at end of EVERY session via /session-end)
-**Session counter:** 13
+**Session counter:** 14
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -13,6 +13,7 @@
 | etip_ingestion | ✅ Running | 0.1.0 | 2026-03-21 | Feed pipeline + 11 modules |
 | etip_normalization | ✅ Running | 0.1.0 | 2026-03-21 | IOC upsert + 18 accuracy improvements |
 | etip_enrichment | ✅ Running | 0.1.0 | 2026-03-21 | VT + AbuseIPDB, AI OFF by default |
+| etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -34,7 +35,7 @@
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |
-| ioc-intelligence | 3 | 🔨 WIP | 2026-03-21 | Scaffolded, health endpoint, port 3007 |
+| ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
 | threat-actor-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | malware-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | vulnerability-intel | 3 | 📋 Not started | - | Phase 3 gate |
@@ -99,10 +100,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 2 COMPLETE — all 3 pipeline services deployed (ingestion → normalization → enrichment)
-- **Last session outcome:** Session 13 (2026-03-21). Deployed normalization (18 accuracy improvements) + built & deployed AI Enrichment Service (Module 06). Full pipeline wired: ingestion → QUEUES.NORMALIZE → normalization → QUEUES.ENRICH_REALTIME → enrichment. VT + AbuseIPDB providers with rate limiting. Lifecycle cron worker (ACTIVE→AGING→EXPIRED every 6h). 851 tests total, zero failures. 14 containers on VPS, all healthy.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing.
-- **Next tasks:** (1) Set VT/AbuseIPDB API keys on VPS + enable TI_AI_ENABLED. (2) E2E test: create feed → fetch → ingest → normalize → enrich → query IOCs. (3) Elasticsearch IOC indexing. (4) Phase 3: IOC Intelligence Service (Module 07). (5) Dashboard frontend — IOC list page, feed management UI.
+- **Current phase:** Phase 3 IN PROGRESS — ioc-intelligence deployed, 3 modules remaining (threat-actor, malware, vulnerability)
+- **Last session outcome:** Session 14 (2026-03-21). Built and deployed IOC Intelligence Service (Module 07). 3 chunks: scaffold + CRUD → 11 accuracy improvements → C1 search + C3 campaigns. Commits: f62dba7, d6f04b6. 15 API endpoints, 13 accuracy improvements (infrastructure density, confidence trend, actionability score, recency ranking, FP propagation, analyst override, feed accuracy report, provenance export, export profiles, campaign detection, multi-dimensional search). 119 module tests, 970 total. 15 containers on VPS, all healthy.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing.
+- **Next tasks:** (1) Phase 3: Threat Actor Intel Service (Module 08). (2) Phase 3: Malware Intel Service (Module 09). (3) Phase 3: Vulnerability Intel Service (Module 10). (4) Elasticsearch IOC indexing (ES container running but no code integration). (5) Dashboard frontend — IOC list page, feed management UI.
 
 ## Deployment Log
 
@@ -113,6 +114,7 @@ frontend              → shared-types, shared-ui (Phase 1+)
 | 8 | 2026-03-21 | etip_ingestion added | ✅ All healthy | Multiple | Feed pipeline, RCA #30-33 |
 | 12 | 2026-03-21 | etip_normalization added | ✅ All healthy | 69fbddf, 5d035f6 | IOC normalization, 6 improvements |
 | 13 | 2026-03-21 | etip_normalization, etip_enrichment, etip_api, etip_frontend, etip_nginx | ✅ All 14 healthy | b859075→056c837 | 12 more improvements + AI enrichment service. E2E verified: 301 IOCs |
+| 14 | 2026-03-21 | etip_ioc_intelligence added, all app containers recreated | ✅ All 15 healthy | f62dba7, d6f04b6 | IOC Intelligence Service: 15 endpoints, 13 accuracy improvements, 119 tests |
 
 ## E2E Verification Results (Session 13)
 
@@ -127,7 +129,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~6GB used by 14 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~6.5GB used by 15 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel

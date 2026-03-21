@@ -2,8 +2,8 @@
 
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
-![Phase](https://img.shields.io/badge/phase-2%20complete-00ff88)
-![Tests](https://img.shields.io/badge/tests-851%20passing-00ff88)
+![Phase](https://img.shields.io/badge/phase-3%20in%20progress-00ccff)
+![Tests](https://img.shields.io/badge/tests-970%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -19,11 +19,12 @@
 | Ingestion Service (RSS feeds, 11 pipeline modules) | ✅ Live on VPS | 276 |
 | Normalization Service (18 accuracy improvements) | ✅ Live on VPS | 139 |
 | AI Enrichment Service (VirusTotal + AbuseIPDB) | ✅ Live on VPS | 27 |
+| IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Frontend shell (React 18 + Vite) | ✅ Live on VPS | — |
-| Infrastructure (14 Docker containers) | ✅ All healthy | — |
+| Infrastructure (15 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 2 Progress** | **100%** | **851** |
+| **Phase 3 Progress** | **25%** (1/4 modules) | **970** |
 
 ## Live API Endpoints
 
@@ -55,7 +56,7 @@ Internet → Caddy (SSL) → etip_nginx → etip_api:3001 (Fastify)
                                    etip_redis:6379
 ```
 
-14 containers: PostgreSQL 16, Redis 7, Elasticsearch 8, Neo4j 5, MinIO, Prometheus, Grafana, Nginx, API Gateway, Ingestion, Normalization, AI Enrichment, Frontend
+15 containers: PostgreSQL 16, Redis 7, Elasticsearch 8, Neo4j 5, MinIO, Prometheus, Grafana, Nginx, API Gateway, Ingestion, Normalization, AI Enrichment, IOC Intelligence, Frontend
 
 ## Development
 
