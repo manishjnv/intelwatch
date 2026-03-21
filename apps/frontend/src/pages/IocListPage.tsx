@@ -66,6 +66,14 @@ function ConfidenceGauge({ value }: { value: number }) {
   )
 }
 
+/** Map backend IOC types to EntityChip types (shared-ui uses file_hash_ prefix) */
+function toChipType(iocType: string): string {
+  if (iocType === 'hash_sha256') return 'file_hash_sha256'
+  if (iocType === 'hash_sha1') return 'file_hash_sha1'
+  if (iocType === 'hash_md5') return 'file_hash_md5'
+  return iocType
+}
+
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return '—'
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -95,7 +103,19 @@ export function IocListPage() {
   const { data, isLoading, isDemo } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
 
-  const selectedRecord = useMemo(() => data?.data?.find(r => r.id === selectedId) ?? null, [data, selectedId])
+  // Client-side sort for demo data (API sort doesn't apply to static fallback)
+  const rows = useMemo(() => {
+    const items = data?.data ?? []
+    if (!isDemo || items.length === 0) return items
+    return [...items].sort((a, b) => {
+      const av = a[sortBy as keyof IOCRecord] ?? ''
+      const bv = b[sortBy as keyof IOCRecord] ?? ''
+      const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
+      return sortOrder === 'asc' ? cmp : -cmp
+    })
+  }, [data, isDemo, sortBy, sortOrder])
+
+  const selectedRecord = useMemo(() => rows.find(r => r.id === selectedId) ?? null, [rows, selectedId])
   const stubRelations = useMemo(() => selectedRecord ? generateStubRelations(selectedRecord) : null, [selectedRecord])
 
   const handleSort = (key: string) => {
@@ -108,7 +128,7 @@ export function IocListPage() {
       key: 'normalizedValue', label: 'Value', sortable: true, width: '26%',
       render: (row, d) => (
         <EntityPreview type={row.iocType} value={row.normalizedValue} severity={row.severity} confidence={row.confidence} firstSeen={row.firstSeen} lastSeen={row.lastSeen} tags={row.tags}>
-          <EntityChip type={row.iocType} value={row.normalizedValue}
+          <EntityChip type={toChipType(row.iocType) as any} value={row.normalizedValue}
             size={d === 'ultra-dense' ? 'xs' : 'sm'} />
         </EntityPreview>
       ),
@@ -121,7 +141,7 @@ export function IocListPage() {
     },
     {
       key: 'severity', label: 'Severity', sortable: true, width: '10%',
-      render: (row, d) => <SeverityBadge severity={row.severity} showDot={d !== 'ultra-dense'} />,
+      render: (row, d) => <SeverityBadge severity={row.severity.toUpperCase() as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'} showDot={d !== 'ultra-dense'} />,
     },
     {
       key: 'confidence', label: 'Conf', sortable: true, width: '8%',
@@ -205,7 +225,7 @@ export function IocListPage() {
         left={
           <DataTable
             columns={columns}
-            data={data?.data ?? []}
+            data={rows}
             loading={isLoading}
             sortBy={sortBy}
             sortOrder={sortOrder}

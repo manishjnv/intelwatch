@@ -3,6 +3,7 @@
  * @description Root app component with React Router configuration.
  * Routes: /login, /register, /dashboard (protected), module pages, /404
  */
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -18,37 +19,60 @@ import { ThreatActorListPage } from '@/pages/ThreatActorListPage';
 import { MalwareListPage } from '@/pages/MalwareListPage';
 import { VulnerabilityListPage } from '@/pages/VulnerabilityListPage';
 
+/** Catches render errors and displays them instead of blank page */
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 32, color: '#ef4444', fontFamily: 'monospace', background: '#0a0a0a', minHeight: '100vh' }}>
+          <h1>React Error</h1>
+          <pre style={{ whiteSpace: 'pre-wrap', color: '#f8fafc' }}>{this.state.error.message}</pre>
+          <pre style={{ whiteSpace: 'pre-wrap', color: '#94a3b8', fontSize: 12 }}>{this.state.error.stack}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function App() {
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+    <ErrorBoundary>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-      {/* Protected routes */}
-      <Route element={<ProtectedRoute />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          {/* Live module pages */}
-          <Route path="/iocs" element={<IocListPage />} />
-          <Route path="/threat-actors" element={<ThreatActorListPage />} />
-          <Route path="/malware" element={<MalwareListPage />} />
-          <Route path="/vulnerabilities" element={<VulnerabilityListPage />} />
-          <Route path="/feeds" element={<FeedListPage />} />
-          {/* Phase 4+ module pages — show ComingSoonPage until implemented */}
-          <Route path="/graph" element={<ComingSoonPage />} />
-          <Route path="/hunting" element={<ComingSoonPage />} />
-          <Route path="/enrichment" element={<ComingSoonPage />} />
-          <Route path="/drp" element={<ComingSoonPage />} />
-          <Route path="/correlation" element={<ComingSoonPage />} />
-          <Route path="/integrations" element={<ComingSoonPage />} />
-          <Route path="/settings" element={<ComingSoonPage />} />
+        {/* Protected routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            {/* Live module pages */}
+            <Route path="/iocs" element={<IocListPage />} />
+            <Route path="/threat-actors" element={<ThreatActorListPage />} />
+            <Route path="/malware" element={<MalwareListPage />} />
+            <Route path="/vulnerabilities" element={<VulnerabilityListPage />} />
+            <Route path="/feeds" element={<FeedListPage />} />
+            {/* Phase 4+ module pages — show ComingSoonPage until implemented */}
+            <Route path="/graph" element={<ComingSoonPage />} />
+            <Route path="/hunting" element={<ComingSoonPage />} />
+            <Route path="/enrichment" element={<ComingSoonPage />} />
+            <Route path="/drp" element={<ComingSoonPage />} />
+            <Route path="/correlation" element={<ComingSoonPage />} />
+            <Route path="/integrations" element={<ComingSoonPage />} />
+            <Route path="/settings" element={<ComingSoonPage />} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* Landing page — ⛔ design locked, see UI_DESIGN_LOCK.md */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        {/* Landing page — ⛔ design locked, see UI_DESIGN_LOCK.md */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </ErrorBoundary>
   );
 }
