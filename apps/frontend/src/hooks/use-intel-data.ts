@@ -5,8 +5,9 @@
  * Malware (:3009/malware), Vulnerabilities (:3010/vulnerabilities).
  * All queries go through nginx → backend services.
  */
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS } from './demo-data'
 
 // ─── Generic list response shape ──────────────────────────────────
 
@@ -33,6 +34,18 @@ function buildQuery(params: QueryParams): string {
   return parts.length > 0 ? `?${parts.join('&')}` : ''
 }
 
+// ─── Demo fallback helper ───────────────────────────────────────
+
+/** Wraps a query result: if the API errored or returned empty, substitute demo data */
+function withDemoFallback<T>(
+  result: UseQueryResult<T>,
+  demoData: T,
+  hasData: (d: T | undefined) => boolean,
+) {
+  const isDemo = !result.isLoading && !hasData(result.data)
+  return { ...result, data: isDemo ? demoData : result.data, isDemo }
+}
+
 // ─── IOC types ──────────────────────────────────────────────────
 
 export interface IOCRecord {
@@ -43,19 +56,23 @@ export interface IOCRecord {
 
 export function useIOCs(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  return useQuery({
+  const result = useQuery({
     queryKey: ['iocs', params],
     queryFn: () => api<ListResponse<IOCRecord>>(`/iocs${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
     staleTime: 60_000,
+    retry: 1,
   })
+  return withDemoFallback(result, DEMO_IOCS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
 }
 
 export function useIOCStats() {
-  return useQuery({
+  const result = useQuery({
     queryKey: ['ioc-stats'],
     queryFn: () => api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number>; byLifecycle: Record<string, number> }>('/iocs/stats'),
     staleTime: 5 * 60_000,
+    retry: 1,
   })
+  return withDemoFallback(result, DEMO_IOC_STATS, d => (d?.total ?? 0) > 0)
 }
 
 // ─── Feed types ─────────────────────────────────────────────────
@@ -136,7 +153,7 @@ export function useVulnerabilities(params: QueryParams = {}) {
 // ─── Dashboard stats ────────────────────────────────────────────
 
 export function useDashboardStats() {
-  return useQuery({
+  const result = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       // Aggregate from multiple services - fail gracefully per service
@@ -159,4 +176,5 @@ export function useDashboardStats() {
     staleTime: 30_000,
     retry: 1,
   })
+  return withDemoFallback(result, DEMO_DASHBOARD_STATS, d => (d?.totalIOCs ?? 0) > 0)
 }

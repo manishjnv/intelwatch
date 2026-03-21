@@ -92,7 +92,7 @@ export function IocListPage() {
     ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
   }), [page, search, sortBy, sortOrder, filters])
 
-  const { data, isLoading } = useIOCs(queryParams)
+  const { data, isLoading, isDemo } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
 
   const selectedRecord = useMemo(() => data?.data?.find(r => r.id === selectedId) ?? null, [data, selectedId])
@@ -176,6 +176,14 @@ export function IocListPage() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Demo data banner */}
+      {isDemo && (
+        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">Demo</span>
+          <span className="text-xs text-[var(--text-muted)]">Demo data — connect backend for live intel</span>
+        </div>
+      )}
+
       <PageStatsBar>
         <CompactStat icon={<Shield className="w-3 h-3" />} label="Total IOCs" value={stats?.total?.toLocaleString() ?? '—'} />
         <CompactStat icon={<AlertTriangle className="w-3 h-3" />} label="Critical" value={stats?.bySeverity?.['critical']?.toString() ?? '0'} color="text-sev-critical" />
