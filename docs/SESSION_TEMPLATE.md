@@ -95,11 +95,38 @@ These are enforced by /session-start but worth knowing:
 
 ---
 
+## Template E — Deploy + verify session
+
+```
+/session-start
+
+Deploy session — pushing {MODULE} to VPS.
+Read docs/DEPLOYMENT_RCA.md first (33 known issues).
+Run /pre-push, push to master, verify health checks.
+Do NOT write new code — deploy and verify only.
+```
+
+---
+
+## Template F — Multi-module session (rare, needs justification)
+
+```
+/session-start
+
+Scope: {MODULE_1} (deploy) + {MODULE_2} (build).
+Do not modify: {frozen modules list}.
+Read skills/{SKILL_1} and skills/{SKILL_2}.
+
+Justification for multi-module: {reason — e.g., deploy is trivial, 2nd module is the real work}
+```
+
+---
+
 ## Quick reference: current phase order
 
 ```
-Phase 1: Foundation          ✅ COMPLETE
-Phase 2: Data Pipeline       → ingestion → normalization → ai-enrichment
+Phase 1: Foundation          ✅ COMPLETE (11 modules deployed)
+Phase 2: Data Pipeline       ✅ COMPLETE (ingestion → normalization → ai-enrichment)
 Phase 3: Core Intel          → ioc → threat-actor → malware → vulnerability
 Phase 4: Advanced Intel      → drp → threat-graph → correlation → hunting
 Phase 5: Platform Services   → enterprise-integration → user-management → customization
@@ -108,4 +135,21 @@ Phase 7: Performance         → caching-archival
 Phase 8: UI Polish           → frontend (runs parallel with all phases)
 ```
 
-Start Phase 2 next: `ingestion` service.
+Start Phase 3 next: `ioc-intelligence` service.
+
+---
+
+## Session 13 outcome (latest)
+
+| Service | Port | Tests | Status |
+|---------|------|-------|--------|
+| ingestion | 3004 | 276 | ✅ Deployed |
+| normalization | 3005 | 139 | ✅ Deployed (18 accuracy improvements) |
+| ai-enrichment | 3006 | 27 | ✅ Deployed (VT + AbuseIPDB) |
+| **Total monorepo** | — | **851** | **Zero failures** |
+
+Pipeline: Feed → Ingestion → QUEUES.NORMALIZE → Normalization → QUEUES.ENRICH_REALTIME → Enrichment
+
+VPS: 14 containers, all healthy. TI_AI_ENABLED=true. VT + AbuseIPDB keys configured.
+
+**CRITICAL:** All Phase 2 code is FROZEN (Tier 2). Do not modify ingestion, normalization, or ai-enrichment unless explicitly a bug fix session.
