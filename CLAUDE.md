@@ -5,10 +5,12 @@ Monorepo: pnpm workspaces. 20+ microservices in /apps, shared packages in /packa
 Tech: Node 20, Fastify 4, Prisma 5, React 18, TypeScript strict, Zod validation.
 
 ## Session Protocol (MANDATORY)
-1. Run /session-start — loads state, decisions, git status
+1. Run /session-start — loads state, decisions, git status, last session handoff
 2. Declare scope: "Working on {module}. Do not modify: {list}"
 3. For 3+ file changes: use plan mode (Shift+Tab) before coding
-4. Run /session-end before closing — updates state files
+4. Run /session-end before closing — updates ALL handoff documents (9 steps)
+   - If user says "bye", "done", "close", "end session" → run /session-end FIRST
+   - NEVER close without running /session-end — next session depends on it
 
 ## Current State
 Read docs/PROJECT_STATE.md FIRST — it has what's deployed, WIP, and stable.

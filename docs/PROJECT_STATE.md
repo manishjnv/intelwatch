@@ -1,5 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-21 (update at end of EVERY session via /session-end)
+**Session counter:** 13
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -102,16 +103,26 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). BullMQ queue names must use dashes not colons. VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing.
 - **Next tasks:** (1) Set VT/AbuseIPDB API keys on VPS + enable TI_AI_ENABLED. (2) E2E test: create feed → fetch → ingest → normalize → enrich → query IOCs. (3) Elasticsearch IOC indexing. (4) Phase 3: IOC Intelligence Service (Module 07). (5) Dashboard frontend — IOC list page, feed management UI.
 
-## E2E Smoke Test Plan
+## Deployment Log
+
+| Session | Date | Containers Deployed | Health | Commits | Notes |
+|---------|------|---------------------|--------|---------|-------|
+| 2 | 2026-03-17 | etip_api, etip_postgres, etip_redis, etip_nginx + infra | ✅ All healthy | Multiple | Phase 1 initial deploy |
+| 3 | 2026-03-17 | etip_frontend added | ✅ All healthy | Multiple | Frontend shell, 10 containers |
+| 8 | 2026-03-21 | etip_ingestion added | ✅ All healthy | Multiple | Feed pipeline, RCA #30-33 |
+| 12 | 2026-03-21 | etip_normalization added | ✅ All healthy | 69fbddf, 5d035f6 | IOC normalization, 6 improvements |
+| 13 | 2026-03-21 | etip_normalization, etip_enrichment, etip_api, etip_frontend, etip_nginx | ✅ All 14 healthy | b859075→056c837 | 12 more improvements + AI enrichment service. E2E verified: 301 IOCs |
+
+## E2E Verification Results (Session 13)
+
 ```
-1. Create feed:   POST /api/v1/feeds  { name: "OTX", url: "...", type: "rss" }
-2. Trigger fetch:  Scheduler auto-fetches OR POST /api/v1/feeds/:id/fetch
-3. Verify articles: GET /api/v1/articles → articles persisted
-4. Verify IOCs:    GET /api/v1/iocs → IOCs normalized, confidence scored
-5. Verify enrichment: GET /api/v1/iocs/:id → enrichmentData has VT/AbuseIPDB results
-6. Verify lifecycle: Wait 6h → IOCs without re-sighting transition to AGING
-7. Verify stats:   GET /api/v1/iocs/stats → counts by type, lifecycle, severity
-8. Verify enrich stats: GET /api/v1/enrichment/stats → enriched vs pending counts
+Feed: US-CERT Alerts (CISA advisories) — */30 cron
+Articles: 30 (Russian Intel, Schneider Electric, CISA KEV advisories)
+IOCs: 301 total — 209 CVE, 46 URL, 27 IP, 17 domain, 2 email
+Lifecycle: 285 NEW, 16 ACTIVE (multi-article corroboration)
+Severity: 255 medium, 46 low (auto-classified)
+Enrichment: 19 enriched, 282 pending (VT rate-limited at 4/min)
+All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats, /enrichment/pending
 ```
 
 ## Environment Notes
