@@ -47,43 +47,38 @@ apps/$ARGUMENTS/
 2. `pnpm -r test` — health test must pass
 3. `git diff --stat` — review all changes
 
-## Create Documentation
+## Create Module README (single source of truth for module docs)
 
-### Feature documentation
-Create `docs/features/$ARGUMENTS/IMPLEMENTATION.md`:
+Create `apps/$ARGUMENTS/README.md`:
 ```markdown
-# [Module Name] — Feature Documentation
-**Module:** apps/$ARGUMENTS | **Port:** [port] | **Status:** 🔨 WIP | **Tests:** 0
+# [Module Name]
+
+**Port:** [port] | **Queue:** [queue name] | **Status:** 🔨 WIP | **Tests:** 0
 
 ## What It Does
 [1-2 sentence description]
 
-## Pipeline Flow
-[Data flow diagram]
+## Pipeline
+[Data flow diagram — input queue → processing → output queue]
 
-## Key Features
-| Feature | File | What it does |
+## Features
+| Feature | File | Description |
 |---------|------|-------------|
-| Health check | src/routes/health.ts | GET /health endpoint |
+| Health check | routes/health.ts | GET /health endpoint |
 
-## API Endpoints
+## API
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
+| GET | /health | - | Health check |
 
-## Configuration
+## Config
 | Env Var | Default | Purpose |
 |---------|---------|---------|
+| TI_{MODULE}_PORT | [port] | Service port |
 ```
 
-### API documentation
-Create `docs/api/$ARGUMENTS/API.md`:
-```markdown
-# [Module Name] API — Port [port]
-## Endpoints
-### GET /health
-- **Auth:** None
-- **Response:** `{ status: "ok", service: "$ARGUMENTS" }`
-```
+This README is updated automatically during `/implement` (step 6) whenever features are added.
+No separate docs/features/ or docs/api/ files needed — the module README IS the documentation.
 
 ## Register in Project State
 

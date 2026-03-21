@@ -105,7 +105,22 @@ If ANY answer raises concern:
 → Flag it explicitly in the report with ⚠️
 → Do not hide uncertainty — state what you're unsure about
 
-## Step 6: Report
+## Step 6: Update Module README (MANDATORY)
+
+Read `apps/[module]/README.md` and update:
+- **Features table**: add row for each new feature (Feature | File | Description)
+- **API table**: add row for each new endpoint (Method | Path | Auth | Description)
+- **Config table**: add row for each new env var (Var | Default | Purpose)
+- **Pipeline diagram**: update if data flow changed
+- **Test count**: update in the header line
+- **Status**: update if module status changed (🔨 → ✅)
+
+If README.md doesn't exist (shouldn't happen after /new-module), create it.
+
+This is NOT optional. The module README is the single source of truth for what the module does.
+It gets updated HERE during implementation — not later during /session-end.
+
+## Step 7: Report
 
 ```
 IMPLEMENTATION REPORT
@@ -119,6 +134,7 @@ Docker build: ✅ / ❌ / not tested
 Shared package changes: [NONE / list]
 Scope verified: ✅ Only target module touched / ⚠️ Cross-module changes (explain)
 Self-check: ✅ All clear / ⚠️ [flag concerns]
+Module README: ✅ Updated / ❌ Not updated (explain)
 New decisions to log: [NONE / list]
 Rollback: git reset --hard safe-point-[tag] (if applicable)
 ```

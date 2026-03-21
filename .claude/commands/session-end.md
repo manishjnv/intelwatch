@@ -74,22 +74,19 @@ Overwrite entire file with current session's handoff:
 - **Fix for existing RCA**: update that entry's resolution row to "Fixed in session N"
 - **Session 13 note**: All 33 issues FIXED. RCA is now a living document — new deploys add entries.
 
-## 5. Update Feature Documentation (if module code changed)
+## 5. Update Module READMEs (if module code changed)
 
-For EACH module that had code changes this session:
+For EACH module that had code changes this session, read and update `apps/{module}/README.md`:
+- **Header line**: update test count + status if changed
+- **Features table**: add rows for new features (Feature | File | Description)
+- **API table**: add rows for new endpoints (Method | Path | Auth | Description)
+- **Config table**: add rows for new env vars (Var | Default | Purpose)
+- **Pipeline diagram**: update if data flow changed
 
-### 5a. docs/features/{module}/IMPLEMENTATION.md
-- Update feature table if new features added
-- Update pipeline flow if data flow changed
-- Update configuration table if new env vars added
-- If new module: create IMPLEMENTATION.md from scratch (see existing ones as template)
+NOTE: This should already be done by `/implement` step 6. This step is a SAFETY NET
+to catch any that were missed. If README was already updated during implementation, verify it's correct.
 
-### 5b. docs/api/{module}/API.md
-- Add new endpoints if routes were created
-- Update request/response shapes if they changed
-- If new module: create API.md from scratch
-
-### 5c. README.md (quick stats only)
+### 5b. README.md (root — quick stats only)
 - Update test count badge: `![Tests](https://img.shields.io/badge/tests-NNN%20passing-00ff88)`
 - Update phase badge if phase changed
 - Update container count if containers added
@@ -156,7 +153,7 @@ Next: [specific task]
 
 ```bash
 git add docs/PROJECT_STATE.md docs/DECISIONS_LOG.md docs/SESSION_HANDOFF.md \
-       docs/DEPLOYMENT_RCA.md docs/features/ docs/api/ README.md
+       docs/DEPLOYMENT_RCA.md apps/*/README.md README.md
 git commit -m "docs: session [N] end — [1-line summary]"
 git push origin master
 ```
@@ -174,19 +171,22 @@ Before closing, confirm ALL boxes:
 - [ ] DECISIONS_LOG.md — any new decisions logged
 - [ ] SESSION_HANDOFF.md — overwritten with this session's full handoff
 - [ ] DEPLOYMENT_RCA.md — resolution table updated (success or failure entry)
-- [ ] features/{module}/IMPLEMENTATION.md — updated for each module touched
-- [ ] api/{module}/API.md — updated for each module with API changes
+- [ ] apps/{module}/README.md — features, API, config tables current for each module touched
 - [ ] README.md — test count + phase + container count current
 - [ ] memory/session{N}.md — created with key facts + frozen rules
 - [ ] memory/MEMORY.md — index updated
 - [ ] All committed + pushed to master
 - [ ] git status clean
 
-CRITICAL: Seven document systems depend on accurate state:
+CRITICAL: Six systems depend on accurate state:
 1. `/session-start` reads: PROJECT_STATE, DECISIONS_LOG, DEPLOYMENT_RCA, SESSION_HANDOFF
 2. Memory system reads: MEMORY.md → session{N}.md files
-3. CLAUDE.md provides: rules + constants (auto-loaded)
-4. Feature docs: docs/features/{module}/IMPLEMENTATION.md (loaded by /new-module, referenced by devs)
-5. API docs: docs/api/{module}/API.md (referenced by frontend devs, external consumers)
-6. README.md: GitHub landing page (first thing new contributors see)
-7. CI/CD: deploy.yml, docker-compose, Dockerfile (already in git)
+3. CLAUDE.md: rules + constants (auto-loaded every session)
+4. Module READMEs: apps/{module}/README.md — features, API, config (updated by /implement)
+5. README.md: GitHub landing page (test count, phase, containers)
+6. CI/CD: deploy.yml, docker-compose, Dockerfile (already in git)
+
+Documentation flow:
+  /new-module creates → apps/{module}/README.md (skeleton)
+  /implement updates → apps/{module}/README.md (features, API, config as code is written)
+  /session-end verifies → apps/{module}/README.md is current (safety net)
