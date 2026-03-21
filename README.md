@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-3%20complete-00ff88)
-![Tests](https://img.shields.io/badge/tests-1528%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-1582%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -23,11 +23,11 @@
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
-| Frontend (React 18 + Vite, 15 UI improvements) | ✅ Live on VPS | 100 |
+| Frontend (React 18 + Vite, 15 UI improvements, demo fallbacks) | ✅ Live on VPS | 154 |
 | Infrastructure (18 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 3 Progress** | **100%** (4/4 modules + UI) | **1528** |
+| **Phase 3 Progress** | **100%** (4/4 modules + UI + demo) | **1582** |
 
 ## Live API Endpoints
 
@@ -66,7 +66,7 @@ Internet → Caddy (SSL) → etip_nginx → etip_api:3001 (Fastify)
 ```bash
 pnpm install
 pnpm exec prisma generate --schema=prisma/schema.prisma
-pnpm -r test    # 1528 tests
+pnpm -r test    # 1582 tests
 ```
 
 ## Security
@@ -77,8 +77,8 @@ pnpm -r test    # 1528 tests
 
 ## Deployment
 
-Push to `master` → CI runs 1528 tests → auto-deploys to VPS → prisma db push → health check.
-See `docs/DEPLOYMENT_RCA.md` for deployment troubleshooting (33 resolved issues).
+Push to `master` → CI runs 1582 tests → auto-deploys to VPS → prisma db push → health check.
+See `docs/DEPLOYMENT_RCA.md` for deployment troubleshooting (36 resolved issues).
 
 ---
 

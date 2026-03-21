@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-21 (update at end of EVERY session via /session-end)
-**Session counter:** 19
+**Session counter:** 20
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.1.0 | 2026-03-21 | Shell only, no dashboard yet |
+| etip_frontend | ✅ Running | 0.1.0 | 2026-03-21 | Dashboard + 5 data pages + demo fallbacks. UI FROZEN. |
 | etip_nginx | ✅ Running | - | 2026-03-21 | Reverse proxy for ti.intelwatch.in |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
@@ -107,10 +107,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 3 COMPLETE. All 15/15 UI improvements DONE. Ready for demo data fallbacks OR Phase 4 backend.
-- **Last session outcome:** Session 19 (2026-03-21). Built 11 UI/UX improvements — 11 new viz components in `src/components/viz/`, integrated into DashboardPage, IocListPage, DashboardLayout. Frontend test infra established (vitest + testing-library). 100 new tests. D3 added for RelationshipGraph. Commit 91c92c8. 1528 tests total, 0 regressions.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. UI components render empty/null without backend data (ThreatPulseStrip, SeverityHeatmap need API data). Bundle at 710KB (D3 added 190KB — consider code-splitting). SeverityHeatmap React import was at bottom of file — fixed post-commit (unstaged fix pending).
-- **Next tasks:** (1) Demo data fallbacks — add stub data to use-intel-data.ts so UI renders without backend. (2) Phase 4: Digital Risk Protection (port 3011), Threat Graph, Correlation Engine, Threat Hunting. (3) Elasticsearch IOC indexing. (4) Bundle optimization via code-splitting (D3 lazy load).
+- **Current phase:** Phase 3 COMPLETE. Frontend UI FROZEN with demo data fallbacks. Ready for Phase 4 backend.
+- **Last session outcome:** Session 20 (2026-03-21). Demo data fallbacks — 25 IOC records, withDemoFallback helper, demo auth, ErrorBoundary, client-side sort/filter. Fixed 3 latent bugs (RCA #34-36): EntityChip type mapping, SeverityBadge case, Vite proxy crash. Fixed 4 pre-existing TS errors in vulnerability-intel blocking Docker build. 8 commits: 848cb28→815bfaa. 154 frontend tests (54 new). 1582 total. Deployed to VPS.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users.
+- **Next tasks:** (1) Phase 4: Digital Risk Protection (port 3011), Threat Graph, Correlation Engine, Threat Hunting. (2) Elasticsearch IOC indexing. (3) Bundle optimization via code-splitting (D3 lazy load). (4) See docs/FUTURE_IMPROVEMENTS.md for 7 frontend items.
 
 ## Deployment Log
 
@@ -127,6 +127,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 17 | 2026-03-21 | etip_vulnerability_intel added, all app containers recreated | pending CI | 58b50f1 | Vulnerability Intel Service: 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 COMPLETE. |
 | 18 | 2026-03-21 | etip_frontend updated (dashboard pages) | pending CI | e33072e | Dashboard Frontend: 5 data-connected pages, 3 UI improvements, live stats. |
 | 19 | 2026-03-21 | No deploy (code-only session) | — | 91c92c8 | 11 UI improvements, frontend test infra, 100 new tests. Not yet deployed. |
+| 20 | 2026-03-21 | etip_frontend, etip_vulnerability_intel updated | ✅ CI green | 848cb28→815bfaa | Demo data fallbacks, 3 bug fixes (RCA #34-36), vuln-intel TS fixes. 154 frontend tests. |
 
 ## E2E Verification Results (Session 13)
 
