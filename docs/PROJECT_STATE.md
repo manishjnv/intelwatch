@@ -36,7 +36,7 @@
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
-| threat-actor-intel | 3 | 📋 Not started | - | Phase 3 gate |
+| threat-actor-intel | 3 | 🔨 WIP | 2026-03-21 | Scaffold complete, port 3008 |
 | malware-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | vulnerability-intel | 3 | 📋 Not started | - | Phase 3 gate |
 | digital-risk-protection | 4 | 📋 Not started | - | Phase 4 gate |
@@ -66,6 +66,7 @@ ingestion             → shared-types, shared-utils, shared-auth, shared-cache,
 normalization         → shared-types, shared-utils, shared-normalization, shared-auth (Phase 2)
 ai-enrichment         → shared-types, shared-utils, shared-auth, shared-enrichment (Phase 2)
 ioc-intelligence      → shared-types, shared-utils, shared-auth (Phase 3)
+threat-actor-intel    → shared-types, shared-utils, shared-auth (Phase 3)
 frontend              → shared-types, shared-ui (Phase 1+)
 ```
 

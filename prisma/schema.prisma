@@ -29,9 +29,10 @@ model Tenant {
   sessions    Session[]
   apiKeys     ApiKey[]
   auditLogs   AuditLog[]
-  feedSources FeedSource[]
-  iocs        Ioc[]
-  articles    Article[]
+  feedSources          FeedSource[]
+  iocs                 Ioc[]
+  articles             Article[]
+  threatActorProfiles  ThreatActorProfile[]
   @@map("tenants")
 }
 
@@ -359,4 +360,65 @@ model Ioc {
   @@map("iocs")
 }
 
+// ─── Threat Actor Profiles (Module 08 — threat-actor-intel) ───────────
+enum ActorType {
+  nation_state
+  criminal
+  hacktivist
+  insider
+  competitor
+  unknown
+  @@map("actor_type_enum")
+}
 
+enum ActorMotivation {
+  financial
+  espionage
+  hacktivism
+  sabotage
+  ideology
+  unknown
+  @@map("actor_motivation_enum")
+}
+
+enum ActorSophistication {
+  none
+  minimal
+  intermediate
+  advanced
+  expert
+  strategic
+  @@map("actor_sophistication_enum")
+}
+
+model ThreatActorProfile {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  name              String              @db.VarChar(255)
+  aliases           String[]            @default([])
+  description       String              @default("") @db.Text
+  actorType         ActorType           @default(unknown) @map("actor_type")
+  motivation        ActorMotivation     @default(unknown)
+  sophistication    ActorSophistication @default(none)
+  country           String?             @db.VarChar(100)
+  targetSectors     String[]            @default([]) @map("target_sectors")
+  targetRegions     String[]            @default([]) @map("target_regions")
+  ttps              String[]            @default([])
+  associatedMalware String[]            @default([]) @map("associated_malware")
+  tlp               TLP                 @default(amber)
+  confidence        Int                 @default(50)
+  tags              String[]            @default([])
+  firstSeen         DateTime?           @map("first_seen")
+  lastSeen          DateTime?           @map("last_seen")
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@index([tenantId, actorType])
+  @@index([tenantId, motivation])
+  @@index([tenantId, country])
+  @@map("threat_actor_profiles")
+}
