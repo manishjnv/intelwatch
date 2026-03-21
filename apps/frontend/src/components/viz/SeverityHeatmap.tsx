@@ -3,7 +3,7 @@
  * @description 3D severity heatmap grid — IOC type x severity cross-tab with
  * Framer Motion tilt per cell. Color intensity = count. P0-2.
  */
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useIOCStats } from '@/hooks/use-intel-data'
 import { cn } from '@/lib/utils'
@@ -129,5 +129,3 @@ export function SeverityHeatmap({ className }: SeverityHeatmapProps) {
     </div>
   )
 }
-
-import React from 'react'

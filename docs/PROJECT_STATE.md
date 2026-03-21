@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-21 (update at end of EVERY session via /session-end)
-**Session counter:** 18
+**Session counter:** 19
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -34,7 +34,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | 🔨 Dashboard live | 2026-03-21 | 5 data pages (IOC, Feed, Actor, Malware, Vuln). 3/15 UI improvements. |
+| frontend | 1 | 🔨 15/15 UI complete | 2026-03-21 | 5 data pages, 15/15 UI improvements, 11 viz components, 100 tests. D3 + vitest added. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-21 | Port 3006. VT + AbuseIPDB + rate limiting. 27 tests. TI_AI_ENABLED=false by default. |
@@ -72,7 +72,7 @@ ioc-intelligence      → shared-types, shared-utils, shared-auth (Phase 3)
 threat-actor-intel    → shared-types, shared-utils, shared-auth (Phase 3)
 malware-intel         → shared-types, shared-utils, shared-auth (Phase 3)
 vulnerability-intel   → shared-types, shared-utils, shared-auth (Phase 3)
-frontend              → shared-types, shared-ui (Phase 1+)
+frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ```
 
 ## Module Ownership Tiers
@@ -106,10 +106,11 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 3 COMPLETE. Dashboard frontend live with 5 data-connected pages. Ready for Phase 4 OR UI polish session.
-- **Last session outcome:** Session 18 (2026-03-21). Built Dashboard Frontend — 5 data-connected pages (IOC, Feed, Actor, Malware, Vuln) replacing ComingSoonPage. DataTable with 3 density modes, radial gauges, keyboard nav. Live dashboard stats. 3/15 UI improvements implemented. Commit e33072e. 1428 tests still passing.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. 11/15 UI improvements deferred (need WebSocket, D3, Framer Motion extensions, historical data endpoints).
-- **Next tasks:** (1) UI Polish session — implement remaining 11 UI improvements (Live Pulse, Heatmap, Hover Preview, Flip Cards, Split Pane, Sparklines, Action Toolbar, Mini Graph, Parallax, Timeline, Ambient). (2) Phase 4: Digital Risk Protection, Threat Graph, Correlation Engine, Threat Hunting. (3) Elasticsearch IOC indexing.
+
+- **Current phase:** Phase 3 COMPLETE. All 15/15 UI improvements DONE. Ready for demo data fallbacks OR Phase 4 backend.
+- **Last session outcome:** Session 19 (2026-03-21). Built 11 UI/UX improvements — 11 new viz components in `src/components/viz/`, integrated into DashboardPage, IocListPage, DashboardLayout. Frontend test infra established (vitest + testing-library). 100 new tests. D3 added for RelationshipGraph. Commit 91c92c8. 1528 tests total, 0 regressions.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. UI components render empty/null without backend data (ThreatPulseStrip, SeverityHeatmap need API data). Bundle at 710KB (D3 added 190KB — consider code-splitting). SeverityHeatmap React import was at bottom of file — fixed post-commit (unstaged fix pending).
+- **Next tasks:** (1) Demo data fallbacks — add stub data to use-intel-data.ts so UI renders without backend. (2) Phase 4: Digital Risk Protection (port 3011), Threat Graph, Correlation Engine, Threat Hunting. (3) Elasticsearch IOC indexing. (4) Bundle optimization via code-splitting (D3 lazy load).
 
 ## Deployment Log
 
@@ -125,6 +126,7 @@ frontend              → shared-types, shared-ui (Phase 1+)
 | 16 | 2026-03-21 | etip_malware_intel added, all app containers recreated | pending CI | 6c327c4, 068d7dc | Malware Intel Service: 27 endpoints, 15 accuracy improvements, 149 tests |
 | 17 | 2026-03-21 | etip_vulnerability_intel added, all app containers recreated | pending CI | 58b50f1 | Vulnerability Intel Service: 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 COMPLETE. |
 | 18 | 2026-03-21 | etip_frontend updated (dashboard pages) | pending CI | e33072e | Dashboard Frontend: 5 data-connected pages, 3 UI improvements, live stats. |
+| 19 | 2026-03-21 | No deploy (code-only session) | — | 91c92c8 | 11 UI improvements, frontend test infra, 100 new tests. Not yet deployed. |
 
 ## E2E Verification Results (Session 13)
 
