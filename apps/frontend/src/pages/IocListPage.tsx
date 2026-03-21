@@ -103,17 +103,26 @@ export function IocListPage() {
   const { data, isLoading, isDemo } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
 
-  // Client-side sort for demo data (API sort doesn't apply to static fallback)
+  // Client-side filter + sort for demo data (API doesn't apply to static fallback)
   const rows = useMemo(() => {
-    const items = data?.data ?? []
+    let items = data?.data ?? []
     if (!isDemo || items.length === 0) return items
+    // Filter
+    if (search) {
+      const q = search.toLowerCase()
+      items = items.filter(r => r.normalizedValue.toLowerCase().includes(q) || r.iocType.includes(q) || r.tags.some(t => t.toLowerCase().includes(q)))
+    }
+    if (filters.iocType) items = items.filter(r => r.iocType === filters.iocType)
+    if (filters.severity) items = items.filter(r => r.severity === filters.severity)
+    if (filters.lifecycle) items = items.filter(r => r.lifecycle === filters.lifecycle)
+    // Sort
     return [...items].sort((a, b) => {
       const av = a[sortBy as keyof IOCRecord] ?? ''
       const bv = b[sortBy as keyof IOCRecord] ?? ''
       const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
       return sortOrder === 'asc' ? cmp : -cmp
     })
-  }, [data, isDemo, sortBy, sortOrder])
+  }, [data, isDemo, sortBy, sortOrder, search, filters])
 
   const selectedRecord = useMemo(() => rows.find(r => r.id === selectedId) ?? null, [rows, selectedId])
   const stubRelations = useMemo(() => selectedRecord ? generateStubRelations(selectedRecord) : null, [selectedRecord])
@@ -247,7 +256,7 @@ export function IocListPage() {
             {/* #6: 3D Flip detail card */}
             <FlipDetailCard
               isFlipped={showDetail}
-              front={<IOCSummaryFront record={selectedRecord} />}
+              front={<div onClick={() => setShowDetail(true)} className="cursor-pointer h-full"><IOCSummaryFront record={selectedRecord} /></div>}
               back={<IOCDetailBack record={selectedRecord} onFlipBack={() => setShowDetail(false)} />}
               className="flex-1"
             />
@@ -265,7 +274,7 @@ export function IocListPage() {
       />
 
       <Pagination
-        page={page} limit={50} total={data?.total ?? 0}
+        page={page} limit={50} total={isDemo ? rows.length : (data?.total ?? 0)}
         onPageChange={setPage}
         density={density}
         onDensityChange={setDensity}
