@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-21 (update at end of EVERY session via /session-end)
-**Session counter:** 16
+**Session counter:** 17
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -16,6 +16,7 @@
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements |
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
 | etip_malware_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements |
+| etip_vulnerability_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -40,7 +41,7 @@
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
 | malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
-| vulnerability-intel | 3 | 🔨 WIP | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements, 119 tests. |
+| vulnerability-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 complete. |
 | digital-risk-protection | 4 | 📋 Not started | - | Phase 4 gate |
 | threat-graph | 4 | 📋 Not started | - | Phase 4 gate |
 | correlation-engine | 4 | 📋 Not started | - | Phase 4 gate |
@@ -105,10 +106,10 @@ frontend              → shared-types, shared-ui (Phase 1+)
 - shared-* packages = Tier 1 (frozen) always, regardless of other status
 
 ## Work In Progress
-- **Current phase:** Phase 3 IN PROGRESS — ioc-intelligence + threat-actor-intel + malware-intel deployed, 1 module remaining (vulnerability)
-- **Last session outcome:** Session 16 (2026-03-21). Built and deployed Malware Intel Service (Module 09) — complete (Part A + Part B). 27 API endpoints, 15 accuracy improvements. MalwareProfile Prisma model with MalwareType enum (15 types). 149 module tests, 1309 total.
+- **Current phase:** Phase 3 COMPLETE — all 4 modules deployed (ioc-intelligence, threat-actor-intel, malware-intel, vulnerability-intel). Ready for Phase 4.
+- **Last session outcome:** Session 17 (2026-03-21). Built Vulnerability Intel Service (Module 10) — complete. 28 API endpoints, 15 accuracy improvements. VulnerabilityProfile Prisma model. 119 module tests, 1428 total. Commit 58b50f1.
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing.
-- **Next tasks:** (1) Phase 3: Vulnerability Intel Service (Module 10). (2) Elasticsearch IOC indexing (ES container running but no code integration). (3) Dashboard frontend — IOC list page, feed management UI, actor list page, malware list page.
+- **Next tasks:** (1) Phase 4: Digital Risk Protection, Threat Graph, Correlation Engine, Threat Hunting. (2) Elasticsearch IOC indexing (ES container running but no code integration). (3) Dashboard frontend — IOC list page, feed management UI, actor list page, malware list page, vulnerability list page.
 
 ## Deployment Log
 
@@ -122,6 +123,7 @@ frontend              → shared-types, shared-ui (Phase 1+)
 | 14 | 2026-03-21 | etip_ioc_intelligence added, all app containers recreated | ✅ All 15 healthy | f62dba7, d6f04b6 | IOC Intelligence Service: 15 endpoints, 13 accuracy improvements, 119 tests |
 | 15 | 2026-03-21 | etip_threat_actor_intel added, all app containers recreated | pending CI | 22793db | Threat Actor Intel Service: 28 endpoints, 15 accuracy improvements, 190 tests |
 | 16 | 2026-03-21 | etip_malware_intel added, all app containers recreated | pending CI | 6c327c4, 068d7dc | Malware Intel Service: 27 endpoints, 15 accuracy improvements, 149 tests |
+| 17 | 2026-03-21 | etip_vulnerability_intel added, all app containers recreated | pending CI | 58b50f1 | Vulnerability Intel Service: 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 COMPLETE. |
 
 ## E2E Verification Results (Session 13)
 
@@ -136,7 +138,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~7.5GB estimated by 17 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 18 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel

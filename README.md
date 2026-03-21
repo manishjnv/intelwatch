@@ -2,8 +2,8 @@
 
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
-![Phase](https://img.shields.io/badge/phase-3%20in%20progress-00ccff)
-![Tests](https://img.shields.io/badge/tests-1309%20passing-00ff88)
+![Phase](https://img.shields.io/badge/phase-3%20complete-00ff88)
+![Tests](https://img.shields.io/badge/tests-1428%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -22,11 +22,12 @@
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
+| Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
 | Frontend shell (React 18 + Vite) | ✅ Live on VPS | — |
-| Infrastructure (17 Docker containers) | ✅ All healthy | — |
+| Infrastructure (18 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 3 Progress** | **75%** (3/4 modules) | **1309** |
+| **Phase 3 Progress** | **100%** (4/4 modules) | **1428** |
 
 ## Live API Endpoints
 
@@ -58,14 +59,14 @@ Internet → Caddy (SSL) → etip_nginx → etip_api:3001 (Fastify)
                                    etip_redis:6379
 ```
 
-15 containers: PostgreSQL 16, Redis 7, Elasticsearch 8, Neo4j 5, MinIO, Prometheus, Grafana, Nginx, API Gateway, Ingestion, Normalization, AI Enrichment, IOC Intelligence, Frontend
+18 containers: PostgreSQL 16, Redis 7, Elasticsearch 8, Neo4j 5, MinIO, Prometheus, Grafana, Nginx, API Gateway, Ingestion, Normalization, AI Enrichment, IOC Intelligence, Threat Actor Intel, Malware Intel, Vulnerability Intel, Frontend
 
 ## Development
 
 ```bash
 pnpm install
 pnpm exec prisma generate --schema=prisma/schema.prisma
-pnpm -r test    # 266 tests
+pnpm -r test    # 1428 tests
 ```
 
 ## Security
@@ -76,7 +77,7 @@ pnpm -r test    # 266 tests
 
 ## Deployment
 
-Push to `master` → CI runs 851 tests → auto-deploys to VPS → prisma db push → health check.
+Push to `master` → CI runs 1428 tests → auto-deploys to VPS → prisma db push → health check.
 See `docs/DEPLOYMENT_RCA.md` for deployment troubleshooting (33 resolved issues).
 
 ---

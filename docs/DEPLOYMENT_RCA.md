@@ -509,3 +509,5 @@ All 33 issues are FIXED. This table tracks which session fixed each issue and co
 **Session 15 deploys:** No new RCA issues. etip_threat_actor_intel added (port 3008). 16 containers expected. Commit 22793db pushed, CI deploy pending.
 
 **Session 16 deploys:** No new RCA issues. etip_malware_intel added (port 3009). 17 containers expected. Commits 6c327c4 + 068d7dc pushed, CI deploy pending.
+
+**Session 17 deploys:** No new RCA issues. etip_vulnerability_intel added (port 3010). 18 containers expected. Commit 58b50f1 pushed, CI deploy pending. Phase 3 COMPLETE.
