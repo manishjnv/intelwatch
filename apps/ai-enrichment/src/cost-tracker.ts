@@ -124,9 +124,10 @@ export class EnrichmentCostTracker {
         if (!byProvider[r.provider]) {
           byProvider[r.provider] = { count: 0, costUsd: 0, tokens: 0 };
         }
-        byProvider[r.provider].count++;
-        byProvider[r.provider].costUsd += r.costUsd;
-        byProvider[r.provider].tokens += r.inputTokens + r.outputTokens;
+        const bp = byProvider[r.provider]!;
+        bp.count++;
+        bp.costUsd += r.costUsd;
+        bp.tokens += r.inputTokens + r.outputTokens;
         totalTokens += r.inputTokens + r.outputTokens;
         iocCost += r.costUsd;
       }
