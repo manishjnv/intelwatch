@@ -1,6 +1,6 @@
 # ETIP Project State
-**Last updated:** 2026-03-22 (update at end of EVERY session via /session-end)
-**Session counter:** 25
+**Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
+**Session counter:** 26
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -17,7 +17,7 @@
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
 | etip_malware_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements |
 | etip_vulnerability_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements |
-| etip_threat_graph | ⏳ Pending deploy | 1.0.0 | 2026-03-22 | Port 3012. Neo4j knowledge graph. 11 endpoints, 5 P0 improvements, 90 tests. |
+| etip_threat_graph | ⏳ Pending deploy | 2.0.0 | 2026-03-23 | Port 3012. Neo4j knowledge graph. 32 endpoints, 20 improvements (#1-20), 294 tests. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -44,7 +44,7 @@
 | malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
 | vulnerability-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 complete. |
 | digital-risk-protection | 4 | 📋 Not started | - | Phase 4 gate |
-| threat-graph | 4 | 🔨 WIP | 2026-03-22 | Port 3012. Core + P0 #1-5. 11 endpoints, 90 tests. Neo4j graph, risk propagation, path explanation, stats. P1+P2 next. |
+| threat-graph | 4 | 🔨 WIP | 2026-03-23 | Port 3012. 20 improvements complete (#1-20). 32 endpoints, 294 tests. Neo4j graph, risk propagation, STIX export, cluster detection, batch import, decay cron, merge/split, trending. Ready for deploy. |
 | correlation-engine | 4 | 📋 Not started | - | Phase 4 gate |
 | threat-hunting | 4 | 📋 Not started | - | Phase 4 gate |
 | enterprise-integration | 5 | 📋 Not started | - | Phase 5 gate |
@@ -109,10 +109,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 4 STARTED. Threat Graph core + P0 complete. Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
-- **Last session outcome:** Session 25 (2026-03-22). Threat Graph Service (Module 12): Neo4j knowledge graph with living risk propagation. 7 node types, 9 relationship types, 11 endpoints. P0 #1-5 improvements (retroactive propagation, confidence-weighted edges, temporal decay, path explanation, graph stats). BullMQ GRAPH_SYNC worker. 90 new tests (1961 monorepo). Commit: 2e37845. CI deploy pending.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating to [U] for enrichment items.
-- **Next tasks:** (1) Threat Graph P1+P2 improvements (#6-15). (2) Phase 4: Correlation Engine → Hunting. (3) Elasticsearch IOC indexing. (4) Update QA_CHECKLIST.md. (5) See docs/FUTURE_IMPROVEMENTS.md for 7 frontend items.
+- **Current phase:** Phase 4 IN PROGRESS. Threat Graph FEATURE-COMPLETE (20 improvements, 32 endpoints, 294 tests). Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
+- **Last session outcome:** Session 26 (2026-03-23). Threat Graph Service (Module 12): 20 improvements in one session. P1 #6-10 (bidirectional rels, cluster detection, impact radius, cross-entity scoring, graph diff). P2 #11-15 (expand node, STIX 2.1 export, graph search, relationship CRUD, propagation audit). Advanced #16-20 (node merge/split, batch import, decay cron, layout presets, relationship trending). 204 new tests (2165 monorepo). Commit: bb0a5c1. Deploy pending.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating to [U] for enrichment items. Threat graph deploy pending (session 25+26 code not yet on VPS).
+- **Next tasks:** (1) Deploy threat-graph to VPS. (2) Phase 4: Correlation Engine (Module 13). (3) Phase 4: Threat Hunting (Module 14). (4) Phase 4: Digital Risk Protection (Module 11). (5) Elasticsearch IOC indexing. (6) Update QA_CHECKLIST.md.
 
 ## Deployment Log
 
@@ -135,6 +135,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 23 | 2026-03-22 | etip_enrichment, etip_frontend updated, all app containers recreated | ✅ CI green | 5c949d1→d6694e8 | 7 accuracy improvements (#9-15) + QA checklist + 3 CI fixes. 64 new tests (1808 total). Differentiator A+ COMPLETE. |
 | 24 | 2026-03-22 | etip_frontend updated, all app containers recreated | ✅ CI green | 799145c→4e60b44 | Enrichment UI + tabbed detail + merged stats + mobile overlay. 63 new tests (1871 total). Differentiator B COMPLETE. UI FROZEN. |
 | 25 | 2026-03-22 | etip_threat_graph added (port 3012), all app containers recreated | ⏳ CI pending | 2e37845 | Threat Graph Service: 11 endpoints, 5 P0 improvements, 90 new tests (1961 total). Phase 4 started. |
+| 26 | 2026-03-23 | No deploy (code-only session) | — | bb0a5c1 | Threat Graph 20 improvements (#1-20): P1+P2+advanced ops. 32 endpoints, 204 new tests (2165 total). |
 
 ## E2E Verification Results (Session 13)
 

@@ -1,8 +1,8 @@
 # SESSION HANDOFF DOCUMENT
 
-**Date:** 2026-03-22
-**Session:** 25
-**Session Summary:** Threat Graph Service (Module 12) — Neo4j knowledge graph with living risk propagation, 7 node types, 9 relationship types, 11 endpoints, 5 P0 differentiator improvements. Phase 4 started.
+**Date:** 2026-03-23
+**Session:** 26
+**Session Summary:** Threat Graph Service (Module 12) — 20 improvements complete (#1-20). P1 accuracy boosters, P2 UX enhancements, advanced operations (merge/split, batch, decay cron, presets, trending). 32 endpoints, 294 tests.
 
 ---
 
@@ -15,130 +15,117 @@
 
 ---
 
-## ✅ Changes Made (Session 25)
+## ✅ Changes Made (Session 26)
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| `2e37845` | 33 | feat: add threat graph service (Module 12) — Neo4j knowledge graph with living risk propagation |
+| `bb0a5c1` | 40 | feat: add 20 threat graph improvements — P1/P2 + advanced operations |
 
 ## 📁 Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/threat-graph/package.json` | Dependencies (neo4j-driver, bullmq, fastify, zod) |
-| `apps/threat-graph/tsconfig.json` | TypeScript config (composite, references) |
-| `apps/threat-graph/vitest.config.ts` | Vitest with workspace aliases |
-| `apps/threat-graph/README.md` | Module documentation |
-| `apps/threat-graph/src/index.ts` | Entry point, startup, graceful shutdown |
-| `apps/threat-graph/src/app.ts` | Fastify builder with all plugins |
-| `apps/threat-graph/src/config.ts` | Zod env schema (port 3012 + Neo4j + propagation config) |
-| `apps/threat-graph/src/logger.ts` | Pino singleton with ETIP redaction |
-| `apps/threat-graph/src/prisma.ts` | PrismaClient singleton |
-| `apps/threat-graph/src/driver.ts` | Neo4j driver singleton (new pattern) |
-| `apps/threat-graph/src/plugins/auth.ts` | JWT authenticate + rbac preHandlers |
-| `apps/threat-graph/src/plugins/error-handler.ts` | AppError + Zod + Fastify error handler |
-| `apps/threat-graph/src/schemas/graph.ts` | Zod schemas: 7 node types, 9 relationship types, query params |
-| `apps/threat-graph/src/repository.ts` | Neo4j Cypher queries: CRUD, N-hop, path, cluster, stats |
-| `apps/threat-graph/src/service.ts` | Business logic: create/query/expand + path explanation |
-| `apps/threat-graph/src/propagation.ts` | Risk propagation engine (BFS, decay, confidence-weighted, temporal) |
-| `apps/threat-graph/src/queue.ts` | BullMQ GRAPH_SYNC queue + worker factory |
-| `apps/threat-graph/src/routes/health.ts` | GET /health, /ready (incl. Neo4j check) |
-| `apps/threat-graph/src/routes/graph.ts` | All graph API endpoints (11 routes) |
-| `apps/threat-graph/tests/health.test.ts` | 3 tests |
-| `apps/threat-graph/tests/config.test.ts` | 9 tests |
-| `apps/threat-graph/tests/schemas.test.ts` | 28 tests |
-| `apps/threat-graph/tests/driver.test.ts` | 8 tests |
-| `apps/threat-graph/tests/repository.test.ts` | 12 tests |
-| `apps/threat-graph/tests/service.test.ts` | 17 tests |
-| `apps/threat-graph/tests/propagation.test.ts` | 13 tests |
+| `apps/threat-graph/src/schemas/search.ts` | Zod schemas for P1+P2 (#6-15) |
+| `apps/threat-graph/src/schemas/operations.ts` | Zod schemas for #16-20 |
+| `apps/threat-graph/src/repository-extended.ts` | Extracted stats + relationship CRUD (400L split) |
+| `apps/threat-graph/src/services/audit-trail.ts` | #15 Propagation audit trail (in-memory circular buffer) |
+| `apps/threat-graph/src/services/bidirectional.ts` | #6 Bidirectional relationship queries |
+| `apps/threat-graph/src/services/cluster-detection.ts` | #7 Community detection via shared infrastructure |
+| `apps/threat-graph/src/services/impact-radius.ts` | #8 Dry-run blast radius calculator |
+| `apps/threat-graph/src/services/graph-diff.ts` | #10 Neighborhood timeline changes |
+| `apps/threat-graph/src/services/expand-node.ts` | #11 Paginated 1-hop neighbor expansion |
+| `apps/threat-graph/src/services/stix-export.ts` | #12 STIX 2.1 bundle export (7 SDO types + SROs) |
+| `apps/threat-graph/src/services/graph-search.ts` | #13 Full-text property/type/risk search |
+| `apps/threat-graph/src/services/node-merge.ts` | #16 Node merge/split operations |
+| `apps/threat-graph/src/services/batch-import.ts` | #17 Bulk node+relationship import |
+| `apps/threat-graph/src/services/decay-cron.ts` | #18 Risk score decay scheduler (6h interval) |
+| `apps/threat-graph/src/services/layout-presets.ts` | #19 Graph layout preset CRUD |
+| `apps/threat-graph/src/services/relationship-trending.ts` | #20 Confidence change tracking |
+| `apps/threat-graph/src/routes/graph-extended.ts` | Routes for #6-15 (11 endpoints) |
+| `apps/threat-graph/src/routes/graph-operations.ts` | Routes for #16-20 (10 endpoints) |
+| `apps/threat-graph/tests/` (15 new test files) | 204 new tests covering all 20 improvements |
 
 ## 📁 Files Modified
 
 | File | Change |
 |------|--------|
-| `tsconfig.build.json` | Added `{ "path": "apps/threat-graph" }` to references |
-| `Dockerfile` | Added COPY line for threat-graph package.json + tsconfig.json |
-| `docker-compose.etip.yml` | Added etip_threat_graph service (port 3012, depends_on neo4j) + nginx depends_on |
-| `pnpm-lock.yaml` | Auto-updated (neo4j-driver added) |
+| `apps/threat-graph/src/schemas/graph.ts` | Added RELATIONSHIP_TYPE_WEIGHTS (#9), source field on relationships (#14) |
+| `apps/threat-graph/src/propagation.ts` | Cross-entity type scoring (#9), audit callback hook (#15) |
+| `apps/threat-graph/src/repository.ts` | Delegated stats+CRUD to repository-extended.ts, added relType to propagation query |
+| `apps/threat-graph/src/queue.ts` | Added source field to create_relationship action |
+| `apps/threat-graph/src/config.ts` | Added TI_GRAPH_DECAY_CRON_INTERVAL, TI_GRAPH_DECAY_THRESHOLD, TI_GRAPH_MAX_LAYOUT_PRESETS |
+| `apps/threat-graph/src/app.ts` | Registered graph-extended + graph-operations route plugins |
+| `apps/threat-graph/src/index.ts` | Wired all 13 services, started decay cron, graceful shutdown |
+| `apps/threat-graph/src/routes/graph-extended.ts` | Hooked trending tracker into PUT /relationships |
 
 ---
 
 ## 🔧 Decisions & Rationale
 
-- **DECISION-018**: neo4j-driver in threat-graph only (not a shared package). Only one service talks to Neo4j.
-- **DECISION-019**: No Prisma models for graph data — Neo4j is the sole store. Cypher queries directly.
-- **DECISION-020**: Risk propagation is upward-only (never lowers scores). Prevents false-positive cascading.
+No new DECISION entries this session. All work follows existing patterns:
+- DECISION-013 (in-memory state): layout presets, trending, audit trail use in-memory Maps
+- DECISION-018 (neo4j-driver in threat-graph only): all Neo4j queries stay in this module
+- DECISION-019 (no Prisma for graph data): all new services use Cypher directly
+- DECISION-020 (upward-only propagation): decay cron is separate from propagation (explicitly lowers scores)
 
 ---
 
 ## 🧪 Deploy Verification
 
 ```
-CI Run: 23407860884 — IN PROGRESS (pushed 2e37845)
-  - Tests: 1961 passing (90 new)
-  - Typecheck: 0 errors
-  - Lint: 0 errors
-  - Docker build: pending CI
-  - Deploy to VPS: pending CI
+No deploy this session (code-only).
+Tests: 2165 passing (294 in threat-graph, 204 new this session)
+Typecheck: 0 errors
+Lint: 0 errors
+All source files under 400 lines (max: 375)
 ```
 
 ---
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate — Session 26: Threat Graph P1+P2 Improvements
-10 remaining improvements for Module 12:
-- P1: #6 Bidirectional semantics, #7 Cluster detection, #8 Impact radius, #9 Cross-entity scoring, #10 Graph diff/timeline
-- P2: #11 Expand node, #12 STIX export, #13 Graph search, #14 Relationship CRUD, #15 Propagation audit trail
+### Immediate — Deploy Threat Graph
+- Push to master triggers CI → deploy etip_threat_graph container
+- Verify: `docker ps --filter name=etip_threat_graph`, health check on port 3012
 
-### After That — Phase 4 Continues
-- Module 13: Correlation Engine (rule-based + AI)
+### Next — Phase 4 Continues
+- Module 13: Correlation Engine (rule-based + AI pattern matching)
 - Module 14: Threat Hunting (investigation workspaces)
-- Module 11: Digital Risk Protection (P1)
+- Module 11: Digital Risk Protection (dark web monitoring)
 
 ### Deferred
-- Update QA_CHECKLIST.md to mark enrichment items [U]
 - Elasticsearch IOC indexing
+- Update QA_CHECKLIST.md to mark enrichment items [U]
 - Frontend improvements: docs/FUTURE_IMPROVEMENTS.md
-- Verify CI run 23407860884 completes green
+- Migrate in-memory services (audit, presets, trending) to Redis/PostgreSQL for scaling
 
 ---
 
 ## 🔁 How to Resume
 
-### Session 26: Phase 4 — Threat Graph P1+P2 (RECOMMENDED)
+### Session 27: Phase 4 — Correlation Engine (Module 13) (RECOMMENDED)
 ```
 /session-start
 
-Scope: Phase 4 — Threat Graph Service P1+P2 (Module 12)
+Scope: Phase 4 — Correlation Engine (Module 13)
 Do not modify: shared-*, api-gateway, user-service, ingestion, normalization,
   ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel,
-  vulnerability-intel, frontend.
+  vulnerability-intel, frontend, threat-graph.
 
 ## Context
-Session 25 built threat graph core + P0 #1-5. Port 3012. 90 tests. Commit 2e37845.
-Neo4j knowledge graph: 7 node types, 9 relationship types, 11 endpoints.
-Risk propagation (BFS 3-hop, 0.7^distance decay, confidence-weighted, temporal decay).
-Path explanation, graph statistics. BullMQ GRAPH_SYNC worker.
+Session 26 completed Threat Graph (Module 12) with 20 improvements, 32 endpoints,
+294 tests. Commit bb0a5c1. 2165 monorepo tests. Deploy pending.
 
-## Task: 10 Improvements (P1 #6-10 + P2 #11-15)
+## Task: Correlation Engine Service (Module 13)
+Build correlation-service on port 3013. Features:
+- Rule-based correlation (IOC co-occurrence, shared infrastructure, temporal clustering)
+- AI-assisted pattern detection (Claude Sonnet for complex correlations)
+- Alert generation from correlation matches
+- BullMQ CORRELATE queue consumer
+- Integration with threat-graph for relationship creation
 
-P1 — Accuracy Boosters:
-  #6  Bidirectional relationship semantics (query from either direction)
-  #7  Cluster detection (community detection for shared infrastructure)
-  #8  Impact radius calculation (blast radius before action)
-  #9  Cross-entity type scoring (per-relationship-type propagation weights)
-  #10 Graph diff / timeline (neighborhood changes over N days)
-
-P2 — UX Enhancements (backend-ready):
-  #11 Expand node API (lazy-load immediate neighbors only)
-  #12 Subgraph export as STIX 2.1 bundle
-  #13 Graph search (find nodes by property, type, risk score range)
-  #14 Relationship CRUD (analyst-confirmed vs auto-detected labels)
-  #15 Risk propagation audit trail (before/after scores, trigger, decay path)
-
-Target: all in apps/threat-graph/ only. Suggest further improvements.
-Skill: skills/12-THREAT-GRAPH.md.
+Target: apps/correlation-service/ (new module via /new-module).
+Skill: skills/13-CORRELATION-ENGINE.md.
 ```
 
 ### Phase roadmap
@@ -150,5 +137,5 @@ Phase 3.5: Dashboard + Demo  FROZEN (6 pages, 15 UI, demo fallbacks, mobile)
 Differentiator A             COMPLETE (AI cost transparency)
 Differentiator A+            COMPLETE (15/15 improvements)
 Differentiator B             COMPLETE (Enrichment UI)
-Phase 4: Advanced Intel      IN PROGRESS: Graph (core done) → P1+P2 → Correlation → Hunting
+Phase 4: Advanced Intel      IN PROGRESS: Graph COMPLETE (20 improvements) → Correlation → Hunting → DRP
 ```
