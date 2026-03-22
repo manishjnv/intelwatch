@@ -9,10 +9,10 @@ import { useIOCs, useIOCStats, type IOCRecord } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
-// PageStatsBar removed — stats merged inline with FilterBar
+// Stats merged inline with FilterBar (no separate PageStatsBar)
 import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
-import { Shield, AlertTriangle, Activity, Clock, Brain, GitBranch, FileText } from 'lucide-react'
+import { Brain, GitBranch, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // UI improvements (#3, #6, #7, #8, #9, #10)
