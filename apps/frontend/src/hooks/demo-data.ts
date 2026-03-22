@@ -131,3 +131,106 @@ export const DEMO_DASHBOARD_STATS = {
   enrichedToday: 12,
   lastIngestTime: 'Demo',
 }
+
+// ─── Enrichment demo data ─────────────────────────────────────
+
+export const DEMO_ENRICHMENT_STATS = {
+  total: 25,
+  enriched: 18,
+  pending: 5,
+  failed: 2,
+  enrichedToday: 12,
+  avgQualityScore: 74,
+  cacheHitRate: 0.82,
+}
+
+export const DEMO_COST_STATS = {
+  headline: '18 IOCs enriched for $0.08',
+  totalIOCsEnriched: 18,
+  totalCostUsd: 0.08,
+  totalTokens: 32400,
+  byProvider: {
+    virustotal: { count: 18, costUsd: 0, tokens: 0 },
+    abuseipdb: { count: 12, costUsd: 0, tokens: 0 },
+    haiku_triage: { count: 18, costUsd: 0.08, tokens: 32400 },
+  } as Record<string, { count: number; costUsd: number; tokens: number }>,
+  byIOCType: {
+    ip: { count: 5, costUsd: 0.02 },
+    domain: { count: 5, costUsd: 0.02 },
+    hash_sha256: { count: 4, costUsd: 0.02 },
+    cve: { count: 2, costUsd: 0.01 },
+    url: { count: 2, costUsd: 0.01 },
+  } as Record<string, { count: number; costUsd: number }>,
+  since: daysAgo(7),
+}
+
+export const DEMO_BUDGET = {
+  tenantId: 'demo-tenant',
+  currentSpendUsd: 0.08,
+  dailyLimitUsd: 5.00,
+  percentUsed: 1.6,
+  isOverBudget: false,
+}
+
+/** Demo enrichment result for IOC detail panel */
+export const DEMO_ENRICHMENT_RESULT = {
+  enrichmentStatus: 'enriched' as const,
+  enrichedAt: daysAgo(1),
+  externalRiskScore: 82,
+  enrichmentQuality: 78,
+  failureReason: null,
+  geolocation: { countryCode: 'RU', isp: 'AS-CHOOPA', usageType: 'hosting', isTor: true },
+  haikuResult: {
+    riskScore: 85, confidence: 88, severity: 'HIGH',
+    threatCategory: 'C2 Infrastructure',
+    reasoning: 'This IP is associated with known C2 infrastructure used by APT28 for Cobalt Strike beacon communication.',
+    scoreJustification: 'High VT detection rate (72/90), multiple AbuseIPDB reports from distinct users, and known association with APT28 C2 infrastructure.',
+    evidenceSources: [
+      { provider: 'VirusTotal', dataPoint: '72/90 engines flagged as malicious', interpretation: 'Strong consensus on malicious nature' },
+      { provider: 'AbuseIPDB', dataPoint: '147 reports from 89 distinct users', interpretation: 'Widespread abuse reporting confirms malicious activity' },
+      { provider: 'MITRE ATT&CK', dataPoint: 'T1071.001 — Web Protocols', interpretation: 'C2 communication over HTTP/HTTPS' },
+    ],
+    uncertaintyFactors: ['Shared hosting infrastructure may include legitimate services', 'Tor exit node status complicates attribution'],
+    mitreTechniques: [
+      { techniqueId: 'T1071.001', name: 'Web Protocols', tactic: 'Command and Control' },
+      { techniqueId: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { techniqueId: 'T1105', name: 'Ingress Tool Transfer', tactic: 'Command and Control' },
+    ],
+    isFalsePositive: false, falsePositiveReason: null,
+    malwareFamilies: ['Cobalt Strike', 'Emotet'],
+    attributedActors: ['APT28'],
+    recommendedActions: [
+      { action: 'Block IP at perimeter firewall immediately', priority: 'immediate' as const },
+      { action: 'Search SIEM for historical connections to this IP', priority: 'immediate' as const },
+      { action: 'Update IDS/IPS signatures for associated C2 patterns', priority: 'short_term' as const },
+      { action: 'Review and harden network segmentation policies', priority: 'long_term' as const },
+    ],
+    stixLabels: ['malicious-activity', 'c2', 'attribution-APT28'],
+    tags: ['tor-exit', 'c2', 'apt28'],
+    cacheReadTokens: 1200, cacheCreationTokens: 0,
+    inputTokens: 1800, outputTokens: 600, costUsd: 0.004, durationMs: 1250,
+  },
+  vtResult: {
+    malicious: 72, suspicious: 3, harmless: 10, undetected: 5,
+    totalEngines: 90, detectionRate: 80, tags: ['c2', 'cobalt-strike', 'apt28'],
+    lastAnalysisDate: daysAgo(1),
+  },
+  abuseipdbResult: {
+    abuseConfidenceScore: 95, totalReports: 147, numDistinctUsers: 89,
+    lastReportedAt: daysAgo(0), isp: 'AS-CHOOPA', countryCode: 'RU',
+    usageType: 'Data Center/Web Hosting/Transit', isWhitelisted: false, isTor: true,
+  },
+}
+
+/** Demo per-IOC cost breakdown */
+export const DEMO_IOC_COST = {
+  iocId: 'demo-1',
+  providers: [
+    { provider: 'virustotal', model: null, inputTokens: 0, outputTokens: 0, costUsd: 0, durationMs: 450, timestamp: daysAgo(1) },
+    { provider: 'abuseipdb', model: null, inputTokens: 0, outputTokens: 0, costUsd: 0, durationMs: 320, timestamp: daysAgo(1) },
+    { provider: 'haiku_triage', model: 'haiku', inputTokens: 1800, outputTokens: 600, costUsd: 0.004, durationMs: 1250, timestamp: daysAgo(1) },
+  ],
+  totalTokens: 2400,
+  totalCostUsd: 0.004,
+  providerCount: 3,
+}

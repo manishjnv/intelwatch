@@ -8,6 +8,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS } from './demo-data'
+import type { EnrichmentStats } from './use-enrichment-data'
 
 // ─── Generic list response shape ──────────────────────────────────
 
@@ -157,19 +158,21 @@ export function useDashboardStats() {
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       // Aggregate from multiple services - fail gracefully per service
-      const [iocStats, feedStats] = await Promise.allSettled([
+      const [iocStats, feedStats, enrichStats] = await Promise.allSettled([
         api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number> }>('/iocs/stats'),
         api<ListResponse<FeedRecord>>('/feeds?limit=1'),
+        api<EnrichmentStats>('/enrichment/stats'),
       ])
 
       const ioc = iocStats.status === 'fulfilled' ? iocStats.value : null
       const feeds = feedStats.status === 'fulfilled' ? feedStats.value : null
+      const enrich = enrichStats.status === 'fulfilled' ? enrichStats.value : null
 
       return {
         totalIOCs: ioc?.total ?? 0,
         criticalIOCs: ioc?.bySeverity?.['critical'] ?? 0,
         activeFeeds: feeds?.total ?? 0,
-        enrichedToday: 0,
+        enrichedToday: enrich?.enrichedToday ?? 0,
         lastIngestTime: 'Live',
       }
     },

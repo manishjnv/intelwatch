@@ -18,6 +18,7 @@ import { FeedListPage } from '@/pages/FeedListPage';
 import { ThreatActorListPage } from '@/pages/ThreatActorListPage';
 import { MalwareListPage } from '@/pages/MalwareListPage';
 import { VulnerabilityListPage } from '@/pages/VulnerabilityListPage';
+import { EnrichmentPage } from '@/pages/EnrichmentPage';
 
 /** Catches render errors and displays them instead of blank page */
 class ErrorBoundary extends React.Component<
@@ -61,7 +62,7 @@ export function App() {
             {/* Phase 4+ module pages — show ComingSoonPage until implemented */}
             <Route path="/graph" element={<ComingSoonPage />} />
             <Route path="/hunting" element={<ComingSoonPage />} />
-            <Route path="/enrichment" element={<ComingSoonPage />} />
+            <Route path="/enrichment" element={<EnrichmentPage />} />
             <Route path="/drp" element={<ComingSoonPage />} />
             <Route path="/correlation" element={<ComingSoonPage />} />
             <Route path="/integrations" element={<ComingSoonPage />} />

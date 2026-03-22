@@ -21,6 +21,7 @@ import { FlipDetailCard, IOCSummaryFront, IOCDetailBack } from '@/components/viz
 import { QuickActionToolbar } from '@/components/viz/QuickActionToolbar'
 import { SparklineCell, generateStubTrend } from '@/components/viz/SparklineCell'
 import { RelationshipGraph, generateStubRelations } from '@/components/viz/RelationshipGraph'
+import { EnrichmentDetailPanel } from '@/components/viz/EnrichmentDetailPanel'
 
 const IOC_FILTERS: FilterOption[] = [
   { key: 'iocType', label: 'Type', options: [
@@ -252,20 +253,29 @@ export function IocListPage() {
           />
         }
         right={selectedRecord ? (
-          <div className="h-full flex flex-col">
+          <div className="h-full flex flex-col overflow-y-auto">
             {/* #6: 3D Flip detail card */}
-            <FlipDetailCard
-              isFlipped={showDetail}
-              front={<div onClick={() => setShowDetail(true)} className="cursor-pointer h-full"><IOCSummaryFront record={selectedRecord} /></div>}
-              back={<IOCDetailBack record={selectedRecord} onFlipBack={() => setShowDetail(false)} />}
-              className="flex-1"
+            <div className="shrink-0" style={{ minHeight: 180 }}>
+              <FlipDetailCard
+                isFlipped={showDetail}
+                front={<div onClick={() => setShowDetail(true)} className="cursor-pointer h-full"><IOCSummaryFront record={selectedRecord} /></div>}
+                back={<IOCDetailBack record={selectedRecord} onFlipBack={() => setShowDetail(false)} />}
+                className="h-full"
+              />
+            </div>
+            {/* Enrichment detail panel */}
+            <EnrichmentDetailPanel
+              iocId={selectedRecord.id}
+              iocType={selectedRecord.iocType}
+              enrichment={null}
+              className="px-2 py-2"
             />
             {/* #10: Mini relationship graph */}
             {stubRelations && (
               <RelationshipGraph
                 nodes={stubRelations.nodes}
                 edges={stubRelations.edges}
-                className="mt-2 mx-2 mb-2"
+                className="mt-2 mx-2 mb-2 shrink-0"
               />
             )}
           </div>

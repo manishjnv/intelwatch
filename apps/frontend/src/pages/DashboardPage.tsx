@@ -15,7 +15,8 @@ import { cn } from '@/lib/utils'
 import { useCountUp } from '@/hooks/use-count-up'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import { useDashboardStats } from '@/hooks/use-intel-data'
-import { Zap, ArrowRight, Search, Activity, Shield } from 'lucide-react'
+import { useCostStats, useEnrichmentStats } from '@/hooks/use-enrichment-data'
+import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain } from 'lucide-react'
 
 // UI improvements (#2, #13, #14, #15)
 import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'
@@ -89,6 +90,8 @@ export function DashboardPage() {
   const tenant = useAuthStore((s) => s.tenant)
   const navigate = useNavigate()
   const { data: liveStats, isDemo } = useDashboardStats()
+  const { data: costStats } = useCostStats()
+  const { data: enrichStats } = useEnrichmentStats()
 
   // Trigger Cmd+K search
   const triggerSearch = () => {
@@ -169,6 +172,46 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Enrichment cost summary */}
+        {costStats && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div
+              onClick={() => navigate('/enrichment')}
+              className="p-3 bg-bg-secondary rounded-lg border border-border hover:border-border-strong cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Brain className="w-3.5 h-3.5 text-accent" />
+                <span className="text-xs text-text-muted">AI Enrichment</span>
+              </div>
+              <p className="text-sm font-semibold text-text-primary">{costStats.headline}</p>
+            </div>
+            <div
+              onClick={() => navigate('/enrichment')}
+              className="p-3 bg-bg-secondary rounded-lg border border-border hover:border-border-strong cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="w-3.5 h-3.5 text-sev-low" />
+                <span className="text-xs text-text-muted">Quality Score</span>
+              </div>
+              <p className="text-sm font-semibold text-text-primary tabular-nums">
+                {enrichStats?.avgQualityScore != null ? `${enrichStats.avgQualityScore}% avg` : '—'}
+              </p>
+            </div>
+            <div
+              onClick={() => navigate('/enrichment')}
+              className="p-3 bg-bg-secondary rounded-lg border border-border hover:border-border-strong cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="w-3.5 h-3.5 text-sev-medium" />
+                <span className="text-xs text-text-muted">Pending</span>
+              </div>
+              <p className="text-sm font-semibold text-text-primary tabular-nums">
+                {enrichStats?.pending?.toLocaleString() ?? '—'} IOCs
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* #2: Severity Heatmap Grid */}
         <SeverityHeatmap className="mb-6" />
