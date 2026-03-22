@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-3%20complete-00ff88)
-![Tests](https://img.shields.io/badge/tests-1680%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-1744%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -18,7 +18,7 @@
 | User Service (register, login, refresh) | ✅ Live on VPS | 21 |
 | Ingestion Service (RSS feeds, 11 pipeline modules) | ✅ Live on VPS | 276 |
 | Normalization Service (18 accuracy improvements) | ✅ Live on VPS | 139 |
-| AI Enrichment Service (VT + AbuseIPDB + Haiku AI + Cost Transparency) | ✅ Live on VPS | 125 |
+| AI Enrichment Service (VT + AbuseIPDB + Haiku AI + Cost Transparency + 8 Accuracy Improvements) | ✅ Live on VPS | 189 |
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
@@ -27,7 +27,7 @@
 | Infrastructure (18 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 3 + Differentiator A** | **100%** (4/4 modules + UI + demo + AI cost transparency) | **1680** |
+| **Phase 3 + Differentiator A+** | **100%** (4/4 modules + UI + demo + AI cost transparency + 8 accuracy improvements) | **1744** |
 
 ## Live API Endpoints
 

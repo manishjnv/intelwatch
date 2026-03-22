@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-22 (update at end of EVERY session via /session-end)
-**Session counter:** 21
+**Session counter:** 22
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -37,7 +37,7 @@
 | frontend | 1 | ✅ UI FROZEN | 2026-03-21 | 5 data pages, 15/15 UI improvements, 11 viz components, demo data fallbacks, 154 tests. D3 + vitest added. **UI FROZEN — do not modify pages/components without explicit approval.** |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
-| ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints). 125 tests. Differentiator A shipped. 15 accuracy improvements planned. |
+| ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints). 189 tests. Differentiator A + 8/15 accuracy improvements shipped. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
 | malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
@@ -67,7 +67,7 @@ user-service          → shared-types, shared-utils, shared-auth
 api-gateway           → shared-types, shared-utils, shared-auth, user-service
 ingestion             → shared-types, shared-utils, shared-auth, shared-cache, shared-audit, shared-enrichment, shared-normalization (Phase 2)
 normalization         → shared-types, shared-utils, shared-normalization, shared-auth (Phase 2)
-ai-enrichment         → shared-types, shared-utils, shared-auth, shared-enrichment, @anthropic-ai/sdk (Phase 2)
+ai-enrichment         → shared-types, shared-utils, shared-auth, shared-enrichment, shared-normalization, @anthropic-ai/sdk (Phase 2)
 ioc-intelligence      → shared-types, shared-utils, shared-auth (Phase 3)
 threat-actor-intel    → shared-types, shared-utils, shared-auth (Phase 3)
 malware-intel         → shared-types, shared-utils, shared-auth (Phase 3)
@@ -107,10 +107,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Differentiator A COMPLETE. Phase 3 COMPLETE. Frontend UI FROZEN. Working on differentiator accuracy improvements before Phase 4.
-- **Last session outcome:** Session 21 (2026-03-22). Differentiator A — AI Cost Transparency. Haiku triage + per-IOC cost tracking + 3 cost API endpoints. 98 new tests (125 ai-enrichment, 1680 monorepo). 1 commit: df33330. NOT yet deployed to VPS (code-only session).
+- **Current phase:** Differentiator A+ in progress (8/15 accuracy improvements shipped). Phase 3 COMPLETE. Frontend UI FROZEN.
+- **Last session outcome:** Session 22 (2026-03-22). AI enrichment 8 accuracy improvements: evidence chains, MITRE ATT&CK extraction, FP detection, confidence feedback loop, budget enforcement gate, Redis cache, malware/actor extraction, recommended actions. 64 new tests (189 ai-enrichment, 1744 monorepo). 1 commit: 265483a. NOT yet deployed to VPS (code-only session).
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. In-memory cost tracker resets on restart (acceptable per DECISION-013).
-- **Next tasks:** (1) Session 22: AI enrichment 15 accuracy improvements P0+P1 (#1-8). (2) Session 23: remaining improvements P1+P2 (#9-15). (3) Differentiator B: Confidence explainability UI. (4) Phase 4: Threat Graph → Correlation → Hunting. (5) Elasticsearch IOC indexing. (6) See docs/FUTURE_IMPROVEMENTS.md for 7 frontend items.
+- **Next tasks:** (1) Session 23: AI enrichment remaining 7 improvements P1+P2 (#9-15: STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler). (2) Differentiator B: Confidence explainability UI. (3) Phase 4: Threat Graph → Correlation → Hunting. (4) Elasticsearch IOC indexing. (5) See docs/FUTURE_IMPROVEMENTS.md for 7 frontend items.
 
 ## Deployment Log
 
@@ -129,6 +129,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 19 | 2026-03-21 | No deploy (code-only session) | — | 91c92c8 | 11 UI improvements, frontend test infra, 100 new tests. Not yet deployed. |
 | 20 | 2026-03-21 | etip_frontend, etip_vulnerability_intel updated | ✅ CI green | 848cb28→815bfaa | Demo data fallbacks, 3 bug fixes (RCA #34-36), vuln-intel TS fixes. 154 frontend tests. |
 | 21 | 2026-03-22 | No deploy (code-only session) | — | df33330 | Differentiator A: Haiku triage + cost tracker + cost API. 98 new tests (1680 total). |
+| 22 | 2026-03-22 | No deploy (code-only session) | — | 265483a | 8 accuracy improvements: evidence, MITRE, FP, budget gate, cache, families, actions. 64 new tests (1744 total). |
 
 ## E2E Verification Results (Session 13)
 
