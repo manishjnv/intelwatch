@@ -34,7 +34,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ Deployed | 2026-03-22 | 5 data pages + enrichment page + enrichment detail panel. 12 viz components. 217 tests. Enrichment UI wired (Differentiator B). **UI re-frozen after enrichment wiring.** |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-22 | 6 data pages (IOC, Feed, Actor, Malware, Vuln, Enrichment) + enrichment detail panel. Tabbed IOC detail (Enrichment/Details/Relations). 12 viz components. 217 tests. **UI FROZEN — do not modify pages/components without explicit approval.** |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
@@ -131,7 +131,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 21 | 2026-03-22 | No deploy (code-only session) | — | df33330 | Differentiator A: Haiku triage + cost tracker + cost API. 98 new tests (1680 total). |
 | 22 | 2026-03-22 | No deploy (code-only session) | — | 265483a | 8 accuracy improvements: evidence, MITRE, FP, budget gate, cache, families, actions. 64 new tests (1744 total). |
 | 23 | 2026-03-22 | etip_enrichment, etip_frontend updated, all app containers recreated | ✅ CI green | 5c949d1→d6694e8 | 7 accuracy improvements (#9-15) + QA checklist + 3 CI fixes. 64 new tests (1808 total). Differentiator A+ COMPLETE. |
-| 24 | 2026-03-22 | No deploy (code-only session) | — | 799145c | Enrichment UI: detail panel, management page, dashboard wiring. 63 new tests (1871 total). Differentiator B COMPLETE. |
+| 24 | 2026-03-22 | etip_frontend updated | pending CI | 799145c, 3bd47e0, 7ae7c39 | Enrichment UI: detail panel, management page, dashboard wiring. Tabbed IOC detail. Merged stats bar. 63 new tests (1871 total). Differentiator B COMPLETE. UI FROZEN. |
 
 ## E2E Verification Results (Session 13)
 
