@@ -9,7 +9,7 @@ import { useIOCs, useIOCStats, type IOCRecord } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
-import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
+// PageStatsBar removed — stats merged inline with FilterBar
 import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { Shield, AlertTriangle, Activity, Clock, Brain, GitBranch, FileText } from 'lucide-react'
@@ -215,13 +215,6 @@ export function IocListPage() {
         </div>
       )}
 
-      <PageStatsBar>
-        <CompactStat icon={<Shield className="w-3 h-3" />} label="Total IOCs" value={stats?.total?.toLocaleString() ?? '—'} />
-        <CompactStat icon={<AlertTriangle className="w-3 h-3" />} label="Critical" value={stats?.bySeverity?.['critical']?.toString() ?? '0'} color="text-sev-critical" />
-        <CompactStat icon={<Activity className="w-3 h-3" />} label="Active" value={stats?.byLifecycle?.['active']?.toString() ?? '0'} color="text-sev-low" />
-        <CompactStat icon={<Clock className="w-3 h-3" />} label="New" value={stats?.byLifecycle?.['new']?.toString() ?? '0'} color="text-accent" />
-      </PageStatsBar>
-
       <FilterBar
         searchValue={search}
         onSearchChange={(v) => { setSearch(v); setPage(1) }}
@@ -229,7 +222,15 @@ export function IocListPage() {
         filters={IOC_FILTERS}
         filterValues={filters}
         onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1) }}
-      />
+      >
+        {/* Inline stats — merged into filter bar row */}
+        <div className="hidden sm:flex items-center gap-3 ml-auto text-xs shrink-0">
+          <span className="text-text-muted">IOCs <span className="text-text-primary font-medium">{stats?.total?.toLocaleString() ?? '—'}</span></span>
+          <span className="text-text-muted">Critical <span className="text-sev-critical font-medium">{stats?.bySeverity?.['critical'] ?? 0}</span></span>
+          <span className="text-text-muted">Active <span className="text-sev-low font-medium">{stats?.byLifecycle?.['active'] ?? 0}</span></span>
+          <span className="text-text-muted">New <span className="text-accent font-medium">{stats?.byLifecycle?.['new'] ?? 0}</span></span>
+        </div>
+      </FilterBar>
 
       {/* #7: Split-pane layout — table left, detail right */}
       <SplitPane

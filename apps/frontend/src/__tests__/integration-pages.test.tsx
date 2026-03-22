@@ -130,7 +130,8 @@ import { IocListPage } from '@/pages/IocListPage'
 describe('IocListPage integration', () => {
   it('renders page with all integrated components', () => {
     render(<IocListPage />)
-    expect(screen.getByTestId('page-stats-bar')).toBeInTheDocument()
+    // Stats merged inline with FilterBar
+    expect(screen.getByPlaceholderText(/Search IOCs/)).toBeInTheDocument()
   })
 
   it('renders SplitPane container', () => {
@@ -161,10 +162,10 @@ describe('IocListPage integration', () => {
     expect(screen.queryByTestId('quick-action-toolbar')).not.toBeInTheDocument()
   })
 
-  it('renders page stats', () => {
+  it('renders inline stats in filter bar', () => {
     render(<IocListPage />)
-    expect(screen.getByTestId('stat-Total IOCs')).toBeInTheDocument()
-    expect(screen.getByTestId('stat-Critical')).toBeInTheDocument()
+    expect(screen.getByText(/Critical/)).toBeInTheDocument()
+    expect(screen.getByText(/Active/)).toBeInTheDocument()
   })
 
   it('shows Trend column header', () => {
