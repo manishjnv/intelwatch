@@ -2,8 +2,8 @@
 
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
-![Phase](https://img.shields.io/badge/phase-3%20complete-00ff88)
-![Tests](https://img.shields.io/badge/tests-1871%20passing-00ff88)
+![Phase](https://img.shields.io/badge/phase-4%20started-00ff88)
+![Tests](https://img.shields.io/badge/tests-1961%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -24,10 +24,11 @@
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
 | Frontend (React 18 + Vite, 15 UI improvements, enrichment UI, demo fallbacks) | ✅ Live on VPS | 217 |
-| Infrastructure (18 Docker containers) | ✅ All healthy | — |
+| Threat Graph Service (Neo4j knowledge graph, risk propagation, 5 P0 improvements) | 🔨 WIP | 90 |
+| Infrastructure (19 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 3 + Differentiator A+ + B** | **100%** (4/4 modules + UI + enrichment UI + demo + AI cost transparency + 15 accuracy improvements) | **1871** |
+| **Phase 4 started + Phase 3 + Differentiators A/A+/B** | **Phase 4 in progress** (threat graph core done, P1+P2 next) | **1961** |
 
 ## Live API Endpoints
 

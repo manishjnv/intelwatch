@@ -1,8 +1,8 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-22
-**Session:** 24
-**Session Summary:** Enrichment UI (Differentiator B) — wired all 15 backend enrichment features to frontend. Tabbed IOC detail. Mobile-responsive SplitPane overlay. Deployed to VPS. UI FROZEN.
+**Session:** 25
+**Session Summary:** Threat Graph Service (Module 12) — Neo4j knowledge graph with living risk propagation, 7 node types, 9 relationship types, 11 endpoints, 5 P0 differentiator improvements. Phase 4 started.
 
 ---
 
@@ -15,101 +15,130 @@
 
 ---
 
-## Changes Made (Session 24)
+## ✅ Changes Made (Session 25)
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| `799145c` | 10 | feat: add enrichment UI — detail panel, management page, dashboard wiring |
-| `a8335ac` | 4 | docs: session 24 end (initial) |
-| `3bd47e0` | 1 | fix: replace stacked IOC detail with tabbed layout |
-| `7ae7c39` | 2 | fix: merge IOC stats bar into filter bar |
-| `f59e3d4` | 1 | docs: freeze frontend UI |
-| `b18bd20` | 1 | fix: remove 4 unused icon imports blocking CI lint |
-| `4e60b44` | 3 | fix: mobile-responsive IOC detail — full-screen overlay on <768px |
+| `2e37845` | 33 | feat: add threat graph service (Module 12) — Neo4j knowledge graph with living risk propagation |
 
-## Files Created
+## 📁 Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/frontend/src/hooks/use-enrichment-data.ts` | TanStack Query hooks for 8 enrichment API endpoints |
-| `apps/frontend/src/components/viz/EnrichmentDetailPanel.tsx` | IOC enrichment detail: evidence, MITRE, FP, actions, STIX, quality, geo, cost |
-| `apps/frontend/src/pages/EnrichmentPage.tsx` | Full enrichment management page (replaces ComingSoonPage) |
-| `apps/frontend/src/__tests__/enrichment-data.test.ts` | 35 tests for enrichment demo data |
-| `apps/frontend/src/__tests__/enrichment-ui.test.tsx` | 28 tests for EnrichmentPage + EnrichmentDetailPanel |
+| `apps/threat-graph/package.json` | Dependencies (neo4j-driver, bullmq, fastify, zod) |
+| `apps/threat-graph/tsconfig.json` | TypeScript config (composite, references) |
+| `apps/threat-graph/vitest.config.ts` | Vitest with workspace aliases |
+| `apps/threat-graph/README.md` | Module documentation |
+| `apps/threat-graph/src/index.ts` | Entry point, startup, graceful shutdown |
+| `apps/threat-graph/src/app.ts` | Fastify builder with all plugins |
+| `apps/threat-graph/src/config.ts` | Zod env schema (port 3012 + Neo4j + propagation config) |
+| `apps/threat-graph/src/logger.ts` | Pino singleton with ETIP redaction |
+| `apps/threat-graph/src/prisma.ts` | PrismaClient singleton |
+| `apps/threat-graph/src/driver.ts` | Neo4j driver singleton (new pattern) |
+| `apps/threat-graph/src/plugins/auth.ts` | JWT authenticate + rbac preHandlers |
+| `apps/threat-graph/src/plugins/error-handler.ts` | AppError + Zod + Fastify error handler |
+| `apps/threat-graph/src/schemas/graph.ts` | Zod schemas: 7 node types, 9 relationship types, query params |
+| `apps/threat-graph/src/repository.ts` | Neo4j Cypher queries: CRUD, N-hop, path, cluster, stats |
+| `apps/threat-graph/src/service.ts` | Business logic: create/query/expand + path explanation |
+| `apps/threat-graph/src/propagation.ts` | Risk propagation engine (BFS, decay, confidence-weighted, temporal) |
+| `apps/threat-graph/src/queue.ts` | BullMQ GRAPH_SYNC queue + worker factory |
+| `apps/threat-graph/src/routes/health.ts` | GET /health, /ready (incl. Neo4j check) |
+| `apps/threat-graph/src/routes/graph.ts` | All graph API endpoints (11 routes) |
+| `apps/threat-graph/tests/health.test.ts` | 3 tests |
+| `apps/threat-graph/tests/config.test.ts` | 9 tests |
+| `apps/threat-graph/tests/schemas.test.ts` | 28 tests |
+| `apps/threat-graph/tests/driver.test.ts` | 8 tests |
+| `apps/threat-graph/tests/repository.test.ts` | 12 tests |
+| `apps/threat-graph/tests/service.test.ts` | 17 tests |
+| `apps/threat-graph/tests/propagation.test.ts` | 13 tests |
 
-## Files Modified
+## 📁 Files Modified
 
 | File | Change |
 |------|--------|
-| `apps/frontend/src/hooks/use-intel-data.ts` | Wire enrichedToday to /enrichment/stats API |
-| `apps/frontend/src/hooks/demo-data.ts` | Enrichment demo fallbacks |
-| `apps/frontend/src/pages/IocListPage.tsx` | Tabbed detail (Enrichment/Details/Relations), merged stats into filter bar, mobile close handler |
-| `apps/frontend/src/pages/DashboardPage.tsx` | Cost summary widgets |
-| `apps/frontend/src/App.tsx` | Route /enrichment to EnrichmentPage |
-| `apps/frontend/src/components/viz/SplitPane.tsx` | Mobile: full-screen overlay on <768px with close button |
-| `apps/frontend/src/__tests__/integration-pages.test.tsx` | Updated for merged stats |
-| `apps/frontend/src/__tests__/viz-table.test.tsx` | Updated for dual-layout SplitPane |
+| `tsconfig.build.json` | Added `{ "path": "apps/threat-graph" }` to references |
+| `Dockerfile` | Added COPY line for threat-graph package.json + tsconfig.json |
+| `docker-compose.etip.yml` | Added etip_threat_graph service (port 3012, depends_on neo4j) + nginx depends_on |
+| `pnpm-lock.yaml` | Auto-updated (neo4j-driver added) |
 
 ---
 
-## Decisions & Rationale
+## 🔧 Decisions & Rationale
 
-- **No new DECISION entries.**
-- **Tabbed IOC detail**: Replaced stacked FlipCard+EnrichmentPanel+Graph with tabs. Each tab gets full pane height instead of 220px.
-- **Mobile overlay**: SplitPane renders full-screen overlay on <768px instead of cramped side-by-side. Spring animation slide-up.
-- **Mobile-first rule**: Saved as feedback memory — all future UI changes must test at 375px.
+- **DECISION-018**: neo4j-driver in threat-graph only (not a shared package). Only one service talks to Neo4j.
+- **DECISION-019**: No Prisma models for graph data — Neo4j is the sole store. Cypher queries directly.
+- **DECISION-020**: Risk propagation is upward-only (never lowers scores). Prevents false-positive cascading.
 
 ---
 
-## Deploy Verification
+## 🧪 Deploy Verification
 
 ```
-CI Run: 23406942573 — ALL GREEN
-  - Tests: 1871 passing
+CI Run: 23407860884 — IN PROGRESS (pushed 2e37845)
+  - Tests: 1961 passing (90 new)
+  - Typecheck: 0 errors
   - Lint: 0 errors
-  - Docker build: success
-  - Deploy to VPS: success
-VPS Health: {"status":"ok","service":"api-gateway","uptime":39}
-Production data verified:
-  - /enrichment: 301 IOCs, 301 enriched, 0 pending, $0.00 cost
-  - /dashboard: "1 IOC enriched for $0.00", enrichedToday wired
+  - Docker build: pending CI
+  - Deploy to VPS: pending CI
 ```
 
 ---
 
-## Open Items / Next Steps
+## ⚠️ Open Items / Next Steps
 
-### Immediate — Phase 4: Threat Graph Service
-New module at port 3012. Neo4j/D3 graph for IOC-Actor-Malware relationships.
+### Immediate — Session 26: Threat Graph P1+P2 Improvements
+10 remaining improvements for Module 12:
+- P1: #6 Bidirectional semantics, #7 Cluster detection, #8 Impact radius, #9 Cross-entity scoring, #10 Graph diff/timeline
+- P2: #11 Expand node, #12 STIX export, #13 Graph search, #14 Relationship CRUD, #15 Propagation audit trail
+
+### After That — Phase 4 Continues
+- Module 13: Correlation Engine (rule-based + AI)
+- Module 14: Threat Hunting (investigation workspaces)
+- Module 11: Digital Risk Protection (P1)
 
 ### Deferred
 - Update QA_CHECKLIST.md to mark enrichment items [U]
 - Elasticsearch IOC indexing
 - Frontend improvements: docs/FUTURE_IMPROVEMENTS.md
+- Verify CI run 23407860884 completes green
 
 ---
 
-## How to Resume
+## 🔁 How to Resume
 
-### Session 25: Phase 4 — Threat Graph Service (RECOMMENDED)
+### Session 26: Phase 4 — Threat Graph P1+P2 (RECOMMENDED)
 ```
 /session-start
 
-Scope: Phase 4 — Threat Graph Service (Module 12)
+Scope: Phase 4 — Threat Graph Service P1+P2 (Module 12)
 Do not modify: shared-*, api-gateway, user-service, ingestion, normalization,
   ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel,
   vulnerability-intel, frontend.
 
 ## Context
-Session 24 completed Differentiator B (Enrichment UI). All enrichment data
-now visible in frontend. Frontend is UI FROZEN. Phase 3 + Differentiators A/A+/B
-all COMPLETE. 1871 tests. 18 containers. 301 IOCs in production pipeline.
+Session 25 built threat graph core + P0 #1-5. Port 3012. 90 tests. Commit 2e37845.
+Neo4j knowledge graph: 7 node types, 9 relationship types, 11 endpoints.
+Risk propagation (BFS 3-hop, 0.7^distance decay, confidence-weighted, temporal decay).
+Path explanation, graph statistics. BullMQ GRAPH_SYNC worker.
 
-## Architecture Reference (MANDATORY)
-Review: docs/architecture/ETIP_Architecture_Blueprint_v4.html
-(living graph, retroactive risk propagation, graph query patterns)
+## Task: 10 Improvements (P1 #6-10 + P2 #11-15)
 
-Port 3012. Skill: skills/12-THREAT-GRAPH.md.
+P1 — Accuracy Boosters:
+  #6  Bidirectional relationship semantics (query from either direction)
+  #7  Cluster detection (community detection for shared infrastructure)
+  #8  Impact radius calculation (blast radius before action)
+  #9  Cross-entity type scoring (per-relationship-type propagation weights)
+  #10 Graph diff / timeline (neighborhood changes over N days)
+
+P2 — UX Enhancements (backend-ready):
+  #11 Expand node API (lazy-load immediate neighbors only)
+  #12 Subgraph export as STIX 2.1 bundle
+  #13 Graph search (find nodes by property, type, risk score range)
+  #14 Relationship CRUD (analyst-confirmed vs auto-detected labels)
+  #15 Risk propagation audit trail (before/after scores, trigger, decay path)
+
+Target: all in apps/threat-graph/ only. Suggest further improvements.
+Skill: skills/12-THREAT-GRAPH.md.
 ```
 
 ### Phase roadmap
@@ -121,5 +150,5 @@ Phase 3.5: Dashboard + Demo  FROZEN (6 pages, 15 UI, demo fallbacks, mobile)
 Differentiator A             COMPLETE (AI cost transparency)
 Differentiator A+            COMPLETE (15/15 improvements)
 Differentiator B             COMPLETE (Enrichment UI)
-Phase 4: Advanced Intel      NEXT: Graph -> Correlation -> Hunting
+Phase 4: Advanced Intel      IN PROGRESS: Graph (core done) → P1+P2 → Correlation → Hunting
 ```

@@ -553,6 +553,8 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 
 **Session 24:** 2 deploys. First failed (RCA #40: unused imports). Second succeeded. Enrichment UI + tabbed detail + mobile overlay. 63 new tests (1871 total). Commits 799145c→4e60b44. CI green (run 23406942573). All containers healthy.
 
+**Session 25:** Threat Graph Service (Module 12) added. etip_threat_graph container (port 3012, depends_on etip_neo4j). 90 new tests (1961 total). Commit 2e37845. CI run 23407860884 pending. 19 containers expected.
+
 **Session 20:** No deploy (code-only session). Demo data fallbacks for offline frontend. 5 bugs found and fixed:
 
 ### Issue 34: EntityChip crash — backend iocType `hash_sha256` not in shared-ui type map

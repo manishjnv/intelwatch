@@ -124,3 +124,24 @@
 **Decision:** Sliding-window rate limiter in-memory per provider. Configurable via TI_VT_RATE_LIMIT_PER_MIN and TI_ABUSEIPDB_RATE_LIMIT_PER_DAY env vars.
 **Alternatives:** Redis-backed rate limiter (survives restarts but adds coupling), token bucket (more complex, unnecessary for 2 providers)
 **Consequences:** Rate limits reset on service restart. Acceptable for single-instance deployment. Migrate to Redis-backed when horizontal scaling.
+
+### DECISION-018: neo4j-driver in threat-graph only (not a shared package)
+**Date:** 2026-03-22 | **Status:** Accepted
+**Context:** Building Module 12 (Threat Graph). Neo4j driver needed for Cypher queries. Only graph-service talks to Neo4j.
+**Decision:** Add `neo4j-driver` directly to `apps/threat-graph/package.json`. No shared Neo4j package.
+**Alternatives:** Create `packages/shared-neo4j` (premature — only one consumer), add to root (pollutes all services)
+**Consequences:** If a future service needs Neo4j access (e.g., correlation engine), extract to shared package then. For now, single dependency = simple.
+
+### DECISION-019: No Prisma models for graph data — Neo4j is the store
+**Date:** 2026-03-22 | **Status:** Accepted
+**Context:** Graph entities (nodes, relationships) could be dual-stored in PostgreSQL + Neo4j, or Neo4j-only.
+**Decision:** Neo4j is the sole store for graph data. Prisma only used for potential audit logging. All graph queries use Cypher directly.
+**Alternatives:** Dual-store in PostgreSQL + Neo4j (consistency overhead, double writes), PostgreSQL-only with recursive CTEs (poor graph performance)
+**Consequences:** Graph data not available via Prisma. If PostgreSQL backup of graph data is needed, add a sync job later. Neo4j backup via `neo4j-admin dump`.
+
+### DECISION-020: Risk propagation is upward-only (never lowers scores)
+**Date:** 2026-03-22 | **Status:** Accepted
+**Context:** When propagating risk through the graph, should a low-risk node lower the scores of its neighbors?
+**Decision:** Propagation only raises scores: `newRisk = max(currentRisk, triggerRisk × weight)`. Never lowers.
+**Alternatives:** Bidirectional propagation (complex, can cascade score drops from false positives), average-based (loses high-confidence signals)
+**Consequences:** Once a node's score is raised, it stays until manual reset or time-decay. Prevents a single false-positive from cascading downward rescoring across the graph. Score lowering will be manual (analyst action) or via periodic re-evaluation cron.
