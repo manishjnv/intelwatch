@@ -14,6 +14,7 @@
     "lint": "eslint src/ tests/"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@etip/shared-auth": "workspace:*",
     "@etip/shared-enrichment": "workspace:*",
     "@etip/shared-types": "workspace:*",

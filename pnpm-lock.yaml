@@ -44,6 +44,9 @@ importers:
 
   apps/ai-enrichment:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.39.0
+        version: 0.39.0
       '@etip/shared-auth':
         specifier: workspace:*
         version: link:../../packages/shared-auth

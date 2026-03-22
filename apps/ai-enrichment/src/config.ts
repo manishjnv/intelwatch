@@ -28,6 +28,12 @@ const EnvSchema = z.object({
   TI_VT_RATE_LIMIT_PER_MIN: z.coerce.number().int().default(4),
   /** AbuseIPDB rate limit: requests per day */
   TI_ABUSEIPDB_RATE_LIMIT_PER_DAY: z.coerce.number().int().default(1000),
+  /** Anthropic API key for Haiku triage (empty = Haiku disabled) */
+  TI_ANTHROPIC_API_KEY: z.string().default(''),
+  /** Haiku model ID for IOC triage */
+  TI_HAIKU_MODEL: z.string().default('claude-haiku-4-5-20251001'),
+  /** Daily cost budget per tenant in USD (0 = unlimited) */
+  TI_ENRICHMENT_DAILY_BUDGET_USD: z.coerce.number().min(0).default(5.00),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

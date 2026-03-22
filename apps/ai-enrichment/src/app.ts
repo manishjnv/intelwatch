@@ -7,11 +7,14 @@ import { type AppConfig } from './config.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { enrichmentRoutes } from './routes/enrichment.js';
+import { costRoutes } from './routes/cost.js';
 import type { EnrichmentRepository } from './repository.js';
+import type { EnrichmentCostTracker } from './cost-tracker.js';
 
 export interface BuildAppOptions {
   config: AppConfig;
   repo: EnrichmentRepository;
+  costTracker: EnrichmentCostTracker;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -60,6 +63,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(enrichmentRoutes(repo), { prefix: '/api/v1/enrichment' });
+  await app.register(costRoutes(opts.costTracker, config.TI_ENRICHMENT_DAILY_BUDGET_USD), { prefix: '/api/v1/enrichment/cost' });
 
   return app;
 }

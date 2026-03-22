@@ -7,6 +7,8 @@ import { EnrichmentRepository } from './repository.js';
 import { EnrichmentService } from './service.js';
 import { VirusTotalProvider } from './providers/virustotal.js';
 import { AbuseIPDBProvider } from './providers/abuseipdb.js';
+import { HaikuTriageProvider } from './providers/haiku-triage.js';
+import { EnrichmentCostTracker } from './cost-tracker.js';
 import { createVTRateLimiter, createAbuseIPDBRateLimiter } from './rate-limiter.js';
 import { createEnrichQueue, closeEnrichQueue } from './queue.js';
 import { createEnrichWorker } from './workers/enrich-worker.js';
@@ -29,11 +31,19 @@ async function main(): Promise<void> {
   const vtProvider = new VirusTotalProvider(config.TI_VIRUSTOTAL_API_KEY, vtLimiter, logger);
   const abuseProvider = new AbuseIPDBProvider(config.TI_ABUSEIPDB_API_KEY, abuseLimiter, logger);
 
+  // Haiku triage (null when API key not configured)
+  const haikuProvider = config.TI_ANTHROPIC_API_KEY
+    ? new HaikuTriageProvider(config.TI_ANTHROPIC_API_KEY, config.TI_AI_ENABLED, logger, config.TI_HAIKU_MODEL)
+    : null;
+
+  // Cost tracker (in-memory per DECISION-013)
+  const costTracker = new EnrichmentCostTracker();
+
   const repo = new EnrichmentRepository(prisma);
-  const service = new EnrichmentService(repo, vtProvider, abuseProvider, config.TI_AI_ENABLED, logger);
+  const service = new EnrichmentService(repo, vtProvider, abuseProvider, haikuProvider, costTracker, config.TI_AI_ENABLED, logger);
 
   createEnrichQueue();
-  const app = await buildApp({ config, repo });
+  const app = await buildApp({ config, repo, costTracker });
   const worker = createEnrichWorker({ service, logger });
 
   app.addHook('onClose', async () => {
@@ -45,6 +55,9 @@ async function main(): Promise<void> {
   try {
     const address = await app.listen({ port: config.TI_ENRICHMENT_PORT, host: config.TI_ENRICHMENT_HOST });
     logger.info(`ETIP AI Enrichment Service listening at ${address}`);
+    if (haikuProvider) {
+      logger.info({ model: config.TI_HAIKU_MODEL, budget: config.TI_ENRICHMENT_DAILY_BUDGET_USD }, 'Haiku triage enabled');
+    }
   } catch (err) {
     logger.fatal({ err }, 'Failed to start AI Enrichment Service');
     process.exit(1);
