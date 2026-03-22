@@ -1,119 +1,138 @@
 # SESSION HANDOFF DOCUMENT
 
-**Date:** 2026-03-21
-**Session:** 20
-**Session Summary:** Demo data fallbacks — all 11 UI improvements visible without backend. 3 latent bugs fixed (RCA #34-36). Demo auth, ErrorBoundary, client-side sort/filter. Deployed to VPS.
+**Date:** 2026-03-22
+**Session:** 21
+**Session Summary:** Differentiator A — AI Cost Transparency. Haiku triage + per-IOC cost tracking + 3 cost API endpoints. 98 new tests (125 total in ai-enrichment, 1680 monorepo). Commit df33330.
 
 ---
 
-## ✅ Changes Made
+## ⚠️ MANDATORY: Review These Architecture Docs Every Session
+
+These are the canonical design specifications. Load the relevant one based on session scope:
+
+| Document | When to Load | Key Content |
+|----------|-------------|-------------|
+| `docs/architecture/CTI-Pipeline-Architecture-v2.0.html` | Pipeline work (ingestion, normalization, enrichment), confidence scoring, dedup | 4-stage pipeline, composite confidence formula (6 factors), enrichment Stage 2.5, cost model, 3-layer dedup, IOC lifecycle state machine |
+| `docs/architecture/ETIP_Architecture_Blueprint_v4.html` | Phase 4+ (graph, correlation, hunting), module design, cost tracking, competitive positioning | 22-module map, living graph with retroactive risk propagation, 3 enrichment patterns (batch/real-time/agentic), reasoning trail schema, prompt caching, STIX/TAXII |
+
+**Rule:** Before proposing architectural alternatives, check both docs + `docs/DECISIONS_LOG.md`. These are approved-for-development specifications.
+
+---
+
+## ✅ Changes Made (Session 21)
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| `848cb28` | 4 | feat: demo data fallbacks — 25 IOC records, withDemoFallback helper, demo banner |
-| `a04d271` | 3 | test: 54 demo fallback tests (data shape + banner rendering) |
-| `620bbf7` | 1 | fix: catch fetch errors in queryFn to prevent React crash |
-| `24719c6` | 3 | fix: EntityChip type mapping, demo auth fallback, ErrorBoundary, client-side sort |
-| `4150d70` | 1 | fix: client-side filtering, search, flip card re-flip |
-| `f2aeb3e` | 2 | docs: RCA #34-36, freeze frontend UI in PROJECT_STATE |
-| `d2ddc02` | 1 | fix: login falls back to demo session when backend unreachable |
-| `4a58a29` | 1 | docs: FUTURE_IMPROVEMENTS.md — 7 frontend items |
-| `815bfaa` | 3 | fix: 4 pre-existing TS errors in vulnerability-intel blocking Docker build |
+| `df33330` | 15 | feat: AI cost transparency — Haiku triage + per-IOC cost tracking + cost API |
 
 ## 📁 Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/frontend/src/hooks/demo-data.ts` | 25 realistic IOC records + stats for fallback |
-| `apps/frontend/src/__tests__/demo-data.test.ts` | 39 tests — data shape, types, realism |
-| `apps/frontend/src/__tests__/demo-fallback.test.tsx` | 15 tests — banner rendering, isDemo toggle |
-| `docs/FUTURE_IMPROVEMENTS.md` | 7 prioritized frontend improvements for later |
+| `apps/ai-enrichment/src/cost-tracker.ts` | EnrichmentCostTracker — per-IOC per-provider cost tracking, aggregate stats, tenant budget alerts |
+| `apps/ai-enrichment/src/providers/haiku-triage.ts` | HaikuTriageProvider — Claude Haiku IOC classifier, prompt injection defense, graceful degradation |
+| `apps/ai-enrichment/src/routes/cost.ts` | 3 cost API endpoints: /stats, /ioc/:iocId, /budget |
+| `apps/ai-enrichment/tests/cost-tracker.test.ts` | 29 tests — cost calculation, provider tracking, aggregation, budget |
+| `apps/ai-enrichment/tests/haiku-triage.test.ts` | 24 tests — enable/disable, triage, prompt, validation |
+| `apps/ai-enrichment/tests/cost-routes.test.ts` | 14 tests — cost API endpoint tests |
 
 ## 📁 Files Modified
 
 | File | Change |
 |------|--------|
-| `apps/frontend/src/hooks/use-intel-data.ts` | withDemoFallback helper, .catch() in queryFn, isDemo flag |
-| `apps/frontend/src/hooks/use-auth.ts` | Login falls back to demo session on network error |
-| `apps/frontend/src/pages/DashboardPage.tsx` | Demo banner when isDemo=true |
-| `apps/frontend/src/pages/IocListPage.tsx` | Demo banner, toChipType mapper, .toUpperCase(), client-side sort/filter, flip re-flip |
-| `apps/frontend/src/App.tsx` | ErrorBoundary wrapping Routes |
-| `apps/frontend/src/components/layout/ProtectedRoute.tsx` | Demo auth fallback when backend unreachable |
-| `apps/frontend/src/components/viz/SeverityHeatmap.tsx` | Minor (part of session 19 unstaged fix) |
-| `apps/vulnerability-intel/src/accuracy.ts` | Prefix unused param with underscore |
-| `apps/vulnerability-intel/src/repository.ts` | Null-safe Prisma _count._all access |
-| `apps/vulnerability-intel/src/service.ts` | Remove unused import |
-| `docs/DEPLOYMENT_RCA.md` | RCA #34-36 added, count updated to 36 |
-| `docs/PROJECT_STATE.md` | Session 20 updates, frontend UI FROZEN |
+| `apps/ai-enrichment/src/config.ts` | +3 env vars: TI_ANTHROPIC_API_KEY, TI_HAIKU_MODEL, TI_ENRICHMENT_DAILY_BUDGET_USD |
+| `apps/ai-enrichment/src/schema.ts` | +HaikuTriageResultSchema, CostBreakdownSchema, extended EnrichmentResultSchema |
+| `apps/ai-enrichment/src/service.ts` | 3-provider pipeline (VT → AbuseIPDB → Haiku), backward-compat risk scoring, cost tracking |
+| `apps/ai-enrichment/src/app.ts` | Registered cost routes, added costTracker to BuildAppOptions |
+| `apps/ai-enrichment/src/index.ts` | Wired HaikuTriageProvider + EnrichmentCostTracker |
+| `apps/ai-enrichment/package.json` | Added @anthropic-ai/sdk ^0.39.0 |
+| `apps/ai-enrichment/tests/service.test.ts` | +20 tests: Haiku triage, cost tracking, 4-component scoring, backward compat |
+| `apps/ai-enrichment/tests/config.test.ts` | +10 tests: new env var defaults, validation, parsing |
+| `pnpm-lock.yaml` | Updated with @anthropic-ai/sdk |
 
 ---
 
 ## 🔧 Decisions & Rationale
 
-No new architectural decisions. Key patterns:
-- Demo data lives in `demo-data.ts` (not inline in hooks) — keeps hooks clean
-- `withDemoFallback()` is generic — works for any TanStack Query hook
-- Client-side sort/filter only activates in demo mode (`isDemo` flag)
-- Demo auth seeds via ProtectedRoute health probe, not by modifying auth store init
-- ErrorBoundary is a class component (React requirement for getDerivedStateFromError)
+- **Backward-compatible risk scoring**: When Haiku absent, formula unchanged (50/30/20). When present, 4-component (35/25/25/15). Existing test expectations preserved (score=46).
+- **Graceful degradation**: Haiku returns null on any error. Pipeline continues with VT + AbuseIPDB.
+- **No schema migration**: Cost data stored in existing enrichmentData JSON column.
+- **In-memory cost tracker**: Per DECISION-013, acceptable for Phase 2 validation.
+- **@anthropic-ai/sdk**: Already in lockfile via ingestion service. No new binary dependency.
 
 ---
 
-## 🧪 Deploy Verification Results
+## 🧪 Test Results
 
 ```
-CI/CD Run: #23379759997 — SUCCESS
-Frontend: https://ti.intelwatch.in/ → 200 OK
-Docker build: tsc -b clean (0 errors after vuln-intel fixes)
-Tests: 1582 passing (17 packages, 0 failures)
-  - Frontend: 154 (54 new)
-  - Vulnerability Intel: 119 (unchanged)
-  - All others: unchanged
+AI Enrichment: 125 tests (was 27, +98 new)
+  - config: 17 (was 7, +10)
+  - schema: 9 (unchanged)
+  - rate-limiter: 7 (unchanged)
+  - service: 28 (was 8, +20)
+  - cost-tracker: 29 (NEW)
+  - haiku-triage: 24 (NEW)
+  - cost-routes: 14 (NEW)
+
+Full Monorepo: 1680 tests (was 1582, +98), 0 failures, 17 packages
 ```
 
 ---
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate — Phase 4 Backend
-Continue roadmap: Digital Risk Protection (port 3011), Threat Graph, Correlation, Hunting.
+### Immediate — Session 22: AI Enrichment 15 Accuracy Improvements
 
-### Deferred (see docs/FUTURE_IMPROVEMENTS.md)
-1. SparklineCell — replace stub data with real trend API
-2. QuickActionToolbar — wire Export/Tag/Compare/Archive to backend
-3. RelationshipGraph — clickable nodes (Phase 4 dependency)
-4. Demo mode production gate — `VITE_DEMO_MODE` env var
-5. EntityChip/SeverityBadge case unification
-6. ThreatTimeline auto-scroll
-7. AmbientBackground visibility tuning
-8. Bundle optimization — code-split D3 (710KB → ~550KB)
-9. Elasticsearch IOC indexing
-10. Rotate VT/AbuseIPDB keys
+**15 improvements planned** (see memory: `session21_improvements.md`). Split across 2 sessions:
+
+| Session | Improvements | Est. Tests |
+|---------|-------------|-----------|
+| **22** | P0 (#1-5) + P1 top (#6-8): Evidence chain, MITRE extraction, FP detection, confidence feedback, budget gate, Redis cache, family/actor extraction, recommended actions | ~70 |
+| **23** | P1 remaining (#9-10) + P2 (#11-15): STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler | ~52 |
+
+**Critical rule:** All improvements are ADDITIVE — never remove or overwrite Session 21 code.
+
+### Deferred
+- Session 23+: Elasticsearch IOC indexing
+- Phase 4: Threat Graph → Correlation → Hunting (reordered per PROJECT_ASSESSMENT.md)
+- Frontend improvements: see docs/FUTURE_IMPROVEMENTS.md (7 items, UI FROZEN)
 
 ---
 
 ## 🔁 How to Resume
 
-### Option A — Phase 4 (Digital Risk Protection)
+### Option A — Session 22: AI Enrichment Accuracy Improvements (RECOMMENDED)
 ```
 /session-start
 
-Scope: Phase 4 — Digital Risk Protection Service (Module 11)
+Scope: AI Enrichment Accuracy Improvements (Module 06) — P0 + P1
 Do not modify: shared-*, api-gateway, user-service, frontend (UI FROZEN),
-  ingestion, normalization, ai-enrichment, ioc-intelligence,
+  ingestion, normalization, ioc-intelligence,
   threat-actor-intel, malware-intel, vulnerability-intel (all Tier 1/2 frozen).
 
 ## Context
-Phase 3 COMPLETE. Frontend UI FROZEN with demo fallbacks. 18 containers. 1582 tests.
-Port 3011. Skill: skills/11-DIGITAL-RISK-PROTECTION.md.
+Session 21 shipped: Haiku triage + cost tracker + cost API. 125 tests. Commit df33330.
+15 accuracy improvements planned — see memory session21_improvements.md.
+This session: implement #1-8 (P0 + P1 top 3). ~70 new tests.
+ALL improvements ADDITIVE — do NOT remove or overwrite session 21 code.
+
+## Architecture Reference (MANDATORY)
+Review before coding:
+- docs/architecture/CTI-Pipeline-Architecture-v2.0.html (confidence formula, enrichment patterns)
+- docs/architecture/ETIP_Architecture_Blueprint_v4.html (reasoning trails, prompt caching, STIX)
+
+Port 3006. Skill: skills/06-AI-ENRICHMENT.md.
 ```
 
-### Option B — Threat Graph Service
+### Option B — Phase 4: Threat Graph Service
 ```
 /session-start
 
 Scope: Phase 4 — Threat Graph Service (Module 12)
 Port 3012. Skill: skills/12-THREAT-GRAPH.md.
+
+## Architecture Reference (MANDATORY)
+Review: docs/architecture/ETIP_Architecture_Blueprint_v4.html (living graph, retroactive risk propagation, graph query patterns)
 ```
 
 ### Phase roadmap
@@ -122,14 +141,32 @@ Phase 1: Foundation          ✅ COMPLETE
 Phase 2: Data Pipeline       ✅ COMPLETE
 Phase 3: Core Intel          ✅ COMPLETE (4 modules)
 Phase 3.5: Dashboard + Demo  ✅ FROZEN (5 pages, 15 UI, demo fallbacks)
-Phase 4: Advanced Intel      📋 NEXT (DRP, Graph, Correlation, Hunting)
-Phase 5-8: See skills/00-ARCHITECTURE-ROADMAP.md
+Differentiator A             ✅ COMPLETE (AI cost transparency, Session 21)
+Differentiator A+            📋 NEXT (15 accuracy improvements, Session 22-23)
+Differentiator B             📋 Confidence explainability UI (Session 24)
+Phase 4: Advanced Intel      📋 Graph → Correlation → Hunting (Session 25-29)
 ```
 
 ### Module → skill file map
 ```
-digital-risk-protection  → skills/11-DIGITAL-RISK-PROTECTION.md
-threat-graph             → skills/12-THREAT-GRAPH.md
-correlation-engine       → skills/13-CORRELATION-ENGINE.md
-threat-hunting           → skills/14-THREAT-HUNTING.md
+ai-enrichment (improvements)  → skills/06-AI-ENRICHMENT.md
+digital-risk-protection        → skills/11-DIGITAL-RISK-PROTECTION.md
+threat-graph                   → skills/12-THREAT-GRAPH.md
+correlation-engine             → skills/13-CORRELATION-ENGINE.md
+threat-hunting                 → skills/14-THREAT-HUNTING.md
+```
+
+### Key constructor signatures (DO NOT BREAK)
+```typescript
+// EnrichmentService — 7 args
+new EnrichmentService(repo, vtProvider, abuseProvider, haikuProvider, costTracker, aiEnabled, logger)
+
+// computeRiskScore — exported, tested
+computeRiskScore(vt, abuse, haiku, baseConfidence) → number
+
+// HaikuTriageProvider — 4 args
+new HaikuTriageProvider(apiKey, aiEnabled, logger, model?)
+
+// EnrichmentCostTracker — 0 args
+new EnrichmentCostTracker()
 ```
