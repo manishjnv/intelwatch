@@ -107,10 +107,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Differentiator B COMPLETE (Enrichment UI). Phase 3 COMPLETE. Differentiator A+ COMPLETE. Frontend re-frozen after enrichment wiring.
-- **Last session outcome:** Session 24 (2026-03-22). Enrichment UI wired: EnrichmentDetailPanel (evidence chain, MITRE badges, FP, actions, STIX, quality, geo, cost), EnrichmentPage (replaces ComingSoonPage — stats, pending queue, batch, cost dashboard, budget gauge, cache, scheduler), Dashboard enrichedToday wired to real API + cost widgets. 63 new tests (217 frontend, 1871 monorepo). No deploy (code-only session). Commit: 799145c.
+- **Current phase:** Differentiator B COMPLETE (Enrichment UI). Phase 3 COMPLETE. Differentiator A+ COMPLETE. Frontend UI FROZEN (mobile-optimized).
+- **Last session outcome:** Session 24 (2026-03-22). Enrichment UI: detail panel + management page + dashboard wiring. Tabbed IOC detail (Enrichment/Details/Relations). Merged stats into filter bar. Mobile-responsive SplitPane (full-screen overlay on <768px). 63 new tests (217 frontend, 1871 monorepo). Deployed to VPS — CI green, all containers healthy. Commits: 799145c, 3bd47e0, 7ae7c39, b18bd20, 4e60b44.
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating to [U] for enrichment items.
-- **Next tasks:** (1) Deploy session 24 frontend changes to VPS. (2) Update QA_CHECKLIST.md to mark enrichment items [U]. (3) Phase 4: Threat Graph → Correlation → Hunting. (4) Elasticsearch IOC indexing. (5) See docs/FUTURE_IMPROVEMENTS.md for 7 frontend items.
+- **Next tasks:** (1) Phase 4: Threat Graph → Correlation → Hunting. (2) Elasticsearch IOC indexing. (3) Update QA_CHECKLIST.md. (4) See docs/FUTURE_IMPROVEMENTS.md for 7 frontend items.
 
 ## Deployment Log
 
@@ -131,7 +131,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 21 | 2026-03-22 | No deploy (code-only session) | — | df33330 | Differentiator A: Haiku triage + cost tracker + cost API. 98 new tests (1680 total). |
 | 22 | 2026-03-22 | No deploy (code-only session) | — | 265483a | 8 accuracy improvements: evidence, MITRE, FP, budget gate, cache, families, actions. 64 new tests (1744 total). |
 | 23 | 2026-03-22 | etip_enrichment, etip_frontend updated, all app containers recreated | ✅ CI green | 5c949d1→d6694e8 | 7 accuracy improvements (#9-15) + QA checklist + 3 CI fixes. 64 new tests (1808 total). Differentiator A+ COMPLETE. |
-| 24 | 2026-03-22 | etip_frontend updated | pending CI | 799145c, 3bd47e0, 7ae7c39 | Enrichment UI: detail panel, management page, dashboard wiring. Tabbed IOC detail. Merged stats bar. 63 new tests (1871 total). Differentiator B COMPLETE. UI FROZEN. |
+| 24 | 2026-03-22 | etip_frontend updated, all app containers recreated | ✅ CI green | 799145c→4e60b44 | Enrichment UI + tabbed detail + merged stats + mobile overlay. 63 new tests (1871 total). Differentiator B COMPLETE. UI FROZEN. |
 
 ## E2E Verification Results (Session 13)
 
