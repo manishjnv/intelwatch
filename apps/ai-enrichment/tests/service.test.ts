@@ -73,6 +73,7 @@ const DEFAULT_HAIKU_RESULT: HaikuTriageResult = {
   scoreJustification: '', evidenceSources: [], uncertaintyFactors: [],
   mitreTechniques: [], isFalsePositive: false, falsePositiveReason: null,
   malwareFamilies: [], attributedActors: [], recommendedActions: [],
+  stixLabels: ['malicious-activity'], cacheReadTokens: 0, cacheCreationTokens: 0,
 };
 
 function mockHaiku(overrides: Partial<HaikuTriageProvider> = {}): HaikuTriageProvider {
@@ -545,6 +546,61 @@ describe('EnrichmentService', () => {
     it('clamps result to 0-100 range', () => {
       expect(computeRiskScore(vt, abuse, haiku, 100)).toBeLessThanOrEqual(100);
       expect(computeRiskScore(vt, abuse, haiku, 0)).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('#10 Enrichment Quality Score', () => {
+    it('includes enrichmentQuality in result when enrichment succeeds', async () => {
+      const service = new EnrichmentService(
+        mockRepo(), mockVT(), mockAbuse(), mockHaiku(),
+        new EnrichmentCostTracker(), true, logger,
+      );
+      const result = await service.enrichIOC(buildJob());
+      expect(result.enrichmentQuality).toBeTypeOf('number');
+      expect(result.enrichmentQuality).toBeGreaterThan(0);
+      expect(result.enrichmentQuality).toBeLessThanOrEqual(100);
+    });
+
+    it('enrichmentQuality is null when AI disabled (skipped)', async () => {
+      const service = new EnrichmentService(
+        mockRepo(), mockVT(), mockAbuse(), null,
+        new EnrichmentCostTracker(), false, logger,
+      );
+      const result = await service.enrichIOC(buildJob());
+      expect(result.enrichmentQuality).toBeNull();
+    });
+  });
+
+  describe('#12 Geolocation Enrichment', () => {
+    it('extracts geolocation from AbuseIPDB for IP IOCs', async () => {
+      const service = new EnrichmentService(
+        mockRepo(), mockVT(), mockAbuse(), null,
+        new EnrichmentCostTracker(), true, logger,
+      );
+      const result = await service.enrichIOC(buildJob());
+      expect(result.geolocation).not.toBeNull();
+      expect(result.geolocation?.countryCode).toBe('RU');
+      expect(result.geolocation?.isp).toBe('Evil Hosting');
+      expect(result.geolocation?.isTor).toBe(false);
+    });
+
+    it('geolocation is null for non-IP IOC types', async () => {
+      const service = new EnrichmentService(
+        mockRepo(), mockVT(), mockAbuse({ supports: vi.fn().mockReturnValue(false) }), null,
+        new EnrichmentCostTracker(), true, logger,
+      );
+      const result = await service.enrichIOC(buildJob({ iocType: 'hash_sha256', normalizedValue: 'a'.repeat(64) }));
+      expect(result.geolocation).toBeNull();
+    });
+
+    it('geolocation is null when AbuseIPDB has no result', async () => {
+      const service = new EnrichmentService(
+        mockRepo(), mockVT(),
+        mockAbuse({ lookup: vi.fn().mockResolvedValue(null) }),
+        null, new EnrichmentCostTracker(), true, logger,
+      );
+      const result = await service.enrichIOC(buildJob());
+      expect(result.geolocation).toBeNull();
     });
   });
 });

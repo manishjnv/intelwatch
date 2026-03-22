@@ -1,3 +1,4 @@
+import { Redis as IORedis } from 'ioredis';
 import { loadConfig } from './config.js';
 import { initLogger } from './logger.js';
 import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
@@ -9,8 +10,11 @@ import { VirusTotalProvider } from './providers/virustotal.js';
 import { AbuseIPDBProvider } from './providers/abuseipdb.js';
 import { HaikuTriageProvider } from './providers/haiku-triage.js';
 import { EnrichmentCostTracker } from './cost-tracker.js';
+import { CostPersistence } from './cost-persistence.js';
+import { BatchEnrichmentService } from './batch-enrichment.js';
+import { ReEnrichScheduler } from './workers/re-enrich-scheduler.js';
 import { createVTRateLimiter, createAbuseIPDBRateLimiter } from './rate-limiter.js';
-import { createEnrichQueue, closeEnrichQueue } from './queue.js';
+import { createEnrichQueue, closeEnrichQueue, getEnrichQueue } from './queue.js';
 import { createEnrichWorker } from './workers/enrich-worker.js';
 
 async function main(): Promise<void> {
@@ -39,16 +43,50 @@ async function main(): Promise<void> {
   // Cost tracker (in-memory per DECISION-013)
   const costTracker = new EnrichmentCostTracker();
 
+  // #14 Cost Persistence — Redis flush/reload
+  let costPersistence: CostPersistence | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let redis: any = null;
+  if (config.TI_COST_PERSISTENCE_ENABLED) {
+    try {
+      redis = new IORedis(config.TI_REDIS_URL, { maxRetriesPerRequest: null, lazyConnect: true });
+      costPersistence = new CostPersistence(redis, costTracker, logger);
+      await costPersistence.loadFromRedis();
+      costPersistence.startPeriodicFlush();
+    } catch (err) {
+      logger.warn({ error: (err as Error).message }, 'Cost persistence init failed — continuing without');
+    }
+  }
+
+  // #13 Batch Enrichment Service (client reuses Anthropic SDK from haiku provider)
+  const batchService = config.TI_BATCH_ENABLED && config.TI_ANTHROPIC_API_KEY
+    ? new BatchEnrichmentService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { batches: (haikuProvider as any)?.client?.batches ?? null } as any,
+        config.TI_HAIKU_MODEL, costTracker, logger, config.TI_BATCH_MIN_SIZE,
+      )
+    : null;
+
   const repo = new EnrichmentRepository(prisma);
   const service = new EnrichmentService(repo, vtProvider, abuseProvider, haikuProvider, costTracker, config.TI_AI_ENABLED, logger);
 
   createEnrichQueue();
-  const app = await buildApp({ config, repo, costTracker });
+  const app = await buildApp({ config, repo, costTracker, batchService });
   const worker = createEnrichWorker({ service, logger });
 
+  // #15 Re-enrichment Scheduler
+  const scheduler = new ReEnrichScheduler(
+    repo, getEnrichQueue(), logger,
+    config.TI_REENRICH_INTERVAL_MS,
+  );
+  scheduler.start();
+
   app.addHook('onClose', async () => {
+    scheduler.stop();
+    if (costPersistence) await costPersistence.stop();
     await worker.close();
     await closeEnrichQueue();
+    if (redis) await redis.quit();
     await disconnectPrisma();
   });
 

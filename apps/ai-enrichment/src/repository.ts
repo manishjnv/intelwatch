@@ -48,6 +48,34 @@ export class EnrichmentRepository {
     });
   }
 
+  /** Find IOCs with stale enrichment data (#15 re-enrichment scheduler) */
+  async findStaleEnrichment(
+    ttlHoursMap: Record<string, number>,
+    limit: number,
+  ): Promise<Ioc[]> {
+    // Use the minimum TTL to cast a wide net, then filter per-type in JS
+    const minTtl = Math.min(...Object.values(ttlHoursMap), 24);
+    const cutoff = new Date(Date.now() - minTtl * 60 * 60 * 1000);
+
+    const candidates = await this.db.ioc.findMany({
+      where: {
+        enrichedAt: { not: null, lt: cutoff },
+        lifecycle: { notIn: ['archived', 'revoked', 'false_positive'] },
+      },
+      orderBy: { confidence: 'desc' }, // High-confidence IOCs first
+      take: limit * 3, // Over-fetch since per-type filter will reduce
+    });
+
+    const now = Date.now();
+    return candidates
+      .filter(ioc => {
+        const ttl = ttlHoursMap[ioc.iocType] ?? 72;
+        const ageHours = (now - (ioc.enrichedAt as Date).getTime()) / (60 * 60 * 1000);
+        return ageHours > ttl;
+      })
+      .slice(0, limit);
+  }
+
   /** Count IOCs by enrichment status */
   async getEnrichmentStats(): Promise<{
     total: number;

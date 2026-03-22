@@ -207,13 +207,16 @@ describe('HaikuTriageProvider', () => {
   // --- prompt construction ---
 
   describe('prompt construction', () => {
-    it('system prompt instructs JSON-only output', async () => {
+    it('system prompt instructs JSON-only output (array format with cache_control)', async () => {
       const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
       await provider.triage('ip', '185.220.101.34', VT_RESULT, ABUSE_RESULT, 50);
 
       const callArgs = createMock.mock.calls[0][0];
-      expect(callArgs.system).toContain('JSON');
-      expect(callArgs.system).toContain('risk_score');
+      // #11 system is now array with cache_control
+      expect(Array.isArray(callArgs.system)).toBe(true);
+      const systemText = callArgs.system[0].text;
+      expect(systemText).toContain('JSON');
+      expect(systemText).toContain('risk_score');
     });
 
     it('user message includes IOC type and value', async () => {
@@ -494,6 +497,80 @@ describe('HaikuTriageProvider', () => {
 
       const callArgs = createMock.mock.calls[0][0];
       expect(callArgs.max_tokens).toBe(512);
+    });
+  });
+
+  describe('#11 Prompt Caching', () => {
+    it('sends system as array with cache_control ephemeral', async () => {
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+
+      const callArgs = createMock.mock.calls[0][0];
+      expect(Array.isArray(callArgs.system)).toBe(true);
+      expect(callArgs.system[0].type).toBe('text');
+      expect(callArgs.system[0].cache_control).toEqual({ type: 'ephemeral' });
+    });
+
+    it('tracks cache_read_input_tokens and cache_creation_input_tokens', async () => {
+      const response = {
+        content: [{ type: 'text', text: JSON.stringify(VALID_TRIAGE_RESPONSE) }],
+        usage: {
+          input_tokens: 120, output_tokens: 80,
+          cache_read_input_tokens: 100, cache_creation_input_tokens: 0,
+        },
+      };
+      createMock.mockResolvedValue(response);
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.cacheReadTokens).toBe(100);
+      expect(result!.cacheCreationTokens).toBe(0);
+    });
+
+    it('defaults cache tokens to 0 when not present in response', async () => {
+      createMock.mockResolvedValue(mockAIResponse(VALID_TRIAGE_RESPONSE));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.cacheReadTokens).toBe(0);
+      expect(result!.cacheCreationTokens).toBe(0);
+    });
+  });
+
+  describe('#9 STIX Labels', () => {
+    it('parses stix_labels from AI response', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        stix_labels: ['malicious-activity', 'compromised'],
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.stixLabels).toContain('malicious-activity');
+      expect(result!.stixLabels).toContain('compromised');
+    });
+
+    it('generates STIX labels deterministically when AI returns empty', async () => {
+      const response = { ...VALID_TRIAGE_RESPONSE, stix_labels: [] };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.stixLabels.length).toBeGreaterThan(0);
+    });
+
+    it('generates benign STIX label for false positives', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        is_false_positive: true,
+        false_positive_reason: 'CDN IP',
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.stixLabels).toEqual(['benign']);
     });
   });
 });

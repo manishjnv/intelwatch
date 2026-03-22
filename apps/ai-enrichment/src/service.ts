@@ -5,9 +5,10 @@ import type { AbuseIPDBProvider } from './providers/abuseipdb.js';
 import type { HaikuTriageProvider } from './providers/haiku-triage.js';
 import type { EnrichmentCostTracker } from './cost-tracker.js';
 import type { EnrichmentCache } from './cache.js';
-import type { EnrichJob, EnrichmentResult, VTResult, AbuseIPDBResult, HaikuTriageResult } from './schema.js';
+import type { EnrichJob, EnrichmentResult, VTResult, AbuseIPDBResult, HaikuTriageResult, Geolocation } from './schema.js';
 import { ruleBasedScore } from './rule-based-scorer.js';
 import { calculateCompositeConfidence } from '@etip/shared-normalization';
+import { computeEnrichmentQuality } from './quality-score.js';
 
 /** Budget threshold for Haiku → rule-based fallback (90%) */
 const BUDGET_FALLBACK_PERCENT = 90;
@@ -75,6 +76,7 @@ export class EnrichmentService {
         vtResult: null, abuseipdbResult: null, haikuResult: null,
         enrichedAt: now.toISOString(), enrichmentStatus: 'skipped',
         failureReason: 'TI_AI_ENABLED is false', externalRiskScore: null, costBreakdown: null,
+        enrichmentQuality: null, geolocation: null,
       };
     }
 
@@ -163,11 +165,20 @@ export class EnrichmentService {
 
     const costBreakdown = this.costTracker.getIOCCost(job.iocId);
 
+    // #10 Enrichment Quality Score
+    const enrichmentQuality = hasAnyResult
+      ? computeEnrichmentQuality(vtResult, abuseResult, haikuResult, job.iocType, now)
+      : null;
+
+    // #12 Geolocation — extract from AbuseIPDB for IP types
+    const geolocation = this.extractGeolocation(job.iocType, abuseResult);
+
     const result: EnrichmentResult = {
       vtResult, abuseipdbResult: abuseResult, haikuResult,
       enrichedAt: now.toISOString(), enrichmentStatus,
       failureReason: errors.length > 0 ? errors.join('; ') : null,
       externalRiskScore, costBreakdown,
+      enrichmentQuality, geolocation,
     };
 
     // Merge with existing enrichment data and persist
@@ -197,6 +208,21 @@ export class EnrichmentService {
     );
 
     return result;
+  }
+
+  /**
+   * #12 Geolocation — extract from AbuseIPDB response for IP/IPv6 IOCs.
+   * No additional API calls needed; AbuseIPDB already provides country + ISP.
+   */
+  private extractGeolocation(iocType: string, abuse: AbuseIPDBResult | null): Geolocation | null {
+    if (!abuse) return null;
+    if (iocType !== 'ip' && iocType !== 'ipv6') return null;
+    return {
+      countryCode: abuse.countryCode,
+      isp: abuse.isp,
+      usageType: abuse.usageType,
+      isTor: abuse.isTor,
+    };
   }
 
   /**

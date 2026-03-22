@@ -10,11 +10,13 @@ import { enrichmentRoutes } from './routes/enrichment.js';
 import { costRoutes } from './routes/cost.js';
 import type { EnrichmentRepository } from './repository.js';
 import type { EnrichmentCostTracker } from './cost-tracker.js';
+import type { BatchEnrichmentService } from './batch-enrichment.js';
 
 export interface BuildAppOptions {
   config: AppConfig;
   repo: EnrichmentRepository;
   costTracker: EnrichmentCostTracker;
+  batchService?: BatchEnrichmentService | null;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -62,7 +64,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
 
   await app.register(healthRoutes);
-  await app.register(enrichmentRoutes(repo), { prefix: '/api/v1/enrichment' });
+  await app.register(enrichmentRoutes(repo, opts.batchService), { prefix: '/api/v1/enrichment' });
   await app.register(costRoutes(opts.costTracker, config.TI_ENRICHMENT_DAILY_BUDGET_USD), { prefix: '/api/v1/enrichment/cost' });
 
   return app;

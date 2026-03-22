@@ -36,6 +36,14 @@ const EnvSchema = z.object({
   TI_ENRICHMENT_DAILY_BUDGET_USD: z.coerce.number().min(0).default(5.00),
   /** Enable Redis enrichment cache (disabled = skip cache layer) */
   TI_ENRICHMENT_CACHE_ENABLED: z.coerce.boolean().default(true),
+  /** Enable batch enrichment via Anthropic Batch API (#13) */
+  TI_BATCH_ENABLED: z.coerce.boolean().default(false),
+  /** Minimum IOC count for batch enrichment */
+  TI_BATCH_MIN_SIZE: z.coerce.number().int().min(2).default(10),
+  /** Re-enrichment scan interval in milliseconds (#15, default 1 hour) */
+  TI_REENRICH_INTERVAL_MS: z.coerce.number().int().min(60000).default(3_600_000),
+  /** Enable cost persistence to Redis (#14) */
+  TI_COST_PERSISTENCE_ENABLED: z.coerce.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

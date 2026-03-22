@@ -9,6 +9,8 @@ import {
   MitreTechniqueSchema,
   EvidenceSourceSchema,
   RecommendedActionSchema,
+  GeolocationSchema,
+  BatchEnrichmentSchema,
 } from '../src/schema.js';
 
 describe('EnrichJobSchema', () => {
@@ -163,6 +165,86 @@ describe('HaikuTriageResultSchema — new fields', () => {
       recommendedActions: Array.from({ length: 7 }, (_, i) => ({ action: `Action ${i}`, priority: 'short_term' })),
     };
     const result = HaikuTriageResultSchema.safeParse(tooMany);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('HaikuTriageResultSchema — Session 23 fields', () => {
+  const baseResult = {
+    riskScore: 50, confidence: 60, severity: 'MEDIUM', threatCategory: 'unknown',
+    reasoning: 'test', tags: [], inputTokens: 100, outputTokens: 50,
+    costUsd: 0.001, durationMs: 200,
+  };
+
+  it('defaults stixLabels to empty array', () => {
+    const result = HaikuTriageResultSchema.parse(baseResult);
+    expect(result.stixLabels).toEqual([]);
+  });
+
+  it('accepts stixLabels with string values', () => {
+    const result = HaikuTriageResultSchema.parse({ ...baseResult, stixLabels: ['malicious-activity', 'attribution'] });
+    expect(result.stixLabels).toEqual(['malicious-activity', 'attribution']);
+  });
+
+  it('defaults cacheReadTokens and cacheCreationTokens to 0', () => {
+    const result = HaikuTriageResultSchema.parse(baseResult);
+    expect(result.cacheReadTokens).toBe(0);
+    expect(result.cacheCreationTokens).toBe(0);
+  });
+});
+
+describe('GeolocationSchema', () => {
+  it('validates with defaults', () => {
+    const result = GeolocationSchema.parse({});
+    expect(result.countryCode).toBe('');
+    expect(result.isp).toBe('');
+    expect(result.isTor).toBe(false);
+  });
+
+  it('parses full geolocation data', () => {
+    const result = GeolocationSchema.parse({
+      countryCode: 'US', isp: 'Cloudflare Inc', usageType: 'CDN', isTor: false,
+    });
+    expect(result.countryCode).toBe('US');
+    expect(result.isp).toBe('Cloudflare Inc');
+  });
+});
+
+describe('EnrichmentResultSchema — Session 23 fields', () => {
+  it('defaults enrichmentQuality to null', () => {
+    const result = EnrichmentResultSchema.parse({
+      enrichedAt: new Date().toISOString(), enrichmentStatus: 'enriched',
+    });
+    expect(result.enrichmentQuality).toBeNull();
+    expect(result.geolocation).toBeNull();
+  });
+
+  it('accepts enrichmentQuality number and geolocation object', () => {
+    const result = EnrichmentResultSchema.parse({
+      enrichedAt: new Date().toISOString(), enrichmentStatus: 'enriched',
+      enrichmentQuality: 85,
+      geolocation: { countryCode: 'DE', isp: 'Hetzner', usageType: 'Hosting', isTor: false },
+    });
+    expect(result.enrichmentQuality).toBe(85);
+    expect(result.geolocation?.countryCode).toBe('DE');
+  });
+});
+
+describe('BatchEnrichmentSchema', () => {
+  it('validates array of UUIDs', () => {
+    const result = BatchEnrichmentSchema.safeParse({
+      iocIds: ['00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002'],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects empty array', () => {
+    const result = BatchEnrichmentSchema.safeParse({ iocIds: [] });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects non-UUID strings', () => {
+    const result = BatchEnrichmentSchema.safeParse({ iocIds: ['not-a-uuid'] });
     expect(result.success).toBe(false);
   });
 });

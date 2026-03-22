@@ -89,6 +89,11 @@ export const HaikuTriageResultSchema = z.object({
   attributedActors: z.array(z.string().max(100)).default([]),
   // #8 Recommended Actions
   recommendedActions: z.array(RecommendedActionSchema).max(5).default([]),
+  // #9 STIX 2.1 Labels
+  stixLabels: z.array(z.string().max(50)).default([]),
+  // #11 Prompt Caching token tracking
+  cacheReadTokens: z.number().int().min(0).default(0),
+  cacheCreationTokens: z.number().int().min(0).default(0),
 });
 export type HaikuTriageResult = z.infer<typeof HaikuTriageResultSchema>;
 
@@ -112,6 +117,15 @@ export const CostBreakdownSchema = z.object({
   providerCount: z.number().int().min(0),
 });
 
+/** Geolocation data for IP IOCs (#12) */
+export const GeolocationSchema = z.object({
+  countryCode: z.string().max(2).default(''),
+  isp: z.string().max(200).default(''),
+  usageType: z.string().max(100).default(''),
+  isTor: z.boolean().default(false),
+});
+export type Geolocation = z.infer<typeof GeolocationSchema>;
+
 /** Combined enrichment result stored on IOC */
 export const EnrichmentResultSchema = z.object({
   vtResult: VTResultSchema.nullable().default(null),
@@ -123,6 +137,10 @@ export const EnrichmentResultSchema = z.object({
   /** Composite risk score from all sources (0-100) */
   externalRiskScore: z.number().min(0).max(100).nullable().default(null),
   costBreakdown: CostBreakdownSchema.nullable().default(null),
+  /** #10 Enrichment quality score (0-100) */
+  enrichmentQuality: z.number().int().min(0).max(100).nullable().default(null),
+  /** #12 Geolocation data (IP/IPv6 only) */
+  geolocation: GeolocationSchema.nullable().default(null),
 });
 export type EnrichmentResult = z.infer<typeof EnrichmentResultSchema>;
 
@@ -142,4 +160,14 @@ export const TriggerEnrichmentSchema = z.object({
 /** Params for GET /api/v1/enrichment/cost/ioc/:iocId */
 export const CostIOCParamsSchema = z.object({
   iocId: z.string().uuid(),
+});
+
+/** Params for POST /api/v1/enrichment/batch (#13) */
+export const BatchEnrichmentSchema = z.object({
+  iocIds: z.array(z.string().uuid()).min(1),
+});
+
+/** Params for GET /api/v1/enrichment/batch/:batchId */
+export const BatchStatusParamsSchema = z.object({
+  batchId: z.string().min(1),
 });

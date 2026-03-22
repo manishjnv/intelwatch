@@ -5,6 +5,7 @@
  */
 
 import type { VTResult, AbuseIPDBResult, HaikuTriageResult } from './schema.js';
+import { generateStixLabels } from './stix-labels.js';
 
 /** Known CDN/benign ISP patterns for FP detection */
 const BENIGN_ISP_PATTERNS = [
@@ -100,5 +101,10 @@ export function ruleBasedScore(
     malwareFamilies: [],
     attributedActors: [],
     recommendedActions: [],
+    // #9 STIX Labels — generated deterministically
+    stixLabels: generateStixLabels(severity, inferCategory(vtTags, abuse?.isTor ?? false), isFP),
+    // #11 Prompt caching — no cache for rule-based
+    cacheReadTokens: 0,
+    cacheCreationTokens: 0,
   };
 }

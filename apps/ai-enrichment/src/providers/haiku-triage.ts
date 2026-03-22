@@ -10,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type pino from 'pino';
 import { sanitizeLLMInput } from '@etip/shared-enrichment';
 import type { VTResult, AbuseIPDBResult, HaikuTriageResult } from '../schema.js';
+import { generateStixLabels } from '../stix-labels.js';
 
 const SYSTEM_PROMPT = `You are a threat intelligence IOC classifier. Given an IOC and its external analysis results, provide a structured threat assessment.
 
@@ -90,32 +91,51 @@ export class HaikuTriageProvider {
     try {
       const userMessage = this.buildUserMessage(iocType, normalizedValue, vtResult, abuseResult, confidence);
 
+      // #11 Prompt Caching — cache_control: ephemeral on system prompt for 90% token savings
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: 512,
-        system: SYSTEM_PROMPT,
+        system: [
+          {
+            type: 'text' as const,
+            text: SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' as const },
+          },
+        ],
         messages: [{ role: 'user', content: userMessage }],
       });
 
       const durationMs = Date.now() - startMs;
-      const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
+      const firstBlock = response.content[0];
+      const rawText = firstBlock && 'text' in firstBlock ? firstBlock.text : '';
       const parsed = this.parseResponse(rawText);
 
       if (!parsed) return null;
 
       const inputTokens = response.usage.input_tokens;
       const outputTokens = response.usage.output_tokens;
-      const costUsd = this.calculateCost(inputTokens, outputTokens);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const usage = response.usage as any;
+      const cacheReadTokens: number = Number(usage.cache_read_input_tokens ?? 0);
+      const cacheCreationTokens: number = Number(usage.cache_creation_input_tokens ?? 0);
+      const costUsd = this.calculateCostWithCache(inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens);
 
       // #3 FP: override severity to INFO when false positive detected
       const isFP = parsed.is_false_positive === true;
       const severity = isFP ? 'INFO' as const : this.parseSeverity(parsed.severity);
+      const threatCategory = String(parsed.threat_category ?? 'unknown').slice(0, 50);
+
+      // #9 STIX Labels — generate from response or deterministically from severity/category
+      const parsedStixLabels = this.parseStringArray(parsed.stix_labels, 50);
+      const stixLabels = parsedStixLabels.length > 0
+        ? parsedStixLabels
+        : generateStixLabels(severity, threatCategory, isFP);
 
       return {
         riskScore: Math.min(100, Math.max(0, Number(parsed.risk_score) || 0)),
         confidence: Math.min(100, Math.max(0, Number(parsed.confidence) || 0)),
         severity,
-        threatCategory: String(parsed.threat_category ?? 'unknown').slice(0, 50),
+        threatCategory,
         reasoning: String(parsed.reasoning ?? '').slice(0, 500),
         tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : [],
         inputTokens,
@@ -136,6 +156,11 @@ export class HaikuTriageProvider {
         attributedActors: this.parseStringArray(parsed.attributed_actors, 100),
         // #8 Recommended Actions
         recommendedActions: this.parseRecommendedActions(parsed.recommended_actions),
+        // #9 STIX 2.1 Labels
+        stixLabels,
+        // #11 Prompt Caching tokens
+        cacheReadTokens,
+        cacheCreationTokens,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -236,9 +261,20 @@ export class HaikuTriageProvider {
       .slice(0, 5);
   }
 
-  private calculateCost(inputTokens: number, outputTokens: number): number {
-    const inputCost = (inputTokens / 1_000_000) * HAIKU_PRICING.input;
+  /**
+   * Calculate cost accounting for prompt cache tokens (#11).
+   * Cache creation: 1.25x input price. Cache read: 0.1x input price.
+   * Regular input: full price.
+   */
+  private calculateCostWithCache(
+    inputTokens: number, outputTokens: number,
+    cacheReadTokens: number, cacheCreationTokens: number,
+  ): number {
+    const regularInput = inputTokens - cacheReadTokens - cacheCreationTokens;
+    const regularCost = (Math.max(0, regularInput) / 1_000_000) * HAIKU_PRICING.input;
+    const cacheReadCost = (cacheReadTokens / 1_000_000) * HAIKU_PRICING.input * 0.1;
+    const cacheCreateCost = (cacheCreationTokens / 1_000_000) * HAIKU_PRICING.input * 1.25;
     const outputCost = (outputTokens / 1_000_000) * HAIKU_PRICING.output;
-    return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000;
+    return Math.round((regularCost + cacheReadCost + cacheCreateCost + outputCost) * 1_000_000) / 1_000_000;
   }
 }

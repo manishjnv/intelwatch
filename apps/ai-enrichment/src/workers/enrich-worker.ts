@@ -35,6 +35,7 @@ export function createEnrichWorker(deps: EnrichWorkerDeps): Worker<EnrichJob, En
           enrichmentStatus: 'failed' as const,
           failureReason: 'Invalid job data',
           externalRiskScore: null, costBreakdown: null,
+          enrichmentQuality: null, geolocation: null,
         };
       }
 
