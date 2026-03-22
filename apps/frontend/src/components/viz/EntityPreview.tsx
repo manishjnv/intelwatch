@@ -3,7 +3,7 @@
  * @description Inline entity hover preview — wraps EntityChip (design-locked)
  * with a floating detail card on hover via Floating UI. P0-3.
  */
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import {
   useFloating,
   useHover,
@@ -16,7 +16,8 @@ import {
   safePolygon,
 } from '@floating-ui/react'
 import { cn } from '@/lib/utils'
-import { SkeletonBlock } from '@etip/shared-ui/components/SkeletonBlock'
+// SkeletonBlock will be used when loading states are wired in enrichment UI session
+// import { SkeletonBlock } from '@etip/shared-ui/components/SkeletonBlock'
 
 interface EntityPreviewProps {
   type: string

@@ -3,7 +3,7 @@
  * @description Mini D3 force-directed relationship graph — shows entity
  * connections in a compact visual. P1-10.
  */
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { cn } from '@/lib/utils'
 

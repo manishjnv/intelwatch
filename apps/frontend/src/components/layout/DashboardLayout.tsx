@@ -23,11 +23,6 @@ import { GlobalSearch, useGlobalSearch }         from '@etip/shared-ui/component
 import type { SearchResult }                     from '@etip/shared-ui/components/GlobalSearch'
 import { ThreatPulseStrip }                      from '@/components/viz/ThreatPulseStrip'
 
-interface PlatformStats {
-  totalIOCs: number; criticalIOCs: number
-  activeFeeds: number; enrichedToday: number; lastIngestTime: string
-}
-
 /* ------------------------------------------------------------------ */
 /* Floating sidebar collapse toggle — 3D cyber orb                     */
 /* ------------------------------------------------------------------ */
