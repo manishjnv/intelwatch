@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-22 (update at end of EVERY session via /session-end)
-**Session counter:** 22
+**Session counter:** 23
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -12,7 +12,7 @@
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
 | etip_ingestion | ✅ Running | 0.1.0 | 2026-03-21 | Feed pipeline + 11 modules |
 | etip_normalization | ✅ Running | 0.1.0 | 2026-03-21 | IOC upsert + 18 accuracy improvements |
-| etip_enrichment | ✅ Running | 0.2.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. Cost transparency API. 3 new endpoints. |
+| etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements |
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
 | etip_malware_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements |
@@ -37,7 +37,7 @@
 | frontend | 1 | ✅ UI FROZEN | 2026-03-21 | 5 data pages, 15/15 UI improvements, 11 viz components, demo data fallbacks, 154 tests. D3 + vitest added. **UI FROZEN — do not modify pages/components without explicit approval.** |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
-| ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints). 189 tests. Differentiator A + 8/15 accuracy improvements shipped. |
+| ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
 | malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
@@ -107,10 +107,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Differentiator A+ in progress (8/15 accuracy improvements shipped). Phase 3 COMPLETE. Frontend UI FROZEN.
-- **Last session outcome:** Session 22 (2026-03-22). AI enrichment 8 accuracy improvements: evidence chains, MITRE ATT&CK extraction, FP detection, confidence feedback loop, budget enforcement gate, Redis cache, malware/actor extraction, recommended actions. 64 new tests (189 ai-enrichment, 1744 monorepo). 1 commit: 265483a. NOT yet deployed to VPS (code-only session).
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. In-memory cost tracker resets on restart (acceptable per DECISION-013).
-- **Next tasks:** (1) Session 23: AI enrichment remaining 7 improvements P1+P2 (#9-15: STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler). (2) Differentiator B: Confidence explainability UI. (3) Phase 4: Threat Graph → Correlation → Hunting. (4) Elasticsearch IOC indexing. (5) See docs/FUTURE_IMPROVEMENTS.md for 7 frontend items.
+- **Current phase:** Differentiator A+ COMPLETE (15/15 accuracy improvements). Phase 3 COMPLETE. Frontend UI FROZEN. QA_CHECKLIST.md created.
+- **Last session outcome:** Session 23 (2026-03-22). AI enrichment 7 remaining improvements (#9-15): STIX labels, quality score, prompt caching, geolocation, batch API, cost persistence, re-enrichment scheduler. 64 new tests (253 ai-enrichment, 1808 monorepo). 3 CI fixes (vitest alias, cost-tracker TS2532, frontend lint). Deployed to VPS — CI green, all containers healthy. Commits: 5c949d1, 72e1426, e10edeb, 17a53c3, d6694e8.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Cost persistence to Redis now mitigates restart data loss (improvement #14). All 15 enrichment backend features have zero UI representation (tracked in docs/QA_CHECKLIST.md).
+- **Next tasks:** (1) Differentiator B: Enrichment UI — wire enrichment data to IOC detail panel + enrichment management page (see QA_CHECKLIST.md sessions A/B/C). (2) Phase 4: Threat Graph → Correlation → Hunting. (3) Elasticsearch IOC indexing. (4) See docs/FUTURE_IMPROVEMENTS.md for 7 frontend items.
 
 ## Deployment Log
 
@@ -130,6 +130,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 20 | 2026-03-21 | etip_frontend, etip_vulnerability_intel updated | ✅ CI green | 848cb28→815bfaa | Demo data fallbacks, 3 bug fixes (RCA #34-36), vuln-intel TS fixes. 154 frontend tests. |
 | 21 | 2026-03-22 | No deploy (code-only session) | — | df33330 | Differentiator A: Haiku triage + cost tracker + cost API. 98 new tests (1680 total). |
 | 22 | 2026-03-22 | No deploy (code-only session) | — | 265483a | 8 accuracy improvements: evidence, MITRE, FP, budget gate, cache, families, actions. 64 new tests (1744 total). |
+| 23 | 2026-03-22 | etip_enrichment, etip_frontend updated, all app containers recreated | ✅ CI green | 5c949d1→d6694e8 | 7 accuracy improvements (#9-15) + QA checklist + 3 CI fixes. 64 new tests (1808 total). Differentiator A+ COMPLETE. |
 
 ## E2E Verification Results (Session 13)
 

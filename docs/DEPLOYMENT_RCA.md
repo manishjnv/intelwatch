@@ -462,9 +462,34 @@ Deploy order:
 
 ---
 
+## Session 23 Issues (AI Enrichment Deploy — 2026-03-22)
+
+### Issue 37: Vitest cannot resolve @etip/shared-normalization in CI
+**Error**: `Failed to resolve entry for package "@etip/shared-normalization"` — service.test.ts fails to load.
+**Root Cause**: `@etip/shared-normalization` was added as a dependency in session 22 but the vitest.config.ts resolve alias was not added. Locally, dist/ exists from previous builds. In CI, dist/ doesn't exist before tests run, so Vite can't resolve the package entry from `main: "dist/index.js"`.
+**Fix**: Added `'@etip/shared-normalization': path.resolve(__dirname, '../../packages/shared-normalization/src')` to vitest.config.ts resolve aliases.
+**Commit**: `e10edeb`
+**Prevention**: **RULE**: When adding a new workspace dependency to any service, ALWAYS add a corresponding vitest resolve alias in that service's vitest.config.ts. CI runs tests before build — dist/ doesn't exist.
+
+### Issue 38: cost-tracker.ts TS2532 — Object possibly undefined
+**Error**: `error TS2532: Object is possibly 'undefined'` at lines 127-129 of cost-tracker.ts. Blocks `tsc -b` in CI.
+**Root Cause**: `byProvider[r.provider]` returns `T | undefined` with `noUncheckedIndexedAccess`. The initialization guard (`if (!byProvider[r.provider])`) creates the entry, but TypeScript doesn't narrow the type for subsequent index access on the same line.
+**Fix**: Extract to local variable: `const bp = byProvider[r.provider]!;` after the initialization guard.
+**Commit**: `17a53c3`
+**Prevention**: **RULE**: After initializing a Record entry via index, extract to a local variable for subsequent access to satisfy strict TypeScript.
+
+### Issue 39: Frontend unused imports blocking CI lint
+**Error**: 4 lint errors: `'PlatformStats' is defined but never used`, `'useRef' is defined but never used`, `'SkeletonBlock' is defined but never used`, `'useMemo' is defined but never used`.
+**Root Cause**: Pre-existing since session 20 (UI FROZEN). Unused imports accumulated as components were built but not all features wired. CI lint step fails on errors.
+**Fix**: Removed unused PlatformStats interface, useRef import, SkeletonBlock import, useMemo import.
+**Commit**: `d6694e8`
+**Prevention**: **RULE**: Run `pnpm -r run lint` locally before pushing. Unused imports in frozen modules should be cleaned up before freezing.
+
+---
+
 ## RCA Resolution Summary
 
-All 36 issues are FIXED. This table tracks which session fixed each issue and confirms the fix is still working.
+All 39 issues are FIXED. This table tracks which session fixed each issue and confirms the fix is still working.
 
 | Issue | Title | Fixed In | Fix Verified | Status |
 |-------|-------|----------|-------------|--------|
@@ -504,6 +529,9 @@ All 36 issues are FIXED. This table tracks which session fixed each issue and co
 | 34 | EntityChip hash_sha256 not in type map | Session 20 | ✅ toChipType() mapper | FIXED |
 | 35 | SeverityBadge lowercase vs UPPERCASE | Session 20 | ✅ .toUpperCase() cast | FIXED |
 | 36 | Vite proxy ECONNREFUSED → React crash | Session 20 | ✅ .catch() + ErrorBoundary | FIXED |
+| 37 | Vitest alias missing for shared-normalization | Session 23 | ✅ Alias added to vitest.config.ts | FIXED |
+| 38 | cost-tracker.ts TS2532 — Object possibly undefined | Session 23 | ✅ Extract to local var with non-null assertion | FIXED |
+| 39 | Frontend unused imports blocking CI lint | Session 23 | ✅ Removed 4 unused imports | FIXED |
 
 **Session 13 deploys:** No new RCA issues. All 14 containers healthy. E2E pipeline verified with 301 real IOCs.
 
@@ -516,6 +544,8 @@ All 36 issues are FIXED. This table tracks which session fixed each issue and co
 **Session 17 deploys:** No new RCA issues. etip_vulnerability_intel added (port 3010). 18 containers expected. Commit 58b50f1 pushed, CI deploy pending. Phase 3 COMPLETE.
 
 **Session 18 deploys:** No new RCA issues. Frontend updated with 5 data-connected pages (no new containers). Commit e33072e pushed, CI deploy pending.
+
+**Session 23 deploys:** 3 CI issues found and fixed (RCA #37-39). After fixes: CI green (run 23405214316). All containers redeployed via SSH. Sessions 21-23 code now live on VPS. Commits 5c949d1→d6694e8.
 
 **Session 19:** No deploy (code-only session). 11 UI/UX improvements + frontend test infra. Commit 91c92c8. Not yet pushed to VPS.
 
