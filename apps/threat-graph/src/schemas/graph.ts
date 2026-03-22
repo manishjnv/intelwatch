@@ -20,6 +20,22 @@ export const RELATIONSHIP_TYPES = [
 export const RelationshipTypeSchema = z.enum(RELATIONSHIP_TYPES);
 export type RelationshipType = z.infer<typeof RelationshipTypeSchema>;
 
+/**
+ * Per-relationship-type propagation weight (P1 #9).
+ * Higher weight = stronger risk transfer through this relationship.
+ */
+export const RELATIONSHIP_TYPE_WEIGHTS: Record<RelationshipType, number> = {
+  CONTROLS:    0.95,  // Malware → IOC: very strong signal
+  USES:        0.90,  // Actor → Malware: strong signal
+  CONDUCTS:    0.85,  // Actor → Campaign: strong signal
+  EXPLOITS:    0.85,  // Actor → Vulnerability: strong signal
+  INDICATES:   0.80,  // IOC → Actor: attribution signal
+  TARGETS:     0.75,  // Campaign → Victim: moderate
+  HOSTED_ON:   0.70,  // IOC → Infrastructure: co-location
+  RESOLVES_TO: 0.65,  // IOC → IOC: DNS resolution
+  OBSERVED_IN: 0.60,  // IOC → Campaign: weakest direct signal
+};
+
 /** Valid source→target combinations for relationship types. */
 export const RELATIONSHIP_RULES: Record<RelationshipType, { from: NodeType[]; to: NodeType[] }> = {
   USES:        { from: ['ThreatActor'],  to: ['Malware'] },
@@ -137,6 +153,7 @@ export const CreateRelationshipSchema = z.object({
   toNodeId: z.string().uuid(),
   type: RelationshipTypeSchema,
   confidence: z.number().min(0).max(1).default(0.5),
+  source: z.enum(['auto-detected', 'analyst-confirmed']).default('auto-detected'),
   properties: z.record(z.unknown()).optional(),
 });
 

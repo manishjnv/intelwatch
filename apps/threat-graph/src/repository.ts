@@ -5,6 +5,10 @@ import type {
   NodeType, RelationshipType, GraphNodeResponse, GraphEdgeResponse,
   GraphSubgraphResponse, GraphStatsResponse,
 } from './schemas/graph.js';
+import {
+  getGraphStats, getRelationship as getRelFn,
+  updateRelationship as updateRelFn, deleteRelationshipFn,
+} from './repository-extended.js';
 
 /** Extracts a node response from a Neo4j record. */
 function toNodeResponse(record: Record<string, unknown>): GraphNodeResponse {
@@ -262,95 +266,24 @@ export class GraphRepository {
     }
   }
 
-  /** Gets graph statistics (P0 #5). */
+  /** Gets graph statistics (P0 #5). Delegated to repository-extended.ts. */
   async getStats(tenantId: string): Promise<GraphStatsResponse> {
-    const session = createSession();
-    try {
-      const nodeResult = await session.run(
-        `MATCH (n {tenantId: $tenantId})
-         WITH labels(n)[0] AS nodeType, count(n) AS cnt
-         RETURN nodeType, cnt
-         ORDER BY cnt DESC`,
-        { tenantId },
-      );
-
-      const edgeResult = await session.run(
-        `MATCH (a {tenantId: $tenantId})-[r]->(b {tenantId: $tenantId})
-         WITH type(r) AS relType, count(r) AS cnt
-         RETURN relType, cnt
-         ORDER BY cnt DESC`,
-        { tenantId },
-      );
-
-      const connResult = await session.run(
-        `MATCH (n {tenantId: $tenantId})
-         OPTIONAL MATCH (n)-[r]-()
-         WITH n, labels(n)[0] AS label, count(r) AS connections
-         ORDER BY connections DESC
-         WITH collect({id: n.id, type: label, label: coalesce(n.name, n.value, n.cveId, n.id), connections: connections}) AS all
-         WITH all,
-              [x IN all WHERE x.connections = 0] AS isolated,
-              [x IN all[0..10]] AS top10
-         RETURN top10, size(isolated) AS isolatedCount, size(all) AS totalNodes,
-                reduce(s = 0, x IN all | s + x.connections) AS totalConnections`,
-        { tenantId },
-      );
-
-      const nodesByType: Record<string, number> = {};
-      let totalNodes = 0;
-      for (const rec of nodeResult.records) {
-        const t = String(rec.get('nodeType'));
-        const c = Number(rec.get('cnt'));
-        nodesByType[t] = c;
-        totalNodes += c;
-      }
-
-      const edgesByType: Record<string, number> = {};
-      let totalEdges = 0;
-      for (const rec of edgeResult.records) {
-        const t = String(rec.get('relType'));
-        const c = Number(rec.get('cnt'));
-        edgesByType[t] = c;
-        totalEdges += c;
-      }
-
-      const connRecord = connResult.records[0];
-      const top10 = (connRecord?.get('top10') ?? []) as Array<{ id: string; type: string; label: string; connections: number }>;
-      const isolatedNodes = Number(connRecord?.get('isolatedCount') ?? 0);
-      const totalConns = Number(connRecord?.get('totalConnections') ?? 0);
-      const nodeCount = Number(connRecord?.get('totalNodes') ?? totalNodes);
-
-      return {
-        totalNodes,
-        totalEdges,
-        nodesByType,
-        edgesByType,
-        mostConnected: top10.map((t) => ({
-          id: String(t.id),
-          type: String(t.type) as NodeType,
-          label: String(t.label),
-          connections: Number(t.connections),
-        })),
-        isolatedNodes,
-        avgConnections: nodeCount > 0 ? Math.round((totalConns / nodeCount) * 100) / 100 : 0,
-      };
-    } finally {
-      await session.close();
-    }
+    return getGraphStats(tenantId);
   }
 
-  /** Gets neighbors with risk scores for propagation (internal use). */
+  /** Gets neighbors with risk scores for propagation (internal use). P1 #9: includes relType. */
   async getNeighborsForPropagation(
     tenantId: string,
     nodeId: string,
-  ): Promise<Array<{ id: string; riskScore: number; relConfidence: number; relLastSeen: string | null }>> {
+  ): Promise<Array<{ id: string; riskScore: number; relConfidence: number; relLastSeen: string | null; relType: string }>> {
     const session = createSession();
     try {
       const result = await session.run(
         `MATCH (source {id: $nodeId, tenantId: $tenantId})-[r]-(neighbor)
          WHERE neighbor.tenantId = $tenantId
          RETURN neighbor.id AS id, neighbor.riskScore AS riskScore,
-                r.confidence AS relConfidence, r.lastSeen AS relLastSeen`,
+                r.confidence AS relConfidence, r.lastSeen AS relLastSeen,
+                type(r) AS relType`,
         { nodeId, tenantId },
       );
       return result.records.map((rec) => ({
@@ -358,6 +291,7 @@ export class GraphRepository {
         riskScore: Number(rec.get('riskScore') ?? 0),
         relConfidence: Number(rec.get('relConfidence') ?? 0.5),
         relLastSeen: rec.get('relLastSeen') as string | null,
+        relType: String(rec.get('relType') ?? 'USES'),
       }));
     } finally {
       await session.close();
@@ -392,6 +326,21 @@ export class GraphRepository {
     } finally {
       await session.close();
     }
+  }
+
+  /** Gets a specific relationship between two nodes (#14). Delegated to repository-extended.ts. */
+  async getRelationship(tenantId: string, fromId: string, type: RelationshipType, toId: string): Promise<GraphEdgeResponse | null> {
+    return getRelFn(tenantId, fromId, type, toId);
+  }
+
+  /** Updates a relationship's properties (#14). Delegated to repository-extended.ts. */
+  async updateRelationship(tenantId: string, fromId: string, type: RelationshipType, toId: string, updates: Record<string, unknown>): Promise<GraphEdgeResponse | null> {
+    return updateRelFn(tenantId, fromId, type, toId, updates);
+  }
+
+  /** Deletes a specific relationship between two nodes (#14). Delegated to repository-extended.ts. */
+  async deleteRelationship(tenantId: string, fromId: string, type: RelationshipType, toId: string): Promise<boolean> {
+    return deleteRelationshipFn(tenantId, fromId, type, toId);
   }
 
   /** Helper: parse subgraph results into typed response. */

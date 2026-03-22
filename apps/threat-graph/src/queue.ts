@@ -122,6 +122,7 @@ export function createGraphSyncWorker(deps: GraphWorkerDeps): Worker<GraphSyncJo
             toNodeId: data.toNodeId,
             type: data.relationshipType as 'USES',
             confidence: data.confidence ?? 0.5,
+            source: 'auto-detected',
             properties: data.properties,
           });
           break;

@@ -20,6 +20,9 @@ const EnvSchema = z.object({
   TI_GRAPH_PROPAGATION_MAX_DEPTH: z.coerce.number().int().min(1).max(5).default(3),
   TI_GRAPH_PROPAGATION_DECAY: z.coerce.number().min(0.1).max(1.0).default(0.7),
   TI_GRAPH_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(5),
+  TI_GRAPH_DECAY_CRON_INTERVAL: z.coerce.number().int().min(60000).default(21600000), // default 6h
+  TI_GRAPH_DECAY_THRESHOLD: z.coerce.number().min(0.1).max(10).default(1.0), // min score drop to trigger update
+  TI_GRAPH_MAX_LAYOUT_PRESETS: z.coerce.number().int().min(1).max(100).default(50), // per tenant
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

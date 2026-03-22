@@ -7,16 +7,20 @@ import { type AppConfig } from './config.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { graphRoutes } from './routes/graph.js';
+import { graphExtendedRoutes, type ExtendedRouteDeps } from './routes/graph-extended.js';
+import { graphOperationRoutes, type OperationRouteDeps } from './routes/graph-operations.js';
 import type { GraphService } from './service.js';
 
 export interface BuildAppOptions {
   config: AppConfig;
   service: GraphService;
+  extendedDeps: ExtendedRouteDeps;
+  operationDeps: OperationRouteDeps;
 }
 
 /** Builds and returns the configured Fastify instance with all plugins and routes. */
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, service } = opts;
+  const { config, service, extendedDeps, operationDeps } = opts;
 
   const app = Fastify({
     logger: {
@@ -61,6 +65,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(graphRoutes(service), { prefix: '/api/v1/graph' });
+  await app.register(graphExtendedRoutes(extendedDeps), { prefix: '/api/v1/graph' });
+  await app.register(graphOperationRoutes(operationDeps), { prefix: '/api/v1/graph' });
 
   return app;
 }
