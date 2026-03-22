@@ -14,6 +14,7 @@ export default defineConfig({
       '@etip/shared-utils': path.resolve(__dirname, '../../packages/shared-utils/src'),
       '@etip/shared-auth': path.resolve(__dirname, '../../packages/shared-auth/src'),
       '@etip/shared-enrichment': path.resolve(__dirname, '../../packages/shared-enrichment/src'),
+      '@etip/shared-normalization': path.resolve(__dirname, '../../packages/shared-normalization/src'),
     },
   },
 });
