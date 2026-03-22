@@ -40,6 +40,14 @@ export class EnrichmentRepository {
     });
   }
 
+  /** Update IOC confidence score (called by confidence feedback loop) */
+  async updateConfidence(iocId: string, confidence: number): Promise<void> {
+    await this.db.ioc.update({
+      where: { id: iocId },
+      data: { confidence: Math.round(Math.min(100, Math.max(0, confidence))) },
+    });
+  }
+
   /** Count IOCs by enrichment status */
   async getEnrichmentStats(): Promise<{
     total: number;

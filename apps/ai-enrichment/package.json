@@ -17,6 +17,7 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "@etip/shared-auth": "workspace:*",
     "@etip/shared-enrichment": "workspace:*",
+    "@etip/shared-normalization": "workspace:*",
     "@etip/shared-types": "workspace:*",
     "@etip/shared-utils": "workspace:*",
     "@fastify/cors": "^9.0.0",

@@ -34,6 +34,8 @@ const EnvSchema = z.object({
   TI_HAIKU_MODEL: z.string().default('claude-haiku-4-5-20251001'),
   /** Daily cost budget per tenant in USD (0 = unlimited) */
   TI_ENRICHMENT_DAILY_BUDGET_USD: z.coerce.number().min(0).default(5.00),
+  /** Enable Redis enrichment cache (disabled = skip cache layer) */
+  TI_ENRICHMENT_CACHE_ENABLED: z.coerce.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

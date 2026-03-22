@@ -30,11 +30,11 @@ export function createEnrichWorker(deps: EnrichWorkerDeps): Worker<EnrichJob, En
       if (!parsed.success) {
         logger.error({ jobId: job.id, errors: parsed.error.issues }, 'Invalid enrichment job data');
         return {
-          vtResult: null, abuseipdbResult: null,
+          vtResult: null, abuseipdbResult: null, haikuResult: null,
           enrichedAt: new Date().toISOString(),
           enrichmentStatus: 'failed' as const,
           failureReason: 'Invalid job data',
-          externalRiskScore: null,
+          externalRiskScore: null, costBreakdown: null,
         };
       }
 

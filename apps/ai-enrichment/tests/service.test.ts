@@ -5,8 +5,19 @@ import type { EnrichmentRepository } from '../src/repository.js';
 import type { VirusTotalProvider } from '../src/providers/virustotal.js';
 import type { AbuseIPDBProvider } from '../src/providers/abuseipdb.js';
 import type { HaikuTriageProvider } from '../src/providers/haiku-triage.js';
+import type { EnrichmentCache } from '../src/cache.js';
 import type { EnrichJob, HaikuTriageResult } from '../src/schema.js';
 import pino from 'pino';
+
+// Mock shared-normalization
+vi.mock('@etip/shared-normalization', () => ({
+  calculateCompositeConfidence: vi.fn(() => ({
+    score: 65,
+    signals: { feedReliability: 50, corroboration: 0, aiScore: 54 },
+    daysSinceLastSeen: 0,
+    decayFactor: 1.0,
+  })),
+}));
 
 const logger = pino({ level: 'silent' });
 
@@ -15,9 +26,20 @@ function mockRepo(): EnrichmentRepository {
     findById: vi.fn().mockResolvedValue(null),
     findByIdInternal: vi.fn().mockResolvedValue(null),
     updateEnrichment: vi.fn().mockResolvedValue({ id: 'mock' }),
+    updateConfidence: vi.fn().mockResolvedValue(undefined),
     findPendingEnrichment: vi.fn().mockResolvedValue([]),
     getEnrichmentStats: vi.fn().mockResolvedValue({ total: 0, enriched: 0, pending: 0 }),
   } as unknown as EnrichmentRepository;
+}
+
+function mockCache(overrides: Partial<EnrichmentCache> = {}): EnrichmentCache {
+  return {
+    isAvailable: vi.fn().mockReturnValue(true),
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue(undefined),
+    invalidate: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as EnrichmentCache;
 }
 
 function mockVT(overrides: Partial<VirusTotalProvider> = {}): VirusTotalProvider {
@@ -43,16 +65,21 @@ function mockAbuse(overrides: Partial<AbuseIPDBProvider> = {}): AbuseIPDBProvide
   } as unknown as AbuseIPDBProvider;
 }
 
+const DEFAULT_HAIKU_RESULT: HaikuTriageResult = {
+  riskScore: 70, confidence: 80, severity: 'HIGH',
+  threatCategory: 'c2_server', reasoning: 'Known C2 infra.',
+  tags: ['apt28'], inputTokens: 120, outputTokens: 80,
+  costUsd: 0.00013, durationMs: 450,
+  scoreJustification: '', evidenceSources: [], uncertaintyFactors: [],
+  mitreTechniques: [], isFalsePositive: false, falsePositiveReason: null,
+  malwareFamilies: [], attributedActors: [], recommendedActions: [],
+};
+
 function mockHaiku(overrides: Partial<HaikuTriageProvider> = {}): HaikuTriageProvider {
   return {
     isEnabled: vi.fn().mockReturnValue(true),
     supports: vi.fn().mockReturnValue(true),
-    triage: vi.fn().mockResolvedValue({
-      riskScore: 70, confidence: 80, severity: 'HIGH',
-      threatCategory: 'c2_server', reasoning: 'Known C2 infra.',
-      tags: ['apt28'], inputTokens: 120, outputTokens: 80,
-      costUsd: 0.00013, durationMs: 450,
-    } satisfies HaikuTriageResult),
+    triage: vi.fn().mockResolvedValue(DEFAULT_HAIKU_RESULT),
     ...overrides,
   } as unknown as HaikuTriageProvider;
 }
@@ -296,12 +323,189 @@ describe('EnrichmentService', () => {
     });
   });
 
+  // ===== Session 22: Budget Enforcement Gate (#5) =====
+
+  describe('enrichIOC — budget enforcement gate (#5)', () => {
+    let repo: EnrichmentRepository;
+    let costTracker: EnrichmentCostTracker;
+    let haiku: HaikuTriageProvider;
+
+    beforeEach(() => {
+      repo = mockRepo();
+      costTracker = new EnrichmentCostTracker();
+      haiku = mockHaiku();
+    });
+
+    it('calls Haiku normally when under budget', async () => {
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), haiku, costTracker, true, logger, undefined, 5.00);
+      const result = await service.enrichIOC(buildJob());
+
+      expect(result.haikuResult).not.toBeNull();
+      expect(haiku.triage).toHaveBeenCalledOnce();
+    });
+
+    it('uses rule-based fallback at 90% budget', async () => {
+      // Pre-load tenant spend to 90% of $5 = $4.50
+      costTracker.addTenantSpend('00000000-0000-0000-0000-000000000003', 4.50);
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), haiku, costTracker, true, logger, undefined, 5.00);
+
+      const result = await service.enrichIOC(buildJob());
+
+      expect(haiku.triage).not.toHaveBeenCalled();
+      expect(result.haikuResult).not.toBeNull();
+      expect(result.haikuResult!.tags).toContain('rule_based');
+      expect(result.haikuResult!.costUsd).toBe(0);
+    });
+
+    it('uses rule-based fallback at 100% budget (over budget)', async () => {
+      costTracker.addTenantSpend('00000000-0000-0000-0000-000000000003', 5.00);
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), haiku, costTracker, true, logger, undefined, 5.00);
+
+      const result = await service.enrichIOC(buildJob());
+
+      expect(haiku.triage).not.toHaveBeenCalled();
+      expect(result.haikuResult).not.toBeNull();
+      expect(result.haikuResult!.tags).toContain('rule_based');
+    });
+
+    it('still enriches with VT + AbuseIPDB even when over budget', async () => {
+      costTracker.addTenantSpend('00000000-0000-0000-0000-000000000003', 10.00);
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), haiku, costTracker, true, logger, undefined, 5.00);
+
+      const result = await service.enrichIOC(buildJob());
+
+      expect(result.vtResult).not.toBeNull();
+      expect(result.abuseipdbResult).not.toBeNull();
+      expect(result.enrichmentStatus).toBe('enriched');
+    });
+  });
+
+  // ===== Session 22: Confidence Feedback Loop (#4) =====
+
+  describe('enrichIOC — confidence feedback loop (#4)', () => {
+    let repo: EnrichmentRepository;
+    let costTracker: EnrichmentCostTracker;
+
+    beforeEach(() => {
+      repo = mockRepo();
+      costTracker = new EnrichmentCostTracker();
+    });
+
+    it('updates IOC confidence after enrichment', async () => {
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, true, logger);
+      await service.enrichIOC(buildJob());
+
+      expect(repo.updateConfidence).toHaveBeenCalledOnce();
+      const [iocId, newConfidence] = (repo.updateConfidence as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(iocId).toBe('00000000-0000-0000-0000-000000000001');
+      expect(newConfidence).toBeGreaterThanOrEqual(0);
+      expect(newConfidence).toBeLessThanOrEqual(100);
+    });
+
+    it('does not update confidence when enrichment is skipped', async () => {
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, false, logger);
+      await service.enrichIOC(buildJob());
+
+      expect(repo.updateConfidence).not.toHaveBeenCalled();
+    });
+
+    it('does not update confidence when no results', async () => {
+      const vtProvider = mockVT({ supports: vi.fn().mockReturnValue(false) });
+      const abuseProvider = mockAbuse({ supports: vi.fn().mockReturnValue(false) });
+      const service = new EnrichmentService(repo, vtProvider, abuseProvider, null, costTracker, true, logger);
+      await service.enrichIOC(buildJob());
+
+      expect(repo.updateConfidence).not.toHaveBeenCalled();
+    });
+
+    it('continues gracefully if confidence update fails', async () => {
+      (repo.updateConfidence as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('DB error'));
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, true, logger);
+
+      // Should not throw
+      const result = await service.enrichIOC(buildJob());
+      expect(result.enrichmentStatus).toBe('enriched');
+    });
+  });
+
+  // ===== Session 22: Redis Enrichment Cache (#6) =====
+
+  describe('enrichIOC — cache integration (#6)', () => {
+    let repo: EnrichmentRepository;
+    let costTracker: EnrichmentCostTracker;
+
+    beforeEach(() => {
+      repo = mockRepo();
+      costTracker = new EnrichmentCostTracker();
+    });
+
+    it('returns cached result when cache hit', async () => {
+      const cachedResult = {
+        vtResult: null, abuseipdbResult: null, haikuResult: null,
+        enrichedAt: '2026-03-22T00:00:00Z', enrichmentStatus: 'enriched' as const,
+        failureReason: null, externalRiskScore: 42, costBreakdown: null,
+      };
+      const cache = mockCache({ get: vi.fn().mockResolvedValue(cachedResult) });
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, true, logger, cache);
+
+      const result = await service.enrichIOC(buildJob());
+
+      expect(result.externalRiskScore).toBe(42);
+      expect(repo.updateEnrichment).not.toHaveBeenCalled();
+    });
+
+    it('caches result after successful enrichment', async () => {
+      const cache = mockCache();
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, true, logger, cache);
+
+      await service.enrichIOC(buildJob());
+
+      expect(cache.set).toHaveBeenCalledOnce();
+      const [iocType, value] = (cache.set as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(iocType).toBe('ip');
+      expect(value).toBe('185.220.101.34');
+    });
+
+    it('does not cache failed enrichment', async () => {
+      const vtProvider = mockVT({ lookup: vi.fn().mockRejectedValue(new Error('VT down')) });
+      const abuseProvider = mockAbuse({ lookup: vi.fn().mockRejectedValue(new Error('Abuse down')) });
+      const cache = mockCache();
+      const service = new EnrichmentService(repo, vtProvider, abuseProvider, null, costTracker, true, logger, cache);
+
+      await service.enrichIOC(buildJob());
+
+      expect(cache.set).not.toHaveBeenCalled();
+    });
+
+    it('skips cache when disabled', async () => {
+      const cache = mockCache({ isAvailable: vi.fn().mockReturnValue(false) });
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, true, logger, cache);
+
+      await service.enrichIOC(buildJob());
+
+      expect(cache.get).not.toHaveBeenCalled();
+    });
+
+    it('works normally without cache (undefined)', async () => {
+      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, true, logger);
+      const result = await service.enrichIOC(buildJob());
+
+      expect(result.enrichmentStatus).toBe('enriched');
+    });
+  });
+
   // ===== computeRiskScore function =====
 
   describe('computeRiskScore', () => {
     const vt = { malicious: 15, suspicious: 2, harmless: 50, undetected: 3, totalEngines: 70, detectionRate: 21, tags: [], lastAnalysisDate: null };
     const abuse = { abuseConfidenceScore: 85, totalReports: 42, numDistinctUsers: 12, lastReportedAt: null, isp: '', countryCode: '', usageType: '', isWhitelisted: false, isTor: false };
-    const haiku: HaikuTriageResult = { riskScore: 70, confidence: 80, severity: 'HIGH', threatCategory: 'c2_server', reasoning: '', tags: [], inputTokens: 0, outputTokens: 0, costUsd: 0, durationMs: 0 };
+    const haiku: HaikuTriageResult = {
+      riskScore: 70, confidence: 80, severity: 'HIGH', threatCategory: 'c2_server', reasoning: '', tags: [],
+      inputTokens: 0, outputTokens: 0, costUsd: 0, durationMs: 0,
+      scoreJustification: '', evidenceSources: [], uncertaintyFactors: [],
+      mitreTechniques: [], isFalsePositive: false, falsePositiveReason: null,
+      malwareFamilies: [], attributedActors: [], recommendedActions: [],
+    };
 
     it('VT+Abuse+Haiku+base = 54', () => {
       expect(computeRiskScore(vt, abuse, haiku, 50)).toBe(54);

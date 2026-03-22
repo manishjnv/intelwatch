@@ -4,7 +4,13 @@ import type { VirusTotalProvider } from './providers/virustotal.js';
 import type { AbuseIPDBProvider } from './providers/abuseipdb.js';
 import type { HaikuTriageProvider } from './providers/haiku-triage.js';
 import type { EnrichmentCostTracker } from './cost-tracker.js';
+import type { EnrichmentCache } from './cache.js';
 import type { EnrichJob, EnrichmentResult, VTResult, AbuseIPDBResult, HaikuTriageResult } from './schema.js';
+import { ruleBasedScore } from './rule-based-scorer.js';
+import { calculateCompositeConfidence } from '@etip/shared-normalization';
+
+/** Budget threshold for Haiku → rule-based fallback (90%) */
+const BUDGET_FALLBACK_PERCENT = 90;
 
 /**
  * Backward-compatible risk scoring with optional Haiku AI component.
@@ -55,6 +61,8 @@ export class EnrichmentService {
     private readonly costTracker: EnrichmentCostTracker,
     private readonly aiEnabled: boolean,
     private readonly logger: pino.Logger,
+    private readonly cache?: EnrichmentCache,
+    private readonly dailyBudgetUsd: number = 5.00,
   ) {}
 
   /** Enrich a single IOC with external API lookups + optional Haiku triage */
@@ -68,6 +76,17 @@ export class EnrichmentService {
         enrichedAt: now.toISOString(), enrichmentStatus: 'skipped',
         failureReason: 'TI_AI_ENABLED is false', externalRiskScore: null, costBreakdown: null,
       };
+    }
+
+    // #6 Cache check — return cached result if available
+    if (this.cache?.isAvailable()) {
+      const cached = await this.cache.get(job.iocType, job.normalizedValue);
+      if (cached) {
+        this.logger.debug({ iocId: job.iocId }, 'Returning cached enrichment result');
+        // Track $0 cost for cache hit
+        this.costTracker.trackProvider(job.iocId, job.iocType, 'virustotal', 0, 0, null, 0);
+        return cached;
+      }
     }
 
     let vtResult: VTResult | null = null;
@@ -101,14 +120,27 @@ export class EnrichmentService {
       this.costTracker.trackProvider(job.iocId, job.iocType, 'abuseipdb', 0, 0, null, Date.now() - abuseStart);
     }
 
-    // Haiku AI triage (all IOC types, when enabled)
+    // #5 Budget Enforcement Gate — check before calling Haiku
     if (this.haikuProvider?.isEnabled()) {
-      haikuResult = await this.haikuProvider.triage(job.iocType, job.normalizedValue, vtResult, abuseResult, job.confidence);
-      if (haikuResult) {
-        this.costTracker.trackProvider(
-          job.iocId, job.iocType, 'haiku_triage',
-          haikuResult.inputTokens, haikuResult.outputTokens, 'haiku', haikuResult.durationMs,
-        );
+      const budgetAlert = this.costTracker.checkBudgetAlert(job.tenantId, this.dailyBudgetUsd);
+
+      if (budgetAlert.isOverBudget) {
+        // 100%+ budget — skip AI entirely, use rule-based fallback
+        this.logger.warn({ tenantId: job.tenantId, spend: budgetAlert.currentSpendUsd }, 'Budget exceeded — skipping Haiku');
+        haikuResult = ruleBasedScore(job.iocType, vtResult, abuseResult);
+      } else if (budgetAlert.percentUsed >= BUDGET_FALLBACK_PERCENT) {
+        // 90-99% budget — use rule-based fallback instead of Haiku
+        this.logger.info({ tenantId: job.tenantId, percentUsed: budgetAlert.percentUsed }, 'Budget at 90%+ — using rule-based fallback');
+        haikuResult = ruleBasedScore(job.iocType, vtResult, abuseResult);
+      } else {
+        // Under budget — call Haiku normally
+        haikuResult = await this.haikuProvider.triage(job.iocType, job.normalizedValue, vtResult, abuseResult, job.confidence);
+        if (haikuResult) {
+          this.costTracker.trackProvider(
+            job.iocId, job.iocType, 'haiku_triage',
+            haikuResult.inputTokens, haikuResult.outputTokens, 'haiku', haikuResult.durationMs,
+          );
+        }
       }
     }
 
@@ -144,9 +176,19 @@ export class EnrichmentService {
 
     await this.repo.updateEnrichment(job.iocId, mergedEnrichment, now);
 
+    // #4 Confidence Feedback Loop — update IOC confidence with AI score
+    if (externalRiskScore !== null) {
+      await this.updateIOCConfidence(job, externalRiskScore);
+    }
+
     // Track tenant spend
     if (costBreakdown.totalCostUsd > 0) {
       this.costTracker.addTenantSpend(job.tenantId, costBreakdown.totalCostUsd);
+    }
+
+    // #6 Cache store — save result for future lookups
+    if (this.cache?.isAvailable() && enrichmentStatus === 'enriched') {
+      await this.cache.set(job.iocType, job.normalizedValue, result);
     }
 
     this.logger.info(
@@ -155,5 +197,30 @@ export class EnrichmentService {
     );
 
     return result;
+  }
+
+  /**
+   * #4 Confidence Feedback Loop
+   * Feed enrichment riskScore into the 3-signal confidence formula as aiScore.
+   * Updates IOC.confidence in DB via shared-normalization calculateCompositeConfidence.
+   */
+  private async updateIOCConfidence(job: EnrichJob, aiScore: number): Promise<void> {
+    try {
+      const existing = job.existingEnrichment as Record<string, unknown> | undefined;
+      const feedReliability = Number(existing?.feedReliability ?? 50);
+      const corroboration = Number(existing?.corroboration ?? 0);
+
+      const composite = calculateCompositeConfidence(
+        { feedReliability, corroboration, aiScore },
+        0, // daysSinceLastSeen = 0 (just enriched)
+        job.iocType,
+      );
+
+      await this.repo.updateConfidence(job.iocId, composite.score);
+      this.logger.debug({ iocId: job.iocId, oldConfidence: job.confidence, newConfidence: composite.score }, 'Confidence updated via feedback loop');
+    } catch (err) {
+      // Non-fatal — log and continue
+      this.logger.warn({ error: (err as Error).message, iocId: job.iocId }, 'Confidence feedback loop failed — continuing');
+    }
   }
 }

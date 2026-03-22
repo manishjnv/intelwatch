@@ -113,7 +113,7 @@ describe('HaikuTriageProvider', () => {
       expect(createMock).toHaveBeenCalledOnce();
       const callArgs = createMock.mock.calls[0][0];
       expect(callArgs.model).toBe('claude-haiku-4-5-20251001');
-      expect(callArgs.max_tokens).toBe(256);
+      expect(callArgs.max_tokens).toBe(512);
     });
 
     it('includes VT results in prompt when available', async () => {
@@ -271,6 +271,229 @@ describe('HaikuTriageProvider', () => {
       const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
       const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
       expect(result!.tags).toEqual([]);
+    });
+  });
+
+  // ===== Session 22: New structured output fields (#1,#2,#3,#7,#8) =====
+
+  describe('structured evidence chain (#1)', () => {
+    it('parses score_justification from response', async () => {
+      const response = { ...VALID_TRIAGE_RESPONSE, score_justification: 'High VT detection rate combined with abuse reports' };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.scoreJustification).toBe('High VT detection rate combined with abuse reports');
+    });
+
+    it('parses evidence_sources from response', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        evidence_sources: [
+          { provider: 'VirusTotal', data_point: '15/70 detections', interpretation: 'Moderate malicious activity' },
+          { provider: 'AbuseIPDB', data_point: '85/100 confidence', interpretation: 'High abuse correlation' },
+        ],
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.evidenceSources).toHaveLength(2);
+      expect(result!.evidenceSources[0].provider).toBe('VirusTotal');
+      expect(result!.evidenceSources[0].dataPoint).toBe('15/70 detections');
+    });
+
+    it('parses uncertainty_factors from response', async () => {
+      const response = { ...VALID_TRIAGE_RESPONSE, uncertainty_factors: ['No sandbox analysis available', 'Limited historical data'] };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.uncertaintyFactors).toHaveLength(2);
+      expect(result!.uncertaintyFactors[0]).toBe('No sandbox analysis available');
+    });
+
+    it('defaults evidence fields when absent', async () => {
+      createMock.mockResolvedValue(mockAIResponse(VALID_TRIAGE_RESPONSE));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.scoreJustification).toBe('');
+      expect(result!.evidenceSources).toEqual([]);
+      expect(result!.uncertaintyFactors).toEqual([]);
+    });
+  });
+
+  describe('MITRE ATT&CK extraction (#2)', () => {
+    it('parses valid MITRE techniques', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        mitre_techniques: [
+          { technique_id: 'T1071', name: 'Application Layer Protocol', tactic: 'Command and Control' },
+          { technique_id: 'T1071.001', name: 'Web Protocols', tactic: 'Command and Control' },
+        ],
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.mitreTechniques).toHaveLength(2);
+      expect(result!.mitreTechniques[0].techniqueId).toBe('T1071');
+      expect(result!.mitreTechniques[1].techniqueId).toBe('T1071.001');
+    });
+
+    it('filters out invalid technique IDs', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        mitre_techniques: [
+          { technique_id: 'T1071', name: 'Valid', tactic: '' },
+          { technique_id: 'INVALID', name: 'Bad', tactic: '' },
+          { technique_id: 'T123', name: 'Too Short', tactic: '' },
+        ],
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.mitreTechniques).toHaveLength(1);
+      expect(result!.mitreTechniques[0].techniqueId).toBe('T1071');
+    });
+
+    it('defaults to empty array when absent', async () => {
+      createMock.mockResolvedValue(mockAIResponse(VALID_TRIAGE_RESPONSE));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.mitreTechniques).toEqual([]);
+    });
+  });
+
+  describe('false positive detection (#3)', () => {
+    it('detects false positive and overrides severity to INFO', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        is_false_positive: true,
+        false_positive_reason: 'IP belongs to Cloudflare CDN',
+        severity: 'HIGH',
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.isFalsePositive).toBe(true);
+      expect(result!.falsePositiveReason).toBe('IP belongs to Cloudflare CDN');
+      expect(result!.severity).toBe('INFO');
+    });
+
+    it('defaults isFalsePositive to false', async () => {
+      createMock.mockResolvedValue(mockAIResponse(VALID_TRIAGE_RESPONSE));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.isFalsePositive).toBe(false);
+      expect(result!.falsePositiveReason).toBeNull();
+    });
+
+    it('sets falsePositiveReason null when not FP', async () => {
+      const response = { ...VALID_TRIAGE_RESPONSE, is_false_positive: false, false_positive_reason: 'should be ignored' };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.falsePositiveReason).toBeNull();
+    });
+  });
+
+  describe('malware family + threat actor extraction (#7)', () => {
+    it('extracts malware families from response', async () => {
+      const response = { ...VALID_TRIAGE_RESPONSE, malware_families: ['Cobalt Strike', 'Emotet'] };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.malwareFamilies).toEqual(['Cobalt Strike', 'Emotet']);
+    });
+
+    it('extracts attributed actors from response', async () => {
+      const response = { ...VALID_TRIAGE_RESPONSE, attributed_actors: ['APT28', 'Lazarus'] };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.attributedActors).toEqual(['APT28', 'Lazarus']);
+    });
+
+    it('defaults to empty arrays when absent', async () => {
+      createMock.mockResolvedValue(mockAIResponse(VALID_TRIAGE_RESPONSE));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.malwareFamilies).toEqual([]);
+      expect(result!.attributedActors).toEqual([]);
+    });
+  });
+
+  describe('recommended actions (#8)', () => {
+    it('parses recommended actions from response', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        recommended_actions: [
+          { action: 'Block IP at firewall', priority: 'immediate' },
+          { action: 'Monitor related domains', priority: 'short_term' },
+        ],
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.recommendedActions).toHaveLength(2);
+      expect(result!.recommendedActions[0].action).toBe('Block IP at firewall');
+      expect(result!.recommendedActions[0].priority).toBe('immediate');
+    });
+
+    it('limits to max 5 actions', async () => {
+      const actions = Array.from({ length: 8 }, (_, i) => ({ action: `Action ${i}`, priority: 'short_term' }));
+      const response = { ...VALID_TRIAGE_RESPONSE, recommended_actions: actions };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.recommendedActions).toHaveLength(5);
+    });
+
+    it('defaults invalid priority to short_term', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        recommended_actions: [{ action: 'Investigate', priority: 'INVALID' }],
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.recommendedActions[0].priority).toBe('short_term');
+    });
+
+    it('filters out empty actions', async () => {
+      const response = {
+        ...VALID_TRIAGE_RESPONSE,
+        recommended_actions: [{ action: '', priority: 'immediate' }, { action: 'Valid action', priority: 'short_term' }],
+      };
+      createMock.mockResolvedValue(mockAIResponse(response));
+
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      const result = await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+      expect(result!.recommendedActions).toHaveLength(1);
+      expect(result!.recommendedActions[0].action).toBe('Valid action');
+    });
+  });
+
+  describe('max_tokens increased to 512', () => {
+    it('sends max_tokens=512 for structured output', async () => {
+      const provider = new HaikuTriageProvider('sk-ant-key', true, logger);
+      await provider.triage('ip', '1.2.3.4', VT_RESULT, ABUSE_RESULT, 50);
+
+      const callArgs = createMock.mock.calls[0][0];
+      expect(callArgs.max_tokens).toBe(512);
     });
   });
 });

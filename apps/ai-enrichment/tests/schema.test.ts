@@ -5,6 +5,10 @@ import {
   AbuseIPDBResultSchema,
   EnrichmentResultSchema,
   TriggerEnrichmentSchema,
+  HaikuTriageResultSchema,
+  MitreTechniqueSchema,
+  EvidenceSourceSchema,
+  RecommendedActionSchema,
 } from '../src/schema.js';
 
 describe('EnrichJobSchema', () => {
@@ -75,6 +79,91 @@ describe('EnrichmentResultSchema', () => {
       enrichmentStatus: 'skipped',
     };
     expect(EnrichmentResultSchema.safeParse(result).success).toBe(true);
+  });
+});
+
+// ===== Session 22: New schema fields (#1,#2,#3,#7,#8) =====
+
+describe('MitreTechniqueSchema', () => {
+  it('validates valid MITRE technique T1071', () => {
+    expect(MitreTechniqueSchema.safeParse({ techniqueId: 'T1071', name: 'Application Layer Protocol' }).success).toBe(true);
+  });
+
+  it('validates sub-technique T1071.001', () => {
+    expect(MitreTechniqueSchema.safeParse({ techniqueId: 'T1071.001', name: 'Web Protocols', tactic: 'Command and Control' }).success).toBe(true);
+  });
+
+  it('rejects invalid technique ID', () => {
+    expect(MitreTechniqueSchema.safeParse({ techniqueId: 'INVALID', name: 'Bad' }).success).toBe(false);
+  });
+
+  it('rejects technique ID with wrong format', () => {
+    expect(MitreTechniqueSchema.safeParse({ techniqueId: 'T123', name: 'Short' }).success).toBe(false);
+  });
+});
+
+describe('EvidenceSourceSchema', () => {
+  it('validates complete evidence source', () => {
+    const source = { provider: 'VirusTotal', dataPoint: '15/70 engines', interpretation: 'Moderate detection rate' };
+    expect(EvidenceSourceSchema.safeParse(source).success).toBe(true);
+  });
+});
+
+describe('RecommendedActionSchema', () => {
+  it('validates action with priority', () => {
+    expect(RecommendedActionSchema.safeParse({ action: 'Block at firewall', priority: 'immediate' }).success).toBe(true);
+  });
+
+  it('defaults priority to short_term', () => {
+    const parsed = RecommendedActionSchema.parse({ action: 'Investigate' });
+    expect(parsed.priority).toBe('short_term');
+  });
+});
+
+describe('HaikuTriageResultSchema — new fields', () => {
+  const baseResult = {
+    riskScore: 75, confidence: 80, severity: 'HIGH',
+    threatCategory: 'c2_server', reasoning: 'Test', tags: [],
+    inputTokens: 100, outputTokens: 50, costUsd: 0.0001, durationMs: 200,
+  };
+
+  it('applies defaults for all new fields when absent', () => {
+    const parsed = HaikuTriageResultSchema.parse(baseResult);
+    expect(parsed.scoreJustification).toBe('');
+    expect(parsed.evidenceSources).toEqual([]);
+    expect(parsed.uncertaintyFactors).toEqual([]);
+    expect(parsed.mitreTechniques).toEqual([]);
+    expect(parsed.isFalsePositive).toBe(false);
+    expect(parsed.falsePositiveReason).toBeNull();
+    expect(parsed.malwareFamilies).toEqual([]);
+    expect(parsed.attributedActors).toEqual([]);
+    expect(parsed.recommendedActions).toEqual([]);
+  });
+
+  it('validates full result with all new fields populated', () => {
+    const full = {
+      ...baseResult,
+      scoreJustification: 'High VT detection + known C2 ISP',
+      evidenceSources: [{ provider: 'VT', dataPoint: '15/70', interpretation: 'Flagged by 15 engines' }],
+      uncertaintyFactors: ['Limited AbuseIPDB history'],
+      mitreTechniques: [{ techniqueId: 'T1071', name: 'App Layer Protocol', tactic: 'C2' }],
+      isFalsePositive: false,
+      falsePositiveReason: null,
+      malwareFamilies: ['Cobalt Strike'],
+      attributedActors: ['APT28'],
+      recommendedActions: [{ action: 'Block IP at firewall', priority: 'immediate' }],
+    };
+    const result = HaikuTriageResultSchema.safeParse(full);
+    expect(result.success).toBe(true);
+  });
+
+  it('limits recommendedActions to max 5', () => {
+    const tooMany = {
+      ...baseResult,
+      recommendedActions: Array.from({ length: 7 }, (_, i) => ({ action: `Action ${i}`, priority: 'short_term' })),
+    };
+    const result = HaikuTriageResultSchema.safeParse(tooMany);
+    expect(result.success).toBe(false);
   });
 });
 

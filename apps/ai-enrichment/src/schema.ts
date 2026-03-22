@@ -40,6 +40,29 @@ export const AbuseIPDBResultSchema = z.object({
 });
 export type AbuseIPDBResult = z.infer<typeof AbuseIPDBResultSchema>;
 
+/** MITRE ATT&CK technique reference */
+export const MitreTechniqueSchema = z.object({
+  techniqueId: z.string().regex(/^T\d{4}(\.\d{3})?$/, 'Must match MITRE format T1234 or T1234.567'),
+  name: z.string().max(100),
+  tactic: z.string().max(50).default(''),
+});
+export type MitreTechnique = z.infer<typeof MitreTechniqueSchema>;
+
+/** Structured evidence source */
+export const EvidenceSourceSchema = z.object({
+  provider: z.string().max(50),
+  dataPoint: z.string().max(200),
+  interpretation: z.string().max(200),
+});
+export type EvidenceSource = z.infer<typeof EvidenceSourceSchema>;
+
+/** Recommended action for SOC analyst */
+export const RecommendedActionSchema = z.object({
+  action: z.string().max(200),
+  priority: z.enum(['immediate', 'short_term', 'long_term']).default('short_term'),
+});
+export type RecommendedAction = z.infer<typeof RecommendedActionSchema>;
+
 /** Haiku AI triage result for IOC classification */
 export const HaikuTriageResultSchema = z.object({
   riskScore: z.number().int().min(0).max(100),
@@ -52,6 +75,20 @@ export const HaikuTriageResultSchema = z.object({
   outputTokens: z.number().int().min(0),
   costUsd: z.number().min(0),
   durationMs: z.number().int().min(0),
+  // #1 Structured Evidence Chain
+  scoreJustification: z.string().max(500).default(''),
+  evidenceSources: z.array(EvidenceSourceSchema).default([]),
+  uncertaintyFactors: z.array(z.string().max(200)).default([]),
+  // #2 MITRE ATT&CK Technique Extraction
+  mitreTechniques: z.array(MitreTechniqueSchema).default([]),
+  // #3 False Positive Detection
+  isFalsePositive: z.boolean().default(false),
+  falsePositiveReason: z.string().max(300).nullable().default(null),
+  // #7 Malware Family + Threat Actor Extraction
+  malwareFamilies: z.array(z.string().max(100)).default([]),
+  attributedActors: z.array(z.string().max(100)).default([]),
+  // #8 Recommended Actions
+  recommendedActions: z.array(RecommendedActionSchema).max(5).default([]),
 });
 export type HaikuTriageResult = z.infer<typeof HaikuTriageResultSchema>;
 

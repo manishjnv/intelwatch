@@ -11,10 +11,26 @@ import type pino from 'pino';
 import { sanitizeLLMInput } from '@etip/shared-enrichment';
 import type { VTResult, AbuseIPDBResult, HaikuTriageResult } from '../schema.js';
 
-const SYSTEM_PROMPT = `You are a threat intelligence IOC classifier. Given an IOC and its external analysis results, provide a threat assessment.
+const SYSTEM_PROMPT = `You are a threat intelligence IOC classifier. Given an IOC and its external analysis results, provide a structured threat assessment.
 
 Return ONLY valid JSON with no additional text:
-{"risk_score": 0-100, "confidence": 0-100, "severity": "CRITICAL|HIGH|MEDIUM|LOW|INFO", "threat_category": "string", "reasoning": "string (max 500 chars)", "tags": ["string"]}
+{
+  "risk_score": 0-100,
+  "confidence": 0-100,
+  "severity": "CRITICAL|HIGH|MEDIUM|LOW|INFO",
+  "threat_category": "string",
+  "reasoning": "string (max 500 chars)",
+  "tags": ["string"],
+  "score_justification": "string explaining why this score, citing data points (max 500 chars)",
+  "evidence_sources": [{"provider": "string", "data_point": "string", "interpretation": "string"}],
+  "uncertainty_factors": ["string describing what could change this assessment"],
+  "mitre_techniques": [{"technique_id": "T1234 or T1234.567", "name": "technique name", "tactic": "tactic name"}],
+  "is_false_positive": false,
+  "false_positive_reason": "string or null — reason if suspected FP",
+  "malware_families": ["string — known malware families detected"],
+  "attributed_actors": ["string — threat actor names/groups"],
+  "recommended_actions": [{"action": "string", "priority": "immediate|short_term|long_term"}]
+}
 
 Rules:
 - risk_score: composite threat risk (0 = benign, 100 = active threat)
@@ -22,10 +38,22 @@ Rules:
 - severity: CRITICAL (active exploitation), HIGH (known malicious), MEDIUM (suspicious), LOW (potentially unwanted), INFO (clean/benign)
 - threat_category: one of c2_server, malware_distribution, phishing, cryptomining, apt_infrastructure, scanning, botnet, tor_exit, vpn_proxy, cdn, benign, unknown
 - reasoning: concise human-readable justification citing specific evidence
-- tags: relevant labels (e.g. actor names, malware families)`;
+- tags: relevant labels
+- score_justification: explain WHY you assigned this score, citing specific data points from VT/AbuseIPDB
+- evidence_sources: list each data point that influenced your assessment with provider name and interpretation
+- uncertainty_factors: what information is missing or uncertain that could change the assessment
+- mitre_techniques: map IOC behavior to MITRE ATT&CK techniques (e.g. C2 IP → T1071.001, phishing domain → T1566.002). Use valid technique IDs only.
+- is_false_positive: set true if IOC matches known FP patterns: CDN IPs (Cloudflare, Akamai, Fastly), shared hosting, sinkholed domains, security researcher infrastructure, Google/Microsoft/Amazon IPs
+- false_positive_reason: explain why this is a suspected false positive (null if not FP)
+- malware_families: extract known malware families (e.g. Emotet, Cobalt Strike, QakBot) from VT tags or behavioral analysis
+- attributed_actors: extract threat actor names (e.g. APT28, Lazarus, FIN7) from evidence
+- recommended_actions: 1-5 actionable steps for SOC analysts. Priority: immediate (block now), short_term (investigate), long_term (monitor). Tailor to IOC type.`;
 
 /** Pricing per 1M tokens — matches ingestion CostTracker */
 const HAIKU_PRICING = { input: 0.25, output: 1.25 };
+
+/** MITRE ATT&CK technique ID regex: T1234 or T1234.567 */
+const MITRE_REGEX = /^T\d{4}(\.\d{3})?$/;
 
 export class HaikuTriageProvider {
   private readonly client: Anthropic | null;
@@ -64,7 +92,7 @@ export class HaikuTriageProvider {
 
       const response = await this.client.messages.create({
         model: this.model,
-        max_tokens: 256,
+        max_tokens: 512,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMessage }],
       });
@@ -79,17 +107,35 @@ export class HaikuTriageProvider {
       const outputTokens = response.usage.output_tokens;
       const costUsd = this.calculateCost(inputTokens, outputTokens);
 
+      // #3 FP: override severity to INFO when false positive detected
+      const isFP = parsed.is_false_positive === true;
+      const severity = isFP ? 'INFO' as const : this.parseSeverity(parsed.severity);
+
       return {
-        riskScore: Math.min(100, Math.max(0, parsed.risk_score)),
-        confidence: Math.min(100, Math.max(0, parsed.confidence)),
-        severity: parsed.severity,
-        threatCategory: parsed.threat_category ?? 'unknown',
-        reasoning: (parsed.reasoning ?? '').slice(0, 500),
-        tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+        riskScore: Math.min(100, Math.max(0, Number(parsed.risk_score) || 0)),
+        confidence: Math.min(100, Math.max(0, Number(parsed.confidence) || 0)),
+        severity,
+        threatCategory: String(parsed.threat_category ?? 'unknown').slice(0, 50),
+        reasoning: String(parsed.reasoning ?? '').slice(0, 500),
+        tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : [],
         inputTokens,
         outputTokens,
         costUsd,
         durationMs,
+        // #1 Structured Evidence Chain
+        scoreJustification: String(parsed.score_justification ?? '').slice(0, 500),
+        evidenceSources: this.parseEvidenceSources(parsed.evidence_sources),
+        uncertaintyFactors: this.parseStringArray(parsed.uncertainty_factors, 200),
+        // #2 MITRE ATT&CK
+        mitreTechniques: this.parseMitreTechniques(parsed.mitre_techniques),
+        // #3 False Positive Detection
+        isFalsePositive: isFP,
+        falsePositiveReason: isFP ? String(parsed.false_positive_reason ?? '').slice(0, 300) || null : null,
+        // #7 Malware Family + Threat Actor Extraction
+        malwareFamilies: this.parseStringArray(parsed.malware_families, 100),
+        attributedActors: this.parseStringArray(parsed.attributed_actors, 100),
+        // #8 Recommended Actions
+        recommendedActions: this.parseRecommendedActions(parsed.recommended_actions),
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -134,6 +180,60 @@ export class HaikuTriageProvider {
       this.logger.warn({ text: text.slice(0, 200) }, 'Failed to parse Haiku triage response as JSON');
       return null;
     }
+  }
+
+  private parseSeverity(raw: unknown): HaikuTriageResult['severity'] {
+    const valid = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] as const;
+    const s = String(raw ?? '').toUpperCase();
+    return valid.includes(s as typeof valid[number]) ? (s as typeof valid[number]) : 'MEDIUM';
+  }
+
+  private parseStringArray(raw: unknown, maxLen: number): string[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((v): v is string => typeof v === 'string' && v.length > 0).map(s => s.slice(0, maxLen));
+  }
+
+  private parseEvidenceSources(raw: unknown): HaikuTriageResult['evidenceSources'] {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null)
+      .map(v => ({
+        provider: String(v.provider ?? '').slice(0, 50),
+        dataPoint: String(v.data_point ?? '').slice(0, 200),
+        interpretation: String(v.interpretation ?? '').slice(0, 200),
+      }))
+      .slice(0, 10);
+  }
+
+  private parseMitreTechniques(raw: unknown): HaikuTriageResult['mitreTechniques'] {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null)
+      .filter(v => MITRE_REGEX.test(String(v.technique_id ?? '')))
+      .map(v => ({
+        techniqueId: String(v.technique_id),
+        name: String(v.name ?? '').slice(0, 100),
+        tactic: String(v.tactic ?? '').slice(0, 50),
+      }))
+      .slice(0, 10);
+  }
+
+  private parseRecommendedActions(raw: unknown): HaikuTriageResult['recommendedActions'] {
+    const validPriorities = ['immediate', 'short_term', 'long_term'] as const;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null)
+      .map(v => {
+        const p = String(v.priority ?? 'short_term');
+        return {
+          action: String(v.action ?? '').slice(0, 200),
+          priority: validPriorities.includes(p as typeof validPriorities[number])
+            ? (p as typeof validPriorities[number])
+            : 'short_term' as const,
+        };
+      })
+      .filter(a => a.action.length > 0)
+      .slice(0, 5);
   }
 
   private calculateCost(inputTokens: number, outputTokens: number): number {
