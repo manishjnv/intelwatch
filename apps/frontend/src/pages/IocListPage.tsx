@@ -224,7 +224,7 @@ export function IocListPage() {
         onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1) }}
       >
         {/* Inline stats — merged into filter bar row */}
-        <div className="hidden sm:flex items-center gap-3 ml-auto text-xs shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto text-[10px] sm:text-xs shrink-0">
           <span className="text-text-muted">IOCs <span className="text-text-primary font-medium">{stats?.total?.toLocaleString() ?? '—'}</span></span>
           <span className="text-text-muted">Critical <span className="text-sev-critical font-medium">{stats?.bySeverity?.['critical'] ?? 0}</span></span>
           <span className="text-text-muted">Active <span className="text-sev-low font-medium">{stats?.byLifecycle?.['active'] ?? 0}</span></span>
@@ -234,6 +234,7 @@ export function IocListPage() {
 
       {/* #7: Split-pane layout — table left, detail right */}
       <SplitPane
+        onCloseRight={() => setSelectedId(null)}
         left={
           <DataTable
             columns={columns}

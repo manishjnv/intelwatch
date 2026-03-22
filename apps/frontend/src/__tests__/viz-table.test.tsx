@@ -121,8 +121,9 @@ describe('SplitPane', () => {
 
   it('renders both panes when showRight is true', () => {
     render(<SplitPane left={<div>Left</div>} right={<div>Right</div>} showRight={true} />)
-    expect(screen.getByText('Left')).toBeInTheDocument()
-    expect(screen.getByText('Right')).toBeInTheDocument()
+    // Desktop + mobile layouts both render (hidden via CSS), so multiple matches
+    expect(screen.getAllByText('Left').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Right').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders draggable divider when showRight', () => {
@@ -142,8 +143,10 @@ describe('SplitPane', () => {
 
   it('renders left pane with correct initial width', () => {
     render(<SplitPane left={<div>L</div>} right={<div>R</div>} showRight={true} defaultSplit={70} />)
-    const leftPane = screen.getByTestId('split-left')
-    expect(leftPane.style.width).toBe('70%')
+    // Desktop + mobile both render split-left; desktop one has inline width
+    const leftPanes = screen.getAllByTestId('split-left')
+    const withWidth = leftPanes.find(el => el.style.width === '70%')
+    expect(withWidth).toBeTruthy()
   })
 })
 
