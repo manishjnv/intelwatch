@@ -12,12 +12,13 @@ import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
-import { Shield, AlertTriangle, Activity, Clock } from 'lucide-react'
+import { Shield, AlertTriangle, Activity, Clock, Brain, GitBranch, FileText } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 // UI improvements (#3, #6, #7, #8, #9, #10)
 import { EntityPreview } from '@/components/viz/EntityPreview'
 import { SplitPane } from '@/components/viz/SplitPane'
-import { FlipDetailCard, IOCSummaryFront, IOCDetailBack } from '@/components/viz/FlipDetailCard'
+import { IOCDetailBack } from '@/components/viz/FlipDetailCard'
 import { QuickActionToolbar } from '@/components/viz/QuickActionToolbar'
 import { SparklineCell, generateStubTrend } from '@/components/viz/SparklineCell'
 import { RelationshipGraph, generateStubRelations } from '@/components/viz/RelationshipGraph'
@@ -93,7 +94,7 @@ export function IocListPage() {
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [showDetail, setShowDetail] = useState(false)
+  const [detailTab, setDetailTab] = useState<'enrichment' | 'details' | 'relations'>('enrichment')
 
   const queryParams = useMemo(() => ({
     page, limit: 50, sortBy, sortOrder,
@@ -245,39 +246,75 @@ export function IocListPage() {
             severityField={(r) => r.severity}
             selectedId={selectedId}
             onRowClick={(r) => {
-              const newId = r.id === selectedId ? null : r.id
-              setSelectedId(newId)
-              setShowDetail(!!newId)
+              setSelectedId(r.id === selectedId ? null : r.id)
             }}
             emptyMessage="No IOCs found. Activate a feed to start ingesting threat intelligence."
           />
         }
         right={selectedRecord ? (
-          <div className="h-full flex flex-col overflow-y-auto">
-            {/* #6: 3D Flip detail card */}
-            <div className="shrink-0" style={{ minHeight: 180 }}>
-              <FlipDetailCard
-                isFlipped={showDetail}
-                front={<div onClick={() => setShowDetail(true)} className="cursor-pointer h-full"><IOCSummaryFront record={selectedRecord} /></div>}
-                back={<IOCDetailBack record={selectedRecord} onFlipBack={() => setShowDetail(false)} />}
-                className="h-full"
-              />
+          <div className="h-full flex flex-col">
+            {/* Compact IOC header — always visible */}
+            <div className="shrink-0 p-3 border-b border-border space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-text-primary truncate max-w-[70%]">{selectedRecord.normalizedValue}</span>
+                <SeverityBadge severity={selectedRecord.severity.toUpperCase() as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'} />
+              </div>
+              <div className="flex items-center gap-3 text-[10px] text-text-muted">
+                <span className="uppercase font-mono">{selectedRecord.iocType}</span>
+                <span>Conf: <span className="text-text-primary tabular-nums">{selectedRecord.confidence}%</span></span>
+                <span className="uppercase">{selectedRecord.tlp}</span>
+                <span>{selectedRecord.lifecycle}</span>
+              </div>
             </div>
-            {/* Enrichment detail panel */}
-            <EnrichmentDetailPanel
-              iocId={selectedRecord.id}
-              iocType={selectedRecord.iocType}
-              enrichment={null}
-              className="px-2 py-2"
-            />
-            {/* #10: Mini relationship graph */}
-            {stubRelations && (
-              <RelationshipGraph
-                nodes={stubRelations.nodes}
-                edges={stubRelations.edges}
-                className="mt-2 mx-2 mb-2 shrink-0"
-              />
-            )}
+
+            {/* Tab bar */}
+            <div className="shrink-0 flex border-b border-border">
+              {([
+                { key: 'enrichment' as const, label: 'Enrichment', icon: Brain },
+                { key: 'details' as const, label: 'Details', icon: FileText },
+                { key: 'relations' as const, label: 'Relations', icon: GitBranch },
+              ]).map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setDetailTab(key)}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium transition-colors',
+                    detailTab === key
+                      ? 'text-accent border-b-2 border-accent bg-accent/5'
+                      : 'text-text-muted hover:text-text-secondary hover:bg-bg-hover',
+                  )}
+                >
+                  <Icon className="w-3 h-3" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content — fills remaining height */}
+            <div className="flex-1 overflow-y-auto">
+              {detailTab === 'enrichment' && (
+                <EnrichmentDetailPanel
+                  iocId={selectedRecord.id}
+                  iocType={selectedRecord.iocType}
+                  enrichment={null}
+                  className="p-3"
+                />
+              )}
+              {detailTab === 'details' && (
+                <IOCDetailBack
+                  record={selectedRecord}
+                  onFlipBack={() => setDetailTab('enrichment')}
+                />
+              )}
+              {detailTab === 'relations' && stubRelations && (
+                <div className="p-2">
+                  <RelationshipGraph
+                    nodes={stubRelations.nodes}
+                    edges={stubRelations.edges}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
         showRight={!!selectedId}
@@ -293,7 +330,7 @@ export function IocListPage() {
       {/* #9: Quick-action toolbar */}
       <QuickActionToolbar
         selectedCount={selectedId ? 1 : 0}
-        onClear={() => { setSelectedId(null); setShowDetail(false) }}
+        onClear={() => setSelectedId(null)}
       />
     </div>
   )
