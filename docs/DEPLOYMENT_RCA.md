@@ -551,6 +551,8 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 
 **Session 22:** No deploy (code-only session). 8 AI enrichment accuracy improvements. 64 new tests (1744 total). Commit 265483a.
 
+**Session 24:** No deploy (code-only session). Enrichment UI: detail panel, management page, dashboard wiring. 63 new tests (1871 total). Commit 799145c.
+
 **Session 20:** No deploy (code-only session). Demo data fallbacks for offline frontend. 5 bugs found and fixed:
 
 ### Issue 34: EntityChip crash — backend iocType `hash_sha256` not in shared-ui type map
