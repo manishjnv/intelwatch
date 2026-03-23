@@ -7,7 +7,7 @@
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS, DEMO_FEEDS_RESPONSE } from './demo-data'
+import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS, DEMO_FEEDS_RESPONSE, DEMO_ACTORS_RESPONSE, DEMO_MALWARE_RESPONSE, DEMO_VULNS_RESPONSE } from './demo-data'
 import type { EnrichmentStats } from './use-enrichment-data'
 
 // ─── Generic list response shape ──────────────────────────────────
@@ -115,11 +115,13 @@ export interface LinkedIOC {
 
 export function useActors(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  return useQuery({
+  const empty = { data: [] as ActorRecord[], total: 0, page: 1, limit: 50 }
+  const result = useQuery({
     queryKey: ['actors', params],
-    queryFn: () => api<ListResponse<ActorRecord>>(`/actors${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    queryFn: () => api<ListResponse<ActorRecord>>(`/actors${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
+  return withDemoFallback(result, DEMO_ACTORS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
 }
 
 // ─── Malware types ──────────────────────────────────────────────
@@ -133,11 +135,13 @@ export interface MalwareRecord {
 
 export function useMalware(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  return useQuery({
+  const empty = { data: [] as MalwareRecord[], total: 0, page: 1, limit: 50 }
+  const result = useQuery({
     queryKey: ['malware', params],
-    queryFn: () => api<ListResponse<MalwareRecord>>(`/malware${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    queryFn: () => api<ListResponse<MalwareRecord>>(`/malware${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
+  return withDemoFallback(result, DEMO_MALWARE_RESPONSE, d => (d?.data?.length ?? 0) > 0)
 }
 
 // ─── Actor/Malware detail + linked IOC hooks ────────────────────
@@ -186,11 +190,13 @@ export interface VulnRecord {
 
 export function useVulnerabilities(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  return useQuery({
+  const empty = { data: [] as VulnRecord[], total: 0, page: 1, limit: 50 }
+  const result = useQuery({
     queryKey: ['vulnerabilities', params],
-    queryFn: () => api<ListResponse<VulnRecord>>(`/vulnerabilities${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    queryFn: () => api<ListResponse<VulnRecord>>(`/vulnerabilities${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
+  return withDemoFallback(result, DEMO_VULNS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
 }
 
 // ─── Dashboard stats ────────────────────────────────────────────

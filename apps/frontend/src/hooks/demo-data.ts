@@ -4,7 +4,7 @@
  * 25 IOC records spanning all types, severities, and lifecycles so every
  * UI improvement (#1–#15) renders meaningful content.
  */
-import type { IOCRecord, FeedRecord } from './use-intel-data'
+import type { IOCRecord, FeedRecord, ActorRecord, MalwareRecord, VulnRecord } from './use-intel-data'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -318,6 +318,174 @@ export const DEMO_FEEDS_RESPONSE: { data: FeedRecord[]; total: number; page: num
     },
   ],
   total: 5,
+  page: 1,
+  limit: 50,
+}
+
+// ─── Demo Threat Actor Records ────────────────────────────────
+
+export const DEMO_ACTORS_RESPONSE: { data: ActorRecord[]; total: number; page: number; limit: number } = {
+  data: [
+    {
+      id: 'demo-actor-1', name: 'APT28', aliases: ['Fancy Bear', 'Sofacy', 'Pawn Storm'],
+      actorType: 'nation_state', motivation: 'espionage', sophistication: 'expert',
+      country: 'RU', confidence: 95, tlp: 'red', tags: ['russia', 'gru', 'apt'],
+      active: true, firstSeen: daysAgo(3650), lastSeen: daysAgo(3),
+      mitreTechniques: ['T1071', 'T1059', 'T1078', 'T1566'],
+    },
+    {
+      id: 'demo-actor-2', name: 'Lazarus Group', aliases: ['Hidden Cobra', 'Guardians of Peace'],
+      actorType: 'nation_state', motivation: 'financial', sophistication: 'expert',
+      country: 'KP', confidence: 90, tlp: 'red', tags: ['dprk', 'crypto', 'apt'],
+      active: true, firstSeen: daysAgo(4380), lastSeen: daysAgo(5),
+      mitreTechniques: ['T1055', 'T1071', 'T1105', 'T1082'],
+    },
+    {
+      id: 'demo-actor-3', name: 'FIN7', aliases: ['Carbanak', 'Navigator Group'],
+      actorType: 'criminal', motivation: 'financial', sophistication: 'high',
+      country: null, confidence: 85, tlp: 'amber', tags: ['ransomware', 'pos', 'financial'],
+      active: true, firstSeen: daysAgo(2920), lastSeen: daysAgo(10),
+      mitreTechniques: ['T1566', 'T1059', 'T1486'],
+    },
+    {
+      id: 'demo-actor-4', name: 'Sandworm', aliases: ['Voodoo Bear', 'TeleBots'],
+      actorType: 'nation_state', motivation: 'sabotage', sophistication: 'expert',
+      country: 'RU', confidence: 92, tlp: 'red', tags: ['russia', 'ics', 'destructive'],
+      active: true, firstSeen: daysAgo(5475), lastSeen: daysAgo(7),
+      mitreTechniques: ['T1486', 'T1561', 'T1071'],
+    },
+    {
+      id: 'demo-actor-5', name: 'Scattered Spider', aliases: ['UNC3944', 'Muddled Libra'],
+      actorType: 'criminal', motivation: 'financial', sophistication: 'high',
+      country: null, confidence: 80, tlp: 'amber', tags: ['social-engineering', 'sim-swap', 'cloud'],
+      active: true, firstSeen: daysAgo(730), lastSeen: daysAgo(14),
+      mitreTechniques: ['T1566', 'T1078', 'T1530'],
+    },
+    {
+      id: 'demo-actor-6', name: 'Anonymous Sudan', aliases: ['Storm-1359'],
+      actorType: 'hacktivist', motivation: 'political', sophistication: 'intermediate',
+      country: 'SD', confidence: 72, tlp: 'amber', tags: ['ddos', 'hacktivist', 'pro-russia'],
+      active: false, firstSeen: daysAgo(1095), lastSeen: daysAgo(90),
+      mitreTechniques: ['T1498', 'T1499'],
+    },
+  ],
+  total: 6,
+  page: 1,
+  limit: 50,
+}
+
+// ─── Demo Malware Records ─────────────────────────────────────
+
+export const DEMO_MALWARE_RESPONSE: { data: MalwareRecord[]; total: number; page: number; limit: number } = {
+  data: [
+    {
+      id: 'demo-malware-1', name: 'LockBit', aliases: ['LockBit 3.0', 'LockBit Black'],
+      malwareType: 'ransomware', platforms: ['Windows', 'Linux', 'macOS'],
+      capabilities: ['encryption', 'lateral-movement', 'exfiltration', 'defense-evasion'],
+      confidence: 97, tlp: 'red', tags: ['raas', 'extortion', 'high-volume'],
+      active: true, firstSeen: daysAgo(1460), lastSeen: daysAgo(2),
+    },
+    {
+      id: 'demo-malware-2', name: 'Cobalt Strike', aliases: ['CS Beacon'],
+      malwareType: 'backdoor', platforms: ['Windows', 'Linux'],
+      capabilities: ['c2-communication', 'lateral-movement', 'credential-dumping', 'post-exploitation'],
+      confidence: 95, tlp: 'amber', tags: ['pen-test-tool', 'cracked', 'apt'],
+      active: true, firstSeen: daysAgo(2190), lastSeen: daysAgo(1),
+    },
+    {
+      id: 'demo-malware-3', name: 'Emotet', aliases: ['Heodo', 'Geodo'],
+      malwareType: 'trojan', platforms: ['Windows'],
+      capabilities: ['email-spam', 'download', 'credential-theft', 'banking-fraud'],
+      confidence: 93, tlp: 'amber', tags: ['botnet', 'dropper', 'polymorphic'],
+      active: true, firstSeen: daysAgo(3650), lastSeen: daysAgo(5),
+    },
+    {
+      id: 'demo-malware-4', name: 'BlackCat', aliases: ['ALPHV', 'Noberus'],
+      malwareType: 'ransomware', platforms: ['Windows', 'Linux'],
+      capabilities: ['encryption', 'exfiltration', 'double-extortion', 'intermittent-encryption'],
+      confidence: 91, tlp: 'red', tags: ['raas', 'rust', 'east-europe'],
+      active: true, firstSeen: daysAgo(900), lastSeen: daysAgo(8),
+    },
+    {
+      id: 'demo-malware-5', name: 'Sliver', aliases: ['BishopFox Sliver'],
+      malwareType: 'rat', platforms: ['Windows', 'Linux', 'macOS'],
+      capabilities: ['c2-communication', 'shellcode-execution', 'pivoting', 'file-operations'],
+      confidence: 82, tlp: 'amber', tags: ['open-source', 'go', 'red-team'],
+      active: true, firstSeen: daysAgo(1095), lastSeen: daysAgo(12),
+    },
+    {
+      id: 'demo-malware-6', name: 'QakBot', aliases: ['Qbot', 'Pinkslipbot'],
+      malwareType: 'trojan', platforms: ['Windows'],
+      capabilities: ['banking-fraud', 'credential-theft', 'network-propagation', 'ransomware-delivery'],
+      confidence: 88, tlp: 'amber', tags: ['banking-trojan', 'worm', 'persistent'],
+      active: false, firstSeen: daysAgo(4380), lastSeen: daysAgo(180),
+    },
+  ],
+  total: 6,
+  page: 1,
+  limit: 50,
+}
+
+// ─── Demo Vulnerability Records ───────────────────────────────
+
+export const DEMO_VULNS_RESPONSE: { data: VulnRecord[]; total: number; page: number; limit: number } = {
+  data: [
+    {
+      id: 'demo-vuln-1', cveId: 'CVE-2024-21762',
+      description: 'Fortinet FortiOS out-of-bounds write allows unauthenticated RCE via crafted HTTP requests.',
+      cvssV3Score: 9.8, cvssV3Severity: 'CRITICAL', epssScore: 0.9741, epssPercentile: 0.9997,
+      cisaKev: true, exploitedInWild: true, exploitAvailable: true, priorityScore: 98,
+      affectedProducts: ['FortiOS 6.0', 'FortiOS 7.0', 'FortiProxy'], affectedVendors: ['Fortinet'],
+      weaknessType: 'CWE-787', confidence: 97, tlp: 'red', tags: ['rce', 'fortinet', 'vpn', 'cisa-kev'],
+      active: true, publishedDate: daysAgo(60), firstSeen: daysAgo(58), lastSeen: daysAgo(0),
+    },
+    {
+      id: 'demo-vuln-2', cveId: 'CVE-2024-3400',
+      description: 'Palo Alto PAN-OS command injection in GlobalProtect allows unauthenticated RCE.',
+      cvssV3Score: 10.0, cvssV3Severity: 'CRITICAL', epssScore: 0.9650, epssPercentile: 0.9995,
+      cisaKev: true, exploitedInWild: true, exploitAvailable: true, priorityScore: 100,
+      affectedProducts: ['PAN-OS 10.2', 'PAN-OS 11.0', 'PAN-OS 11.1'], affectedVendors: ['Palo Alto Networks'],
+      weaknessType: 'CWE-77', confidence: 98, tlp: 'red', tags: ['rce', 'palo-alto', 'firewall', 'cisa-kev'],
+      active: true, publishedDate: daysAgo(75), firstSeen: daysAgo(73), lastSeen: daysAgo(1),
+    },
+    {
+      id: 'demo-vuln-3', cveId: 'CVE-2024-1709',
+      description: 'ConnectWise ScreenConnect authentication bypass allows unauthenticated admin access.',
+      cvssV3Score: 10.0, cvssV3Severity: 'CRITICAL', epssScore: 0.9720, epssPercentile: 0.9996,
+      cisaKev: true, exploitedInWild: true, exploitAvailable: true, priorityScore: 99,
+      affectedProducts: ['ScreenConnect 23.9.7', 'ScreenConnect 23.9.8'], affectedVendors: ['ConnectWise'],
+      weaknessType: 'CWE-288', confidence: 96, tlp: 'red', tags: ['auth-bypass', 'connectwise', 'rmm', 'cisa-kev'],
+      active: true, publishedDate: daysAgo(90), firstSeen: daysAgo(88), lastSeen: daysAgo(2),
+    },
+    {
+      id: 'demo-vuln-4', cveId: 'CVE-2023-46805',
+      description: 'Ivanti Connect Secure authentication bypass allows remote access to restricted resources.',
+      cvssV3Score: 8.2, cvssV3Severity: 'HIGH', epssScore: 0.9530, epssPercentile: 0.9991,
+      cisaKev: true, exploitedInWild: true, exploitAvailable: true, priorityScore: 90,
+      affectedProducts: ['Ivanti Connect Secure 9.x', 'Ivanti Policy Secure 9.x'], affectedVendors: ['Ivanti'],
+      weaknessType: 'CWE-287', confidence: 94, tlp: 'amber', tags: ['auth-bypass', 'ivanti', 'vpn', 'cisa-kev'],
+      active: true, publishedDate: daysAgo(120), firstSeen: daysAgo(118), lastSeen: daysAgo(4),
+    },
+    {
+      id: 'demo-vuln-5', cveId: 'CVE-2024-27198',
+      description: 'JetBrains TeamCity authentication bypass in the web UI allows unauthenticated admin access.',
+      cvssV3Score: 9.8, cvssV3Severity: 'CRITICAL', epssScore: 0.8920, epssPercentile: 0.9980,
+      cisaKev: false, exploitedInWild: true, exploitAvailable: true, priorityScore: 94,
+      affectedProducts: ['TeamCity 2023.11.3'], affectedVendors: ['JetBrains'],
+      weaknessType: 'CWE-288', confidence: 90, tlp: 'amber', tags: ['auth-bypass', 'jetbrains', 'ci-cd', 'supply-chain'],
+      active: true, publishedDate: daysAgo(55), firstSeen: daysAgo(53), lastSeen: daysAgo(3),
+    },
+    {
+      id: 'demo-vuln-6', cveId: 'CVE-2023-44487',
+      description: 'HTTP/2 Rapid Reset Attack enables distributed denial of service at record scale.',
+      cvssV3Score: 7.5, cvssV3Severity: 'HIGH', epssScore: 0.7840, epssPercentile: 0.9940,
+      cisaKev: true, exploitedInWild: true, exploitAvailable: true, priorityScore: 82,
+      affectedProducts: ['nginx', 'Apache httpd', 'Kubernetes ingress', 'AWS ALB'], affectedVendors: ['Multiple'],
+      weaknessType: 'CWE-400', confidence: 88, tlp: 'amber', tags: ['dos', 'http2', 'infrastructure', 'cisa-kev'],
+      active: true, publishedDate: daysAgo(180), firstSeen: daysAgo(178), lastSeen: daysAgo(7),
+    },
+  ],
+  total: 6,
   page: 1,
   limit: 50,
 }
