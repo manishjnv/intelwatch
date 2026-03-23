@@ -22,6 +22,7 @@
     { "path": "apps/correlation-engine" },
     { "path": "apps/hunting-service" },
     { "path": "apps/drp-service" },
-    { "path": "apps/integration-service" }
+    { "path": "apps/integration-service" },
+    { "path": "apps/user-management-service" }
   ]
 }

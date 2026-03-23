@@ -52,7 +52,7 @@
 | correlation-engine | 4 | 🔨 WIP | 2026-03-23 | Port 3013. **15/15 improvements COMPLETE** (#1-15). 20 endpoints, 166 tests. In-memory. P1: co-occurrence, infra clustering, temporal waves, TTP similarity, DBSCAN campaigns, confidence scoring, Diamond Model, Kill Chain, FP suppression, BFS inference. P2: AI pattern detection (Sonnet), rule templates (6), confidence decay, batch re-correlation, graph integration. |
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
-| user-management | 5 | 📋 Not started | - | Phase 5 gate |
+| user-management | 5 | 🔨 WIP | 2026-03-23 | Scaffold complete. Core features next. |
 | customization | 5 | 📋 Not started | - | Phase 5 gate |
 | onboarding | 6 | 📋 Not started | - | Phase 6 gate |
 | billing | 6 | 📋 Not started | - | Phase 6 gate |
@@ -82,6 +82,7 @@ correlation-engine    → shared-types, shared-utils, shared-auth, bullmq, @anth
 hunting-service       → shared-types, shared-utils, shared-auth (Phase 4)
 drp-service           → shared-types, shared-utils, shared-auth (Phase 4)
 integration-service   → shared-types, shared-utils, shared-auth, bullmq (Phase 5)
+user-management       → shared-types, shared-utils, shared-auth (Phase 5)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ```
 
