@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 35
+**Session counter:** 38
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.2.0 | 2026-03-23 | Dashboard + 10 data pages + demo fallbacks. Phase 4 frontend live. |
+| etip_frontend | ✅ Running | 0.3.0 | 2026-03-23 | Dashboard + 13 data pages + demo fallbacks. Phase 4+5 frontend live. 3 new pages: Integration, User Management, Customization. |
 | etip_nginx | ✅ Running | - | 2026-03-23 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
@@ -23,6 +23,7 @@
 | etip_drp | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3011. 36 endpoints, 310 tests. Added to deploy.yml + nginx. |
 | etip_integration | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. Added to deploy.yml + nginx. |
 | etip_user_management | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. Added to deploy.yml + nginx. |
+| etip_customization | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3017. 35 endpoints, 159 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. Added to deploy.yml + nginx. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -40,7 +41,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-23 | **10 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting). 17 viz components. 273 tests. All 4 Phase 4 pages fully interactive (CRUD, triage, path finder, feedback). **Existing pages FROZEN.** |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-23 | **13 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization). 19 viz components. 367 tests. Phase 5 pages: Integration (5 tabs, SIEM/webhooks/ticketing/STIX/export), User Management (5 tabs, RBAC/teams/roles/sessions/audit), Customization (5 tabs, modules/AI/risk/dashboard/notifications). **Existing pages FROZEN.** |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
@@ -54,7 +55,7 @@
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
-| customization | 5 | 📋 Not started | - | Phase 5 gate |
+| customization | 5 | ✅ Complete | 2026-03-23 | Port 3017. **Core + 5 P0 improvements COMPLETE**. 35 endpoints, 159 tests. Module toggles (per-tenant enable/disable, feature flags). AI model selection (Claude model per task, token budget/cost limits). Risk score weight customization (composite confidence weights, decay rate overrides). Dashboard customization (widget layout, default filters/time ranges). Notification preferences (per-user alert channels, severity thresholds). P0: config inheritance, versioning, validation engine, import/export, audit trail. FEATURE-COMPLETE. **Phase 5 COMPLETE (3/3).** |
 | onboarding | 6 | 📋 Not started | - | Phase 6 gate |
 | billing | 6 | 📋 Not started | - | Phase 6 gate |
 | admin-ops | 6 | 📋 Not started | - | Phase 6 gate |
@@ -84,6 +85,7 @@ hunting-service       → shared-types, shared-utils, shared-auth (Phase 4)
 drp-service           → shared-types, shared-utils, shared-auth (Phase 4)
 integration-service   → shared-types, shared-utils, shared-auth, bullmq (Phase 5)
 user-management       → shared-types, shared-utils, shared-auth (Phase 5)
+customization         → shared-types, shared-utils, shared-auth (Phase 5)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ```
 
@@ -119,10 +121,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 5 IN PROGRESS — 2/3 Phase 5 modules done (Integration ✅, User Management ✅, Customization 📋). Phases 1-4 COMPLETE.
-- **Last session outcome:** Session 35 (2026-03-23). User Management Service (Module 16): scaffold + core + 5 P0 improvements. 32 endpoints, 185 tests, 43 files. RBAC (15 resources × 4 actions, 6 built-in roles, custom role builder, permission inheritance), team mgmt (invite/assign/deactivate/reactivate), SSO config (SAML 2.0 + OIDC per-tenant, JIT provisioning), MFA (TOTP + 10 backup codes + enforcement policy), break-glass (5 single-use recovery codes, 30-min sessions). P0: permission hierarchy, SOC2 audit trail, brute-force lockout, session management, password policy. Also committed prior-session frontend improvements (Phase 4 page enhancements). Commits: 99db5db (frontend), 12018db (user-mgmt). Pushed to master.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. 1 pre-existing test failure in shared-auth (not new). User management service uses in-memory store (DECISION-013 pattern). RBAC permissions now defined in user-management-service — Phase 4+5 services can query this service for permission checks.
-- **Next tasks:** (1) Phase 5: Customization (Module 17) — module toggles, AI model selection, risk weights, per-tenant feature flags. (2) Elasticsearch IOC indexing. (3) Update QA_CHECKLIST.md. (4) Mobile responsive testing at 375px/768px for Phase 4 pages. (5) Verify deploy health for all new services.
+- **Current phase:** Phase 5 COMPLETE — all backend + frontend done. Phases 1-5 COMPLETE. 13 interactive data pages, 25/27 modules built.
+- **Last session outcome:** Session 38 (2026-03-23). Phase 5 Frontend UI: 3 new pages (Integration, User Management, Customization) replacing ComingSoonPage. 8 new files, 3 modified. 30 TanStack Query hooks with demo fallback. 63 new tests (367 frontend, 3692 monorepo). Routes: /integrations, /settings, /customization. Commit d8c9d8b. Pushed to master, CI deploy triggered.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. 1 pre-existing test failure in shared-auth (not new). User management + customization services use in-memory store (DECISION-013 pattern). RBAC permissions defined in user-management-service — Phase 4+5 services can query this service for permission checks.
+- **Next tasks:** (1) Phase 6 planning: onboarding, billing, admin-ops. (2) Verify deploy health for all Phase 4+5 services on VPS. (3) Elasticsearch IOC indexing. (4) Update QA_CHECKLIST.md. (5) Mobile responsive testing at 375px/768px.
 
 ## Deployment Log
 
@@ -155,6 +157,9 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 33 | 2026-03-23 | etip_frontend updated + 4 Phase 4 services added to deploy pipeline | ✅ CI green | f3ed4b5→81aa53a (7 commits) | Phase 4 Frontend: 4 new pages + full interactivity. DRP: asset CRUD, alert triage. Graph: path finder, add node, STIX export. Correlation: TP/FP feedback. Hunting: create hunt, status controls, add hypothesis/evidence. 273 tests. Deploy pipeline: 4 services + nginx. |
 | 34 | 2026-03-23 | etip_integration added (port 3015) | ⏳ CI pending | 6c25bc2 | Enterprise Integration Service (Module 15): 24 endpoints, 5 P0 improvements, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII + bulk export. Phase 5 started. |
 | 35 | 2026-03-23 | etip_user_management added (port 3016) + etip_frontend updated | ⏳ CI pending | 99db5db, 12018db | User Management Service (Module 16): 32 endpoints, 5 core features, 5 P0 improvements, 185 tests. Also pushed prior-session frontend enhancements. Phase 5: 2/3 done. |
+| 36 | 2026-03-23 | etip_customization added (port 3017) | ⏳ CI pending | ea46b2e | Customization Service (Module 17): 35 endpoints, 5 core features, 5 P0 improvements, 159 tests. Module toggles, AI model selection, risk weights, dashboard customization, notification preferences. Phase 5 COMPLETE (3/3). |
+| 37 | 2026-03-23 | etip_integration updated (P1/P2) | ⏳ CI pending | f2f85e4 | Integration Service P1/P2: 10 accuracy improvements, 34 new endpoints (58 total), 161 new tests (335 total). |
+| 38 | 2026-03-23 | etip_frontend updated (Phase 5 pages) | ⏳ CI pending | d8c9d8b | Phase 5 Frontend: 3 new pages (Integration, User Management, Customization). 30 hooks, 63 new tests (367 frontend, 3692 total). |
 
 ## E2E Verification Results (Session 13)
 

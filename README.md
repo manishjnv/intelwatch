@@ -2,8 +2,8 @@
 
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
-![Phase](https://img.shields.io/badge/phase-5%20in%20progress-00ccff)
-![Tests](https://img.shields.io/badge/tests-3093%20passing-00ff88)
+![Phase](https://img.shields.io/badge/phase-5%20complete-00ff88)
+![Tests](https://img.shields.io/badge/tests-3692%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -23,16 +23,18 @@
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
-| Frontend (React 18 + Vite, 10 interactive pages, 17 viz components, demo fallbacks) | ✅ Live on VPS | 273 |
+| Frontend (React 18 + Vite, 13 interactive pages, 19 viz components, demo fallbacks) | ✅ Live on VPS | 367 |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |
 | DRP Service (4 detection engines, 12 typosquat algos, CertStream, 36 endpoints) | 🔨 Feature-complete (15/15 + accuracy) | 310 |
-| Enterprise Integration Service (SIEM, webhooks, ticketing, STIX/TAXII, 24 endpoints) | 🔨 Feature-complete (5 P0) | 174 |
+| Enterprise Integration Service (SIEM, webhooks, ticketing, STIX/TAXII, 58 endpoints) | 🔨 Feature-complete (15/15) | 335 |
+| User Management Service (RBAC, teams, SSO, MFA, break-glass, 32 endpoints) | 🔨 Feature-complete (5 P0) | 185 |
+| Customization Service (module toggles, AI config, risk weights, 35 endpoints) | 🔨 Feature-complete (5 P0) | 159 |
 | Infrastructure (24 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 5 IN PROGRESS — enterprise integrations** | **Phase 5** (integration service done, user-mgmt + customization next) | **~3093** |
+| **Phase 5 COMPLETE — all backend + frontend** | **Phases 1-5 done** | **3692** |
 
 ## Live API Endpoints
 
