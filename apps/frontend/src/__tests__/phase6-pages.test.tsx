@@ -27,6 +27,14 @@ const mockUseDeactivateMaintenance = vi.fn()
 const mockUseSuspendTenant = vi.fn()
 const mockUseReinstateTenant = vi.fn()
 const mockUseChangeTenantPlan = vi.fn()
+const mockUseOnboardingWizard = vi.fn()
+const mockUseWelcomeDashboard = vi.fn()
+const mockUsePipelineHealth = vi.fn()
+const mockUseModuleReadiness = vi.fn()
+const mockUseReadinessCheck = vi.fn()
+const mockUseCompleteStep = vi.fn()
+const mockUseSkipStep = vi.fn()
+const mockUseSeedDemo = vi.fn()
 
 vi.mock('@/hooks/use-phase6-data', () => ({
   useBillingPlans:         () => mockUseBillingPlans(),
@@ -47,6 +55,14 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useSuspendTenant:        () => mockUseSuspendTenant(),
   useReinstateTenant:      () => mockUseReinstateTenant(),
   useChangeTenantPlan:     () => mockUseChangeTenantPlan(),
+  useOnboardingWizard:     () => mockUseOnboardingWizard(),
+  useWelcomeDashboard:     () => mockUseWelcomeDashboard(),
+  usePipelineHealth:       () => mockUsePipelineHealth(),
+  useModuleReadiness:      () => mockUseModuleReadiness(),
+  useReadinessCheck:       () => mockUseReadinessCheck(),
+  useCompleteStep:         () => mockUseCompleteStep(),
+  useSkipStep:             () => mockUseSkipStep(),
+  useSeedDemo:             () => mockUseSeedDemo(),
 }))
 
 // Mock shared-ui components

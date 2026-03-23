@@ -27,6 +27,7 @@ import { CorrelationPage } from '@/pages/CorrelationPage';
 import { HuntingWorkbenchPage } from '@/pages/HuntingWorkbenchPage';
 import { BillingPage } from '@/pages/BillingPage';
 import { AdminOpsPage } from '@/pages/AdminOpsPage';
+import { OnboardingPage } from '@/pages/OnboardingPage';
 
 /** Catches render errors and displays them instead of blank page */
 class ErrorBoundary extends React.Component<
@@ -79,6 +80,7 @@ export function App() {
             {/* Phase 6 module pages */}
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/admin" element={<AdminOpsPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
           </Route>
         </Route>
 
