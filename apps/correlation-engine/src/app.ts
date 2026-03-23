@@ -7,10 +7,12 @@ import type { AppConfig } from './config.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { correlationRoutes, type CorrelationRouteDeps } from './routes/correlations.js';
+import { advancedRoutes, type AdvancedRouteDeps } from './routes/advanced.js';
 
 export interface BuildAppOptions {
   config: AppConfig;
   routeDeps: CorrelationRouteDeps;
+  advancedDeps: AdvancedRouteDeps;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -61,6 +63,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(correlationRoutes(routeDeps), { prefix: '/api/v1/correlations' });
+  await app.register(advancedRoutes(opts.advancedDeps), { prefix: '/api/v1/correlations' });
 
   return app;
 }

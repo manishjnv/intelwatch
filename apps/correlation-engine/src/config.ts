@@ -29,6 +29,20 @@ const EnvSchema = z.object({
   TI_CORRELATION_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(5),
   TI_CORRELATION_MAX_RESULTS: z.coerce.number().int().min(100).max(100000).default(10000),
   TI_CORRELATION_CONFIDENCE_THRESHOLD: z.coerce.number().min(0.1).max(1.0).default(0.6),
+
+  // AI Pattern Detection (#11)
+  TI_ANTHROPIC_API_KEY: z.string().default(''),
+  TI_CORRELATION_AI_ENABLED: z.enum(['true', 'false']).default('false'),
+  TI_CORRELATION_AI_MODEL: z.string().default('claude-sonnet-4-20250514'),
+  TI_CORRELATION_AI_DAILY_BUDGET_USD: z.coerce.number().min(0).default(5.0),
+  TI_CORRELATION_AI_MAX_TOKENS: z.coerce.number().int().min(100).max(4096).default(1024),
+
+  // Confidence Decay (#13)
+  TI_CORRELATION_DECAY_CHECK_HOURS: z.coerce.number().int().min(1).max(168).default(6),
+
+  // Graph Integration (#15)
+  TI_GRAPH_SERVICE_URL: z.string().default('http://threat-graph:3012'),
+  TI_GRAPH_SYNC_ENABLED: z.enum(['true', 'false']).default('false'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

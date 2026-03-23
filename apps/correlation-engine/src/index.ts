@@ -13,6 +13,11 @@ import { DiamondModelService } from './services/diamond-model.js';
 import { KillChainService } from './services/kill-chain.js';
 import { FPSuppressionService } from './services/fp-suppression.js';
 import { RelationshipInferenceService } from './services/relationship-inference.js';
+import { AIPatternDetectionService } from './services/ai-pattern-detection.js';
+import { RuleTemplateService } from './services/rule-templates.js';
+import { ConfidenceDecayService } from './services/confidence-decay.js';
+import { BatchRecorrelationService } from './services/batch-recorrelation.js';
+import { GraphIntegrationService } from './services/graph-integration.js';
 import { createCorrelateQueue, closeCorrelateQueue, createCorrelateWorker } from './workers/correlate.js';
 
 async function main(): Promise<void> {
@@ -50,12 +55,36 @@ async function main(): Promise<void> {
     fpThreshold: config.TI_CORRELATION_FP_THRESHOLD,
     minSamples: config.TI_CORRELATION_FP_MIN_SAMPLES,
   });
-  // Available for future route integration (P2)
   void new RelationshipInferenceService({
     decayFactor: config.TI_CORRELATION_INFERENCE_DECAY,
     maxDepth: config.TI_CORRELATION_INFERENCE_MAX_DEPTH,
     minConfidence: config.TI_CORRELATION_INFERENCE_MIN_CONF,
   });
+
+  // P2 services (#11-15)
+  const aiPatternDetection = new AIPatternDetectionService(
+    config.TI_ANTHROPIC_API_KEY,
+    config.TI_CORRELATION_AI_ENABLED === 'true',
+    logger,
+    config.TI_CORRELATION_AI_MODEL,
+    config.TI_CORRELATION_AI_MAX_TOKENS,
+    config.TI_CORRELATION_AI_DAILY_BUDGET_USD,
+  );
+  const ruleTemplates = new RuleTemplateService();
+  const confidenceDecay = new ConfidenceDecayService();
+  const batchRecorrelation = new BatchRecorrelationService({
+    store, cooccurrence, infraCluster, temporalWave,
+    campaignCluster, fpSuppression, confidenceScoring,
+    confidenceThreshold: config.TI_CORRELATION_CONFIDENCE_THRESHOLD,
+    windowHours: config.TI_CORRELATION_WINDOW_HOURS,
+  });
+  const graphIntegration = new GraphIntegrationService({
+    graphServiceUrl: config.TI_GRAPH_SERVICE_URL,
+    syncEnabled: config.TI_GRAPH_SYNC_ENABLED === 'true',
+    maxRelationshipsPerBatch: 1000,
+    maxRetries: 3,
+    retryDelayMs: 1000,
+  }, logger);
 
   // Build Fastify app
   const app = await buildApp({
@@ -66,6 +95,10 @@ async function main(): Promise<void> {
       confidenceScoring,
       windowHours: config.TI_CORRELATION_WINDOW_HOURS,
       confidenceThreshold: config.TI_CORRELATION_CONFIDENCE_THRESHOLD,
+    },
+    advancedDeps: {
+      store, aiPatternDetection, ruleTemplates,
+      confidenceDecay, batchRecorrelation, graphIntegration,
     },
   });
 

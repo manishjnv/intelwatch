@@ -199,6 +199,112 @@ export class CorrelationStore {
   }
 }
 
+// ── AI Pattern Detection (#11) ───────────────────────────────────
+
+export interface AIPatternDetection {
+  id: string;
+  patternDescription: string;
+  involvedEntityIds: string[];
+  confidence: number;
+  reasoningSteps: string[];
+  suggestedRelationshipType: string;
+  detectedAt: string;
+}
+
+export interface AIAnalysisResult {
+  patterns: AIPatternDetection[];
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  costUsd: number;
+  durationMs: number;
+}
+
+// ── Rule Template Library (#12) ─────────────────────────────────
+
+export const TEMPLATE_CATEGORIES = ['apt', 'ransomware', 'c2', 'supply_chain', 'credential', 'lateral'] as const;
+export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
+
+export const TEMPLATE_CONDITION_TYPES = ['ttp_match', 'infra_overlap', 'temporal_proximity', 'feed_overlap'] as const;
+export type TemplateConditionType = (typeof TEMPLATE_CONDITION_TYPES)[number];
+
+export interface TemplateCondition {
+  type: TemplateConditionType;
+  value: string;
+  threshold: number;
+}
+
+export interface RuleTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: TemplateCategory;
+  requiredConditions: TemplateCondition[];
+  mitreTechniques: string[];
+  severityThresholds: { LOW: number; MEDIUM: number; HIGH: number; CRITICAL: number };
+  tpCount: number;
+  fpCount: number;
+}
+
+export interface TemplateMatch {
+  templateId: string;
+  templateName: string;
+  category: TemplateCategory;
+  severity: Severity;
+  score: number;
+  matchedConditions: Array<{ condition: TemplateCondition; matched: boolean; actualValue: number }>;
+  matchedEntityIds: string[];
+}
+
+// ── Confidence Decay (#13) ──────────────────────────────────────
+
+export interface DecayedResult {
+  correlationId: string;
+  originalConfidence: number;
+  decayedConfidence: number;
+  decayFactor: number;
+  daysSinceCreated: number;
+  iocDecays: Array<{
+    iocId: string;
+    iocType: string;
+    originalConfidence: number;
+    decayedConfidence: number;
+    daysSinceLastSeen: number;
+    revalidated: boolean;
+  }>;
+}
+
+// ── Batch Re-correlation (#14) ──────────────────────────────────
+
+export const BATCH_STATUSES = ['pending', 'running', 'completed', 'cancelled', 'failed'] as const;
+export type BatchStatus = (typeof BATCH_STATUSES)[number];
+
+export interface BatchJob {
+  id: string;
+  tenantId: string;
+  status: BatchStatus;
+  algorithms: CorrelationType[];
+  ruleTemplateId?: string;
+  total: number;
+  processed: number;
+  newCorrelations: number;
+  changedCorrelations: number;
+  removedCorrelations: number;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+}
+
+// ── Graph Integration (#15) ─────────────────────────────────────
+
+export interface GraphSyncResult {
+  relationshipsCreated: number;
+  relationshipsFailed: number;
+  errors: string[];
+  durationMs: number;
+}
+
 // ── Route Query Schemas ───────────────────────────────────────────
 
 export const ListCorrelationsQuerySchema = z.object({
@@ -219,6 +325,12 @@ export const CampaignListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+export const BatchStartInputSchema = z.object({
+  algorithms: z.array(CorrelationTypeSchema).optional(),
+  ruleTemplateId: z.string().optional(),
+});
+export type BatchStartInput = z.infer<typeof BatchStartInputSchema>;
 
 // ── Response Types ────────────────────────────────────────────────
 
