@@ -178,9 +178,6 @@ jobs:
             echo "Building etip_admin image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_admin
 
-            echo "Building etip_es_indexing image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_es_indexing
-
             echo "Building etip_frontend image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_frontend
 
@@ -195,7 +192,7 @@ jobs:
 
             # Force recreate app containers (picks up new images + compose config)
             echo "Recreating app containers..."
-            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_es_indexing etip_frontend etip_nginx
+            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_frontend etip_nginx
 
             # ── Sync database schema (idempotent — creates missing tables, skips existing) ──
             echo "Syncing database schema..."
