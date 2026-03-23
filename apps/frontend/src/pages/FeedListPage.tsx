@@ -3,7 +3,8 @@
  * @description Feed management page — shows active feeds with health status,
  * last fetch time, reliability gauge, and error indicators.
  * UX improvements: animated status dot, feed type icons, next-fetch countdown,
- * inline error details with failure context, row tinting, retry button.
+ * inline error details with failure context, row tinting, retry button,
+ * source favicon, radial SVG gauge, 24h schedule timeline, card/table toggle.
  */
 import { useState, useMemo } from 'react'
 import { useFeeds, type FeedRecord } from '@/hooks/use-intel-data'
@@ -11,8 +12,13 @@ import { DataTable, type Column, type Density } from '@/components/data/DataTabl
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
-import { Rss, AlertTriangle, CheckCircle, Clock, Globe, Upload, Server, RefreshCw } from 'lucide-react'
+import { Rss, AlertTriangle, CheckCircle, Clock, RefreshCw, LayoutGrid, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  FeedTypeIcon, StatusDot, ReliabilityBar,
+  formatTime, getNextFireLabel, FeedFavicon, FeedCard,
+} from '@/components/feed/FeedCard'
+import { FeedScheduleTimeline } from '@/components/feed/FeedScheduleTimeline'
 
 const FEED_FILTERS: FilterOption[] = [
   { key: 'feedType', label: 'Type', options: [
@@ -26,112 +32,37 @@ const FEED_FILTERS: FilterOption[] = [
   ]},
 ]
 
-// ─── Feed type icon ───────────────────────────────────────────
+// ─── View toggle ──────────────────────────────────────────────
 
-function FeedTypeIcon({ type }: { type: string }) {
-  const cls = 'w-3.5 h-3.5 flex-shrink-0'
-  if (type === 'rss')        return <Rss    className={cn(cls, 'text-orange-400')} />
-  if (type === 'rest_api')   return <Globe  className={cn(cls, 'text-blue-400')} />
-  if (type === 'csv_upload') return <Upload className={cn(cls, 'text-text-muted')} />
-  return <Server className={cn(cls, 'text-purple-400')} />
-}
+type ViewMode = 'table' | 'card'
 
-// ─── Animated status dot ──────────────────────────────────────
-
-const STATUS_CONFIG: Record<string, { dot: string; pulse: boolean; label: string; text: string }> = {
-  active:   { dot: 'bg-sev-low',       pulse: true,  label: 'Active',   text: 'text-sev-low' },
-  error:    { dot: 'bg-sev-critical',  pulse: false, label: 'Error',    text: 'text-sev-critical' },
-  disabled: { dot: 'bg-text-muted/40', pulse: false, label: 'Disabled', text: 'text-text-muted' },
-  paused:   { dot: 'bg-sev-medium',    pulse: false, label: 'Paused',   text: 'text-sev-medium' },
-}
-
-function StatusDot({ status }: { status: string }) {
-  const c = STATUS_CONFIG[status] ?? STATUS_CONFIG['disabled']!
+function ViewToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="relative flex h-2 w-2">
-        {c.pulse && (
-          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${c.dot} opacity-60`} />
+    <div className="inline-flex rounded-md border border-border overflow-hidden ml-1">
+      <button
+        className={cn(
+          'p-1.5 transition-colors',
+          mode === 'table' ? 'bg-accent/20 text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover',
         )}
-        <span className={`relative inline-flex rounded-full h-2 w-2 ${c.dot}`} />
-      </span>
-      <span className={`text-[10px] font-medium ${c.text}`}>{c.label}</span>
-    </span>
-  )
-}
-
-// ─── Next fetch countdown ─────────────────────────────────────
-
-/** Parses common cron patterns → "in Xh Ym". Falls back to raw cron. */
-function getNextFireLabel(cron: string | null): string {
-  if (!cron) return '—'
-  const parts = cron.trim().split(/\s+/)
-  if (parts.length < 5) return cron
-
-  const hourField = parts[1] ?? ''
-  const now = new Date()
-  let nextMs: number | null = null
-
-  // 0 */N * * * — every N hours
-  const everyN = hourField.match(/^\*\/(\d+)$/)
-  if (everyN) {
-    const n = parseInt(everyN[1]!, 10)
-    const nextHour = Math.ceil((now.getHours() + 1) / n) * n
-    const next = new Date(now)
-    if (nextHour >= 24) {
-      next.setDate(next.getDate() + 1)
-      next.setHours(0, 0, 0, 0)
-    } else {
-      next.setHours(nextHour, 0, 0, 0)
-    }
-    nextMs = next.getTime() - now.getTime()
-  }
-
-  // 0 H * * * — daily at fixed hour
-  const fixedH = hourField.match(/^(\d+)$/)
-  if (fixedH && !everyN) {
-    const h = parseInt(fixedH[1]!, 10)
-    const next = new Date(now)
-    next.setHours(h, 0, 0, 0)
-    if (next <= now) next.setDate(next.getDate() + 1)
-    nextMs = next.getTime() - now.getTime()
-  }
-
-  if (nextMs === null) return cron
-
-  const totalMins = Math.floor(nextMs / 60_000)
-  const h = Math.floor(totalMins / 60)
-  const m = totalMins % 60
-  if (h === 0) return `in ${m}m`
-  if (m === 0) return `in ${h}h`
-  return `in ${h}h ${m}m`
-}
-
-// ─── Reliability bar ──────────────────────────────────────────
-
-function ReliabilityBar({ value }: { value: number }) {
-  const color = value >= 70 ? 'bg-sev-low' : value >= 40 ? 'bg-sev-medium' : 'bg-sev-critical'
-  return (
-    <div className="flex items-center gap-1.5" title={`Reliability: ${value}%`}>
-      <div className="w-16 h-1.5 rounded-full bg-bg-elevated overflow-hidden">
-        <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${value}%` }} />
-      </div>
-      <span className="text-[10px] tabular-nums text-text-muted">{value}%</span>
+        title="Table view"
+        data-testid="view-toggle-table"
+        onClick={() => onChange('table')}
+      >
+        <List className="w-3.5 h-3.5" />
+      </button>
+      <button
+        className={cn(
+          'p-1.5 transition-colors',
+          mode === 'card' ? 'bg-accent/20 text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover',
+        )}
+        title="Card view"
+        data-testid="view-toggle-card"
+        onClick={() => onChange('card')}
+      >
+        <LayoutGrid className="w-3.5 h-3.5" />
+      </button>
     </div>
   )
-}
-
-// ─── Time helpers ─────────────────────────────────────────────
-
-function formatTime(dateStr: string | null): string {
-  if (!dateStr) return 'Never'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
 }
 
 // ─── Page ─────────────────────────────────────────────────────
@@ -143,6 +74,7 @@ export function FeedListPage() {
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sortBy, setSortBy] = useState('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [viewMode, setViewMode] = useState<ViewMode>('table')
 
   const { data, isLoading } = useFeeds({ page: 1, limit: 50 })
 
@@ -190,7 +122,10 @@ export function FeedListPage() {
       key: 'name', label: 'Feed Name', sortable: true, width: '30%',
       render: (row) => (
         <div className={cn('min-w-0', isDimmed(row) && 'opacity-50')}>
-          <div className="text-text-primary font-medium truncate">{row.name}</div>
+          <div className="flex items-center gap-1.5">
+            {row.url && <FeedFavicon url={row.url} />}
+            <span className="text-text-primary font-medium truncate">{row.name}</span>
+          </div>
           {row.status !== 'error' && row.description && (
             <div className="text-[10px] text-text-muted truncate max-w-[260px]">{row.description}</div>
           )}
@@ -308,22 +243,42 @@ export function FeedListPage() {
         filters={FEED_FILTERS}
         filterValues={filters}
         onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1) }}
-      />
+      >
+        <ViewToggle mode={viewMode} onChange={setViewMode} />
+      </FilterBar>
 
-      <div className="flex-1 overflow-hidden">
-        <DataTable
-          columns={columns}
-          data={displayFeeds}
-          loading={isLoading}
-          rowKey={(r) => r.id}
-          density={density}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-          emptyMessage="No feeds matching your search or filters."
-          severityField={(row) => row.status === 'error' ? 'critical' : undefined}
-        />
-      </div>
+      <FeedScheduleTimeline feeds={displayFeeds} />
+
+      {viewMode === 'table' ? (
+        <div className="flex-1 overflow-hidden">
+          <DataTable
+            columns={columns}
+            data={displayFeeds}
+            loading={isLoading}
+            rowKey={(r) => r.id}
+            density={density}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            emptyMessage="No feeds matching your search or filters."
+            severityField={(row) => row.status === 'error' ? 'critical' : undefined}
+          />
+        </div>
+      ) : (
+        <div
+          className="flex-1 overflow-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-3 content-start"
+          data-testid="feed-card-grid"
+        >
+          {displayFeeds.map(feed => (
+            <FeedCard key={feed.id} feed={feed} />
+          ))}
+          {displayFeeds.length === 0 && !isLoading && (
+            <div className="col-span-full text-center text-text-muted text-sm py-8">
+              No feeds matching your search or filters.
+            </div>
+          )}
+        </div>
+      )}
 
       <Pagination
         page={page} limit={50} total={data?.total ?? 0}
