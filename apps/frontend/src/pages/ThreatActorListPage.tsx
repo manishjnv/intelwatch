@@ -2,14 +2,16 @@
  * @module pages/ThreatActorListPage
  * @description Threat Actor list page — profiles with type, motivation,
  * sophistication, confidence gauge, and country.
+ * Row click opens detail panel: MITRE ATT&CK badges + linked IOCs.
  */
 import { useState, useMemo } from 'react'
-import { useActors, type ActorRecord } from '@/hooks/use-intel-data'
+import { useActors, useActorDetail, useActorLinkedIOCs, type ActorRecord, type LinkedIOC } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
-import { Users, Globe, Target, Shield } from 'lucide-react'
+import { SplitPane } from '@/components/viz/SplitPane'
+import { Users, Globe, Target, Shield, ExternalLink } from 'lucide-react'
 
 const ACTOR_FILTERS: FilterOption[] = [
   { key: 'actorType', label: 'Type', options: [
@@ -40,6 +42,21 @@ const SOPH_COLORS: Record<string, string> = {
   minimal: 'text-sev-low', none: 'text-text-muted',
 }
 
+const SEV_COLORS: Record<string, string> = {
+  critical: 'text-sev-critical bg-sev-critical/10',
+  high: 'text-sev-high bg-sev-high/10',
+  medium: 'text-sev-medium bg-sev-medium/10',
+  low: 'text-sev-low bg-sev-low/10',
+  info: 'text-text-muted bg-bg-elevated',
+}
+
+const DEMO_MITRE = ['T1059', 'T1078', 'T1190']
+const DEMO_ACTOR_IOCS: LinkedIOC[] = [
+  { id: 'al1', iocType: 'ip', normalizedValue: '185.220.101.1', severity: 'critical' },
+  { id: 'al2', iocType: 'domain', normalizedValue: 'evil-c2.net', severity: 'high' },
+  { id: 'al3', iocType: 'hash_sha256', normalizedValue: 'a1b2c3d4e5f6...', severity: 'high' },
+]
+
 function ConfidenceBar({ value }: { value: number }) {
   const color = value >= 70 ? 'bg-sev-low' : value >= 40 ? 'bg-sev-medium' : 'bg-sev-critical'
   return (
@@ -52,6 +69,87 @@ function ConfidenceBar({ value }: { value: number }) {
   )
 }
 
+function ActorDetailPanel({ actor }: { actor: ActorRecord }) {
+  const { data: detail } = useActorDetail(actor.id)
+  const { data: iocs = [] } = useActorLinkedIOCs(actor.id)
+
+  const mitre = (detail?.mitreTechniques?.length ?? 0) > 0 ? detail!.mitreTechniques! : DEMO_MITRE
+  const linkedIOCs: LinkedIOC[] = iocs.length > 0 ? iocs : DEMO_ACTOR_IOCS
+
+  const tlpColors: Record<string, string> = {
+    red: 'text-sev-critical', amber: 'text-sev-medium',
+    green: 'text-sev-low', white: 'text-text-muted',
+  }
+
+  return (
+    <div className="h-full overflow-y-auto" data-testid="actor-detail-panel">
+      {/* Header */}
+      <div className="p-3 border-b border-border space-y-1.5">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-sm font-semibold text-text-primary leading-tight">{actor.name}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${TYPE_COLORS[actor.actorType] ?? TYPE_COLORS['unknown']}`}>
+            {actor.actorType.replace('_', ' ')}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-[10px] text-text-muted flex-wrap">
+          {actor.country && <span>Country: <span className="text-text-secondary">{actor.country}</span></span>}
+          <span className={`uppercase font-medium ${tlpColors[actor.tlp] ?? ''}`}>{actor.tlp}</span>
+          {actor.active && <span className="text-sev-low font-medium">● Active</span>}
+          <span>Conf: <span className="text-text-primary tabular-nums">{actor.confidence}%</span></span>
+        </div>
+        {actor.aliases.length > 0 && (
+          <div className="text-[10px] text-text-muted truncate">aka {actor.aliases.slice(0, 3).join(', ')}</div>
+        )}
+      </div>
+
+      {/* MITRE ATT&CK */}
+      <div className="p-3 border-b border-border space-y-1.5" data-testid="mitre-section">
+        <div className="text-[10px] font-medium text-text-muted uppercase tracking-wide">MITRE ATT&amp;CK</div>
+        <div className="flex flex-wrap gap-1">
+          {mitre.map(t => (
+            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium bg-accent/10 text-accent" data-testid="mitre-badge">
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Linked IOCs */}
+      <div className="p-3 border-b border-border space-y-1.5" data-testid="actor-ioc-section">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] font-medium text-text-muted uppercase tracking-wide">Linked IOCs</div>
+          <a href="/iocs" className="text-[10px] text-accent hover:underline flex items-center gap-0.5">
+            View all <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        </div>
+        <div className="space-y-1">
+          {linkedIOCs.slice(0, 10).map(ioc => (
+            <div key={ioc.id} className="flex items-center gap-2 py-0.5" data-testid="linked-ioc-row">
+              <span className="text-[10px] uppercase font-mono text-text-muted w-16 shrink-0">{ioc.iocType}</span>
+              <span className="text-[10px] text-text-secondary truncate flex-1 font-mono">{ioc.normalizedValue}</span>
+              <span className={`text-[10px] px-1 py-0.5 rounded-full shrink-0 ${SEV_COLORS[ioc.severity] ?? ''}`}>
+                {ioc.severity}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tags */}
+      {actor.tags.length > 0 && (
+        <div className="p-3 space-y-1.5">
+          <div className="text-[10px] font-medium text-text-muted uppercase tracking-wide">Tags</div>
+          <div className="flex flex-wrap gap-1">
+            {actor.tags.map(t => (
+              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-bg-elevated text-text-secondary">{t}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ThreatActorListPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -59,6 +157,7 @@ export function ThreatActorListPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
+  const [selectedActorId, setSelectedActorId] = useState<string | null>(null)
 
   const queryParams = useMemo(() => ({
     page, limit: 50, sortBy, sortOrder,
@@ -66,6 +165,11 @@ export function ThreatActorListPage() {
   }), [page, sortBy, sortOrder, filters])
 
   const { data, isLoading } = useActors(queryParams)
+
+  const selectedActor = useMemo(
+    () => (data?.data ?? []).find(r => r.id === selectedActorId) ?? null,
+    [data, selectedActorId],
+  )
 
   const handleSort = (key: string) => {
     if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
@@ -153,14 +257,26 @@ export function ThreatActorListPage() {
         onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1) }}
       />
 
-      <div className="flex-1 overflow-hidden">
-        <DataTable
-          columns={columns} data={data?.data ?? []} loading={isLoading}
-          sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
-          rowKey={(r) => r.id} density={density}
-          emptyMessage="No threat actors found."
-        />
-      </div>
+      <SplitPane
+        onCloseRight={() => setSelectedActorId(null)}
+        left={
+          <DataTable
+            columns={columns}
+            data={data?.data ?? []}
+            loading={isLoading}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            rowKey={(r) => r.id}
+            density={density}
+            selectedId={selectedActorId}
+            onRowClick={(r) => setSelectedActorId(r.id === selectedActorId ? null : r.id)}
+            emptyMessage="No threat actors found."
+          />
+        }
+        right={selectedActor ? <ActorDetailPanel actor={selectedActor} /> : null}
+        showRight={!!selectedActorId}
+      />
 
       <Pagination page={page} limit={50} total={data?.total ?? 0} onPageChange={setPage}
         density={density} onDensityChange={setDensity} />

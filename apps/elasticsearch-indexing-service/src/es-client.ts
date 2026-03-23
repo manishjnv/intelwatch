@@ -169,7 +169,7 @@ export class EsIndexClient {
         ? resp.hits.total
         : (resp.hits.total?.value ?? 0);
 
-      const hits = resp.hits.hits.map((h) => h._source as IocDocument);
+      const hits = resp.hits.hits.map((h: { _source?: unknown }) => h._source as IocDocument);
       const aggs = (resp.aggregations ?? {}) as Record<string, AggBuckets>;
 
       return { total, hits, aggregations: aggs };
@@ -189,7 +189,7 @@ export class EsIndexClient {
 
     try {
       const resp = await this.client.bulk({ operations, refresh: 'wait_for' });
-      const failed = resp.items.filter((i) => i.index?.error).length;
+      const failed = resp.items.filter((i: { index?: { error?: unknown } }) => i.index?.error).length;
       return { indexed: docs.length - failed, failed };
     } catch (err) {
       throw new AppError(503, 'Elasticsearch bulk index failed', 'ES_BULK_FAILED', err);

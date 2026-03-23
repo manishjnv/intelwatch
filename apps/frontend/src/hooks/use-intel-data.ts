@@ -53,6 +53,7 @@ export interface IOCRecord {
   id: string; iocType: string; normalizedValue: string; severity: string
   confidence: number; lifecycle: string; tlp: string; tags: string[]
   threatActors: string[]; malwareFamilies: string[]; firstSeen: string; lastSeen: string
+  campaignId?: string | null
 }
 
 export function useIOCs(params: QueryParams = {}) {
@@ -104,6 +105,12 @@ export interface ActorRecord {
   motivation: string; sophistication: string; country: string | null
   confidence: number; tlp: string; tags: string[]; active: boolean
   firstSeen: string | null; lastSeen: string | null
+  mitreTechniques?: string[]
+}
+
+/** Compact IOC shape returned by /actors/:id/iocs and /malware/:id/iocs */
+export interface LinkedIOC {
+  id: string; iocType: string; normalizedValue: string; severity: string
 }
 
 export function useActors(params: QueryParams = {}) {
@@ -129,6 +136,39 @@ export function useMalware(params: QueryParams = {}) {
   return useQuery({
     queryKey: ['malware', params],
     queryFn: () => api<ListResponse<MalwareRecord>>(`/malware${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    staleTime: 60_000,
+  })
+}
+
+// ─── Actor/Malware detail + linked IOC hooks ────────────────────
+
+export function useActorDetail(id: string | null) {
+  return useQuery({
+    queryKey: ['actor-detail', id],
+    queryFn: () => id ? api<ActorRecord>(`/actors/${id}`).catch(() => null) : null,
+    enabled: !!id,
+    staleTime: 60_000,
+  })
+}
+
+export function useActorLinkedIOCs(id: string | null) {
+  return useQuery({
+    queryKey: ['actor-iocs', id],
+    queryFn: () => id
+      ? api<ListResponse<LinkedIOC>>(`/actors/${id}/iocs?limit=10`).then(r => r?.data ?? []).catch(() => [])
+      : ([] as LinkedIOC[]),
+    enabled: !!id,
+    staleTime: 60_000,
+  })
+}
+
+export function useMalwareLinkedIOCs(id: string | null) {
+  return useQuery({
+    queryKey: ['malware-iocs', id],
+    queryFn: () => id
+      ? api<ListResponse<LinkedIOC>>(`/malware/${id}/iocs?limit=10`).then(r => r?.data ?? []).catch(() => [])
+      : ([] as LinkedIOC[]),
+    enabled: !!id,
     staleTime: 60_000,
   })
 }

@@ -227,6 +227,12 @@ export function IocListPage() {
       key: 'lastSeen', label: 'Last Seen', sortable: true, width: '10%',
       render: (row) => <span className="text-text-muted tabular-nums">{timeAgo(row.lastSeen)}</span>,
     },
+    {
+      key: 'campaignId', label: 'Campaign', width: '8%',
+      render: (row) => row.campaignId
+        ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-400/10 text-purple-400 font-medium truncate max-w-[80px] block" title={row.campaignId}>{row.campaignId}</span>
+        : null,
+    },
   ]
 
   return (
