@@ -19,6 +19,7 @@
     { "path": "apps/malware-intel" },
     { "path": "apps/vulnerability-intel" },
     { "path": "apps/threat-graph" },
-    { "path": "apps/correlation-engine" }
+    { "path": "apps/correlation-engine" },
+    { "path": "apps/hunting-service" }
   ]
 }
