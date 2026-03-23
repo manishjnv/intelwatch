@@ -21,6 +21,7 @@
     { "path": "apps/threat-graph" },
     { "path": "apps/correlation-engine" },
     { "path": "apps/hunting-service" },
-    { "path": "apps/drp-service" }
+    { "path": "apps/drp-service" },
+    { "path": "apps/integration-service" }
   ]
 }

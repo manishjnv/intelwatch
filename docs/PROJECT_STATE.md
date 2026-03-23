@@ -50,7 +50,7 @@
 | threat-graph | 4 | 🔨 WIP | 2026-03-23 | Port 3012. 20 improvements complete (#1-20). 32 endpoints, 294 tests. Neo4j graph, risk propagation, STIX export, cluster detection, batch import, decay cron, merge/split, trending. Ready for deploy. |
 | correlation-engine | 4 | 🔨 WIP | 2026-03-23 | Port 3013. **15/15 improvements COMPLETE** (#1-15). 20 endpoints, 166 tests. In-memory. P1: co-occurrence, infra clustering, temporal waves, TTP similarity, DBSCAN campaigns, confidence scoring, Diamond Model, Kill Chain, FP suppression, BFS inference. P2: AI pattern detection (Sonnet), rule templates (6), confidence decay, batch re-correlation, graph integration. |
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
-| enterprise-integration | 5 | 📋 Not started | - | Phase 5 gate |
+| enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Scaffolded. Port 3015. 3 tests. |
 | user-management | 5 | 📋 Not started | - | Phase 5 gate |
 | customization | 5 | 📋 Not started | - | Phase 5 gate |
 | onboarding | 6 | 📋 Not started | - | Phase 6 gate |
@@ -80,6 +80,7 @@ threat-graph          → shared-types, shared-utils, shared-auth, neo4j-driver,
 correlation-engine    → shared-types, shared-utils, shared-auth, bullmq, @anthropic-ai/sdk (Phase 4)
 hunting-service       → shared-types, shared-utils, shared-auth (Phase 4)
 drp-service           → shared-types, shared-utils, shared-auth (Phase 4)
+integration-service   → shared-types, shared-utils, shared-auth, bullmq (Phase 5)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ```
 

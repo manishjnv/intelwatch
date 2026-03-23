@@ -35,6 +35,7 @@ COPY apps/threat-graph/package.json         apps/threat-graph/tsconfig.json     
 COPY apps/correlation-engine/package.json  apps/correlation-engine/tsconfig.json apps/correlation-engine/
 COPY apps/hunting-service/package.json     apps/hunting-service/tsconfig.json    apps/hunting-service/
 COPY apps/drp-service/package.json           apps/drp-service/tsconfig.json       apps/drp-service/
+COPY apps/integration-service/package.json   apps/integration-service/tsconfig.json apps/integration-service/
 COPY apps/frontend/package.json               apps/frontend/
 
 # RULE: strict --frozen-lockfile, NO fallback. Stale lockfile = build MUST fail. (Issues #11, #16)
