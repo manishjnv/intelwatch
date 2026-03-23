@@ -172,7 +172,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 42 | 2026-03-24 | etip_frontend updated | ✅ CI green | edd6fe8→3c485dc (5 commits) | Feed Ingestion: demo fallback fix + 5 UX improvements + sort/filter/search. 86 new frontend tests (453 total). FeedListPage.tsx overhaul. |
 | 43 | 2026-03-24 | All etip containers redeployed | ✅ All 28+ healthy | 1681fcf, 6198a63 | Dockerfile CI fix (billing+admin COPY missing). Phase 6 frontend: Billing + Admin Ops pages. All Phase 4-6 containers confirmed healthy. 453 frontend tests. |
 | 44 | 2026-03-24 | etip_frontend updated | ✅ CI green | 92296eb, 12a7267, 27e56d3, f760b19 | BillingPage crash fix (RCA #39, #39b): PlanDefinition shape mismatch + hasData hardening. Pricing v3: Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999, drop Pro tier, annual pricing. 475 frontend tests. |
-| 45 | 2026-03-24 | No deploy (docs-only session) | — | (session-end docs) | Session-end ritual: PROJECT_STATE, DECISIONS_LOG, SESSION_HANDOFF, DEPLOYMENT_RCA, memory files. |
+| 45 | 2026-03-24 | etip_frontend updated | ⏳ CI pending | 85c4bc7, a65863c, 59f2a4d | Onboarding frontend: OnboardingPage.tsx (8-step wizard, pipeline health, module readiness), hooks, route, mock setup. Phase 6 frontend 3/3 COMPLETE. 475 tests. |
 
 ## E2E Verification Results (Session 13)
 
