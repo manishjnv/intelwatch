@@ -268,6 +268,21 @@ export function IconRBAC({ size = defaults.size, className }: IconProps) {
   )
 }
 
+export function IconCustomization({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      {/* Sliders */}
+      <line x1="4" y1="6" x2="20" y2="6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="4" y1="18" x2="20" y2="18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      {/* Knobs */}
+      <circle cx="9" cy="6" r="2" fill="currentColor" opacity="0.8"/>
+      <circle cx="15" cy="12" r="2" fill="currentColor" opacity="0.8"/>
+      <circle cx="11" cy="18" r="2" fill="currentColor" opacity="0.8"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
@@ -283,4 +298,5 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'correlation-engine': IconCorrelation,
   'enterprise-integrations': IconIntegrations,
   'rbac-sso': IconRBAC,
+  'customization': IconCustomization,
 }

@@ -11,8 +11,10 @@ import { LandingPage } from '@/pages/LandingPage'; // ⛔ DESIGN LOCKED — see 
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { DashboardPage } from '@/pages/DashboardPage';
-import { ComingSoonPage } from '@/pages/ComingSoonPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { IntegrationPage } from '@/pages/IntegrationPage';
+import { UserManagementPage } from '@/pages/UserManagementPage';
+import { CustomizationPage } from '@/pages/CustomizationPage';
 import { IocListPage } from '@/pages/IocListPage';
 import { FeedListPage } from '@/pages/FeedListPage';
 import { ThreatActorListPage } from '@/pages/ThreatActorListPage';
@@ -69,8 +71,9 @@ export function App() {
             <Route path="/enrichment" element={<EnrichmentPage />} />
             <Route path="/drp" element={<DRPDashboardPage />} />
             <Route path="/correlation" element={<CorrelationPage />} />
-            <Route path="/integrations" element={<ComingSoonPage />} />
-            <Route path="/settings" element={<ComingSoonPage />} />
+            <Route path="/integrations" element={<IntegrationPage />} />
+            <Route path="/settings" element={<UserManagementPage />} />
+            <Route path="/customization" element={<CustomizationPage />} />
           </Route>
         </Route>
 

@@ -7,6 +7,7 @@
 import {
   IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
+  IconCustomization,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -145,6 +146,16 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-indigo-400',
     phase: 5,
     route: '/settings',
+  },
+  {
+    id: 'customization',
+    title: 'Customization',
+    description: 'Module toggles, AI model config, risk weights, and notification preferences.',
+    helpText: 'Fine-tune platform behavior — enable/disable modules, set AI budgets, adjust risk scoring.',
+    icon: IconCustomization,
+    color: 'text-emerald-400',
+    phase: 5,
+    route: '/customization',
   },
 ]
 
