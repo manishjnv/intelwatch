@@ -1,15 +1,16 @@
 /**
  * @module pages/DRPDashboardPage
- * @description Digital Risk Protection dashboard — asset monitoring, alert feed,
- * typosquat scanner with visual diff, CertStream status, risk heatmap.
+ * @description Digital Risk Protection dashboard — interactive asset monitoring,
+ * alert feed with triage actions, typosquat scanner, CertStream status.
  * Improvements: #1 visual diff, #2 executive risk score, #3 CertStream ticker,
  * #4 alert SLA tracking, #5 risk heatmap calendar.
+ * Interactive: Asset CRUD, alert detail panel, scan triggers, triage actions.
  */
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useDRPAssets, useDRPAlerts, useDRPAlertStats, useDRPAssetStats,
-  useCertStreamStatus,
+  useCertStreamStatus, useDeleteAsset, useScanAsset,
   type DRPAlert, type DRPAsset,
 } from '@/hooks/use-phase4-data'
 import { generateAlertHeatmap } from '@/hooks/phase4-demo-data'
@@ -19,11 +20,15 @@ import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
-import { Shield, AlertTriangle, Globe, User, Server } from 'lucide-react'
+import {
+  Shield, AlertTriangle, Globe, User, Server,
+  Plus, Play, Trash2,
+} from 'lucide-react'
 import {
   ExecutiveRiskGauge, RiskHeatmap, CertStreamIndicator,
   SLABadge, TyposquatScanner,
 } from '@/components/viz/DRPWidgets'
+import { CreateAssetModal, AlertDetailPanel } from '@/components/viz/DRPModals'
 
 // ─── Constants ──────────────────────────────────────────────────
 
@@ -38,7 +43,7 @@ const ALERT_FILTERS: FilterOption[] = [
   ]},
   { key: 'status', label: 'Status', options: [
     { value: 'open', label: 'Open' }, { value: 'investigating', label: 'Investigating' },
-    { value: 'resolved', label: 'Resolved' }, { value: 'dismissed', label: 'Dismissed' },
+    { value: 'resolved', label: 'Resolved' }, { value: 'false_positive', label: 'False Positive' },
   ]},
 ]
 
@@ -53,11 +58,11 @@ const STATUS_COLORS: Record<string, string> = {
   open: 'text-sev-critical bg-sev-critical/10',
   investigating: 'text-sev-medium bg-sev-medium/10',
   resolved: 'text-sev-low bg-sev-low/10',
-  dismissed: 'text-text-muted bg-bg-elevated',
+  false_positive: 'text-text-muted bg-bg-elevated',
 }
 
 const ASSET_TYPE_ICONS: Record<string, React.FC<{ className?: string }>> = {
-  domain: Globe, brand: Shield, executive: User, ip_range: Server,
+  domain: Globe, brand_name: Shield, email_domain: User, ip_range: Server,
 }
 
 // ─── Main Component ─────────────────────────────────────────────
@@ -68,12 +73,16 @@ export function DRPDashboardPage() {
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<'alerts' | 'assets'>('alerts')
+  const [showCreateAsset, setShowCreateAsset] = useState(false)
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null)
 
   const { data: alertData, isLoading: alertsLoading, isDemo } = useDRPAlerts({ page: alertPage, ...filters })
   const { data: alertStats } = useDRPAlertStats()
   const { data: assetData } = useDRPAssets()
   const { data: assetStats } = useDRPAssetStats()
   const { data: certStatus } = useCertStreamStatus()
+  const deleteAssetMutation = useDeleteAsset()
+  const scanAssetMutation = useScanAsset()
   const heatmapData = useMemo(() => generateAlertHeatmap(), [])
 
   const execRiskScore = useMemo(() => {
@@ -96,24 +105,29 @@ export function DRPDashboardPage() {
     return items
   }, [alertData, isDemo, search, filters])
 
+  const selectedAlert = useMemo(
+    () => alerts.find(a => a.id === selectedAlertId) ?? null,
+    [alerts, selectedAlertId],
+  )
+
   const alertColumns: Column<DRPAlert>[] = [
     { key: 'severity', label: 'Sev', width: '6%',
       render: (row) => <SeverityBadge severity={row.severity.toUpperCase() as any} showDot /> },
-    { key: 'title', label: 'Alert', sortable: true, width: '32%',
+    { key: 'title', label: 'Alert', sortable: true, width: '30%',
       render: (row) => (
         <div className="min-w-0">
           <div className="text-text-primary font-medium truncate text-xs">{row.title}</div>
           <div className="text-[10px] text-text-muted truncate">{row.description}</div>
         </div>
       ) },
-    { key: 'type', label: 'Type', width: '12%',
+    { key: 'type', label: 'Type', width: '11%',
       render: (row) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', TYPE_COLORS[row.type] ?? '')}>{row.type.replace('_', ' ')}</span> },
-    { key: 'detectedValue', label: 'Detected Value', width: '18%',
-      render: (row) => <span className="text-text-secondary font-mono text-[11px] truncate block max-w-[180px]">{row.detectedValue}</span> },
+    { key: 'detectedValue', label: 'Detected Value', width: '16%',
+      render: (row) => <span className="text-text-secondary font-mono text-[11px] truncate block max-w-[160px]">{row.detectedValue}</span> },
     { key: 'confidence', label: 'Conf', width: '7%',
       render: (row) => <span className="tabular-nums">{row.confidence}%</span> },
     { key: 'status', label: 'Status', width: '10%',
-      render: (row) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', STATUS_COLORS[row.status] ?? '')}>{row.status}</span> },
+      render: (row) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', STATUS_COLORS[row.status] ?? '')}>{row.status.replace('_', ' ')}</span> },
     { key: 'sla', label: 'SLA', width: '10%',
       render: (row) => <SLABadge createdAt={row.createdAt} triagedAt={row.triagedAt} resolvedAt={row.resolvedAt} /> },
     { key: 'assignee', label: 'Owner', width: '8%',
@@ -121,7 +135,7 @@ export function DRPDashboardPage() {
   ]
 
   const assetColumns: Column<DRPAsset>[] = [
-    { key: 'name', label: 'Asset', sortable: true, width: '25%',
+    { key: 'name', label: 'Asset', sortable: true, width: '24%',
       render: (row) => {
         const Icon = ASSET_TYPE_ICONS[row.type] ?? Globe
         return (
@@ -134,23 +148,45 @@ export function DRPDashboardPage() {
           </div>
         )
       } },
-    { key: 'type', label: 'Type', width: '12%',
+    { key: 'type', label: 'Type', width: '10%',
       render: (row) => <span className="text-[10px] text-text-muted uppercase">{row.type.replace('_', ' ')}</span> },
-    { key: 'status', label: 'Status', width: '10%',
+    { key: 'status', label: 'Status', width: '8%',
       render: (row) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', row.status === 'active' ? 'text-sev-low bg-sev-low/10' : 'text-text-muted bg-bg-elevated')}>{row.status}</span> },
-    { key: 'riskScore', label: 'Risk', sortable: true, width: '12%',
+    { key: 'riskScore', label: 'Risk', sortable: true, width: '8%',
       render: (row) => {
         const color = row.riskScore >= 70 ? 'text-sev-critical' : row.riskScore >= 40 ? 'text-sev-medium' : 'text-sev-low'
         return <span className={cn('font-medium tabular-nums', color)}>{row.riskScore}</span>
       } },
-    { key: 'alertCount', label: 'Alerts', width: '10%',
+    { key: 'alertCount', label: 'Alerts', width: '8%',
       render: (row) => <span className={cn('tabular-nums', row.alertCount > 0 ? 'text-sev-high font-medium' : 'text-text-muted')}>{row.alertCount}</span> },
-    { key: 'lastScanAt', label: 'Last Scan', width: '15%',
+    { key: 'lastScanAt', label: 'Last Scan', width: '12%',
       render: (row) => {
         if (!row.lastScanAt) return <span className="text-text-muted">Never</span>
         const hrs = Math.round((Date.now() - new Date(row.lastScanAt).getTime()) / 3_600_000)
         return <span className="text-[10px] text-text-muted tabular-nums">{hrs < 1 ? '<1h ago' : `${hrs}h ago`}</span>
       } },
+    { key: 'actions', label: '', width: '14%',
+      render: (row) => (
+        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => scanAssetMutation.mutate(row.id)}
+            disabled={scanAssetMutation.isPending || isDemo}
+            title="Scan now"
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
+          >
+            <Play className="w-3 h-3" />
+            Scan
+          </button>
+          <button
+            onClick={() => deleteAssetMutation.mutate(row.id)}
+            disabled={deleteAssetMutation.isPending || isDemo}
+            title="Delete asset"
+            className="p-1 rounded text-text-muted hover:text-sev-critical hover:bg-sev-critical/10 transition-colors disabled:opacity-50"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      ) },
   ]
 
   return (
@@ -171,6 +207,7 @@ export function DRPDashboardPage() {
       </PageStatsBar>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        {/* Top row: Risk Score + CertStream + Heatmap */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-bg-secondary rounded-lg border border-border flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
@@ -217,10 +254,12 @@ export function DRPDashboardPage() {
           </div>
         </div>
 
+        {/* Typosquat Scanner */}
         <div className="p-4 bg-bg-secondary rounded-lg border border-border">
           <TyposquatScanner />
         </div>
 
+        {/* Tab Switcher */}
         <div className="flex items-center gap-1 border-b border-border">
           {([
             { key: 'alerts' as const, label: 'Alert Feed', icon: AlertTriangle, count: alertStats?.total },
@@ -233,25 +272,51 @@ export function DRPDashboardPage() {
               {count != null && <span className="text-[10px] text-text-muted">({count})</span>}
             </button>
           ))}
+
+          {/* Add Asset button — visible on assets tab */}
+          {activeTab === 'assets' && (
+            <button
+              onClick={() => setShowCreateAsset(true)}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent/10 text-accent border border-accent/20 rounded-md hover:bg-accent/20 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              Add Asset
+            </button>
+          )}
         </div>
 
+        {/* Alert Feed */}
         {activeTab === 'alerts' && (
           <>
             <FilterBar searchValue={search} onSearchChange={(v) => { setSearch(v); setAlertPage(1) }}
               searchPlaceholder="Search alerts by title, detected value…" filters={ALERT_FILTERS}
               filterValues={filters} onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setAlertPage(1) }} />
             <DataTable columns={alertColumns} data={alerts} loading={alertsLoading} rowKey={(r) => r.id}
-              density={density} severityField={(r) => r.severity} emptyMessage="No DRP alerts. Your digital perimeter is clear." />
+              density={density} severityField={(r) => r.severity} selectedId={selectedAlertId}
+              onRowClick={(r) => setSelectedAlertId(r.id === selectedAlertId ? null : r.id)}
+              emptyMessage="No DRP alerts. Your digital perimeter is clear." />
             <Pagination page={alertPage} limit={50} total={isDemo ? alerts.length : (alertData?.total ?? 0)}
               onPageChange={setAlertPage} density={density} onDensityChange={setDensity} />
           </>
         )}
 
+        {/* Asset Table */}
         {activeTab === 'assets' && (
           <DataTable columns={assetColumns} data={assetData?.data ?? []} loading={false} rowKey={(r) => r.id}
-            density={density} emptyMessage="No monitored assets. Add domains, brands, or executives to start monitoring." />
+            density={density} emptyMessage="No monitored assets. Click 'Add Asset' to start monitoring your domains, brands, or executives." />
         )}
       </div>
+
+      {/* Modals */}
+      <CreateAssetModal open={showCreateAsset} onClose={() => setShowCreateAsset(false)} />
+
+      {/* Alert Detail Panel */}
+      {selectedAlert && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelectedAlertId(null)} />
+          <AlertDetailPanel alert={selectedAlert} onClose={() => setSelectedAlertId(null)} isDemo={isDemo} />
+        </>
+      )}
     </div>
   )
 }

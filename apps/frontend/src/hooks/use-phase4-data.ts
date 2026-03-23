@@ -131,6 +131,76 @@ export function useTyposquatScan() {
   })
 }
 
+export function useCreateAsset() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { type: string; value: string; displayName: string; criticality?: number; scanFrequencyHours?: number; tags?: string[] }) =>
+      api<DRPAsset>('/drp/assets', { method: 'POST', body: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-assets'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-asset-stats'] })
+    },
+  })
+}
+
+export function useDeleteAsset() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/drp/assets/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-assets'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-asset-stats'] })
+    },
+  })
+}
+
+export function useScanAsset() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api<{ assetId: string; status: string }>(`/drp/assets/${id}/scan`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-assets'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-alert-stats'] })
+    },
+  })
+}
+
+export function useChangeAlertStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status, notes }: { id: string; status: string; notes?: string }) =>
+      api<DRPAlert>(`/drp/alerts/${id}/status`, { method: 'PATCH', body: { status, notes } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-alert-stats'] })
+    },
+  })
+}
+
+export function useAssignAlert() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+      api<DRPAlert>(`/drp/alerts/${id}/assign`, { method: 'PATCH', body: { userId } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-alerts'] })
+    },
+  })
+}
+
+export function useAlertFeedback() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, verdict, reason }: { id: string; verdict: 'true_positive' | 'false_positive'; reason?: string }) =>
+      api<unknown>(`/drp/alerts/${id}/feedback`, { method: 'POST', body: { verdict, reason } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-alert-stats'] })
+    },
+  })
+}
+
 // ─── Threat Graph Hooks ─────────────────────────────────────────
 
 export function useGraphNodes(params: QueryParams = {}) {

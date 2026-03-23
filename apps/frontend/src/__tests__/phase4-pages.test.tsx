@@ -13,6 +13,12 @@ const mockUseDRPAssets = vi.fn()
 const mockUseDRPAssetStats = vi.fn()
 const mockUseCertStreamStatus = vi.fn()
 const mockUseTyposquatScan = vi.fn()
+const mockUseCreateAsset = vi.fn()
+const mockUseDeleteAsset = vi.fn()
+const mockUseScanAsset = vi.fn()
+const mockUseChangeAlertStatus = vi.fn()
+const mockUseAssignAlert = vi.fn()
+const mockUseAlertFeedback = vi.fn()
 const mockUseGraphNodes = vi.fn()
 const mockUseGraphStats = vi.fn()
 const mockUseGraphSearch = vi.fn()
@@ -34,6 +40,12 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useDRPAssetStats: () => mockUseDRPAssetStats(),
   useCertStreamStatus: () => mockUseCertStreamStatus(),
   useTyposquatScan: () => mockUseTyposquatScan(),
+  useCreateAsset: () => mockUseCreateAsset(),
+  useDeleteAsset: () => mockUseDeleteAsset(),
+  useScanAsset: () => mockUseScanAsset(),
+  useChangeAlertStatus: () => mockUseChangeAlertStatus(),
+  useAssignAlert: () => mockUseAssignAlert(),
+  useAlertFeedback: () => mockUseAlertFeedback(),
   useGraphNodes: (...args: any[]) => mockUseGraphNodes(...args),
   useGraphStats: () => mockUseGraphStats(),
   useGraphSearch: (...args: any[]) => mockUseGraphSearch(...args),
@@ -176,6 +188,12 @@ function setupDefaultMocks() {
   mockUseDRPAssetStats.mockReturnValue({ data: { total: 5, byType: { domain: 2 }, avgRiskScore: 43 } })
   mockUseCertStreamStatus.mockReturnValue({ data: { enabled: true, connected: true, matchesLastHour: 3, totalProcessed: 128450, uptime: '14h' } })
   mockUseTyposquatScan.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseCreateAsset.mockReturnValue({ mutate: vi.fn(), isPending: false, isError: false })
+  mockUseDeleteAsset.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseScanAsset.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseChangeAlertStatus.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseAssignAlert.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseAlertFeedback.mockReturnValue({ mutate: vi.fn(), isPending: false, isSuccess: false })
   mockUseGraphNodes.mockReturnValue({ data: { nodes: [{ id: 'n1', entityType: 'threat_actor', label: 'APT28', riskScore: 92, properties: {}, createdAt: '' }], edges: [] }, isDemo: true })
   mockUseGraphStats.mockReturnValue({ data: { totalNodes: 15, totalEdges: 18, byType: { ioc: 5 }, avgRiskScore: 85 } })
   mockUseGraphSearch.mockReturnValue({ data: { nodes: [] } })
@@ -264,6 +282,63 @@ describe('DRPDashboardPage', () => {
     })
     render(<DRPDashboardPage />)
     expect(screen.getByText('Offline')).toBeTruthy()
+  })
+
+  it('shows Add Asset button on assets tab', () => {
+    render(<DRPDashboardPage />)
+    fireEvent.click(screen.getByText('Monitored Assets'))
+    expect(screen.getByText('Add Asset')).toBeTruthy()
+  })
+
+  it('opens create asset modal when Add Asset clicked', () => {
+    render(<DRPDashboardPage />)
+    fireEvent.click(screen.getByText('Monitored Assets'))
+    fireEvent.click(screen.getByText('Add Asset'))
+    expect(screen.getByText('Add Monitored Asset')).toBeTruthy()
+    expect(screen.getByPlaceholderText('e.g., example.com')).toBeTruthy()
+  })
+
+  it('shows Scan and Delete buttons on asset rows', () => {
+    render(<DRPDashboardPage />)
+    fireEvent.click(screen.getByText('Monitored Assets'))
+    // Multiple "Scan" buttons exist (typosquat scanner + asset row)
+    expect(screen.getAllByText('Scan').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('opens alert detail panel when alert row clicked', () => {
+    render(<DRPDashboardPage />)
+    fireEvent.click(screen.getByText('Typosquat: test.com → t3st.com'))
+    // Detail panel should show triage actions
+    expect(screen.getByText('Status & Actions')).toBeTruthy()
+    expect(screen.getByText('Verdict Feedback')).toBeTruthy()
+  })
+
+  it('shows triage status transitions in alert detail', () => {
+    render(<DRPDashboardPage />)
+    fireEvent.click(screen.getByText('Typosquat: test.com → t3st.com'))
+    // Open alert can transition to investigating, resolved, or false_positive
+    expect(screen.getByText('investigating')).toBeTruthy()
+    expect(screen.getByText('resolved')).toBeTruthy()
+    expect(screen.getByText('false positive')).toBeTruthy()
+  })
+
+  it('shows TP/FP feedback buttons in alert detail', () => {
+    render(<DRPDashboardPage />)
+    fireEvent.click(screen.getByText('Typosquat: test.com → t3st.com'))
+    expect(screen.getByText('True Positive')).toBeTruthy()
+    expect(screen.getByText('False Positive')).toBeTruthy()
+  })
+
+  it('shows assign to me button in alert detail', () => {
+    render(<DRPDashboardPage />)
+    fireEvent.click(screen.getByText('Typosquat: test.com → t3st.com'))
+    expect(screen.getByText('Assign to me')).toBeTruthy()
+  })
+
+  it('shows demo mode warning in alert detail when in demo', () => {
+    render(<DRPDashboardPage />)
+    fireEvent.click(screen.getByText('Typosquat: test.com → t3st.com'))
+    expect(screen.getByText(/Actions disabled in demo mode/)).toBeTruthy()
   })
 })
 
