@@ -649,3 +649,288 @@ describe('AdminOpsPage', () => {
     expect(screen.getByText(/retained for 90 days/)).toBeInTheDocument()
   })
 })
+
+// ─── ONBOARDING PAGE TEST DATA ────────────────────────────────────
+
+const WIZARD_STATE = {
+  id: 'wiz-1',
+  currentStep: 'feed_activation',
+  steps: {
+    welcome: 'completed',
+    org_profile: 'completed',
+    team_invite: 'completed',
+    feed_activation: 'in_progress',
+    integration_setup: 'pending',
+    dashboard_config: 'pending',
+    readiness_check: 'pending',
+    launch: 'pending',
+  },
+  completionPercent: 62,
+  orgProfile: null,
+  teamInvites: [],
+  dataSources: [],
+  dashboardPrefs: null,
+  startedAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+  updatedAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+  completedAt: null,
+}
+
+const PIPELINE_HEALTH_DATA = {
+  overall: 'healthy',
+  stages: [
+    { name: 'ingestion',     status: 'healthy', latencyMs: 45,  message: 'Processing 127 articles/min' },
+    { name: 'normalization', status: 'healthy', latencyMs: 12,  message: 'All IOC types handled' },
+    { name: 'enrichment',    status: 'healthy', latencyMs: 340, message: 'VT + AbuseIPDB active' },
+    { name: 'indexing',      status: 'healthy', latencyMs: 8,   message: 'IOC index up to date' },
+    { name: 'correlation',   status: 'healthy', latencyMs: 28,  message: 'All correlations active' },
+  ],
+  lastCheckedAt: new Date().toISOString(),
+}
+
+const MODULE_STATUS_DATA = [
+  { module: 'ingestion',        enabled: true,  healthy: true,  configured: true,  dependencies: [],                  missingDeps: [], status: 'ready' },
+  { module: 'normalization',    enabled: true,  healthy: true,  configured: true,  dependencies: ['ingestion'],       missingDeps: [], status: 'ready' },
+  { module: 'ai-enrichment',    enabled: true,  healthy: true,  configured: false, dependencies: ['normalization'],   missingDeps: [], status: 'needs_config' },
+  { module: 'threat-graph',     enabled: false, healthy: false, configured: false, dependencies: ['ioc-intelligence'],missingDeps: [], status: 'disabled' },
+]
+
+const READINESS_DATA = {
+  overall: 'not_ready',
+  checks: [
+    { name: 'Feed connected', passed: true,  description: 'At least one active feed', required: true },
+    { name: 'Graph ready',    passed: false, description: 'Threat graph has 50 nodes', required: false },
+  ],
+  score: 7,
+  maxScore: 10,
+}
+
+const WELCOME_DATA = {
+  tenantId: 'tenant-1',
+  onboardingComplete: false,
+  completionPercent: 62,
+  nextStep: 'feed_activation',
+  stats: { feedsActive: 3, iocsIngested: 1247, teamMembers: 4, modulesEnabled: 7 },
+  quickActions: [],
+  tips: [
+    { id: 'tip-1', title: 'Activate your first feed', content: 'Connect to a threat intel feed to start ingesting IOCs.', category: 'getting_started', order: 1 },
+    { id: 'tip-2', title: 'Configure AI enrichment',  content: 'Add your VirusTotal API key to enable enrichment.',       category: 'best_practice',   order: 2 },
+  ],
+}
+
+// ─── ONBOARDING PAGE TESTS ────────────────────────────────────────
+
+describe('OnboardingPage', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mockUseOnboardingWizard.mockReturnValue(mockQuery(WIZARD_STATE, true))
+    mockUseWelcomeDashboard.mockReturnValue(mockQuery(WELCOME_DATA))
+    mockUsePipelineHealth.mockReturnValue(mockQuery(PIPELINE_HEALTH_DATA))
+    mockUseModuleReadiness.mockReturnValue(mockQuery(MODULE_STATUS_DATA))
+    mockUseReadinessCheck.mockReturnValue(mockQuery(READINESS_DATA))
+    mockUseCompleteStep.mockReturnValue(mockMutation())
+    mockUseSkipStep.mockReturnValue(mockMutation())
+    mockUseSeedDemo.mockReturnValue(mockMutation())
+  })
+
+  it('renders page stats bar', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByTestId('page-stats-bar')).toBeInTheDocument()
+  })
+
+  it('shows completion percent in stats', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByTestId('stat-Completion')).toHaveTextContent('62%')
+  })
+
+  it('shows readiness score in stats', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByTestId('stat-Readiness')).toHaveTextContent('7/10')
+  })
+
+  it('shows pipeline status in stats', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByTestId('stat-Pipeline')).toHaveTextContent('healthy')
+  })
+
+  it('renders all 4 tabs', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByText('Setup Wizard')).toBeInTheDocument()
+    expect(screen.getByText('Pipeline Health')).toBeInTheDocument()
+    expect(screen.getByText('Module Status')).toBeInTheDocument()
+    expect(screen.getByText('Quick Start')).toBeInTheDocument()
+  })
+
+  it('Setup Wizard is the default tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    // Feed Activation is the in_progress step — shows CURRENT badge
+    expect(screen.getByText('CURRENT')).toBeInTheDocument()
+  })
+
+  it('shows all step names in wizard tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByText('Welcome')).toBeInTheDocument()
+    expect(screen.getByText('Org Profile')).toBeInTheDocument()
+    expect(screen.getByText('Team Invite')).toBeInTheDocument()
+    // 'Feed Activation' appears in step list AND in "Current: Feed Activation" label
+    expect(screen.getAllByText('Feed Activation').length).toBeGreaterThan(0)
+    expect(screen.getByText('Integration Setup')).toBeInTheDocument()
+    expect(screen.getByText('Dashboard Config')).toBeInTheDocument()
+    expect(screen.getByText('Readiness Check')).toBeInTheDocument()
+    expect(screen.getByText('Launch')).toBeInTheDocument()
+  })
+
+  it('shows CURRENT badge on in_progress step', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByText('CURRENT')).toBeInTheDocument()
+  })
+
+  it('shows completed status badges for finished steps', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    // welcome, org_profile, team_invite are all 'completed'
+    const completedBadges = screen.getAllByText('completed')
+    expect(completedBadges.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('shows Complete Step button', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByRole('button', { name: /Complete Step/ })).toBeInTheDocument()
+  })
+
+  it('shows Skip Step button', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    expect(screen.getByRole('button', { name: /Skip Step/ })).toBeInTheDocument()
+  })
+
+  it('Complete Step button calls mutation', async () => {
+    const mutate = vi.fn()
+    mockUseCompleteStep.mockReturnValue({ mutate, isPending: false })
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByRole('button', { name: /Complete Step/ }))
+    expect(mutate).toHaveBeenCalledWith({ step: 'feed_activation' })
+  })
+
+  it('Skip Step button calls mutation', async () => {
+    const mutate = vi.fn()
+    mockUseSkipStep.mockReturnValue({ mutate, isPending: false })
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByRole('button', { name: /Skip Step/ }))
+    expect(mutate).toHaveBeenCalledWith({ step: 'feed_activation' })
+  })
+
+  it('switches to Pipeline Health tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Pipeline Health'))
+    expect(screen.getByText('ingestion')).toBeInTheDocument()
+    expect(screen.getByText('normalization')).toBeInTheDocument()
+    expect(screen.getByText('enrichment')).toBeInTheDocument()
+  })
+
+  it('shows overall status banner on pipeline tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Pipeline Health'))
+    expect(screen.getByText('Pipeline Status:')).toBeInTheDocument()
+    // 'healthy' appears in both banner and stage badges — verify at least 1 instance
+    expect(screen.getAllByText('healthy').length).toBeGreaterThan(0)
+  })
+
+  it('shows stage health on pipeline tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Pipeline Health'))
+    expect(screen.getByText('Processing 127 articles/min')).toBeInTheDocument()
+  })
+
+  it('switches to Module Status tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Module Status'))
+    expect(screen.getByText('ingestion')).toBeInTheDocument()
+    expect(screen.getByText('normalization')).toBeInTheDocument()
+    expect(screen.getByText('ai-enrichment')).toBeInTheDocument()
+  })
+
+  it('shows status badges on module tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Module Status'))
+    // 'ready' and 'needs config' badges
+    expect(screen.getAllByText('ready').length).toBeGreaterThan(0)
+    expect(screen.getByText('needs config')).toBeInTheDocument()
+    expect(screen.getByText('disabled')).toBeInTheDocument()
+  })
+
+  it('switches to Quick Start tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Quick Start'))
+    expect(screen.getByText('Feeds Active')).toBeInTheDocument()
+    expect(screen.getByText('IOCs Ingested')).toBeInTheDocument()
+    expect(screen.getByText('Team Members')).toBeInTheDocument()
+    expect(screen.getByText('Modules Enabled')).toBeInTheDocument()
+  })
+
+  it('shows stat chip values on Quick Start tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Quick Start'))
+    expect(screen.getByText('3')).toBeInTheDocument()   // feedsActive
+    expect(screen.getByText('4')).toBeInTheDocument()   // teamMembers
+    expect(screen.getByText('7')).toBeInTheDocument()   // modulesEnabled
+  })
+
+  it('shows next step CTA on Quick Start tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Quick Start'))
+    expect(screen.getByText('Next Step')).toBeInTheDocument()
+  })
+
+  it('shows tips list on Quick Start tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Quick Start'))
+    expect(screen.getByText('Getting Started Tips')).toBeInTheDocument()
+    expect(screen.getByText('Activate your first feed')).toBeInTheDocument()
+    expect(screen.getByText('Configure AI enrichment')).toBeInTheDocument()
+  })
+
+  it('shows Seed Demo Data button on Quick Start tab', async () => {
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Quick Start'))
+    expect(screen.getByRole('button', { name: /Seed Demo Data/ })).toBeInTheDocument()
+  })
+
+  it('Seed Demo Data button calls mutation', async () => {
+    const mutate = vi.fn()
+    mockUseSeedDemo.mockReturnValue({ mutate, isPending: false })
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Quick Start'))
+    fireEvent.click(screen.getByRole('button', { name: /Seed Demo Data/ }))
+    expect(mutate).toHaveBeenCalledWith({})
+  })
+
+  it('renders gracefully with empty modules list', async () => {
+    mockUseModuleReadiness.mockReturnValue(mockQuery([]))
+    const { OnboardingPage } = await import('@/pages/OnboardingPage')
+    render(<OnboardingPage />)
+    fireEvent.click(screen.getByText('Module Status'))
+    expect(screen.getByText('No modules found.')).toBeInTheDocument()
+  })
+})
