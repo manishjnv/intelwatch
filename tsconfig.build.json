@@ -18,6 +18,7 @@
     { "path": "apps/threat-actor-intel" },
     { "path": "apps/malware-intel" },
     { "path": "apps/vulnerability-intel" },
-    { "path": "apps/threat-graph" }
+    { "path": "apps/threat-graph" },
+    { "path": "apps/correlation-engine" }
   ]
 }
