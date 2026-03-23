@@ -300,6 +300,24 @@ export function IconBilling({ size = defaults.size, className }: IconProps) {
   )
 }
 
+/** Onboarding — rocket launch with trajectory arc */
+export function IconOnboarding({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      {/* Rocket body */}
+      <path d="M12 2c0 0 5 3 5 9v2l-5 3-5-3v-2C7 5 12 2 12 2z"
+        stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+      {/* Flame */}
+      <path d="M9 15l3 5 3-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
+      {/* Fins */}
+      <path d="M7 13l-2 3 4-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
+      <path d="M17 13l2 3-4-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
+      {/* Window */}
+      <circle cx="12" cy="9" r="1.5" stroke="currentColor" strokeWidth="1.2" opacity="0.7"/>
+    </svg>
+  )
+}
+
 /** Admin Ops — HUD display with service grid */
 export function IconAdmin({ size = defaults.size, className }: IconProps) {
   return (
@@ -335,4 +353,5 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'customization': IconCustomization,
   'billing': IconBilling,
   'admin-ops': IconAdmin,
+  'onboarding': IconOnboarding,
 }

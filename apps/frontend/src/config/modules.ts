@@ -7,7 +7,7 @@
 import {
   IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
-  IconCustomization, IconBilling, IconAdmin,
+  IconCustomization, IconBilling, IconAdmin, IconOnboarding,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -176,6 +176,16 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-violet-400',
     phase: 6,
     route: '/admin',
+  },
+  {
+    id: 'onboarding',
+    title: 'Onboarding',
+    description: '8-step setup wizard, pipeline health checks, module readiness, and demo data seeding.',
+    helpText: 'Guided onboarding: configure your org, connect feeds, enable modules, and launch ETIP.',
+    icon: IconOnboarding,
+    color: 'text-teal-400',
+    phase: 6,
+    route: '/onboarding',
   },
 ]
 
