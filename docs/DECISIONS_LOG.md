@@ -153,6 +153,13 @@
 **Alternatives:** Add `correlation:*` to shared-auth (requires cross-module change), use `ioc:read` (semantically incorrect — correlations aren't IOCs)
 **Consequences:** Correlation endpoints accessible to same roles as alert endpoints. When dedicated `correlation:*` permissions are needed, add them to shared-auth as an additive (backward-compatible) change.
 
+### DECISION-023: api_only role excluded from permission hierarchy
+**Date:** 2026-03-23 | **Status:** Accepted
+**Context:** Building RBAC permission inheritance in user-management-service. The role hierarchy (viewer→hunter→analyst→admin→super_admin) means higher roles inherit lower role permissions. api_only has `ioc:create` which viewer should NOT inherit.
+**Decision:** api_only is a standalone role, not part of the hierarchy chain. Hierarchy is: viewer→hunter→analyst→admin→super_admin. api_only has no parent and no children in the inheritance tree.
+**Alternatives:** Include api_only at bottom of hierarchy (viewer inherits ioc:create — wrong), remove ioc:create from api_only (breaks API integrations)
+**Consequences:** api_only users get exactly what's defined — no inheritance. Custom roles can still inherit from any named role including api_only if explicitly set.
+
 ### DECISION-022: Correlation engine is fully in-memory (no Prisma, no Neo4j driver)
 **Date:** 2026-03-23 | **Status:** Accepted
 **Context:** Correlation engine stores entity data, correlation results, campaign clusters, feedback, and rule stats. No existing Prisma models for correlation data.

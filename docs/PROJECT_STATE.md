@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 34
+**Session counter:** 35
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -22,6 +22,7 @@
 | etip_hunting | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3014. 47 endpoints, 15/15 improvements, 222 tests. Added to deploy.yml + nginx. |
 | etip_drp | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3011. 36 endpoints, 310 tests. Added to deploy.yml + nginx. |
 | etip_integration | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. Added to deploy.yml + nginx. |
+| etip_user_management | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. Added to deploy.yml + nginx. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -52,7 +53,7 @@
 | correlation-engine | 4 | 🔨 WIP | 2026-03-23 | Port 3013. **15/15 improvements COMPLETE** (#1-15). 20 endpoints, 166 tests. In-memory. P1: co-occurrence, infra clustering, temporal waves, TTP similarity, DBSCAN campaigns, confidence scoring, Diamond Model, Kill Chain, FP suppression, BFS inference. P2: AI pattern detection (Sonnet), rule templates (6), confidence decay, batch re-correlation, graph integration. |
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
-| user-management | 5 | 🔨 WIP | 2026-03-23 | Scaffold complete. Core features next. |
+| user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
 | customization | 5 | 📋 Not started | - | Phase 5 gate |
 | onboarding | 6 | 📋 Not started | - | Phase 6 gate |
 | billing | 6 | 📋 Not started | - | Phase 6 gate |
@@ -118,10 +119,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 5 IN PROGRESS — Enterprise Integration (Module 15) FEATURE-COMPLETE. 1/3 Phase 5 modules done. Phases 1-4 COMPLETE.
-- **Last session outcome:** Session 34 (2026-03-23). Enterprise Integration Service (Module 15): scaffold + core + 5 P0 improvements in one session. 24 endpoints, 174 tests, 48 files. SIEM adapters (Splunk HEC, Sentinel, Elastic), SOAR webhooks (HMAC+DLQ), ticketing (ServiceNow, Jira), STIX/TAXII 2.1 server, bulk export (CSV/JSON/STIX). P0: event router, field mapping defaults, AES-256-GCM credential encryption, per-integration rate limiter, health dashboard. Commit: 6c25bc2. Deploy triggered.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions. 1 pre-existing test failure in shared-auth (not new). Integration service uses in-memory store (DECISION-013 pattern).
-- **Next tasks:** (1) Phase 5: User Management (Module 16) — RBAC, SSO, MFA, break-glass. (2) Phase 5: Customization (Module 17). (3) Add dedicated RBAC permissions for Phase 4+5 services. (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md. (6) Mobile responsive testing at 375px/768px for Phase 4 pages.
+- **Current phase:** Phase 5 IN PROGRESS — 2/3 Phase 5 modules done (Integration ✅, User Management ✅, Customization 📋). Phases 1-4 COMPLETE.
+- **Last session outcome:** Session 35 (2026-03-23). User Management Service (Module 16): scaffold + core + 5 P0 improvements. 32 endpoints, 185 tests, 43 files. RBAC (15 resources × 4 actions, 6 built-in roles, custom role builder, permission inheritance), team mgmt (invite/assign/deactivate/reactivate), SSO config (SAML 2.0 + OIDC per-tenant, JIT provisioning), MFA (TOTP + 10 backup codes + enforcement policy), break-glass (5 single-use recovery codes, 30-min sessions). P0: permission hierarchy, SOC2 audit trail, brute-force lockout, session management, password policy. Also committed prior-session frontend improvements (Phase 4 page enhancements). Commits: 99db5db (frontend), 12018db (user-mgmt). Pushed to master.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. 1 pre-existing test failure in shared-auth (not new). User management service uses in-memory store (DECISION-013 pattern). RBAC permissions now defined in user-management-service — Phase 4+5 services can query this service for permission checks.
+- **Next tasks:** (1) Phase 5: Customization (Module 17) — module toggles, AI model selection, risk weights, per-tenant feature flags. (2) Elasticsearch IOC indexing. (3) Update QA_CHECKLIST.md. (4) Mobile responsive testing at 375px/768px for Phase 4 pages. (5) Verify deploy health for all new services.
 
 ## Deployment Log
 
@@ -153,6 +154,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 32 | 2026-03-23 | CI triggered (DRP accuracy update) | ⏳ CI pending | 49acf09 | DRP typosquat accuracy: 7 new methods, composite scoring (JW+soundex+TLD), CertStream monitor, domain enricher. 44 new tests (310 DRP, ~2863 total). |
 | 33 | 2026-03-23 | etip_frontend updated + 4 Phase 4 services added to deploy pipeline | ✅ CI green | f3ed4b5→81aa53a (7 commits) | Phase 4 Frontend: 4 new pages + full interactivity. DRP: asset CRUD, alert triage. Graph: path finder, add node, STIX export. Correlation: TP/FP feedback. Hunting: create hunt, status controls, add hypothesis/evidence. 273 tests. Deploy pipeline: 4 services + nginx. |
 | 34 | 2026-03-23 | etip_integration added (port 3015) | ⏳ CI pending | 6c25bc2 | Enterprise Integration Service (Module 15): 24 endpoints, 5 P0 improvements, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII + bulk export. Phase 5 started. |
+| 35 | 2026-03-23 | etip_user_management added (port 3016) + etip_frontend updated | ⏳ CI pending | 99db5db, 12018db | User Management Service (Module 16): 32 endpoints, 5 core features, 5 P0 improvements, 185 tests. Also pushed prior-session frontend enhancements. Phase 5: 2/3 done. |
 
 ## E2E Verification Results (Session 13)
 
