@@ -163,6 +163,9 @@ jobs:
             echo "Building etip_drp image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_drp
 
+            echo "Building etip_customization image..."
+            docker compose -p etip -f docker-compose.etip.yml build etip_customization
+
             echo "Building etip_integration image..."
             docker compose -p etip -f docker-compose.etip.yml build etip_integration
 
@@ -192,7 +195,7 @@ jobs:
 
             # Force recreate app containers (picks up new images + compose config)
             echo "Recreating app containers..."
-            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_frontend etip_nginx
+            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_customization etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_frontend etip_nginx
 
             # ── Sync database schema (idempotent — creates missing tables, skips existing) ──
             echo "Syncing database schema..."
@@ -365,6 +368,17 @@ jobs:
             echo -n "User Management: "
             for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
               if curl -sf http://127.0.0.1:3016/health > /dev/null 2>&1; then
+                echo "✅ healthy after $((i * 5))s"
+                break
+              fi
+              if [ $i -eq 12 ]; then
+                echo "⚠️  PENDING (non-critical)"
+              fi
+              sleep 5
+            done
+            echo -n "Customization Service: "
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              if curl -sf http://127.0.0.1:3017/health > /dev/null 2>&1; then
                 echo "✅ healthy after $((i * 5))s"
                 break
               fi
