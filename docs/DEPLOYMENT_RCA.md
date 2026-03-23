@@ -543,6 +543,8 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 
 **Session 17 deploys:** No new RCA issues. etip_vulnerability_intel added (port 3010). 18 containers expected. Commit 58b50f1 pushed, CI deploy pending. Phase 3 COMPLETE.
 
+**Session 27:** No deploy (code-only session). Correlation Engine (Module 13) built with 10 improvements, 106 tests. 2271 monorepo tests passing.
+
 **Session 18 deploys:** No new RCA issues. Frontend updated with 5 data-connected pages (no new containers). Commit e33072e pushed, CI deploy pending.
 
 **Session 23 deploys:** 3 CI issues found and fixed (RCA #37-39). After fixes: CI green (run 23405214316). All containers redeployed via SSH. Sessions 21-23 code now live on VPS. Commits 5c949d1→d6694e8.

@@ -145,3 +145,17 @@
 **Decision:** Propagation only raises scores: `newRisk = max(currentRisk, triggerRisk × weight)`. Never lowers.
 **Alternatives:** Bidirectional propagation (complex, can cascade score drops from false positives), average-based (loses high-confidence signals)
 **Consequences:** Once a node's score is raised, it stays until manual reset or time-decay. Prevents a single false-positive from cascading downward rescoring across the graph. Score lowering will be manual (analyst action) or via periodic re-evaluation cron.
+
+### DECISION-021: Correlation engine uses alert:read/create permissions (no shared-auth change)
+**Date:** 2026-03-23 | **Status:** Accepted
+**Context:** Building Module 13 (Correlation Engine). No `correlation:*` permission exists in shared-auth RBAC. Shared-auth is Tier 1 FROZEN and out of scope lock.
+**Decision:** Use existing `alert:read` for read endpoints and `alert:create` for write endpoints. Correlations produce alerts, so same access semantics apply. tenant_admin gets `alert:*`, analyst gets `alert:read/create/update`, viewer gets `alert:read`.
+**Alternatives:** Add `correlation:*` to shared-auth (requires cross-module change), use `ioc:read` (semantically incorrect — correlations aren't IOCs)
+**Consequences:** Correlation endpoints accessible to same roles as alert endpoints. When dedicated `correlation:*` permissions are needed, add them to shared-auth as an additive (backward-compatible) change.
+
+### DECISION-022: Correlation engine is fully in-memory (no Prisma, no Neo4j driver)
+**Date:** 2026-03-23 | **Status:** Accepted
+**Context:** Correlation engine stores entity data, correlation results, campaign clusters, feedback, and rule stats. No existing Prisma models for correlation data.
+**Decision:** All state lives in JavaScript Maps via `CorrelationStore` class. No `@prisma/client` or `neo4j-driver` dependencies. Follows DECISION-013 pattern (in-memory for Phase 4 validation).
+**Alternatives:** Add Prisma models (premature — adds migration complexity before algorithm validation), query threat-graph Neo4j directly (violates DECISION-018 — neo4j-driver stays in threat-graph only)
+**Consequences:** State lost on service restart. Acceptable for Phase 4. Fast iteration on algorithms. Tests don't need external databases. Migration path: replace Map operations with Prisma queries when scaling.

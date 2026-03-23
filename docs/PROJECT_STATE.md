@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 26
+**Session counter:** 27
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -45,7 +45,7 @@
 | vulnerability-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 complete. |
 | digital-risk-protection | 4 | 📋 Not started | - | Phase 4 gate |
 | threat-graph | 4 | 🔨 WIP | 2026-03-23 | Port 3012. 20 improvements complete (#1-20). 32 endpoints, 294 tests. Neo4j graph, risk propagation, STIX export, cluster detection, batch import, decay cron, merge/split, trending. Ready for deploy. |
-| correlation-engine | 4 | 📋 Not started | - | Phase 4 gate |
+| correlation-engine | 4 | 🔨 WIP | 2026-03-23 | Port 3013. 10 improvements (#1-10). 12 endpoints, 106 tests. In-memory. DBSCAN campaign clustering, Jaccard co-occurrence, z-score temporal waves, Kill Chain, Diamond Model, FP suppression. P2 (#11-15) next. |
 | threat-hunting | 4 | 📋 Not started | - | Phase 4 gate |
 | enterprise-integration | 5 | 📋 Not started | - | Phase 5 gate |
 | user-management | 5 | 📋 Not started | - | Phase 5 gate |
@@ -74,6 +74,7 @@ threat-actor-intel    → shared-types, shared-utils, shared-auth (Phase 3)
 malware-intel         → shared-types, shared-utils, shared-auth (Phase 3)
 vulnerability-intel   → shared-types, shared-utils, shared-auth (Phase 3)
 threat-graph          → shared-types, shared-utils, shared-auth, neo4j-driver, bullmq (Phase 4)
+correlation-engine    → shared-types, shared-utils, shared-auth, bullmq (Phase 4)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ```
 
@@ -109,10 +110,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 4 IN PROGRESS. Threat Graph FEATURE-COMPLETE (20 improvements, 32 endpoints, 294 tests). Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
-- **Last session outcome:** Session 26 (2026-03-23). Threat Graph Service (Module 12): 20 improvements in one session. P1 #6-10 (bidirectional rels, cluster detection, impact radius, cross-entity scoring, graph diff). P2 #11-15 (expand node, STIX 2.1 export, graph search, relationship CRUD, propagation audit). Advanced #16-20 (node merge/split, batch import, decay cron, layout presets, relationship trending). 204 new tests (2165 monorepo). Commit: bb0a5c1. Deploy pending.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating to [U] for enrichment items. Threat graph deploy pending (session 25+26 code not yet on VPS).
-- **Next tasks:** (1) Deploy threat-graph to VPS. (2) Phase 4: Correlation Engine (Module 13). (3) Phase 4: Threat Hunting (Module 14). (4) Phase 4: Digital Risk Protection (Module 11). (5) Elasticsearch IOC indexing. (6) Update QA_CHECKLIST.md.
+- **Current phase:** Phase 4 IN PROGRESS. Threat Graph FEATURE-COMPLETE. Correlation Engine WIP (10/15 improvements, 12 endpoints, 106 tests). Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
+- **Last session outcome:** Session 27 (2026-03-23). Correlation Engine Service (Module 13): core + 10 improvements (P0 #1-5 + P1 #6-10). 20 source files, 13 test files, 106 tests (2271 monorepo). BullMQ CORRELATE consumer, in-memory store, 12 API endpoints. Algorithms: Jaccard co-occurrence, ASN/CIDR infra clustering, z-score temporal waves, Sorensen-Dice TTP similarity, DBSCAN campaign clustering, confidence-weighted scoring, Diamond Model mapping, Kill Chain phase correlation, FP suppression, BFS relationship inference. No deploy (code-only). Typecheck clean.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating to [U] for enrichment items. Threat graph deploy pending (session 25+26 code not yet on VPS). Correlation engine uses `alert:read`/`alert:create` permissions — needs `correlation:*` added to shared-auth when ready.
+- **Next tasks:** (1) Deploy threat-graph to VPS. (2) Phase 4: Correlation Engine P2 (#11-15: AI-assisted, templates, decay, batch re-correlation, graph integration). (3) Phase 4: Threat Hunting (Module 14). (4) Phase 4: Digital Risk Protection (Module 11). (5) Elasticsearch IOC indexing. (6) Update QA_CHECKLIST.md.
 
 ## Deployment Log
 
@@ -136,6 +137,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 24 | 2026-03-22 | etip_frontend updated, all app containers recreated | ✅ CI green | 799145c→4e60b44 | Enrichment UI + tabbed detail + merged stats + mobile overlay. 63 new tests (1871 total). Differentiator B COMPLETE. UI FROZEN. |
 | 25 | 2026-03-22 | etip_threat_graph added (port 3012), all app containers recreated | ⏳ CI pending | 2e37845 | Threat Graph Service: 11 endpoints, 5 P0 improvements, 90 new tests (1961 total). Phase 4 started. |
 | 26 | 2026-03-23 | No deploy (code-only session) | — | bb0a5c1 | Threat Graph 20 improvements (#1-20): P1+P2+advanced ops. 32 endpoints, 204 new tests (2165 total). |
+| 27 | 2026-03-23 | No deploy (code-only session) | — | pending | Correlation Engine (Module 13): 10 improvements (#1-10), 12 endpoints, 106 new tests (2271 total). |
 
 ## E2E Verification Results (Session 13)
 
