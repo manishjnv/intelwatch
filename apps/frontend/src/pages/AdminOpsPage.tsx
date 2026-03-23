@@ -106,7 +106,7 @@ function ServiceCard({ svc }: { svc: ServiceHealth }) {
           <span className={cn('font-medium',
             svc.uptime >= 99.9 ? 'text-sev-low' : svc.uptime >= 99 ? 'text-sev-medium' : 'text-sev-critical',
           )}>
-            {svc.uptime.toFixed(2)}%
+            {(svc.uptime ?? 0).toFixed(2)}%
           </span>
         </div>
         <div>
@@ -213,7 +213,7 @@ function TenantRow({ tenant, onSuspend, onReinstate, onChangePlan }: {
         />
       </td>
       <td className="px-4 py-3 text-xs text-text-secondary">{seatDisplay}</td>
-      <td className="px-4 py-3 text-xs text-text-secondary">{tenant.iocCount.toLocaleString()}</td>
+      <td className="px-4 py-3 text-xs text-text-secondary">{(tenant.iocCount ?? 0).toLocaleString()}</td>
       <td className="px-4 py-3 text-[11px] text-text-muted">{timeAgo(tenant.lastActiveAt)}</td>
       <td className="px-4 py-3 relative">
         <button
@@ -339,7 +339,7 @@ export function AdminOpsPage() {
       {/* ─── Stats bar ─── */}
       <PageStatsBar title="Admin Operations" isDemo={healthDemo}>
         <CompactStat label="Services" value={summary ? `${summary.healthy}/${summary.total} healthy` : '—'} />
-        <CompactStat label="Platform Uptime" value={summary ? `${summary.uptimePercent.toFixed(2)}%` : '—'} />
+        <CompactStat label="Platform Uptime" value={summary ? `${(summary.uptimePercent ?? 0).toFixed(2)}%` : '—'} />
         <CompactStat label="Tenants" value={stats ? String(stats.totalTenants) : '—'} />
         <CompactStat label="Active" value={stats ? String(stats.activeTenants) : '—'} />
         <CompactStat label="Open Alerts" value={stats ? String(stats.openAlerts) : '—'} highlight={!!stats?.openAlerts} />
@@ -422,7 +422,7 @@ export function AdminOpsPage() {
             {/* CISO insight */}
             <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 text-[11px] text-text-secondary">
               <strong className="text-accent">CISO Insight:</strong> Platform uptime at{' '}
-              {summary?.uptimePercent.toFixed(2) ?? '—'}% over the last 30 days.
+              {summary?.uptimePercent?.toFixed(2) ?? '—'}% over the last 30 days.
               AI enrichment service is showing elevated response times (340ms vs 50ms baseline) —
               likely due to upstream VirusTotal rate limiting. Monitor and consider burst scheduling.
             </div>

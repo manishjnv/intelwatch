@@ -21,7 +21,8 @@ import {
 
 // ─── Helpers ────────────────────────────────────────────────────
 
-function fmtINR(amount: number): string {
+function fmtINR(amount: number | null | undefined): string {
+  if (amount == null || isNaN(amount)) return '—'
   if (amount < 0) return 'Contact Sales'
   if (amount === 0) return 'Free'
   return `₹${amount.toLocaleString('en-IN')}`
@@ -43,7 +44,8 @@ function usageColor(pct: number): string {
   return 'bg-sev-low'
 }
 
-function fmtNumber(n: number): string {
+function fmtNumber(n: number | null | undefined): string {
+  if (n == null || isNaN(n)) return '—'
   if (n < 0) return '∞'
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
