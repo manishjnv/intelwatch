@@ -192,7 +192,7 @@ describe('ThreatActorListPage', () => {
     fireEvent.click(screen.getByText('APT-1'))
     expect(screen.getByTestId('actor-detail-panel')).toBeInTheDocument()
     // Click the first occurrence (table row, not panel header)
-    fireEvent.click(screen.getAllByText('APT-1')[0])
+    fireEvent.click(screen.getAllByText('APT-1')[0]!)
     expect(screen.queryByTestId('actor-detail-panel')).not.toBeInTheDocument()
   })
 
@@ -286,7 +286,7 @@ describe('MalwareListPage', () => {
     render(<MalwareListPage />)
     fireEvent.click(screen.getByText('BlackCat'))
     expect(screen.getByTestId('malware-detail-panel')).toBeInTheDocument()
-    fireEvent.click(screen.getAllByText('BlackCat')[0])
+    fireEvent.click(screen.getAllByText('BlackCat')[0]!)
     expect(screen.queryByTestId('malware-detail-panel')).not.toBeInTheDocument()
   })
 

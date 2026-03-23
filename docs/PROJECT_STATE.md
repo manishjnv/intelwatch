@@ -6,7 +6,7 @@
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.3.6 | 2026-03-24 | Dashboard + 16 data pages + demo fallbacks. All phases complete. Phase 6: Billing (pricing v3) + Admin Ops + Onboarding (8-step wizard, pipeline health, module readiness, quick start). 500 frontend tests (502 total, 2 skipped). Phase 6 frontend 3/3 COMPLETE. **D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB split out of main bundle).** |
+| etip_frontend | ✅ Running | 0.3.7 | 2026-03-24 | Dashboard + 16 data pages + demo fallbacks. All phases complete. Phase 6: Billing (pricing v3) + Admin Ops + Onboarding. 530 frontend tests (532 total, 2 skipped). **Known Gaps P1 COMPLETE: Actor detail panel (MITRE ATT&CK + linked IOCs), Malware detail panel (capabilities + linked IOCs), IOC campaign badge column.** D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB split). |
 | etip_es_indexing | 📋 Not deployed | 0.1.0 | — | Port 3020. Module 20. Elasticsearch IOC indexing. Scaffolded + 57 tests. Needs docker-compose + deploy.yml + nginx before VPS deploy. |
 | etip_nginx | ✅ Running | - | 2026-03-23 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -45,7 +45,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **16 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, **Onboarding**). 19 viz components. 500 tests (502 total, 2 skipped). Phase 6 pages: Billing (pricing v3, plan cards, usage, upgrade) + Admin Ops (health, maintenance, tenants, audit) + Onboarding (8-step wizard, pipeline health, module readiness, quick start). All 16 pages COMPLETE. **D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB out of main bundle). Existing pages FROZEN.** |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **16 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, **Onboarding**). 19 viz components. 530 tests (532 total, 2 skipped). Phase 6 pages COMPLETE. **Known Gaps P1 COMPLETE**: Actor detail panel (MITRE ATT&CK + linked IOCs), Malware detail panel (capabilities + linked IOCs), IOC campaign badge column. D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB out of main bundle). Existing pages FROZEN. |
 | elasticsearch-indexing-service | 7 | 🔨 WIP | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip:ioc-indexed), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. NOT yet in docker-compose or deploy.yml. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
