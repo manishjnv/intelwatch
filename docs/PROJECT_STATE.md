@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 33
+**Session counter:** 34
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -21,6 +21,7 @@
 | etip_correlation | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3013. 20 endpoints, 15/15 improvements, 166 tests. Added to deploy.yml + nginx. |
 | etip_hunting | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3014. 47 endpoints, 15/15 improvements, 222 tests. Added to deploy.yml + nginx. |
 | etip_drp | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3011. 36 endpoints, 310 tests. Added to deploy.yml + nginx. |
+| etip_integration | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. Added to deploy.yml + nginx. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -50,7 +51,7 @@
 | threat-graph | 4 | 🔨 WIP | 2026-03-23 | Port 3012. 20 improvements complete (#1-20). 32 endpoints, 294 tests. Neo4j graph, risk propagation, STIX export, cluster detection, batch import, decay cron, merge/split, trending. Ready for deploy. |
 | correlation-engine | 4 | 🔨 WIP | 2026-03-23 | Port 3013. **15/15 improvements COMPLETE** (#1-15). 20 endpoints, 166 tests. In-memory. P1: co-occurrence, infra clustering, temporal waves, TTP similarity, DBSCAN campaigns, confidence scoring, Diamond Model, Kill Chain, FP suppression, BFS inference. P2: AI pattern detection (Sonnet), rule templates (6), confidence decay, batch re-correlation, graph integration. |
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
-| enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Scaffolded. Port 3015. 3 tests. |
+| enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
 | user-management | 5 | 📋 Not started | - | Phase 5 gate |
 | customization | 5 | 📋 Not started | - | Phase 5 gate |
 | onboarding | 6 | 📋 Not started | - | Phase 6 gate |
@@ -116,10 +117,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 4 COMPLETE — backend + frontend + deploy. All 4 Phase 4 modules FEATURE-COMPLETE with frontend pages. Phase 3 + Differentiators A/A+/B all COMPLETE. Ready for Phase 5.
-- **Last session outcome:** Session 33 (2026-03-23). Phase 4 Frontend: 4 new pages + full interactivity for all 4 pages. 7 commits. DRP: asset CRUD, alert triage, typosquat scanner. Graph: path finder, add node, STIX export, node size=risk. Correlation: TP/FP feedback, auto-correlate results. Hunting: create hunt, status controls, add hypothesis/evidence. Deploy pipeline: 4 backend services added. 273 frontend tests (was 217). Commits: f3ed4b5→81aa53a.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions. 1 pre-existing test failure in shared-auth (not new). Phase 4 backend deploy CI pending — verify health checks after CI completes.
-- **Next tasks:** (1) Verify Phase 4 deploy health after CI completes. (2) Phase 5: Enterprise Integration (Module 15). (3) Add dedicated RBAC permissions for Phase 4 services. (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md. (6) Mobile responsive testing at 375px/768px for Phase 4 pages.
+- **Current phase:** Phase 5 IN PROGRESS — Enterprise Integration (Module 15) FEATURE-COMPLETE. 1/3 Phase 5 modules done. Phases 1-4 COMPLETE.
+- **Last session outcome:** Session 34 (2026-03-23). Enterprise Integration Service (Module 15): scaffold + core + 5 P0 improvements in one session. 24 endpoints, 174 tests, 48 files. SIEM adapters (Splunk HEC, Sentinel, Elastic), SOAR webhooks (HMAC+DLQ), ticketing (ServiceNow, Jira), STIX/TAXII 2.1 server, bulk export (CSV/JSON/STIX). P0: event router, field mapping defaults, AES-256-GCM credential encryption, per-integration rate limiter, health dashboard. Commit: 6c25bc2. Deploy triggered.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions. 1 pre-existing test failure in shared-auth (not new). Integration service uses in-memory store (DECISION-013 pattern).
+- **Next tasks:** (1) Phase 5: User Management (Module 16) — RBAC, SSO, MFA, break-glass. (2) Phase 5: Customization (Module 17). (3) Add dedicated RBAC permissions for Phase 4+5 services. (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md. (6) Mobile responsive testing at 375px/768px for Phase 4 pages.
 
 ## Deployment Log
 
@@ -150,6 +151,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 31 | 2026-03-23 | CI triggered (all Phase 4 services) | ⏳ CI pending | 2bb8730 | DRP P1/P2 (#6-15): 10 services, 10 endpoints, 108 new tests (2819 total). Module 11 FEATURE-COMPLETE (15/15). Phase 4 COMPLETE. |
 | 32 | 2026-03-23 | CI triggered (DRP accuracy update) | ⏳ CI pending | 49acf09 | DRP typosquat accuracy: 7 new methods, composite scoring (JW+soundex+TLD), CertStream monitor, domain enricher. 44 new tests (310 DRP, ~2863 total). |
 | 33 | 2026-03-23 | etip_frontend updated + 4 Phase 4 services added to deploy pipeline | ✅ CI green | f3ed4b5→81aa53a (7 commits) | Phase 4 Frontend: 4 new pages + full interactivity. DRP: asset CRUD, alert triage. Graph: path finder, add node, STIX export. Correlation: TP/FP feedback. Hunting: create hunt, status controls, add hypothesis/evidence. 273 tests. Deploy pipeline: 4 services + nginx. |
+| 34 | 2026-03-23 | etip_integration added (port 3015) | ⏳ CI pending | 6c25bc2 | Enterprise Integration Service (Module 15): 24 endpoints, 5 P0 improvements, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII + bulk export. Phase 5 started. |
 
 ## E2E Verification Results (Session 13)
 
