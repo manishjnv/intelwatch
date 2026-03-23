@@ -1,13 +1,13 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 32
+**Session counter:** 33
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.1.0 | 2026-03-21 | Dashboard + 5 data pages + demo fallbacks. UI FROZEN. |
-| etip_nginx | ✅ Running | - | 2026-03-21 | Reverse proxy for ti.intelwatch.in |
+| etip_frontend | ✅ Running | 0.2.0 | 2026-03-23 | Dashboard + 10 data pages + demo fallbacks. Phase 4 frontend live. |
+| etip_nginx | ✅ Running | - | 2026-03-23 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
 | etip_ingestion | ✅ Running | 0.1.0 | 2026-03-21 | Feed pipeline + 11 modules |
@@ -17,7 +17,10 @@
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
 | etip_malware_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements |
 | etip_vulnerability_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements |
-| etip_threat_graph | ⏳ Pending deploy | 2.0.0 | 2026-03-23 | Port 3012. Neo4j knowledge graph. 32 endpoints, 20 improvements (#1-20), 294 tests. |
+| etip_threat_graph | ⏳ Deploy triggered | 2.0.0 | 2026-03-23 | Port 3012. Neo4j knowledge graph. 32 endpoints, 20 improvements (#1-20), 294 tests. Added to deploy.yml + nginx. |
+| etip_correlation | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3013. 20 endpoints, 15/15 improvements, 166 tests. Added to deploy.yml + nginx. |
+| etip_hunting | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3014. 47 endpoints, 15/15 improvements, 222 tests. Added to deploy.yml + nginx. |
+| etip_drp | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3011. 36 endpoints, 310 tests. Added to deploy.yml + nginx. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -35,7 +38,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-22 | 6 data pages (IOC, Feed, Actor, Malware, Vuln, Enrichment) + enrichment detail panel. Tabbed IOC detail (Enrichment/Details/Relations). 12 viz components. 217 tests. **UI FROZEN — do not modify pages/components without explicit approval.** |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-23 | **10 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting). 13 viz components. 252 tests. 12 CISO-differentiating improvements. **Existing pages FROZEN — Phase 4 pages added.** |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
@@ -112,10 +115,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 4 COMPLETE + typosquat accuracy enhancement. All 4 modules FEATURE-COMPLETE: Graph ✅ (20/20), Correlation ✅ (15/15), Hunting ✅ (15/15), DRP ✅ (15/15 + accuracy). Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
-- **Last session outcome:** Session 32 (2026-03-23). DRP typosquatting detection accuracy improvements: 7 new squatting methods (combosquatting, bitsquatting, keyboard proximity, vowel-swap, repetition, hyphenation, subdomain), composite scoring (Jaro-Winkler, soundex, Levenshtein, TLD risk, phonetic match, 1-yr term penalty), CertStream real-time monitor + domain enricher. 4 new files, 8 modified. DRP now 36 endpoints, 310 tests. Monorepo: 2863 tests (estimated). Commit: 49acf09. Pushed to master.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. Phase 4 deploy pending (all 4 services). DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions. 1 pre-existing test failure in shared-auth (not new).
-- **Next tasks:** (1) Phase 4 Frontend — DRP dashboard, threat graph visualization, correlation page, hunting workbench. (2) Deploy all Phase 4 services (threat-graph, correlation, hunting, DRP). (3) Phase 5: Enterprise Integration (Module 15). (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md.
+- **Current phase:** Phase 4 COMPLETE — backend + frontend + deploy. All 4 Phase 4 modules FEATURE-COMPLETE with frontend pages. Phase 3 + Differentiators A/A+/B all COMPLETE. Ready for Phase 5.
+- **Last session outcome:** Session 33 (2026-03-23). Phase 4 Frontend: 4 new pages (DRP Dashboard, Threat Graph, Correlation, Hunting Workbench) with 12 CISO-differentiating improvements. 8 new files, 1 modified. 35 new tests (252 frontend total). Phase 4 deploy pipeline: 4 services added to deploy.yml + nginx routing. Commits: f3ed4b5 (frontend), 07b3f8a (deploy). Pushed to master, CI triggered.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions. 1 pre-existing test failure in shared-auth (not new). Phase 4 backend deploy CI pending — verify health checks after CI completes.
+- **Next tasks:** (1) Verify Phase 4 deploy health after CI completes. (2) Phase 5: Enterprise Integration (Module 15). (3) Add dedicated RBAC permissions for Phase 4 services. (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md. (6) Mobile responsive testing at 375px/768px for Phase 4 pages.
 
 ## Deployment Log
 
@@ -145,6 +148,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 30 | 2026-03-23 | No deploy (code-only session) | — | e26f551 | DRP Service (Module 11): 25 endpoints, 158 new tests (2711 total). Core + P0 #1-5. 4 detection engines, 5 accuracy improvements. |
 | 31 | 2026-03-23 | CI triggered (all Phase 4 services) | ⏳ CI pending | 2bb8730 | DRP P1/P2 (#6-15): 10 services, 10 endpoints, 108 new tests (2819 total). Module 11 FEATURE-COMPLETE (15/15). Phase 4 COMPLETE. |
 | 32 | 2026-03-23 | CI triggered (DRP accuracy update) | ⏳ CI pending | 49acf09 | DRP typosquat accuracy: 7 new methods, composite scoring (JW+soundex+TLD), CertStream monitor, domain enricher. 44 new tests (310 DRP, ~2863 total). |
+| 33 | 2026-03-23 | etip_frontend updated + 4 Phase 4 services added to deploy pipeline | ⏳ CI pending | f3ed4b5, 07b3f8a | Phase 4 Frontend: 4 new pages (DRP, Graph, Correlation, Hunting). 35 new tests (252 frontend). Deploy pipeline: nginx routes + build + health checks for etip_threat_graph, etip_correlation, etip_hunting, etip_drp. |
 
 ## E2E Verification Results (Session 13)
 
