@@ -105,13 +105,13 @@ export function RiskHeatmap({ data }: { data: { date: string; count: number }[] 
   }
 
   return (
-    <div className="flex gap-[2px] overflow-x-auto">
+    <div className="flex gap-[3px] overflow-x-auto pb-1">
       {weeks.map((week, wi) => (
-        <div key={wi} className="flex flex-col gap-[2px]">
+        <div key={wi} className="flex flex-col gap-[3px]">
           {week.map((day, di) => (
             <div
               key={di}
-              className={cn('w-2.5 h-2.5 rounded-[2px] transition-colors', day.date ? getColor(day.count) : 'bg-transparent')}
+              className={cn('w-3.5 h-3.5 rounded-sm transition-colors cursor-default', day.date ? getColor(day.count) : 'bg-transparent')}
               title={day.date ? `${day.date}: ${day.count} alerts` : ''}
             />
           ))}

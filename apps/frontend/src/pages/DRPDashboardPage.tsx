@@ -87,9 +87,14 @@ export function DRPDashboardPage() {
 
   const execRiskScore = useMemo(() => {
     if (!alertStats || !assetStats) return 0
+    // Balanced formula: open ratio (0-25), severity mix (0-35), asset risk (0-25), volume (0-15)
     const openRatio = alertStats.total > 0 ? (alertStats.open + alertStats.investigating) / alertStats.total : 0
-    const critWeight = (alertStats.bySeverity['critical'] ?? 0) * 4 + (alertStats.bySeverity['high'] ?? 0) * 2
-    return Math.min(100, Math.round(openRatio * 40 + critWeight * 5 + assetStats.avgRiskScore * 0.3))
+    const critCount = alertStats.bySeverity['critical'] ?? 0
+    const highCount = alertStats.bySeverity['high'] ?? 0
+    const sevScore = Math.min(35, critCount * 8 + highCount * 4)
+    const assetRisk = assetStats.avgRiskScore * 0.25
+    const volumeScore = Math.min(15, alertStats.total * 1.5)
+    return Math.min(95, Math.round(openRatio * 25 + sevScore + assetRisk + volumeScore))
   }, [alertStats, assetStats])
 
   const alerts = useMemo(() => {
@@ -207,12 +212,12 @@ export function DRPDashboardPage() {
       </PageStatsBar>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-        {/* Top row: Risk Score + CertStream + Heatmap */}
+        {/* Top row: Risk Score + CertStream + Alerts by Type */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-bg-secondary rounded-lg border border-border flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-semibold text-text-primary uppercase">Digital Risk Score</h3>
-              <TooltipHelp message="Composite score based on open alerts, severity distribution, and asset risk. Designed for executive reporting." />
+              <TooltipHelp message="Composite score based on open alert ratio, severity distribution, asset risk, and alert volume. Capped at 95 — only a confirmed breach reaches 100." />
             </div>
             <ExecutiveRiskGauge score={execRiskScore} />
             <div className="flex items-center gap-3 text-[10px] text-text-muted">
@@ -236,22 +241,37 @@ export function DRPDashboardPage() {
             </div>
           </div>
 
-          <div className="p-4 bg-bg-secondary rounded-lg border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-[10px] text-text-muted uppercase font-medium">Alert Activity (90 days)</h3>
-              <TooltipHelp message="GitHub-style heatmap showing daily alert density. Darker cells = more alerts." />
+          {/* Quick stats summary card */}
+          <div className="p-4 bg-bg-secondary rounded-lg border border-border space-y-3">
+            <h3 className="text-[10px] text-text-muted uppercase font-medium">Alert Summary</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <div><span className="text-lg font-bold text-text-primary tabular-nums">{alertStats?.total ?? 0}</span><p className="text-[10px] text-text-muted">Total Alerts</p></div>
+              <div><span className="text-lg font-bold text-sev-critical tabular-nums">{alertStats?.open ?? 0}</span><p className="text-[10px] text-text-muted">Unresolved</p></div>
+              <div><span className="text-lg font-bold text-sev-low tabular-nums">{alertStats?.resolved ?? 0}</span><p className="text-[10px] text-text-muted">Resolved</p></div>
+              <div><span className="text-lg font-bold text-text-primary tabular-nums">{assetStats?.total ?? 0}</span><p className="text-[10px] text-text-muted">Assets Monitored</p></div>
             </div>
-            <RiskHeatmap data={heatmapData} />
-            <div className="flex items-center gap-1 mt-2 text-[9px] text-text-muted">
+          </div>
+        </div>
+
+        {/* Alert Activity Heatmap — full width for visibility */}
+        <div className="p-4 bg-bg-secondary rounded-lg border border-border">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold text-text-primary">Alert Activity</h3>
+              <span className="text-[10px] text-text-muted">Last 90 days</span>
+              <TooltipHelp message="GitHub-style heatmap showing daily alert density. Darker = more alerts. Hover for exact counts." />
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
               <span>Less</span>
-              <div className="w-2.5 h-2.5 rounded-[2px] bg-bg-elevated" />
-              <div className="w-2.5 h-2.5 rounded-[2px] bg-sev-low/40" />
-              <div className="w-2.5 h-2.5 rounded-[2px] bg-sev-medium/50" />
-              <div className="w-2.5 h-2.5 rounded-[2px] bg-sev-high/60" />
-              <div className="w-2.5 h-2.5 rounded-[2px] bg-sev-critical/80" />
+              <div className="w-3 h-3 rounded-sm bg-bg-elevated border border-border/50" />
+              <div className="w-3 h-3 rounded-sm bg-sev-low/40" />
+              <div className="w-3 h-3 rounded-sm bg-sev-medium/50" />
+              <div className="w-3 h-3 rounded-sm bg-sev-high/60" />
+              <div className="w-3 h-3 rounded-sm bg-sev-critical/80" />
               <span>More</span>
             </div>
           </div>
+          <RiskHeatmap data={heatmapData} />
         </div>
 
         {/* Typosquat Scanner */}

@@ -249,7 +249,7 @@ describe('DRPDashboardPage', () => {
 
   it('renders alert activity heatmap', () => {
     render(<DRPDashboardPage />)
-    expect(screen.getByText('Alert Activity (90 days)')).toBeTruthy()
+    expect(screen.getByText('Alert Activity')).toBeTruthy()
   })
 
   it('renders typosquat scanner section', () => {
