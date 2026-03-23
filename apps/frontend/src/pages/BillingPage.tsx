@@ -15,9 +15,8 @@ import {
 } from '@/hooks/use-phase6-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
-  CreditCard, TrendingUp, Zap, HardDrive, Users,
-  CheckCircle2, X, Download, Tag, AlertTriangle,
-  ChevronUp, ChevronDown, RotateCcw,
+  TrendingUp, Zap, HardDrive, Users,
+  CheckCircle2, X, Download, Tag, AlertTriangle, RotateCcw,
 } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────────

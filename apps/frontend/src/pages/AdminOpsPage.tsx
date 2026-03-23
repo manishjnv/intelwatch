@@ -48,15 +48,6 @@ const STATUS_CONFIG: Record<ServiceStatus, { label: string; dot: string; text: s
   unknown:  { label: 'Unknown',  dot: 'bg-text-muted',   text: 'text-text-muted',   Icon: Clock },
 }
 
-function ServiceStatusDot({ status }: { status: ServiceStatus }) {
-  const cfg = STATUS_CONFIG[status]
-  return (
-    <span className="relative flex items-center gap-1.5">
-      <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dot, status === 'healthy' && 'animate-pulse')} />
-      <span className={cn('text-[10px] font-medium', cfg.text)}>{cfg.label}</span>
-    </span>
-  )
-}
 
 const MAINT_STATUS_COLORS: Record<string, string> = {
   scheduled: 'text-accent bg-accent/10',
