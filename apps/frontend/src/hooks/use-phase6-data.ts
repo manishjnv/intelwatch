@@ -63,7 +63,9 @@ export function useUsageMeters() {
     queryFn: () => api<UsageMeters>('/billing/usage').catch(() => null as unknown as UsageMeters),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_USAGE_METERS, d => d != null)
+  // Validate shape: API returns flat {api_calls,iocs_ingested,...} not nested UsageMeters
+  return withDemoFallback(result, DEMO_USAGE_METERS,
+    d => d != null && typeof (d as Record<string, unknown>)?.apiCalls === 'object')
 }
 
 export function useCurrentSubscription() {
@@ -72,7 +74,8 @@ export function useCurrentSubscription() {
     queryFn: () => api<CurrentSubscription>('/billing/subscription').catch(() => null as unknown as CurrentSubscription),
     staleTime: 120_000,
   })
-  return withDemoFallback(result, DEMO_CURRENT_SUBSCRIPTION, d => d != null)
+  return withDemoFallback(result, DEMO_CURRENT_SUBSCRIPTION,
+    d => d != null && typeof (d as Record<string, unknown>)?.planId === 'string')
 }
 
 export function usePaymentHistory(page = 1) {
@@ -95,7 +98,8 @@ export function useBillingStats() {
     queryFn: () => api<BillingStats>('/billing/stats').catch(() => null as unknown as BillingStats),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_BILLING_STATS, d => d != null)
+  return withDemoFallback(result, DEMO_BILLING_STATS,
+    d => d != null && typeof (d as Record<string, unknown>)?.currentPlan === 'string')
 }
 
 export function useApplyCoupon() {
@@ -147,7 +151,7 @@ export function useSystemHealth() {
   return withDemoFallback(
     result,
     { services: DEMO_SERVICE_HEALTH, summary: DEMO_SYSTEM_HEALTH_SUMMARY },
-    d => d != null,
+    d => d != null && Array.isArray((d as Record<string, unknown>)?.services),
   )
 }
 
@@ -250,5 +254,6 @@ export function useAdminStats() {
     queryFn: () => api<AdminStats>('/admin/stats').catch(() => null as unknown as AdminStats),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_ADMIN_STATS, d => d != null)
+  return withDemoFallback(result, DEMO_ADMIN_STATS,
+    d => d != null && typeof (d as Record<string, unknown>)?.totalTenants === 'number')
 }
