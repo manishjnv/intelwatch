@@ -597,3 +597,5 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 **Session 37:** Integration Service P1/P2 accuracy improvements (10/10). 34 new endpoints (58 total), 161 new tests (335 total). Commit f2f85e4. CI blocked by Issue 37.
 
 **Session 38:** No new RCA issues. Phase 5 Frontend UI: 3 new pages (Integration, User Management, Customization). Frontend-only changes — no backend/deploy impact. 63 new tests (367 frontend, 3692 monorepo). Commit d8c9d8b. CI triggered, pending.
+
+**Session 39:** First CI run (f11b866) failed Docker build — Dockerfile missing COPY for `apps/onboarding/package.json` + `tsconfig.json`. This is the standard new-package-checklist item (items 3-4 from CLAUDE.md). Fixed in separate commit 1695a52 (added Dockerfile COPY + docker-compose + nginx). Second CI run green. No new RCA issue — existing checklist covers this. Onboarding Service: 32 endpoints, 190 new tests (3882 monorepo). Deployed to VPS on port 3018.

@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 38
+**Session counter:** 39
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -24,6 +24,7 @@
 | etip_integration | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. Added to deploy.yml + nginx. |
 | etip_user_management | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. Added to deploy.yml + nginx. |
 | etip_customization | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3017. 35 endpoints, 159 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. Added to deploy.yml + nginx. |
+| etip_onboarding | ✅ Deployed | 0.1.0 | 2026-03-23 | Port 3018. 32 endpoints, 190 tests. Setup wizard, data source connectors, pipeline health, module readiness, progress tracker. Added to deploy.yml + nginx + docker-compose. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -56,7 +57,7 @@
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
 | customization | 5 | ✅ Complete | 2026-03-23 | Port 3017. **Core + 5 P0 improvements COMPLETE**. 35 endpoints, 159 tests. Module toggles (per-tenant enable/disable, feature flags). AI model selection (Claude model per task, token budget/cost limits). Risk score weight customization (composite confidence weights, decay rate overrides). Dashboard customization (widget layout, default filters/time ranges). Notification preferences (per-user alert channels, severity thresholds). P0: config inheritance, versioning, validation engine, import/export, audit trail. FEATURE-COMPLETE. **Phase 5 COMPLETE (3/3).** |
-| onboarding | 6 | 📋 Not started | - | Phase 6 gate |
+| onboarding | 6 | ✅ Deployed | 2026-03-23 | Port 3018. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 190 tests. 8-step wizard (welcome → org → team → feeds → integrations → dashboard → readiness → launch). Data source connectors (8 types). Pipeline health checker. Module readiness with dependency validation. Progress tracker with readiness scoring. P0: prerequisite validation, demo data seeding (150 IOCs, 10 actors, 20 malware, 50 CVEs), integration testing (DNS→TCP→auth→data), checklist persistence, welcome dashboard with guided tips. Phase 6: 1/3. |
 | billing | 6 | 📋 Not started | - | Phase 6 gate |
 | admin-ops | 6 | 📋 Not started | - | Phase 6 gate |
 
@@ -86,6 +87,7 @@ drp-service           → shared-types, shared-utils, shared-auth (Phase 4)
 integration-service   → shared-types, shared-utils, shared-auth, bullmq (Phase 5)
 user-management       → shared-types, shared-utils, shared-auth (Phase 5)
 customization         → shared-types, shared-utils, shared-auth (Phase 5)
+onboarding            → shared-types, shared-utils, shared-auth (Phase 6)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ```
 
@@ -121,10 +123,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 5 COMPLETE — all backend + frontend done. Phases 1-5 COMPLETE. 13 interactive data pages, 25/27 modules built.
-- **Last session outcome:** Session 38 (2026-03-23). Phase 5 Frontend UI: 3 new pages (Integration, User Management, Customization) replacing ComingSoonPage. 8 new files, 3 modified. 30 TanStack Query hooks with demo fallback. 63 new tests (367 frontend, 3692 monorepo). Routes: /integrations, /settings, /customization. Commit d8c9d8b. Pushed to master, CI deploy triggered.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. 1 pre-existing test failure in shared-auth (not new). User management + customization services use in-memory store (DECISION-013 pattern). RBAC permissions defined in user-management-service — Phase 4+5 services can query this service for permission checks.
-- **Next tasks:** (1) Phase 6 planning: onboarding, billing, admin-ops. (2) Verify deploy health for all Phase 4+5 services on VPS. (3) Elasticsearch IOC indexing. (4) Update QA_CHECKLIST.md. (5) Mobile responsive testing at 375px/768px.
+- **Current phase:** Phase 6 IN PROGRESS — Onboarding complete (1/3). Phases 1-5 COMPLETE. 13 interactive data pages, 26/27 modules built. 3882 tests.
+- **Last session outcome:** Session 39 (2026-03-23). Onboarding Service (Module 18) core + P0. 41 new files. 32 endpoints, 190 tests. Commits f11b866 (code), 1695a52 (deploy pipeline). CI green. Deployed to VPS on port 3018.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. 1 pre-existing test failure in shared-auth (not new). All Phase 4-6 backend services use in-memory store (DECISION-013 pattern). RBAC permissions defined in user-management-service.
+- **Next tasks:** (1) Billing Service (Module 19) — Razorpay integration, usage metering, plan management. (2) Admin Ops (Module 22) — system health, maintenance mode. (3) Elasticsearch IOC indexing. (4) Update QA_CHECKLIST.md. (5) Mobile responsive testing at 375px/768px.
 
 ## Deployment Log
 
@@ -160,6 +162,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 36 | 2026-03-23 | etip_customization added (port 3017) | ⏳ CI pending | ea46b2e | Customization Service (Module 17): 35 endpoints, 5 core features, 5 P0 improvements, 159 tests. Module toggles, AI model selection, risk weights, dashboard customization, notification preferences. Phase 5 COMPLETE (3/3). |
 | 37 | 2026-03-23 | etip_integration updated (P1/P2) | ⏳ CI pending | f2f85e4 | Integration Service P1/P2: 10 accuracy improvements, 34 new endpoints (58 total), 161 new tests (335 total). |
 | 38 | 2026-03-23 | etip_frontend updated (Phase 5 pages) | ⏳ CI pending | d8c9d8b | Phase 5 Frontend: 3 new pages (Integration, User Management, Customization). 30 hooks, 63 new tests (367 frontend, 3692 total). |
+| 39 | 2026-03-23 | etip_onboarding added (port 3018) | ✅ CI green | f11b866, 1695a52 | Onboarding Service (Module 18): 32 endpoints, 5 core + 5 P0, 190 tests. Phase 6 started (1/3). Deploy pipeline wired in separate commit. |
 
 ## E2E Verification Results (Session 13)
 
@@ -174,7 +177,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 19 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 20 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
