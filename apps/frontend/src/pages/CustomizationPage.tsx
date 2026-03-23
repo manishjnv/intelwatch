@@ -107,7 +107,7 @@ function ModulesTab({ modules, isDemo }: { modules: ModuleToggle[]; isDemo: bool
             {mods.map(mod => (
               <div key={mod.id} className="p-3 bg-bg-secondary rounded-lg border border-border flex items-start gap-3">
                 <button
-                  onClick={() => !isDemo && toggleMutation.mutate({ id: mod.id, enabled: !mod.enabled })}
+                  onClick={() => { if (!isDemo) toggleMutation.mutate({ id: mod.id, enabled: !mod.enabled }) }}
                   disabled={isDemo || toggleMutation.isPending}
                   className="mt-0.5 shrink-0">
                   {mod.enabled
@@ -174,7 +174,7 @@ function AIConfigTab({ configs, isDemo }: { configs: AIModelConfig[]; isDemo: bo
                 <span className="text-xs font-medium text-text-primary">{config.task}</span>
               </div>
               <button
-                onClick={() => !isDemo && updateMutation.mutate({ id: config.id, enabled: !config.enabled })}
+                onClick={() => { if (!isDemo) updateMutation.mutate({ id: config.id, enabled: !config.enabled }) }}
                 disabled={isDemo || updateMutation.isPending}>
                 {config.enabled
                   ? <ToggleRight className="w-5 h-5 text-sev-low" />
@@ -247,7 +247,7 @@ function RiskWeightsTab({ weights, isDemo }: { weights: RiskWeight[]; isDemo: bo
             Math.abs(totalWeight - 1) < 0.01 ? 'text-sev-low' : 'text-sev-critical')}>
             Total: {totalWeight.toFixed(2)}
           </span>
-          <button onClick={() => { setLocalWeights({}); !isDemo && resetMutation.mutate() }}
+          <button onClick={() => { setLocalWeights({}); if (!isDemo) resetMutation.mutate() }}
             disabled={isDemo || resetMutation.isPending}
             className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-bg-elevated text-text-muted hover:text-text-secondary transition-colors disabled:opacity-50">
             <RotateCcw className="w-3 h-3" /> Reset
@@ -374,7 +374,7 @@ function NotificationsTab({ channels, isDemo }: { channels: NotificationChannel[
               <span className="text-xs font-medium text-text-primary">{ch.name}</span>
             </div>
             <button
-              onClick={() => !isDemo && updateMutation.mutate({ id: ch.id, enabled: !ch.enabled })}
+              onClick={() => { if (!isDemo) updateMutation.mutate({ id: ch.id, enabled: !ch.enabled }) }}
               disabled={isDemo || updateMutation.isPending}>
               {ch.enabled
                 ? <ToggleRight className="w-5 h-5 text-sev-low" />
@@ -418,7 +418,7 @@ function NotificationsTab({ channels, isDemo }: { channels: NotificationChannel[
 
           {/* Test button */}
           <button
-            onClick={() => !isDemo && testMutation.mutate(ch.id)}
+            onClick={() => { if (!isDemo) testMutation.mutate(ch.id) }}
             disabled={isDemo || testMutation.isPending || !ch.enabled}
             className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50">
             <Send className="w-3 h-3" />

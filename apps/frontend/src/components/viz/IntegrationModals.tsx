@@ -383,7 +383,7 @@ export function IntegrationDetailPanel({ tab, item, onClose, isDemo }: {
         {/* Actions */}
         {tab === 'siem' && (
           <button
-            onClick={() => !isDemo && testMutation.mutate(item.id)}
+            onClick={() => { if (!isDemo) testMutation.mutate(item.id) }}
             disabled={testMutation.isPending || isDemo}
             className="w-full py-2 text-xs font-medium bg-accent/10 text-accent border border-accent/20 rounded hover:bg-accent/20 transition-colors disabled:opacity-50">
             {testMutation.isPending ? 'Testing…' : 'Test Connection'}

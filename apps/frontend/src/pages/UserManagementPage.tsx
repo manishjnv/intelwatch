@@ -165,7 +165,7 @@ export function UserManagementPage() {
       render: (r) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize', STATUS_COLORS[r.status] ?? '')}>{r.status}</span> },
     { key: 'actions', label: '', width: '8%',
       render: (r) => r.status === 'active' ? (
-        <button onClick={(e) => { e.stopPropagation(); !isDemo && revokeSession.mutate(r.id) }}
+        <button onClick={(e) => { e.stopPropagation(); if (!isDemo) revokeSession.mutate(r.id) }}
           disabled={revokeSession.isPending || isDemo} title="Revoke session"
           className="text-[10px] px-2 py-1 rounded bg-sev-critical/10 text-sev-critical hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
           Revoke
@@ -228,7 +228,7 @@ export function UserManagementPage() {
           )}
 
           {activeTab === 'sessions' && (
-            <button onClick={() => !isDemo && revokeAll.mutate()} disabled={revokeAll.isPending || isDemo}
+            <button onClick={() => { if (!isDemo) revokeAll.mutate() }} disabled={revokeAll.isPending || isDemo}
               className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-sev-critical/10 text-sev-critical border border-sev-critical/20 rounded-md hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
               <XCircle className="w-3 h-3" />Revoke All
             </button>
