@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-6%20in%20progress-00ff88)
-![Tests](https://img.shields.io/badge/tests-4031%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-4178%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -33,10 +33,11 @@
 | Customization Service (module toggles, AI config, risk weights, 35 endpoints) | 🔨 Feature-complete (5 P0) | 159 |
 | Onboarding Service (8-step wizard, connectors, health checks, 32 endpoints) | ✅ Deployed | 190 |
 | Billing Service (plan management, Razorpay, usage metering, GST invoices, 28 endpoints) | ✅ Built | 149 |
-| Infrastructure (26 Docker containers) | ✅ All healthy | — |
+| Admin Ops Service (system health, maintenance, backup/restore, tenant admin, audit, 28 endpoints) | ✅ Built | 147 |
+| Infrastructure (27 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 6 in progress (2/3) — Phases 1-5 done** | **27/28 modules built** | **4031** |
+| **Phase 6 COMPLETE (3/3) — All phases done** | **28/28 modules built** | **4178** |
 
 ## Live API Endpoints
 

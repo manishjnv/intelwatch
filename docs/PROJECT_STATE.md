@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 40
+**Session counter:** 41
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -26,6 +26,7 @@
 | etip_customization | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3017. 35 endpoints, 159 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. Added to deploy.yml + nginx. |
 | etip_onboarding | ✅ Deployed | 0.1.0 | 2026-03-23 | Port 3018. 32 endpoints, 190 tests. Setup wizard, data source connectors, pipeline health, module readiness, progress tracker. Added to deploy.yml + nginx + docker-compose. |
 | etip_billing | ✅ Deployed | 0.1.0 | 2026-03-23 | Port 3019. 28 endpoints, 149 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. Added to deploy.yml + docker-compose. |
+| etip_admin | ⏳ Deploy triggered | 0.1.0 | 2026-03-23 | Port 3022. 28 endpoints, 147 tests. System health monitoring, maintenance windows, backup/restore, tenant administration, audit dashboard + 5 P0 improvements. Added to deploy.yml + docker-compose + nginx. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -60,7 +61,7 @@
 | customization | 5 | ✅ Complete | 2026-03-23 | Port 3017. **Core + 5 P0 improvements COMPLETE**. 35 endpoints, 159 tests. Module toggles (per-tenant enable/disable, feature flags). AI model selection (Claude model per task, token budget/cost limits). Risk score weight customization (composite confidence weights, decay rate overrides). Dashboard customization (widget layout, default filters/time ranges). Notification preferences (per-user alert channels, severity thresholds). P0: config inheritance, versioning, validation engine, import/export, audit trail. FEATURE-COMPLETE. **Phase 5 COMPLETE (3/3).** |
 | onboarding | 6 | ✅ Deployed | 2026-03-23 | Port 3018. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 190 tests. 8-step wizard (welcome → org → team → feeds → integrations → dashboard → readiness → launch). Data source connectors (8 types). Pipeline health checker. Module readiness with dependency validation. Progress tracker with readiness scoring. P0: prerequisite validation, demo data seeding (150 IOCs, 10 actors, 20 malware, 50 CVEs), integration testing (DNS→TCP→auth→data), checklist persistence, welcome dashboard with guided tips. Phase 6: 1/3. |
 | billing | 6 | ✅ Complete | 2026-03-23 | Port 3019. 28 endpoints, 5 P0 improvements, 149 tests. Plan management (Free/Starter/Pro/Enterprise), usage metering (80/90/100% alerts), Razorpay subscriptions/webhooks, GST invoices (18%), upgrade/downgrade with 72hr grace, coupon codes. FEATURE-COMPLETE. |
-| admin-ops | 6 | 📋 Not started | - | Phase 6 gate |
+| admin-ops | 6 | ✅ Complete | 2026-03-23 | Port 3022. **Core + 5 P0 improvements COMPLETE**. 28 endpoints, 147 tests. System health (18 services), maintenance windows (CRUD + activate/deactivate), backup/restore, tenant admin (CRUD + suspend/reinstate/plan/usage), audit log (CSV export). P0: dependency map, alert rules (seeded 5 defaults), scheduled maintenance (cron), tenant analytics, admin activity log. FEATURE-COMPLETE. **Phase 6 COMPLETE (3/3).** |
 
 ## Module Dependency Map
 ```
@@ -90,6 +91,7 @@ user-management       → shared-types, shared-utils, shared-auth (Phase 5)
 customization         → shared-types, shared-utils, shared-auth (Phase 5)
 onboarding            → shared-types, shared-utils, shared-auth (Phase 6)
 billing-service       → shared-types, shared-utils, shared-auth, razorpay (Phase 6)
+admin-service         → shared-types, shared-utils, shared-auth (Phase 6)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ```
 
@@ -125,10 +127,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 6 IN PROGRESS — Onboarding + Billing complete (2/3). Phases 1-5 COMPLETE. 13 interactive data pages, 27/28 modules built. 4031 tests.
-- **Last session outcome:** Session 40 (2026-03-23). Billing Service (Module 19) core + P0. 43 files. 28 endpoints, 149 tests. Commit e2c897a. CI triggered (deploy pending). Port 3019. Razorpay, GST, usage metering, upgrade/downgrade, coupons.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. 1 pre-existing test failure in shared-auth (not new). All Phase 4-6 backend services use in-memory store (DECISION-013 pattern). Razorpay keys need real values in VPS .env (TI_RAZORPAY_KEY_ID, TI_RAZORPAY_KEY_SECRET, TI_RAZORPAY_WEBHOOK_SECRET).
-- **Next tasks:** (1) Admin Ops (Module 22) — system health, maintenance mode, rate-limit tuning, announcement banner. (2) Billing frontend page (plan cards, usage meters, payment flow). (3) Elasticsearch IOC indexing. (4) Update QA_CHECKLIST.md. (5) Mobile responsive testing at 375px/768px.
+- **Current phase:** Phase 6 COMPLETE — All 3 modules built (onboarding + billing + admin-ops). Phases 1-6 ALL COMPLETE. 28/28 modules built. 4178 tests.
+- **Last session outcome:** Session 41 (2026-03-23). Admin Ops Service (Module 22) core + P0. 44 files changed. 28 endpoints, 147 tests. Commit f4ca0f5. CI triggered (deploy pending). Port 3022. System health, maintenance mode, backup/restore, tenant admin, audit + alert rules, scheduled maintenance, tenant analytics, admin activity log.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. 1 pre-existing test failure in shared-auth (not new). All Phase 4-6 backend services use in-memory store (DECISION-013 pattern). Razorpay keys need real values in VPS .env (TI_RAZORPAY_KEY_ID, TI_RAZORPAY_KEY_SECRET, TI_RAZORPAY_WEBHOOK_SECRET). Admin-service env needs: TI_ADMIN_PORT=3022.
+- **Next tasks:** (1) Billing frontend page (plan cards, usage meters, upgrade flow, payment history). (2) Admin Ops frontend page (system health dashboard, maintenance calendar, tenant table). (3) Elasticsearch IOC indexing. (4) Update QA_CHECKLIST.md. (5) Mobile responsive testing at 375px/768px. (6) Wire all 6 Phase 5-6 services into nginx routing.
 
 ## Deployment Log
 
@@ -166,6 +168,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 38 | 2026-03-23 | etip_frontend updated (Phase 5 pages) | ⏳ CI pending | d8c9d8b | Phase 5 Frontend: 3 new pages (Integration, User Management, Customization). 30 hooks, 63 new tests (367 frontend, 3692 total). |
 | 39 | 2026-03-23 | etip_onboarding added (port 3018) | ✅ CI green | f11b866, 1695a52 | Onboarding Service (Module 18): 32 endpoints, 5 core + 5 P0, 190 tests. Phase 6 started (1/3). Deploy pipeline wired in separate commit. |
 | 40 | 2026-03-23 | etip_billing added (port 3019) | ⏳ CI pending | e2c897a | Billing Service (Module 19): 28 endpoints, 5 P0, 149 tests. Razorpay, GST invoices, usage metering, upgrade/downgrade, coupons. 4031 monorepo tests. Phase 6: 2/3. |
+| 41 | 2026-03-23 | etip_admin added (port 3022) | ⏳ CI pending | f4ca0f5 | Admin Ops Service (Module 22): 28 endpoints, 5 core + 5 P0, 147 tests. System health, maintenance windows, backup/restore, tenant admin, audit dashboard. 4178 monorepo tests. Phase 6 COMPLETE (3/3). |
 
 ## E2E Verification Results (Session 13)
 
