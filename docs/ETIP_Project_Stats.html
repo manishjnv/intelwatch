@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 36 &middot; 2026-03-23 &middot; Phase 5 COMPLETE — All Enterprise Platform Modules Done</span>
+  <span class="version">Session 40 &middot; 2026-03-23 &middot; Phase 6 IN PROGRESS (2/3) — Billing Service Complete</span>
 </div>
 </div>
 
@@ -87,12 +87,12 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">01</span>Executive Summary</h2>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-value">93%</div><div class="stat-label">Overall Completion</div></div>
-    <div class="stat-card"><div class="stat-value">25/27</div><div class="stat-label">Modules Developed</div></div>
-    <div class="stat-card"><div class="stat-value">3,468</div><div class="stat-label">Tests Passing</div></div>
-    <div class="stat-card"><div class="stat-value">25</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~387</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">36</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">96%</div><div class="stat-label">Overall Completion</div></div>
+    <div class="stat-card"><div class="stat-value">27/28</div><div class="stat-label">Modules Built</div></div>
+    <div class="stat-card"><div class="stat-value">4,031</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">26</div><div class="stat-label">Docker Containers</div></div>
+    <div class="stat-card"><div class="stat-value">~480</div><div class="stat-label">API Endpoints</div></div>
+    <div class="stat-card"><div class="stat-value">40</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">39</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value">301</div><div class="stat-label">Production IOCs</div></div>
   </div>
@@ -110,8 +110,8 @@ li strong { color: var(--text-primary); }
       <tr><td>2</td><td><strong>Data Pipeline</strong></td><td>3</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
       <tr><td>3</td><td><strong>Core Intelligence</strong></td><td>4</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
       <tr><td>4</td><td><strong>Advanced Intelligence</strong></td><td>4</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
-      <tr><td>5</td><td><strong>Platform & Integrations</strong></td><td>3</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
-      <tr><td>6</td><td><strong>Growth & Monetization</strong></td><td>3</td><td><span class="badge badge-gray">NOT STARTED</span></td><td>0%</td><td><div class="progress-bar"><div class="progress-fill fill-gray" style="width:0%"></div></div></td></tr>
+      <tr><td>5</td><td><strong>Platform &amp; Integrations</strong></td><td>3</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
+      <tr><td>6</td><td><strong>Growth &amp; Monetization</strong></td><td>3</td><td><span class="badge badge-amber">IN PROGRESS (2/3)</span></td><td>67%</td><td><div class="progress-bar"><div class="progress-fill fill-amber" style="width:67%"></div></div></td></tr>
     </tbody>
   </table>
 </div>
@@ -120,7 +120,7 @@ li strong { color: var(--text-primary); }
 <!-- MODULES -->
 <section>
 <div class="container">
-  <h2><span class="num">03</span>Module Status (27 Total)</h2>
+  <h2><span class="num">03</span>Module Status (28 Total)</h2>
 
   <h3>Shared Packages — Tier 1 Frozen (8)</h3>
   <table>
@@ -137,29 +137,30 @@ li strong { color: var(--text-primary); }
     </tbody>
   </table>
 
-  <h3>Feature Services (19)</h3>
+  <h3>Feature Services (20)</h3>
   <table>
     <thead><tr><th>Module</th><th>Port</th><th>Phase</th><th>Status</th><th>Endpoints</th><th>Tests</th></tr></thead>
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy</td><td>45</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth</td><td>21</td></tr>
-      <tr><td>frontend</td><td>80</td><td>1</td><td><span class="badge badge-purple">UI Frozen</span></td><td>SPA</td><td>217</td></tr>
+      <tr><td>frontend</td><td>80</td><td>1</td><td><span class="badge badge-purple">UI Frozen</span></td><td>SPA (13 pages)</td><td>367</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD</td><td>276</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline</td><td>139</td></tr>
-      <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>5 + 2 batch</td><td>253</td></tr>
+      <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
       <tr><td>ioc-intelligence</td><td>3007</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>15</td><td>119</td></tr>
       <tr><td>threat-actor-intel</td><td>3008</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>28</td><td>190</td></tr>
       <tr><td>malware-intel</td><td>3009</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>27</td><td>149</td></tr>
       <tr><td>vulnerability-intel</td><td>3010</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>28</td><td>119</td></tr>
       <tr><td>threat-graph</td><td>3012</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>294</td></tr>
-      <tr><td>correlation-engine</td><td>3013</td><td>4</td><td><span class="badge badge-green">Feature-complete</span></td><td>20</td><td>166</td></tr>
-      <tr><td>threat-hunting</td><td>3014</td><td>4</td><td><span class="badge badge-green">Feature-complete</span></td><td>47</td><td>222</td></tr>
-      <tr><td>digital-risk-protection</td><td>3011</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>36</td><td>310</td></tr>
-      <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>24</td><td>174</td></tr>
-      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>185</td></tr>
-      <tr><td><strong>customization</strong></td><td>3017</td><td>5</td><td><span class="badge badge-green">Complete</span></td><td>35</td><td>159</td></tr>
-      <tr><td>onboarding</td><td>—</td><td>6</td><td><span class="badge badge-gray">Not started</span></td><td>—</td><td>—</td></tr>
-      <tr><td>billing / admin-ops</td><td>—</td><td>6</td><td><span class="badge badge-gray">Not started</span></td><td>—</td><td>—</td></tr>
+      <tr><td>correlation-engine</td><td>3013</td><td>4</td><td><span class="badge badge-blue">Feature-complete</span></td><td>20</td><td>166</td></tr>
+      <tr><td>threat-hunting</td><td>3014</td><td>4</td><td><span class="badge badge-blue">Feature-complete</span></td><td>47</td><td>222</td></tr>
+      <tr><td>digital-risk-protection</td><td>3011</td><td>4</td><td><span class="badge badge-blue">Feature-complete</span></td><td>36</td><td>310</td></tr>
+      <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-blue">Feature-complete</span></td><td>58</td><td>335</td></tr>
+      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-blue">Feature-complete</span></td><td>32</td><td>185</td></tr>
+      <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-blue">Feature-complete</span></td><td>35</td><td>159</td></tr>
+      <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>190</td></tr>
+      <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28</td><td>149</td></tr>
+      <tr><td>admin-ops</td><td>—</td><td>6</td><td><span class="badge badge-gray">Not started</span></td><td>—</td><td>—</td></tr>
     </tbody>
   </table>
 </div>
@@ -170,13 +171,13 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">04</span>Status Summary</h2>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">25</div><div class="stat-label">Deployed / Complete (93%)</div></div>
+    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">27</div><div class="stat-label">Built / Complete (96%)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#60a5fa">0</div><div class="stat-label">In Progress (0%)</div></div>
-    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#94a3b8">2</div><div class="stat-label">Not Started (7%)</div></div>
+    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#94a3b8">1</div><div class="stat-label">Not Started (4%)</div></div>
   </div>
   <div class="progress-wrap">
-    <div class="progress-label"><span><strong>Overall Progress</strong></span><span>25 / 27 modules (93%)</span></div>
-    <div class="progress-bar" style="height:16px"><div class="progress-fill fill-blue" style="width:93%"></div></div>
+    <div class="progress-label"><span><strong>Overall Progress</strong></span><span>27 / 28 modules (96%)</span></div>
+    <div class="progress-bar" style="height:16px"><div class="progress-fill fill-blue" style="width:96%"></div></div>
   </div>
 </div>
 </section>
@@ -212,11 +213,11 @@ li strong { color: var(--text-primary); }
     </div>
     <div class="card">
       <div class="card-title"><span class="badge badge-green">COMPLETE</span> Differentiator F — Digital Risk Protection</div>
-      <div class="card-body">4 detection engines (typosquat 7-algo + CertStream, dark web, credential leak, attack surface). 15 improvements: confidence scoring, AI enrichment, batch scan, trending analysis, social impersonation, takedown generation, STIX export, rogue app detection, risk aggregation, cross-correlation. 36 endpoints.</div>
+      <div class="card-body">4 detection engines (typosquat 12-algo + CertStream, dark web, credential leak, attack surface). 15 improvements + typosquat accuracy: composite scoring (Jaro-Winkler + soundex + TLD risk + phonetic), CertStream real-time monitor. 36 endpoints, 310 tests.</div>
     </div>
     <div class="card">
       <div class="card-title"><span class="badge badge-green">COMPLETE</span> Differentiator G — Enterprise Integration Hub</div>
-      <div class="card-body">SIEM adapters (Splunk HEC, Sentinel, QRadar), webhook delivery with retry/DLQ, ticketing (ServiceNow, Jira), STIX/TAXII export, field mapping engine, credential encryption, event routing, health dashboard. 24 endpoints.</div>
+      <div class="card-body">SIEM adapters (Splunk HEC, Sentinel, QRadar), webhook delivery with retry/DLQ, ticketing (ServiceNow, Jira), STIX/TAXII export, field mapping engine, credential encryption, event routing, health dashboard. 58 endpoints (P1/P2 complete).</div>
     </div>
     <div class="card">
       <div class="card-title"><span class="badge badge-green">COMPLETE</span> Differentiator H — Enterprise User Management</div>
@@ -226,6 +227,14 @@ li strong { color: var(--text-primary); }
       <div class="card-title"><span class="badge badge-green">COMPLETE</span> Differentiator I — Full Platform Customization</div>
       <div class="card-body">Module activation toggles with dependency graph validation, AI model selection (Haiku/Sonnet/Opus) with token budgets, risk score weight customization (3 presets, per-IOC-type), dashboard layouts per user, notification preferences with quiet hours and digest. Config versioning, inheritance, import/export, audit trail. 35 endpoints.</div>
     </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Differentiator J — Guided Onboarding</div>
+      <div class="card-body">8-step wizard (welcome → org → team → feeds → integrations → dashboard → readiness → launch), 8 data source connector types with live validation, pipeline health checker (6 stages), module readiness with dependency validation, demo data seeding (150 IOCs, 10 actors, 20 malware, 50 CVEs). 32 endpoints.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Differentiator K — Indian Market Billing (Razorpay)</div>
+      <div class="card-body">4-tier plans (Free/Starter ₹4,999/Pro ₹14,999/Enterprise), Razorpay subscriptions + orders + HMAC webhook verification, GST 18% auto-applied, usage metering with 80/90/100% threshold alerts, upgrade/downgrade with 72hr grace period, coupon/discount codes, proration calculator, admin revenue dashboard (MRR, churn, plan distribution). 28 endpoints.</div>
+    </div>
   </div>
 </div>
 </section>
@@ -233,39 +242,35 @@ li strong { color: var(--text-primary); }
 <!-- LATEST SESSION HIGHLIGHTS -->
 <section>
 <div class="container">
-  <h2><span class="num">06</span>Latest: Sessions 34-36 — Phase 5 Complete</h2>
+  <h2><span class="num">06</span>Latest: Sessions 39–40 — Phase 6 Monetization Layer</h2>
   <div class="card-grid">
     <div class="card">
-      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Enterprise Integration (Module 15)</div>
+      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Onboarding Service (Module 18) — Session 39</div>
       <div class="card-body">
-        SIEM adapters (Splunk HEC, Sentinel, QRadar), webhook delivery with retry + dead letter queue, ticketing integrations (ServiceNow, Jira), STIX/TAXII export with collection management, field mapping engine, credential encryption, event routing via BullMQ, health dashboard.<br>
-        <strong>24 endpoints</strong>, <strong>174 tests</strong>. Port 3015.
+        8-step guided wizard, 8 data source connector types with DNS→TCP→auth→data validation, 6-stage pipeline health checker, 14-module readiness checker with transitive dependency validation, progress tracker with readiness scoring.<br>
+        P0: prerequisite validation, demo data seeding, integration testing, checklist persistence, welcome dashboard with guided tips.<br>
+        <strong>32 endpoints</strong>, <strong>190 tests</strong>. Port 3018. Deployed to VPS.
       </div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="badge badge-green">COMPLETE</span> User Management (Module 16)</div>
+      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Billing Service (Module 19) — Session 40</div>
       <div class="card-body">
-        RBAC with 6 built-in roles and 60 permissions, team management with cross-team sharing, SSO (SAML + OIDC), TOTP MFA with encrypted backup codes, break-glass emergency access with audit, session management, brute-force protection, configurable password policies.<br>
-        <strong>32 endpoints</strong>, <strong>185 tests</strong>. Port 3016.
+        Plan management (Free/Starter/Pro/Enterprise), Razorpay customer + subscription + order lifecycle, HMAC-SHA256 webhook verification with timingSafeEqual, GST 18% invoices + receipt generation, upgrade/downgrade with 72hr grace period + proration calc, coupon codes (percentage + flat discount, expiry + maxUses).<br>
+        P0: contextual upgrade prompts (80/90/100%), usage threshold alerts (highest-crossing), grace period, admin billing dashboard (MRR/churn/distribution), coupon codes.<br>
+        <strong>28 endpoints</strong>, <strong>149 tests</strong>. Port 3019. CI triggered.
       </div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Customization Service (Module 17)</div>
+      <div class="card-title"><span class="badge badge-amber">REMAINING</span> Admin Ops (Module 22)</div>
       <div class="card-body">
-        Module activation toggles with dependency graph validation (13 modules), AI model selection (Haiku/Sonnet/Opus) with token budgets and usage tracking, risk score weight customization (3 presets, per-IOC-type decay rates), per-user dashboard widget layouts and saved filters, notification preferences with channels, quiet hours, and digest config.<br>
-        <strong>5 P0 improvements</strong>: config inheritance, versioning with rollback, validation engine, JSON import/export, audit trail.<br>
-        <strong>35 endpoints</strong>, <strong>159 tests</strong>. Port 3017.
+        System health dashboard (all services, DB, Redis, queue depths), maintenance mode toggle + banner, rate-limit tuning per tenant/plan, announcement banner system, audit log viewer, platform-wide metrics.<br>
+        <strong>~1 session</strong> to complete. Will finish Phase 6.
       </div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="badge badge-green">MILESTONE</span> Phase 5 COMPLETE</div>
+      <div class="card-title"><span class="badge badge-amber">UPCOMING</span> Platform Completion Path</div>
       <div class="card-body">
-        All 3 Platform & Integration modules complete:<br>
-        <strong>Enterprise Integration</strong> (24 endpoints, 174 tests)<br>
-        <strong>User Management</strong> (32 endpoints, 185 tests)<br>
-        <strong>Customization</strong> (35 endpoints, 159 tests)<br>
-        Platform total: 25 containers, ~387 endpoints, 3,468 tests.<br>
-        Only Phase 6 (Growth & Monetization) remains: onboarding, billing, admin-ops.
+        After Admin Ops: <strong>Billing frontend</strong> (plan cards, usage meters, upgrade flow, invoice history), <strong>Elasticsearch IOC indexing</strong> (full-text search across all IOCs), <strong>QA checklist update</strong>, <strong>production hardening</strong> (Prisma migration for in-memory stores, Redis caching layer).
       </div>
     </div>
   </div>
@@ -286,8 +291,9 @@ li strong { color: var(--text-primary); }
       <tr><td>Search</td><td>Elasticsearch</td><td>8.x</td></tr>
       <tr><td>Cache / Queue</td><td>Redis + BullMQ</td><td>7.x / 5.x</td></tr>
       <tr><td>Frontend</td><td>React + Vite + Tailwind</td><td>18 / 5 / 3</td></tr>
-      <tr><td>AI</td><td>Anthropic Claude API</td><td>Haiku 4.5 + Sonnet 4</td></tr>
-      <tr><td>CI/CD</td><td>GitHub Actions</td><td>Auto-deploy</td></tr>
+      <tr><td>AI</td><td>Anthropic Claude API</td><td>Haiku 4.5 + Sonnet 4.6</td></tr>
+      <tr><td>Payment</td><td>Razorpay</td><td>2.9.5 (INR, GST, UPI)</td></tr>
+      <tr><td>CI/CD</td><td>GitHub Actions</td><td>Auto-deploy on master push</td></tr>
       <tr><td>VPS</td><td>Hostinger KVM</td><td>8 GB RAM, 96 GB disk</td></tr>
     </tbody>
   </table>
@@ -299,20 +305,19 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">08</span>Next Steps</h2>
   <ul>
-    <li><strong>Deploy Phase 5</strong> — All 3 services: integration, user-management, customization (Docker + nginx routing ready)</li>
-    <li><strong>Elasticsearch IOC indexing</strong> — Full-text search across all IOCs</li>
-    <li><strong>Phase 6: Onboarding</strong> — Guided setup wizard, tenant provisioning, sample data import</li>
-    <li><strong>Phase 6: Billing</strong> — Stripe integration, usage-based pricing, plan management</li>
-    <li><strong>Phase 6: Admin Ops</strong> — Platform admin dashboard, tenant management, system health monitoring</li>
-    <li><strong>Frontend Pages</strong> — Settings/customization UI, user management admin panel, integration configuration pages</li>
-    <li><strong>Production Hardening</strong> — Prisma DB migration for all in-memory stores, Redis caching layer, rate limiting per tenant</li>
+    <li><strong>Admin Ops (Module 22)</strong> — System health dashboard, maintenance mode, rate-limit tuning, announcement banner. Completes Phase 6.</li>
+    <li><strong>Billing Frontend</strong> — Plan cards (4 tiers), usage meters with threshold color, upgrade modal (Razorpay), invoice history, coupon input.</li>
+    <li><strong>Configure VPS Razorpay keys</strong> — TI_RAZORPAY_KEY_ID, TI_RAZORPAY_KEY_SECRET, TI_RAZORPAY_WEBHOOK_SECRET in .env</li>
+    <li><strong>Elasticsearch IOC indexing</strong> — Full-text search across all 301+ production IOCs</li>
+    <li><strong>QA Checklist update</strong> — Add Phase 6 modules to docs/QA_CHECKLIST.md</li>
+    <li><strong>Production hardening</strong> — Prisma DB migration for in-memory stores, Redis caching layer, rate limiting per plan tier</li>
   </ul>
 </div>
 </section>
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 36 &middot; 2026-03-23 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 40 &middot; 2026-03-23 &middot; Generated by Claude Sonnet 4.6
   </div>
 </div>
 
