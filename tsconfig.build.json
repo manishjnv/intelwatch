@@ -25,6 +25,7 @@
     { "path": "apps/integration-service" },
     { "path": "apps/user-management-service" },
     { "path": "apps/customization" },
-    { "path": "apps/onboarding" }
+    { "path": "apps/onboarding" },
+    { "path": "apps/billing-service" }
   ]
 }
