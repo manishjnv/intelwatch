@@ -851,6 +851,43 @@ services:
         limits:
           memory: 256M
 
+  # ─── Module 17 — Customization ───────────────────────────────────
+  etip_customization:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: etip_customization
+    restart: unless-stopped
+    command: ["node", "apps/customization/dist/index.js"]
+    environment:
+      TI_NODE_ENV: ${TI_NODE_ENV:-production}
+      TI_CUSTOMIZATION_PORT: 3017
+      TI_CUSTOMIZATION_HOST: 0.0.0.0
+      TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
+      TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
+      TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
+      TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
+      TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
+    ports:
+      - "3017:3017"
+    depends_on:
+      etip_redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:3017/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
   # ─── Nginx — Reverse Proxy, Rate Limiting, Security Headers ─────
   etip_nginx:
     image: nginx:1.27-alpine
@@ -893,6 +930,8 @@ services:
       etip_integration:
         condition: service_healthy
       etip_user_management:
+        condition: service_healthy
+      etip_customization:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "nginx", "-t"]
