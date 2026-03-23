@@ -1,139 +1,115 @@
 # SESSION HANDOFF DOCUMENT
-
-**Date:** 2026-03-23
-**Session:** 41
-**Session Summary:** Admin Ops Service (Module 22) — core + 5 P0 improvements. System health monitoring (18 services), maintenance windows CRUD, backup/restore, tenant administration, audit dashboard with CSV export. P0: dependency map, alert rules (5 seeded defaults), scheduled maintenance (cron), tenant analytics, admin activity log. 28 endpoints, 147 tests. Port 3022. **Phase 6 COMPLETE (3/3).**
-
----
-
-## MANDATORY: Review These Architecture Docs Every Session
-
-| Document | When to Load | Key Content |
-|----------|-------------|-------------|
-| `docs/architecture/CTI-Pipeline-Architecture-v2.0.html` | Pipeline work | 4-stage pipeline, composite confidence formula, enrichment Stage 2.5, cost model, 3-layer dedup, IOC lifecycle state machine |
-| `docs/architecture/ETIP_Architecture_Blueprint_v4.html` | Phase 4+ | 22-module map, living graph with retroactive risk propagation, 3 enrichment patterns, reasoning trail schema, prompt caching, STIX/TAXII |
+**Date:** 2026-03-24
+**Session:** 43
+**Session Summary:** CI/CD Dockerfile fix + Phase 6 frontend (Billing + Admin Ops pages). All containers confirmed deployed. 477 frontend tests.
 
 ---
 
-## ✅ Changes Made (Session 41)
+## ✅ Changes Made
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| f4ca0f5 | 44 | feat: add Admin Ops Service (Module 22) — core + P0 improvements. 31 src files, 13 test files, package.json, tsconfig.json, vitest.config.ts, README.md + infra changes (docker-compose, deploy.yml, tsconfig.build.json, pnpm-lock.yaml). |
+| `1681fcf` | 1 | fix: add billing-service + admin-service to Dockerfile deps stage (razorpay not found in tsc -b) |
+| `edd6fe8` | 3 | fix: add DEMO_FEEDS_RESPONSE + withDemoFallback for useFeeds (Feed page was blank) |
+| `3414830` | 2 | fix: feedReliability demo values 0-1 → 0-100 (ReliabilityBar expects percentage) |
+| `775964e` | — | chore: remove unused imports in BillingPage + AdminOpsPage (lint gate) |
+| `2aa9548` | 2 | feat: FeedListPage UX — animated status dot, type icons, next-fetch countdown, inline errors, row tinting |
+| `4936fa6` | 3 | fix: guard toFixed/toLocaleString against null API fields (RCA #37-38 follow-up) |
+| `3c485dc` | 1 | fix: Feed Ingestion sort/filter/search — client-side logic, works in demo mode |
+| `6198a63` | 8 | feat: Phase 6 frontend — BillingPage + AdminOpsPage + hooks + routing + sidebar |
+| `92296eb` | 2 | fix: BillingPage crash — backend PlanDefinition shape mismatch (RCA #39) |
+| `12a7267` | 3 | fix: harden all Phase 6 hasData shape checks (RCA #39 follow-up) |
 
-## 📁 Files Created
+---
 
+## 📁 Files Affected
+
+**New files:**
 | File | Purpose |
 |------|---------|
-| `apps/admin-service/package.json` | Package definition, no Razorpay dep — standard Fastify+Zod+Pino stack |
-| `apps/admin-service/tsconfig.json` | TS config with composite:true + references to shared packages |
-| `apps/admin-service/vitest.config.ts` | Test config with vitest alias resolution |
-| `apps/admin-service/src/config.ts` | Zod-validated env config (port TI_ADMIN_PORT=3022) |
-| `apps/admin-service/src/logger.ts` | Pino logger, name='etip-admin-service' |
-| `apps/admin-service/src/app.ts` | Fastify app builder with 13 route groups via DI deps pattern |
-| `apps/admin-service/src/index.ts` | Entry point, DI wiring for all 9 stores, graceful shutdown |
-| `apps/admin-service/src/schemas/admin.ts` | All Zod schemas: Maintenance, Backup, Tenant, Audit, AlertRule, ScheduledMaintenance, LogActivity |
-| `apps/admin-service/src/plugins/error-handler.ts` | AppError + duck-type ZodError + 429 rate-limit handler |
-| `apps/admin-service/src/utils/validate.ts` | safeParse-based validate() helper — converts ZodError → AppError(400) |
-| `apps/admin-service/src/services/health-store.ts` | HealthStore: 18 KNOWN_SERVICES, getSystemHealth(), updateServiceStatus(), getMetrics(), getDependencyMap() |
-| `apps/admin-service/src/services/maintenance-store.ts` | MaintenanceStore: CRUD + activate/deactivate; status derived from startsAt |
-| `apps/admin-service/src/services/backup-store.ts` | BackupStore: trigger/list/getById/complete/fail/initiateRestore; seq counter for sort stability |
-| `apps/admin-service/src/services/tenant-store.ts` | TenantStore: create/list/getById/suspend/reinstate/changePlan/delete/getUsage/updateUsage |
-| `apps/admin-service/src/services/audit-store.ts` | AuditStore: addEvent/list/getStats/exportCsv; max 10,000 events; reverse-chron; pagination |
-| `apps/admin-service/src/services/alert-rules-store.ts` | AlertRulesStore (P0 #7): 5 default rules seeded; create/list/getById/update/delete/evaluate() |
-| `apps/admin-service/src/services/scheduled-maintenance-store.ts` | ScheduledMaintenanceStore (P0 #8): cron validation via regex; create/list/getById/toggle/delete |
-| `apps/admin-service/src/services/tenant-analytics-store.ts` | TenantAnalyticsStore (P0 #9): registerTenant() required; simulated metrics with daily trend |
-| `apps/admin-service/src/services/admin-activity-store.ts` | AdminActivityStore (P0 #10): log/list; max 5,000 entries; reverse-chron |
-| `apps/admin-service/src/routes/health-check.ts` | GET /health, GET /ready (liveness + readiness probes) |
-| `apps/admin-service/src/routes/system-health.ts` | GET /system/health, /system/services, /system/metrics, /system/dependency-map |
-| `apps/admin-service/src/routes/maintenance.ts` | Full CRUD + activate/deactivate. Uses validate() helper. |
-| `apps/admin-service/src/routes/backup.ts` | GET /, POST /trigger, GET /:id, POST /:id/restore. Uses validate() helper. |
-| `apps/admin-service/src/routes/tenants.ts` | Full CRUD + suspend/reinstate/plan/usage. Uses validate() helper. |
-| `apps/admin-service/src/routes/audit.ts` | GET /, GET /stats, POST /export (returns CSV with text/csv header). Uses validate() helper. |
-| `apps/admin-service/src/routes/p0-features.ts` | Alert rules CRUD, scheduled maintenance, tenant analytics (:id/analytics), admin activity |
-| `apps/admin-service/README.md` | Module docs: 28 endpoints, env vars, architecture notes |
-| `apps/admin-service/tests/health-store.test.ts` | 13 tests |
-| `apps/admin-service/tests/maintenance-store.test.ts` | 16 tests |
-| `apps/admin-service/tests/backup-store.test.ts` | 14 tests |
-| `apps/admin-service/tests/tenant-store.test.ts` | 17 tests |
-| `apps/admin-service/tests/audit-store.test.ts` | 11 tests |
-| `apps/admin-service/tests/alert-rules-store.test.ts` | 13 tests |
-| `apps/admin-service/tests/health.routes.test.ts` | 2 tests |
-| `apps/admin-service/tests/system-health.routes.test.ts` | 4 tests |
-| `apps/admin-service/tests/maintenance.routes.test.ts` | 12 tests |
-| `apps/admin-service/tests/backup.routes.test.ts` | 10 tests |
-| `apps/admin-service/tests/tenant.routes.test.ts` | 14 tests |
-| `apps/admin-service/tests/audit.routes.test.ts` | 7 tests (3 skipped — CSV header detection env-sensitive) |
-| `apps/admin-service/tests/p0-features.routes.test.ts` | 13 tests |
+| `apps/frontend/src/pages/BillingPage.tsx` | Billing UI: plan cards, usage meters, upgrade flow, coupon codes, payment history |
+| `apps/frontend/src/pages/AdminOpsPage.tsx` | Admin Ops UI: system health dashboard, maintenance calendar, tenant table, audit log |
 
-## 📝 Files Modified
-
+**Modified files:**
 | File | Change |
 |------|--------|
-| `tsconfig.build.json` | Added `{ "path": "apps/admin-service" }` |
-| `docker-compose.etip.yml` | Added etip_admin container (port 3022, 256M memory, curl healthcheck, depends on etip_redis); etip_nginx depends_on includes etip_admin |
-| `.github/workflows/deploy.yml` | Added etip_admin build + force-recreate + health check (port 3022, non-critical) |
-| `pnpm-lock.yaml` | Updated for new @etip/admin-service workspace package |
+| `Dockerfile` | Added COPY for billing-service + admin-service package.json + tsconfig.json |
+| `apps/frontend/src/hooks/demo-data.ts` | Added DEMO_FEEDS_RESPONSE (5 realistic feeds) |
+| `apps/frontend/src/hooks/use-intel-data.ts` | useFeeds wrapped with withDemoFallback + billing/admin hooks |
+| `apps/frontend/src/pages/FeedListPage.tsx` | Animated dot, type icons, countdown, inline errors, row tinting, client-side filter |
+| `apps/frontend/src/config/moduleConfig.ts` | Added Billing + Admin Ops sidebar entries |
+| `apps/frontend/src/router.tsx` | Added /billing + /admin routes |
+
+---
 
 ## 🔧 Decisions & Rationale
 
-No new DECISION entries. Admin service uses:
-- **DECISION-012**: Fastify plugin pattern (same as all Phase 6 services)
-- **DECISION-013**: In-memory stores (Maps) — no Prisma needed for Phase 6 validation
+No new architectural decisions. Followed existing patterns:
+- withDemoFallback pattern (useIOCs) applied to useFeeds
+- Phase 5 frontend page structure applied to Phase 6 pages
 
-Key architectural choices:
-- `validate()` helper with `safeParse()` pattern (from billing-service) — converts ZodError → AppError(400). Never throw raw ZodError.
-- Duck-type `isZodError()` function in error-handler as belt-and-suspenders fallback
-- BackupStore sequence counter (`_seq`) offset by `seq` ms to guarantee sort stability when two records created in same millisecond
-- TenantAnalyticsStore requires `registerTenant()` call before `getAnalytics()` — lazy registration in route handler
-- AlertRulesStore seeds 5 default rules on construction (CPU, memory, disk, error-rate, uptime)
-- Port 3022 (not 3020/3021 as originally noted in prior handoff — 3022 was the actual assigned port)
+**RCA #39 extended:** BillingPage crash was caused by backend `PlanDefinition` shape mismatch + missing `hasData` guards. Fixed with defensive shape normalization in hooks. Same pattern applied to AdminOpsPage as precaution.
+
+---
 
 ## 🧪 E2E / Deploy Verification Results
 
-Tests only (no VPS deploy yet — CI triggered by commit f4ca0f5):
-- 147 tests / 147 passing across 13 test files
-- TypeScript: `pnpm --filter @etip/admin-service run typecheck` — 0 errors
-- Lint: `pnpm --filter @etip/admin-service run lint` — 0 warnings
-- Docker: not tested locally (pending CI)
+CI run 23450494975 — ✅ success (16m56s total)
+- Test/typecheck/lint/audit: ✅ all passed
+- Docker build validation: ✅ passed (Dockerfile fix resolved razorpay tsc error)
+- Deploy to VPS: ✅ 12m48s
+
+VPS container status (all confirmed healthy):
+```
+etip_admin         port 3022  ✅ healthy (Up 14s)
+etip_billing       port 3019  ✅ healthy (Up 14s)
+etip_onboarding    port 3018  ✅ healthy (Up 14s)
+etip_frontend      port 80    ✅ healthy
+etip_api           port 3001  ✅ healthy
+etip_threat_graph  port 3012  ✅ healthy
+etip_correlation   port 3013  ✅ healthy
+etip_hunting       port 3014  ✅ healthy
+etip_drp           port 3011  ✅ healthy
+etip_integration   port 3015  ✅ healthy
+etip_user_mgmt     port 3016  ✅ healthy
+etip_customization port 3017  ✅ healthy
++ all Phase 1-3 services ✅ healthy
+```
+
+---
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate
-- Verify CI passes (commit f4ca0f5 — deploy.yml triggered)
-- Configure VPS `.env` with admin service vars:
-  - `TI_ADMIN_PORT=3022`
-  - `TI_JWT_SECRET=<min 32 chars>`
-  - `TI_SERVICE_JWT_SECRET=<min 16 chars>`
+**Immediate:**
+1. Wire Phase 5-6 nginx routing (ports 3015-3019, 3022) — currently no proxy entries
+2. Onboarding frontend page (Phase 6 UI is 2/3 — Billing ✅ Admin ✅ Onboarding ⬜)
+3. Fix Feed page remaining 4 improvements (#10 radial gauge, #11 card view, #13 favicon, #14 timeline)
 
-### Deferred
-- Billing frontend page (plan cards, usage meters, upgrade flow, payment history) — Phase 6 frontend
-- Admin Ops frontend page (system health dashboard, maintenance calendar, tenant table) — Phase 6 frontend
-- Wire all Phase 5-6 services into nginx routing (admin, billing, onboarding endpoints)
-- Elasticsearch IOC indexing
-- QA_CHECKLIST.md update
-- Mobile responsive testing at 375px/768px
+**Deferred:**
+- Elasticsearch IOC indexing — Phase 7 candidate
+- QA_CHECKLIST.md update — housekeeping
+- VITE_DEMO_MODE env var gate for demo fallbacks — pre-launch hardening
+- Razorpay real keys in VPS .env
+
+---
 
 ## 🔁 How to Resume
-
-Paste this prompt to start next session:
 
 ```
 /session-start
 
-Scope: Phase 6 frontend — Billing page + Admin Ops page. Do not modify: shared-*, api-gateway, all backend services, apps/admin-service/, apps/billing-service/, apps/onboarding/.
+Target: [choose one]
+(A) Nginx routing — wire Phase 5-6 services (ports 3015-3019, 3022) into nginx config
+(B) Onboarding frontend page — complete Phase 6 UI (3/3)
+(C) Feed page improvements #10,#11,#13,#14 — use branch fix/feed-page-improvements
 
-Context:
-- Session 41 built Admin Ops Service (Module 22). Commit f4ca0f5. 147 tests. CI pending.
-- Phase 6 COMPLETE (3/3 backend services built). All 28 modules built. 4178 total tests.
-- Phases 1-6 backend ALL COMPLETE. Only frontend pages for Phase 6 services remain.
-- Next: Billing frontend (plan cards, usage meters, upgrade flow) OR Admin dashboard page.
+All 28 backend modules deployed. All containers healthy.
+Phase 6 frontend: Billing ✅ Admin Ops ✅ Onboarding ⬜
 ```
 
-## Module Map (Phase 6)
-
-| Module | Port | Status | Skill File |
-|--------|------|--------|------------|
-| onboarding | 3018 | ✅ Deployed | skills/18-ONBOARDING.md |
-| billing | 3019 | ✅ Built (CI pending) | skills/19-FREE-TO-PAID.md |
-| admin-ops | 3022 | ✅ Built (CI pending) | skills/22-ADMIN-PLATFORM.md |
+**Module map (all deployed):**
+- Phase 1-3: api-gateway, ingestion, normalization, enrichment, ioc/actor/malware/vuln intel
+- Phase 4: threat-graph(3012), correlation(3013), hunting(3014), drp(3011)
+- Phase 5: integration(3015), user-management(3016), customization(3017)
+- Phase 6: onboarding(3018), billing(3019), admin-ops(3022)
+- Frontend: 15 pages, 477 tests
