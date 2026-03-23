@@ -7,17 +7,19 @@ import { errorHandlerPlugin } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { huntRoutes, type HuntRouteDeps } from './routes/hunts.js';
 import { advancedRoutes, type AdvancedRouteDeps } from './routes/advanced.js';
+import { p2Routes, type P2RouteDeps } from './routes/p2.js';
 import type { HuntingConfig } from './config.js';
 
 export interface BuildAppOptions {
   config: HuntingConfig;
   routeDeps: HuntRouteDeps;
   advancedDeps: AdvancedRouteDeps;
+  p2Deps: P2RouteDeps;
 }
 
 /** Build and configure the Fastify application. */
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, routeDeps, advancedDeps } = opts;
+  const { config, routeDeps, advancedDeps, p2Deps } = opts;
 
   const app = Fastify({
     logger: {
@@ -65,6 +67,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(healthRoutes);
   await app.register(huntRoutes(routeDeps), { prefix: '/api/v1/hunts' });
   await app.register(advancedRoutes(advancedDeps), { prefix: '/api/v1/hunts' });
+  await app.register(p2Routes(p2Deps), { prefix: '/api/v1/hunts' });
 
   return app;
 }

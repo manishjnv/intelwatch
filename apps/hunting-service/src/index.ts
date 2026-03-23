@@ -12,6 +12,11 @@ import { AISuggestions } from './services/ai-suggestions.js';
 import { TimelineService } from './services/timeline-service.js';
 import { EvidenceCollection } from './services/evidence-collection.js';
 import { Collaboration } from './services/collaboration.js';
+import { AIPatternRecognition } from './services/ai-pattern-recognition.js';
+import { HuntPlaybooks } from './services/hunt-playbooks.js';
+import { HuntScoring } from './services/hunt-scoring.js';
+import { BulkImport } from './services/bulk-import.js';
+import { HuntExport } from './services/hunt-export.js';
 import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
@@ -65,6 +70,18 @@ async function main(): Promise<void> {
   const evidenceCollection = new EvidenceCollection(store);
   const collaboration = new Collaboration(store);
 
+  // 4c. P2 services
+  const patternRecognition = new AIPatternRecognition(store, {
+    enabled: false,
+    model: 'claude-sonnet-4-20250514',
+    maxTokens: 2048,
+    budgetCentsPerDay: 100,
+  });
+  const huntPlaybooks = new HuntPlaybooks();
+  const huntScoring = new HuntScoring(store);
+  const bulkImportService = new BulkImport(sessionManager);
+  const huntExportService = new HuntExport(store);
+
   // 5. Build Fastify app
   const app = await buildApp({
     config,
@@ -81,6 +98,13 @@ async function main(): Promise<void> {
       timelineService,
       evidenceCollection,
       collaboration,
+    },
+    p2Deps: {
+      patternRecognition,
+      playbooks: huntPlaybooks,
+      huntScoring,
+      bulkImport: bulkImportService,
+      huntExport: huntExportService,
     },
   });
 
