@@ -161,14 +161,37 @@ export function ThreatActorListPage() {
 
   const queryParams = useMemo(() => ({
     page, limit: 50, sortBy, sortOrder,
+    ...(search ? { q: search } : {}),
     ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
-  }), [page, sortBy, sortOrder, filters])
+  }), [page, search, sortBy, sortOrder, filters])
 
-  const { data, isLoading } = useActors(queryParams)
+  const { data, isLoading, isDemo } = useActors(queryParams)
+
+  const rows = useMemo(() => {
+    let items = data?.data ?? []
+    if (!isDemo || items.length === 0) return items
+    if (search) {
+      const q = search.toLowerCase()
+      items = items.filter(r =>
+        r.name.toLowerCase().includes(q) ||
+        r.aliases.some(a => a.toLowerCase().includes(q)) ||
+        (r.country ?? '').toLowerCase().includes(q)
+      )
+    }
+    if (filters.actorType) items = items.filter(r => r.actorType === filters.actorType)
+    if (filters.motivation) items = items.filter(r => r.motivation === filters.motivation)
+    if (filters.sophistication) items = items.filter(r => r.sophistication === filters.sophistication)
+    return [...items].sort((a, b) => {
+      const av = (a[sortBy as keyof ActorRecord] ?? '') as string | number
+      const bv = (b[sortBy as keyof ActorRecord] ?? '') as string | number
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0
+      return sortOrder === 'asc' ? cmp : -cmp
+    })
+  }, [data, isDemo, sortBy, sortOrder, search, filters])
 
   const selectedActor = useMemo(
-    () => (data?.data ?? []).find(r => r.id === selectedActorId) ?? null,
-    [data, selectedActorId],
+    () => rows.find(r => r.id === selectedActorId) ?? null,
+    [rows, selectedActorId],
   )
 
   const handleSort = (key: string) => {
@@ -262,7 +285,7 @@ export function ThreatActorListPage() {
         left={
           <DataTable
             columns={columns}
-            data={data?.data ?? []}
+            data={rows}
             loading={isLoading}
             sortBy={sortBy}
             sortOrder={sortOrder}
