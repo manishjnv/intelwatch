@@ -581,3 +581,5 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 **Prevention**: **RULE**: All `queryFn` functions that call `api()` must include `.catch()` to prevent unhandled rejections. App must have an ErrorBoundary at the root level.
 
 **Session 28:** No deploy (code-only session). Correlation Engine P2 (#11-15): 5 services, 8 endpoints, 60 new tests (166 correlation, 2331 monorepo). Commit 9430bdd.
+
+**Session 32:** No new RCA issues. DRP typosquatting accuracy improvements pushed (commit 49acf09). 7 new detection methods, composite scoring, CertStream monitor, domain enricher. 44 new tests (310 DRP). CI triggered, pending.

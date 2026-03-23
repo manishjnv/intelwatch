@@ -1,5 +1,5 @@
 # Digital Risk Protection Service (Module 11)
-**Port:** 3011 | **Status:** 🔨 FEATURE-COMPLETE (15/15 improvements) | **Tests:** 266
+**Port:** 3011 | **Status:** 🔨 FEATURE-COMPLETE (15/15 improvements + accuracy) | **Tests:** 310
 
 ## Features
 
@@ -7,7 +7,11 @@
 |---------|------|-------------|
 | Asset Management | `services/asset-manager.ts` | CRUD, validation, normalization, lifecycle for monitored assets (domain, brand, email, social, app) |
 | Alert Management | `services/alert-manager.ts` | CRUD, status transitions (open→investigating→resolved/false_positive), triage, assignment |
-| Typosquatting Detection | `services/typosquat-detector.ts` | 5 algorithms: homoglyph, insertion, deletion, transposition, TLD variant |
+| Typosquatting Detection | `services/typosquat-detector.ts` | 12 algorithms: homoglyph, insertion, deletion, transposition, TLD variant, combosquatting, bitsquatting, keyboard proximity, vowel-swap, repetition, hyphenation, subdomain |
+| Typosquat Constants | `services/typosquat-constants.ts` | HOMOGLYPHS (Cyrillic/Greek), COMBO_KEYWORDS, KEYBOARD_ADJACENCY, VOWELS, TLD_RISK_SCORES |
+| Similarity Scoring | `services/similarity-scoring.ts` | Jaro-Winkler, soundex, normalized Levenshtein, TLD risk, composite risk score |
+| CertStream Monitor | `services/certstream-monitor.ts` | Real-time certificate transparency monitoring, fuzzy matching, rate limiting, burst detection |
+| Domain Enricher | `services/domain-enricher.ts` | WHOIS/DNS/SSL enrichment adapter (simulated in dev, pluggable for production) |
 | Dark Web Monitoring | `services/dark-web-monitor.ts` | Simulated feeds (paste, forum, marketplace, telegram, IRC), keyword matching |
 | Credential Leak Detection | `services/credential-leak-detector.ts` | Email/domain breach monitoring, 10 simulated breaches, severity classification |
 | Attack Surface Scanning | `services/attack-surface-scanner.ts` | Port scan, cert transparency, DNS enumeration (simulated) |
@@ -28,7 +32,7 @@
 | #14 Risk Aggregation | `services/risk-aggregator.ts` | Weighted composite score per asset, criticality amplification, trend |
 | #15 Cross-Correlation | `services/cross-correlation.ts` | Shared hosting, temporal clusters, multi-vector, graph push |
 
-## API (35 endpoints)
+## API (36 endpoints)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -66,6 +70,7 @@
 | POST | `/api/v1/drp/detect/rogue-apps` | alert:create | #13 Rogue mobile app detection |
 | GET | `/api/v1/drp/assets/:id/risk` | alert:read | #14 Per-asset composite risk score |
 | POST | `/api/v1/drp/analytics/correlate` | alert:create | #15 Cross-alert correlation + graph push |
+| GET | `/api/v1/drp/certstream/status` | alert:read | CertStream monitor health + stats |
 
 ## Config
 
@@ -81,3 +86,6 @@
 | TI_DRP_AI_ENRICHMENT_ENABLED | false | Enable AI alert enrichment |
 | TI_DRP_AI_MAX_BUDGET_PER_DAY | 5.0 | Max daily AI enrichment spend ($) |
 | TI_DRP_AI_COST_PER_CALL | 0.01 | Cost per AI enrichment call ($) |
+| TI_DRP_CERTSTREAM_ENABLED | false | Enable CertStream real-time monitor |
+| TI_DRP_CERTSTREAM_URL | wss://certstream.calidog.io | CertStream WebSocket URL |
+| TI_DRP_CERTSTREAM_MAX_MATCHES_PER_HOUR | 1000 | Rate limit for CertStream matches |

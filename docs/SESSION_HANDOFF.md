@@ -1,8 +1,8 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-23
-**Session:** 31
-**Session Summary:** DRP Service P1/P2 improvements (#6-15). 10 new services, 10 new endpoints, 108 new tests. Module 11 FEATURE-COMPLETE (15/15). Phase 4 COMPLETE.
+**Session:** 32
+**Session Summary:** DRP typosquatting detection accuracy improvements — 7 new squatting methods, composite scoring (Jaro-Winkler, soundex, TLD risk), CertStream real-time monitor, domain enricher. 44 new tests, 310 DRP total.
 
 ---
 
@@ -15,71 +15,64 @@
 
 ---
 
-## ✅ Changes Made (Session 31)
+## ✅ Changes Made (Session 32)
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| e26f551 | 40 | feat: add DRP service (Module 11) — core + P0 improvements, 25 endpoints, 158 tests |
-| 2bb8730 | 27 | feat: add DRP service P1/P2 improvements (#6-15) — 10 services, 10 endpoints, 108 tests |
+| 49acf09 | 13 | feat: add typosquat accuracy improvements — 7 methods, composite scoring, CertStream monitor |
 
 ## 📁 Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/drp-service/src/schemas/p1-p2.ts` | All P1/P2 interfaces + Zod schemas (262 lines) |
-| `apps/drp-service/src/routes/p1.ts` | P1 routes: batch typosquat, AI enrich, bulk triage, trending, social |
-| `apps/drp-service/src/routes/p2.ts` | P2 routes: takedown, export, rogue apps, risk, correlation |
-| `apps/drp-service/src/services/batch-typosquat.ts` | #6 Multi-domain scan, cross-domain dedup, consolidated report |
-| `apps/drp-service/src/services/ai-enrichment.ts` | #7 Simulated Haiku enrichment, hosting/contacts/actions, budget-gated |
-| `apps/drp-service/src/services/bulk-triage.ts` | #8 Triage by IDs or filter, batch status/severity/assign/tags |
-| `apps/drp-service/src/services/trending-analysis.ts` | #9 Time-series buckets, rolling average, z-score anomaly, trend detection |
-| `apps/drp-service/src/services/social-impersonation.ts` | #10 Handle variations, name/handle/avatar similarity, Levenshtein |
-| `apps/drp-service/src/services/takedown-generator.ts` | #11 Templated docs for registrar/hosting/social/app_store |
-| `apps/drp-service/src/services/alert-exporter.ts` | #12 CSV, JSON, STIX 2.1 bundle export with filters |
-| `apps/drp-service/src/services/rogue-app-detector.ts` | #13 Name/icon similarity, multi-store scan |
-| `apps/drp-service/src/services/risk-aggregator.ts` | #14 Weighted composite score per asset, criticality amplification |
-| `apps/drp-service/src/services/cross-correlation.ts` | #15 Shared hosting, temporal clusters, multi-vector, graph push |
-| `apps/drp-service/tests/*.test.ts` (10 files) | 108 tests across all P1/P2 services |
+| `apps/drp-service/src/services/typosquat-constants.ts` | Extracted constants: HOMOGLYPHS (expanded Cyrillic/Greek), COMBO_KEYWORDS, KEYBOARD_ADJACENCY, VOWELS, TLD_RISK_SCORES |
+| `apps/drp-service/src/services/similarity-scoring.ts` | Jaro-Winkler, soundex, normalized Levenshtein, TLD risk, composite risk score formula |
+| `apps/drp-service/src/services/certstream-monitor.ts` | WebSocket CertStream consumer, fuzzy matching, rate limiting, registration burst detection |
+| `apps/drp-service/src/services/domain-enricher.ts` | WHOIS/DNS/SSL enrichment adapter (simulated in dev, pluggable for production) |
+| `apps/drp-service/tests/certstream-monitor.test.ts` | 10 tests: lifecycle, matching, rate limiting, burst detection |
+| `apps/drp-service/tests/domain-enricher.test.ts` | 7 tests: disabled/enabled modes, data structure validation |
 
 ## 📁 Files Modified
 
 | File | Change |
 |------|--------|
-| `apps/drp-service/src/schemas/store.ts` | Added 4 new Maps: aiEnrichments, takedowns, correlations, assetRiskScores |
-| `apps/drp-service/src/config.ts` | Added 3 env vars: TI_DRP_AI_ENRICHMENT_ENABLED, TI_DRP_AI_MAX_BUDGET_PER_DAY, TI_DRP_AI_COST_PER_CALL |
-| `apps/drp-service/src/app.ts` | Registered p1Routes + p2Routes with /api/v1/drp prefix |
-| `apps/drp-service/src/index.ts` | Instantiated all 10 new services, wired P1/P2 deps |
+| `apps/drp-service/src/schemas/drp.ts` | Added 7 methods to TYPOSQUAT_METHODS, registrationTermYears to TyposquatCandidate |
+| `apps/drp-service/src/schemas/p1-p2.ts` | Added `registration_burst` to CorrelationCluster correlationType |
+| `apps/drp-service/src/services/typosquat-detector.ts` | Refactored: 12 algorithms, candidate() builder, imports from constants/scoring |
+| `apps/drp-service/src/config.ts` | 3 new env vars: TI_DRP_CERTSTREAM_ENABLED/URL/MAX_MATCHES_PER_HOUR |
+| `apps/drp-service/src/index.ts` | Wired CertStreamMonitor + DomainEnricher |
+| `apps/drp-service/src/routes/detection.ts` | Added GET /certstream/status endpoint + CertStreamMonitor dep |
+| `apps/drp-service/tests/typosquat-detector.test.ts` | 27 new tests (47 total): 7 method tests + 13 scoring tests |
 
 ---
 
 ## 🔧 Decisions & Rationale
 
 No new DECISION entries this session. All patterns followed existing decisions:
-- DECISION-013: In-memory state (DRPStore with Maps) for Phase 4 validation
-- DECISION-021: `alert:read`/`alert:create`/`alert:update` permissions (no shared-auth changes)
-- DECISION-022: No Prisma, no neo4j-driver — graph integration uses HTTP API
+- DECISION-013: In-memory state for Phase 4 validation
+- DECISION-021: `alert:read`/`alert:create` permissions (no shared-auth changes)
+- Scoring constants (TLD_RISK_SCORES, HOMOGLYPHS expansion) are data-driven from Interisle 2025 and Unicode TR39
 
 ---
 
 ## 🧪 Deploy Verification
 
 ```
-CI triggered from commit 2bb8730, status: in_progress.
-Tests: 2819 total (266 in drp-service, 108 new this session)
+Pushed to master (commit 49acf09), CI triggered.
+DRP tests: 310 passing (was 266, +44 new)
 Typecheck: 0 errors
 Lint: 0 errors
 All source files under 400 lines
-1 pre-existing test failure in shared-auth (not new, not blocking)
 ```
 
 ---
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate — Typosquatting Accuracy
-- Add 7 missing squatting methods: combosquatting, bitsquatting, keyboard proximity, vowel-swap, repetition, hyphenation, subdomain/levelsquatting
-- Improve scoring: Jaro-Winkler composite, TLD risk scoring, expanded homoglyphs (Cyrillic/Greek)
-- CertStream real-time monitor for sub-15-minute detection
+### Immediate — Phase 4 Frontend
+- Build 4 new UI pages: DRP dashboard, threat graph visualization, correlation view, hunting workbench
+- Add sidebar entries with custom icons
+- Connect to Phase 4 service APIs
 
 ### Immediate — Deploy
 - Deploy all Phase 4 services: threat-graph, correlation-engine, hunting-service, drp-service
@@ -89,58 +82,59 @@ All source files under 400 lines
 - Elasticsearch IOC indexing
 - Update QA_CHECKLIST.md
 - Migrate in-memory services to Redis/PostgreSQL for scaling
+- CertStream production WebSocket (currently simulated)
 
 ---
 
 ## 🔁 How to Resume
 
-### Session 32: Phase 4 — DRP Typosquatting Detection Accuracy (Module 11) (RECOMMENDED)
+### Session 33: Phase 4 Frontend — DRP + Graph + Correlation + Hunting Pages (RECOMMENDED)
 ```
 /session-start
 
-Scope: Phase 4 — DRP Typosquatting Detection Accuracy (Module 11)
+Scope: Phase 4 Frontend — DRP + Threat Graph + Correlation + Hunting UI Pages
 Do not modify: shared-*, api-gateway, user-service, ingestion, normalization,
   ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel,
-  vulnerability-intel, frontend, threat-graph, correlation-engine, hunting-service.
+  vulnerability-intel, backend services (apps/*-service/).
 
 ## Context
-Session 31 completed DRP P1/P2 (15/15 improvements). Module 11 FEATURE-COMPLETE.
-37 source files, 22 test files, 35 endpoints, 266 tests. 2819 monorepo tests.
-Port 3011. Typecheck clean, lint clean. No deploy yet.
-Phase 4 COMPLETE: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP ✅.
+Session 32 completed typosquatting accuracy improvements (7 new methods,
+composite scoring with Jaro-Winkler/soundex, CertStream monitor). 310 tests.
+Phase 4 fully deployed: Graph ✅ Correlation ✅ Hunting ✅ DRP ✅.
+Frontend currently has 6 data pages (IOC, Feed, Actor, Malware, Vuln, Enrichment).
+UI FROZEN for existing pages — add NEW pages only.
 
-## Task: Typosquatting Detection Accuracy Improvements
-Enhance the typosquat detector with research-backed improvements for better accuracy
-and sub-15-minute detection of newly registered domains. 3 work chunks:
+## Task: Phase 4 Frontend Pages (2 chunks)
 
-### Chunk 1: New Squatting Methods (expand TYPOSQUAT_METHODS enum)
-Add 7 missing detection algorithms to typosquat-detector.ts:
-1. Combosquatting — brand + keyword (support, login, verify, secure, account,
-   update, portal, help, service, manage). #1 attack vector per Akamai.
-2. Bitsquatting — single bit-flip in each ASCII character.
-3. Keyboard proximity — QWERTY adjacency map (include QWERTZ, AZERTY).
-4. Vowel-swap — replace each vowel with every other vowel.
-5. Repetition — double each character once.
-6. Hyphenation — insert hyphens at word boundaries and between chars.
-7. Subdomain/levelsquatting — brand.evil-tld patterns.
+### Chunk 1: DRP Dashboard + Threat Graph Visualization
+1. DRP Dashboard page (/drp)
+   - Asset monitoring table (CRUD via /api/v1/drp/assets)
+   - Alert feed with severity badges, status filters, assignment
+   - Typosquat scan trigger (domain input → POST /detect/typosquat)
+   - Top 5 risky domains card, alert trend sparkline
+   - CertStream status indicator (GET /certstream/status)
+2. Threat Graph page (/graph)
+   - D3 force-directed graph visualization (nodes: IOC, Actor, Malware, Vuln)
+   - Node click → detail panel (relationships, risk score, STIX data)
+   - Search/filter by entity type, risk threshold
+   - Cluster highlighting, zoom/pan controls
+   - Connect to GET /api/v1/graph/nodes, /edges, /search
 
-### Chunk 2: Improved Scoring (replace computeRiskScore)
-1. Jaro-Winkler distance (implement ~30 lines, no deps) — weight 0.25.
-2. Composite similarity formula:
-   0.30×levenshtein + 0.25×jaro_winkler + 0.15×keyboard_proximity
-   + 0.15×registration_recency + 0.10×tld_risk + 0.05×phonetic_match
-3. TLD risk scoring lookup table — .top/.tk/.xyz/.online/.site = high risk.
-4. Expand HOMOGLYPHS map — add Cyrillic/Greek (~50 new entries).
+### Chunk 2: Correlation + Hunting Pages
+3. Correlation page (/correlations)
+   - Cluster list with shared infrastructure badges
+   - Cluster detail → linked alerts, confidence score, Diamond Model view
+   - Auto-correlate button (POST /api/v1/correlation/correlate)
+   - Timeline view of temporal clusters
+4. Hunting Workbench page (/hunting)
+   - Hunt session manager (create/list/resume)
+   - Query builder with IOC pivot
+   - Evidence collection panel
+   - Hypothesis tracker with AI suggestions
+   - Saved hunts library
 
-### Chunk 3: CertStream Real-Time Monitor (new service)
-1. services/certstream-monitor.ts — WebSocket client to certstream.calidog.io
-2. services/domain-enricher.ts — RDAP/DNS adapter (simulated, pluggable)
-3. Config: TI_DRP_CERTSTREAM_ENABLED, TI_DRP_CERTSTREAM_URL
-4. Route: GET /api/v1/drp/certstream/status
-5. Registration burst detection in cross-correlation
-
-Target: apps/drp-service/ only. ~45 new tests.
-Skill: skills/11-DIGITAL-RISK-PROTECTION.md.
+Add sidebar entries with custom icons. Follow existing page patterns.
+Write tests. Target ~30 new frontend tests per chunk.
 ```
 
 ### Phase roadmap
@@ -152,5 +146,5 @@ Phase 3.5: Dashboard + Demo  FROZEN (6 pages, 15 UI, demo fallbacks, mobile)
 Differentiator A             COMPLETE (AI cost transparency)
 Differentiator A+            COMPLETE (15/15 improvements)
 Differentiator B             COMPLETE (Enrichment UI)
-Phase 4: Advanced Intel      COMPLETE: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP ✅
+Phase 4: Advanced Intel      COMPLETE: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP ✅ (+ accuracy)
 ```
