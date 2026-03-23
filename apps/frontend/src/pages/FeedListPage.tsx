@@ -141,18 +141,44 @@ export function FeedListPage() {
   const [search, setSearch] = useState('')
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
+  const [sortBy, setSortBy] = useState('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  const queryParams = useMemo(() => ({
-    page, limit: 50,
-    ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
-  }), [page, filters])
-
-  const { data, isLoading } = useFeeds(queryParams)
+  const { data, isLoading } = useFeeds({ page: 1, limit: 50 })
 
   const feeds = data?.data ?? []
-  const activeCount  = feeds.filter(f => f.status === 'active').length
-  const errorCount   = feeds.filter(f => f.status === 'error').length
-  const totalIngested = feeds.reduce((s, f) => s + f.totalItemsIngested, 0)
+
+  // Client-side filter + sort — works in both demo and live mode
+  const displayFeeds = useMemo(() => {
+    let result = feeds
+
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(f =>
+        f.name.toLowerCase().includes(q) ||
+        (f.description ?? '').toLowerCase().includes(q) ||
+        (f.url ?? '').toLowerCase().includes(q),
+      )
+    }
+    if (filters.feedType) result = result.filter(f => f.feedType === filters.feedType)
+    if (filters.status)   result = result.filter(f => f.status   === filters.status)
+
+    return [...result].sort((a, b) => {
+      const av = a[sortBy as keyof FeedRecord] ?? ''
+      const bv = b[sortBy as keyof FeedRecord] ?? ''
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
+      return sortOrder === 'asc' ? cmp : -cmp
+    })
+  }, [feeds, search, filters, sortBy, sortOrder])
+
+  function handleSort(key: string) {
+    if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(key); setSortOrder('asc') }
+  }
+
+  const activeCount    = feeds.filter(f => f.status === 'active').length
+  const errorCount     = feeds.filter(f => f.status === 'error').length
+  const totalIngested  = feeds.reduce((s, f) => s + f.totalItemsIngested, 0)
   const avgReliability = feeds.length
     ? Math.round(feeds.reduce((s, f) => s + f.feedReliability, 0) / feeds.length)
     : 0
@@ -287,11 +313,14 @@ export function FeedListPage() {
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
-          data={feeds}
+          data={displayFeeds}
           loading={isLoading}
           rowKey={(r) => r.id}
           density={density}
-          emptyMessage="No feeds configured. Add a threat intelligence feed to start ingesting data."
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          emptyMessage="No feeds matching your search or filters."
           severityField={(row) => row.status === 'error' ? 'critical' : undefined}
         />
       </div>
