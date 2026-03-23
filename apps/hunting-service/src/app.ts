@@ -6,16 +6,18 @@ import sensible from '@fastify/sensible';
 import { errorHandlerPlugin } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { huntRoutes, type HuntRouteDeps } from './routes/hunts.js';
+import { advancedRoutes, type AdvancedRouteDeps } from './routes/advanced.js';
 import type { HuntingConfig } from './config.js';
 
 export interface BuildAppOptions {
   config: HuntingConfig;
   routeDeps: HuntRouteDeps;
+  advancedDeps: AdvancedRouteDeps;
 }
 
 /** Build and configure the Fastify application. */
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, routeDeps } = opts;
+  const { config, routeDeps, advancedDeps } = opts;
 
   const app = Fastify({
     logger: {
@@ -62,6 +64,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   // ─── Routes ───────────────────────────────────────────────
   await app.register(healthRoutes);
   await app.register(huntRoutes(routeDeps), { prefix: '/api/v1/hunts' });
+  await app.register(advancedRoutes(advancedDeps), { prefix: '/api/v1/hunts' });
 
   return app;
 }

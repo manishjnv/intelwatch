@@ -7,6 +7,11 @@ import { HuntSessionManager } from './services/hunt-session-manager.js';
 import { IOCPivotChains } from './services/ioc-pivot-chains.js';
 import { SavedHuntLibrary } from './services/saved-hunt-library.js';
 import { CorrelationIntegration } from './services/correlation-integration.js';
+import { HypothesisEngine } from './services/hypothesis-engine.js';
+import { AISuggestions } from './services/ai-suggestions.js';
+import { TimelineService } from './services/timeline-service.js';
+import { EvidenceCollection } from './services/evidence-collection.js';
+import { Collaboration } from './services/collaboration.js';
 import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
@@ -48,6 +53,18 @@ async function main(): Promise<void> {
     enabled: config.TI_HUNT_CORRELATION_ENABLED,
   });
 
+  // 4b. P1 services
+  const hypothesisEngine = new HypothesisEngine(store);
+  const aiSuggestions = new AISuggestions(store, {
+    enabled: false,
+    model: 'claude-haiku-4-5-20251001',
+    maxTokens: 1024,
+    budgetCentsPerDay: 50,
+  });
+  const timelineService = new TimelineService(store);
+  const evidenceCollection = new EvidenceCollection(store);
+  const collaboration = new Collaboration(store);
+
   // 5. Build Fastify app
   const app = await buildApp({
     config,
@@ -57,6 +74,13 @@ async function main(): Promise<void> {
       pivotChains,
       huntLibrary,
       correlationIntegration,
+    },
+    advancedDeps: {
+      hypothesisEngine,
+      aiSuggestions,
+      timelineService,
+      evidenceCollection,
+      collaboration,
     },
   });
 
