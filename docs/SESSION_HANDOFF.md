@@ -1,56 +1,40 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-03-24
-**Session:** 46
-**Session Summary:** OnboardingPage verification + session-end. Phase 6 frontend 3/3 COMPLETE. All 500 frontend tests passing. Working tree clean.
+**Session:** 47
+**Session Summary:** Docs-only session. Updated QA_CHECKLIST.md from session 23 → session 46 (stale for 23 sessions). Prepared prompts for Option B (D3 code-split) and Option C (Known Gaps P1).
 
 ---
 
 ## ✅ Changes Made
 
-All code was already committed from session 45 continuation (commits 85c4bc7 → b2f1e98).
-This session was verification only. No new code commits.
-
 | Commit | Files | Description |
 |--------|-------|-------------|
-| 97ddd16 | tests | 25 OnboardingPage tests — wizard, pipeline, modules, quick start |
-| 59f2a4d | App.tsx, tests | Register /onboarding route + mock setup |
-| a65863c | 5 files | OnboardingPage.tsx + IconOnboarding + modules.ts entry + sidebar |
-| 85c4bc7 | 2 files | Scaffold phase6-demo-data.ts + use-phase6-data.ts onboarding hooks |
-| b2f1e98 | docs | Update test counts — 4311 total, 500 frontend |
-| 4a0169d | docs | Update session 45 deployment log — Onboarding frontend complete |
+| c0a11ab | 1 | docs/QA_CHECKLIST.md — full rewrite: Phase 4/5/6 sections added, Module 06 enrichment wired to [U], Known Gaps section added |
+
+No code changes. No deploys.
 
 ---
 
 ## 📁 Files / Documents Affected
 
-**New files:**
-| File | Description |
-|------|-------------|
-| apps/frontend/src/pages/OnboardingPage.tsx | 312 lines — 4 tabs: Setup Wizard, Pipeline Health, Module Status, Quick Start |
-
 **Modified files:**
 | File | Change |
 |------|--------|
-| apps/frontend/src/hooks/phase6-demo-data.ts | +8 onboarding types + 5 demo constants (wizard, pipeline, modules, readiness, welcome) |
-| apps/frontend/src/hooks/use-phase6-data.ts | +8 hooks: 5 query (wizard, welcome, pipeline, modules, readiness) + 3 mutation (completeStep, skipStep, seedDemo) |
-| apps/frontend/src/components/brand/ModuleIcons.tsx | +IconOnboarding (rocket SVG, teal) + MODULE_ICONS entry |
-| apps/frontend/src/config/modules.ts | +onboarding entry (teal-400, phase 6, /onboarding route) |
-| apps/frontend/src/App.tsx | +Route path="/onboarding" |
-| apps/frontend/src/__tests__/phase6-pages.test.tsx | +25 OnboardingPage tests (mock vars, describe block) |
+| docs/QA_CHECKLIST.md | Full rewrite — session 23→46. 143 insertions, 51 deletions. 10 new module sections. Known Gaps table. |
 
 ---
 
 ## 🔧 Decisions & Rationale
 
-No new architectural decisions this session.
+No architectural decisions this session.
 
 ---
 
 ## 🧪 E2E / Deploy Verification Results
 
-No deploy this session (frontend already deployed from session 45).
+No deploy this session. No test run (docs only).
 
-**Test run (2026-03-24):**
+Last known test state (session 46):
 ```
 Frontend tests:  500 passed (502 total, 2 skipped) ✅
 Backend total:   3811 passed
@@ -58,71 +42,51 @@ Grand total:     4311 passed
 CI:              Run 23461768159 — SUCCESS ✅
 ```
 
-**OnboardingPage test coverage:**
-- Stats bar renders with completion %, pipeline status, readiness score
-- All 4 tabs render and switch correctly
-- Setup Wizard: all 8 step names, CURRENT badge, completed status badges, Complete/Skip buttons
-- Complete Step / Skip Step mutations called correctly
-- Pipeline Health: stage cards, overall banner
-- Module Status: module names, ready/needs_config/disabled badges, empty state
-- Quick Start: stat chips, tips, next step CTA, Seed Demo Data button + mutation
-
 ---
 
 ## ⚠️ Open Items / Next Steps
 
-**Immediate:**
-1. Update `docs/QA_CHECKLIST.md` — stale since session 23
-2. Elasticsearch IOC indexing service (Phase 7 — module 20, port 3020)
+**CRITICAL — Uncommitted work in working tree (predates session 47):**
+- `apps/elasticsearch-indexing-service/` — Phase 7 scaffold started, never committed
+- `apps/frontend/src/App.tsx` — modified (unknown changes)
+- `apps/frontend/src/pages/IocListPage.tsx` — modified (unknown changes)
+- `packages/shared-utils/src/queues.ts` — modified
+- `packages/shared-utils/tests/constants-errors.test.ts` — modified
+- `pnpm-lock.yaml` — modified
+- `tsconfig.build.json` — modified
+- **Action required**: Review these diffs before next session, commit or stash before starting new work
+
+**Immediate (prompts ready):**
+- Option B: D3 code-split — apps/frontend/src/App.tsx + ThreatGraphPage lazy-load
+- Option C: Known Gaps P1 — actor/malware detail panels + campaign badge (use-intel-data.ts, ThreatActorListPage, MalwareListPage, IocListPage)
 
 **Deferred:**
-- Bundle code-splitting (D3 adds 190KB, total 710KB) — defer until pre-launch
-- VITE_DEMO_MODE env gate for demo fallbacks — defer until pre-launch
-- VPS SSH timeout investigation (RCA #6) — intermittent, not blocking
-- Razorpay live keys in VPS .env — before billing go-live
-- Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps — cosmetic, tests pass
+- Elasticsearch IOC indexing (Phase 7, Module 20, port 3020) — after frontend polish done
+- VITE_DEMO_MODE gating for demo fallback code — pre-launch task
+- Razorpay real keys in VPS .env — before billing goes live
 
 ---
 
 ## 🔁 How to Resume
 
-Paste this prompt to start session 47:
+Paste this prompt:
 
 ```
 /session-start
-
-Working on: Elasticsearch IOC Indexing (Phase 7 — Module 20).
-
-Context: All 28 backend modules deployed. All 16 frontend pages complete.
-Phase 6 fully done. Ready to start Phase 7.
-
-Backend target: apps/elasticsearch-indexing (new module, port 3020).
-Purpose: Full-text search + faceted filtering for IOCs.
-- Index IOC records into Elasticsearch on create/update/enrich events
-- Search API: GET /api/v1/search/iocs?q=...&type=...&severity=...
-- Sync worker: BullMQ consumer on QUEUE_IOC_INDEXED
-- Re-index endpoint: POST /api/v1/search/reindex
-
-Scope lock — DO NOT modify:
-  - Any existing backend service files
-  - Any shared packages (except additive)
-  - Any frontend pages
-  - docker-compose, nginx (will add in final commit)
-
-Success criteria:
-1. Module scaffolded with /new-module
-2. Elasticsearch client configured
-3. IOC indexer worker
-4. Search API endpoints
-5. Tests passing
-6. Deployed to VPS
+Working on: [Option B — D3 code-split OR Option C — Known Gaps P1]
+Scope: apps/frontend ONLY
 ```
 
-**Module map:**
-- Phase 6 frontend: Billing ✅, Admin Ops ✅, Onboarding ✅ — ALL DONE
-- Phase 7: Elasticsearch indexing (module 20), Redis caching (module 23), reporting (module 21)
+Prompts for both options were generated in session 47 — ask Claude to show them again if needed.
 
-**Phase roadmap:**
-- Phase 1: Infra ✅ | Phase 2: Pipeline ✅ | Phase 3: Intel ✅
-- Phase 4: Advanced ✅ | Phase 5: Enterprise ✅ | Phase 6: Ops ✅
-- Frontend: 16/16 pages ✅ | Phase 7: Search + Cache + Reports 📋
+### Module map (all 28 built)
+Phase 1: api-gateway, shared-* (6 pkgs), user-service
+Phase 2: ingestion (3004), normalization (3005), ai-enrichment (3006)
+Phase 3: ioc-intelligence (3007), threat-actor (3008), malware (3009), vuln-intel (3010)
+Phase 4: drp (3011), threat-graph (3012), correlation (3013), hunting (3014)
+Phase 5: integration (3015), user-mgmt (3016), customization (3017)
+Phase 6: onboarding (3018), billing (3019), admin-ops (3022)
+Frontend: 16 pages, 500 tests
+
+### Phase roadmap
+Phase 7 (next): Elasticsearch indexing (3020) → Reporting service (3021) → API docs → launch prep

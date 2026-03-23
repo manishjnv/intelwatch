@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 46
+**Session counter:** 47
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -128,9 +128,9 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ## Work In Progress
 
 - **Current phase:** Phase 6 COMPLETE — All 28 modules built + deployed. Phase 6 frontend 3/3 COMPLETE (Billing + Admin Ops + Onboarding). All 16 pages done. 4311 tests (500 frontend + 3811 backend).
-- **Last session outcome:** Session 46 (2026-03-24). OnboardingPage complete (Phase 6 frontend 3/3). 4 tabs: Setup Wizard (8-step stepper with CURRENT badge + Complete/Skip buttons), Pipeline Health (5 stage cards), Module Status (grid with status badges), Quick Start (stat chips, tips, Seed Demo Data). 7 files: phase6-demo-data.ts, use-phase6-data.ts, OnboardingPage.tsx (312 lines), ModuleIcons.tsx (IconOnboarding), modules.ts, App.tsx, phase6-pages.test.tsx (+25 tests). 500 frontend tests. CI green (run 23461768159). Session was verification — commits already existed from session 45 continuation (85c4bc7 → b2f1e98).
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating (stale since session 23). Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass).
-- **Next tasks:** (1) Update docs/QA_CHECKLIST.md (stale since session 23). (2) Elasticsearch IOC indexing service (Phase 7 — module 20, port 3020). (3) Frontend code-splitting for D3 bundle (710KB → target <400KB).
+- **Last session outcome:** Session 47 (2026-03-24). Docs-only session. Updated docs/QA_CHECKLIST.md from session 23 to session 46 — all Phase 4/5/6 modules added (10 new sections: DRP 11, Threat Graph 12, Correlation 13, Hunting 14, Integration 15, User Mgmt 16, Customization 17, Onboarding 18, Billing 19, Admin Ops 22). Module 06 enrichment UI upgraded from [-] to [U] (EnrichmentPage + EnrichmentDetailPanel + enrichedToday API wired). Known Gaps section added (8 P1 items). Prompts prepared for Option B (D3 code-split) and Option C (actor/malware detail panels + campaign badge). Commit c0a11ab.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass).
+- **Next tasks:** (1) Frontend code-splitting for D3 bundle (710KB → target <400KB) — prompt ready. (2) Known Gaps P1: actor/malware detail panels + campaign badge — prompt ready. (3) Elasticsearch IOC indexing service (Phase 7 — module 20, port 3020).
 
 ## Deployment Log
 
