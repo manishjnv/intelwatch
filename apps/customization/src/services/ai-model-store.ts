@@ -47,7 +47,6 @@ export interface UsageStats {
 export class AiModelStore {
   private taskMappings = new Map<string, TaskMapping>();
   private budgets = new Map<string, BudgetConfig>();
-  private usageLog: UsageRecord[] = [];
   /** tenantId → usage records */
   private tenantUsage = new Map<string, UsageRecord[]>();
 
@@ -235,7 +234,7 @@ export class AiModelStore {
     };
   }
 
-  importData(tenantId: string, data: Record<string, unknown>, userId: string): void {
+  importData(tenantId: string, data: Record<string, unknown>, _userId: string): void {
     this.ensureDefaults(tenantId);
     const now = new Date().toISOString();
 

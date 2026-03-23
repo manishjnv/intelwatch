@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { AppError } from '@etip/shared-utils';
 import {
   IOC_TYPES,
-  WEIGHT_FACTORS,
   WEIGHT_PRESETS,
   type IocType,
   type WeightFactor,

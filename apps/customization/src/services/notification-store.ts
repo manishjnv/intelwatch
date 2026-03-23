@@ -45,9 +45,9 @@ export class NotificationStore {
   private preferences = new Map<string, NotificationPreferences>();
 
   constructor(
-    private inheritance: ConfigInheritance,
+    _inheritance: ConfigInheritance,
     private auditTrail: AuditTrail,
-    private versioning: ConfigVersioning,
+    _versioning: ConfigVersioning,
   ) {}
 
   private userKey(tenantId: string, userId: string): string {

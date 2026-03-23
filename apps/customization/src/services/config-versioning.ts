@@ -83,6 +83,6 @@ export class ConfigVersioning {
     );
     if (all.length === 0) return null;
     all.sort((a, b) => b.version - a.version);
-    return all[0];
+    return all[0] ?? null;
   }
 }

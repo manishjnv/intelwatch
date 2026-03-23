@@ -47,7 +47,7 @@ export class DashboardStore {
   constructor(
     private inheritance: ConfigInheritance,
     private auditTrail: AuditTrail,
-    private versioning: ConfigVersioning,
+    _versioning: ConfigVersioning,
   ) {}
 
   private userKey(tenantId: string, userId: string): string {
