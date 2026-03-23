@@ -1,12 +1,13 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 47
+**Session counter:** 48
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.3.5 | 2026-03-24 | Dashboard + 16 data pages + demo fallbacks. All phases complete. Phase 6: Billing (pricing v3) + Admin Ops + Onboarding (8-step wizard, pipeline health, module readiness, quick start). 500 frontend tests (502 total, 2 skipped). Phase 6 frontend 3/3 COMPLETE. |
+| etip_frontend | ✅ Running | 0.3.6 | 2026-03-24 | Dashboard + 16 data pages + demo fallbacks. All phases complete. Phase 6: Billing (pricing v3) + Admin Ops + Onboarding (8-step wizard, pipeline health, module readiness, quick start). 500 frontend tests (502 total, 2 skipped). Phase 6 frontend 3/3 COMPLETE. **D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB split out of main bundle).** |
+| etip_es_indexing | 📋 Not deployed | 0.1.0 | — | Port 3020. Module 20. Elasticsearch IOC indexing. Scaffolded + 57 tests. Needs docker-compose + deploy.yml + nginx before VPS deploy. |
 | etip_nginx | ✅ Running | - | 2026-03-23 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
@@ -44,7 +45,8 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **16 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, **Onboarding**). 19 viz components. 500 tests (502 total, 2 skipped). Phase 6 pages: Billing (pricing v3, plan cards, usage, upgrade) + Admin Ops (health, maintenance, tenants, audit) + Onboarding (8-step wizard, pipeline health, module readiness, quick start). All 16 pages COMPLETE. **Existing pages FROZEN.** |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **16 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, **Onboarding**). 19 viz components. 500 tests (502 total, 2 skipped). Phase 6 pages: Billing (pricing v3, plan cards, usage, upgrade) + Admin Ops (health, maintenance, tenants, audit) + Onboarding (8-step wizard, pipeline health, module readiness, quick start). All 16 pages COMPLETE. **D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB out of main bundle). Existing pages FROZEN.** |
+| elasticsearch-indexing-service | 7 | 🔨 WIP | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip:ioc-indexed), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. NOT yet in docker-compose or deploy.yml. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
@@ -93,6 +95,7 @@ onboarding            → shared-types, shared-utils, shared-auth (Phase 6)
 billing-service       → shared-types, shared-utils, shared-auth, razorpay (Phase 6)
 admin-service         → shared-types, shared-utils, shared-auth (Phase 6)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
+elasticsearch-indexing-service → shared-types, shared-utils, shared-auth, @elastic/elasticsearch, bullmq (Phase 7)
 ```
 
 ## Module Ownership Tiers
@@ -127,10 +130,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 6 COMPLETE — All 28 modules built + deployed. Phase 6 frontend 3/3 COMPLETE (Billing + Admin Ops + Onboarding). All 16 pages done. 4311 tests (500 frontend + 3811 backend).
-- **Last session outcome:** Session 47 (2026-03-24). Docs-only session. Updated docs/QA_CHECKLIST.md from session 23 to session 46 — all Phase 4/5/6 modules added (10 new sections: DRP 11, Threat Graph 12, Correlation 13, Hunting 14, Integration 15, User Mgmt 16, Customization 17, Onboarding 18, Billing 19, Admin Ops 22). Module 06 enrichment UI upgraded from [-] to [U] (EnrichmentPage + EnrichmentDetailPanel + enrichedToday API wired). Known Gaps section added (8 P1 items). Prompts prepared for Option B (D3 code-split) and Option C (actor/malware detail panels + campaign badge). Commit c0a11ab.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass).
-- **Next tasks:** (1) Frontend code-splitting for D3 bundle (710KB → target <400KB) — prompt ready. (2) Known Gaps P1: actor/malware detail panels + campaign badge — prompt ready. (3) Elasticsearch IOC indexing service (Phase 7 — module 20, port 3020).
+- **Current phase:** Phase 7 started — Elasticsearch IOC Indexing (Module 20) scaffolded. D3 bundle split done. Frontend 4368 total tests.
+- **Last session outcome:** Session 48 (2026-03-24). (1) D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded via React.lazy — ~87KB split into on-demand chunks. DECISION-025. (2) Elasticsearch IOC Indexing Service (Module 20, port 3020): BullMQ worker, EsIndexClient, IocIndexer, IocSearchService, 3 route groups, multi-tenant index pattern. 57 tests. QUEUES.IOC_INDEX added to shared-utils. Commit e7587e3. Pushed + CI triggered.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass). **ES service (Module 20) NOT in docker-compose or deploy.yml — must be wired before VPS deploy.**
+- **Next tasks:** (1) Wire elasticsearch-indexing-service into docker-compose.etip.yml + deploy.yml + nginx (port 3020). (2) Known Gaps P1: actor/malware detail panels + campaign badge — prompt ready. (3) Reporting service (Module 21, port 3021) — Phase 7 item 2.
 
 ## Deployment Log
 
@@ -174,6 +177,8 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 44 | 2026-03-24 | etip_frontend updated | ✅ CI green | 92296eb, 12a7267, 27e56d3, f760b19 | BillingPage crash fix (RCA #39, #39b): PlanDefinition shape mismatch + hasData hardening. Pricing v3: Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999, drop Pro tier, annual pricing. 475 frontend tests. |
 | 45 | 2026-03-24 | etip_frontend updated | ✅ CI green | 85c4bc7, a65863c, 59f2a4d, 97ddd16 | Onboarding frontend: OnboardingPage.tsx (8-step wizard, pipeline health, module readiness, quick start), hooks, route, 25 tests. Phase 6 frontend 3/3 COMPLETE. 500 frontend tests. CI run 23461768159. |
 | 46 | 2026-03-24 | No deploy (verification session) | — | (none) | Verified session 45 OnboardingPage work. All 500 frontend tests pass. Docs updated. Working tree clean. |
+| 47 | 2026-03-24 | No deploy (docs only) | — | eaea286 | QA_CHECKLIST full rewrite (session 23→46). Prompts prepared for D3 code-split + Known Gaps P1. |
+| 48 | 2026-03-24 | etip_frontend updated (D3 bundle split) | ⏳ CI pending | e7587e3 | D3 code-split (ThreatGraphPage + RelationshipGraph lazy-loaded). Elasticsearch IOC Indexing Service Module 20 scaffolded (57 tests). 4368 total tests. ES service NOT yet in docker-compose — deploy in next session. |
 
 ## E2E Verification Results (Session 13)
 

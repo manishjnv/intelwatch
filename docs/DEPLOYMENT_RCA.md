@@ -609,3 +609,7 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 **Session 41:** Admin Ops Service (Module 22) core + P0 improvements. 28 endpoints, 147 tests (4178 monorepo). Commit f4ca0f5. CI triggered. No new RCA issues. Key fix: `.parse()` → `validate()` helper (safeParse pattern from billing-service) — raw ZodError throws were not being caught properly by error-handler's `instanceof ZodError` check across module boundaries. Also: BackupStore sort stability fix — `seq * 0.001` ms offset truncated by ISO date, changed to `seq * 1` ms. Both patterns added to DECISION-013 pattern catalog. Phase 6 COMPLETE (3/3).
 
 **Session 46:** Verification session only — no new code. OnboardingPage was already committed in session 45 continuation (commits 85c4bc7 → b2f1e98). Session confirmed 500 frontend tests passing, 4311 total. No RCA issues. CI Run 23461768159 SUCCESS.
+
+**Session 47:** Docs-only. QA_CHECKLIST.md full rewrite. No code changes, no deploy, no RCA issues.
+
+**Session 48:** D3 code-split (ThreatGraphPage + RelationshipGraph lazy-loaded via React.lazy — DECISION-025). Elasticsearch IOC Indexing Service Module 20 scaffolded (57 tests, port 3020). shared-utils: QUEUES.IOC_INDEX added + test count updated. 4368 total tests. Frontend push triggers CI rebuild of etip_frontend. ES service not yet in docker-compose — no deploy needed for it this session. No new RCA issues.

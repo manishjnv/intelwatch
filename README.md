@@ -2,8 +2,8 @@
 
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
-![Phase](https://img.shields.io/badge/phase-6%20complete-00ff88)
-![Tests](https://img.shields.io/badge/tests-4311%20passing-00ff88)
+![Phase](https://img.shields.io/badge/phase-7%20started-00ff88)
+![Tests](https://img.shields.io/badge/tests-4368%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -37,7 +37,8 @@
 | Infrastructure (27 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 6 COMPLETE (3/3) — All phases done** | **28/28 modules built** | **4311** |
+| Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | 🔨 Phase 7 scaffolded | 57 |
+| **Phase 7 started — Elasticsearch indexing scaffolded** | **29/29 modules** | **4368** |
 
 ## Live API Endpoints
 
