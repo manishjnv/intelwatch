@@ -588,6 +588,12 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 
 **Session 34:** No new RCA issues. Enterprise Integration Service (Module 15) added: etip_integration on port 3015. Deploy pipeline: build + recreate + health check added to deploy.yml. Nginx: upstream etip_integration_backend + location /api/v1/integrations. Commit 6c25bc2. CI triggered, pending. Expected: 24 containers after deploy.
 
-**Session 37:** No new RCA issues. Integration Service P1/P2 accuracy improvements (10/10). 34 new endpoints (58 total), 161 new tests (335 total). Commit f2f85e4. CI triggered, pending.
+### Issue 37: CI tests fail — shared-utils dist not compiled before test run
+**Error**: `Cannot find module '@etip/shared-utils/dist/index.js'` in integration-service tests on CI. All 335 tests pass locally.
+**Root Cause**: `deploy.yml` ran `pnpm -r test` BEFORE `tsc -b --force tsconfig.build.json`. Shared packages export compiled JS from `dist/`. Locally, `dist/` exists from prior builds. CI has a clean checkout with no `dist/` directory, so imports fail.
+**Fix**: Swapped step order — `tsc -b` now runs before `pnpm -r test`. Comment added referencing this RCA.
+**Prevention**: **RULE**: In CI, always compile shared packages (`tsc -b`) before running tests. Tests import compiled output, not TS source.
+
+**Session 37:** Integration Service P1/P2 accuracy improvements (10/10). 34 new endpoints (58 total), 161 new tests (335 total). Commit f2f85e4. CI blocked by Issue 37.
 
 **Session 38:** No new RCA issues. Phase 5 Frontend UI: 3 new pages (Integration, User Management, Customization). Frontend-only changes — no backend/deploy impact. 63 new tests (367 frontend, 3692 monorepo). Commit d8c9d8b. CI triggered, pending.
