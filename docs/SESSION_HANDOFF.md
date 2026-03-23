@@ -1,8 +1,8 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-23
-**Session:** 30
-**Session Summary:** DRP Service (Module 11) core + P0 improvements (#1-5). 24 source files, 12 test files, 25 endpoints, 158 tests. 4 detection engines, 5 accuracy improvements, graph integration. Phase 4: all 4 modules built.
+**Session:** 31
+**Session Summary:** DRP Service P1/P2 improvements (#6-15). 10 new services, 10 new endpoints, 108 new tests. Module 11 FEATURE-COMPLETE (15/15). Phase 4 COMPLETE.
 
 ---
 
@@ -15,53 +15,40 @@
 
 ---
 
-## ✅ Changes Made (Session 30)
+## ✅ Changes Made (Session 31)
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| pending | 40 | feat: add DRP service (Module 11) — core + P0 improvements, 25 endpoints, 158 tests |
+| e26f551 | 40 | feat: add DRP service (Module 11) — core + P0 improvements, 25 endpoints, 158 tests |
+| 2bb8730 | 27 | feat: add DRP service P1/P2 improvements (#6-15) — 10 services, 10 endpoints, 108 tests |
 
 ## 📁 Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/drp-service/package.json` | Module config: shared-auth/types/utils, fastify, pino, zod |
-| `apps/drp-service/tsconfig.json` | composite:true, refs to shared-types/utils/auth |
-| `apps/drp-service/vitest.config.ts` | Aliases for shared-*, 70% coverage |
-| `apps/drp-service/src/config.ts` | Zod env validation, cached singleton (port 3011) |
-| `apps/drp-service/src/logger.ts` | Pino with auth redaction |
-| `apps/drp-service/src/app.ts` | Fastify + plugins + hooks + route registration |
-| `apps/drp-service/src/index.ts` | Bootstrap: config→logger→store→services→app→listen |
-| `apps/drp-service/src/plugins/auth.ts` | authenticate, getUser, rbac preHandlers |
-| `apps/drp-service/src/plugins/error-handler.ts` | AppError/ZodError/429/404 handler |
-| `apps/drp-service/src/routes/health.ts` | /health + /ready |
-| `apps/drp-service/src/routes/assets.ts` | 8 asset CRUD + scan endpoints |
-| `apps/drp-service/src/routes/alerts.ts` | 7 alert management + 4 dashboard endpoints |
-| `apps/drp-service/src/routes/detection.ts` | 5 detection + 1 scan result endpoints |
-| `apps/drp-service/src/schemas/drp.ts` | All domain interfaces + Zod schemas (~240 lines) |
-| `apps/drp-service/src/schemas/store.ts` | DRPStore — multi-tenant nested Maps |
-| `apps/drp-service/src/services/asset-manager.ts` | MonitoredAsset CRUD, validation, normalization |
-| `apps/drp-service/src/services/alert-manager.ts` | DRPAlert CRUD, transitions, triage, integrated P0 |
-| `apps/drp-service/src/services/typosquat-detector.ts` | 5 algorithms: homoglyph, insertion, deletion, transposition, TLD |
-| `apps/drp-service/src/services/dark-web-monitor.ts` | Simulated dark web feed scanning + pattern matching |
-| `apps/drp-service/src/services/credential-leak-detector.ts` | Email/domain breach monitoring (10 simulated breaches) |
-| `apps/drp-service/src/services/attack-surface-scanner.ts` | Port scan, cert transparency, DNS enum (simulated) |
-| `apps/drp-service/src/services/confidence-scorer.ts` | #1 Multi-signal weighted scoring + reason summaries |
-| `apps/drp-service/src/services/signal-aggregator.ts` | #2 Per-signal TP/FP tracking, success rate stats |
-| `apps/drp-service/src/services/evidence-chain.ts` | #3 Linked audit trail from signal → alert |
-| `apps/drp-service/src/services/alert-deduplication.ts` | #4 Cross-type dedup with similarity thresholds |
-| `apps/drp-service/src/services/severity-classifier.ts` | #5 Multi-factor severity classification |
-| `apps/drp-service/src/services/graph-integration.ts` | HTTP + service JWT → graph service, retry |
-| `apps/drp-service/tests/*.test.ts` (12 files) | 158 tests across all services |
+| `apps/drp-service/src/schemas/p1-p2.ts` | All P1/P2 interfaces + Zod schemas (262 lines) |
+| `apps/drp-service/src/routes/p1.ts` | P1 routes: batch typosquat, AI enrich, bulk triage, trending, social |
+| `apps/drp-service/src/routes/p2.ts` | P2 routes: takedown, export, rogue apps, risk, correlation |
+| `apps/drp-service/src/services/batch-typosquat.ts` | #6 Multi-domain scan, cross-domain dedup, consolidated report |
+| `apps/drp-service/src/services/ai-enrichment.ts` | #7 Simulated Haiku enrichment, hosting/contacts/actions, budget-gated |
+| `apps/drp-service/src/services/bulk-triage.ts` | #8 Triage by IDs or filter, batch status/severity/assign/tags |
+| `apps/drp-service/src/services/trending-analysis.ts` | #9 Time-series buckets, rolling average, z-score anomaly, trend detection |
+| `apps/drp-service/src/services/social-impersonation.ts` | #10 Handle variations, name/handle/avatar similarity, Levenshtein |
+| `apps/drp-service/src/services/takedown-generator.ts` | #11 Templated docs for registrar/hosting/social/app_store |
+| `apps/drp-service/src/services/alert-exporter.ts` | #12 CSV, JSON, STIX 2.1 bundle export with filters |
+| `apps/drp-service/src/services/rogue-app-detector.ts` | #13 Name/icon similarity, multi-store scan |
+| `apps/drp-service/src/services/risk-aggregator.ts` | #14 Weighted composite score per asset, criticality amplification |
+| `apps/drp-service/src/services/cross-correlation.ts` | #15 Shared hosting, temporal clusters, multi-vector, graph push |
+| `apps/drp-service/tests/*.test.ts` (10 files) | 108 tests across all P1/P2 services |
 
 ## 📁 Files Modified
 
 | File | Change |
 |------|--------|
-| `tsconfig.build.json` | Added `{ "path": "apps/drp-service" }` |
-| `Dockerfile` | Added COPY line for drp-service |
-| `docker-compose.etip.yml` | Added etip_drp container (port 3011) + nginx depends_on |
-| `pnpm-lock.yaml` | Updated for new workspace package |
+| `apps/drp-service/src/schemas/store.ts` | Added 4 new Maps: aiEnrichments, takedowns, correlations, assetRiskScores |
+| `apps/drp-service/src/config.ts` | Added 3 env vars: TI_DRP_AI_ENRICHMENT_ENABLED, TI_DRP_AI_MAX_BUDGET_PER_DAY, TI_DRP_AI_COST_PER_CALL |
+| `apps/drp-service/src/app.ts` | Registered p1Routes + p2Routes with /api/v1/drp prefix |
+| `apps/drp-service/src/index.ts` | Instantiated all 10 new services, wired P1/P2 deps |
 
 ---
 
@@ -77,20 +64,22 @@ No new DECISION entries this session. All patterns followed existing decisions:
 ## 🧪 Deploy Verification
 
 ```
-No deploy this session (code-only).
-Tests: 2711 passing (158 in drp-service, 158 new this session)
+CI triggered from commit 2bb8730, status: in_progress.
+Tests: 2819 total (266 in drp-service, 108 new this session)
 Typecheck: 0 errors
 Lint: 0 errors
 All source files under 400 lines
+1 pre-existing test failure in shared-auth (not new, not blocking)
 ```
 
 ---
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate — DRP P1/P2
-- DRP Service P1 improvements (#6-10): batch typosquat, AI enrichment, bulk triage, trending, social impersonation
-- DRP Service P2 improvements (#11-15): takedown, export, rogue apps, risk aggregation, cross-correlation
+### Immediate — Typosquatting Accuracy
+- Add 7 missing squatting methods: combosquatting, bitsquatting, keyboard proximity, vowel-swap, repetition, hyphenation, subdomain/levelsquatting
+- Improve scoring: Jaro-Winkler composite, TLD risk scoring, expanded homoglyphs (Cyrillic/Greek)
+- CertStream real-time monitor for sub-15-minute detection
 
 ### Immediate — Deploy
 - Deploy all Phase 4 services: threat-graph, correlation-engine, hunting-service, drp-service
@@ -105,34 +94,52 @@ All source files under 400 lines
 
 ## 🔁 How to Resume
 
-### Session 31: Phase 4 — DRP P1/P2 (#6-15) (RECOMMENDED)
+### Session 32: Phase 4 — DRP Typosquatting Detection Accuracy (Module 11) (RECOMMENDED)
 ```
 /session-start
 
-Scope: Phase 4 — Digital Risk Protection P1/P2 (Module 11)
+Scope: Phase 4 — DRP Typosquatting Detection Accuracy (Module 11)
 Do not modify: shared-*, api-gateway, user-service, ingestion, normalization,
   ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel,
   vulnerability-intel, frontend, threat-graph, correlation-engine, hunting-service.
 
 ## Context
-Session 30 built DRP Service (Module 11) — core + P0 improvements (#1-5).
-26 source files, 25 endpoints, 158 tests. 2711 monorepo tests. Port 3011.
-4 detection engines (typosquat 5-algo, dark web, credential leak, attack surface).
-5 P0 improvements: confidence scoring, signal tracking, evidence chains, dedup, severity.
-Typecheck clean, lint clean. Registered in tsconfig.build, Dockerfile, docker-compose.
-Phase 4 progress: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP core ✅ → DRP P1/P2 remaining.
+Session 31 completed DRP P1/P2 (15/15 improvements). Module 11 FEATURE-COMPLETE.
+37 source files, 22 test files, 35 endpoints, 266 tests. 2819 monorepo tests.
+Port 3011. Typecheck clean, lint clean. No deploy yet.
+Phase 4 COMPLETE: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP ✅.
 
-## Task: DRP Service P1 (#6-10) + P2 (#11-15) Improvements
-Build the remaining 10 accuracy improvements:
+## Task: Typosquatting Detection Accuracy Improvements
+Enhance the typosquat detector with research-backed improvements for better accuracy
+and sub-15-minute detection of newly registered domains. 3 work chunks:
 
-P1 (#6-10): batch typosquat, AI enrichment (Haiku, budget-gated), bulk triage,
-  trending risk analysis, social media impersonation detection.
-P2 (#11-15): takedown generation, alert export (CSV/JSON/STIX), rogue app detection,
-  per-asset risk aggregation, cross-alert correlation + graph push.
+### Chunk 1: New Squatting Methods (expand TYPOSQUAT_METHODS enum)
+Add 7 missing detection algorithms to typosquat-detector.ts:
+1. Combosquatting — brand + keyword (support, login, verify, secure, account,
+   update, portal, help, service, manage). #1 attack vector per Akamai.
+2. Bitsquatting — single bit-flip in each ASCII character.
+3. Keyboard proximity — QWERTY adjacency map (include QWERTZ, AZERTY).
+4. Vowel-swap — replace each vowel with every other vowel.
+5. Repetition — double each character once.
+6. Hyphenation — insert hyphens at word boundaries and between chars.
+7. Subdomain/levelsquatting — brand.evil-tld patterns.
 
-Add ~10 new endpoints. Write tests first (TDD). Add p1.ts + p2.ts route files.
+### Chunk 2: Improved Scoring (replace computeRiskScore)
+1. Jaro-Winkler distance (implement ~30 lines, no deps) — weight 0.25.
+2. Composite similarity formula:
+   0.30×levenshtein + 0.25×jaro_winkler + 0.15×keyboard_proximity
+   + 0.15×registration_recency + 0.10×tld_risk + 0.05×phonetic_match
+3. TLD risk scoring lookup table — .top/.tk/.xyz/.online/.site = high risk.
+4. Expand HOMOGLYPHS map — add Cyrillic/Greek (~50 new entries).
 
-Target: apps/drp-service/ (existing module).
+### Chunk 3: CertStream Real-Time Monitor (new service)
+1. services/certstream-monitor.ts — WebSocket client to certstream.calidog.io
+2. services/domain-enricher.ts — RDAP/DNS adapter (simulated, pluggable)
+3. Config: TI_DRP_CERTSTREAM_ENABLED, TI_DRP_CERTSTREAM_URL
+4. Route: GET /api/v1/drp/certstream/status
+5. Registration burst detection in cross-correlation
+
+Target: apps/drp-service/ only. ~45 new tests.
 Skill: skills/11-DIGITAL-RISK-PROTECTION.md.
 ```
 
@@ -145,5 +152,5 @@ Phase 3.5: Dashboard + Demo  FROZEN (6 pages, 15 UI, demo fallbacks, mobile)
 Differentiator A             COMPLETE (AI cost transparency)
 Differentiator A+            COMPLETE (15/15 improvements)
 Differentiator B             COMPLETE (Enrichment UI)
-Phase 4: Advanced Intel      IN PROGRESS: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP core ✅ → DRP P1/P2
+Phase 4: Advanced Intel      COMPLETE: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP ✅
 ```

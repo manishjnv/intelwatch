@@ -1,5 +1,5 @@
 # Digital Risk Protection Service (Module 11)
-**Port:** 3011 | **Status:** 🔨 WIP (P0 complete, P1/P2 pending) | **Tests:** 158
+**Port:** 3011 | **Status:** 🔨 FEATURE-COMPLETE (15/15 improvements) | **Tests:** 266
 
 ## Features
 
@@ -17,8 +17,18 @@
 | #4 Alert Deduplication | `services/alert-deduplication.ts` | Cross-type dedup with similarity thresholds, corroboration boost |
 | #5 Severity Classification | `services/severity-classifier.ts` | Multi-factor: confidence, asset criticality, type risk, signal density, repeat |
 | Graph Integration | `services/graph-integration.ts` | HTTP + service JWT to threat-graph, retry with exponential backoff |
+| #6 Batch Typosquat | `services/batch-typosquat.ts` | Multi-domain scan, cross-domain dedup, consolidated report |
+| #7 AI Alert Enrichment | `services/ai-enrichment.ts` | Simulated Haiku enrichment for hosting/contacts/actions, budget-gated |
+| #8 Bulk Alert Triage | `services/bulk-triage.ts` | Triage by IDs or filter, batch status/severity/assign/tags |
+| #9 Trending Risk Analysis | `services/trending-analysis.ts` | Time-series buckets, rolling average, z-score anomaly, trend detection |
+| #10 Social Impersonation | `services/social-impersonation.ts` | Handle variations, name/handle/avatar similarity, Levenshtein |
+| #11 Takedown Generation | `services/takedown-generator.ts` | Templated docs for registrar/hosting/social/app_store platforms |
+| #12 Alert Export | `services/alert-exporter.ts` | CSV, JSON, STIX 2.1 bundle export with filters |
+| #13 Rogue App Detection | `services/rogue-app-detector.ts` | Name/icon similarity, multi-store scan (Google Play, Apple, 3rd-party) |
+| #14 Risk Aggregation | `services/risk-aggregator.ts` | Weighted composite score per asset, criticality amplification, trend |
+| #15 Cross-Correlation | `services/cross-correlation.ts` | Shared hosting, temporal clusters, multi-vector, graph push |
 
-## API (25 endpoints)
+## API (35 endpoints)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -46,6 +56,16 @@
 | GET | `/api/v1/drp/confidence/:alertId` | alert:read | Confidence breakdown |
 | GET | `/api/v1/drp/signals` | alert:read | Signal success rates |
 | GET | `/api/v1/drp/evidence/:alertId` | alert:read | Evidence chain |
+| POST | `/api/v1/drp/detect/typosquat/batch` | alert:create | #6 Batch multi-domain typosquat scan |
+| POST | `/api/v1/drp/alerts/:id/enrich` | alert:update | #7 AI alert enrichment (hosting, contacts, actions) |
+| POST | `/api/v1/drp/alerts/bulk-triage` | alert:update | #8 Bulk triage by IDs or filter |
+| GET | `/api/v1/drp/analytics/trending` | alert:read | #9 Trending risk analysis (z-score anomaly) |
+| POST | `/api/v1/drp/detect/social` | alert:create | #10 Social media impersonation scan |
+| POST | `/api/v1/drp/alerts/:id/takedown` | alert:create | #11 Generate takedown request document |
+| GET | `/api/v1/drp/alerts/export` | alert:read | #12 Export alerts (CSV/JSON/STIX) |
+| POST | `/api/v1/drp/detect/rogue-apps` | alert:create | #13 Rogue mobile app detection |
+| GET | `/api/v1/drp/assets/:id/risk` | alert:read | #14 Per-asset composite risk score |
+| POST | `/api/v1/drp/analytics/correlate` | alert:create | #15 Cross-alert correlation + graph push |
 
 ## Config
 
@@ -58,3 +78,6 @@
 | TI_DRP_GRAPH_SYNC_ENABLED | false | Push alerts to graph |
 | TI_DRP_MAX_ASSETS_PER_TENANT | 100 | Max monitored assets per tenant |
 | TI_GRAPH_SERVICE_URL | http://localhost:3012 | Graph service URL |
+| TI_DRP_AI_ENRICHMENT_ENABLED | false | Enable AI alert enrichment |
+| TI_DRP_AI_MAX_BUDGET_PER_DAY | 5.0 | Max daily AI enrichment spend ($) |
+| TI_DRP_AI_COST_PER_CALL | 0.01 | Cost per AI enrichment call ($) |

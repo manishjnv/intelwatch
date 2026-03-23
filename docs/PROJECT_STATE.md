@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 30
+**Session counter:** 31
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -43,7 +43,7 @@
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
 | malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
 | vulnerability-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 complete. |
-| digital-risk-protection | 4 | 🔨 WIP | 2026-03-23 | Port 3011. Core + P0 #1-5 COMPLETE. 25 endpoints, 158 tests. 4 detection engines (typosquat 5-algo, dark web, credential leak, attack surface). 5 P0 improvements (confidence scoring, signal tracking, evidence chains, dedup, severity). P1/P2 #6-15 remaining. |
+| digital-risk-protection | 4 | 🔨 WIP | 2026-03-23 | Port 3011. **15/15 improvements COMPLETE**. 35 endpoints, 266 tests. 4 detection engines (typosquat 5-algo, dark web, credential leak, attack surface). P0: confidence scoring, signal tracking, evidence chains, dedup, severity. P1: batch typosquat, AI enrichment, bulk triage, trending analysis, social impersonation. P2: takedown generation, alert export (CSV/JSON/STIX), rogue app detection, risk aggregation, cross-correlation + graph push. FEATURE-COMPLETE. |
 | threat-graph | 4 | 🔨 WIP | 2026-03-23 | Port 3012. 20 improvements complete (#1-20). 32 endpoints, 294 tests. Neo4j graph, risk propagation, STIX export, cluster detection, batch import, decay cron, merge/split, trending. Ready for deploy. |
 | correlation-engine | 4 | 🔨 WIP | 2026-03-23 | Port 3013. **15/15 improvements COMPLETE** (#1-15). 20 endpoints, 166 tests. In-memory. P1: co-occurrence, infra clustering, temporal waves, TTP similarity, DBSCAN campaigns, confidence scoring, Diamond Model, Kill Chain, FP suppression, BFS inference. P2: AI pattern detection (Sonnet), rule templates (6), confidence decay, batch re-correlation, graph integration. |
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
@@ -112,10 +112,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 4 NEARLY COMPLETE. All 4 modules built: Graph ✅, Correlation ✅, Hunting ✅, DRP core ✅ (P1/P2 remaining). Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
-- **Last session outcome:** Session 30 (2026-03-23). DRP Service (Module 11) core + P0 (#1-5): 24 source files, 12 test files, 25 endpoints, 158 tests (2711 monorepo). 4 detection engines: typosquat (5 algorithms), dark web monitoring, credential leak detection, attack surface scanning. 5 P0 improvements: multi-signal confidence scoring with reason summaries, signal success rate tracking, evidence chain builder, smart alert deduplication, multi-factor severity classification. Graph integration via HTTP + service JWT. Registered in tsconfig.build, Dockerfile, docker-compose (etip_drp container port 3011). No deploy (code-only). No commit yet.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. Threat graph deploy pending. Correlation engine deploy pending. Hunting service deploy triggered from 657045f. DRP service P1/P2 (#6-15) remaining. DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions added to shared-auth when ready.
-- **Next tasks:** (1) DRP P1/P2 improvements (#6-15). (2) Deploy all Phase 4 services (threat-graph, correlation, hunting, DRP). (3) Phase 5: Enterprise Integration (Module 15). (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md.
+- **Current phase:** Phase 4 COMPLETE. All 4 modules FEATURE-COMPLETE: Graph ✅ (20/20), Correlation ✅ (15/15), Hunting ✅ (15/15), DRP ✅ (15/15). Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
+- **Last session outcome:** Session 31 (2026-03-23). DRP Service P1/P2 improvements (#6-15): 10 new services, 10 new endpoints, 108 new tests. P1: batch typosquat scan, AI alert enrichment (Haiku, budget-gated), bulk alert triage, trending risk analysis (z-score anomaly), social media impersonation detection. P2: takedown request generation, alert export (CSV/JSON/STIX), rogue app detection, per-asset risk aggregation, cross-alert correlation + graph push. DRP module now 35 endpoints, 266 tests. Monorepo: 2819 tests. Commits: e26f551 (core+P0), 2bb8730 (P1/P2). Pushed to master, CI running.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. Threat graph deploy pending. Correlation engine deploy pending. Hunting service deploy triggered from 657045f. DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions added to shared-auth when ready. 1 pre-existing test failure in shared-auth (not new).
+- **Next tasks:** (1) DRP Typosquatting Detection Accuracy — combosquatting, bitsquatting, keyboard proximity, CertStream real-time, Jaro-Winkler scoring, TLD risk. (2) Deploy all Phase 4 services (threat-graph, correlation, hunting, DRP). (3) Phase 5: Enterprise Integration (Module 15). (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md.
 
 ## Deployment Log
 
@@ -142,7 +142,8 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 27 | 2026-03-23 | No deploy (code-only session) | — | e9acaea | Correlation Engine (Module 13): 10 improvements (#1-10), 12 endpoints, 106 new tests (2271 total). |
 | 28 | 2026-03-23 | No deploy (code-only session) | — | 9430bdd | Correlation Engine P2 (#11-15): 5 services, 8 endpoints, 60 new tests (2331 total). Module 13 FEATURE-COMPLETE. |
 | 29 | 2026-03-23 | etip_hunting + etip_correlation containers added | ⏳ CI pending | feaf0a8→657045f | Threat Hunting Service: 47 endpoints, 222 tests, 15/15 improvements. Docker-compose updated with etip_hunting + etip_correlation. |
-| 30 | 2026-03-23 | No deploy (code-only session) | — | pending | DRP Service (Module 11): 25 endpoints, 158 new tests (2711 total). Core + P0 #1-5. 4 detection engines, 5 accuracy improvements. |
+| 30 | 2026-03-23 | No deploy (code-only session) | — | e26f551 | DRP Service (Module 11): 25 endpoints, 158 new tests (2711 total). Core + P0 #1-5. 4 detection engines, 5 accuracy improvements. |
+| 31 | 2026-03-23 | CI triggered (all Phase 4 services) | ⏳ CI pending | 2bb8730 | DRP P1/P2 (#6-15): 10 services, 10 endpoints, 108 new tests (2819 total). Module 11 FEATURE-COMPLETE (15/15). Phase 4 COMPLETE. |
 
 ## E2E Verification Results (Session 13)
 
