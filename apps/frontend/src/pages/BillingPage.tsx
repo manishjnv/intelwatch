@@ -134,7 +134,7 @@ function PlanCard({ plan, currentPlanId, billingCycle, onUpgrade, onCancel }: Pl
           <p className="text-[11px] text-sev-low mt-0.5">Save {annualSavings}% vs monthly</p>
         )}
         {plan.price < 0 && (
-          <p className="text-xs text-text-muted mt-0.5">Custom pricing for your team</p>
+          <p className="text-xs text-text-muted mt-0.5">from ₹49,999/mo · custom terms</p>
         )}
       </div>
 
@@ -204,10 +204,11 @@ function PlanCard({ plan, currentPlanId, billingCycle, onUpgrade, onCancel }: Pl
 }
 
 const DEMO_PLAN_PRICES: Record<string, { monthly: number; annual: number }> = {
-  free:       { monthly: 0,      annual: 0 },
-  starter:    { monthly: 4_999,  annual: 3_999 },
-  pro:        { monthly: 14_999, annual: 11_999 },
-  enterprise: { monthly: -1,     annual: -1 },
+  free:       { monthly: 0,       annual: 0 },
+  starter:    { monthly: 7_999,   annual: 6_499 },
+  teams:      { monthly: 12_999,  annual: 9_999 },
+  pro:        { monthly: 14_999,  annual: 11_999 },
+  enterprise: { monthly: -1,      annual: -1 },
 }
 
 // ─── Usage Meter ────────────────────────────────────────────────
@@ -615,7 +616,7 @@ export function BillingPage() {
             </div>
 
             {/* Plan cards grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {plans.map(plan => (
                 <PlanCard
                   key={plan.id}

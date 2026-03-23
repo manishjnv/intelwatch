@@ -63,7 +63,7 @@ vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
 
 const PLAN_FREE = {
   id: 'free', name: 'Free', price: 0, priceAnnual: 0,
-  seats: 2, apiCallsPerMonth: 10_000, iocLimit: 5_000, storageGb: 1,
+  seats: 2, apiCallsPerMonth: 10_000, iocLimit: 10_000, storageGb: 1,
   features: ['Up to 2 users', '10K API calls / month'],
 }
 const PLAN_PRO = {
