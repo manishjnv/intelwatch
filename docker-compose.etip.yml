@@ -1000,6 +1000,48 @@ services:
         limits:
           memory: 256M
 
+  # ─── Module 20 — Elasticsearch Indexing Service ─────────────────
+  etip_es_indexing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: etip_es_indexing
+    restart: unless-stopped
+    command: ["node", "apps/elasticsearch-indexing-service/dist/index.js"]
+    environment:
+      TI_NODE_ENV: ${TI_NODE_ENV:-production}
+      TI_ES_SERVICE_PORT: 3020
+      TI_ES_SERVICE_HOST: 0.0.0.0
+      TI_ES_URL: http://etip_elasticsearch:9200
+      TI_ES_USERNAME: elastic
+      TI_ES_PASSWORD: ${TI_ELASTICSEARCH_PASSWORD:?TI_ELASTICSEARCH_PASSWORD is required}
+      TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
+      TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
+      TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
+      TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-500}
+      TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
+    ports:
+      - "3020:3020"
+    depends_on:
+      etip_redis:
+        condition: service_healthy
+      etip_elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:3020/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
   # ─── Nginx — Reverse Proxy, Rate Limiting, Security Headers ─────
   etip_nginx:
     image: nginx:1.27-alpine
@@ -1050,6 +1092,8 @@ services:
       etip_billing:
         condition: service_healthy
       etip_admin:
+        condition: service_healthy
+      etip_es_indexing:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "nginx", "-t"]
