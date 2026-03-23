@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-4%20complete-00ff88)
-![Tests](https://img.shields.io/badge/tests-2898%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-2919%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -23,7 +23,7 @@
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
-| Frontend (React 18 + Vite, 10 data pages, 12 CISO improvements, demo fallbacks) | ✅ Live on VPS | 252 |
+| Frontend (React 18 + Vite, 10 interactive pages, 17 viz components, demo fallbacks) | ✅ Live on VPS | 273 |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |
@@ -31,7 +31,7 @@
 | Infrastructure (22 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 4 COMPLETE — backend + frontend + deploy pipeline** | **Phase 4 complete** (graph, correlation, hunting, DRP + UI) | **~2898** |
+| **Phase 4 COMPLETE — backend + frontend + deploy pipeline** | **Phase 4 complete** (graph, correlation, hunting, DRP + interactive UI) | **~2919** |
 
 ## Live API Endpoints
 

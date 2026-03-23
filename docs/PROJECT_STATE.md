@@ -38,7 +38,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-23 | **10 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting). 13 viz components. 252 tests. 12 CISO-differentiating improvements. **Existing pages FROZEN — Phase 4 pages added.** |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-23 | **10 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting). 17 viz components. 273 tests. All 4 Phase 4 pages fully interactive (CRUD, triage, path finder, feedback). **Existing pages FROZEN.** |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
@@ -116,7 +116,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ## Work In Progress
 
 - **Current phase:** Phase 4 COMPLETE — backend + frontend + deploy. All 4 Phase 4 modules FEATURE-COMPLETE with frontend pages. Phase 3 + Differentiators A/A+/B all COMPLETE. Ready for Phase 5.
-- **Last session outcome:** Session 33 (2026-03-23). Phase 4 Frontend: 4 new pages (DRP Dashboard, Threat Graph, Correlation, Hunting Workbench) with 12 CISO-differentiating improvements. 8 new files, 1 modified. 35 new tests (252 frontend total). Phase 4 deploy pipeline: 4 services added to deploy.yml + nginx routing. Commits: f3ed4b5 (frontend), 07b3f8a (deploy). Pushed to master, CI triggered.
+- **Last session outcome:** Session 33 (2026-03-23). Phase 4 Frontend: 4 new pages + full interactivity for all 4 pages. 7 commits. DRP: asset CRUD, alert triage, typosquat scanner. Graph: path finder, add node, STIX export, node size=risk. Correlation: TP/FP feedback, auto-correlate results. Hunting: create hunt, status controls, add hypothesis/evidence. Deploy pipeline: 4 backend services added. 273 frontend tests (was 217). Commits: f3ed4b5→81aa53a.
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions. 1 pre-existing test failure in shared-auth (not new). Phase 4 backend deploy CI pending — verify health checks after CI completes.
 - **Next tasks:** (1) Verify Phase 4 deploy health after CI completes. (2) Phase 5: Enterprise Integration (Module 15). (3) Add dedicated RBAC permissions for Phase 4 services. (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md. (6) Mobile responsive testing at 375px/768px for Phase 4 pages.
 
@@ -148,7 +148,7 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 30 | 2026-03-23 | No deploy (code-only session) | — | e26f551 | DRP Service (Module 11): 25 endpoints, 158 new tests (2711 total). Core + P0 #1-5. 4 detection engines, 5 accuracy improvements. |
 | 31 | 2026-03-23 | CI triggered (all Phase 4 services) | ⏳ CI pending | 2bb8730 | DRP P1/P2 (#6-15): 10 services, 10 endpoints, 108 new tests (2819 total). Module 11 FEATURE-COMPLETE (15/15). Phase 4 COMPLETE. |
 | 32 | 2026-03-23 | CI triggered (DRP accuracy update) | ⏳ CI pending | 49acf09 | DRP typosquat accuracy: 7 new methods, composite scoring (JW+soundex+TLD), CertStream monitor, domain enricher. 44 new tests (310 DRP, ~2863 total). |
-| 33 | 2026-03-23 | etip_frontend updated + 4 Phase 4 services added to deploy pipeline | ⏳ CI pending | f3ed4b5, 07b3f8a | Phase 4 Frontend: 4 new pages (DRP, Graph, Correlation, Hunting). 35 new tests (252 frontend). Deploy pipeline: nginx routes + build + health checks for etip_threat_graph, etip_correlation, etip_hunting, etip_drp. |
+| 33 | 2026-03-23 | etip_frontend updated + 4 Phase 4 services added to deploy pipeline | ✅ CI green | f3ed4b5→81aa53a (7 commits) | Phase 4 Frontend: 4 new pages + full interactivity. DRP: asset CRUD, alert triage. Graph: path finder, add node, STIX export. Correlation: TP/FP feedback. Hunting: create hunt, status controls, add hypothesis/evidence. 273 tests. Deploy pipeline: 4 services + nginx. |
 
 ## E2E Verification Results (Session 13)
 
