@@ -1,71 +1,128 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-03-24
-**Session:** 45
-**Session Summary:** Billing page crash fixes (RCA #39) + pricing v3 (Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999). Session-end docs update.
+**Session:** 46
+**Session Summary:** OnboardingPage verification + session-end. Phase 6 frontend 3/3 COMPLETE. All 500 frontend tests passing. Working tree clean.
 
 ---
 
 ## ✅ Changes Made
 
+All code was already committed from session 45 continuation (commits 85c4bc7 → b2f1e98).
+This session was verification only. No new code commits.
+
 | Commit | Files | Description |
 |--------|-------|-------------|
-| 92296eb | apps/frontend/src/hooks/use-phase6-data.ts, apps/frontend/src/pages/BillingPage.tsx | Fix BillingPage crash — backend PlanDefinition shape mismatch (RCA #39) |
-| 12a7267 | apps/frontend/src/hooks/use-phase6-data.ts | Harden all phase6 hasData shape checks (usage, subscription, stats, health, admin) |
-| 27e56d3 | apps/frontend/src/hooks/phase6-demo-data.ts, apps/frontend/src/pages/BillingPage.tsx, apps/frontend/src/__tests__/phase6-pages.test.tsx | Pricing revamp — Teams tier added, Starter repriced, Free IOC bump to 10K, Enterprise floor |
-| f760b19 | apps/frontend/src/hooks/phase6-demo-data.ts, apps/frontend/src/pages/BillingPage.tsx, apps/frontend/src/__tests__/phase6-pages.test.tsx | Pricing v3 — Free/Starter/Teams/Enterprise, drop Pro tier entirely, annual pricing |
+| 97ddd16 | tests | 25 OnboardingPage tests — wizard, pipeline, modules, quick start |
+| 59f2a4d | App.tsx, tests | Register /onboarding route + mock setup |
+| a65863c | 5 files | OnboardingPage.tsx + IconOnboarding + modules.ts entry + sidebar |
+| 85c4bc7 | 2 files | Scaffold phase6-demo-data.ts + use-phase6-data.ts onboarding hooks |
+| b2f1e98 | docs | Update test counts — 4311 total, 500 frontend |
+| 4a0169d | docs | Update session 45 deployment log — Onboarding frontend complete |
+
+---
 
 ## 📁 Files / Documents Affected
+
+**New files:**
+| File | Description |
+|------|-------------|
+| apps/frontend/src/pages/OnboardingPage.tsx | 312 lines — 4 tabs: Setup Wizard, Pipeline Health, Module Status, Quick Start |
 
 **Modified files:**
 | File | Change |
 |------|--------|
-| apps/frontend/src/hooks/use-phase6-data.ts | Shape-based hasData checks for all Phase 6 hooks |
-| apps/frontend/src/hooks/phase6-demo-data.ts | Pricing v3 demo data: 4 tiers (no Pro), Teams highlighted |
-| apps/frontend/src/pages/BillingPage.tsx | Pricing v3 UI, Enterprise CTA, annual toggle, Array.isArray guard |
-| apps/frontend/src/__tests__/phase6-pages.test.tsx | Tests updated: Pro→Teams everywhere |
+| apps/frontend/src/hooks/phase6-demo-data.ts | +8 onboarding types + 5 demo constants (wizard, pipeline, modules, readiness, welcome) |
+| apps/frontend/src/hooks/use-phase6-data.ts | +8 hooks: 5 query (wizard, welcome, pipeline, modules, readiness) + 3 mutation (completeStep, skipStep, seedDemo) |
+| apps/frontend/src/components/brand/ModuleIcons.tsx | +IconOnboarding (rocket SVG, teal) + MODULE_ICONS entry |
+| apps/frontend/src/config/modules.ts | +onboarding entry (teal-400, phase 6, /onboarding route) |
+| apps/frontend/src/App.tsx | +Route path="/onboarding" |
+| apps/frontend/src/__tests__/phase6-pages.test.tsx | +25 OnboardingPage tests (mock vars, describe block) |
+
+---
 
 ## 🔧 Decisions & Rationale
 
-**DECISION-024:** 4-tier pricing Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999 (INR).
-- Drop Pro tier to remove decision paralysis
-- Show real Enterprise price (not quote-only) for value anchoring
-- Annual pricing at ~20% discount (Starter ₹7,999, Teams ₹14,999, Enterprise ₹39,999)
-- Market research: ETIP is 20–33× cheaper than any CTI competitor at every tier
+No new architectural decisions this session.
 
-**RCA #39:** BillingPage crash root cause documented — hasData `d != null` pattern insufficient when backend returns data in different shape than frontend type expects. Fix: use field-presence checks.
+---
 
 ## 🧪 E2E / Deploy Verification Results
 
-CI run triggered on push. Frontend rebuilt and deployed. ti.intelwatch.in/billing shows correct pricing cards.
+No deploy this session (frontend already deployed from session 45).
+
+**Test run (2026-03-24):**
+```
+Frontend tests:  500 passed (502 total, 2 skipped) ✅
+Backend total:   3811 passed
+Grand total:     4311 passed
+CI:              Run 23461768159 — SUCCESS ✅
+```
+
+**OnboardingPage test coverage:**
+- Stats bar renders with completion %, pipeline status, readiness score
+- All 4 tabs render and switch correctly
+- Setup Wizard: all 8 step names, CURRENT badge, completed status badges, Complete/Skip buttons
+- Complete Step / Skip Step mutations called correctly
+- Pipeline Health: stage cards, overall banner
+- Module Status: module names, ready/needs_config/disabled badges, empty state
+- Quick Start: stat chips, tips, next step CTA, Seed Demo Data button + mutation
+
+---
 
 ## ⚠️ Open Items / Next Steps
 
 **Immediate:**
-1. Onboarding frontend page (Phase 6 frontend 3/3 — last missing page, backend at port 3018)
-2. QA_CHECKLIST.md update
+1. Update `docs/QA_CHECKLIST.md` — stale since session 23
+2. Elasticsearch IOC indexing service (Phase 7 — module 20, port 3020)
 
 **Deferred:**
-- Phase 5 hook audit already done (session 44) — clean
-- Razorpay live keys: set TI_RAZORPAY_KEY_ID + TI_RAZORPAY_KEY_SECRET on VPS .env
-- Demo fallback gate: VITE_DEMO_MODE env var before real users
-- Elasticsearch IOC indexing (Phase 7 prep)
+- Bundle code-splitting (D3 adds 190KB, total 710KB) — defer until pre-launch
+- VITE_DEMO_MODE env gate for demo fallbacks — defer until pre-launch
+- VPS SSH timeout investigation (RCA #6) — intermittent, not blocking
+- Razorpay live keys in VPS .env — before billing go-live
+- Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps — cosmetic, tests pass
+
+---
 
 ## 🔁 How to Resume
 
-**Next session start prompt:**
+Paste this prompt to start session 47:
+
 ```
 /session-start
-Working on: Onboarding frontend page (Phase 6 frontend 3/3)
-Backend: etip_onboarding running at port 3018 (32 endpoints, 190 tests)
-Goal: Build OnboardingPage.tsx using same withDemoFallback pattern as BillingPage + AdminOpsPage
-File to create: apps/frontend/src/pages/OnboardingPage.tsx
-Hooks: apps/frontend/src/hooks/use-phase6-data.ts (add useOnboardingProgress, useOnboardingSteps)
-Demo data: apps/frontend/src/hooks/phase6-demo-data.ts (add DEMO_ONBOARDING_*)
-Tests: apps/frontend/src/__tests__/phase6-pages.test.tsx (add Onboarding section)
+
+Working on: Elasticsearch IOC Indexing (Phase 7 — Module 20).
+
+Context: All 28 backend modules deployed. All 16 frontend pages complete.
+Phase 6 fully done. Ready to start Phase 7.
+
+Backend target: apps/elasticsearch-indexing (new module, port 3020).
+Purpose: Full-text search + faceted filtering for IOCs.
+- Index IOC records into Elasticsearch on create/update/enrich events
+- Search API: GET /api/v1/search/iocs?q=...&type=...&severity=...
+- Sync worker: BullMQ consumer on QUEUE_IOC_INDEXED
+- Re-index endpoint: POST /api/v1/search/reindex
+
+Scope lock — DO NOT modify:
+  - Any existing backend service files
+  - Any shared packages (except additive)
+  - Any frontend pages
+  - docker-compose, nginx (will add in final commit)
+
+Success criteria:
+1. Module scaffolded with /new-module
+2. Elasticsearch client configured
+3. IOC indexer worker
+4. Search API endpoints
+5. Tests passing
+6. Deployed to VPS
 ```
 
 **Module map:**
-- Phase 6 frontend: skills/20-UI-UX.md
-- Onboarding service API: apps/onboarding-service/src/routes/
+- Phase 6 frontend: Billing ✅, Admin Ops ✅, Onboarding ✅ — ALL DONE
+- Phase 7: Elasticsearch indexing (module 20), Redis caching (module 23), reporting (module 21)
 
-**Phase roadmap:** All 28 modules built. Phase 6 frontend: 2/3 done. Last page: Onboarding.
+**Phase roadmap:**
+- Phase 1: Infra ✅ | Phase 2: Pipeline ✅ | Phase 3: Intel ✅
+- Phase 4: Advanced ✅ | Phase 5: Enterprise ✅ | Phase 6: Ops ✅
+- Frontend: 16/16 pages ✅ | Phase 7: Search + Cache + Reports 📋

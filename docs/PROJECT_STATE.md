@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 45
+**Session counter:** 46
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.3.4 | 2026-03-24 | Dashboard + 15 data pages + demo fallbacks. Feed page fixed + UX improvements. Phase 6 pages: Billing (pricing v3: Free/Starter/Teams/Enterprise) + Admin Ops + Onboarding (8-step wizard). 500 frontend tests (502 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.3.5 | 2026-03-24 | Dashboard + 16 data pages + demo fallbacks. All phases complete. Phase 6: Billing (pricing v3) + Admin Ops + Onboarding (8-step wizard, pipeline health, module readiness, quick start). 500 frontend tests (502 total, 2 skipped). Phase 6 frontend 3/3 COMPLETE. |
 | etip_nginx | ✅ Running | - | 2026-03-23 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
@@ -44,7 +44,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **15 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops). 19 viz components. 475 tests (477 total, 2 skipped). Phase 6 pages: Billing (plan cards, usage, upgrade flow, payment history) + Admin Ops (system health, maintenance calendar, tenant table, audit log). Phase 5 hooks audited (session 44) — all shape checks correct. **Existing pages FROZEN.** |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **16 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, **Onboarding**). 19 viz components. 500 tests (502 total, 2 skipped). Phase 6 pages: Billing (pricing v3, plan cards, usage, upgrade) + Admin Ops (health, maintenance, tenants, audit) + Onboarding (8-step wizard, pipeline health, module readiness, quick start). All 16 pages COMPLETE. **Existing pages FROZEN.** |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
@@ -127,10 +127,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 6 COMPLETE — All 28 modules built + deployed. Phase 6 frontend 2/3 (Billing + Admin Ops). Onboarding page still pending. 4286 tests (475 frontend + 3811 backend).
-- **Last session outcome:** Session 45 (2026-03-24). Billing page crash fixes (RCA #39 + follow-up): backend PlanDefinition shape mismatch caused plan.features.map() crash → hasData shape check fix (commits 92296eb, 12a7267). Hardened all Phase 6 hasData checks for usage/subscription/stats/health/admin hooks. Pricing revamp: 3 iterations — added Teams tier + Starter reprice (commit 27e56d3), then v3 final (Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999 — drop Pro tier, show real Enterprise price, commits f760b19). Market research: ETIP pricing is 20–33× cheaper than nearest competitor (Feedly $1,600/mo). Deployed successfully (CI run 23460537086). 475 frontend tests.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. Razorpay keys need real values in VPS .env (TI_RAZORPAY_KEY_ID, TI_RAZORPAY_KEY_SECRET).
-- **Next tasks:** (1) Onboarding frontend page (Phase 6 frontend 3/3 — last missing page, backend deployed at port 3018). (2) Phase 5 hook shape-check audit (use-phase5-data.ts). (3) Update QA_CHECKLIST.md. (4) Elasticsearch IOC indexing (Phase 7 prep).
+- **Current phase:** Phase 6 COMPLETE — All 28 modules built + deployed. Phase 6 frontend 3/3 COMPLETE (Billing + Admin Ops + Onboarding). All 16 pages done. 4311 tests (500 frontend + 3811 backend).
+- **Last session outcome:** Session 46 (2026-03-24). OnboardingPage complete (Phase 6 frontend 3/3). 4 tabs: Setup Wizard (8-step stepper with CURRENT badge + Complete/Skip buttons), Pipeline Health (5 stage cards), Module Status (grid with status badges), Quick Start (stat chips, tips, Seed Demo Data). 7 files: phase6-demo-data.ts, use-phase6-data.ts, OnboardingPage.tsx (312 lines), ModuleIcons.tsx (IconOnboarding), modules.ts, App.tsx, phase6-pages.test.tsx (+25 tests). 500 frontend tests. CI green (run 23461768159). Session was verification — commits already existed from session 45 continuation (85c4bc7 → b2f1e98).
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating (stale since session 23). Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass).
+- **Next tasks:** (1) Update docs/QA_CHECKLIST.md (stale since session 23). (2) Elasticsearch IOC indexing service (Phase 7 — module 20, port 3020). (3) Frontend code-splitting for D3 bundle (710KB → target <400KB).
 
 ## Deployment Log
 
@@ -172,7 +172,8 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 42 | 2026-03-24 | etip_frontend updated | ✅ CI green | edd6fe8→3c485dc (5 commits) | Feed Ingestion: demo fallback fix + 5 UX improvements + sort/filter/search. 86 new frontend tests (453 total). FeedListPage.tsx overhaul. |
 | 43 | 2026-03-24 | All etip containers redeployed | ✅ All 28+ healthy | 1681fcf, 6198a63 | Dockerfile CI fix (billing+admin COPY missing). Phase 6 frontend: Billing + Admin Ops pages. All Phase 4-6 containers confirmed healthy. 453 frontend tests. |
 | 44 | 2026-03-24 | etip_frontend updated | ✅ CI green | 92296eb, 12a7267, 27e56d3, f760b19 | BillingPage crash fix (RCA #39, #39b): PlanDefinition shape mismatch + hasData hardening. Pricing v3: Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999, drop Pro tier, annual pricing. 475 frontend tests. |
-| 45 | 2026-03-24 | etip_frontend updated | ⏳ CI pending | 85c4bc7, a65863c, 59f2a4d | Onboarding frontend: OnboardingPage.tsx (8-step wizard, pipeline health, module readiness), hooks, route, mock setup. Phase 6 frontend 3/3 COMPLETE. 475 tests. |
+| 45 | 2026-03-24 | etip_frontend updated | ✅ CI green | 85c4bc7, a65863c, 59f2a4d, 97ddd16 | Onboarding frontend: OnboardingPage.tsx (8-step wizard, pipeline health, module readiness, quick start), hooks, route, 25 tests. Phase 6 frontend 3/3 COMPLETE. 500 frontend tests. CI run 23461768159. |
+| 46 | 2026-03-24 | No deploy (verification session) | — | (none) | Verified session 45 OnboardingPage work. All 500 frontend tests pass. Docs updated. Working tree clean. |
 
 ## E2E Verification Results (Session 13)
 
