@@ -165,8 +165,8 @@ export const DEMO_BILLING_PLANS: BillingPlan[] = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 7_999,
-    priceAnnual: 6_499,
+    price: 9_999,
+    priceAnnual: 7_999,
     seats: 10,
     apiCallsPerMonth: 100_000,
     iocLimit: 50_000,
@@ -185,12 +185,13 @@ export const DEMO_BILLING_PLANS: BillingPlan[] = [
   {
     id: 'teams',
     name: 'Teams',
-    price: 12_999,
-    priceAnnual: 9_999,
+    price: 18_999,
+    priceAnnual: 14_999,
     seats: 25,
     apiCallsPerMonth: 250_000,
     iocLimit: 250_000,
     storageGb: 50,
+    highlighted: true,
     features: [
       'Up to 25 users',
       '250K API calls / month',
@@ -204,32 +205,10 @@ export const DEMO_BILLING_PLANS: BillingPlan[] = [
     ],
   },
   {
-    id: 'pro',
-    name: 'Pro',
-    price: 14_999,
-    priceAnnual: 11_999,
-    seats: 50,
-    apiCallsPerMonth: 1_000_000,
-    iocLimit: 500_000,
-    storageGb: 100,
-    highlighted: true,
-    features: [
-      'Up to 50 users',
-      '1M API calls / month',
-      '500K IOC limit',
-      '100 GB storage',
-      'AI enrichment (Sonnet)',
-      'Threat Graph + Hunting',
-      'All SIEM integrations',
-      'SSO (SAML + OIDC)',
-      'Priority support',
-    ],
-  },
-  {
     id: 'enterprise',
     name: 'Enterprise',
-    price: -1,    // contact sales
-    priceAnnual: -1,
+    price: 49_999,
+    priceAnnual: 39_999,
     seats: -1,
     apiCallsPerMonth: -1,
     iocLimit: -1,
@@ -251,21 +230,21 @@ export const DEMO_BILLING_PLANS: BillingPlan[] = [
 
 export const DEMO_USAGE_METERS: UsageMeters = {
   apiCalls: {
-    used: 847_234,
-    limit: 1_000_000,
+    used: 198_234,
+    limit: 250_000,
     resetAt: daysFromNow(8),
   },
   iocCount: {
-    used: 312_445,
-    limit: 500_000,
+    used: 187_445,
+    limit: 250_000,
   },
   storageGb: {
-    used: 42.7,
-    limit: 100,
+    used: 31.4,
+    limit: 50,
   },
   seats: {
     used: 12,
-    limit: 50,
+    limit: 25,
   },
   period: {
     start: daysAgo(22),
@@ -274,8 +253,8 @@ export const DEMO_USAGE_METERS: UsageMeters = {
 }
 
 export const DEMO_CURRENT_SUBSCRIPTION: CurrentSubscription = {
-  planId: 'pro',
-  planName: 'Pro',
+  planId: 'teams',
+  planName: 'Teams',
   status: 'active',
   billingCycle: 'annual',
   currentPeriodEnd: daysFromNow(8),
@@ -286,16 +265,16 @@ export const DEMO_CURRENT_SUBSCRIPTION: CurrentSubscription = {
 }
 
 export const DEMO_PAYMENT_HISTORY: PaymentRecord[] = [
-  { id: 'inv-001', date: daysAgo(8),  description: 'Pro Plan — Annual', amount: 143_988, status: 'paid',    invoiceUrl: '/api/v1/billing/invoices/inv-001/download', plan: 'Pro' },
-  { id: 'inv-002', date: daysAgo(38), description: 'Pro Plan — Annual', amount: 143_988, status: 'paid',    invoiceUrl: '/api/v1/billing/invoices/inv-002/download', plan: 'Pro' },
-  { id: 'inv-003', date: daysAgo(68), description: 'Starter Plan — Monthly', amount: 4_999, status: 'paid', invoiceUrl: '/api/v1/billing/invoices/inv-003/download', plan: 'Starter' },
-  { id: 'inv-004', date: daysAgo(98), description: 'Starter Plan — Monthly', amount: 4_999, status: 'paid', invoiceUrl: '/api/v1/billing/invoices/inv-004/download', plan: 'Starter' },
-  { id: 'inv-005', date: daysAgo(128), description: 'Starter Plan — Monthly', amount: 4_999, status: 'refunded', invoiceUrl: '/api/v1/billing/invoices/inv-005/download', plan: 'Starter' },
+  { id: 'inv-001', date: daysAgo(8),  description: 'Teams Plan — Annual', amount: 179_988, status: 'paid',    invoiceUrl: '/api/v1/billing/invoices/inv-001/download', plan: 'Teams' },
+  { id: 'inv-002', date: daysAgo(38), description: 'Teams Plan — Annual', amount: 179_988, status: 'paid',    invoiceUrl: '/api/v1/billing/invoices/inv-002/download', plan: 'Teams' },
+  { id: 'inv-003', date: daysAgo(68), description: 'Starter Plan — Monthly', amount: 9_999, status: 'paid',  invoiceUrl: '/api/v1/billing/invoices/inv-003/download', plan: 'Starter' },
+  { id: 'inv-004', date: daysAgo(98), description: 'Starter Plan — Monthly', amount: 9_999, status: 'paid',  invoiceUrl: '/api/v1/billing/invoices/inv-004/download', plan: 'Starter' },
+  { id: 'inv-005', date: daysAgo(128), description: 'Starter Plan — Monthly', amount: 9_999, status: 'refunded', invoiceUrl: '/api/v1/billing/invoices/inv-005/download', plan: 'Starter' },
 ]
 
 export const DEMO_BILLING_STATS: BillingStats = {
-  currentPlan: 'Pro',
-  monthlySpend: 11_999,
+  currentPlan: 'Teams',
+  monthlySpend: 14_999,
   nextBillingDate: daysFromNow(8),
   apiUsagePercent: 84.7,
 }

@@ -133,8 +133,8 @@ function PlanCard({ plan, currentPlanId, billingCycle, onUpgrade, onCancel }: Pl
         {billingCycle === 'annual' && annualSavings > 0 && (
           <p className="text-[11px] text-sev-low mt-0.5">Save {annualSavings}% vs monthly</p>
         )}
-        {plan.price < 0 && (
-          <p className="text-xs text-text-muted mt-0.5">from ₹49,999/mo · custom terms</p>
+        {plan.id === 'enterprise' && (
+          <p className="text-xs text-text-muted mt-0.5">Custom terms · dedicated SLA</p>
         )}
       </div>
 
@@ -176,7 +176,7 @@ function PlanCard({ plan, currentPlanId, billingCycle, onUpgrade, onCancel }: Pl
         >
           Cancel Subscription
         </button>
-      ) : plan.price < 0 ? (
+      ) : plan.id === 'enterprise' ? (
         <a
           href="mailto:sales@intelwatch.in"
           className="w-full text-xs py-2 rounded-lg border border-violet-400/40 text-violet-400 hover:bg-violet-400/10 transition-colors text-center block"
@@ -205,10 +205,9 @@ function PlanCard({ plan, currentPlanId, billingCycle, onUpgrade, onCancel }: Pl
 
 const DEMO_PLAN_PRICES: Record<string, { monthly: number; annual: number }> = {
   free:       { monthly: 0,       annual: 0 },
-  starter:    { monthly: 7_999,   annual: 6_499 },
-  teams:      { monthly: 12_999,  annual: 9_999 },
-  pro:        { monthly: 14_999,  annual: 11_999 },
-  enterprise: { monthly: -1,      annual: -1 },
+  starter:    { monthly: 9_999,   annual: 7_999 },
+  teams:      { monthly: 18_999,  annual: 14_999 },
+  enterprise: { monthly: 49_999,  annual: 39_999 },
 }
 
 // ─── Usage Meter ────────────────────────────────────────────────
@@ -616,7 +615,7 @@ export function BillingPage() {
             </div>
 
             {/* Plan cards grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {plans.map(plan => (
                 <PlanCard
                   key={plan.id}

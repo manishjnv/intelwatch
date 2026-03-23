@@ -66,16 +66,16 @@ const PLAN_FREE = {
   seats: 2, apiCallsPerMonth: 10_000, iocLimit: 10_000, storageGb: 1,
   features: ['Up to 2 users', '10K API calls / month'],
 }
-const PLAN_PRO = {
-  id: 'pro', name: 'Pro', price: 14_999, priceAnnual: 11_999,
-  seats: 50, apiCallsPerMonth: 1_000_000, iocLimit: 500_000, storageGb: 100,
-  features: ['Up to 50 users', '1M API calls / month'],
+const PLAN_TEAMS = {
+  id: 'teams', name: 'Teams', price: 18_999, priceAnnual: 14_999,
+  seats: 25, apiCallsPerMonth: 250_000, iocLimit: 250_000, storageGb: 50,
+  features: ['Up to 25 users', '250K API calls / month'],
   highlighted: true,
 }
-const PLANS = [PLAN_FREE, PLAN_PRO]
+const PLANS = [PLAN_FREE, PLAN_TEAMS]
 
 const SUBSCRIPTION = {
-  planId: 'pro', planName: 'Pro', status: 'active',
+  planId: 'teams', planName: 'Teams', status: 'active',
   billingCycle: 'annual', currentPeriodEnd: new Date(Date.now() + 8 * 86_400_000).toISOString(),
   cancelAtPeriodEnd: false, trialEnd: null, couponApplied: 'LAUNCH20', discountPercent: 20,
 }
@@ -93,12 +93,12 @@ const USAGE = {
 
 const PAYMENT = {
   id: 'inv-001', date: new Date(Date.now() - 8 * 86_400_000).toISOString(),
-  description: 'Pro Plan — Annual', amount: 143_988,
-  status: 'paid', invoiceUrl: '/api/v1/billing/invoices/inv-001/download', plan: 'Pro',
+  description: 'Teams Plan — Annual', amount: 179_988,
+  status: 'paid', invoiceUrl: '/api/v1/billing/invoices/inv-001/download', plan: 'Teams',
 }
 
 const BILLING_STATS = {
-  currentPlan: 'Pro', monthlySpend: 11_999,
+  currentPlan: 'Teams', monthlySpend: 14_999,
   nextBillingDate: new Date(Date.now() + 8 * 86_400_000).toISOString(),
   apiUsagePercent: 84.7,
 }
@@ -193,7 +193,7 @@ describe('BillingPage', () => {
   it('shows current plan in stats bar', async () => {
     const { BillingPage } = await import('@/pages/BillingPage')
     render(<BillingPage />)
-    expect(screen.getByTestId('stat-Current Plan')).toHaveTextContent('Pro')
+    expect(screen.getByTestId('stat-Current Plan')).toHaveTextContent('Teams')
   })
 
   it('renders Plans & Upgrade tab by default', async () => {
@@ -222,8 +222,8 @@ describe('BillingPage', () => {
     render(<BillingPage />)
     // 'Free' appears in multiple places (card header + cancel info text)
     expect(screen.getAllByText('Free').length).toBeGreaterThan(0)
-    // 'Pro' appears in card header and CURRENT badge
-    expect(screen.getAllByText('Pro').length).toBeGreaterThan(0)
+    // 'Teams' appears in card header and CURRENT badge
+    expect(screen.getAllByText('Teams').length).toBeGreaterThan(0)
   })
 
   it('shows CURRENT badge on active plan', async () => {
@@ -242,7 +242,7 @@ describe('BillingPage', () => {
     const { BillingPage } = await import('@/pages/BillingPage')
     render(<BillingPage />)
     expect(screen.getByText('Up to 2 users')).toBeInTheDocument()
-    expect(screen.getByText('Up to 50 users')).toBeInTheDocument()
+    expect(screen.getByText('Up to 25 users')).toBeInTheDocument()
   })
 
   it('shows subscription status banner', async () => {
@@ -301,7 +301,7 @@ describe('BillingPage', () => {
     const { BillingPage } = await import('@/pages/BillingPage')
     render(<BillingPage />)
     fireEvent.click(screen.getByText('Payment History'))
-    expect(screen.getByText('Pro Plan — Annual')).toBeInTheDocument()
+    expect(screen.getByText('Teams Plan — Annual')).toBeInTheDocument()
   })
 
   it('shows payment status badge', async () => {
@@ -319,7 +319,7 @@ describe('BillingPage', () => {
   })
 
   it('opens upgrade/downgrade modal when plan button clicked', async () => {
-    // Current plan = Pro → Free plan shows 'Downgrade' button
+    // Current plan = Teams → Free plan shows 'Downgrade' button
     const { BillingPage } = await import('@/pages/BillingPage')
     render(<BillingPage />)
     // Use role selector to find the Downgrade button (Free < Pro = current)
