@@ -15,8 +15,8 @@ import {
 // ── QUEUES Tests ───────────────────────────────────────────────────
 
 describe('QUEUES', () => {
-  it('has exactly 12 queue names', () => {
-    expect(Object.keys(QUEUES)).toHaveLength(12);
+  it('has exactly 13 queue names', () => {
+    expect(Object.keys(QUEUES)).toHaveLength(13);
   });
 
   it('all queue names start with etip: prefix', () => {
@@ -37,7 +37,7 @@ describe('QUEUES', () => {
 
   it('ALL_QUEUE_NAMES matches QUEUES values', () => {
     expect(ALL_QUEUE_NAMES).toEqual(Object.values(QUEUES));
-    expect(ALL_QUEUE_NAMES).toHaveLength(12);
+    expect(ALL_QUEUE_NAMES).toHaveLength(13);
   });
 
   it('queue names are unique', () => {

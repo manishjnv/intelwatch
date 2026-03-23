@@ -22,12 +22,16 @@ import { MalwareListPage } from '@/pages/MalwareListPage';
 import { VulnerabilityListPage } from '@/pages/VulnerabilityListPage';
 import { EnrichmentPage } from '@/pages/EnrichmentPage';
 import { DRPDashboardPage } from '@/pages/DRPDashboardPage';
-import { ThreatGraphPage } from '@/pages/ThreatGraphPage';
 import { CorrelationPage } from '@/pages/CorrelationPage';
 import { HuntingWorkbenchPage } from '@/pages/HuntingWorkbenchPage';
 import { BillingPage } from '@/pages/BillingPage';
 import { AdminOpsPage } from '@/pages/AdminOpsPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
+
+// Lazy-loaded — D3 (~190KB) splits into its own chunk, only fetched on /graph navigation
+const ThreatGraphPage = React.lazy(() =>
+  import('@/pages/ThreatGraphPage').then(m => ({ default: m.ThreatGraphPage }))
+)
 
 /** Catches render errors and displays them instead of blank page */
 class ErrorBoundary extends React.Component<
@@ -69,7 +73,11 @@ export function App() {
             <Route path="/vulnerabilities" element={<VulnerabilityListPage />} />
             <Route path="/feeds" element={<FeedListPage />} />
             {/* Phase 4 module pages — live */}
-            <Route path="/graph" element={<ThreatGraphPage />} />
+            <Route path="/graph" element={
+              <React.Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand" /></div>}>
+                <ThreatGraphPage />
+              </React.Suspense>
+            } />
             <Route path="/hunting" element={<HuntingWorkbenchPage />} />
             <Route path="/enrichment" element={<EnrichmentPage />} />
             <Route path="/drp" element={<DRPDashboardPage />} />

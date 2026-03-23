@@ -4,7 +4,7 @@
  * SeverityBadge, density-adaptive table, severity row tinting.
  * P0-3: Inline entity hover preview. P0-5: Radial confidence gauge.
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, lazy, Suspense } from 'react'
 import { useIOCs, useIOCStats, type IOCRecord } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
@@ -21,7 +21,31 @@ import { SplitPane } from '@/components/viz/SplitPane'
 import { IOCDetailBack } from '@/components/viz/FlipDetailCard'
 import { QuickActionToolbar } from '@/components/viz/QuickActionToolbar'
 import { SparklineCell, generateStubTrend } from '@/components/viz/SparklineCell'
-import { RelationshipGraph, generateStubRelations } from '@/components/viz/RelationshipGraph'
+import type { GraphNode, GraphEdge } from '@/components/viz/RelationshipGraph'
+
+// Lazy-loaded so D3 is not pulled into the main bundle
+const LazyRelationshipGraph = lazy(() =>
+  import('@/components/viz/RelationshipGraph').then(m => ({ default: m.RelationshipGraph }))
+)
+
+// Pure utility — duplicated here to avoid a static import of the D3 module
+function generateStubRelations(record: { id: string; normalizedValue: string; iocType: string; threatActors: string[]; malwareFamilies: string[] }): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  const nodes: GraphNode[] = [
+    { id: record.id, type: record.iocType, label: record.normalizedValue, primary: true },
+  ]
+  const edges: GraphEdge[] = []
+  record.threatActors.slice(0, 3).forEach((actor, i) => {
+    const nodeId = `actor-${i}`
+    nodes.push({ id: nodeId, type: 'actor', label: actor })
+    edges.push({ source: record.id, target: nodeId, label: 'attributed' })
+  })
+  record.malwareFamilies.slice(0, 3).forEach((mal, i) => {
+    const nodeId = `malware-${i}`
+    nodes.push({ id: nodeId, type: 'malware', label: mal })
+    edges.push({ source: record.id, target: nodeId, label: 'delivers' })
+  })
+  return { nodes, edges }
+}
 import { EnrichmentDetailPanel } from '@/components/viz/EnrichmentDetailPanel'
 
 const IOC_FILTERS: FilterOption[] = [
@@ -310,10 +334,12 @@ export function IocListPage() {
               )}
               {detailTab === 'relations' && stubRelations && (
                 <div className="p-2">
-                  <RelationshipGraph
-                    nodes={stubRelations.nodes}
-                    edges={stubRelations.edges}
-                  />
+                  <Suspense fallback={<div className="rounded-lg border border-border bg-bg-secondary/30" style={{ width: 280, height: 200 }} />}>
+                    <LazyRelationshipGraph
+                      nodes={stubRelations.nodes}
+                      edges={stubRelations.edges}
+                    />
+                  </Suspense>
                 </div>
               )}
             </div>
