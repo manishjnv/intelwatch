@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 44
+**Session counter:** 45
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.3.2 | 2026-03-24 | Dashboard + 15 data pages + demo fallbacks. Feed page fixed + UX improvements. Phase 6 pages: Billing (plan cards, usage meters, upgrade flow) + Admin Ops (system health, maintenance, tenants, audit). 475 frontend tests (477 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.3.3 | 2026-03-24 | Dashboard + 15 data pages + demo fallbacks. Feed page fixed + UX improvements. Phase 6 pages: Billing (plan cards, usage meters, upgrade flow, pricing v3) + Admin Ops (system health, maintenance, tenants, audit). 475 frontend tests (477 total, 2 skipped). |
 | etip_nginx | ✅ Running | - | 2026-03-23 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
@@ -127,10 +127,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 6 COMPLETE — All 28 modules built + deployed. Phase 6 frontend COMPLETE (Billing + Admin Ops pages). 4286 tests (475 frontend + 3811 backend).
-- **Last session outcome:** Session 44 (2026-03-24). Phase 5 hook audit — no code changes. Audited use-phase5-data.ts for `d != null` shape-check bugs (same pattern fixed in Phase 6 as RCA #39). Finding: NONE of the 17 Phase 5 query hooks use `d != null`; all already have specific field guards (array length, named numeric fields). 63/63 phase5 tests pass. Feed page improvements (commit 7fa44af) added 22 tests → 475 frontend passing total.
+- **Current phase:** Phase 6 COMPLETE — All 28 modules built + deployed. Phase 6 frontend 2/3 (Billing + Admin Ops). Onboarding page still pending. 4286 tests (475 frontend + 3811 backend).
+- **Last session outcome:** Session 45 (2026-03-24). Billing page crash fixes (RCA #39 + follow-up): backend PlanDefinition shape mismatch caused plan.features.map() crash → hasData shape check fix (commits 92296eb, 12a7267). Hardened all Phase 6 hasData checks for usage/subscription/stats/health/admin hooks. Pricing revamp: 3 iterations — added Teams tier + Starter reprice (commit 27e56d3), then v3 final (Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999 — drop Pro tier, show real Enterprise price, commits f760b19). Market research: ETIP pricing is 20–33× cheaper than nearest competitor (Feedly $1,600/mo). Deployed successfully (CI run 23460537086). 475 frontend tests.
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. Razorpay keys need real values in VPS .env (TI_RAZORPAY_KEY_ID, TI_RAZORPAY_KEY_SECRET).
-- **Next tasks:** (1) Onboarding frontend page (Phase 6 frontend 3/3 — last missing page). (2) Update QA_CHECKLIST.md. (3) Elasticsearch IOC indexing (Phase 7 prep).
+- **Next tasks:** (1) Onboarding frontend page (Phase 6 frontend 3/3 — last missing page, backend deployed at port 3018). (2) Phase 5 hook shape-check audit (use-phase5-data.ts). (3) Update QA_CHECKLIST.md. (4) Elasticsearch IOC indexing (Phase 7 prep).
 
 ## Deployment Log
 
@@ -170,7 +170,9 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 40 | 2026-03-23 | etip_billing added (port 3019) | ⏳ CI pending | e2c897a | Billing Service (Module 19): 28 endpoints, 5 P0, 149 tests. Razorpay, GST invoices, usage metering, upgrade/downgrade, coupons. 4031 monorepo tests. Phase 6: 2/3. |
 | 41 | 2026-03-23 | etip_admin added (port 3022) | ⏳ CI pending | f4ca0f5 | Admin Ops Service (Module 22): 28 endpoints, 5 core + 5 P0, 147 tests. System health, maintenance windows, backup/restore, tenant admin, audit dashboard. 4178 monorepo tests. Phase 6 COMPLETE (3/3). |
 | 42 | 2026-03-24 | etip_frontend updated | ✅ CI green | edd6fe8→3c485dc (5 commits) | Feed Ingestion: demo fallback fix + 5 UX improvements + sort/filter/search. 86 new frontend tests (453 total). FeedListPage.tsx overhaul. |
-| 43 | 2026-03-24 | All etip containers redeployed | ✅ All 28+ healthy | 1681fcf, 6198a63, 92296eb, 12a7267 | Dockerfile CI fix (billing+admin COPY missing). Phase 6 frontend: Billing + Admin Ops pages. BillingPage crash fix. All Phase 4-6 containers confirmed healthy. 453 frontend tests. |
+| 43 | 2026-03-24 | All etip containers redeployed | ✅ All 28+ healthy | 1681fcf, 6198a63 | Dockerfile CI fix (billing+admin COPY missing). Phase 6 frontend: Billing + Admin Ops pages. All Phase 4-6 containers confirmed healthy. 453 frontend tests. |
+| 44 | 2026-03-24 | etip_frontend updated | ✅ CI green | 92296eb, 12a7267, 27e56d3, f760b19 | BillingPage crash fix (RCA #39, #39b): PlanDefinition shape mismatch + hasData hardening. Pricing v3: Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999, drop Pro tier, annual pricing. 475 frontend tests. |
+| 45 | 2026-03-24 | No deploy (docs-only session) | — | (session-end docs) | Session-end ritual: PROJECT_STATE, DECISIONS_LOG, SESSION_HANDOFF, DEPLOYMENT_RCA, memory files. |
 
 ## E2E Verification Results (Session 13)
 

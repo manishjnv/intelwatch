@@ -166,3 +166,11 @@
 **Decision:** All state lives in JavaScript Maps via `CorrelationStore` class. No `@prisma/client` or `neo4j-driver` dependencies. Follows DECISION-013 pattern (in-memory for Phase 4 validation).
 **Alternatives:** Add Prisma models (premature — adds migration complexity before algorithm validation), query threat-graph Neo4j directly (violates DECISION-018 — neo4j-driver stays in threat-graph only)
 **Consequences:** State lost on service restart. Acceptable for Phase 4. Fast iteration on algorithms. Tests don't need external databases. Migration path: replace Map operations with Prisma queries when scaling.
+
+### DECISION-024: ETIP pricing — 4-tier Free/Starter/Teams/Enterprise (INR)
+
+**Date:** 2026-03-24 | **Status:** Accepted
+**Context:** Previous 4-tier plan (Free/Starter/Pro/Enterprise) had Pro at ₹11,999 as the "most popular" tier but the Pro→Enterprise gap was small. Market research showed every CTI competitor (ThreatConnect, Anomali, Recorded Future, Cyware, ThreatQuotient) is $25K–$250K/year, quote-only. Only Feedly has public pricing at $1,600/mo. No INR-priced CTI platform exists in the Indian market.
+**Decision:** 4 tiers — Free (₹0), Starter (₹9,999/mo), Teams (₹18,999/mo), Enterprise (₹49,999/mo). Annual pricing at ~20% discount. Drop Pro tier to remove decision paralysis. Show real Enterprise price (not "Contact Sales" only) to anchor the value gap. Annual pricing: Starter ₹7,999/mo, Teams ₹14,999/mo, Enterprise ₹39,999/mo.
+**Alternatives:** Keep 5 tiers including Pro (decision paralysis between Pro/Teams), Enterprise quote-only with no price shown (hides value anchoring), USD pricing (Indian market prefers INR transparency)
+**Consequences:** ETIP is 20–33× cheaper than nearest international competitor at every tier. Teams tier (₹18,999) maps to the SMB/mid-market CTI buyer sweet spot. Annual discount incentivizes annual commit. Enterprise price anchors high enough to justify custom SLA/support conversations.
