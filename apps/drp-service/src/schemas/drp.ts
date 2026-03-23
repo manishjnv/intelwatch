@@ -134,6 +134,8 @@ export interface AlertFeedback {
 
 export const TYPOSQUAT_METHODS = [
   'homoglyph', 'insertion', 'deletion', 'transposition', 'tld_variant',
+  'combosquatting', 'bitsquatting', 'keyboard_proximity', 'vowel_swap',
+  'repetition', 'hyphenation', 'subdomain',
 ] as const;
 export const TyposquatMethodSchema = z.enum(TYPOSQUAT_METHODS);
 export type TyposquatMethod = z.infer<typeof TyposquatMethodSchema>;
@@ -145,6 +147,7 @@ export interface TyposquatCandidate {
   similarity: number;
   isRegistered: boolean;
   registrationDate: string | null;
+  registrationTermYears: number | null;
   hostingProvider: string | null;
   riskScore: number;
 }

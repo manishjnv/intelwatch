@@ -242,7 +242,7 @@ export interface CorrelationCluster {
   tenantId: string;
   alertIds: string[];
   sharedInfrastructure: SharedInfra[];
-  correlationType: 'shared_hosting' | 'shared_registrar' | 'shared_asn' | 'temporal_cluster' | 'multi_vector';
+  correlationType: 'shared_hosting' | 'shared_registrar' | 'shared_asn' | 'temporal_cluster' | 'multi_vector' | 'registration_burst';
   confidence: number;
   description: string;
   createdAt: string;

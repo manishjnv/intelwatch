@@ -8,6 +8,7 @@ import type { DarkWebMonitor } from '../services/dark-web-monitor.js';
 import type { CredentialLeakDetector } from '../services/credential-leak-detector.js';
 import type { AttackSurfaceScanner } from '../services/attack-surface-scanner.js';
 import type { DRPGraphIntegration } from '../services/graph-integration.js';
+import type { CertStreamMonitor } from '../services/certstream-monitor.js';
 import type { DRPStore } from '../schemas/store.js';
 import type { ScanResult } from '../schemas/drp.js';
 import {
@@ -25,6 +26,7 @@ export interface DetectionRouteDeps {
   credentialLeakDetector: CredentialLeakDetector;
   attackSurfaceScanner: AttackSurfaceScanner;
   graphIntegration: DRPGraphIntegration;
+  certStreamMonitor: CertStreamMonitor;
   store: DRPStore;
 }
 
@@ -33,7 +35,7 @@ export function detectionRoutes(deps: DetectionRouteDeps) {
   const {
     alertManager, typosquatDetector,
     darkWebMonitor, credentialLeakDetector, attackSurfaceScanner,
-    graphIntegration, store,
+    graphIntegration, certStreamMonitor, store,
   } = deps;
 
   return async function routes(app: FastifyInstance): Promise<void> {
@@ -226,6 +228,15 @@ export function detectionRoutes(deps: DetectionRouteDeps) {
           return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Scan not found' } });
         }
         return reply.send({ data: scan });
+      },
+    );
+
+    // GET /certstream/status — CertStream monitor health + stats
+    app.get(
+      '/certstream/status',
+      { preHandler: [authenticate, rbac('alert:read')] },
+      async (_req: FastifyRequest, reply: FastifyReply) => {
+        return reply.send({ data: certStreamMonitor.getStats() });
       },
     );
   };

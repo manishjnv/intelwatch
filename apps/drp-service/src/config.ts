@@ -27,6 +27,12 @@ const ConfigSchema = z.object({
     .transform((v) => v === 'true'),
   TI_DRP_AI_MAX_BUDGET_PER_DAY: z.coerce.number().min(0).default(5.0),
   TI_DRP_AI_COST_PER_CALL: z.coerce.number().min(0).default(0.01),
+  TI_DRP_CERTSTREAM_ENABLED: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true'),
+  TI_DRP_CERTSTREAM_URL: z.string().default('wss://certstream.calidog.io'),
+  TI_DRP_CERTSTREAM_MAX_MATCHES_PER_HOUR: z.coerce.number().int().min(1).default(1000),
 });
 
 export type DRPConfig = z.infer<typeof ConfigSchema>;

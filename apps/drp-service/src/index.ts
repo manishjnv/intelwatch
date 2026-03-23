@@ -25,6 +25,9 @@ import { AlertExporter } from './services/alert-exporter.js';
 import { RogueAppDetector } from './services/rogue-app-detector.js';
 import { RiskAggregator } from './services/risk-aggregator.js';
 import { CrossAlertCorrelation } from './services/cross-correlation.js';
+// Typosquat accuracy services
+import { CertStreamMonitor } from './services/certstream-monitor.js';
+import { DomainEnricher } from './services/domain-enricher.js';
 import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
@@ -83,6 +86,15 @@ async function main(): Promise<void> {
   const riskAggregator = new RiskAggregator(store);
   const crossCorrelation = new CrossAlertCorrelation(store, graphIntegration);
 
+  // Typosquat accuracy services
+  const domainEnricher = new DomainEnricher({ enabled: config.TI_DRP_CERTSTREAM_ENABLED });
+  const certStreamMonitor = new CertStreamMonitor({
+    enabled: config.TI_DRP_CERTSTREAM_ENABLED,
+    url: config.TI_DRP_CERTSTREAM_URL,
+    maxMatchesPerHour: config.TI_DRP_CERTSTREAM_MAX_MATCHES_PER_HOUR,
+    matchThreshold: 0.4,
+  }, domainEnricher);
+
   const app = await buildApp({
     config,
     assetDeps: { assetManager },
@@ -100,6 +112,7 @@ async function main(): Promise<void> {
       credentialLeakDetector,
       attackSurfaceScanner,
       graphIntegration,
+      certStreamMonitor,
       store,
     },
     p1Deps: {
