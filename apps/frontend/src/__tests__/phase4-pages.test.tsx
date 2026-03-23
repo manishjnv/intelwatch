@@ -744,7 +744,7 @@ describe('CorrelationPage — Interactivity', () => {
   it('shows confidence trend arrows for high/low confidence', () => {
     render(<CorrelationPage />)
     // CORRELATION has confidence 91 → should show trending up
-    const { container } = render(<CorrelationPage />)
+    render(<CorrelationPage />)
     // TrendingUp icon renders as SVG with polyline — just verify no crash
     expect(screen.getAllByText('91%').length).toBeGreaterThan(0)
   })
