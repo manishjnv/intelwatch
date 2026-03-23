@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { AppError } from '@etip/shared-utils';
 import type {
   FieldMappingPreset,
   CreateFieldMappingPresetInput,
@@ -19,7 +20,6 @@ export class FieldMappingStore {
     // Check for duplicate names within tenant + target type
     const existing = this.findByName(tenantId, input.name, input.targetType);
     if (existing) {
-      const { AppError } = require('@etip/shared-utils');
       throw new AppError(409, `Preset "${input.name}" already exists for ${input.targetType}`, 'PRESET_DUPLICATE');
     }
 
@@ -76,7 +76,6 @@ export class FieldMappingStore {
       const targetType = input.targetType ?? existing.targetType;
       const dupe = this.findByName(tenantId, input.name, targetType);
       if (dupe) {
-        const { AppError } = require('@etip/shared-utils');
         throw new AppError(409, `Preset "${input.name}" already exists for ${targetType}`, 'PRESET_DUPLICATE');
       }
     }
