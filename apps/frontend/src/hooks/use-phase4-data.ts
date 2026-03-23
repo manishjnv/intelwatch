@@ -370,3 +370,76 @@ export function useCreateHunt() {
     },
   })
 }
+
+export function useChangeHuntStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ huntId, status }: { huntId: string; status: string }) =>
+      api<HuntSession>(`/hunts/${huntId}/status`, { method: 'PATCH', body: { status } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hunt-sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['hunt-stats'] })
+    },
+  })
+}
+
+export function useAddHypothesis() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ huntId, statement, rationale, mitreTechniques }: {
+      huntId: string; statement: string; rationale: string; mitreTechniques?: string[]
+    }) => api<HuntHypothesis>(`/hunts/${huntId}/hypotheses`, {
+      method: 'POST', body: { statement, rationale, mitreTechniques: mitreTechniques ?? [] },
+    }),
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['hunt-hypotheses', vars.huntId] })
+    },
+  })
+}
+
+export function useAddEvidence() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ huntId, type, title, description, entityType, entityValue, tags }: {
+      huntId: string; type: string; title: string; description: string
+      entityType?: string; entityValue?: string; tags?: string[]
+    }) => api<HuntEvidence>(`/hunts/${huntId}/evidence`, {
+      method: 'POST', body: { type, title, description, entityType, entityValue, tags: tags ?? [] },
+    }),
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['hunt-evidence', vars.huntId] })
+    },
+  })
+}
+
+// ─── Graph Mutation Hooks ───────────────────────────────────────
+
+export function useGraphPath(fromId: string | null, toId: string | null) {
+  return useQuery({
+    queryKey: ['graph-path', fromId, toId],
+    queryFn: () => api<{ nodes: GraphNode[]; edges: GraphEdge[]; hops: number }>(
+      `/graph/path?from=${fromId}&to=${toId}&maxDepth=6`,
+    ).catch(() => ({ nodes: [], edges: [], hops: 0 })),
+    enabled: !!fromId && !!toId && fromId !== toId,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateGraphNode() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { entityType: string; label: string; riskScore?: number; properties?: Record<string, unknown> }) =>
+      api<GraphNode>('/graph/nodes', { method: 'POST', body: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['graph-nodes'] })
+      queryClient.invalidateQueries({ queryKey: ['graph-stats'] })
+    },
+  })
+}
+
+export function useStixExport() {
+  return useMutation({
+    mutationFn: (input: { nodeId?: string; nodeIds?: string[]; depth?: number }) =>
+      api<unknown>('/graph/export/stix', { method: 'POST', body: input }),
+  })
+}

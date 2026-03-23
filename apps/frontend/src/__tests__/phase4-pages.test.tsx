@@ -19,6 +19,13 @@ const mockUseScanAsset = vi.fn()
 const mockUseChangeAlertStatus = vi.fn()
 const mockUseAssignAlert = vi.fn()
 const mockUseAlertFeedback = vi.fn()
+const mockUseGraphPath = vi.fn()
+const mockUseCreateGraphNode = vi.fn()
+const mockUseStixExport = vi.fn()
+const mockUseCreateHunt = vi.fn()
+const mockUseChangeHuntStatus = vi.fn()
+const mockUseAddHypothesis = vi.fn()
+const mockUseAddEvidence = vi.fn()
 const mockUseGraphNodes = vi.fn()
 const mockUseGraphStats = vi.fn()
 const mockUseGraphSearch = vi.fn()
@@ -46,6 +53,13 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useChangeAlertStatus: () => mockUseChangeAlertStatus(),
   useAssignAlert: () => mockUseAssignAlert(),
   useAlertFeedback: () => mockUseAlertFeedback(),
+  useGraphPath: (...args: any[]) => mockUseGraphPath(...args),
+  useCreateGraphNode: () => mockUseCreateGraphNode(),
+  useStixExport: () => mockUseStixExport(),
+  useCreateHunt: () => mockUseCreateHunt(),
+  useChangeHuntStatus: () => mockUseChangeHuntStatus(),
+  useAddHypothesis: () => mockUseAddHypothesis(),
+  useAddEvidence: () => mockUseAddEvidence(),
   useGraphNodes: (...args: any[]) => mockUseGraphNodes(...args),
   useGraphStats: () => mockUseGraphStats(),
   useGraphSearch: (...args: any[]) => mockUseGraphSearch(...args),
@@ -194,6 +208,13 @@ function setupDefaultMocks() {
   mockUseChangeAlertStatus.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseAssignAlert.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseAlertFeedback.mockReturnValue({ mutate: vi.fn(), isPending: false, isSuccess: false })
+  mockUseGraphPath.mockReturnValue({ data: null })
+  mockUseCreateGraphNode.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseStixExport.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseCreateHunt.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseChangeHuntStatus.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseAddHypothesis.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseAddEvidence.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseGraphNodes.mockReturnValue({ data: { nodes: [{ id: 'n1', entityType: 'threat_actor', label: 'APT28', riskScore: 92, properties: {}, createdAt: '' }], edges: [] }, isDemo: true })
   mockUseGraphStats.mockReturnValue({ data: { totalNodes: 15, totalEdges: 18, byType: { ioc: 5 }, avgRiskScore: 85 } })
   mockUseGraphSearch.mockReturnValue({ data: { nodes: [] } })
@@ -365,7 +386,7 @@ describe('ThreatGraphPage', () => {
 
   it('renders search input', () => {
     render(<ThreatGraphPage />)
-    expect(screen.getByPlaceholderText('Search entities…')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Search entities...')).toBeTruthy()
   })
 
   it('renders entity legend with type filters', () => {
@@ -393,6 +414,30 @@ describe('ThreatGraphPage', () => {
     mockUseGraphNodes.mockReturnValue({ data: { nodes: [], edges: [] }, isDemo: true })
     render(<ThreatGraphPage />)
     expect(screen.getByText('No graph data available')).toBeTruthy()
+  })
+
+  it('renders Path Finder toggle button', () => {
+    render(<ThreatGraphPage />)
+    expect(screen.getByTitle('Path Finder')).toBeTruthy()
+  })
+
+  it('renders Add Node button', () => {
+    render(<ThreatGraphPage />)
+    expect(screen.getByTitle('Add Node')).toBeTruthy()
+  })
+
+  it('shows path finder bar when activated', () => {
+    render(<ThreatGraphPage />)
+    fireEvent.click(screen.getByTitle('Path Finder'))
+    expect(screen.getByText(/Path Finder/)).toBeTruthy()
+    expect(screen.getByText(/Click a source node/)).toBeTruthy()
+  })
+
+  it('opens add node modal', () => {
+    render(<ThreatGraphPage />)
+    fireEvent.click(screen.getByTitle('Add Node'))
+    expect(screen.getByText('Add Graph Node')).toBeTruthy()
+    expect(screen.getByPlaceholderText(/185.220.101.34/)).toBeTruthy()
   })
 })
 
@@ -524,5 +569,46 @@ describe('HuntingWorkbenchPage', () => {
     fireEvent.click(screen.getByText('APT28 Hunt'))
     expect(screen.getByText('IOC Pivot Chain')).toBeTruthy()
     expect(screen.getByText('185.220.101.34')).toBeTruthy()
+  })
+
+  it('renders New Hunt button', () => {
+    render(<HuntingWorkbenchPage />)
+    expect(screen.getByText('New Hunt')).toBeTruthy()
+  })
+
+  it('opens create hunt modal', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('New Hunt'))
+    expect(screen.getByText('New Hunt Session')).toBeTruthy()
+    expect(screen.getByPlaceholderText(/APT28 Lateral Movement/)).toBeTruthy()
+  })
+
+  it('shows hunt type selector in create modal', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('New Hunt'))
+    expect(screen.getByText('Hypothesis-driven')).toBeTruthy()
+    expect(screen.getByText('Indicator-based')).toBeTruthy()
+    expect(screen.getByText('Behavioral')).toBeTruthy()
+  })
+
+  it('shows hunt status controls in detail view', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    // Active hunt should show Pause and Complete buttons
+    expect(screen.getByText('Pause')).toBeTruthy()
+    expect(screen.getAllByText('Complete').length).toBeGreaterThan(0)
+  })
+
+  it('shows add hypothesis button in detail view', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    expect(screen.getByText('Add Hypothesis')).toBeTruthy()
+  })
+
+  it('shows add evidence button when on evidence tab', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    fireEvent.click(screen.getByText(/Evidence/))
+    expect(screen.getByText('Add Evidence')).toBeTruthy()
   })
 })

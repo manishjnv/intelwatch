@@ -12,6 +12,10 @@ import {
   useHuntEvidence, useHuntTemplates,
   type HuntSession, type HuntHypothesis, type HuntEvidence, type HuntTemplate,
 } from '@/hooks/use-phase4-data'
+import {
+  CreateHuntModal, HuntStatusControls,
+  AddHypothesisForm, AddEvidenceForm,
+} from '@/components/viz/HuntingModals'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
 import {
@@ -274,6 +278,9 @@ export function HuntingWorkbenchPage() {
   const [selectedHuntId, setSelectedHuntId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'sessions' | 'templates'>('sessions')
   const [detailTab, setDetailTab] = useState<'hypotheses' | 'evidence' | 'pivot'>('hypotheses')
+  const [showCreateHunt, setShowCreateHunt] = useState(false)
+  const [showAddHypothesis, setShowAddHypothesis] = useState(false)
+  const [showAddEvidence, setShowAddEvidence] = useState(false)
 
   const { data: sessionData, isDemo } = useHuntSessions()
   const { data: stats } = useHuntStats()
@@ -328,6 +335,11 @@ export function HuntingWorkbenchPage() {
             {label}
           </button>
         ))}
+        <button onClick={() => setShowCreateHunt(true)}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md hover:bg-emerald-500/20 transition-colors">
+          <Crosshair className="w-3 h-3" />
+          New Hunt
+        </button>
       </div>
 
       <div className="flex-1 overflow-hidden flex">
@@ -373,6 +385,10 @@ export function HuntingWorkbenchPage() {
                         </span>
                         <span className="text-[10px] text-text-muted">by {selectedSession.createdBy}</span>
                       </div>
+                      {/* H4: Hunt status controls */}
+                      <div className="mt-2">
+                        <HuntStatusControls huntId={selectedSession.id} status={selectedSession.status} isDemo={isDemo} />
+                      </div>
                     </div>
                     <HuntScoreGauge score={selectedSession.score} />
                   </div>
@@ -411,9 +427,33 @@ export function HuntingWorkbenchPage() {
                     ))}
                   </div>
 
+                  {/* H2: Add Hypothesis */}
+                  {detailTab === 'hypotheses' && showAddHypothesis && (
+                    <AddHypothesisForm huntId={selectedSession.id} isDemo={isDemo}
+                      onDone={() => setShowAddHypothesis(false)} />
+                  )}
+                  {detailTab === 'hypotheses' && !showAddHypothesis && (
+                    <button onClick={() => setShowAddHypothesis(true)}
+                      className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-purple-400/10 text-purple-400 hover:bg-purple-400/20 transition-colors mb-2">
+                      <Brain className="w-3 h-3" />Add Hypothesis
+                    </button>
+                  )}
+
                   {/* #12: Hypothesis Kanban */}
                   {detailTab === 'hypotheses' && (
                     <HypothesisKanban hypotheses={hypotheses} />
+                  )}
+
+                  {/* H3: Add Evidence */}
+                  {detailTab === 'evidence' && showAddEvidence && (
+                    <AddEvidenceForm huntId={selectedSession.id} isDemo={isDemo}
+                      onDone={() => setShowAddEvidence(false)} />
+                  )}
+                  {detailTab === 'evidence' && !showAddEvidence && (
+                    <button onClick={() => setShowAddEvidence(true)}
+                      className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors mb-2">
+                      <Eye className="w-3 h-3" />Add Evidence
+                    </button>
                   )}
 
                   {/* #13: Evidence Timeline */}
@@ -451,6 +491,9 @@ export function HuntingWorkbenchPage() {
           </div>
         )}
       </div>
+
+      {/* H1: Create Hunt Modal */}
+      <CreateHuntModal open={showCreateHunt} onClose={() => setShowCreateHunt(false)} templates={templates} />
     </div>
   )
 }
