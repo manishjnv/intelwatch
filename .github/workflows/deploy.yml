@@ -185,9 +185,14 @@ jobs:
             echo "Starting infrastructure..."
             docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_elasticsearch etip_neo4j etip_minio etip_prometheus etip_grafana
 
+            # Remove orphaned containers from old deploys (hash-prefixed names conflict with --force-recreate)
+            # Pattern: containers named like "0e6346cbce23_etip_correlation" (old project without -p flag)
+            echo "Removing stale orphan containers..."
+            docker ps -a --format "{{.Names}}" | grep "_etip_" | xargs -r docker rm -f 2>/dev/null || true
+
             # Force recreate app containers (picks up new images + compose config)
             echo "Recreating app containers..."
-            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_frontend etip_nginx
+            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_frontend etip_nginx
 
             # ── Sync database schema (idempotent — creates missing tables, skips existing) ──
             echo "Syncing database schema..."

@@ -613,3 +613,9 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 **Session 47:** Docs-only. QA_CHECKLIST.md full rewrite. No code changes, no deploy, no RCA issues.
 
 **Session 48:** D3 code-split (ThreatGraphPage + RelationshipGraph lazy-loaded via React.lazy — DECISION-025). Elasticsearch IOC Indexing Service Module 20 scaffolded (57 tests, port 3020). shared-utils: QUEUES.IOC_INDEX added + test count updated. 4368 total tests. Frontend push triggers CI rebuild of etip_frontend. ES service not yet in docker-compose — no deploy needed for it this session. No new RCA issues.
+
+### Issue 41: Docker --force-recreate fails — orphaned containers with hash-prefix names conflict
+**Error**: `Error when allocating new name: Conflict. The container name "/etip_correlation" is already in use by container "0e6346cbce23..."` during `docker compose up -d --force-recreate`
+**Root Cause**: Old deploy runs without `-p etip` flag created containers named `0e6346cbce23_etip_correlation` (hash-prefixed). These orphaned containers block recreate because Docker considers the name `etip_correlation` already in use when docker compose tries to rename the orphan.
+**Fix**: Added pre-cleanup step in deploy.yml: `docker ps -a --format "{{.Names}}" | grep "_etip_" | xargs -r docker rm -f || true`. Also added `--remove-orphans` flag to `docker compose up` to prevent future orphan accumulation.
+**Prevention**: **RULE**: Always include `--remove-orphans` in `docker compose up` commands. Add a pre-cleanup step in deploy scripts to remove containers matching the old hash-prefix pattern before force-recreate.
