@@ -7,7 +7,7 @@
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS } from './demo-data'
+import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS, DEMO_FEEDS_RESPONSE } from './demo-data'
 import type { EnrichmentStats } from './use-enrichment-data'
 
 // ─── Generic list response shape ──────────────────────────────────
@@ -88,11 +88,13 @@ export interface FeedRecord {
 
 export function useFeeds(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  return useQuery({
+  const empty = { data: [] as FeedRecord[], total: 0, page: 1, limit: 50 }
+  const result = useQuery({
     queryKey: ['feeds', params],
-    queryFn: () => api<ListResponse<FeedRecord>>(`/feeds${query}`).then(r => r ?? { data: [], total: 0, page: 1, limit: 50 }),
+    queryFn: () => api<ListResponse<FeedRecord>>(`/feeds${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
+  return withDemoFallback(result, DEMO_FEEDS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
 }
 
 // ─── Threat Actor types ─────────────────────────────────────────

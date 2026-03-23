@@ -4,7 +4,7 @@
  * 25 IOC records spanning all types, severities, and lifecycles so every
  * UI improvement (#1–#15) renders meaningful content.
  */
-import type { IOCRecord } from './use-intel-data'
+import type { IOCRecord, FeedRecord } from './use-intel-data'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -220,6 +220,106 @@ export const DEMO_ENRICHMENT_RESULT = {
     lastReportedAt: daysAgo(0), isp: 'AS-CHOOPA', countryCode: 'RU',
     usageType: 'Data Center/Web Hosting/Transit', isWhitelisted: false, isTor: true,
   },
+}
+
+// ─── Demo Feed Records ────────────────────────────────────────
+
+export const DEMO_FEEDS_RESPONSE: { data: FeedRecord[]; total: number; page: number; limit: number } = {
+  data: [
+    {
+      id: 'demo-feed-1',
+      name: 'AlienVault OTX',
+      description: 'Open Threat Exchange — community-driven threat intelligence',
+      feedType: 'rss',
+      url: 'https://otx.alienvault.com/feeds/pulses',
+      schedule: '0 */4 * * *',
+      status: 'active',
+      enabled: true,
+      lastFetchAt: daysAgo(2 / 24),
+      lastErrorAt: null,
+      lastErrorMessage: null,
+      consecutiveFailures: 0,
+      totalItemsIngested: 8420,
+      feedReliability: 98,
+      createdAt: daysAgo(90),
+      updatedAt: daysAgo(2 / 24),
+    },
+    {
+      id: 'demo-feed-2',
+      name: 'Abuse.ch URLhaus',
+      description: 'URLhaus malicious URL database',
+      feedType: 'rest_api',
+      url: 'https://urlhaus-api.abuse.ch/v1/urls/recent/',
+      schedule: '0 */2 * * *',
+      status: 'active',
+      enabled: true,
+      lastFetchAt: daysAgo(1 / 24),
+      lastErrorAt: null,
+      lastErrorMessage: null,
+      consecutiveFailures: 0,
+      totalItemsIngested: 12300,
+      feedReliability: 99,
+      createdAt: daysAgo(120),
+      updatedAt: daysAgo(1 / 24),
+    },
+    {
+      id: 'demo-feed-3',
+      name: 'Emerging Threats',
+      description: 'Proofpoint Emerging Threats open ruleset',
+      feedType: 'rss',
+      url: 'https://rules.emergingthreats.net/open/suricata/emerging-all.rules',
+      schedule: '0 6 * * *',
+      status: 'active',
+      enabled: true,
+      lastFetchAt: daysAgo(3 / 24),
+      lastErrorAt: null,
+      lastErrorMessage: null,
+      consecutiveFailures: 0,
+      totalItemsIngested: 5100,
+      feedReliability: 96,
+      createdAt: daysAgo(60),
+      updatedAt: daysAgo(3 / 24),
+    },
+    {
+      id: 'demo-feed-4',
+      name: 'CISA KEV',
+      description: 'CISA Known Exploited Vulnerabilities catalog',
+      feedType: 'rest_api',
+      url: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+      schedule: '0 0 * * *',
+      status: 'error',
+      enabled: true,
+      lastFetchAt: daysAgo(1),
+      lastErrorAt: daysAgo(3 / 24),
+      lastErrorMessage: 'Connection timeout after 30000ms',
+      consecutiveFailures: 3,
+      totalItemsIngested: 890,
+      feedReliability: 82,
+      createdAt: daysAgo(45),
+      updatedAt: daysAgo(3 / 24),
+    },
+    {
+      id: 'demo-feed-5',
+      name: 'MalwareBazaar',
+      description: 'Abuse.ch MalwareBazaar malware sample database',
+      feedType: 'rest_api',
+      url: 'https://mb-api.abuse.ch/api/v1/',
+      schedule: '0 */6 * * *',
+      status: 'disabled',
+      enabled: false,
+      lastFetchAt: daysAgo(2),
+      lastErrorAt: null,
+      lastErrorMessage: null,
+      consecutiveFailures: 0,
+      totalItemsIngested: 3200,
+      feedReliability: 94,
+      createdAt: daysAgo(75),
+      updatedAt: daysAgo(2),
+    },
+  ],
+  total: 5,
+  page: 1,
+  limit: 50,
 }
 
 /** Demo per-IOC cost breakdown */
