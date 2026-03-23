@@ -160,7 +160,7 @@ function PlanCard({ plan, currentPlanId, billingCycle, onUpgrade, onCancel }: Pl
 
       {/* Features */}
       <ul className="flex-1 space-y-1.5 mb-5">
-        {plan.features.map(f => (
+        {Array.isArray(plan.features) && plan.features.map(f => (
           <li key={f} className="flex items-start gap-2 text-[11px] text-text-secondary">
             <CheckCircle2 className="w-3 h-3 text-sev-low shrink-0 mt-0.5" />
             {f}
