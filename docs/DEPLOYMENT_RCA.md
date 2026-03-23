@@ -536,6 +536,7 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 **Session 13 deploys:** No new RCA issues. All 14 containers healthy. E2E pipeline verified with 301 real IOCs.
 | Session 42 | 2026-03-24 | No new issues. etip_frontend redeployed. CI green. Feed page demo fallback + UX improvements live. |
 | Session 43 | 2026-03-24 | **CI failure fixed**: Dockerfile missing COPY for billing-service + admin-service in deps stage → razorpay module not found during tsc -b. Same root cause as Session 39 (onboarding). Fixed commit 1681fcf. CI green (16m56s). All 28+ containers healthy. Phase 6 frontend deployed (Billing + Admin Ops pages). |
+| Session 44 | 2026-03-24 | No deploy. Audit-only session: Phase 5 frontend hook shape-check review. No new RCA issues. 4286 tests passing. |
 
 **Session 14 deploys:** No new RCA issues. etip_ioc_intelligence added (port 3007). All 15 containers healthy. Two deploys (f62dba7, d6f04b6), both green CI + healthy VPS.
 
