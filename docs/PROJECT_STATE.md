@@ -6,7 +6,7 @@
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.3.3 | 2026-03-24 | Dashboard + 15 data pages + demo fallbacks. Feed page fixed + UX improvements. Phase 6 pages: Billing (plan cards, usage meters, upgrade flow, pricing v3) + Admin Ops (system health, maintenance, tenants, audit). 475 frontend tests (477 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.3.4 | 2026-03-24 | Dashboard + 15 data pages + demo fallbacks. Feed page fixed + UX improvements. Phase 6 pages: Billing (pricing v3: Free/Starter/Teams/Enterprise) + Admin Ops + Onboarding (8-step wizard). 500 frontend tests (502 total, 2 skipped). |
 | etip_nginx | ✅ Running | - | 2026-03-23 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
