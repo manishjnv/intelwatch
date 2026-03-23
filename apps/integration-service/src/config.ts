@@ -21,6 +21,8 @@ const ConfigSchema = z.object({
   // Webhook
   TI_INTEGRATION_WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30000).default(10000),
   TI_INTEGRATION_WEBHOOK_MAX_PER_TENANT: z.coerce.number().int().min(1).max(50).default(10),
+  TI_INTEGRATION_WEBHOOK_MAX_RETRIES: z.coerce.number().int().min(1).max(20).default(5),
+  TI_INTEGRATION_WEBHOOK_MAX_DELAY_MS: z.coerce.number().int().min(1000).max(300000).default(60000),
 
   // STIX/TAXII
   TI_INTEGRATION_TAXII_PAGE_SIZE: z.coerce.number().int().min(10).max(500).default(100),

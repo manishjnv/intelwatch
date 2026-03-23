@@ -12,6 +12,16 @@ import { EventRouter } from './services/event-router.js';
 import { CredentialEncryption } from './services/credential-encryption.js';
 import { IntegrationRateLimiter } from './services/rate-limiter.js';
 import { HealthDashboard } from './services/health-dashboard.js';
+import { WebhookRetryEngine } from './services/webhook-retry.js';
+import { FieldMappingStore } from './services/field-mapping-store.js';
+import { TemplateEngine } from './services/template-engine.js';
+import { StixCollectionStore } from './services/stix-collection-store.js';
+import { ExportScheduler } from './services/export-scheduler.js';
+import { HealthScoring } from './services/health-scoring.js';
+import { AuditTrail } from './services/audit-trail.js';
+import { RateLimitTracker } from './services/rate-limit-tracker.js';
+import { CredentialRotationService } from './services/credential-rotation.js';
+import { AlertRoutingEngine } from './services/alert-routing-engine.js';
 import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
@@ -39,21 +49,40 @@ async function main(): Promise<void> {
   const bulkExport = new BulkExportService(stixExport);
 
   // 5. P0 services
-  // Credential encryption available for routes that handle credential storage
-  void new CredentialEncryption(config.TI_INTEGRATION_ENCRYPTION_KEY);
   const rateLimiter = new IntegrationRateLimiter(config.TI_INTEGRATION_RATE_LIMIT_PER_MIN);
   const healthDashboard = new HealthDashboard(store, rateLimiter);
   const eventRouter = new EventRouter(store, siemAdapter, webhookService, config.TI_REDIS_URL);
 
-  // 6. Build Fastify app
+  // 6. P1 services
+  const webhookRetryEngine = new WebhookRetryEngine(store, webhookService, {
+    maxRetries: config.TI_INTEGRATION_WEBHOOK_MAX_RETRIES,
+    baseDelayMs: config.TI_INTEGRATION_SIEM_RETRY_DELAY_MS,
+    maxDelayMs: config.TI_INTEGRATION_WEBHOOK_MAX_DELAY_MS,
+  });
+  const fieldMappingStore = new FieldMappingStore();
+  const templateEngine = new TemplateEngine();
+  const stixCollectionStore = new StixCollectionStore();
+  const exportScheduler = new ExportScheduler(bulkExport);
+
+  // 7. P2 services
+  const credentialEncryption = new CredentialEncryption(config.TI_INTEGRATION_ENCRYPTION_KEY);
+  const healthScoring = new HealthScoring(store, rateLimiter);
+  const auditTrail = new AuditTrail();
+  const rateLimitTracker = new RateLimitTracker(rateLimiter);
+  const credentialRotation = new CredentialRotationService(store, credentialEncryption);
+  const alertRoutingEngine = new AlertRoutingEngine();
+
+  // 8. Build Fastify app
   const app = await buildApp({
     config,
-    routeDeps: { store, siemAdapter, ticketingService, healthDashboard, rateLimiter },
+    routeDeps: { store, siemAdapter, ticketingService, healthDashboard, rateLimiter, webhookRetryEngine },
     webhookDeps: { store, webhookService },
     exportDeps: { store, stixExport, bulkExport, ticketingService },
+    advancedDeps: { fieldMappingStore, templateEngine, stixCollectionStore, exportScheduler },
+    p2Deps: { store, healthScoring, auditTrail, rateLimitTracker, credentialRotation, alertRoutingEngine },
   });
 
-  // 7. Start event router (BullMQ worker)
+  // 9. Start event router (BullMQ worker)
   try {
     eventRouter.start();
     logger.info('EventRouter started');
@@ -61,7 +90,7 @@ async function main(): Promise<void> {
     logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'EventRouter failed to start — service continues without queue worker');
   }
 
-  // 8. Graceful shutdown
+  // 10. Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down integration-service...');
     await eventRouter.stop();
@@ -72,7 +101,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-  // 9. Start listening
+  // 11. Start listening
   await app.listen({ port: config.TI_INTEGRATION_PORT, host: config.TI_INTEGRATION_HOST });
   logger.info({ port: config.TI_INTEGRATION_PORT }, 'Integration service ready');
 }

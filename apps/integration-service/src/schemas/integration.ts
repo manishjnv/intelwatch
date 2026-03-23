@@ -241,6 +241,172 @@ export interface Ticket {
   updatedAt: string;
 }
 
+// ─── P1 #6: Webhook Retry Config ────────────────────────────────
+
+export const WebhookRetryConfigSchema = z.object({
+  maxRetries: z.coerce.number().int().min(1).max(20).default(5),
+  baseDelayMs: z.coerce.number().int().min(100).max(60000).default(2000),
+  maxDelayMs: z.coerce.number().int().min(1000).max(300000).default(60000),
+  jitterEnabled: z.boolean().default(true),
+});
+export type WebhookRetryConfig = z.infer<typeof WebhookRetryConfigSchema>;
+
+export interface RetryState {
+  integrationId: string;
+  totalAttempts: number;
+  successfulRetries: number;
+  failedRetries: number;
+  lastRetryAt: string | null;
+  dlqCount: number;
+  config: WebhookRetryConfig;
+}
+
+// ─── P1 #7: Field Mapping Preset ────────────────────────────────
+
+export const CreateFieldMappingPresetSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).default(''),
+  targetType: IntegrationTypeEnum,
+  mappings: z.array(FieldMappingSchema).min(1),
+});
+export type CreateFieldMappingPresetInput = z.infer<typeof CreateFieldMappingPresetSchema>;
+
+export const UpdateFieldMappingPresetSchema = CreateFieldMappingPresetSchema.partial();
+export type UpdateFieldMappingPresetInput = z.infer<typeof UpdateFieldMappingPresetSchema>;
+
+export interface FieldMappingPreset {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string;
+  targetType: IntegrationType;
+  mappings: FieldMapping[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── P1 #8: Ticket Template ─────────────────────────────────────
+
+export const CreateTicketTemplateSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).default(''),
+  targetType: z.enum(['servicenow', 'jira']),
+  titleTemplate: z.string().min(1).max(500),
+  bodyTemplate: z.string().min(1).max(5000),
+  priorityMapping: z.record(z.string()).default({}),
+  additionalFields: z.record(z.string()).default({}),
+});
+export type CreateTicketTemplateInput = z.infer<typeof CreateTicketTemplateSchema>;
+
+export const UpdateTicketTemplateSchema = CreateTicketTemplateSchema.partial();
+export type UpdateTicketTemplateInput = z.infer<typeof UpdateTicketTemplateSchema>;
+
+export interface TicketTemplate {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string;
+  targetType: 'servicenow' | 'jira';
+  titleTemplate: string;
+  bodyTemplate: string;
+  priorityMapping: Record<string, string>;
+  additionalFields: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── P1 #9: TAXII Collection Input ─────────────────────────────
+
+export const CreateTaxiiCollectionSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(1000).default(''),
+  canRead: z.boolean().default(true),
+  canWrite: z.boolean().default(false),
+  mediaTypes: z.array(z.string()).default(['application/stix+json;version=2.1']),
+  pollingIntervalMinutes: z.coerce.number().int().min(1).max(1440).default(60),
+  entityFilter: z.object({
+    entityType: z.enum(['iocs', 'alerts', 'correlations']).default('iocs'),
+    severity: z.enum(['critical', 'high', 'medium', 'low', 'info']).optional(),
+    types: z.array(z.string()).optional(),
+  }).default({}),
+});
+export type CreateTaxiiCollectionInput = z.infer<typeof CreateTaxiiCollectionSchema>;
+
+export const UpdateTaxiiCollectionSchema = CreateTaxiiCollectionSchema.partial();
+export type UpdateTaxiiCollectionInput = z.infer<typeof UpdateTaxiiCollectionSchema>;
+
+export interface ManagedTaxiiCollection {
+  id: string;
+  tenantId: string;
+  title: string;
+  description: string;
+  canRead: boolean;
+  canWrite: boolean;
+  mediaTypes: string[];
+  pollingIntervalMinutes: number;
+  entityFilter: {
+    entityType: string;
+    severity?: string;
+    types?: string[];
+  };
+  objectCount: number;
+  lastPolledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaxiiManifestEntry {
+  id: string;
+  dateAdded: string;
+  version: string;
+  mediaType: string;
+}
+
+// ─── P1 #10: Export Schedule ────────────────────────────────────
+
+export const CreateExportScheduleSchema = z.object({
+  name: z.string().min(1).max(100),
+  cronExpression: z.string().min(1).max(100),
+  format: BulkExportFormatEnum,
+  entityType: z.enum(['iocs', 'alerts', 'correlations', 'actors', 'malware', 'vulnerabilities']),
+  filters: z.object({
+    severity: z.enum(['critical', 'high', 'medium', 'low', 'info']).optional(),
+    dateFrom: z.string().datetime().optional(),
+    dateTo: z.string().datetime().optional(),
+    types: z.array(z.string()).optional(),
+  }).default({}),
+  enabled: z.boolean().default(true),
+  limit: z.coerce.number().int().min(1).max(10000).default(1000),
+});
+export type CreateExportScheduleInput = z.infer<typeof CreateExportScheduleSchema>;
+
+export const UpdateExportScheduleSchema = CreateExportScheduleSchema.partial();
+export type UpdateExportScheduleInput = z.infer<typeof UpdateExportScheduleSchema>;
+
+export interface ExportSchedule {
+  id: string;
+  tenantId: string;
+  name: string;
+  cronExpression: string;
+  format: BulkExportFormat;
+  entityType: string;
+  filters: {
+    severity?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    types?: string[];
+  };
+  enabled: boolean;
+  limit: number;
+  lastRunAt: string | null;
+  lastRunStatus: 'success' | 'failure' | null;
+  lastRunError: string | null;
+  nextRunAt: string | null;
+  runCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Query Params ────────────────────────────────────────────────
 
 export const PaginationSchema = z.object({
@@ -252,3 +418,163 @@ export const IntegrationQuerySchema = PaginationSchema.extend({
   type: IntegrationTypeEnum.optional(),
   enabled: z.coerce.boolean().optional(),
 });
+
+// ─── P2 #11: Health Scoring ─────────────────────────────────────
+
+export interface HealthScoreComponents {
+  uptimeScore: number;       // 0-100 based on uptime %
+  errorRateScore: number;    // 0-100 inverse of error rate
+  latencyScore: number;      // 0-100 based on p95 latency
+  syncAgeScore: number;      // 0-100 based on last successful sync recency
+}
+
+export interface HealthScore {
+  integrationId: string;
+  score: number;             // 0-100 composite
+  grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  components: HealthScoreComponents;
+  calculatedAt: string;
+}
+
+export interface HealthHistoryPoint {
+  score: number;
+  grade: string;
+  timestamp: string;
+}
+
+// ─── P2 #12: Audit Trail ───────────────────────────────────────
+
+export const AuditActionEnum = z.enum([
+  'integration.created',
+  'integration.updated',
+  'integration.deleted',
+  'integration.enabled',
+  'integration.disabled',
+  'config.changed',
+  'credentials.rotated',
+  'export.executed',
+  'webhook.triggered',
+  'rule.created',
+  'rule.updated',
+  'rule.deleted',
+]);
+export type AuditAction = z.infer<typeof AuditActionEnum>;
+
+export interface AuditEntry {
+  id: string;
+  tenantId: string;
+  integrationId: string | null;
+  action: AuditAction;
+  actor: string;
+  details: Record<string, unknown>;
+  previousValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export const AuditQuerySchema = PaginationSchema.extend({
+  integrationId: z.string().uuid().optional(),
+  action: AuditActionEnum.optional(),
+  dateFrom: z.string().datetime().optional(),
+  dateTo: z.string().datetime().optional(),
+});
+
+// ─── P2 #13: Rate Limit Tracking ───────────────────────────────
+
+export interface RateLimitDataPoint {
+  timestamp: string;
+  requestsPerMinute: number;
+  quotaRemaining: number;
+  throttled: boolean;
+}
+
+export interface RateLimitDashboard {
+  integrationId: string;
+  currentRate: number;
+  maxRate: number;
+  quotaRemaining: number;
+  throttleCount: number;
+  timeSeries: RateLimitDataPoint[];
+}
+
+// ─── P2 #14: Credential Rotation ───────────────────────────────
+
+export const RotateCredentialsSchema = z.object({
+  newCredentials: z.record(z.unknown()),
+  gracePeriodMinutes: z.coerce.number().int().min(0).max(1440).default(30),
+});
+export type RotateCredentialsInput = z.infer<typeof RotateCredentialsSchema>;
+
+export interface CredentialRotationRecord {
+  id: string;
+  integrationId: string;
+  tenantId: string;
+  rotatedAt: string;
+  gracePeriodMinutes: number;
+  graceExpiresAt: string;
+  oldCredentialsMasked: Record<string, string>;
+  status: 'active' | 'grace_period' | 'expired';
+}
+
+// ─── P2 #15: Alert Routing Rule ────────────────────────────────
+
+export const RoutingConditionSchema = z.object({
+  field: z.string().min(1),
+  operator: z.enum(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'in', 'not_in']),
+  value: z.union([z.string(), z.number(), z.array(z.string())]),
+});
+export type RoutingCondition = z.infer<typeof RoutingConditionSchema>;
+
+export const RoutingActionSchema = z.object({
+  type: z.enum(['route_to_siem', 'create_ticket', 'send_webhook', 'send_email']),
+  integrationId: z.string().uuid(),
+  config: z.record(z.unknown()).default({}),
+});
+export type RoutingAction = z.infer<typeof RoutingActionSchema>;
+
+export const CreateRoutingRuleSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).default(''),
+  enabled: z.boolean().default(true),
+  priority: z.coerce.number().int().min(1).max(1000).default(100),
+  conditions: z.array(RoutingConditionSchema).min(1),
+  conditionLogic: z.enum(['AND', 'OR']).default('AND'),
+  actions: z.array(RoutingActionSchema).min(1),
+  triggerEvents: z.array(TriggerEventEnum).min(1),
+});
+export type CreateRoutingRuleInput = z.infer<typeof CreateRoutingRuleSchema>;
+
+export const UpdateRoutingRuleSchema = CreateRoutingRuleSchema.partial();
+export type UpdateRoutingRuleInput = z.infer<typeof UpdateRoutingRuleSchema>;
+
+export interface RoutingRule {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  priority: number;
+  conditions: RoutingCondition[];
+  conditionLogic: 'AND' | 'OR';
+  actions: RoutingAction[];
+  triggerEvents: TriggerEvent[];
+  matchCount: number;
+  lastMatchedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DryRunResult {
+  ruleId: string;
+  ruleName: string;
+  matched: boolean;
+  conditionResults: Array<{
+    field: string;
+    operator: string;
+    expected: unknown;
+    actual: unknown;
+    passed: boolean;
+  }>;
+  actionsWouldExecute: RoutingAction[];
+}

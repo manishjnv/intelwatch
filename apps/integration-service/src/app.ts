@@ -8,6 +8,8 @@ import { healthRoutes } from './routes/health.js';
 import { integrationRoutes, type IntegrationRouteDeps } from './routes/integrations.js';
 import { webhookRoutes, type WebhookRouteDeps } from './routes/webhooks.js';
 import { exportRoutes, type ExportRouteDeps } from './routes/export.js';
+import { advancedRoutes, type AdvancedRouteDeps } from './routes/advanced.js';
+import { p2Routes, type P2RouteDeps } from './routes/p2-routes.js';
 import type { IntegrationConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -15,11 +17,13 @@ export interface BuildAppOptions {
   routeDeps?: IntegrationRouteDeps;
   webhookDeps?: WebhookRouteDeps;
   exportDeps?: ExportRouteDeps;
+  advancedDeps?: AdvancedRouteDeps;
+  p2Deps?: P2RouteDeps;
 }
 
 /** Build and configure the Fastify application. */
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, routeDeps, webhookDeps, exportDeps } = opts;
+  const { config, routeDeps, webhookDeps, exportDeps, advancedDeps, p2Deps } = opts;
 
   const app = Fastify({
     logger: {
@@ -74,6 +78,12 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   }
   if (exportDeps) {
     await app.register(exportRoutes(exportDeps), { prefix: '/api/v1/integrations' });
+  }
+  if (advancedDeps) {
+    await app.register(advancedRoutes(advancedDeps), { prefix: '/api/v1/integrations' });
+  }
+  if (p2Deps) {
+    await app.register(p2Routes(p2Deps), { prefix: '/api/v1/integrations' });
   }
 
   return app;

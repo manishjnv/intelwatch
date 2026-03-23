@@ -7,11 +7,13 @@ import {
   IntegrationQuerySchema,
   PaginationSchema,
 } from '../schemas/integration.js';
+import { WebhookRetryConfigSchema } from '../schemas/integration.js';
 import type { IntegrationStore } from '../services/integration-store.js';
 import type { SiemAdapter } from '../services/siem-adapter.js';
 import type { TicketingService } from '../services/ticketing-service.js';
 import type { HealthDashboard } from '../services/health-dashboard.js';
 import type { IntegrationRateLimiter } from '../services/rate-limiter.js';
+import type { WebhookRetryEngine } from '../services/webhook-retry.js';
 
 export interface IntegrationRouteDeps {
   store: IntegrationStore;
@@ -19,12 +21,13 @@ export interface IntegrationRouteDeps {
   ticketingService: TicketingService;
   healthDashboard?: HealthDashboard;
   rateLimiter?: IntegrationRateLimiter;
+  webhookRetryEngine?: WebhookRetryEngine;
 }
 
 /** Build integration CRUD route handler. */
 export function integrationRoutes(deps: IntegrationRouteDeps) {
   return async function (app: FastifyInstance): Promise<void> {
-    const { store, siemAdapter, ticketingService, healthDashboard, rateLimiter } = deps;
+    const { store, siemAdapter, ticketingService, healthDashboard, rateLimiter, webhookRetryEngine } = deps;
 
     // Auth preHandler
     const auth = async (req: FastifyRequest, reply: FastifyReply) => {
@@ -167,6 +170,29 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       const health = healthDashboard.getIntegrationHealth(id, tenantId);
       if (!health) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       return reply.send({ data: health });
+    });
+
+    // ─── P1 #6: Webhook Retry Config ────────────────────────────
+
+    app.get('/:id/retry-config', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = getTenant(req);
+      const { id } = req.params as { id: string };
+      const integration = store.getIntegration(id, tenantId);
+      if (!integration) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
+      if (!webhookRetryEngine) throw new AppError(503, 'Retry engine not available', 'NOT_AVAILABLE');
+      const state = webhookRetryEngine.getRetryState(id);
+      return reply.send({ data: state });
+    });
+
+    app.put('/:id/retry-config', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = getTenant(req);
+      const { id } = req.params as { id: string };
+      const integration = store.getIntegration(id, tenantId);
+      if (!integration) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
+      if (!webhookRetryEngine) throw new AppError(503, 'Retry engine not available', 'NOT_AVAILABLE');
+      const input = WebhookRetryConfigSchema.parse(req.body);
+      const config = webhookRetryEngine.setRetryConfig(id, input);
+      return reply.send({ data: config });
     });
   };
 }
