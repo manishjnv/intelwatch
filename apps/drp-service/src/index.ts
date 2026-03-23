@@ -13,6 +13,18 @@ import { EvidenceChainBuilder } from './services/evidence-chain.js';
 import { AlertDeduplication } from './services/alert-deduplication.js';
 import { SeverityClassifier } from './services/severity-classifier.js';
 import { DRPGraphIntegration } from './services/graph-integration.js';
+// P1 services (#6-10)
+import { BatchTyposquatScanner } from './services/batch-typosquat.js';
+import { AIAlertEnricher } from './services/ai-enrichment.js';
+import { BulkTriageService } from './services/bulk-triage.js';
+import { TrendingAnalysisService } from './services/trending-analysis.js';
+import { SocialImpersonationDetector } from './services/social-impersonation.js';
+// P2 services (#11-15)
+import { TakedownGenerator } from './services/takedown-generator.js';
+import { AlertExporter } from './services/alert-exporter.js';
+import { RogueAppDetector } from './services/rogue-app-detector.js';
+import { RiskAggregator } from './services/risk-aggregator.js';
+import { CrossAlertCorrelation } from './services/cross-correlation.js';
 import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
@@ -53,6 +65,24 @@ async function main(): Promise<void> {
     retryDelayMs: 1000,
   });
 
+  // P1 services (#6-10)
+  const batchTyposquat = new BatchTyposquatScanner(typosquatDetector, alertManager, store);
+  const aiEnricher = new AIAlertEnricher(store, {
+    enabled: config.TI_DRP_AI_ENRICHMENT_ENABLED,
+    maxBudgetPerDay: config.TI_DRP_AI_MAX_BUDGET_PER_DAY,
+    costPerCall: config.TI_DRP_AI_COST_PER_CALL,
+  });
+  const bulkTriage = new BulkTriageService(alertManager, store);
+  const trendingAnalysis = new TrendingAnalysisService(store);
+  const socialDetector = new SocialImpersonationDetector(alertManager, store);
+
+  // P2 services (#11-15)
+  const takedownGenerator = new TakedownGenerator(store);
+  const alertExporter = new AlertExporter(store);
+  const rogueAppDetector = new RogueAppDetector(alertManager, store);
+  const riskAggregator = new RiskAggregator(store);
+  const crossCorrelation = new CrossAlertCorrelation(store, graphIntegration);
+
   const app = await buildApp({
     config,
     assetDeps: { assetManager },
@@ -71,6 +101,22 @@ async function main(): Promise<void> {
       attackSurfaceScanner,
       graphIntegration,
       store,
+    },
+    p1Deps: {
+      batchTyposquat,
+      aiEnricher,
+      bulkTriage,
+      trendingAnalysis,
+      socialDetector,
+      alertManager,
+    },
+    p2Deps: {
+      takedownGenerator,
+      alertExporter,
+      rogueAppDetector,
+      riskAggregator,
+      crossCorrelation,
+      alertManager,
     },
   });
 

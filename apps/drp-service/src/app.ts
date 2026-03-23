@@ -8,6 +8,8 @@ import { healthRoutes } from './routes/health.js';
 import { assetRoutes, type AssetRouteDeps } from './routes/assets.js';
 import { alertRoutes, type AlertRouteDeps } from './routes/alerts.js';
 import { detectionRoutes, type DetectionRouteDeps } from './routes/detection.js';
+import { p1Routes, type P1RouteDeps } from './routes/p1.js';
+import { p2Routes, type P2RouteDeps } from './routes/p2.js';
 import type { DRPConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -15,11 +17,13 @@ export interface BuildAppOptions {
   assetDeps: AssetRouteDeps;
   alertDeps: AlertRouteDeps;
   detectionDeps: DetectionRouteDeps;
+  p1Deps: P1RouteDeps;
+  p2Deps: P2RouteDeps;
 }
 
 /** Build and configure the Fastify application. */
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, assetDeps, alertDeps, detectionDeps } = options;
+  const { config, assetDeps, alertDeps, detectionDeps, p1Deps, p2Deps } = options;
 
   const app = Fastify({
     logger: {
@@ -68,6 +72,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   await app.register(assetRoutes(assetDeps), { prefix: '/api/v1/drp' });
   await app.register(alertRoutes(alertDeps), { prefix: '/api/v1/drp' });
   await app.register(detectionRoutes(detectionDeps), { prefix: '/api/v1/drp' });
+  await app.register(p1Routes(p1Deps), { prefix: '/api/v1/drp' });
+  await app.register(p2Routes(p2Deps), { prefix: '/api/v1/drp' });
 
   return app;
 }

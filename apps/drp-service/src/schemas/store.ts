@@ -7,6 +7,12 @@ import type {
   EvidenceChain,
   AlertFeedback,
 } from './drp.js';
+import type {
+  AIEnrichmentResult,
+  TakedownRequest,
+  CorrelationCluster,
+  AssetRiskScore,
+} from './p1-p2.js';
 
 /** Multi-tenant in-memory store for all DRP entities (DECISION-013). */
 export class DRPStore {
@@ -172,5 +178,86 @@ export class DRPStore {
 
   addFeedback(tenantId: string, fb: AlertFeedback): void {
     this.getTenantFeedback(tenantId).push(fb);
+  }
+
+  // ─── AI Enrichment cache (#7) ───────────────────────
+
+  readonly aiEnrichments = new Map<string, Map<string, AIEnrichmentResult>>();
+
+  getTenantAIEnrichments(tenantId: string): Map<string, AIEnrichmentResult> {
+    let map = this.aiEnrichments.get(tenantId);
+    if (!map) {
+      map = new Map();
+      this.aiEnrichments.set(tenantId, map);
+    }
+    return map;
+  }
+
+  setAIEnrichment(tenantId: string, alertId: string, result: AIEnrichmentResult): void {
+    this.getTenantAIEnrichments(tenantId).set(alertId, result);
+  }
+
+  getAIEnrichment(tenantId: string, alertId: string): AIEnrichmentResult | undefined {
+    return this.getTenantAIEnrichments(tenantId).get(alertId);
+  }
+
+  // ─── Takedown requests (#11) ────────────────────────
+
+  readonly takedowns = new Map<string, Map<string, TakedownRequest>>();
+
+  getTenantTakedowns(tenantId: string): Map<string, TakedownRequest> {
+    let map = this.takedowns.get(tenantId);
+    if (!map) {
+      map = new Map();
+      this.takedowns.set(tenantId, map);
+    }
+    return map;
+  }
+
+  setTakedown(tenantId: string, takedown: TakedownRequest): void {
+    this.getTenantTakedowns(tenantId).set(takedown.id, takedown);
+  }
+
+  getTakedownsByAlert(tenantId: string, alertId: string): TakedownRequest[] {
+    return Array.from(this.getTenantTakedowns(tenantId).values())
+      .filter((t) => t.alertId === alertId);
+  }
+
+  // ─── Correlation clusters (#15) ─────────────────────
+
+  readonly correlations = new Map<string, Map<string, CorrelationCluster>>();
+
+  getTenantCorrelations(tenantId: string): Map<string, CorrelationCluster> {
+    let map = this.correlations.get(tenantId);
+    if (!map) {
+      map = new Map();
+      this.correlations.set(tenantId, map);
+    }
+    return map;
+  }
+
+  setCorrelation(tenantId: string, cluster: CorrelationCluster): void {
+    this.getTenantCorrelations(tenantId).set(cluster.id, cluster);
+  }
+
+  // ─── Asset risk scores (#14) ────────────────────────
+
+  readonly assetRiskScores = new Map<string, Map<string, AssetRiskScore>>();
+
+  getTenantAssetRisks(tenantId: string): Map<string, AssetRiskScore> {
+    let map = this.assetRiskScores.get(tenantId);
+    if (!map) {
+      map = new Map();
+      this.assetRiskScores.set(tenantId, map);
+    }
+    return map;
+  }
+
+  setAssetRisk(tenantId: string, risk: AssetRiskScore): void {
+    this.getTenantAssetRisks(tenantId).set(risk.assetId, risk);
+  }
+
+  getAssetRisk(tenantId: string, assetId: string): AssetRiskScore | undefined {
+    return this.getTenantAssetRisks(tenantId).get(assetId);
   }
 }

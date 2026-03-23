@@ -21,6 +21,12 @@ const ConfigSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   TI_DRP_MAX_ASSETS_PER_TENANT: z.coerce.number().int().min(1).default(100),
+  TI_DRP_AI_ENRICHMENT_ENABLED: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true'),
+  TI_DRP_AI_MAX_BUDGET_PER_DAY: z.coerce.number().min(0).default(5.0),
+  TI_DRP_AI_COST_PER_CALL: z.coerce.number().min(0).default(0.01),
 });
 
 export type DRPConfig = z.infer<typeof ConfigSchema>;
