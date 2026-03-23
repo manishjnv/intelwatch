@@ -243,10 +243,10 @@ describe('DEMO_FEEDS_RESPONSE', () => {
     }
   })
 
-  it('feedReliability is between 0 and 1', () => {
+  it('feedReliability is between 0 and 100 (percentage)', () => {
     for (const f of DEMO_FEEDS_RESPONSE.data) {
       expect(f.feedReliability).toBeGreaterThanOrEqual(0)
-      expect(f.feedReliability).toBeLessThanOrEqual(1)
+      expect(f.feedReliability).toBeLessThanOrEqual(100)
     }
   })
 
