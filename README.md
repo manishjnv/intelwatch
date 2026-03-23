@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-4%20started-00ff88)
-![Tests](https://img.shields.io/badge/tests-2271%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-2331%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -25,11 +25,11 @@
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
 | Frontend (React 18 + Vite, 15 UI improvements, enrichment UI, demo fallbacks) | ✅ Live on VPS | 217 |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
-| Correlation Engine (10 improvements, DBSCAN, Kill Chain, Diamond Model) | 🔨 WIP (10/15) | 106 |
+| Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Infrastructure (19 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| **Phase 4 started + Phase 3 + Differentiators A/A+/B** | **Phase 4 in progress** (graph complete, correlation 10/15) | **2271** |
+| **Phase 4 started + Phase 3 + Differentiators A/A+/B** | **Phase 4 in progress** (graph complete, correlation complete) | **2331** |
 
 ## Live API Endpoints
 

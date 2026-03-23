@@ -1,8 +1,8 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-23
-**Session:** 27
-**Session Summary:** Correlation Engine Service (Module 13) — core + 10 accuracy improvements (P0 #1-5 + P1 #6-10). 20 source files, 12 API endpoints, 106 tests. In-memory, no deploy.
+**Session:** 28
+**Session Summary:** Correlation Engine P2 (#11-15) — 5 new services completing Module 13 (15/15 improvements). AI pattern detection, rule templates, confidence decay, batch re-correlation, graph integration. 60 new tests, 8 new endpoints.
 
 ---
 
@@ -15,54 +15,48 @@
 
 ---
 
-## ✅ Changes Made (Session 27)
+## ✅ Changes Made (Session 28)
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| pending | 36 | feat: add correlation engine service (Module 13) — 10 improvements, 12 endpoints, 106 tests |
+| 9430bdd | 17 | feat: add correlation engine P2 improvements (#11-15) — AI patterns, rule templates, decay, batch, graph integration |
 
 ## 📁 Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/correlation-engine/package.json` | @etip/correlation-engine deps (no Prisma, no Neo4j) |
-| `apps/correlation-engine/tsconfig.json` | Composite true, refs to shared-types/utils/auth |
-| `apps/correlation-engine/vitest.config.ts` | Alias resolution for @etip/* packages |
-| `apps/correlation-engine/src/config.ts` | Zod env schema: port 3013, 13 correlation-specific tunables |
-| `apps/correlation-engine/src/logger.ts` | Pino singleton, name `etip-correlation-engine` |
-| `apps/correlation-engine/src/app.ts` | Fastify builder with plugins + route registration |
-| `apps/correlation-engine/src/index.ts` | Bootstrap: config→JWT→services→app→worker→listen |
-| `apps/correlation-engine/src/plugins/auth.ts` | authenticate, getUser, rbac preHandlers |
-| `apps/correlation-engine/src/plugins/error-handler.ts` | AppError/ZodError/rate-limit handlers |
-| `apps/correlation-engine/src/schemas/correlation.ts` | All types: CorrelatedIOC, CorrelationResult, CampaignCluster, DiamondMapping, KillChainCoverage, FPFeedback, RuleStats, CorrelationStore class, route query schemas |
-| `apps/correlation-engine/src/routes/health.ts` | /health + /ready endpoints |
-| `apps/correlation-engine/src/routes/correlations.ts` | 10 correlation endpoints under /api/v1/correlations |
-| `apps/correlation-engine/src/workers/correlate.ts` | BullMQ CORRELATE consumer + queue producer |
-| `apps/correlation-engine/src/services/cooccurrence.ts` | #1 Sliding-window Jaccard co-occurrence |
-| `apps/correlation-engine/src/services/infrastructure-cluster.ts` | #2 ASN/CIDR/registrar overlap clustering |
-| `apps/correlation-engine/src/services/temporal-wave.ts` | #3 Z-score anomaly detection on IOC volume |
-| `apps/correlation-engine/src/services/ttp-similarity.ts` | #4 Sorensen-Dice coefficient on MITRE techniques |
-| `apps/correlation-engine/src/services/campaign-cluster.ts` | #5 DBSCAN 4D campaign auto-clustering |
-| `apps/correlation-engine/src/services/confidence-scoring.ts` | #6 Composite weighted confidence formula |
-| `apps/correlation-engine/src/services/diamond-model.ts` | #7 Diamond Model facet classification |
-| `apps/correlation-engine/src/services/kill-chain.ts` | #8 MITRE tactic → Kill Chain phase mapping |
-| `apps/correlation-engine/src/services/fp-suppression.ts` | #9 Per-rule FP rate tracking + auto-suppress |
-| `apps/correlation-engine/src/services/relationship-inference.ts` | #10 BFS transitive closure with confidence decay |
-| `apps/correlation-engine/tests/` (13 test files) | 106 tests covering config, health, schemas, and all 10 services |
+| `apps/correlation-engine/src/services/ai-pattern-detection.ts` | #11 Claude Sonnet entity cluster analysis (budget-gated, prompt caching) |
+| `apps/correlation-engine/src/services/rule-templates.ts` | #12 Six MITRE ATT&CK-anchored detection templates |
+| `apps/correlation-engine/src/services/confidence-decay.ts` | #13 Dual IOC + correlation confidence aging per DECISION-015 |
+| `apps/correlation-engine/src/services/batch-recorrelation.ts` | #14 Async batch re-correlation with cancel + diff report |
+| `apps/correlation-engine/src/services/graph-integration.ts` | #15 HTTP client for graph service with service JWT + retry |
+| `apps/correlation-engine/src/routes/advanced.ts` | 8 new endpoints for P2 features |
+| `apps/correlation-engine/tests/ai-pattern-detection.test.ts` | 13 tests (mocked SDK) |
+| `apps/correlation-engine/tests/rule-templates.test.ts` | 12 tests |
+| `apps/correlation-engine/tests/confidence-decay.test.ts` | 16 tests |
+| `apps/correlation-engine/tests/batch-recorrelation.test.ts` | 10 tests |
+| `apps/correlation-engine/tests/graph-integration.test.ts` | 9 tests (mocked fetch + service JWT) |
 
 ## 📁 Files Modified
 
 | File | Change |
 |------|--------|
-| `tsconfig.build.json` | Added `{ "path": "apps/correlation-engine" }` to references |
-| `pnpm-lock.yaml` | Updated for new module dependencies |
+| `apps/correlation-engine/package.json` | Added `@anthropic-ai/sdk` dependency |
+| `apps/correlation-engine/src/schemas/correlation.ts` | Added ~112 lines: P2 types (AIPatternDetection, RuleTemplate, DecayedResult, BatchJob, GraphSyncResult, etc.) |
+| `apps/correlation-engine/src/config.ts` | Added 8 env vars (AI key/model/budget, decay hours, graph URL/sync toggle) |
+| `apps/correlation-engine/src/app.ts` | Added advancedDeps to BuildAppOptions, registered advancedRoutes |
+| `apps/correlation-engine/src/index.ts` | Instantiated 5 new services, passed advancedDeps to buildApp |
+| `pnpm-lock.yaml` | Updated for @anthropic-ai/sdk |
 
 ---
 
 ## 🔧 Decisions & Rationale
 
-- **DECISION-021**: Correlation engine uses `alert:read`/`alert:create` permissions (no shared-auth change needed — correlations produce alerts, same access semantics)
-- **DECISION-022**: Correlation engine is fully in-memory (no Prisma, no Neo4j driver — follows DECISION-013 pattern for Phase 4 validation)
+No new DECISION entries this session. All patterns followed existing decisions:
+- DECISION-013: In-memory state (Maps) for all new services
+- DECISION-015: IOC decay rates inlined (not imported from shared-normalization to avoid Tier 1 dep)
+- DECISION-021: `alert:read`/`alert:create` permissions for new endpoints
+- DECISION-022: No Prisma, no neo4j-driver — graph integration uses HTTP API
 
 ---
 
@@ -70,28 +64,27 @@
 
 ```
 No deploy this session (code-only).
-Tests: 2271 passing (106 in correlation-engine, 106 new this session)
+Tests: 2331 passing (166 in correlation-engine, 60 new this session)
 Typecheck: 0 errors
-All source files under 300 lines (max: 246 in schemas/correlation.ts)
+Lint: 0 errors
+All source files under 400 lines (max: 358 in schemas/correlation.ts)
 ```
 
 ---
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate — Correlation Engine P2
-- #11 AI-assisted pattern detection (Claude Sonnet for entity cluster analysis)
-- #12 Correlation rule template library (pre-built APT, ransomware, C2, supply chain rules)
-- #13 Correlation confidence decay (type-specific aging per DECISION-015)
-- #14 Batch re-correlation (retroactive rule execution against historical data)
-- #15 Threat-graph integration (push CORRELATED_WITH relationships to Neo4j)
-
-### Pending — Deploy
+### Immediate — Deploy
 - Deploy threat-graph to VPS (session 25+26 code)
-- Deploy correlation-engine after P2 complete
+- Deploy correlation-engine to VPS (session 27+28 code)
+
+### Immediate — Phase 4 Continuation
+- Threat Hunting Service (Module 14) — next Phase 4 module
+- Digital Risk Protection (Module 11) — final Phase 4 module
 
 ### Deferred
 - Add `correlation:*` permissions to shared-auth (uses `alert:*` for now)
+- Add `CORRELATED_WITH` relationship type to threat-graph schema (currently maps to existing types)
 - Elasticsearch IOC indexing
 - Update QA_CHECKLIST.md
 - Migrate in-memory services to Redis/PostgreSQL for scaling
@@ -100,29 +93,34 @@ All source files under 300 lines (max: 246 in schemas/correlation.ts)
 
 ## 🔁 How to Resume
 
-### Session 28: Phase 4 — Correlation Engine P2 (#11-15) (RECOMMENDED)
+### Session 29: Phase 4 — Threat Hunting (Module 14) — Core + P0 (RECOMMENDED)
 ```
 /session-start
 
-Scope: Phase 4 — Correlation Engine P2 (Module 13)
+Scope: Phase 4 — Threat Hunting (Module 14)
 Do not modify: shared-*, api-gateway, user-service, ingestion, normalization,
   ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel,
-  vulnerability-intel, frontend, threat-graph.
+  vulnerability-intel, frontend, threat-graph, correlation-engine.
 
 ## Context
-Session 27 built Correlation Engine core + 10 improvements (P0 #1-5, P1 #6-10).
-20 source files, 12 endpoints, 106 tests. 2271 monorepo tests. No deploy.
+Session 28 completed Correlation Engine (Module 13) — all 15/15 improvements done.
+26 source files, 20 endpoints, 166 tests. 2331 monorepo tests. Commit 9430bdd.
+Phase 4 progress: Graph COMPLETE, Correlation COMPLETE, Hunting next, DRP last.
 
-## Task: Correlation Engine P2 (#11-15)
-Complete remaining 5 improvements:
-- #11 AI-assisted pattern detection (Claude Sonnet)
-- #12 Correlation rule template library
-- #13 Correlation confidence decay
-- #14 Batch re-correlation
-- #15 Threat-graph integration (CORRELATED_WITH relationships)
+## Task: Threat Hunting Service (Module 14) — Core + P0
+Scaffold and build the threat hunting workspace:
+- Service scaffold (port 3014, Fastify, BullMQ, in-memory store)
+- Hunt query builder (Elasticsearch DSL generation from structured queries)
+- Hunt session management (create, execute, save, share)
+- IOC pivot chains (multi-hop investigation from any entity)
+- Saved hunt library (reusable hunt templates)
+- Integration with correlation engine results and graph data
 
-Target: apps/correlation-engine/ (existing module).
-Skill: skills/13-CORRELATION-ENGINE.md.
+Suggest 15 accuracy improvements split across P0 (core, this session)
+and P1/P2 (next session).
+
+Target: apps/hunting-service/ (new module — use /new-module scaffold).
+Skill: skills/14-THREAT-HUNTING.md.
 ```
 
 ### Phase roadmap
@@ -134,5 +132,5 @@ Phase 3.5: Dashboard + Demo  FROZEN (6 pages, 15 UI, demo fallbacks, mobile)
 Differentiator A             COMPLETE (AI cost transparency)
 Differentiator A+            COMPLETE (15/15 improvements)
 Differentiator B             COMPLETE (Enrichment UI)
-Phase 4: Advanced Intel      IN PROGRESS: Graph COMPLETE → Correlation WIP (10/15) → Hunting → DRP
+Phase 4: Advanced Intel      IN PROGRESS: Graph COMPLETE → Correlation COMPLETE → Hunting → DRP
 ```
