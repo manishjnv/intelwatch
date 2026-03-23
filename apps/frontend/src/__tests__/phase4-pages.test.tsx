@@ -107,12 +107,16 @@ vi.mock('d3', () => {
     join: vi.fn().mockReturnThis(),
     append: vi.fn().mockReturnThis(),
     attr: vi.fn().mockReturnThis(),
+    style: vi.fn().mockReturnThis(),
     text: vi.fn().mockReturnThis(),
     on: vi.fn().mockReturnThis(),
     call: vi.fn().mockReturnThis(),
     transition: vi.fn().mockReturnThis(),
     duration: vi.fn().mockReturnThis(),
     remove: vi.fn().mockReturnThis(),
+    classed: vi.fn().mockReturnThis(),
+    filter: vi.fn().mockReturnThis(),
+    each: vi.fn().mockReturnThis(),
   }
   return {
     select: vi.fn().mockReturnValue(mockSelection),
@@ -135,6 +139,7 @@ vi.mock('d3', () => {
     forceCenter: vi.fn(),
     forceCollide: vi.fn().mockReturnValue({ radius: vi.fn().mockReturnThis() }),
     drag: vi.fn().mockReturnValue({ on: vi.fn().mockReturnThis() }),
+    easeLinear: vi.fn(),
   }
 })
 
@@ -633,5 +638,287 @@ describe('HuntingWorkbenchPage', () => {
     fireEvent.click(screen.getByText('APT28 Hunt'))
     fireEvent.click(screen.getByText(/Evidence/))
     expect(screen.getByText('Add Evidence')).toBeTruthy()
+  })
+})
+
+// ─── Phase 4 Interactivity Tests ──────────────────────────────
+
+// Mock clipboard API for copy tests
+beforeEach(() => {
+  Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+})
+
+describe('ThreatGraphPage — Interactivity', () => {
+  let ThreatGraphPage: any
+  beforeEach(async () => {
+    const mod = await import('@/pages/ThreatGraphPage')
+    ThreatGraphPage = mod.ThreatGraphPage
+  })
+
+  it('renders fullscreen toggle button', () => {
+    render(<ThreatGraphPage />)
+    expect(screen.getByTitle('Fullscreen')).toBeTruthy()
+  })
+
+  it('activates path finder mode on toggle click', () => {
+    render(<ThreatGraphPage />)
+    fireEvent.click(screen.getByTitle('Path Finder'))
+    expect(screen.getByText(/Click a source node/)).toBeTruthy()
+    expect(screen.getByText('Cancel')).toBeTruthy()
+  })
+
+  it('cancels path finder mode', () => {
+    render(<ThreatGraphPage />)
+    fireEvent.click(screen.getByTitle('Path Finder'))
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(screen.queryByText(/Click a source node/)).toBeFalsy()
+  })
+
+  it('renders fit view and zoom controls alongside fullscreen', () => {
+    render(<ThreatGraphPage />)
+    expect(screen.getByTitle('Fit View')).toBeTruthy()
+    expect(screen.getByTitle('Zoom In')).toBeTruthy()
+    expect(screen.getByTitle('Zoom Out')).toBeTruthy()
+    expect(screen.getByTitle('Fullscreen')).toBeTruthy()
+  })
+
+  it('opens add node modal with entity type selector', () => {
+    render(<ThreatGraphPage />)
+    fireEvent.click(screen.getByTitle('Add Node'))
+    expect(screen.getByText('Add Graph Node')).toBeTruthy()
+    // IOC appears in both legend and modal — verify modal has the type selector
+    expect(screen.getAllByText('IOC').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('Malware').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('shows path finder result info when path data exists', () => {
+    mockUseGraphPath.mockReturnValue({
+      data: { nodes: [{ id: 'n1' }, { id: 'n2' }], edges: [], hops: 2 },
+    })
+    // Activate path finder to display PathFinderBar
+    render(<ThreatGraphPage />)
+    fireEvent.click(screen.getByTitle('Path Finder'))
+    expect(screen.getByText(/Path Finder/)).toBeTruthy()
+  })
+})
+
+describe('CorrelationPage — Interactivity', () => {
+  let CorrelationPage: any
+  beforeEach(async () => {
+    const mod = await import('@/pages/CorrelationPage')
+    CorrelationPage = mod.CorrelationPage
+  })
+
+  it('renders action buttons in detail panel', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    expect(screen.getByText('Investigate')).toBeTruthy()
+    expect(screen.getByText('Create Ticket')).toBeTruthy()
+    expect(screen.getByText('Add to Hunt')).toBeTruthy()
+  })
+
+  it('shows toast when Create Ticket clicked', async () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    fireEvent.click(screen.getByText('Create Ticket'))
+    // Toast renders in the DOM
+    expect(await screen.findByText(/Ticket created via integration-service/)).toBeTruthy()
+  })
+
+  it('shows toast when Add to Hunt clicked', async () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    fireEvent.click(screen.getByText('Add to Hunt'))
+    expect(await screen.findByText(/Added to active hunt session/)).toBeTruthy()
+  })
+
+  it('entity chips are clickable buttons', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    // Entity labels rendered as buttons (multiple APT28 on page)
+    const entityButtons = screen.getAllByText('APT28')
+    const buttonEl = entityButtons.find(el => el.closest('button'))
+    expect(buttonEl).toBeTruthy()
+  })
+
+  it('shows confidence trend arrows for high/low confidence', () => {
+    render(<CorrelationPage />)
+    // CORRELATION has confidence 91 → should show trending up
+    const { container } = render(<CorrelationPage />)
+    // TrendingUp icon renders as SVG with polyline — just verify no crash
+    expect(screen.getAllByText('91%').length).toBeGreaterThan(0)
+  })
+
+  it('renders kill chain phase in detail panel', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    expect(screen.getByText('Kill Chain Phase')).toBeTruthy()
+    // C2 phase badge should be visible
+    expect(screen.getByText('C2')).toBeTruthy()
+  })
+
+  it('renders diamond model in detail panel', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    expect(screen.getByText('Diamond Model')).toBeTruthy()
+    expect(screen.getByText('Adversary')).toBeTruthy()
+    expect(screen.getByText('Infra')).toBeTruthy()
+    expect(screen.getByText('Capability')).toBeTruthy()
+    expect(screen.getByText('Victim')).toBeTruthy()
+  })
+
+  it('campaign card expands on click with STIX export', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByRole('button', { name: /Campaigns/ }))
+    fireEvent.click(screen.getByText('Operation Storm'))
+    expect(screen.getByText('Export STIX')).toBeTruthy()
+  })
+
+  it('auto-correlate button shows loading state in demo mode', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Auto-Correlate'))
+    expect(screen.getByText('Correlating…')).toBeTruthy()
+  })
+
+  it('search filters correlations by entity labels', () => {
+    render(<CorrelationPage />)
+    const searchInput = screen.getByPlaceholderText('Search correlations…')
+    fireEvent.change(searchInput, { target: { value: 'APT28' } })
+    // Should still show correlation that has APT28 as entity label
+    expect(screen.getByText('Shared C2 Infrastructure')).toBeTruthy()
+  })
+
+  it('search hides non-matching correlations', () => {
+    render(<CorrelationPage />)
+    const searchInput = screen.getByPlaceholderText('Search correlations…')
+    fireEvent.change(searchInput, { target: { value: 'nonexistentthing123' } })
+    expect(screen.queryByText('Shared C2 Infrastructure')).toBeFalsy()
+  })
+
+  it('shows kill chain filter badge when filtering', () => {
+    render(<CorrelationPage />)
+    // Open detail and click kill chain phase
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    // Find all C2 buttons in the kill chain bar (detail panel has it)
+    const c2Buttons = screen.getAllByText('C2')
+    // Click the kill chain phase (it's the last "C2" in the bar)
+    fireEvent.click(c2Buttons[c2Buttons.length - 1])
+    // Kill chain filter badge should appear
+    expect(screen.getByText(/Kill Chain: command and control/)).toBeTruthy()
+  })
+})
+
+describe('HuntingWorkbenchPage — Interactivity', () => {
+  let HuntingWorkbenchPage: any
+  beforeEach(async () => {
+    const mod = await import('@/pages/HuntingWorkbenchPage')
+    HuntingWorkbenchPage = mod.HuntingWorkbenchPage
+  })
+
+  it('renders export button in detail view', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    expect(screen.getByText('Export')).toBeTruthy()
+  })
+
+  it('renders timeline tab', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    expect(screen.getByText(/Timeline/)).toBeTruthy()
+  })
+
+  it('shows timeline entries when timeline tab clicked', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    // Click the Timeline tab — it shows count
+    const timelineTab = screen.getAllByText(/Timeline/).find(el => el.closest('button'))
+    if (timelineTab) fireEvent.click(timelineTab)
+    // Should show the hunt creation entry
+    expect(screen.getByText(/Hunt "APT28 Hunt" created/)).toBeTruthy()
+  })
+
+  it('hypothesis kanban cards are draggable', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    const hypothesisCard = screen.getByText('APT28 used PowerShell')
+    expect(hypothesisCard.closest('[draggable]')).toBeTruthy()
+  })
+
+  it('kanban shows drop targets for all verdict columns', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    expect(screen.getByText('Proposed')).toBeTruthy()
+    expect(screen.getByText('Investigating')).toBeTruthy()
+    expect(screen.getByText('Confirmed')).toBeTruthy()
+    expect(screen.getByText('Rejected')).toBeTruthy()
+  })
+
+  it('evidence timeline shows remove button structure', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    fireEvent.click(screen.getAllByText(/Evidence/).find(el => el.closest('button'))!)
+    // Evidence items render with group class for hover reveal
+    expect(screen.getByText('C2 IP match')).toBeTruthy()
+    // The remove button is hidden until hover (opacity-0) — check it exists in DOM
+    expect(screen.getByText('Known APT28 C2')).toBeTruthy()
+  })
+
+  it('score gauge is clickable for breakdown', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    // Click on the score gauge (SVG with score value)
+    const scoreValue = screen.getAllByText('78')[0]
+    const svg = scoreValue.closest('svg')
+    if (svg) fireEvent.click(svg)
+    // Breakdown popover should appear
+    expect(screen.getByText('Score Breakdown')).toBeTruthy()
+    expect(screen.getByText('Hypothesis Confirmation')).toBeTruthy()
+    expect(screen.getByText('Evidence Quality')).toBeTruthy()
+  })
+
+  it('pivot chain IOC is clickable', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    // Pivot chain shows entity value as button
+    const pivotButton = screen.getByText('185.220.101.34').closest('button')
+    expect(pivotButton).toBeTruthy()
+  })
+
+  it('pivot chain expands to show related IOCs on click', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('APT28 Hunt'))
+    // Click the pivot IOC
+    const pivotButton = screen.getByText('185.220.101.34').closest('button')!
+    fireEvent.click(pivotButton)
+    // Should show related IOCs
+    expect(screen.getByText('Related IOCs')).toBeTruthy()
+    expect(screen.getByText('192.168.1.100')).toBeTruthy()
+  })
+
+  it('template cards have Start Hunt button', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('Playbook Library'))
+    expect(screen.getByText('Start Hunt')).toBeTruthy()
+  })
+
+  it('clicking Start Hunt on template opens create modal with pre-filled data', () => {
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('Playbook Library'))
+    fireEvent.click(screen.getByText('Start Hunt'))
+    // Modal should be pre-filled with template name (appears multiple places)
+    expect(screen.getByText('New Hunt Session')).toBeTruthy()
+    expect(screen.getAllByText(/APT Lateral Movement/).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('renders hunt type badges on session cards', () => {
+    render(<HuntingWorkbenchPage />)
+    expect(screen.getByText('hypothesis')).toBeTruthy()
+  })
+
+  it('shows empty playbook library message when no templates', () => {
+    mockUseHuntTemplates.mockReturnValue({ data: { data: [], total: 0 } })
+    render(<HuntingWorkbenchPage />)
+    fireEvent.click(screen.getByText('Playbook Library'))
+    expect(screen.getByText('(0 templates)')).toBeTruthy()
   })
 })

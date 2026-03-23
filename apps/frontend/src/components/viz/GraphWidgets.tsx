@@ -1,7 +1,7 @@
 /**
  * @module components/viz/GraphWidgets
  * @description Extracted widgets for Threat Graph page:
- * Entity Legend, Node Detail Panel, Path Finder controls, Add Node modal.
+ * Entity Legend, Node Detail Panel, Path Finder controls, Add Node modal, Context Menu.
  */
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -11,7 +11,7 @@ import {
 } from '@/hooks/use-phase4-data'
 import {
   X, Crosshair, Target, Bug, AlertTriangle, Layers,
-  Plus, Download, Route,
+  Plus, Download, Route, GitBranch, Copy,
 } from 'lucide-react'
 
 // ─── Constants (shared with ThreatGraphPage) ────────────────────
@@ -282,6 +282,37 @@ export function AddNodeModal({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           </form>
         </div>
+      </div>
+    </>
+  )
+}
+
+// ─── Graph Context Menu (right-click on node) ────────────────
+
+const CTX_ACTIONS = [
+  { key: 'path', label: 'Find paths from here', icon: Route },
+  { key: 'expand', label: 'Expand neighbors', icon: GitBranch },
+  { key: 'remove', label: 'Remove from view', icon: X },
+  { key: 'copy', label: 'Copy value', icon: Copy },
+]
+
+export function GraphContextMenu({ x, y, nodeId, onAction, onClose }: {
+  x: number; y: number; nodeId: string
+  onAction: (action: string, nodeId: string) => void
+  onClose: () => void
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose}
+        onContextMenu={e => { e.preventDefault(); onClose() }} />
+      <div className="absolute z-50 bg-bg-primary border border-border rounded-lg shadow-xl py-1 min-w-[180px]"
+        style={{ left: x, top: y }}>
+        {CTX_ACTIONS.map(({ key, label, icon: Icon }) => (
+          <button key={key} onClick={() => onAction(key, nodeId)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors">
+            <Icon className="w-3 h-3" />{label}
+          </button>
+        ))}
       </div>
     </>
   )

@@ -36,14 +36,25 @@ const EVIDENCE_TYPES = [
 
 // ─── Create Hunt Modal ──────────────────────────────────────────
 
-export function CreateHuntModal({ open, onClose, templates }: {
-  open: boolean; onClose: () => void; templates: HuntTemplate[]
+export function CreateHuntModal({ open, onClose, templates, initialTemplate }: {
+  open: boolean; onClose: () => void; templates: HuntTemplate[]; initialTemplate?: HuntTemplate | null
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [huntType, setHuntType] = useState('hypothesis')
   const [templateId, setTemplateId] = useState<string | null>(null)
   const createMutation = useCreateHunt()
+
+  // Auto-fill from initialTemplate when modal opens
+  const [lastInit, setLastInit] = useState<string | null>(null)
+  if (open && initialTemplate && initialTemplate.id !== lastInit) {
+    setName(initialTemplate.name)
+    setDescription(initialTemplate.description)
+    setHuntType(initialTemplate.huntType)
+    setTemplateId(initialTemplate.id)
+    setLastInit(initialTemplate.id)
+  }
+  if (!open && lastInit) setLastInit(null)
 
   if (!open) return null
 

@@ -12,12 +12,13 @@ import {
 } from '@/hooks/use-phase4-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
-  GitBranch, Search, ZoomIn, ZoomOut, Maximize2,
+  GitBranch, Search, ZoomIn, ZoomOut, Maximize2, Minimize2,
   Plus, Route,
 } from 'lucide-react'
+import { toast, ToastContainer } from '@/components/ui/Toast'
 import {
   NODE_COLORS, EntityLegend, NodeDetailPanel,
-  PathFinderBar, AddNodeModal,
+  PathFinderBar, AddNodeModal, GraphContextMenu,
 } from '@/components/viz/GraphWidgets'
 
 // ─── D3 Simulation Types ────────────────────────────────────────
@@ -42,6 +43,10 @@ export function ThreatGraphPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
   const [showAddNode, setShowAddNode] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null)
+  const [removedNodeIds, setRemovedNodeIds] = useState<Set<string>>(new Set())
+  const [edgeTooltip, setEdgeTooltip] = useState<{ x: number; y: number; type: string; confidence: number } | null>(null)
 
   // Path Finder state
   const [pathFinderActive, setPathFinderActive] = useState(false)
@@ -64,13 +69,14 @@ export function ThreatGraphPage() {
 
   const filteredNodes = useMemo(() => {
     let nodes = allNodes
+    if (removedNodeIds.size > 0) nodes = nodes.filter(n => !removedNodeIds.has(n.id))
     if (typeFilter) nodes = nodes.filter(n => n.entityType === typeFilter)
     if (searchQuery && searchResults?.nodes?.length) {
       const ids = new Set(searchResults.nodes.map(n => n.id))
       nodes = nodes.filter(n => ids.has(n.id))
     }
     return nodes
-  }, [allNodes, typeFilter, searchQuery, searchResults])
+  }, [allNodes, typeFilter, searchQuery, searchResults, removedNodeIds])
 
   const filteredEdges = useMemo(() => {
     const nodeIds = new Set(filteredNodes.map(n => n.id))
@@ -124,6 +130,27 @@ export function ThreatGraphPage() {
     setPathTargetId(null)
   }, [])
 
+  const handleFullscreen = useCallback(() => {
+    if (!containerRef.current) return
+    if (document.fullscreenElement) {
+      document.exitFullscreen(); setIsFullscreen(false)
+    } else {
+      containerRef.current.requestFullscreen(); setIsFullscreen(true)
+    }
+  }, [])
+
+  const handleContextAction = useCallback((action: string, nodeId: string) => {
+    setContextMenu(null)
+    const node = allNodes.find(n => n.id === nodeId)
+    if (!node) return
+    switch (action) {
+      case 'path': handlePathFind(nodeId); break
+      case 'expand': toast('Connect Graph service to expand neighbors', 'info'); break
+      case 'remove': setRemovedNodeIds(prev => new Set([...prev, nodeId])); break
+      case 'copy': navigator.clipboard.writeText(node.label); toast('Copied to clipboard'); break
+    }
+  }, [allNodes, handlePathFind])
+
   // ─── D3 Force Simulation ──────────────────────────────────────
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || filteredNodes.length === 0) return
@@ -131,6 +158,19 @@ export function ThreatGraphPage() {
     const svg = d3.select(svgRef.current)
     const { width, height } = containerRef.current.getBoundingClientRect()
     svg.selectAll('*').remove()
+    // Glow filter + animation CSS for path highlighting
+    const defs = svg.append('defs')
+    const filter = defs.append('filter').attr('id', 'path-glow')
+    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur')
+    const merge = filter.append('feMerge')
+    merge.append('feMergeNode').attr('in', 'blur')
+    merge.append('feMergeNode').attr('in', 'SourceGraphic')
+    defs.append('style').text(
+      '.path-edge-anim{animation:dashMove .8s linear infinite}' +
+      '@keyframes dashMove{to{stroke-dashoffset:-12}}' +
+      '.path-pulse{animation:nodePulse 1.5s ease-in-out infinite}' +
+      '@keyframes nodePulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.3}}',
+    )
     const g = svg.append('g')
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -149,16 +189,25 @@ export function ThreatGraphPage() {
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide().radius((d: any) => 10 + d.riskScore / 10))
 
-    // G7: Edge thickness = confidence
+    // G7: Edge thickness = confidence + hover tooltip
     const link = g.append('g').selectAll('line').data(simLinks).join('line')
       .attr('stroke', 'var(--border)')
       .attr('stroke-opacity', 0.5)
       .attr('stroke-width', d => Math.max(1, d.confidence / 30))
+      .attr('cursor', 'pointer')
+      .on('mouseover', function (event: any, d: SimLink) {
+        d3.select(this).attr('stroke-opacity', 0.9).attr('stroke-width', Math.max(2, d.confidence / 20))
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (rect) setEdgeTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 32, type: d.relationshipType.replace(/_/g, ' '), confidence: d.confidence })
+      })
+      .on('mouseout', function (_e: any, d: SimLink) {
+        d3.select(this).attr('stroke-opacity', 0.5).attr('stroke-width', Math.max(1, d.confidence / 30))
+        setEdgeTooltip(null)
+      })
 
+    // Hidden labels (positioned on tick for edge tooltip fallback)
     const linkLabel = g.append('g').selectAll('text').data(simLinks).join('text')
-      .text(d => d.relationshipType.replace(/_/g, ' '))
-      .attr('font-size', '8px').attr('fill', 'var(--text-muted)')
-      .attr('text-anchor', 'middle').attr('opacity', 0.5)
+      .attr('font-size', '0').attr('opacity', 0)
 
     const node = g.append('g').selectAll('g').data(simNodes).join('g')
       .attr('cursor', 'pointer')
@@ -215,17 +264,34 @@ export function ThreatGraphPage() {
         .transition().duration(200).attr('fill-opacity', 0.15).attr('stroke-width', 1.5)
       link.attr('stroke-opacity', 0.5).attr('stroke', 'var(--border)')
     }).on('click', (_event, d) => handleNodeClick(d.id))
+      .on('contextmenu', (event: any, d: SimNode) => {
+        event.preventDefault()
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (rect) setContextMenu({ x: event.clientX - rect.left, y: event.clientY - rect.top, nodeId: d.id })
+      })
 
-    // Path highlighting
+    // Path highlighting with glow + animated dash + pulse
     if (pathNodeIds.size > 0) {
       node.select('circle:first-child')
         .attr('stroke-width', d => pathNodeIds.has(d.id) ? 3.5 : 1)
         .attr('fill-opacity', d => pathNodeIds.has(d.id) ? 0.4 : 0.06)
         .attr('stroke', d => pathNodeIds.has(d.id) ? '#22c55e' : NODE_COLORS[d.entityType] ?? '#666')
+      // Pulse source + destination nodes
+      const pathArr = Array.from(pathNodeIds)
+      if (pathArr.length >= 2) {
+        node.filter((d: SimNode) => d.id === pathArr[0] || d.id === pathArr[pathArr.length - 1])
+          .select('circle:first-child')
+          .attr('stroke', '#22c55e').attr('stroke-width', 4.5)
+          .classed('path-pulse', true)
+      }
+      // Glow + animated dash on path edges
       link
         .attr('stroke', l => pathEdgeIds.has(l.id) ? '#22c55e' : 'var(--border)')
         .attr('stroke-opacity', l => pathEdgeIds.has(l.id) ? 1 : 0.15)
-        .attr('stroke-width', l => pathEdgeIds.has(l.id) ? 3 : 1)
+        .attr('stroke-width', l => pathEdgeIds.has(l.id) ? 3.5 : 1)
+        .attr('filter', l => pathEdgeIds.has(l.id) ? 'url(#path-glow)' : null)
+        .attr('stroke-dasharray', l => pathEdgeIds.has(l.id) ? '8 4' : null)
+      link.filter((l: SimLink) => pathEdgeIds.has(l.id)).classed('path-edge-anim', true)
     } else if (selectedNodeId) {
       // Risk propagation highlight
       const neighborIds = new Set<string>()
@@ -314,6 +380,11 @@ export function ThreatGraphPage() {
           <button onClick={handleFitView} className="p-1.5 rounded border border-border text-text-muted hover:text-text-primary hover:bg-bg-hover" title="Fit View">
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
+          <button onClick={handleFullscreen}
+            className={cn('p-1.5 rounded border text-text-muted hover:text-text-primary hover:bg-bg-hover', isFullscreen ? 'border-accent bg-accent/10 text-accent' : 'border-border')}
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}>
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
@@ -333,6 +404,19 @@ export function ThreatGraphPage() {
                 <p className="text-xs mt-1">Connect the Threat Graph service or clear filters</p>
               </div>
             </div>
+          )}
+          {/* Edge hover tooltip */}
+          {edgeTooltip && (
+            <div className="absolute bg-bg-primary border border-border rounded-lg px-2 py-1.5 shadow-lg pointer-events-none z-10"
+              style={{ left: edgeTooltip.x, top: edgeTooltip.y, transform: 'translateX(-50%)' }}>
+              <div className="text-[10px] font-medium text-text-primary capitalize">{edgeTooltip.type}</div>
+              <div className="text-[9px] text-text-muted tabular-nums">Weight: {edgeTooltip.confidence}%</div>
+            </div>
+          )}
+          {/* Right-click context menu */}
+          {contextMenu && (
+            <GraphContextMenu x={contextMenu.x} y={contextMenu.y} nodeId={contextMenu.nodeId}
+              onAction={handleContextAction} onClose={() => setContextMenu(null)} />
           )}
           {hoveredNodeId && !selectedNodeId && (
             <div className="absolute top-3 left-3 bg-bg-primary border border-border rounded-lg p-2 shadow-lg text-[11px] pointer-events-none">
@@ -358,6 +442,7 @@ export function ThreatGraphPage() {
       </div>
 
       <AddNodeModal open={showAddNode} onClose={() => setShowAddNode(false)} />
+      <ToastContainer />
     </div>
   )
 }

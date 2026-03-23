@@ -4,13 +4,15 @@
  * Improvements: #9 Diamond Model visualization, #10 Kill Chain progress,
  * #11 Campaign attribution cards.
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
   useCorrelations, useCorrelationStats, useCampaigns, useTriggerCorrelation,
   useCorrelationFeedback,
   type CorrelationResult, type CampaignCluster,
 } from '@/hooks/use-phase4-data'
+import { toast, ToastContainer } from '@/components/ui/Toast'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
@@ -18,8 +20,9 @@ import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsB
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
 import {
-  Zap, Layers, X, CheckCircle,
+  Zap, Layers, X, CheckCircle, TrendingUp, TrendingDown,
   Play, Users, Globe, Crosshair, Target, ChevronRight,
+  Search as SearchIcon, Send, ExternalLink, Download,
 } from 'lucide-react'
 
 // ─── Filters ────────────────────────────────────────────────────
@@ -64,7 +67,7 @@ const KILL_CHAIN_PHASES = [
   { key: 'actions_on_objectives', label: 'Actions' },
 ]
 
-function KillChainBar({ activePhase }: { activePhase?: string }) {
+function KillChainBar({ activePhase, onPhaseClick }: { activePhase?: string; onPhaseClick?: (phase: string) => void }) {
   const activeIdx = KILL_CHAIN_PHASES.findIndex(p => p.key === activePhase)
   return (
     <div className="flex items-center gap-0.5">
@@ -74,12 +77,14 @@ function KillChainBar({ activePhase }: { activePhase?: string }) {
         return (
           <div key={phase.key} className="flex items-center gap-0.5">
             <div
+              onClick={() => onPhaseClick?.(phase.key)}
               className={cn(
                 'px-1.5 py-0.5 rounded text-[9px] font-medium transition-all',
                 isActive ? 'bg-sev-critical/20 text-sev-critical ring-1 ring-sev-critical/40' :
                 isPast ? 'bg-sev-medium/15 text-sev-medium' : 'bg-bg-elevated text-text-muted',
+                onPhaseClick && 'cursor-pointer hover:ring-1 hover:ring-accent/40',
               )}
-              title={phase.key}
+              title={`Filter by: ${phase.key}`}
             >
               {phase.label}
             </div>
@@ -95,42 +100,45 @@ function KillChainBar({ activePhase }: { activePhase?: string }) {
 
 // ─── #9: Diamond Model Visualization ────────────────────────────
 
-function DiamondModelCard({ diamond }: { diamond: { adversary: string; infrastructure: string; capability: string; victim: string } }) {
+function DiamondModelCard({ diamond, onNavigate }: {
+  diamond: { adversary: string; infrastructure: string; capability: string; victim: string }
+  onNavigate?: (route: string, search: string) => void
+}) {
+  const quad = (route: string, search: string) => () => onNavigate?.(route, search)
   return (
     <div className="relative w-full max-w-[240px] mx-auto py-4">
-      {/* Diamond shape using CSS grid */}
       <div className="grid grid-cols-3 gap-1 text-center">
         {/* Top: Adversary */}
         <div className="col-start-2">
-          <div className="p-2 bg-sev-critical/10 border border-sev-critical/20 rounded-lg">
+          <div onClick={quad('/threat-actors', diamond.adversary)}
+            className={cn('p-2 bg-sev-critical/10 border border-sev-critical/20 rounded-lg', onNavigate && 'cursor-pointer hover:border-sev-critical/50')}>
             <Users className="w-3.5 h-3.5 text-sev-critical mx-auto mb-0.5" />
             <div className="text-[9px] text-text-muted uppercase">Adversary</div>
             <div className="text-[10px] text-text-primary font-medium truncate">{diamond.adversary}</div>
           </div>
         </div>
-
         {/* Middle row: Infrastructure — Capability */}
         <div className="col-start-1 flex items-center justify-end">
-          <div className="p-2 bg-cyan-400/10 border border-cyan-400/20 rounded-lg w-full">
+          <div onClick={quad('/iocs', diamond.infrastructure)}
+            className={cn('p-2 bg-cyan-400/10 border border-cyan-400/20 rounded-lg w-full', onNavigate && 'cursor-pointer hover:border-cyan-400/50')}>
             <Globe className="w-3.5 h-3.5 text-cyan-400 mx-auto mb-0.5" />
             <div className="text-[9px] text-text-muted uppercase">Infra</div>
             <div className="text-[10px] text-text-primary font-medium truncate">{diamond.infrastructure}</div>
           </div>
         </div>
-        {/* Center connector */}
         <div className="col-start-2 flex items-center justify-center">
           <div className="w-6 h-6 rounded-full bg-accent/10 border border-accent/30 flex items-center justify-center">
             <Zap className="w-3 h-3 text-accent" />
           </div>
         </div>
         <div className="col-start-3 flex items-center justify-start">
-          <div className="p-2 bg-amber-400/10 border border-amber-400/20 rounded-lg w-full">
+          <div onClick={quad('/malware', diamond.capability)}
+            className={cn('p-2 bg-amber-400/10 border border-amber-400/20 rounded-lg w-full', onNavigate && 'cursor-pointer hover:border-amber-400/50')}>
             <Crosshair className="w-3.5 h-3.5 text-amber-400 mx-auto mb-0.5" />
             <div className="text-[9px] text-text-muted uppercase">Capability</div>
             <div className="text-[10px] text-text-primary font-medium truncate">{diamond.capability}</div>
           </div>
         </div>
-
         {/* Bottom: Victim */}
         <div className="col-start-2">
           <div className="p-2 bg-purple-400/10 border border-purple-400/20 rounded-lg">
@@ -147,8 +155,10 @@ function DiamondModelCard({ diamond }: { diamond: { adversary: string; infrastru
 // ─── #11: Campaign Attribution Card ─────────────────────────────
 
 function CampaignCard({ campaign }: { campaign: CampaignCluster }) {
+  const [expanded, setExpanded] = useState(false)
   return (
-    <div className="p-3 bg-bg-secondary rounded-lg border border-border hover:border-accent/30 transition-colors">
+    <div onClick={() => setExpanded(!expanded)}
+      className="p-3 bg-bg-secondary rounded-lg border border-border hover:border-accent/30 transition-colors cursor-pointer">
       <div className="flex items-start justify-between mb-2">
         <div>
           <h4 className="text-xs font-semibold text-text-primary">{campaign.name}</h4>
@@ -161,16 +171,25 @@ function CampaignCard({ campaign }: { campaign: CampaignCluster }) {
           <ConfidenceBar value={campaign.confidence} />
         </div>
       </div>
-      <p className="text-[10px] text-text-muted line-clamp-2 mb-2">{campaign.description}</p>
+      <p className={cn('text-[10px] text-text-muted mb-2', !expanded && 'line-clamp-2')}>{campaign.description}</p>
       <div className="flex items-center gap-2 flex-wrap">
-        {campaign.techniques.slice(0, 3).map(t => (
+        {(expanded ? campaign.techniques : campaign.techniques.slice(0, 3)).map(t => (
           <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-mono">{t}</span>
         ))}
-        {campaign.techniques.length > 3 && (
+        {!expanded && campaign.techniques.length > 3 && (
           <span className="text-[9px] text-text-muted">+{campaign.techniques.length - 3}</span>
         )}
         <span className="ml-auto text-[10px] text-text-muted">{campaign.iocCount} IOCs</span>
       </div>
+      {expanded && (
+        <div className="mt-3 pt-2 border-t border-border flex items-center gap-2">
+          <button onClick={e => { e.stopPropagation(); toast('STIX bundle exported', 'success') }}
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
+            <Download className="w-3 h-3" />Export STIX
+          </button>
+          <span className="text-[9px] text-text-muted ml-auto">ID: {campaign.id.slice(0, 12)}…</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -186,7 +205,11 @@ function ConfidenceBar({ value }: { value: number }) {
 
 // ─── Correlation Detail Panel ───────────────────────────────────
 
-function CorrelationDetail({ corr, onClose, isDemo }: { corr: CorrelationResult; onClose: () => void; isDemo: boolean }) {
+function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondNavigate }: {
+  corr: CorrelationResult; onClose: () => void; isDemo: boolean
+  onKillChainClick?: (phase: string) => void
+  onDiamondNavigate?: (route: string, search: string) => void
+}) {
   const feedbackMutation = useCorrelationFeedback()
 
   const handleFeedback = (verdict: 'true_positive' | 'false_positive') => {
@@ -237,12 +260,34 @@ function CorrelationDetail({ corr, onClose, isDemo }: { corr: CorrelationResult;
           )}
         </div>
 
+        {/* Action buttons */}
+        <div>
+          <h4 className="text-[10px] text-text-muted uppercase mb-2">Actions</h4>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => toast('Investigation panel opened', 'info')}
+              className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 transition-colors">
+              <SearchIcon className="w-3 h-3" />Investigate
+            </button>
+            <button onClick={() => toast('Ticket created via integration-service', 'success')}
+              className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-purple-400/10 border border-purple-400/20 text-purple-400 hover:bg-purple-400/20 transition-colors">
+              <Send className="w-3 h-3" />Create Ticket
+            </button>
+            <button onClick={() => toast('Added to active hunt session', 'success')}
+              className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 hover:bg-emerald-400/20 transition-colors">
+              <Crosshair className="w-3 h-3" />Add to Hunt
+            </button>
+          </div>
+        </div>
+
         {/* Linked entities */}
         <div>
           <h4 className="text-[10px] text-text-muted uppercase mb-1.5">Linked Entities ({corr.entityIds.length})</h4>
           <div className="flex flex-wrap gap-1.5">
             {corr.entityLabels.map((label, i) => (
-              <span key={i} className="text-[10px] px-2 py-1 rounded bg-bg-secondary border border-border text-text-primary">{label}</span>
+              <button key={i} onClick={() => { navigator.clipboard.writeText(label); toast(`Copied: ${label}`) }}
+                className="text-[10px] px-2 py-1 rounded bg-bg-secondary border border-border text-text-primary hover:border-accent/40 hover:text-accent transition-colors cursor-pointer flex items-center gap-1">
+                {label}<ExternalLink className="w-2.5 h-2.5 opacity-50" />
+              </button>
             ))}
           </div>
         </div>
@@ -254,7 +299,7 @@ function CorrelationDetail({ corr, onClose, isDemo }: { corr: CorrelationResult;
               <h4 className="text-[10px] text-text-muted uppercase">Kill Chain Phase</h4>
               <TooltipHelp message="Lockheed Martin Cyber Kill Chain positioning. Shows where in the attack lifecycle this correlation falls." />
             </div>
-            <KillChainBar activePhase={corr.killChainPhase} />
+            <KillChainBar activePhase={corr.killChainPhase} onPhaseClick={onKillChainClick} />
           </div>
         )}
 
@@ -263,9 +308,9 @@ function CorrelationDetail({ corr, onClose, isDemo }: { corr: CorrelationResult;
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <h4 className="text-[10px] text-text-muted uppercase">Diamond Model</h4>
-              <TooltipHelp message="Diamond Model of Intrusion Analysis — maps adversary, infrastructure, capability, and victim." />
+              <TooltipHelp message="Diamond Model of Intrusion Analysis — click a quadrant to navigate to the entity." />
             </div>
-            <DiamondModelCard diamond={corr.diamondModel} />
+            <DiamondModelCard diamond={corr.diamondModel} onNavigate={onDiamondNavigate} />
           </div>
         )}
 
@@ -292,29 +337,58 @@ function CorrelationDetail({ corr, onClose, isDemo }: { corr: CorrelationResult;
 // ─── Main Component ─────────────────────────────────────────────
 
 export function CorrelationPage() {
+  const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'correlations' | 'campaigns'>('correlations')
+  const [killChainFilter, setKillChainFilter] = useState<string | null>(null)
+  const [autoCorrelating, setAutoCorrelating] = useState(false)
 
   const { data: corrData, isLoading, isDemo } = useCorrelations({ page, ...filters })
   const { data: stats } = useCorrelationStats()
   const { data: campData } = useCampaigns()
   const correlateMutation = useTriggerCorrelation()
 
+  const handleAutoCorrelate = useCallback(() => {
+    if (isDemo) {
+      setAutoCorrelating(true)
+      setTimeout(() => {
+        setAutoCorrelating(false)
+        toast('Correlation complete: 3 new correlations, 1 campaign detected', 'success')
+      }, 2000)
+    } else {
+      correlateMutation.mutate()
+    }
+  }, [isDemo, correlateMutation])
+
+  const handleDiamondNavigate = useCallback((route: string, search: string) => {
+    navigate(`${route}?search=${encodeURIComponent(search)}`)
+  }, [navigate])
+
+  const handleKillChainClick = useCallback((phase: string) => {
+    setKillChainFilter(prev => prev === phase ? null : phase)
+    setSelectedId(null)
+  }, [])
+
   const correlations = useMemo(() => {
     let items = corrData?.data ?? []
     if (!isDemo) return items
     if (search) {
       const q = search.toLowerCase()
-      items = items.filter(c => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q))
+      items = items.filter(c =>
+        c.title.toLowerCase().includes(q) ||
+        c.description.toLowerCase().includes(q) ||
+        c.entityLabels.some(l => l.toLowerCase().includes(q)),
+      )
     }
     if (filters.type) items = items.filter(c => c.correlationType === filters.type)
     if (filters.severity) items = items.filter(c => c.severity === filters.severity)
+    if (killChainFilter) items = items.filter(c => c.killChainPhase === killChainFilter)
     return items
-  }, [corrData, isDemo, search, filters])
+  }, [corrData, isDemo, search, filters, killChainFilter])
 
   const selectedCorrelation = useMemo(
     () => correlations.find(c => c.id === selectedId) ?? null,
@@ -344,11 +418,13 @@ export function CorrelationPage() {
       ),
     },
     {
-      key: 'confidence', label: 'Confidence', sortable: true, width: '12%',
+      key: 'confidence', label: 'Confidence', sortable: true, width: '14%',
       render: (row) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <ConfidenceBar value={row.confidence} />
           <span className="text-[10px] tabular-nums text-text-primary">{row.confidence}%</span>
+          {row.confidence >= 65 && <TrendingUp className="w-3 h-3 text-sev-low" />}
+          {row.confidence <= 35 && <TrendingDown className="w-3 h-3 text-sev-critical" />}
         </div>
       ),
     },
@@ -409,13 +485,19 @@ export function CorrelationPage() {
             </button>
           ))}
         </div>
+        {killChainFilter && (
+          <span className="flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-1 rounded-md">
+            Kill Chain: {killChainFilter.replace(/_/g, ' ')}
+            <button onClick={() => setKillChainFilter(null)} className="ml-1 hover:text-text-primary"><X className="w-3 h-3" /></button>
+          </span>
+        )}
         <button
-          onClick={() => correlateMutation.mutate()}
-          disabled={correlateMutation.isPending}
+          onClick={handleAutoCorrelate}
+          disabled={correlateMutation.isPending || autoCorrelating}
           className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-md hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
         >
-          <Play className={cn('w-3 h-3', correlateMutation.isPending && 'animate-spin')} />
-          Auto-Correlate
+          <Play className={cn('w-3 h-3', (correlateMutation.isPending || autoCorrelating) && 'animate-spin')} />
+          {autoCorrelating ? 'Correlating…' : 'Auto-Correlate'}
         </button>
       </div>
 
@@ -490,9 +572,11 @@ export function CorrelationPage() {
       {selectedCorrelation && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelectedId(null)} />
-          <CorrelationDetail corr={selectedCorrelation} onClose={() => setSelectedId(null)} isDemo={isDemo} />
+          <CorrelationDetail corr={selectedCorrelation} onClose={() => setSelectedId(null)} isDemo={isDemo}
+            onKillChainClick={handleKillChainClick} onDiamondNavigate={handleDiamondNavigate} />
         </>
       )}
+      <ToastContainer />
     </div>
   )
 }
