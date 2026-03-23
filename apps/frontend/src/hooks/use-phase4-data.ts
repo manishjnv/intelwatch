@@ -285,7 +285,22 @@ export function useCampaigns() {
 export function useTriggerCorrelation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => api<unknown>('/correlations/correlate', { method: 'POST' }),
+    mutationFn: () => api<{ correlationsFound: number; campaignsDetected: number; wavesDetected: number; suppressed: number }>(
+      '/correlations/run', { method: 'POST' },
+    ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['correlations'] })
+      queryClient.invalidateQueries({ queryKey: ['correlation-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] })
+    },
+  })
+}
+
+export function useCorrelationFeedback() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, verdict, reason }: { id: string; verdict: 'true_positive' | 'false_positive'; reason?: string }) =>
+      api<unknown>(`/correlations/${id}/feedback`, { method: 'POST', body: { verdict, reason } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['correlations'] })
       queryClient.invalidateQueries({ queryKey: ['correlation-stats'] })

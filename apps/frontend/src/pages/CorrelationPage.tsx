@@ -8,6 +8,7 @@ import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useCorrelations, useCorrelationStats, useCampaigns, useTriggerCorrelation,
+  useCorrelationFeedback,
   type CorrelationResult, type CampaignCluster,
 } from '@/hooks/use-phase4-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
@@ -17,7 +18,7 @@ import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsB
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
 import {
-  Zap, Layers, X,
+  Zap, Layers, X, CheckCircle,
   Play, Users, Globe, Crosshair, Target, ChevronRight,
 } from 'lucide-react'
 
@@ -185,9 +186,15 @@ function ConfidenceBar({ value }: { value: number }) {
 
 // ─── Correlation Detail Panel ───────────────────────────────────
 
-function CorrelationDetail({ corr, onClose }: { corr: CorrelationResult; onClose: () => void }) {
+function CorrelationDetail({ corr, onClose, isDemo }: { corr: CorrelationResult; onClose: () => void; isDemo: boolean }) {
+  const feedbackMutation = useCorrelationFeedback()
+
+  const handleFeedback = (verdict: 'true_positive' | 'false_positive') => {
+    feedbackMutation.mutate({ id: corr.id, verdict })
+  }
+
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-bg-primary border-l border-border shadow-xl z-50 overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 w-[420px] bg-bg-primary border-l border-border shadow-xl z-50 overflow-y-auto">
       <div className="sticky top-0 bg-bg-primary border-b border-border p-4 z-10">
         <div className="flex items-center justify-between">
           <SeverityBadge severity={corr.severity.toUpperCase() as any} />
@@ -201,15 +208,38 @@ function CorrelationDetail({ corr, onClose }: { corr: CorrelationResult; onClose
             {TYPE_LABELS[corr.correlationType]}
           </span>
           <span className="text-[10px] text-text-muted tabular-nums">{corr.confidence}% confidence</span>
+          {corr.suppressed && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-elevated text-text-muted">Suppressed (FP)</span>
+          )}
         </div>
       </div>
 
       <div className="p-4 space-y-4">
         <p className="text-xs text-text-secondary">{corr.description}</p>
 
+        {/* Verdict Feedback */}
+        <div>
+          <h4 className="text-[10px] text-text-muted uppercase mb-2">Verdict Feedback</h4>
+          <div className="flex items-center gap-2">
+            <button onClick={() => handleFeedback('true_positive')}
+              disabled={feedbackMutation.isPending || isDemo}
+              className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-critical/10 border border-sev-critical/20 text-sev-critical hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
+              <Target className="w-3 h-3" />True Positive
+            </button>
+            <button onClick={() => handleFeedback('false_positive')}
+              disabled={feedbackMutation.isPending || isDemo}
+              className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-low/10 border border-sev-low/20 text-sev-low hover:bg-sev-low/20 transition-colors disabled:opacity-50">
+              <X className="w-3 h-3" />False Positive
+            </button>
+          </div>
+          {feedbackMutation.isSuccess && (
+            <p className="text-[10px] text-sev-low mt-1">Feedback recorded. Suppression rules updated.</p>
+          )}
+        </div>
+
         {/* Linked entities */}
         <div>
-          <h4 className="text-[10px] text-text-muted uppercase mb-1.5">Linked Entities</h4>
+          <h4 className="text-[10px] text-text-muted uppercase mb-1.5">Linked Entities ({corr.entityIds.length})</h4>
           <div className="flex flex-wrap gap-1.5">
             {corr.entityLabels.map((label, i) => (
               <span key={i} className="text-[10px] px-2 py-1 rounded bg-bg-secondary border border-border text-text-primary">{label}</span>
@@ -236,6 +266,22 @@ function CorrelationDetail({ corr, onClose }: { corr: CorrelationResult; onClose
               <TooltipHelp message="Diamond Model of Intrusion Analysis — maps adversary, infrastructure, capability, and victim." />
             </div>
             <DiamondModelCard diamond={corr.diamondModel} />
+          </div>
+        )}
+
+        {/* Metadata */}
+        <div>
+          <h4 className="text-[10px] text-text-muted uppercase mb-1.5">Details</h4>
+          <div className="space-y-1 text-[11px]">
+            <div className="flex justify-between"><span className="text-text-muted">ID</span><span className="text-text-primary font-mono">{corr.id.slice(0, 16)}...</span></div>
+            <div className="flex justify-between"><span className="text-text-muted">Type</span><span className="text-text-primary">{TYPE_LABELS[corr.correlationType]}</span></div>
+            <div className="flex justify-between"><span className="text-text-muted">Created</span><span className="text-text-primary tabular-nums">{new Date(corr.createdAt).toLocaleString()}</span></div>
+          </div>
+        </div>
+
+        {isDemo && (
+          <div className="p-2 bg-accent/5 border border-accent/20 rounded-md text-[10px] text-accent">
+            Feedback disabled in demo mode. Connect the Correlation Engine to enable TP/FP verdicts.
           </div>
         )}
       </div>
@@ -373,6 +419,18 @@ export function CorrelationPage() {
         </button>
       </div>
 
+      {/* Auto-correlate result banner */}
+      {correlateMutation.isSuccess && (correlateMutation.data as any) && (
+        <div className="mx-4 mt-2 p-2 bg-sev-low/5 border border-sev-low/20 rounded-lg flex items-center gap-2 text-xs text-sev-low">
+          <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            Correlation complete: {(correlateMutation.data as any).correlationsFound ?? 0} correlations,{' '}
+            {(correlateMutation.data as any).campaignsDetected ?? 0} campaigns,{' '}
+            {(correlateMutation.data as any).suppressed ?? 0} suppressed
+          </span>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {activeTab === 'correlations' && (
           <>
@@ -432,7 +490,7 @@ export function CorrelationPage() {
       {selectedCorrelation && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelectedId(null)} />
-          <CorrelationDetail corr={selectedCorrelation} onClose={() => setSelectedId(null)} />
+          <CorrelationDetail corr={selectedCorrelation} onClose={() => setSelectedId(null)} isDemo={isDemo} />
         </>
       )}
     </div>

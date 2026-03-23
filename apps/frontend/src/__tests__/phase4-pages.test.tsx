@@ -60,6 +60,7 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useChangeHuntStatus: () => mockUseChangeHuntStatus(),
   useAddHypothesis: () => mockUseAddHypothesis(),
   useAddEvidence: () => mockUseAddEvidence(),
+  useCorrelationFeedback: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false }),
   useGraphNodes: (...args: any[]) => mockUseGraphNodes(...args),
   useGraphStats: () => mockUseGraphStats(),
   useGraphSearch: (...args: any[]) => mockUseGraphSearch(...args),
@@ -496,6 +497,28 @@ describe('CorrelationPage', () => {
     mockUseCorrelations.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isDemo: false })
     render(<CorrelationPage />)
     expect(screen.getByText(/No correlations found/)).toBeTruthy()
+  })
+
+  it('opens detail panel with feedback buttons when row clicked', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    expect(screen.getByText('Verdict Feedback')).toBeTruthy()
+    expect(screen.getByText('True Positive')).toBeTruthy()
+    expect(screen.getByText('False Positive')).toBeTruthy()
+  })
+
+  it('shows linked entities in detail panel', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    // APT28 appears in both table and detail — verify detail panel has entity count
+    expect(screen.getByText(/Linked Entities/)).toBeTruthy()
+    expect(screen.getAllByText('APT28').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('shows demo mode warning in detail panel', () => {
+    render(<CorrelationPage />)
+    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
+    expect(screen.getByText(/Feedback disabled in demo mode/)).toBeTruthy()
   })
 })
 
