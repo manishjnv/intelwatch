@@ -1,0 +1,257 @@
+/**
+ * @module pages/DRPDashboardPage
+ * @description Digital Risk Protection dashboard — asset monitoring, alert feed,
+ * typosquat scanner with visual diff, CertStream status, risk heatmap.
+ * Improvements: #1 visual diff, #2 executive risk score, #3 CertStream ticker,
+ * #4 alert SLA tracking, #5 risk heatmap calendar.
+ */
+import { useState, useMemo } from 'react'
+import { cn } from '@/lib/utils'
+import {
+  useDRPAssets, useDRPAlerts, useDRPAlertStats, useDRPAssetStats,
+  useCertStreamStatus,
+  type DRPAlert, type DRPAsset,
+} from '@/hooks/use-phase4-data'
+import { generateAlertHeatmap } from '@/hooks/phase4-demo-data'
+import { DataTable, type Column, type Density } from '@/components/data/DataTable'
+import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
+import { Pagination } from '@/components/data/Pagination'
+import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
+import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
+import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
+import { Shield, AlertTriangle, Globe, User, Server } from 'lucide-react'
+import {
+  ExecutiveRiskGauge, RiskHeatmap, CertStreamIndicator,
+  SLABadge, TyposquatScanner,
+} from '@/components/viz/DRPWidgets'
+
+// ─── Constants ──────────────────────────────────────────────────
+
+const ALERT_FILTERS: FilterOption[] = [
+  { key: 'type', label: 'Type', options: [
+    { value: 'typosquatting', label: 'Typosquatting' }, { value: 'dark_web', label: 'Dark Web' },
+    { value: 'credential_leak', label: 'Credential Leak' }, { value: 'attack_surface', label: 'Attack Surface' },
+  ]},
+  { key: 'severity', label: 'Severity', options: [
+    { value: 'critical', label: 'Critical' }, { value: 'high', label: 'High' },
+    { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' },
+  ]},
+  { key: 'status', label: 'Status', options: [
+    { value: 'open', label: 'Open' }, { value: 'investigating', label: 'Investigating' },
+    { value: 'resolved', label: 'Resolved' }, { value: 'dismissed', label: 'Dismissed' },
+  ]},
+]
+
+const TYPE_COLORS: Record<string, string> = {
+  typosquatting: 'text-rose-400 bg-rose-400/10',
+  dark_web: 'text-purple-400 bg-purple-400/10',
+  credential_leak: 'text-sev-critical bg-sev-critical/10',
+  attack_surface: 'text-sev-medium bg-sev-medium/10',
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  open: 'text-sev-critical bg-sev-critical/10',
+  investigating: 'text-sev-medium bg-sev-medium/10',
+  resolved: 'text-sev-low bg-sev-low/10',
+  dismissed: 'text-text-muted bg-bg-elevated',
+}
+
+const ASSET_TYPE_ICONS: Record<string, React.FC<{ className?: string }>> = {
+  domain: Globe, brand: Shield, executive: User, ip_range: Server,
+}
+
+// ─── Main Component ─────────────────────────────────────────────
+
+export function DRPDashboardPage() {
+  const [alertPage, setAlertPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [density, setDensity] = useState<Density>('compact')
+  const [filters, setFilters] = useState<Record<string, string>>({})
+  const [activeTab, setActiveTab] = useState<'alerts' | 'assets'>('alerts')
+
+  const { data: alertData, isLoading: alertsLoading, isDemo } = useDRPAlerts({ page: alertPage, ...filters })
+  const { data: alertStats } = useDRPAlertStats()
+  const { data: assetData } = useDRPAssets()
+  const { data: assetStats } = useDRPAssetStats()
+  const { data: certStatus } = useCertStreamStatus()
+  const heatmapData = useMemo(() => generateAlertHeatmap(), [])
+
+  const execRiskScore = useMemo(() => {
+    if (!alertStats || !assetStats) return 0
+    const openRatio = alertStats.total > 0 ? (alertStats.open + alertStats.investigating) / alertStats.total : 0
+    const critWeight = (alertStats.bySeverity['critical'] ?? 0) * 4 + (alertStats.bySeverity['high'] ?? 0) * 2
+    return Math.min(100, Math.round(openRatio * 40 + critWeight * 5 + assetStats.avgRiskScore * 0.3))
+  }, [alertStats, assetStats])
+
+  const alerts = useMemo(() => {
+    let items = alertData?.data ?? []
+    if (!isDemo) return items
+    if (search) {
+      const q = search.toLowerCase()
+      items = items.filter(a => a.title.toLowerCase().includes(q) || a.detectedValue.toLowerCase().includes(q))
+    }
+    if (filters.type) items = items.filter(a => a.type === filters.type)
+    if (filters.severity) items = items.filter(a => a.severity === filters.severity)
+    if (filters.status) items = items.filter(a => a.status === filters.status)
+    return items
+  }, [alertData, isDemo, search, filters])
+
+  const alertColumns: Column<DRPAlert>[] = [
+    { key: 'severity', label: 'Sev', width: '6%',
+      render: (row) => <SeverityBadge severity={row.severity.toUpperCase() as any} showDot /> },
+    { key: 'title', label: 'Alert', sortable: true, width: '32%',
+      render: (row) => (
+        <div className="min-w-0">
+          <div className="text-text-primary font-medium truncate text-xs">{row.title}</div>
+          <div className="text-[10px] text-text-muted truncate">{row.description}</div>
+        </div>
+      ) },
+    { key: 'type', label: 'Type', width: '12%',
+      render: (row) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', TYPE_COLORS[row.type] ?? '')}>{row.type.replace('_', ' ')}</span> },
+    { key: 'detectedValue', label: 'Detected Value', width: '18%',
+      render: (row) => <span className="text-text-secondary font-mono text-[11px] truncate block max-w-[180px]">{row.detectedValue}</span> },
+    { key: 'confidence', label: 'Conf', width: '7%',
+      render: (row) => <span className="tabular-nums">{row.confidence}%</span> },
+    { key: 'status', label: 'Status', width: '10%',
+      render: (row) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', STATUS_COLORS[row.status] ?? '')}>{row.status}</span> },
+    { key: 'sla', label: 'SLA', width: '10%',
+      render: (row) => <SLABadge createdAt={row.createdAt} triagedAt={row.triagedAt} resolvedAt={row.resolvedAt} /> },
+    { key: 'assignee', label: 'Owner', width: '8%',
+      render: (row) => row.assignee ? <span className="text-[10px] text-accent">{row.assignee}</span> : <span className="text-[10px] text-text-muted">—</span> },
+  ]
+
+  const assetColumns: Column<DRPAsset>[] = [
+    { key: 'name', label: 'Asset', sortable: true, width: '25%',
+      render: (row) => {
+        const Icon = ASSET_TYPE_ICONS[row.type] ?? Globe
+        return (
+          <div className="flex items-center gap-2">
+            <Icon className="w-3.5 h-3.5 text-text-muted shrink-0" />
+            <div className="min-w-0">
+              <div className="text-text-primary font-medium truncate text-xs">{row.name}</div>
+              <div className="text-[10px] text-text-muted font-mono truncate">{row.value}</div>
+            </div>
+          </div>
+        )
+      } },
+    { key: 'type', label: 'Type', width: '12%',
+      render: (row) => <span className="text-[10px] text-text-muted uppercase">{row.type.replace('_', ' ')}</span> },
+    { key: 'status', label: 'Status', width: '10%',
+      render: (row) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', row.status === 'active' ? 'text-sev-low bg-sev-low/10' : 'text-text-muted bg-bg-elevated')}>{row.status}</span> },
+    { key: 'riskScore', label: 'Risk', sortable: true, width: '12%',
+      render: (row) => {
+        const color = row.riskScore >= 70 ? 'text-sev-critical' : row.riskScore >= 40 ? 'text-sev-medium' : 'text-sev-low'
+        return <span className={cn('font-medium tabular-nums', color)}>{row.riskScore}</span>
+      } },
+    { key: 'alertCount', label: 'Alerts', width: '10%',
+      render: (row) => <span className={cn('tabular-nums', row.alertCount > 0 ? 'text-sev-high font-medium' : 'text-text-muted')}>{row.alertCount}</span> },
+    { key: 'lastScanAt', label: 'Last Scan', width: '15%',
+      render: (row) => {
+        if (!row.lastScanAt) return <span className="text-text-muted">Never</span>
+        const hrs = Math.round((Date.now() - new Date(row.lastScanAt).getTime()) / 3_600_000)
+        return <span className="text-[10px] text-text-muted tabular-nums">{hrs < 1 ? '<1h ago' : `${hrs}h ago`}</span>
+      } },
+  ]
+
+  return (
+    <div className="flex flex-col h-full">
+      {isDemo && (
+        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-400/10 text-rose-400 font-medium">Demo</span>
+          <span className="text-xs text-[var(--text-muted)]">Demo data — connect DRP service for live monitoring</span>
+        </div>
+      )}
+
+      <PageStatsBar>
+        <CompactStat label="Assets" value={assetStats?.total?.toString() ?? '—'} />
+        <CompactStat label="Open Alerts" value={alertStats?.open?.toString() ?? '0'} color="text-sev-critical" />
+        <CompactStat label="Investigating" value={alertStats?.investigating?.toString() ?? '0'} color="text-sev-medium" />
+        <CompactStat label="Resolved" value={alertStats?.resolved?.toString() ?? '0'} color="text-sev-low" />
+        <CompactStat label="Risk Score" value={execRiskScore.toString()} color={execRiskScore >= 70 ? 'text-sev-critical' : execRiskScore >= 40 ? 'text-sev-medium' : 'text-sev-low'} />
+      </PageStatsBar>
+
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-bg-secondary rounded-lg border border-border flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold text-text-primary uppercase">Digital Risk Score</h3>
+              <TooltipHelp message="Composite score based on open alerts, severity distribution, and asset risk. Designed for executive reporting." />
+            </div>
+            <ExecutiveRiskGauge score={execRiskScore} />
+            <div className="flex items-center gap-3 text-[10px] text-text-muted">
+              <span>Critical: <span className="text-sev-critical font-medium">{alertStats?.bySeverity['critical'] ?? 0}</span></span>
+              <span>High: <span className="text-sev-high font-medium">{alertStats?.bySeverity['high'] ?? 0}</span></span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {certStatus && <CertStreamIndicator status={certStatus} />}
+            <div className="p-3 bg-bg-secondary rounded-lg border border-border">
+              <p className="text-[10px] text-text-muted uppercase mb-2">Alerts by Type</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {Object.entries(alertStats?.byType ?? {}).map(([type, count]) => (
+                  <div key={type} className="flex items-center justify-between text-[10px]">
+                    <span className={cn('px-1.5 py-0.5 rounded-full font-medium', TYPE_COLORS[type] ?? '')}>{type.replace('_', ' ')}</span>
+                    <span className="text-text-primary tabular-nums font-medium">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-bg-secondary rounded-lg border border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-[10px] text-text-muted uppercase font-medium">Alert Activity (90 days)</h3>
+              <TooltipHelp message="GitHub-style heatmap showing daily alert density. Darker cells = more alerts." />
+            </div>
+            <RiskHeatmap data={heatmapData} />
+            <div className="flex items-center gap-1 mt-2 text-[9px] text-text-muted">
+              <span>Less</span>
+              <div className="w-2.5 h-2.5 rounded-[2px] bg-bg-elevated" />
+              <div className="w-2.5 h-2.5 rounded-[2px] bg-sev-low/40" />
+              <div className="w-2.5 h-2.5 rounded-[2px] bg-sev-medium/50" />
+              <div className="w-2.5 h-2.5 rounded-[2px] bg-sev-high/60" />
+              <div className="w-2.5 h-2.5 rounded-[2px] bg-sev-critical/80" />
+              <span>More</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-bg-secondary rounded-lg border border-border">
+          <TyposquatScanner />
+        </div>
+
+        <div className="flex items-center gap-1 border-b border-border">
+          {([
+            { key: 'alerts' as const, label: 'Alert Feed', icon: AlertTriangle, count: alertStats?.total },
+            { key: 'assets' as const, label: 'Monitored Assets', icon: Shield, count: assetStats?.total },
+          ]).map(({ key, label, icon: Icon, count }) => (
+            <button key={key} onClick={() => setActiveTab(key)}
+              className={cn('flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors',
+                activeTab === key ? 'text-accent border-b-2 border-accent' : 'text-text-muted hover:text-text-secondary')}>
+              <Icon className="w-3 h-3" />{label}
+              {count != null && <span className="text-[10px] text-text-muted">({count})</span>}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'alerts' && (
+          <>
+            <FilterBar searchValue={search} onSearchChange={(v) => { setSearch(v); setAlertPage(1) }}
+              searchPlaceholder="Search alerts by title, detected value…" filters={ALERT_FILTERS}
+              filterValues={filters} onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setAlertPage(1) }} />
+            <DataTable columns={alertColumns} data={alerts} loading={alertsLoading} rowKey={(r) => r.id}
+              density={density} severityField={(r) => r.severity} emptyMessage="No DRP alerts. Your digital perimeter is clear." />
+            <Pagination page={alertPage} limit={50} total={isDemo ? alerts.length : (alertData?.total ?? 0)}
+              onPageChange={setAlertPage} density={density} onDensityChange={setDensity} />
+          </>
+        )}
+
+        {activeTab === 'assets' && (
+          <DataTable columns={assetColumns} data={assetData?.data ?? []} loading={false} rowKey={(r) => r.id}
+            density={density} emptyMessage="No monitored assets. Add domains, brands, or executives to start monitoring." />
+        )}
+      </div>
+    </div>
+  )
+}
