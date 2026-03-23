@@ -8,6 +8,7 @@ import {
   DEMO_IOC_STATS,
   DEMO_IOCS_RESPONSE,
   DEMO_DASHBOARD_STATS,
+  DEMO_FEEDS_RESPONSE,
 } from '@/hooks/demo-data'
 
 /* ================================================================ */
@@ -178,6 +179,104 @@ describe('DEMO_IOC_RECORDS', () => {
     const validTlp = new Set(['red', 'amber', 'green', 'white'])
     for (const r of DEMO_IOC_RECORDS) {
       expect(validTlp).toContain(r.tlp)
+    }
+  })
+})
+
+/* ================================================================ */
+/* Feed records                                                       */
+/* ================================================================ */
+describe('DEMO_FEEDS_RESPONSE', () => {
+  it('contains exactly 5 feed records', () => {
+    expect(DEMO_FEEDS_RESPONSE.data).toHaveLength(5)
+  })
+
+  it('has page=1, limit=50, total=5', () => {
+    expect(DEMO_FEEDS_RESPONSE.page).toBe(1)
+    expect(DEMO_FEEDS_RESPONSE.limit).toBe(50)
+    expect(DEMO_FEEDS_RESPONSE.total).toBe(5)
+  })
+
+  it('all IDs are unique', () => {
+    const ids = DEMO_FEEDS_RESPONSE.data.map(f => f.id)
+    expect(new Set(ids).size).toBe(5)
+  })
+
+  it('has active, error, and disabled statuses', () => {
+    const statuses = new Set(DEMO_FEEDS_RESPONSE.data.map(f => f.status))
+    expect(statuses).toContain('active')
+    expect(statuses).toContain('error')
+    expect(statuses).toContain('disabled')
+  })
+
+  it('has both rss and rest_api feed types', () => {
+    const types = new Set(DEMO_FEEDS_RESPONSE.data.map(f => f.feedType))
+    expect(types).toContain('rss')
+    expect(types).toContain('rest_api')
+  })
+
+  it('disabled feed has enabled=false', () => {
+    const disabled = DEMO_FEEDS_RESPONSE.data.filter(f => f.status === 'disabled')
+    expect(disabled.length).toBeGreaterThan(0)
+    for (const f of disabled) expect(f.enabled).toBe(false)
+  })
+
+  it('active feeds have enabled=true', () => {
+    const active = DEMO_FEEDS_RESPONSE.data.filter(f => f.status === 'active')
+    expect(active.length).toBeGreaterThan(0)
+    for (const f of active) expect(f.enabled).toBe(true)
+  })
+
+  it('error feed has consecutiveFailures > 0 and lastErrorMessage', () => {
+    const errored = DEMO_FEEDS_RESPONSE.data.filter(f => f.status === 'error')
+    expect(errored.length).toBeGreaterThan(0)
+    for (const f of errored) {
+      expect(f.consecutiveFailures).toBeGreaterThan(0)
+      expect(f.lastErrorMessage).toBeTruthy()
+      expect(f.lastErrorAt).toBeTruthy()
+    }
+  })
+
+  it('all totalItemsIngested are positive', () => {
+    for (const f of DEMO_FEEDS_RESPONSE.data) {
+      expect(f.totalItemsIngested).toBeGreaterThan(0)
+    }
+  })
+
+  it('feedReliability is between 0 and 1', () => {
+    for (const f of DEMO_FEEDS_RESPONSE.data) {
+      expect(f.feedReliability).toBeGreaterThanOrEqual(0)
+      expect(f.feedReliability).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('active feeds have lastFetchAt within 24 hours', () => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000
+    const active = DEMO_FEEDS_RESPONSE.data.filter(f => f.status === 'active')
+    for (const f of active) {
+      expect(f.lastFetchAt).toBeTruthy()
+      expect(new Date(f.lastFetchAt!).getTime()).toBeGreaterThan(cutoff)
+    }
+  })
+
+  it('all createdAt and updatedAt are valid ISO strings', () => {
+    for (const f of DEMO_FEEDS_RESPONSE.data) {
+      expect(new Date(f.createdAt).toISOString()).toBe(f.createdAt)
+      expect(new Date(f.updatedAt).toISOString()).toBe(f.updatedAt)
+    }
+  })
+
+  it('every record has all required FeedRecord fields', () => {
+    const requiredKeys = [
+      'id', 'name', 'description', 'feedType', 'url', 'schedule', 'status',
+      'enabled', 'lastFetchAt', 'lastErrorAt', 'lastErrorMessage',
+      'consecutiveFailures', 'totalItemsIngested', 'feedReliability',
+      'createdAt', 'updatedAt',
+    ]
+    for (const f of DEMO_FEEDS_RESPONSE.data) {
+      for (const key of requiredKeys) {
+        expect(f).toHaveProperty(key)
+      }
     }
   })
 })
