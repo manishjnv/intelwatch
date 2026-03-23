@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-23 (update at end of EVERY session via /session-end)
-**Session counter:** 28
+**Session counter:** 30
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -43,10 +43,10 @@
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
 | malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
 | vulnerability-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 complete. |
-| digital-risk-protection | 4 | 📋 Not started | - | Phase 4 gate |
+| digital-risk-protection | 4 | 🔨 WIP | 2026-03-23 | Port 3011. Core + P0 #1-5 COMPLETE. 25 endpoints, 158 tests. 4 detection engines (typosquat 5-algo, dark web, credential leak, attack surface). 5 P0 improvements (confidence scoring, signal tracking, evidence chains, dedup, severity). P1/P2 #6-15 remaining. |
 | threat-graph | 4 | 🔨 WIP | 2026-03-23 | Port 3012. 20 improvements complete (#1-20). 32 endpoints, 294 tests. Neo4j graph, risk propagation, STIX export, cluster detection, batch import, decay cron, merge/split, trending. Ready for deploy. |
 | correlation-engine | 4 | 🔨 WIP | 2026-03-23 | Port 3013. **15/15 improvements COMPLETE** (#1-15). 20 endpoints, 166 tests. In-memory. P1: co-occurrence, infra clustering, temporal waves, TTP similarity, DBSCAN campaigns, confidence scoring, Diamond Model, Kill Chain, FP suppression, BFS inference. P2: AI pattern detection (Sonnet), rule templates (6), confidence decay, batch re-correlation, graph integration. |
-| threat-hunting | 4 | 📋 Not started | - | Phase 4 gate |
+| threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 📋 Not started | - | Phase 5 gate |
 | user-management | 5 | 📋 Not started | - | Phase 5 gate |
 | customization | 5 | 📋 Not started | - | Phase 5 gate |
@@ -75,6 +75,8 @@ malware-intel         → shared-types, shared-utils, shared-auth (Phase 3)
 vulnerability-intel   → shared-types, shared-utils, shared-auth (Phase 3)
 threat-graph          → shared-types, shared-utils, shared-auth, neo4j-driver, bullmq (Phase 4)
 correlation-engine    → shared-types, shared-utils, shared-auth, bullmq, @anthropic-ai/sdk (Phase 4)
+hunting-service       → shared-types, shared-utils, shared-auth (Phase 4)
+drp-service           → shared-types, shared-utils, shared-auth (Phase 4)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 ```
 
@@ -110,10 +112,10 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 
 ## Work In Progress
 
-- **Current phase:** Phase 4 IN PROGRESS. Threat Graph FEATURE-COMPLETE. Correlation Engine FEATURE-COMPLETE (15/15 improvements). Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
-- **Last session outcome:** Session 28 (2026-03-23). Correlation Engine P2 (#11-15): 5 new services, 8 new endpoints (20 total), 60 new tests (166 total, 2331 monorepo). #11 AI-assisted pattern detection (Claude Sonnet, budget-gated, prompt caching). #12 Rule template library (6 MITRE-anchored templates with effectiveness tracking). #13 Confidence decay (dual IOC + correlation aging per DECISION-015). #14 Batch re-correlation (async, cancel, diff report). #15 Threat-graph integration (HTTP + service JWT, typed relationship mapping). No deploy (code-only). Commit 9430bdd.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating to [U] for enrichment items. Threat graph deploy pending (session 25+26 code not yet on VPS). Correlation engine deploy pending (session 27+28 code). Correlation engine uses `alert:read`/`alert:create` permissions — needs `correlation:*` added to shared-auth when ready.
-- **Next tasks:** (1) Deploy threat-graph + correlation-engine to VPS. (2) Phase 4: Threat Hunting (Module 14). (3) Phase 4: Digital Risk Protection (Module 11). (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md.
+- **Current phase:** Phase 4 NEARLY COMPLETE. All 4 modules built: Graph ✅, Correlation ✅, Hunting ✅, DRP core ✅ (P1/P2 remaining). Phase 3 + Differentiators A/A+/B all COMPLETE. Frontend UI FROZEN.
+- **Last session outcome:** Session 30 (2026-03-23). DRP Service (Module 11) core + P0 (#1-5): 24 source files, 12 test files, 25 endpoints, 158 tests (2711 monorepo). 4 detection engines: typosquat (5 algorithms), dark web monitoring, credential leak detection, attack surface scanning. 5 P0 improvements: multi-signal confidence scoring with reason summaries, signal success rate tracking, evidence chain builder, smart alert deduplication, multi-factor severity classification. Graph integration via HTTP + service JWT. Registered in tsconfig.build, Dockerfile, docker-compose (etip_drp container port 3011). No deploy (code-only). No commit yet.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Bundle at 710KB (D3 added 190KB — consider code-splitting). Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. QA_CHECKLIST.md needs updating. Threat graph deploy pending. Correlation engine deploy pending. Hunting service deploy triggered from 657045f. DRP service P1/P2 (#6-15) remaining. DRP + hunting + correlation all use `alert:read`/`alert:create` permissions — needs dedicated permissions added to shared-auth when ready.
+- **Next tasks:** (1) DRP P1/P2 improvements (#6-15). (2) Deploy all Phase 4 services (threat-graph, correlation, hunting, DRP). (3) Phase 5: Enterprise Integration (Module 15). (4) Elasticsearch IOC indexing. (5) Update QA_CHECKLIST.md.
 
 ## Deployment Log
 
@@ -139,6 +141,8 @@ frontend              → shared-types, shared-ui, d3 (Phase 1+)
 | 26 | 2026-03-23 | No deploy (code-only session) | — | bb0a5c1 | Threat Graph 20 improvements (#1-20): P1+P2+advanced ops. 32 endpoints, 204 new tests (2165 total). |
 | 27 | 2026-03-23 | No deploy (code-only session) | — | e9acaea | Correlation Engine (Module 13): 10 improvements (#1-10), 12 endpoints, 106 new tests (2271 total). |
 | 28 | 2026-03-23 | No deploy (code-only session) | — | 9430bdd | Correlation Engine P2 (#11-15): 5 services, 8 endpoints, 60 new tests (2331 total). Module 13 FEATURE-COMPLETE. |
+| 29 | 2026-03-23 | etip_hunting + etip_correlation containers added | ⏳ CI pending | feaf0a8→657045f | Threat Hunting Service: 47 endpoints, 222 tests, 15/15 improvements. Docker-compose updated with etip_hunting + etip_correlation. |
+| 30 | 2026-03-23 | No deploy (code-only session) | — | pending | DRP Service (Module 11): 25 endpoints, 158 new tests (2711 total). Core + P0 #1-5. 4 detection engines, 5 accuracy improvements. |
 
 ## E2E Verification Results (Session 13)
 

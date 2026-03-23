@@ -20,6 +20,7 @@
     { "path": "apps/vulnerability-intel" },
     { "path": "apps/threat-graph" },
     { "path": "apps/correlation-engine" },
-    { "path": "apps/hunting-service" }
+    { "path": "apps/hunting-service" },
+    { "path": "apps/drp-service" }
   ]
 }

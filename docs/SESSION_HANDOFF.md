@@ -1,8 +1,8 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-23
-**Session:** 28
-**Session Summary:** Correlation Engine P2 (#11-15) — 5 new services completing Module 13 (15/15 improvements). AI pattern detection, rule templates, confidence decay, batch re-correlation, graph integration. 60 new tests, 8 new endpoints.
+**Session:** 30
+**Session Summary:** DRP Service (Module 11) core + P0 improvements (#1-5). 24 source files, 12 test files, 25 endpoints, 158 tests. 4 detection engines, 5 accuracy improvements, graph integration. Phase 4: all 4 modules built.
 
 ---
 
@@ -15,47 +15,61 @@
 
 ---
 
-## ✅ Changes Made (Session 28)
+## ✅ Changes Made (Session 30)
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| 9430bdd | 17 | feat: add correlation engine P2 improvements (#11-15) — AI patterns, rule templates, decay, batch, graph integration |
+| pending | 40 | feat: add DRP service (Module 11) — core + P0 improvements, 25 endpoints, 158 tests |
 
 ## 📁 Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/correlation-engine/src/services/ai-pattern-detection.ts` | #11 Claude Sonnet entity cluster analysis (budget-gated, prompt caching) |
-| `apps/correlation-engine/src/services/rule-templates.ts` | #12 Six MITRE ATT&CK-anchored detection templates |
-| `apps/correlation-engine/src/services/confidence-decay.ts` | #13 Dual IOC + correlation confidence aging per DECISION-015 |
-| `apps/correlation-engine/src/services/batch-recorrelation.ts` | #14 Async batch re-correlation with cancel + diff report |
-| `apps/correlation-engine/src/services/graph-integration.ts` | #15 HTTP client for graph service with service JWT + retry |
-| `apps/correlation-engine/src/routes/advanced.ts` | 8 new endpoints for P2 features |
-| `apps/correlation-engine/tests/ai-pattern-detection.test.ts` | 13 tests (mocked SDK) |
-| `apps/correlation-engine/tests/rule-templates.test.ts` | 12 tests |
-| `apps/correlation-engine/tests/confidence-decay.test.ts` | 16 tests |
-| `apps/correlation-engine/tests/batch-recorrelation.test.ts` | 10 tests |
-| `apps/correlation-engine/tests/graph-integration.test.ts` | 9 tests (mocked fetch + service JWT) |
+| `apps/drp-service/package.json` | Module config: shared-auth/types/utils, fastify, pino, zod |
+| `apps/drp-service/tsconfig.json` | composite:true, refs to shared-types/utils/auth |
+| `apps/drp-service/vitest.config.ts` | Aliases for shared-*, 70% coverage |
+| `apps/drp-service/src/config.ts` | Zod env validation, cached singleton (port 3011) |
+| `apps/drp-service/src/logger.ts` | Pino with auth redaction |
+| `apps/drp-service/src/app.ts` | Fastify + plugins + hooks + route registration |
+| `apps/drp-service/src/index.ts` | Bootstrap: config→logger→store→services→app→listen |
+| `apps/drp-service/src/plugins/auth.ts` | authenticate, getUser, rbac preHandlers |
+| `apps/drp-service/src/plugins/error-handler.ts` | AppError/ZodError/429/404 handler |
+| `apps/drp-service/src/routes/health.ts` | /health + /ready |
+| `apps/drp-service/src/routes/assets.ts` | 8 asset CRUD + scan endpoints |
+| `apps/drp-service/src/routes/alerts.ts` | 7 alert management + 4 dashboard endpoints |
+| `apps/drp-service/src/routes/detection.ts` | 5 detection + 1 scan result endpoints |
+| `apps/drp-service/src/schemas/drp.ts` | All domain interfaces + Zod schemas (~240 lines) |
+| `apps/drp-service/src/schemas/store.ts` | DRPStore — multi-tenant nested Maps |
+| `apps/drp-service/src/services/asset-manager.ts` | MonitoredAsset CRUD, validation, normalization |
+| `apps/drp-service/src/services/alert-manager.ts` | DRPAlert CRUD, transitions, triage, integrated P0 |
+| `apps/drp-service/src/services/typosquat-detector.ts` | 5 algorithms: homoglyph, insertion, deletion, transposition, TLD |
+| `apps/drp-service/src/services/dark-web-monitor.ts` | Simulated dark web feed scanning + pattern matching |
+| `apps/drp-service/src/services/credential-leak-detector.ts` | Email/domain breach monitoring (10 simulated breaches) |
+| `apps/drp-service/src/services/attack-surface-scanner.ts` | Port scan, cert transparency, DNS enum (simulated) |
+| `apps/drp-service/src/services/confidence-scorer.ts` | #1 Multi-signal weighted scoring + reason summaries |
+| `apps/drp-service/src/services/signal-aggregator.ts` | #2 Per-signal TP/FP tracking, success rate stats |
+| `apps/drp-service/src/services/evidence-chain.ts` | #3 Linked audit trail from signal → alert |
+| `apps/drp-service/src/services/alert-deduplication.ts` | #4 Cross-type dedup with similarity thresholds |
+| `apps/drp-service/src/services/severity-classifier.ts` | #5 Multi-factor severity classification |
+| `apps/drp-service/src/services/graph-integration.ts` | HTTP + service JWT → graph service, retry |
+| `apps/drp-service/tests/*.test.ts` (12 files) | 158 tests across all services |
 
 ## 📁 Files Modified
 
 | File | Change |
 |------|--------|
-| `apps/correlation-engine/package.json` | Added `@anthropic-ai/sdk` dependency |
-| `apps/correlation-engine/src/schemas/correlation.ts` | Added ~112 lines: P2 types (AIPatternDetection, RuleTemplate, DecayedResult, BatchJob, GraphSyncResult, etc.) |
-| `apps/correlation-engine/src/config.ts` | Added 8 env vars (AI key/model/budget, decay hours, graph URL/sync toggle) |
-| `apps/correlation-engine/src/app.ts` | Added advancedDeps to BuildAppOptions, registered advancedRoutes |
-| `apps/correlation-engine/src/index.ts` | Instantiated 5 new services, passed advancedDeps to buildApp |
-| `pnpm-lock.yaml` | Updated for @anthropic-ai/sdk |
+| `tsconfig.build.json` | Added `{ "path": "apps/drp-service" }` |
+| `Dockerfile` | Added COPY line for drp-service |
+| `docker-compose.etip.yml` | Added etip_drp container (port 3011) + nginx depends_on |
+| `pnpm-lock.yaml` | Updated for new workspace package |
 
 ---
 
 ## 🔧 Decisions & Rationale
 
 No new DECISION entries this session. All patterns followed existing decisions:
-- DECISION-013: In-memory state (Maps) for all new services
-- DECISION-015: IOC decay rates inlined (not imported from shared-normalization to avoid Tier 1 dep)
-- DECISION-021: `alert:read`/`alert:create` permissions for new endpoints
+- DECISION-013: In-memory state (DRPStore with Maps) for Phase 4 validation
+- DECISION-021: `alert:read`/`alert:create`/`alert:update` permissions (no shared-auth changes)
 - DECISION-022: No Prisma, no neo4j-driver — graph integration uses HTTP API
 
 ---
@@ -64,27 +78,25 @@ No new DECISION entries this session. All patterns followed existing decisions:
 
 ```
 No deploy this session (code-only).
-Tests: 2331 passing (166 in correlation-engine, 60 new this session)
+Tests: 2711 passing (158 in drp-service, 158 new this session)
 Typecheck: 0 errors
 Lint: 0 errors
-All source files under 400 lines (max: 358 in schemas/correlation.ts)
+All source files under 400 lines
 ```
 
 ---
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate — Deploy
-- Deploy threat-graph to VPS (session 25+26 code)
-- Deploy correlation-engine to VPS (session 27+28 code)
+### Immediate — DRP P1/P2
+- DRP Service P1 improvements (#6-10): batch typosquat, AI enrichment, bulk triage, trending, social impersonation
+- DRP Service P2 improvements (#11-15): takedown, export, rogue apps, risk aggregation, cross-correlation
 
-### Immediate — Phase 4 Continuation
-- Threat Hunting Service (Module 14) — next Phase 4 module
-- Digital Risk Protection (Module 11) — final Phase 4 module
+### Immediate — Deploy
+- Deploy all Phase 4 services: threat-graph, correlation-engine, hunting-service, drp-service
 
 ### Deferred
-- Add `correlation:*` permissions to shared-auth (uses `alert:*` for now)
-- Add `CORRELATED_WITH` relationship type to threat-graph schema (currently maps to existing types)
+- Add `drp:*` / `correlation:*` / `hunting:*` permissions to shared-auth
 - Elasticsearch IOC indexing
 - Update QA_CHECKLIST.md
 - Migrate in-memory services to Redis/PostgreSQL for scaling
@@ -93,34 +105,35 @@ All source files under 400 lines (max: 358 in schemas/correlation.ts)
 
 ## 🔁 How to Resume
 
-### Session 29: Phase 4 — Threat Hunting (Module 14) — Core + P0 (RECOMMENDED)
+### Session 31: Phase 4 — DRP P1/P2 (#6-15) (RECOMMENDED)
 ```
 /session-start
 
-Scope: Phase 4 — Threat Hunting (Module 14)
+Scope: Phase 4 — Digital Risk Protection P1/P2 (Module 11)
 Do not modify: shared-*, api-gateway, user-service, ingestion, normalization,
   ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel,
-  vulnerability-intel, frontend, threat-graph, correlation-engine.
+  vulnerability-intel, frontend, threat-graph, correlation-engine, hunting-service.
 
 ## Context
-Session 28 completed Correlation Engine (Module 13) — all 15/15 improvements done.
-26 source files, 20 endpoints, 166 tests. 2331 monorepo tests. Commit 9430bdd.
-Phase 4 progress: Graph COMPLETE, Correlation COMPLETE, Hunting next, DRP last.
+Session 30 built DRP Service (Module 11) — core + P0 improvements (#1-5).
+26 source files, 25 endpoints, 158 tests. 2711 monorepo tests. Port 3011.
+4 detection engines (typosquat 5-algo, dark web, credential leak, attack surface).
+5 P0 improvements: confidence scoring, signal tracking, evidence chains, dedup, severity.
+Typecheck clean, lint clean. Registered in tsconfig.build, Dockerfile, docker-compose.
+Phase 4 progress: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP core ✅ → DRP P1/P2 remaining.
 
-## Task: Threat Hunting Service (Module 14) — Core + P0
-Scaffold and build the threat hunting workspace:
-- Service scaffold (port 3014, Fastify, BullMQ, in-memory store)
-- Hunt query builder (Elasticsearch DSL generation from structured queries)
-- Hunt session management (create, execute, save, share)
-- IOC pivot chains (multi-hop investigation from any entity)
-- Saved hunt library (reusable hunt templates)
-- Integration with correlation engine results and graph data
+## Task: DRP Service P1 (#6-10) + P2 (#11-15) Improvements
+Build the remaining 10 accuracy improvements:
 
-Suggest 15 accuracy improvements split across P0 (core, this session)
-and P1/P2 (next session).
+P1 (#6-10): batch typosquat, AI enrichment (Haiku, budget-gated), bulk triage,
+  trending risk analysis, social media impersonation detection.
+P2 (#11-15): takedown generation, alert export (CSV/JSON/STIX), rogue app detection,
+  per-asset risk aggregation, cross-alert correlation + graph push.
 
-Target: apps/hunting-service/ (new module — use /new-module scaffold).
-Skill: skills/14-THREAT-HUNTING.md.
+Add ~10 new endpoints. Write tests first (TDD). Add p1.ts + p2.ts route files.
+
+Target: apps/drp-service/ (existing module).
+Skill: skills/11-DIGITAL-RISK-PROTECTION.md.
 ```
 
 ### Phase roadmap
@@ -132,5 +145,5 @@ Phase 3.5: Dashboard + Demo  FROZEN (6 pages, 15 UI, demo fallbacks, mobile)
 Differentiator A             COMPLETE (AI cost transparency)
 Differentiator A+            COMPLETE (15/15 improvements)
 Differentiator B             COMPLETE (Enrichment UI)
-Phase 4: Advanced Intel      IN PROGRESS: Graph COMPLETE → Correlation COMPLETE → Hunting → DRP
+Phase 4: Advanced Intel      IN PROGRESS: Graph ✅ → Correlation ✅ → Hunting ✅ → DRP core ✅ → DRP P1/P2
 ```
