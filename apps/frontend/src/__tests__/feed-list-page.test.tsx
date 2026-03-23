@@ -8,7 +8,7 @@
  * - Demo data renders all 5 feeds
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@/test/test-utils'
+import { render, screen, fireEvent } from '@/test/test-utils'
 
 // ─── Mock hooks ───────────────────────────────────────────────
 
@@ -92,6 +92,9 @@ vi.mock('@etip/shared-ui/components/SkeletonBlock', () => ({
 }))
 
 import { FeedListPage } from '@/pages/FeedListPage'
+import { FeedCard } from '@/components/feed/FeedCard'
+import { FeedScheduleTimeline } from '@/components/feed/FeedScheduleTimeline'
+import type { FeedRecord } from '@/hooks/use-intel-data'
 
 /* ================================================================ */
 /* Feed list renders                                                  */
@@ -191,5 +194,193 @@ describe('getNextFireLabel (cron parser)', () => {
     render(<FeedListPage />)
     const countdowns = screen.queryAllByText(/^in \d/)
     expect(countdowns.length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+/* ================================================================ */
+/* FeedListPage — new improvement tests                               */
+/* ================================================================ */
+describe('FeedListPage improvements', () => {
+  it('renders favicon img for feeds with url', () => {
+    render(<FeedListPage />)
+    const favicons = document.querySelectorAll('img[src*="s2/favicons"]')
+    expect(favicons.length).toBeGreaterThan(0)
+  })
+
+  it('renders radial reliability gauge SVGs', () => {
+    render(<FeedListPage />)
+    const gauges = screen.getAllByTestId('reliability-gauge')
+    expect(gauges.length).toBeGreaterThan(0)
+  })
+
+  it('renders schedule timeline', () => {
+    render(<FeedListPage />)
+    expect(screen.getByTestId('schedule-timeline')).toBeInTheDocument()
+  })
+
+  it('shows table view by default', () => {
+    render(<FeedListPage />)
+    expect(screen.queryByTestId('feed-card-grid')).toBeNull()
+  })
+
+  it('switches to card layout when card toggle is clicked', () => {
+    render(<FeedListPage />)
+    fireEvent.click(screen.getByTestId('view-toggle-card'))
+    expect(screen.getByTestId('feed-card-grid')).toBeInTheDocument()
+  })
+
+  it('switches back to table layout when table toggle is clicked', () => {
+    render(<FeedListPage />)
+    fireEvent.click(screen.getByTestId('view-toggle-card'))
+    fireEvent.click(screen.getByTestId('view-toggle-table'))
+    expect(screen.queryByTestId('feed-card-grid')).toBeNull()
+  })
+
+  it('card grid shows feed names in card mode', () => {
+    render(<FeedListPage />)
+    fireEvent.click(screen.getByTestId('view-toggle-card'))
+    expect(screen.getByTestId('feed-card-grid')).toBeInTheDocument()
+    expect(screen.getAllByText('AlienVault OTX').length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+/* ================================================================ */
+/* FeedScheduleTimeline                                               */
+/* ================================================================ */
+
+const BASE_FEED: FeedRecord = {
+  id: 'tl-1', name: 'Timeline Feed', description: null, feedType: 'rss',
+  url: 'https://example.com', schedule: '0 */4 * * *',
+  status: 'active', enabled: true,
+  lastFetchAt: null, lastErrorAt: null, lastErrorMessage: null,
+  consecutiveFailures: 0, totalItemsIngested: 100, feedReliability: 95,
+  createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+}
+
+describe('FeedScheduleTimeline', () => {
+  it('renders dots for active feeds with schedule', () => {
+    render(<FeedScheduleTimeline feeds={[BASE_FEED]} />)
+    // schedule 0 */4 * * * fires at hours 0,4,8,12,16,20 → 6 dots
+    const dots = screen.getAllByTestId('schedule-dot')
+    expect(dots.length).toBe(6)
+  })
+
+  it('skips disabled feeds', () => {
+    render(<FeedScheduleTimeline feeds={[{ ...BASE_FEED, status: 'disabled', enabled: false }]} />)
+    expect(screen.queryByTestId('schedule-dot')).toBeNull()
+  })
+
+  it('skips feeds with enabled=false regardless of status', () => {
+    render(<FeedScheduleTimeline feeds={[{ ...BASE_FEED, enabled: false }]} />)
+    expect(screen.queryByTestId('schedule-dot')).toBeNull()
+  })
+
+  it('returns null when no feeds have schedules', () => {
+    render(<FeedScheduleTimeline feeds={[{ ...BASE_FEED, schedule: null }]} />)
+    expect(screen.queryByTestId('schedule-timeline')).toBeNull()
+  })
+
+  it('tooltip contains feed name', () => {
+    render(<FeedScheduleTimeline feeds={[BASE_FEED]} />)
+    const dot = screen.getAllByTestId('schedule-dot')[0]!
+    expect(dot.getAttribute('title')).toContain('Timeline Feed')
+  })
+
+  it('error feeds get a dot with title', () => {
+    render(<FeedScheduleTimeline feeds={[{ ...BASE_FEED, status: 'error', schedule: '0 0 * * *' }]} />)
+    const dot = screen.getByTestId('schedule-dot')
+    expect(dot.getAttribute('title')).toContain('Timeline Feed')
+  })
+
+  it('shows multiple dots for multiple feeds', () => {
+    const feed2: FeedRecord = { ...BASE_FEED, id: 'tl-2', name: 'Feed B', schedule: '0 6 * * *' }
+    render(<FeedScheduleTimeline feeds={[BASE_FEED, feed2]} />)
+    // BASE_FEED: 6 dots + feed2: 1 dot = 7
+    const dots = screen.getAllByTestId('schedule-dot')
+    expect(dots.length).toBe(7)
+  })
+})
+
+/* ================================================================ */
+/* FeedCard                                                            */
+/* ================================================================ */
+
+const CARD_FEED: FeedRecord = {
+  id: 'card-1', name: 'Card Feed', description: 'A test feed', feedType: 'rest_api',
+  url: 'https://example.com/feed', schedule: '0 */4 * * *',
+  status: 'active', enabled: true,
+  lastFetchAt: new Date(Date.now() - 3_600_000).toISOString(),
+  lastErrorAt: null, lastErrorMessage: null,
+  consecutiveFailures: 0, totalItemsIngested: 5000, feedReliability: 85,
+  createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+}
+
+describe('FeedCard', () => {
+  it('renders feed name', () => {
+    render(<FeedCard feed={CARD_FEED} />)
+    expect(screen.getByText('Card Feed')).toBeInTheDocument()
+  })
+
+  it('renders status dot', () => {
+    render(<FeedCard feed={CARD_FEED} />)
+    expect(screen.getByText('Active')).toBeInTheDocument()
+  })
+
+  it('renders reliability gauge SVG', () => {
+    render(<FeedCard feed={CARD_FEED} />)
+    expect(screen.getByTestId('reliability-gauge')).toBeInTheDocument()
+  })
+
+  it('renders next fetch countdown', () => {
+    render(<FeedCard feed={CARD_FEED} />)
+    const countdown = screen.getByText(/^in \d/)
+    expect(countdown).toBeInTheDocument()
+  })
+
+  it('renders ingested count', () => {
+    render(<FeedCard feed={CARD_FEED} />)
+    expect(screen.getByText('5,000')).toBeInTheDocument()
+  })
+
+  it('renders last fetch time', () => {
+    render(<FeedCard feed={CARD_FEED} />)
+    // 1h ago
+    expect(screen.getByText('1h ago')).toBeInTheDocument()
+  })
+
+  it('shows error message for error feed', () => {
+    const errorFeed: FeedRecord = {
+      ...CARD_FEED,
+      status: 'error',
+      lastErrorMessage: 'Connection timed out',
+      lastErrorAt: new Date(Date.now() - 3_600_000).toISOString(),
+      consecutiveFailures: 4,
+    }
+    render(<FeedCard feed={errorFeed} />)
+    expect(screen.getByText(/Connection timed out/)).toBeInTheDocument()
+  })
+
+  it('shows consecutive failure count for error feed', () => {
+    const errorFeed: FeedRecord = {
+      ...CARD_FEED,
+      status: 'error',
+      lastErrorMessage: 'Timeout',
+      lastErrorAt: new Date(Date.now() - 3_600_000).toISOString(),
+      consecutiveFailures: 4,
+    }
+    render(<FeedCard feed={errorFeed} />)
+    expect(screen.getByText(/4 consecutive/)).toBeInTheDocument()
+  })
+
+  it('renders favicon img when url is set', () => {
+    render(<FeedCard feed={CARD_FEED} />)
+    const img = document.querySelector('img[src*="s2/favicons"]')
+    expect(img).not.toBeNull()
+  })
+
+  it('does not render favicon when url is null', () => {
+    render(<FeedCard feed={{ ...CARD_FEED, url: null }} />)
+    const img = document.querySelector('img[src*="s2/favicons"]')
+    expect(img).toBeNull()
   })
 })
