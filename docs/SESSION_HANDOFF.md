@@ -1,8 +1,8 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-23
-**Session:** 39
-**Session Summary:** Onboarding Service (Module 18) — core + 5 P0 improvements. 8-step wizard, data source connectors, pipeline health, module readiness, progress tracker. 32 endpoints, 190 tests. Deployed to VPS on port 3018.
+**Session:** 40
+**Session Summary:** Billing Service (Module 19) — core + 5 P0 improvements. Plan management (Free/Starter/Pro/Enterprise), Razorpay billing, usage metering with threshold alerts, GST invoices, upgrade/downgrade with 72hr grace period, coupon codes. 28 endpoints, 149 tests. Port 3019.
 
 ---
 
@@ -15,150 +15,114 @@
 
 ---
 
-## ✅ Changes Made (Session 39)
+## ✅ Changes Made (Session 40)
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| f11b866 | 41 | feat: add Onboarding Service (Module 18) — core + P0 improvements. 22 src files, 14 test files, package.json, tsconfig.json, vitest.config.ts, tsconfig.build.json, pnpm-lock.yaml. |
-| 1695a52 | ~5 | feat: add onboarding-service to deploy pipeline (Module 18) — Dockerfile COPY, docker-compose, deploy.yml, nginx routing. (Done in separate session) |
+| e2c897a | 43 | feat: add Billing Service (Module 19) — core + P0 improvements. 22 src files, 14 test files, package.json, tsconfig.json, vitest.config.ts, README.md + infra changes (docker-compose, deploy.yml, tsconfig.build.json, pnpm-lock.yaml). |
 
 ## 📁 Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/onboarding/package.json` | Package definition, deps: fastify, zod, pino, shared-* |
-| `apps/onboarding/tsconfig.json` | TS config with composite:true + references |
-| `apps/onboarding/vitest.config.ts` | Test config with vitest alias resolution |
-| `apps/onboarding/src/config.ts` | Zod-validated env config (port 3018) |
-| `apps/onboarding/src/logger.ts` | Pino logger with redaction |
-| `apps/onboarding/src/app.ts` | Fastify app builder with 6 route groups |
-| `apps/onboarding/src/index.ts` | Entry point, DI wiring, graceful shutdown |
-| `apps/onboarding/src/plugins/error-handler.ts` | AppError + ZodError handler |
-| `apps/onboarding/src/schemas/onboarding.ts` | All Zod schemas + response types (252 lines) |
-| `apps/onboarding/src/services/wizard-store.ts` | In-memory wizard state (8 steps, completion %) |
-| `apps/onboarding/src/services/connector-validator.ts` | 8 data source types, URL/key validation |
-| `apps/onboarding/src/services/health-checker.ts` | 6-stage pipeline health monitor |
-| `apps/onboarding/src/services/module-readiness.ts` | 14-module dependency checker |
-| `apps/onboarding/src/services/progress-tracker.ts` | 8 readiness checks, scoring |
-| `apps/onboarding/src/services/prerequisite-validator.ts` | P0 #6: transitive dep chain validation |
-| `apps/onboarding/src/services/demo-seeder.ts` | P0 #7: seed 150 IOCs + actors + malware + CVEs |
-| `apps/onboarding/src/services/integration-tester.ts` | P0 #8: DNS→TCP→auth→data pull test steps |
-| `apps/onboarding/src/services/checklist-persistence.ts` | P0 #9: versioned snapshots (max 10) |
-| `apps/onboarding/src/services/welcome-dashboard.ts` | P0 #10: quick actions, 6 tips, tour tracking |
-| `apps/onboarding/src/routes/wizard.ts` | 7 endpoints (get/org/team/complete/skip/prefs/reset) |
-| `apps/onboarding/src/routes/connectors.ts` | 8 endpoints (types/list/add/validate/test/integration-test) |
-| `apps/onboarding/src/routes/pipeline.ts` | 3 endpoints (health/stages/readiness) |
-| `apps/onboarding/src/routes/modules.ts` | 6 endpoints (list/get/enable/disable/prereqs/deps) |
-| `apps/onboarding/src/routes/welcome.ts` | 8 endpoints (dashboard/tips/seed/demo-status/tour/save) |
-| `apps/onboarding/src/routes/health.ts` | 2 endpoints (/health, /ready) |
-| `apps/onboarding/tests/*.test.ts` | 14 test files, 190 tests total |
+| `apps/billing-service/package.json` | Package definition, deps: fastify, zod, pino, razorpay, shared-* |
+| `apps/billing-service/tsconfig.json` | TS config with composite:true + references to shared packages |
+| `apps/billing-service/vitest.config.ts` | Test config with vitest alias resolution |
+| `apps/billing-service/src/config.ts` | Zod-validated env config (port 3019, Razorpay keys) |
+| `apps/billing-service/src/logger.ts` | Pino logger with key/secret redaction |
+| `apps/billing-service/src/app.ts` | Fastify app builder with 8 route groups |
+| `apps/billing-service/src/index.ts` | Entry point, DI wiring, graceful shutdown |
+| `apps/billing-service/src/plugins/error-handler.ts` | AppError + ZodError + 429 rate-limit handler |
+| `apps/billing-service/src/schemas/billing.ts` | All Zod schemas: PlanId, UsageMetric, CreateSubscription, etc. |
+| `apps/billing-service/src/services/plan-store.ts` | 4 plan tiers with limits/features; tenant plan assignment; setRazorpayIds |
+| `apps/billing-service/src/services/usage-store.ts` | In-memory usage metering; alert thresholds (80/90/100%); history; monthly reset |
+| `apps/billing-service/src/services/razorpay-client.ts` | Razorpay SDK wrapper; HMAC-SHA256 webhook verify; timingSafeEqual |
+| `apps/billing-service/src/services/invoice-store.ts` | GST invoice (18%); receipt generation; revenue metrics |
+| `apps/billing-service/src/services/upgrade-flow.ts` | Proration calc; 72hr grace period; schedule downgrade to period-end |
+| `apps/billing-service/src/services/coupon-store.ts` | Percentage/flat discounts; expiry + maxUses enforcement |
+| `apps/billing-service/src/routes/health.ts` | GET /health, GET /ready |
+| `apps/billing-service/src/routes/plans.ts` | GET /plans, /plans/compare, /plans/:planId, /plans/tenant/plan |
+| `apps/billing-service/src/routes/usage.ts` | GET /usage, POST /usage/track, GET /usage/limits, GET /usage/history |
+| `apps/billing-service/src/routes/subscriptions.ts` | POST/GET /subscriptions, POST /subscriptions/cancel, POST /checkout, GET /payment-methods |
+| `apps/billing-service/src/routes/invoices.ts` | GET /invoices, /invoices/:id, /invoices/:id/receipt, POST /invoices/:id/resend |
+| `apps/billing-service/src/routes/upgrade.ts` | GET /upgrade/preview, POST /upgrade, POST /downgrade |
+| `apps/billing-service/src/routes/p0-features.ts` | GET /upgrade-prompts, GET /alerts, GET /coupons/:code, POST /coupons/apply |
+| `apps/billing-service/src/routes/webhooks.ts` | POST /webhooks/razorpay (HMAC-SHA256 verified) |
+| `apps/billing-service/src/routes/admin.ts` | GET /admin/dashboard (revenue, MRR, churn, plan distribution) |
+| `apps/billing-service/README.md` | Module docs: 28 endpoints, plan tiers, env vars |
+| `apps/billing-service/tests/*.test.ts` | 14 test files: plan-store, usage-store, razorpay-client, invoice-store, upgrade-flow, coupon-store, plan-routes, usage-routes, subscription-routes, invoice-routes, upgrade-routes, webhook-routes, admin-routes, health |
 
-## 📁 Files Modified
+## 📝 Files Modified
 
 | File | Change |
 |------|--------|
-| `tsconfig.build.json` | Added `apps/onboarding` reference |
-| `pnpm-lock.yaml` | Updated with onboarding workspace member |
-
----
+| `tsconfig.build.json` | Added `{ "path": "apps/billing-service" }` |
+| `docker-compose.etip.yml` | Added etip_billing container (port 3019, 256M memory limit, curl healthcheck) |
+| `.github/workflows/deploy.yml` | Added etip_billing build + force-recreate + health check (port 3019) |
+| `pnpm-lock.yaml` | Added razorpay ^2.9.5 lockfile entry |
 
 ## 🔧 Decisions & Rationale
 
-No new architectural decisions. Followed existing patterns:
-- DECISION-012: Fastify plugin pattern (same as all services)
-- DECISION-013: In-memory store (same as Phase 4-5 services)
-- safeParse + AppError pattern for Zod validation in routes (improvement over .parse() which doesn't propagate correctly through Fastify error handler)
+No new DECISION entries. Billing service uses:
+- **DECISION-012**: Fastify plugin pattern (same as all Phase 6 services)
+- **DECISION-013**: In-memory stores (Maps) — no Prisma needed for Phase 6 validation
 
----
+Key architectural choices:
+- Razorpay (not Stripe) — Indian market focus, INR currency primary, USD reference only
+- GST 18% auto-applied to all invoices (Indian tax compliance)
+- Grace period 72 hours — stored as `GRACE_PERIOD_MS = 72 * 3600 * 1000`
+- Proration: `(msRemaining / msInMonth) * monthlyPrice`
+- Alert thresholds iterate [100, 90, 80] high-to-low to return only the highest crossing
+- Routes registered at `/api/v1/billing` prefix (not sub-prefix) for checkout/payment-methods/upgrade/downgrade so URL paths match spec exactly
 
-## 🧪 Deploy Verification
+## 🧪 E2E / Deploy Verification Results
 
-```
-CI Run #23443496070 — ALL GREEN
-✅ Test, Type-check, Lint & Audit
-✅ Deploy to VPS
-
-First CI run (f11b866) failed Docker build — Dockerfile missing COPY for apps/onboarding/.
-Fixed in commit 1695a52 (separate session) — added Dockerfile COPY + docker-compose + nginx.
-Second CI run green, deployed successfully.
-
-Monorepo tests: 3882 passing (26 packages)
-Onboarding tests: 190 passing (14 test files)
-```
-
----
+Tests only (no VPS deploy yet — CI triggered by commit):
+- 149 tests / 149 passing across 14 test files
+- TypeScript: `pnpm exec tsc -b --force tsconfig.build.json` — 0 errors
+- Lint: `pnpm --filter @etip/billing-service run lint` — 0 warnings
+- Docker: not tested locally (pending CI)
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate — Phase 6 Continued
-- Billing Service (Module 19) — Razorpay integration, usage metering, plan management (user chose Razorpay over Stripe)
-- Admin Ops (Module 22) — system health, maintenance mode, backup/restore
-
-### Short-term
-- Elasticsearch IOC indexing
-- Mobile responsive testing at 375px/768px for Phase 4+5 pages
-- Update QA_CHECKLIST.md
-- Update docs/ETIP_Project_Stats.html
+### Immediate
+- Configure VPS `.env` with real Razorpay keys:
+  - `TI_RAZORPAY_KEY_ID=rzp_live_...`
+  - `TI_RAZORPAY_KEY_SECRET=...`
+  - `TI_RAZORPAY_WEBHOOK_SECRET=...`
+  - `TI_RAZORPAY_PLAN_STARTER=plan_...`
+  - `TI_RAZORPAY_PLAN_PRO=plan_...`
+  - `TI_RAZORPAY_PLAN_ENTERPRISE=plan_...`
+- Verify CI passes (commit e2c897a — deploy.yml triggered)
 
 ### Deferred
-- In-memory services → Redis/PostgreSQL migration for scaling
-- CertStream production WebSocket (currently simulated)
-- D3 bundle code-splitting (190KB impact)
-- Git history purge for exposed secrets
-- WebAuthn/Passkeys (Phase 6 P1)
-- OAuth app management (Phase 6 P2)
-
----
+- Billing frontend page (plan cards, usage meters, upgrade flow, payment history) — separate session
+- Admin Ops Service (Module 22) — system health dashboard, maintenance mode, announcement banner
+- Migrate billing to Prisma when scaling horizontally (DECISION-013 note in README)
+- Elasticsearch IOC indexing
+- QA_CHECKLIST.md update
 
 ## 🔁 How to Resume
 
-### Session 40: Billing Service (Module 19)
+Paste this prompt to start next session:
+
 ```
 /session-start
 
-Scope: Phase 6 — Billing Service (Module 19)
-Do not modify: shared-*, api-gateway, all Phase 1-5 backend services, all frontend pages, apps/onboarding/.
+Scope: Phase 6 — Admin Ops (Module 22) or Billing Frontend. Do not modify: shared-*, api-gateway, all Phase 1-5 backend services, all frontend pages, apps/onboarding/, apps/billing-service/.
 
-## Context
-Session 39-40: Onboarding Service (Module 18) COMPLETE + deployed. Port 3018, 32 endpoints, 190 tests.
-CI green. VPS healthy. Phase 6: 1/3 modules done.
-Phases 1-5 COMPLETE. 26/27 modules built. 3882 tests.
-
-## Task: Billing Service (Module 19) — Core + P0
-
-### Service Definition
-- Port: 3019
-- Purpose: Usage metering, Razorpay billing, plan management, free-to-paid conversion
-- Pattern: In-memory store (DECISION-013), Fastify plugin (DECISION-012)
-
-### Core Features (5)
-1. Plan Management — Free/Starter/Pro/Enterprise tiers with feature limits
-2. Usage Metering — Track API calls, IOCs ingested, enrichments, storage per tenant
-3. Razorpay Integration — Customer creation, subscription lifecycle, webhook verification
-4. Invoice & Billing History — Monthly invoices, payment status, GST support
-5. Upgrade/Downgrade Flow — Plan change with proration, feature gate enforcement
-
-### P0 Improvements (5)
-6. Contextual upgrade prompts — trigger when hitting plan limits
-7. Usage alerts — warn at 80%/90%/100% of plan limits
-8. Grace period — allow brief overage before hard cutoff
-9. Billing dashboard API — revenue, MRR, churn metrics for admin
-10. Coupon/discount codes — promotional pricing support
+Context:
+- Session 40 built Billing Service (Module 19). Commit e2c897a. 149 tests. CI pending.
+- Phase 6: 2/3 complete (onboarding + billing). Remaining: admin-ops.
+- 4031 total monorepo tests.
+- VPS needs Razorpay env vars configured before billing goes live.
+- Next: Admin Ops (Module 22) port 3020/3021, OR Billing frontend page (plan cards, usage meters).
 ```
 
-### Module Map (26 modules)
+## Module Map (Phase 6)
 
-| Phase | Modules | Status |
-|-------|---------|--------|
-| 1 | api-gateway, shared-*, user-service, frontend | ✅ Deployed |
-| 2 | ingestion, normalization, ai-enrichment | ✅ Deployed |
-| 3 | ioc-intel, threat-actor, malware, vulnerability | ✅ Deployed |
-| 4 | threat-graph, correlation, hunting, drp | ✅ Deployed |
-| 5 | enterprise-integration, user-management, customization | ✅ Deployed |
-| 6 | onboarding | ✅ Deployed |
-| 6 | billing, admin-ops | 📋 Not started |
-
-### Phase Roadmap
-
-- Phases 1-5: ✅ COMPLETE (backend + frontend)
-- Phase 6: SaaS features — onboarding ✅, billing next, admin-ops last
+| Module | Port | Status | Skill File |
+|--------|------|--------|------------|
+| onboarding | 3018 | ✅ Deployed | skills/18-ONBOARDING.md |
+| billing | 3019 | ✅ Built (CI pending) | skills/19-FREE-TO-PAID.md |
+| admin-ops | 3020/3021 | 📋 Not started | skills/22-ADMIN-PLATFORM.md |
