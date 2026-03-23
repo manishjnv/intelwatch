@@ -489,7 +489,7 @@ Deploy order:
 
 ## RCA Resolution Summary
 
-All 39 issues are FIXED. This table tracks which session fixed each issue and confirms the fix is still working.
+All 41 issues are FIXED. This table tracks which session fixed each issue and confirms the fix is still working.
 
 | Issue | Title | Fixed In | Fix Verified | Status |
 |-------|-------|----------|-------------|--------|
@@ -532,6 +532,8 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 | 37 | Vitest alias missing for shared-normalization | Session 23 | ✅ Alias added to vitest.config.ts | FIXED |
 | 38 | cost-tracker.ts TS2532 — Object possibly undefined | Session 23 | ✅ Extract to local var with non-null assertion | FIXED |
 | 39 | Frontend unused imports blocking CI lint | Session 23 | ✅ Removed 4 unused imports | FIXED |
+| 40 | Dockerfile COPY missing for billing + admin (razorpay not found) | Session 43 | ✅ COPY lines added, CI green | FIXED |
+| 41 | Docker --force-recreate blocked by hash-prefix orphaned containers | Session 48 | ✅ Pre-cleanup + --remove-orphans | FIXED |
 
 **Session 13 deploys:** No new RCA issues. All 14 containers healthy. E2E pipeline verified with 301 real IOCs.
 | Session 42 | 2026-03-24 | No new issues. etip_frontend redeployed. CI green. Feed page demo fallback + UX improvements live. |
@@ -612,7 +614,9 @@ All 39 issues are FIXED. This table tracks which session fixed each issue and co
 
 **Session 47:** Docs-only. QA_CHECKLIST.md full rewrite. No code changes, no deploy, no RCA issues.
 
-**Session 48:** D3 code-split (ThreatGraphPage + RelationshipGraph lazy-loaded via React.lazy — DECISION-025). Elasticsearch IOC Indexing Service Module 20 scaffolded (57 tests, port 3020). shared-utils: QUEUES.IOC_INDEX added + test count updated. 4368 total tests. Frontend push triggers CI rebuild of etip_frontend. ES service not yet in docker-compose — no deploy needed for it this session. No new RCA issues.
+**Session 48:** D3 code-split (ThreatGraphPage + RelationshipGraph lazy-loaded via React.lazy — DECISION-025). Elasticsearch IOC Indexing Service Module 20 scaffolded (57 tests, port 3020). shared-utils: QUEUES.IOC_INDEX added + test count updated. Known Gaps P1: actor/malware detail panels + IOC campaign badge (530 frontend tests). CI fixes: Dockerfile COPY (RCA #11 pattern), TS implicit-any, test count update. **RCA #41**: orphaned hash-prefix containers blocking --force-recreate — fixed with pre-cleanup step + --remove-orphans flag. 4398 total tests. ES service not yet in docker-compose. CI green.
+
+**Session 49:** Demo fallbacks for Actor/Malware/Vuln (all 5 entity pages). ES service wired into docker-compose+nginx (fffc66f) then removed from active deploy.yml (9b355bc) because Elasticsearch container not provisioned on VPS — would fail health check and block nginx. Client-side sort/filter added to actor/malware/vuln pages (ca11e86). 4 commits. No new RCA issues. CI green.
 
 ### Issue 41: Docker --force-recreate fails — orphaned containers with hash-prefix names conflict
 **Error**: `Error when allocating new name: Conflict. The container name "/etip_correlation" is already in use by container "0e6346cbce23..."` during `docker compose up -d --force-recreate`

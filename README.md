@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-7%20started-00ff88)
-![Tests](https://img.shields.io/badge/tests-4368%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-4398%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -23,7 +23,7 @@
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
-| Frontend (React 18 + Vite, 15 data pages, 19 viz components, demo fallbacks, Phase 6 pages) | ✅ Live on VPS | 500 |
+| Frontend (React 18 + Vite, 16 data pages, 19 viz components, demo fallbacks all 5 entity types, Phase 6 pages, Known Gaps P1, D3 code-split) | ✅ Live on VPS | 530 |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |
@@ -38,7 +38,7 @@
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
 | Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | 🔨 Phase 7 scaffolded | 57 |
-| **Phase 7 started — Elasticsearch indexing scaffolded** | **29/29 modules** | **4368** |
+| **Phase 7 started — Elasticsearch indexing scaffolded** | **29/29 modules** | **4398** |
 
 ## Live API Endpoints
 
