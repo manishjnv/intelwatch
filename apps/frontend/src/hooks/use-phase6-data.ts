@@ -11,10 +11,14 @@ import {
   DEMO_PAYMENT_HISTORY, DEMO_BILLING_STATS,
   DEMO_SERVICE_HEALTH, DEMO_SYSTEM_HEALTH_SUMMARY,
   DEMO_MAINTENANCE_WINDOWS, DEMO_TENANTS, DEMO_ADMIN_AUDIT, DEMO_ADMIN_STATS,
+  DEMO_ONBOARDING_WIZARD, DEMO_PIPELINE_HEALTH, DEMO_MODULE_STATUS,
+  DEMO_READINESS_RESULT, DEMO_WELCOME_DASHBOARD,
   type BillingPlan, type UsageMeters, type CurrentSubscription,
   type PaymentRecord, type BillingStats,
   type ServiceHealth, type SystemHealthSummary,
   type MaintenanceWindow, type TenantRecord, type AdminAuditEntry, type AdminStats,
+  type OnboardingWizard, type PipelineHealth, type ModuleStatus,
+  type ReadinessResult, type WelcomeDashboard,
 } from './phase6-demo-data'
 
 // Re-export types for page consumption
@@ -23,6 +27,8 @@ export type {
   PaymentRecord, BillingStats,
   ServiceHealth, SystemHealthSummary,
   MaintenanceWindow, TenantRecord, AdminAuditEntry, AdminStats,
+  OnboardingWizard, PipelineHealth, ModuleStatus,
+  ReadinessResult, WelcomeDashboard,
 }
 
 // ─── Generic helpers ────────────────────────────────────────────
@@ -256,4 +262,101 @@ export function useAdminStats() {
   })
   return withDemoFallback(result, DEMO_ADMIN_STATS,
     d => d != null && typeof (d as Record<string, unknown>)?.totalTenants === 'number')
+}
+
+// ─── Onboarding Hooks ─────────────────────────────────────────────
+
+export function useOnboardingWizard() {
+  const result = useQuery({
+    queryKey: ['onboarding-wizard'],
+    queryFn: () => api<OnboardingWizard>('/onboarding/wizard/').catch(() => null as unknown as OnboardingWizard),
+    staleTime: 60_000,
+  })
+  return withDemoFallback(result, DEMO_ONBOARDING_WIZARD,
+    d => d != null && typeof d?.completionPercent === 'number')
+}
+
+export function useWelcomeDashboard() {
+  const result = useQuery({
+    queryKey: ['onboarding-welcome'],
+    queryFn: () => api<WelcomeDashboard>('/onboarding/welcome/').catch(() => null as unknown as WelcomeDashboard),
+    staleTime: 60_000,
+  })
+  return withDemoFallback(result, DEMO_WELCOME_DASHBOARD,
+    d => d != null && typeof d?.completionPercent === 'number')
+}
+
+export function usePipelineHealth() {
+  const result = useQuery({
+    queryKey: ['onboarding-pipeline-health'],
+    queryFn: () => api<PipelineHealth>('/onboarding/pipeline/health').catch(() => null as unknown as PipelineHealth),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  })
+  return withDemoFallback(result, DEMO_PIPELINE_HEALTH,
+    d => d != null && typeof d?.overall === 'string')
+}
+
+export function useModuleReadiness() {
+  const result = useQuery({
+    queryKey: ['onboarding-modules'],
+    queryFn: () => api<ModuleStatus[]>('/onboarding/modules/').catch(() => [] as ModuleStatus[]),
+    staleTime: 60_000,
+  })
+  return withDemoFallback(result, DEMO_MODULE_STATUS,
+    d => Array.isArray(d) && d.length > 0 && d[0]?.module != null)
+}
+
+export function useReadinessCheck() {
+  const result = useQuery({
+    queryKey: ['onboarding-readiness'],
+    queryFn: () => api<ReadinessResult>('/onboarding/pipeline/readiness').catch(() => null as unknown as ReadinessResult),
+    staleTime: 60_000,
+  })
+  return withDemoFallback(result, DEMO_READINESS_RESULT,
+    d => d != null && typeof d?.score === 'number')
+}
+
+export function useCompleteStep() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { step: string; data?: Record<string, unknown> }) =>
+      api<{ success: boolean }>('/onboarding/wizard/complete-step', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['onboarding-wizard'] })
+      qc.invalidateQueries({ queryKey: ['onboarding-welcome'] })
+    },
+  })
+}
+
+export function useSkipStep() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { step: string; reason?: string }) =>
+      api<{ success: boolean }>('/onboarding/wizard/skip-step', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['onboarding-wizard'] })
+    },
+  })
+}
+
+export function useSeedDemo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { categories?: string[] }) =>
+      api<{ seeded: boolean; counts: Record<string, number> }>('/onboarding/welcome/seed-demo', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['onboarding-welcome'] })
+      qc.invalidateQueries({ queryKey: ['onboarding-wizard'] })
+    },
+  })
 }
