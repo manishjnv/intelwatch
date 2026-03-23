@@ -12,7 +12,8 @@
       "Skill(update-config)",
       "Skill(update-config:*)",
       "Skill(session-end)",
-      "Skill(session-end:*)"
+      "Skill(session-end:*)",
+      "WebSearch"
     ],
     "deny": [
       "Read(./.env)",
