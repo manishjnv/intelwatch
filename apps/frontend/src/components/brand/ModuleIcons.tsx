@@ -283,6 +283,40 @@ export function IconCustomization({ size = defaults.size, className }: IconProps
   )
 }
 
+/** Billing — credit card with pulse indicator */
+export function IconBilling({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      {/* Card body */}
+      <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+      {/* Magnetic stripe */}
+      <line x1="2" y1="9" x2="22" y2="9" stroke="currentColor" strokeWidth="2.5" opacity="0.35"/>
+      {/* Chip */}
+      <rect x="4" y="12" width="5" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.2" opacity="0.6"/>
+      {/* Pulse dot top-right */}
+      <circle cx="19" cy="6.5" r="1.2" fill="currentColor" opacity="0.7"/>
+      <circle cx="19" cy="6.5" r="2.2" stroke="currentColor" strokeWidth="0.8" opacity="0.3"/>
+    </svg>
+  )
+}
+
+/** Admin Ops — HUD display with service grid */
+export function IconAdmin({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      {/* Outer hexagon frame */}
+      <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      {/* Inner grid dots — service indicators */}
+      <circle cx="9"  cy="10" r="1.1" fill="currentColor" opacity="0.8"/>
+      <circle cx="12" cy="10" r="1.1" fill="currentColor" opacity="0.8"/>
+      <circle cx="15" cy="10" r="1.1" fill="currentColor" opacity="0.8"/>
+      <circle cx="9"  cy="14" r="1.1" fill="currentColor" opacity="0.5"/>
+      <circle cx="12" cy="14" r="1.1" fill="currentColor" opacity="0.8"/>
+      <circle cx="15" cy="14" r="1.1" fill="currentColor" opacity="0.5"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
@@ -299,4 +333,6 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'enterprise-integrations': IconIntegrations,
   'rbac-sso': IconRBAC,
   'customization': IconCustomization,
+  'billing': IconBilling,
+  'admin-ops': IconAdmin,
 }

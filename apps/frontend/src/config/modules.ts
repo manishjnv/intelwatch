@@ -7,7 +7,7 @@
 import {
   IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
-  IconCustomization,
+  IconCustomization, IconBilling, IconAdmin,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -157,6 +157,26 @@ export const MODULES: ModuleConfig[] = [
     phase: 5,
     route: '/customization',
   },
+  {
+    id: 'billing',
+    title: 'Billing',
+    description: 'Plan management, usage metering, payment history, and subscription controls.',
+    helpText: 'Manage your subscription plan, view API usage, download invoices, and apply coupons.',
+    icon: IconBilling,
+    color: 'text-amber-400',
+    phase: 6,
+    route: '/billing',
+  },
+  {
+    id: 'admin-ops',
+    title: 'Admin Ops',
+    description: 'System health dashboard, maintenance windows, tenant management, and audit log.',
+    helpText: 'Platform-wide operations: monitor all 18 services, schedule maintenance, manage tenants.',
+    icon: IconAdmin,
+    color: 'text-violet-400',
+    phase: 6,
+    route: '/admin',
+  },
 ]
 
 /** Phase-specific accent color for badges and indicators. */
@@ -166,6 +186,7 @@ export function getPhaseColor(phase: number): string {
     case 3: return 'text-accent'
     case 4: return 'text-cyan-400'
     case 5: return 'text-sky-400'
+    case 6: return 'text-amber-400'
     default: return 'text-text-muted'
   }
 }
@@ -177,6 +198,7 @@ export function getPhaseBgColor(phase: number): string {
     case 3: return 'bg-accent/10'
     case 4: return 'bg-cyan-400/10'
     case 5: return 'bg-sky-400/10'
+    case 6: return 'bg-amber-400/10'
     default: return 'bg-bg-elevated'
   }
 }

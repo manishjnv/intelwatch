@@ -25,6 +25,8 @@ import { DRPDashboardPage } from '@/pages/DRPDashboardPage';
 import { ThreatGraphPage } from '@/pages/ThreatGraphPage';
 import { CorrelationPage } from '@/pages/CorrelationPage';
 import { HuntingWorkbenchPage } from '@/pages/HuntingWorkbenchPage';
+import { BillingPage } from '@/pages/BillingPage';
+import { AdminOpsPage } from '@/pages/AdminOpsPage';
 
 /** Catches render errors and displays them instead of blank page */
 class ErrorBoundary extends React.Component<
@@ -74,6 +76,9 @@ export function App() {
             <Route path="/integrations" element={<IntegrationPage />} />
             <Route path="/settings" element={<UserManagementPage />} />
             <Route path="/customization" element={<CustomizationPage />} />
+            {/* Phase 6 module pages */}
+            <Route path="/billing" element={<BillingPage />} />
+            <Route path="/admin" element={<AdminOpsPage />} />
           </Route>
         </Route>
 
