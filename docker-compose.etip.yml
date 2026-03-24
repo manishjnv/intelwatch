@@ -219,6 +219,7 @@ services:
 
   # ─── ETIP API Gateway (Fastify) ─────────────────────────────────
   etip_api:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -261,6 +262,7 @@ services:
 
   # ─── ETIP Ingestion Service (Fastify) ───────────────────────
   etip_ingestion:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -314,6 +316,7 @@ services:
 
   # ─── ETIP Normalization Service (Fastify) ───────────────────
   etip_normalization:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -359,6 +362,7 @@ services:
 
   # ─── ETIP AI Enrichment Service (Module 06) ─────────────────────
   etip_enrichment:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -408,6 +412,7 @@ services:
 
   # ─── ETIP IOC Intelligence Service (Module 07) ─────────────────
   etip_ioc_intelligence:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -451,6 +456,7 @@ services:
 
   # ─── ETIP Threat Actor Intel Service (Module 08) ──────────────────
   etip_threat_actor_intel:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -494,6 +500,7 @@ services:
 
   # ─── ETIP Malware Intel Service (Module 09) ──────────────────
   etip_malware_intel:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -537,6 +544,7 @@ services:
 
   # ─── ETIP Vulnerability Intel Service (Module 10) ───────────────
   etip_vulnerability_intel:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -580,6 +588,7 @@ services:
 
   # ─── ETIP Frontend (React SPA via nginx) ────────────────────────
   etip_frontend:
+    image: etip-frontend:latest
     build:
       context: .
       dockerfile: Dockerfile.frontend
@@ -601,6 +610,7 @@ services:
 
   # ─── Threat Graph — Neo4j Knowledge Graph + Risk Propagation ─────
   etip_threat_graph:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -650,6 +660,7 @@ services:
 
   # ─── ETIP Correlation Engine (Module 13) ────────────────────────
   etip_correlation:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -692,6 +703,7 @@ services:
 
   # ─── ETIP Hunting Service (Module 14) ──────────────────────────
   etip_hunting:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -733,6 +745,7 @@ services:
 
   # ─── Module 11 — Digital Risk Protection (DRP) ─────
   etip_drp:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -774,6 +787,7 @@ services:
 
   # ─── Module 15 — Enterprise Integration ─────
   etip_integration:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -815,6 +829,7 @@ services:
 
   # ─── Module 16 — User Management ────────────────────────────────
   etip_user_management:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -853,6 +868,7 @@ services:
 
   # ─── Module 17 — Customization ───────────────────────────────────
   etip_customization:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -890,6 +906,7 @@ services:
 
   # ─── Module 18 — Onboarding ──────────────────────────────────────
   etip_onboarding:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -926,6 +943,7 @@ services:
           memory: 256M
 
   etip_billing:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -965,6 +983,7 @@ services:
           memory: 256M
 
   etip_admin:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -1002,6 +1021,7 @@ services:
 
   # ─── Module 20 — Elasticsearch Indexing Service ─────────────────
   etip_es_indexing:
+    image: etip-backend:latest
     build:
       context: .
       dockerfile: Dockerfile

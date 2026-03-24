@@ -114,7 +114,6 @@ jobs:
             git reset --hard origin/master
 
             # ── Sync AI config to .env (from GitHub Secrets) ──
-            # Ensures VPS .env always has latest AI settings without manual SSH
             grep -q '^TI_ANTHROPIC_API_KEY=' .env 2>/dev/null && \
               sed -i 's|^TI_ANTHROPIC_API_KEY=.*|TI_ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}|' .env || \
               echo 'TI_ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}' >> .env
@@ -122,77 +121,20 @@ jobs:
               sed -i 's|^TI_AI_ENABLED=.*|TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}|' .env || \
               echo 'TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}' >> .env
 
-            # ── Build ETIP containers (with layer caching) ──
-            # Issue 15/16 root cause was piping build output to 'tail' (hiding failures)
-            # and --no-frozen-lockfile fallback (divergent deps). Both are now fixed.
-            # Layer caching is safe: package.json/lockfile layer invalidates on dep changes,
-            # source COPY layer invalidates on code changes. No need for --no-cache.
-            echo "Building etip_api image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_api
+            # ── Build images (2 builds instead of 20) ──────────────────
+            # All 20 backend services share the same Dockerfile → build once, reuse via image: tag.
+            # docker-compose.etip.yml has `image: etip-backend:latest` on all backend services.
+            echo "Building backend image (shared by all 20 services)..."
+            DOCKER_BUILDKIT=1 docker build -t etip-backend:latest -f Dockerfile .
 
-            echo "Building etip_ingestion image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_ingestion
-
-            echo "Building etip_normalization image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_normalization
-
-            echo "Building etip_enrichment image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_enrichment
-
-            echo "Building etip_ioc_intelligence image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_ioc_intelligence
-
-            echo "Building etip_threat_actor_intel image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_threat_actor_intel
-
-            echo "Building etip_malware_intel image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_malware_intel
-
-            echo "Building etip_vulnerability_intel image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_vulnerability_intel
-
-            echo "Building etip_threat_graph image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_threat_graph
-
-            echo "Building etip_correlation image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_correlation
-
-            echo "Building etip_hunting image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_hunting
-
-            echo "Building etip_drp image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_drp
-
-            echo "Building etip_customization image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_customization
-
-            echo "Building etip_integration image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_integration
-
-            echo "Building etip_user_management image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_user_management
-
-            echo "Building etip_onboarding image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_onboarding
-
-            echo "Building etip_billing image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_billing
-
-            echo "Building etip_admin image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_admin
-
-            echo "Building etip_es_indexing image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_es_indexing
-
-            echo "Building etip_frontend image..."
-            docker compose -p etip -f docker-compose.etip.yml build etip_frontend
+            echo "Building frontend image..."
+            DOCKER_BUILDKIT=1 docker build -t etip-frontend:latest -f Dockerfile.frontend .
 
             # Start infra services (no recreate — preserves uptime)
             echo "Starting infrastructure..."
             docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_elasticsearch etip_neo4j etip_minio etip_prometheus etip_grafana
 
-            # Remove orphaned containers from old deploys (hash-prefixed names conflict with --force-recreate)
-            # Pattern: containers named like "0e6346cbce23_etip_correlation" (old project without -p flag)
+            # Remove orphaned containers from old deploys (RCA #41)
             echo "Removing stale orphan containers..."
             docker ps -a --format "{{.Names}}" | grep "_etip_" | xargs -r docker rm -f 2>/dev/null || true
 
@@ -200,7 +142,7 @@ jobs:
             echo "Recreating app containers..."
             docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_customization etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_es_indexing etip_frontend etip_nginx
 
-            # ── Sync database schema (idempotent — creates missing tables, skips existing) ──
+            # ── Sync database schema (idempotent) ──
             echo "Syncing database schema..."
             for i in 1 2 3 4 5; do
               if docker exec etip_api npx prisma db push --schema=prisma/schema.prisma --accept-data-loss 2>&1; then
@@ -215,214 +157,61 @@ jobs:
             done
 
             # ── Caddy network ──
-            # etip_nginx auto-joins ti-platform_default via caddy_network in docker-compose.
-            # RULE: NEVER use manual 'docker network connect' (03-DEVOPS.md)
             docker restart ti-platform-caddy-1 2>/dev/null || echo "Caddy restart skipped"
 
-            # ── Health checks with retry (12 attempts × 5s = 60s max) ──
+            # ── Parallel health checks ─────────────────────────────────
+            # All services checked concurrently (60s max wall-clock instead of 20×60s sequential)
             echo ""
-            echo "=== Health Checks ==="
-            echo -n "API Gateway: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3001/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
+            echo "=== Health Checks (parallel) ==="
+
+            HEALTH_DIR=$(mktemp -d)
+            check_health() {
+              local name="$1" port="$2" container="$3" critical="$4"
+              for i in $(seq 1 12); do
+                if curl -sf "http://127.0.0.1:${port}/health" > /dev/null 2>&1; then
+                  echo "${name}: ✅ healthy after $((i * 5))s"
+                  echo "ok" > "${HEALTH_DIR}/${container}"
+                  return 0
+                fi
+                sleep 5
+              done
+              if [ "$critical" = "yes" ]; then
+                echo "${name}: ❌ FAILED after 60s"
+                docker logs "$container" --tail 20 2>&1 || true
+                echo "fail" > "${HEALTH_DIR}/${container}"
+                return 1
+              else
+                echo "${name}: ⚠️  PENDING (non-critical)"
+                echo "ok" > "${HEALTH_DIR}/${container}"
+                return 0
               fi
-              if [ $i -eq 12 ]; then
-                echo "❌ FAILED after 60s"
-                docker logs etip_api --tail 20 2>&1 || true
-                exit 1
-              fi
-              sleep 5
-            done
-            echo -n "Normalization: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3005/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "❌ FAILED after 60s"
-                docker logs etip_normalization --tail 20 2>&1 || true
-                exit 1
-              fi
-              sleep 5
-            done
-            echo -n "Enrichment: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3006/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "❌ FAILED after 60s"
-                docker logs etip_enrichment --tail 20 2>&1 || true
-                exit 1
-              fi
-              sleep 5
-            done
-            echo -n "IOC Intelligence: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3007/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "❌ FAILED after 60s"
-                docker logs etip_ioc_intelligence --tail 20 2>&1 || true
-                exit 1
-              fi
-              sleep 5
-            done
-            echo -n "Threat Actor Intel: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3008/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "❌ FAILED after 60s"
-                docker logs etip_threat_actor_intel --tail 20 2>&1 || true
-                exit 1
-              fi
-              sleep 5
-            done
-            echo -n "Malware Intel: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3009/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "❌ FAILED after 60s"
-                docker logs etip_malware_intel --tail 20 2>&1 || true
-                exit 1
-              fi
-              sleep 5
-            done
-            echo -n "Vulnerability Intel: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3010/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "❌ FAILED after 60s"
-                docker logs etip_vulnerability_intel --tail 20 2>&1 || true
-                exit 1
-              fi
-              sleep 5
-            done
-            echo -n "DRP Service: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3011/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "Threat Graph: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3012/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "Correlation Engine: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3013/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "Hunting Service: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3014/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "Integration Service: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3015/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "User Management: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3016/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "Customization Service: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3017/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "Onboarding Service: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3018/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "Admin Service: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3022/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
-            echo -n "ES Indexing: "
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              if curl -sf http://127.0.0.1:3020/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "⚠️  PENDING (non-critical)"
-              fi
-              sleep 5
-            done
+            }
+
+            # Launch all checks in background
+            check_health "API Gateway"        3001 etip_api                  yes &
+            check_health "Ingestion"           3004 etip_ingestion            no  &
+            check_health "Normalization"       3005 etip_normalization        yes &
+            check_health "Enrichment"          3006 etip_enrichment           yes &
+            check_health "IOC Intelligence"    3007 etip_ioc_intelligence     yes &
+            check_health "Threat Actor"        3008 etip_threat_actor_intel   yes &
+            check_health "Malware Intel"       3009 etip_malware_intel        yes &
+            check_health "Vulnerability"       3010 etip_vulnerability_intel  yes &
+            check_health "DRP Service"         3011 etip_drp                  no  &
+            check_health "Threat Graph"        3012 etip_threat_graph         no  &
+            check_health "Correlation"         3013 etip_correlation          no  &
+            check_health "Hunting"             3014 etip_hunting              no  &
+            check_health "Integration"         3015 etip_integration          no  &
+            check_health "User Management"     3016 etip_user_management      no  &
+            check_health "Customization"       3017 etip_customization        no  &
+            check_health "Onboarding"          3018 etip_onboarding           no  &
+            check_health "Billing"             3019 etip_billing              no  &
+            check_health "Admin"               3022 etip_admin                no  &
+            check_health "ES Indexing"         3020 etip_es_indexing          no  &
+
+            # Wait for all background checks
+            wait
+
+            # Check nginx + frontend after backends are up
             echo -n "Nginx proxy: "
             for i in 1 2 3 4 5 6; do
               if curl -sf http://127.0.0.1:8080/health > /dev/null 2>&1; then
@@ -438,12 +227,19 @@ jobs:
             echo -n "Frontend: "
             curl -sf http://127.0.0.1:8080/login > /dev/null 2>&1 && echo "✅ serving" || echo "⚠️  PENDING"
 
+            # Fail deploy if any critical service failed
+            if grep -rq "fail" "$HEALTH_DIR/" 2>/dev/null; then
+              echo "❌ Critical service(s) failed health check — deploy FAILED"
+              rm -rf "$HEALTH_DIR"
+              exit 1
+            fi
+            rm -rf "$HEALTH_DIR"
+
             # ── Status ──
             echo ""
             echo "=== ETIP Container Status ==="
             docker compose -p etip -f docker-compose.etip.yml ps
 
-            # ── Verify existing site untouched ──
             echo ""
             echo "=== Existing Site (should be unchanged) ==="
             docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
