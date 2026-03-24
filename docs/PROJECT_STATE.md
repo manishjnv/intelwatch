@@ -1,6 +1,6 @@
 # ETIP Project State
-**Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 57
+**Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
+**Session counter:** 58
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -8,7 +8,7 @@
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
 | etip_frontend | ✅ Running | 0.6.0 | 2026-03-24 | Dashboard + 18 data pages + demo fallbacks (all 5 entity types + reporting + alerting). Phase 7: AlertingPage. 633 frontend tests (635 total, 2 skipped). Feed retry wired, graph expand wired. D3 code-split. |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
-| etip_nginx | ✅ Running | - | 2026-03-24 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024). |
+| etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
 | etip_ingestion | ✅ Running | 0.1.0 | 2026-03-21 | Feed pipeline + 11 modules |
@@ -31,6 +31,7 @@
 | etip_reporting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3021. Module 21. 20 endpoints, 199 tests. 5 report types (daily/weekly/monthly/custom/executive), BullMQ worker (etip-report-generate), cron scheduling, template engine (JSON/HTML/PDF). |
 | etip_alerting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3023. Module 23. 35 endpoints, 306 tests. Alert rules (5 condition types), alert lifecycle (open/ack/resolve/suppress/escalate), notification channels (email/slack/webhook), escalation policies, grouping, maintenance windows, templates. |
 | etip_analytics | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3024. Module 24. 12 endpoints, 83 tests. Dashboard widget aggregation, trend analysis (7d/30d/90d), executive summary with risk posture, service health matrix (21 services), top IOCs/actors/vulns. In-memory cache + demo trend seeding. |
+| etip_caching | ✅ Deployed | 0.1.0 | 2026-03-25 | Port 3025. Module 25. Redis cache management (48hr dashboard, 1hr search), event-driven invalidation, MinIO cold storage archival (60-day policy), archive restore API, cache warming. 94 tests. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
 | intelwatch.in | ⛔ DO NOT TOUCH | - | - | Live production site |
@@ -69,6 +70,7 @@
 | admin-ops | 6 | ✅ Complete | 2026-03-23 | Port 3022. **Core + 5 P0 improvements COMPLETE**. 28 endpoints, 147 tests. System health (18 services), maintenance windows (CRUD + activate/deactivate), backup/restore, tenant admin (CRUD + suspend/reinstate/plan/usage), audit log (CSV export). P0: dependency map, alert rules (seeded 5 defaults), scheduled maintenance (cron), tenant analytics, admin activity log. FEATURE-COMPLETE. **Phase 6 COMPLETE (3/3).** |
 | reporting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3021. **Core + 10 P0 improvements COMPLETE**. 25 endpoints, 217 tests. 5 report types (daily/weekly/monthly/custom/executive). 4 formats (JSON/HTML/CSV/PDF). BullMQ worker (etip-report-generate). Cron scheduling (node-cron). Template engine. In-memory stores (DECISION-013). P0 batch 1: data aggregation, template engine, schedule persistence, report versioning, export validation. P0 batch 2: retention cron, CSV export, report cloning, bulk ops, period comparison. FEATURE-COMPLETE. |
 | alerting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3023. Module 23. **Core + P0 + P1 COMPLETE**. 35 endpoints, 306 tests. Alert rules (threshold/pattern/anomaly/absence/composite). Alert lifecycle (open/ack/resolve/suppress/escalate). Notification channels (email/slack/webhook). Escalation policies (multi-step, auto-escalate). Grouping (fingerprint dedup), retry logic, maintenance windows, search, templates. BullMQ worker (etip-alert-evaluate). FEATURE-COMPLETE. |
+| caching-service | 7 | ✅ Deployed | 2026-03-25 | Port 3025. Module 25. Redis cache management (48hr dashboard, 1hr search), event-driven cache invalidation (debounced 5s flush), MinIO cold storage archival (60-day cron), archive restore API, cache warming via analytics-service. CACHE_INVALIDATE queue added to shared-utils. 94 tests. |
 | analytics-service | 7 | ✅ Deployed | 2026-03-24 | Port 3024. Module 24. **Core + 5 P0 COMPLETE**. 12 endpoints, 83 tests. Multi-service data aggregation (parallel API calls to 12 services). Trend calculator (7d/30d/90d with delta %). Executive summary with composite risk scoring. Widget registry (14 widgets, 4 categories). Service health matrix (21 ETIP services). In-memory cache (DECISION-013). Demo trend data seeded on startup. |
 
 ## Module Dependency Map
@@ -105,6 +107,7 @@ elasticsearch-indexing-service → shared-types, shared-utils, shared-auth, @ela
 reporting-service     → shared-types, shared-utils, shared-auth, bullmq, node-cron (Phase 7)
 alerting-service     → shared-types, shared-utils, shared-auth, bullmq (Phase 7)
 analytics-service    → shared-types, shared-utils, shared-auth (Phase 7)
+caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio, node-cron (Phase 7)
 ```
 
 ## Module Ownership Tiers
@@ -139,9 +142,9 @@ analytics-service    → shared-types, shared-utils, shared-auth (Phase 7)
 
 ## Work In Progress
 
-- **Current phase:** E2E Integration Plan — Sessions B2+C1 complete. Pipeline 100% wired (A1-A3 done in prior commits). Onboarding seeder makes real API calls + seeds 4 OSINT feeds. Feed retry + graph expand UI wired. 32 containers live.
-- **Last session outcome:** Session 57 (2026-03-24). Two E2E tasks: **B2** (onboarding: default feed seeding via ingestion API + wizard Redis persistence with ioredis) and **C1** (frontend: wire feed retry button + graph expand action). Onboarding: 230 tests (40 new), WizardStore now async/Redis-backed. Frontend: 633 tests (9 new). Commits: e78239f (caching-service+pipeline), 065097f-794b3eb (onboarding fixes), 4eda8d3 (C1 frontend).
-- **Known issues:** 3 UI buttons still cosmetic (correlation investigate/ticket/hunt — planned C2). Prior known issues: Razorpay keys, VPS SSH, analytics aggregator empty data, billing priceInr mismatch.
+- **Current phase:** Phase 7 Performance + E2E Integration Plan. Caching & Archival Service (Module 25) deployed. 33 containers live. Pipeline wiring: downstream queues added to ai-enrichment (graph-sync, ioc-index, correlate).
+- **Last session outcome:** Session 58 (2026-03-25). Caching & Archival Service (Module 25, port 3025) committed and deployed. 94 tests. 6 commits: e78239f (caching-service + pipeline wiring), 065097f (lockfile fix), 3bb0206 (onboarding TS fixes), 8739f9f (queue count test), 5e47f01 (analytics flaky test), 794b3eb (onboarding async/await tests). CI required 4 fix pushes before green. Deploy succeeded on rerun (first attempt SSH timeout).
+- **Known issues:** 3 UI buttons still cosmetic (correlation investigate/ticket/hunt — planned C2). Uncommitted frontend WIP: CorrelationDetailDrawer + mutation hooks (from another session). Prior: Razorpay keys, VPS SSH, analytics aggregator empty data, billing priceInr mismatch.
 - **Next tasks:** **E2E Integration Plan Session C2** — Wire remaining 3 correlation UI buttons (investigate→modal, ticket→POST, hunt→navigate). Then **D1**: missing frontend pages (SearchPage, AnalyticsPage).
 
 ## Deployment Log
@@ -197,6 +200,7 @@ analytics-service    → shared-types, shared-utils, shared-auth (Phase 7)
 | 55 | 2026-03-24 | etip_frontend updated (AlertingPage) | ✅ CI green | 371b71c, 7d340d4 | AlertingPage frontend: 4 tabs (Rules/Alerts/Channels/Escalations), search, filters, bulk ack/resolve, history drawer, channel modal. 50 new tests (624 frontend). Route /alerting + IconAlerting. 18 data pages. |
 | 55 | 2026-03-24 | etip_analytics added (port 3024) | ✅ All 32 healthy | 14b7420, daa24ef | Analytics Service (Module 24): 12 endpoints, 83 tests, 5 P0 improvements. Dashboard aggregation, trends, executive summary, service health. 32 containers. ~5098 monorepo tests. |
 | 57 | 2026-03-24 | etip_onboarding + etip_frontend updated | ✅ Pushed | e78239f→4eda8d3 | E2E B2: onboarding feed seeding + Redis wizard. E2E C1: feed retry + graph expand. 230 onboarding tests, 633 frontend tests. |
+| 58 | 2026-03-25 | etip_caching added (port 3025) | ✅ All 33 healthy | e78239f→794b3eb | Caching & Archival Service (Module 25): 94 tests. Redis cache mgmt, MinIO archival, event-driven invalidation. 4 CI fix commits (lockfile, TS, queue count, async tests). CI run 23499248314 green. Deploy rerun succeeded (first attempt SSH timeout). |
 
 ## E2E Verification Results (Session 13)
 
@@ -211,7 +215,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 30 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 33 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
