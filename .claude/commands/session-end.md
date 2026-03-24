@@ -3,7 +3,7 @@ description: End-of-session ritual — update project state and decisions before
 allowed-tools: Read, Write, Edit, Bash(git:*), Grep, Glob
 ---
 
-Before ending this session, perform ALL 11 steps in order.
+Before ending this session, perform ALL 12 steps in order.
 Skipping ANY step = next session starts with stale/wrong context.
 
 ## 1. Update docs/PROJECT_STATE.md
@@ -130,7 +130,19 @@ git log --oneline -3
 
 If any mismatch: fix the doc, don't just commit the wrong number.
 
-## 8. Session Summary Card
+## 8. Update docs/ETIP_Project_Stats.html
+
+After any deployment or milestone, update the stats HTML:
+
+- **Executive Summary stats** → container count, test count, session count, pipeline %
+- **Module Status table** → add new modules, update statuses/endpoints/tests
+- **Pipeline Status table** → update WIRED/MISSING badges if pipeline links changed
+- **E2E Integration Plan** → update session completion status if any A1-E2 sessions done
+- **Footer** → update session number + date
+
+This file is the project's visual dashboard — keep it accurate after every deploy.
+
+## 9. Session Summary Card
 
 Present to user:
 ```
@@ -149,28 +161,29 @@ Docs updated: [list: PROJECT_STATE, DECISIONS_LOG, features/X, api/X, ...]
 Next: [specific task]
 ```
 
-## 9. Commit + Push ALL State Files
+## 10. Commit + Push ALL State Files
 
 ```bash
 git add docs/PROJECT_STATE.md docs/DECISIONS_LOG.md docs/SESSION_HANDOFF.md \
-       docs/DEPLOYMENT_RCA.md docs/modules/ README.md
+       docs/DEPLOYMENT_RCA.md docs/ETIP_Project_Stats.html docs/modules/ README.md
 git commit -m "docs: session [N] end — [1-line summary]"
 git push origin master
 ```
 
-## 10. Final Check
+## 11. Final Check
 
 - `git status` — must show clean working tree
 - `git log --oneline -1` — must be the session-end commit
 - If uncommitted changes exist: warn user and list files
 
-## 11. Document Checklist (print and verify)
+## 12. Document Checklist (print and verify)
 
 Before closing, confirm ALL boxes:
 - [ ] PROJECT_STATE.md — session counter incremented, module statuses current
 - [ ] DECISIONS_LOG.md — any new decisions logged
 - [ ] SESSION_HANDOFF.md — overwritten with this session's full handoff
 - [ ] DEPLOYMENT_RCA.md — resolution table updated (success or failure entry)
+- [ ] ETIP_Project_Stats.html — stats, modules, pipeline status updated
 - [ ] docs/modules/{module}.md — features, API, config tables current for each module touched
 - [ ] README.md — test count + phase + container count current
 - [ ] memory/session{N}.md — created with key facts + frozen rules
@@ -178,13 +191,14 @@ Before closing, confirm ALL boxes:
 - [ ] All committed + pushed to master
 - [ ] git status clean
 
-CRITICAL: Six systems depend on accurate state:
+CRITICAL: Seven systems depend on accurate state:
 1. `/session-start` reads: PROJECT_STATE, DECISIONS_LOG, DEPLOYMENT_RCA, SESSION_HANDOFF
 2. Memory system reads: MEMORY.md → session{N}.md files
-3. CLAUDE.md: rules + constants (auto-loaded every session)
+3. CLAUDE.md: rules + constants + architecture refs (auto-loaded every session)
 4. Module READMEs: docs/modules/{module}.md — features, API, config (updated by /implement)
 5. README.md: GitHub landing page (test count, phase, containers)
-6. CI/CD: deploy.yml, docker-compose, Dockerfile (already in git)
+6. ETIP_Project_Stats.html: visual dashboard (stats, pipeline status, E2E plan progress)
+7. CI/CD: deploy.yml, docker-compose, Dockerfile (already in git)
 
 Documentation flow:
   /new-module creates → docs/modules/{module}.md (skeleton)
