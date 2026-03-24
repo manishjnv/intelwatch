@@ -8,6 +8,7 @@ import { TemplateStore } from './services/template-store.js';
 import { DataAggregator } from './services/data-aggregator.js';
 import { TemplateEngine } from './services/template-engine.js';
 import { ReportWorker } from './workers/report-worker.js';
+import { RetentionCron } from './services/retention-cron.js';
 
 async function main(): Promise<void> {
   // 1. Config + Logger
@@ -27,7 +28,11 @@ async function main(): Promise<void> {
   const dataAggregator = new DataAggregator();
   const templateEngine = new TemplateEngine();
 
-  // 4. BullMQ worker
+  // 4. Retention cron (purge expired reports every hour)
+  const retentionCron = new RetentionCron(reportStore);
+  retentionCron.start();
+
+  // 5. BullMQ worker
   const reportWorker = new ReportWorker({
     reportStore,
     templateStore,
@@ -37,7 +42,7 @@ async function main(): Promise<void> {
   });
   reportWorker.start();
 
-  // 5. Wire schedule callbacks to enqueue report generation
+  // 6. Wire schedule callbacks to enqueue report generation
   scheduleStore.setCallback((schedule) => {
     const report = reportStore.create({
       type: schedule.reportType,
@@ -56,7 +61,7 @@ async function main(): Promise<void> {
     });
   });
 
-  // 6. Build Fastify app with DI
+  // 7. Build Fastify app with DI
   const app = await buildApp({
     config,
     reportDeps: { reportStore, reportWorker },
@@ -65,9 +70,10 @@ async function main(): Promise<void> {
     statsDeps: { reportStore, scheduleStore },
   });
 
-  // 7. Graceful shutdown
+  // 8. Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down reporting-service...');
+    retentionCron.stop();
     scheduleStore.stopAll();
     await reportWorker.stop();
     await app.close();
@@ -76,7 +82,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => { void shutdown('SIGINT'); });
   process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
 
-  // 8. Start listening
+  // 9. Start listening
   await app.listen({ port: config.TI_SERVICE_PORT, host: config.TI_SERVICE_HOST });
   logger.info({ port: config.TI_SERVICE_PORT }, 'Reporting service ready');
 }

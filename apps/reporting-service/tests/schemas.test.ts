@@ -23,7 +23,8 @@ describe('Report Schemas', () => {
     it('accepts json', () => expect(ReportFormatEnum.parse('json')).toBe('json'));
     it('accepts html', () => expect(ReportFormatEnum.parse('html')).toBe('html'));
     it('accepts pdf', () => expect(ReportFormatEnum.parse('pdf')).toBe('pdf'));
-    it('rejects invalid format', () => expect(() => ReportFormatEnum.parse('csv')).toThrow());
+    it('accepts csv', () => expect(ReportFormatEnum.parse('csv')).toBe('csv'));
+    it('rejects invalid format', () => expect(() => ReportFormatEnum.parse('xlsx')).toThrow());
   });
 
   describe('ReportStatusEnum', () => {

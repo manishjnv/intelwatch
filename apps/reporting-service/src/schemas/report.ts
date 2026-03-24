@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const ReportTypeEnum = z.enum(['daily', 'weekly', 'monthly', 'custom', 'executive']);
 export type ReportType = z.infer<typeof ReportTypeEnum>;
 
-export const ReportFormatEnum = z.enum(['json', 'html', 'pdf']);
+export const ReportFormatEnum = z.enum(['json', 'html', 'pdf', 'csv']);
 export type ReportFormat = z.infer<typeof ReportFormatEnum>;
 
 export const ReportStatusEnum = z.enum(['pending', 'generating', 'completed', 'failed']);
@@ -73,3 +73,16 @@ export const ListReportsQuerySchema = z.object({
 });
 
 export type ListReportsQuery = z.infer<typeof ListReportsQuerySchema>;
+
+export const BulkDeleteSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(50),
+});
+
+export type BulkDeleteDto = z.infer<typeof BulkDeleteSchema>;
+
+export const BulkToggleSchedulesSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(50),
+  enabled: z.boolean(),
+});
+
+export type BulkToggleSchedulesDto = z.infer<typeof BulkToggleSchedulesSchema>;

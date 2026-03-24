@@ -55,6 +55,8 @@ export class TemplateEngine {
         return rendered;
       case 'html':
         return this._renderHtml(rendered);
+      case 'csv':
+        return this._renderCsv(rendered);
       case 'pdf':
         return this._renderPdfPlaceholder(rendered);
       default:
@@ -63,7 +65,7 @@ export class TemplateEngine {
   }
 
   validateFormat(format: ReportFormat): void {
-    const supported: ReportFormat[] = ['json', 'html', 'pdf'];
+    const supported: ReportFormat[] = ['json', 'html', 'pdf', 'csv'];
     if (!supported.includes(format)) {
       throw new AppError(400, `Unsupported format: ${format}`, 'UNSUPPORTED_FORMAT');
     }
@@ -210,6 +212,61 @@ export class TemplateEngine {
   ${sectionsHtml}
 </body>
 </html>`;
+  }
+
+  private _renderCsv(report: RenderedReport): string {
+    const lines: string[] = [];
+    // Header metadata
+    lines.push(`# Report: ${report.metadata.title}`);
+    lines.push(`# Type: ${report.metadata.type} | Period: ${report.metadata.dateRange.from} - ${report.metadata.dateRange.to}`);
+    lines.push(`# Generated: ${report.metadata.generatedAt} | Risk Score: ${report.riskScore}/100`);
+    lines.push('');
+
+    for (const section of report.sections) {
+      lines.push(`## ${section.title}`);
+      const content = section.content;
+
+      if (Array.isArray(content)) {
+        // Array of objects → table
+        if (content.length > 0 && typeof content[0] === 'object' && content[0] !== null) {
+          const keys = Object.keys(content[0] as Record<string, unknown>);
+          lines.push(keys.join(','));
+          for (const row of content) {
+            const vals = keys.map((k) => this._csvEscape(String((row as Record<string, unknown>)[k] ?? '')));
+            lines.push(vals.join(','));
+          }
+        } else {
+          // Array of primitives (e.g., recommendations)
+          lines.push('value');
+          for (const item of content) {
+            lines.push(this._csvEscape(String(item)));
+          }
+        }
+      } else if (typeof content === 'object' && content !== null) {
+        // Key-value object → two-column table
+        lines.push('metric,value');
+        for (const [key, val] of Object.entries(content as Record<string, unknown>)) {
+          if (typeof val === 'object' && val !== null) {
+            // Nested object — flatten one level
+            for (const [subKey, subVal] of Object.entries(val as Record<string, unknown>)) {
+              lines.push(`${this._csvEscape(`${key}.${subKey}`)},${this._csvEscape(String(subVal))}`);
+            }
+          } else {
+            lines.push(`${this._csvEscape(key)},${this._csvEscape(String(val ?? ''))}`);
+          }
+        }
+      }
+      lines.push('');
+    }
+
+    return lines.join('\n');
+  }
+
+  private _csvEscape(value: string): string {
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
   }
 
   private _renderPdfPlaceholder(report: RenderedReport): unknown {

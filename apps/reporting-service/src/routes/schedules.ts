@@ -4,8 +4,10 @@ import type { ScheduleStore } from '../services/schedule-store.js';
 import {
   CreateScheduleSchema,
   UpdateScheduleSchema,
+  BulkToggleSchedulesSchema,
   type CreateScheduleDto,
   type UpdateScheduleDto,
+  type BulkToggleSchedulesDto,
 } from '../schemas/report.js';
 import { validate } from '../utils/validate.js';
 
@@ -38,6 +40,27 @@ export function scheduleRoutes(deps: ScheduleRouteDeps) {
         const body = validate(UpdateScheduleSchema, req.body);
         const schedule = scheduleStore.update(req.params.id, body);
         return reply.send({ data: schedule });
+      },
+    );
+
+    // PUT /api/v1/reports/schedule/bulk-toggle — Enable or disable multiple schedules
+    app.put(
+      '/bulk-toggle',
+      async (req: FastifyRequest<{ Body: BulkToggleSchedulesDto }>, reply: FastifyReply) => {
+        const body = validate(BulkToggleSchedulesSchema, req.body);
+        let toggled = 0;
+        const notFound: string[] = [];
+
+        for (const id of body.ids) {
+          try {
+            scheduleStore.update(id, { enabled: body.enabled });
+            toggled++;
+          } catch {
+            notFound.push(id);
+          }
+        }
+
+        return reply.send({ data: { toggled, enabled: body.enabled, notFound } });
       },
     );
 

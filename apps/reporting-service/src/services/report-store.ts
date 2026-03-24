@@ -88,7 +88,7 @@ export class ReportStore {
     const page = opts.page ?? 1;
     const limit = opts.limit ?? 20;
 
-    this._purgeExpired();
+    this.purgeExpired();
 
     let reports = Array.from(this._reports.values())
       .filter((r) => !r.deleted && r.tenantId === tenantId);
@@ -140,7 +140,7 @@ export class ReportStore {
     byType: Record<string, number>;
     avgGenerationTimeMs: number;
   } {
-    this._purgeExpired();
+    this.purgeExpired();
     let reports = Array.from(this._reports.values()).filter((r) => !r.deleted);
     if (tenantId) reports = reports.filter((r) => r.tenantId === tenantId);
 
@@ -224,9 +224,15 @@ export class ReportStore {
     return new Date(report.expiresAt).getTime() < Date.now();
   }
 
-  private _purgeExpired(): void {
+  /** Purge all expired reports. Returns count of purged records. */
+  purgeExpired(): number {
+    let count = 0;
     for (const [id, report] of this._reports) {
-      if (this._isExpired(report)) this._reports.delete(id);
+      if (this._isExpired(report)) {
+        this._reports.delete(id);
+        count++;
+      }
     }
+    return count;
   }
 }
