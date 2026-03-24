@@ -1093,6 +1093,8 @@ services:
         condition: service_healthy
       etip_admin:
         condition: service_healthy
+      etip_es_indexing:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s
