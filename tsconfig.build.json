@@ -28,6 +28,7 @@
     { "path": "apps/onboarding" },
     { "path": "apps/billing-service" },
     { "path": "apps/admin-service" },
-    { "path": "apps/elasticsearch-indexing-service" }
+    { "path": "apps/elasticsearch-indexing-service" },
+    { "path": "apps/reporting-service" }
   ]
 }

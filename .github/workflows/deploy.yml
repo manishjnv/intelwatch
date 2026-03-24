@@ -207,6 +207,7 @@ jobs:
             check_health "Billing"             3019 etip_billing              no  &
             check_health "Admin"               3022 etip_admin                no  &
             check_health "ES Indexing"         3020 etip_es_indexing          no  &
+            check_health "Reporting"           3021 etip_reporting            no  &
 
             # Wait for all background checks
             wait
