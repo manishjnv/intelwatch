@@ -1,5 +1,5 @@
 import type { AlertRule } from './rule-store.js';
-import type { RuleCondition } from '../schemas/alert.js';
+import type { RuleCondition, BaseCondition } from '../schemas/alert.js';
 import { getLogger } from '../logger.js';
 
 export interface EvaluationEvent {
@@ -73,6 +73,8 @@ export class RuleEngine {
           return this.evaluateAnomaly(rule, cond);
         case 'absence':
           return this.evaluateAbsence(rule, cond);
+        case 'composite':
+          return this.evaluateComposite(rule, cond);
         default:
           return { ...base, triggered: false, reason: 'Unknown rule type' };
       }
@@ -172,6 +174,33 @@ export class RuleEngine {
     const reason = triggered
       ? `Absence: no '${eventType}' events in last ${expectedIntervalMinutes}m`
       : `'${eventType}' received ${matching.length} events in last ${expectedIntervalMinutes}m`;
+
+    return { ...base, triggered, reason };
+  }
+
+  /** Composite: evaluate AND/OR of multiple sub-conditions. */
+  private evaluateComposite(
+    rule: AlertRule,
+    cond: Extract<RuleCondition, { type: 'composite' }>,
+  ): EvaluationResult {
+    const base = { ruleId: rule.id, ruleName: rule.name };
+    const { operator, conditions } = cond.composite;
+
+    const subResults = conditions.map((sub) => {
+      // Create a temporary rule with the sub-condition
+      const tempRule: AlertRule = { ...rule, condition: sub as RuleCondition };
+      return this.evaluate(tempRule);
+    });
+
+    const triggered = operator === 'and'
+      ? subResults.every((r) => r.triggered)
+      : subResults.some((r) => r.triggered);
+
+    const triggeredReasons = subResults.filter((r) => r.triggered).map((r) => r.reason);
+    const allReasons = subResults.map((r) => `[${r.triggered ? '✓' : '✗'}] ${r.reason}`);
+    const reason = triggered
+      ? `Composite (${operator.toUpperCase()}): ${triggeredReasons.join(' + ')}`
+      : `Composite (${operator.toUpperCase()}) not met: ${allReasons.join('; ')}`;
 
     return { ...base, triggered, reason };
   }

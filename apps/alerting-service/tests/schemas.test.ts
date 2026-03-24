@@ -51,6 +51,61 @@ describe('Alert schemas', () => {
       expect(result.success).toBe(true);
     });
 
+    it('accepts composite AND condition', () => {
+      const result = RuleConditionSchema.safeParse({
+        type: 'composite',
+        composite: {
+          operator: 'and',
+          conditions: [
+            { type: 'threshold', threshold: { metric: 'm', operator: 'gt', value: 5 } },
+            { type: 'absence', absence: { eventType: 'feed.fetched', expectedIntervalMinutes: 60 } },
+          ],
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts composite OR condition', () => {
+      const result = RuleConditionSchema.safeParse({
+        type: 'composite',
+        composite: {
+          operator: 'or',
+          conditions: [
+            { type: 'threshold', threshold: { metric: 'm', operator: 'gt', value: 5 } },
+            { type: 'pattern', pattern: { eventType: 'ioc.created', field: 'f', pattern: '.*', minOccurrences: 1 } },
+          ],
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects composite with fewer than 2 conditions', () => {
+      const result = RuleConditionSchema.safeParse({
+        type: 'composite',
+        composite: {
+          operator: 'and',
+          conditions: [
+            { type: 'threshold', threshold: { metric: 'm', operator: 'gt', value: 5 } },
+          ],
+        },
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects composite with invalid operator', () => {
+      const result = RuleConditionSchema.safeParse({
+        type: 'composite',
+        composite: {
+          operator: 'xor',
+          conditions: [
+            { type: 'threshold', threshold: { metric: 'm', operator: 'gt', value: 5 } },
+            { type: 'absence', absence: { eventType: 'e', expectedIntervalMinutes: 60 } },
+          ],
+        },
+      });
+      expect(result.success).toBe(false);
+    });
+
     it('rejects invalid rule type', () => {
       const result = RuleConditionSchema.safeParse({ type: 'invalid', threshold: {} });
       expect(result.success).toBe(false);

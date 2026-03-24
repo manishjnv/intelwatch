@@ -279,6 +279,26 @@ export class AlertStore {
     return count;
   }
 
+  /** Full-text search across title, description, and ruleName. */
+  search(tenantId: string, query: string, opts: { page: number; limit: number }): ListAlertsResult {
+    const q = query.toLowerCase();
+    const items = Array.from(this.alerts.values())
+      .filter((a) => a.tenantId === tenantId)
+      .filter((a) =>
+        a.title.toLowerCase().includes(q) ||
+        a.description.toLowerCase().includes(q) ||
+        a.ruleName.toLowerCase().includes(q),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    const total = items.length;
+    const totalPages = Math.ceil(total / opts.limit) || 1;
+    const start = (opts.page - 1) * opts.limit;
+    const data = items.slice(start, start + opts.limit);
+
+    return { data, total, page: opts.page, limit: opts.limit, totalPages };
+  }
+
   /** Clear all alerts (for testing). */
   clear(): void {
     this.alerts.clear();

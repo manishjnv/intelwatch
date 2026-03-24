@@ -140,5 +140,23 @@ export function alertRoutes(deps: AlertRouteDeps) {
         return reply.send({ data: result });
       },
     );
+
+    // GET /api/v1/alerts/search — Full-text search across alerts
+    app.get(
+      '/search',
+      async (req: FastifyRequest<{ Querystring: Record<string, string> }>, reply: FastifyReply) => {
+        const tenantId = req.query.tenantId || 'default';
+        const q = req.query.q || '';
+        if (!q) throw new AppError(400, 'Query parameter "q" is required', 'VALIDATION_ERROR');
+        const page = parseInt(req.query.page || '1', 10);
+        const limit = parseInt(req.query.limit || '20', 10);
+
+        const result = alertStore.search(tenantId, q, { page, limit });
+        return reply.send({
+          data: result.data,
+          meta: { total: result.total, page: result.page, limit: result.limit, totalPages: result.totalPages, query: q },
+        });
+      },
+    );
   };
 }

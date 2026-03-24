@@ -8,6 +8,8 @@ import type { Notifier } from '../services/notifier.js';
 import type { DedupStore } from '../services/dedup-store.js';
 import type { AlertHistory } from '../services/alert-history.js';
 import type { EscalationDispatcher } from '../services/escalation-dispatcher.js';
+import type { AlertGroupStore } from '../services/alert-group-store.js';
+import type { MaintenanceStore } from '../services/maintenance-store.js';
 import { getLogger } from '../logger.js';
 
 export interface AlertWorkerDeps {
@@ -19,6 +21,8 @@ export interface AlertWorkerDeps {
   dedupStore: DedupStore;
   alertHistory: AlertHistory;
   escalationDispatcher: EscalationDispatcher;
+  alertGroupStore: AlertGroupStore;
+  maintenanceStore: MaintenanceStore;
   redisUrl: string;
 }
 
@@ -109,9 +113,10 @@ export class AlertWorker {
     // 2. Get all enabled rules for this tenant
     const rules = this.deps.ruleStore.getEnabledRules(payload.tenantId);
 
-    // 3. Evaluate each rule
+    // 3. Evaluate each rule (skip if in maintenance window)
     for (const rule of rules) {
       if (this.deps.ruleStore.isInCooldown(rule.id)) continue;
+      if (this.deps.maintenanceStore.isRuleSuppressed(payload.tenantId, rule.id)) continue;
 
       const result = this.deps.ruleEngine.evaluate(rule);
       if (!result.triggered) continue;
@@ -153,8 +158,20 @@ export class AlertWorker {
           metadata: { ruleId: rule.id, fingerprint },
         });
 
+        // Add alert to group
+        const groupResult = this.deps.alertGroupStore.addAlert({
+          alertId: alert.id,
+          ruleId: rule.id,
+          tenantId: rule.tenantId,
+          severity: rule.severity,
+          title: alert.title,
+        });
+
         logger.info(
-          { alertId: alert.id, ruleId: rule.id, severity: alert.severity },
+          {
+            alertId: alert.id, ruleId: rule.id, severity: alert.severity,
+            groupId: groupResult.group.id, groupIsNew: groupResult.isNew,
+          },
           'Alert created from rule trigger',
         );
 

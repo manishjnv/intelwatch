@@ -11,6 +11,8 @@ import { Notifier } from './services/notifier.js';
 import { DedupStore } from './services/dedup-store.js';
 import { AlertHistory } from './services/alert-history.js';
 import { EscalationDispatcher } from './services/escalation-dispatcher.js';
+import { AlertGroupStore } from './services/alert-group-store.js';
+import { MaintenanceStore } from './services/maintenance-store.js';
 import { AlertWorker } from './workers/alert-worker.js';
 
 async function main(): Promise<void> {
@@ -33,6 +35,8 @@ async function main(): Promise<void> {
   const notifier = new Notifier();
   const dedupStore = new DedupStore(5); // 5-minute dedup window
   const alertHistory = new AlertHistory();
+  const alertGroupStore = new AlertGroupStore(30); // 30-minute group window
+  const maintenanceStore = new MaintenanceStore();
 
   // 4. Escalation dispatcher (auto-escalate after policy delays)
   const escalationDispatcher = new EscalationDispatcher({
@@ -54,6 +58,8 @@ async function main(): Promise<void> {
     dedupStore,
     alertHistory,
     escalationDispatcher,
+    alertGroupStore,
+    maintenanceStore,
     redisUrl: config.TI_REDIS_URL,
   });
   alertWorker.start();
@@ -75,6 +81,8 @@ async function main(): Promise<void> {
     escalationDeps: { escalationStore },
     statsDeps: { alertStore, ruleStore },
     templateDeps: { ruleStore },
+    groupDeps: { alertGroupStore },
+    maintenanceDeps: { maintenanceStore },
   });
 
   // 8. Graceful shutdown

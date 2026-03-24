@@ -9,6 +9,7 @@ export interface NotificationResult {
   success: boolean;
   error?: string;
   signature?: string;
+  retryCount?: number;
 }
 
 /**
@@ -43,9 +44,41 @@ export class Notifier {
     }
   }
 
-  /** Send notifications to multiple channels. */
+  /** Send notifications to multiple channels with retry. */
   async notifyAll(channels: NotificationChannel[], alert: Alert): Promise<NotificationResult[]> {
-    return Promise.all(channels.map((ch) => this.notify(ch, alert)));
+    return Promise.all(channels.map((ch) => this.notifyWithRetry(ch, alert)));
+  }
+
+  /**
+   * Retry failed notifications with exponential backoff.
+   * Retries up to maxRetries times with delays: 1s, 4s, 16s.
+   */
+  async notifyWithRetry(
+    channel: NotificationChannel,
+    alert: Alert,
+    maxRetries: number = 3,
+  ): Promise<NotificationResult> {
+    let lastResult = await this.notify(channel, alert);
+    if (lastResult.success) return { ...lastResult, retryCount: 0 };
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const delayMs = Math.pow(4, attempt - 1) * 1000; // 1s, 4s, 16s
+      await this.sleep(delayMs);
+
+      getLogger().info(
+        { channelId: channel.id, attempt, maxRetries },
+        'Retrying notification',
+      );
+
+      lastResult = await this.notify(channel, alert);
+      if (lastResult.success) return { ...lastResult, retryCount: attempt };
+    }
+
+    return { ...lastResult, retryCount: maxRetries };
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /** Send a test notification to verify channel config. */

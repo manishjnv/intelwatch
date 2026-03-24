@@ -8,7 +8,7 @@ export type AlertSeverity = z.infer<typeof AlertSeverityEnum>;
 export const AlertStatusEnum = z.enum(['open', 'acknowledged', 'resolved', 'suppressed', 'escalated']);
 export type AlertStatus = z.infer<typeof AlertStatusEnum>;
 
-export const RuleTypeEnum = z.enum(['threshold', 'pattern', 'anomaly', 'absence']);
+export const RuleTypeEnum = z.enum(['threshold', 'pattern', 'anomaly', 'absence', 'composite']);
 export type RuleType = z.infer<typeof RuleTypeEnum>;
 
 export const ChannelTypeEnum = z.enum(['email', 'slack', 'webhook']);
@@ -42,12 +42,26 @@ const AbsenceCondition = z.object({
   expectedIntervalMinutes: z.coerce.number().int().min(1).max(1440),
 });
 
-export const RuleConditionSchema = z.discriminatedUnion('type', [
+const BaseConditionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('threshold'), threshold: ThresholdCondition }),
   z.object({ type: z.literal('pattern'), pattern: PatternCondition }),
   z.object({ type: z.literal('anomaly'), anomaly: AnomalyCondition }),
   z.object({ type: z.literal('absence'), absence: AbsenceCondition }),
 ]);
+
+export type BaseCondition = z.infer<typeof BaseConditionSchema>;
+
+const CompositeCondition = z.object({
+  type: z.literal('composite'),
+  composite: z.object({
+    operator: z.enum(['and', 'or']),
+    conditions: z.array(BaseConditionSchema).min(2).max(5),
+  }),
+});
+
+export type CompositeConditionType = z.infer<typeof CompositeCondition>;
+
+export const RuleConditionSchema = z.union([BaseConditionSchema, CompositeCondition]);
 
 export type RuleCondition = z.infer<typeof RuleConditionSchema>;
 

@@ -11,6 +11,8 @@ import { channelRoutes, type ChannelRouteDeps } from './routes/channels.js';
 import { escalationRoutes, type EscalationRouteDeps } from './routes/escalations.js';
 import { statsRoutes, type StatsRouteDeps } from './routes/stats.js';
 import { templateRoutes, type TemplateRouteDeps } from './routes/templates.js';
+import { groupRoutes, type GroupRouteDeps } from './routes/groups.js';
+import { maintenanceRoutes, type MaintenanceRouteDeps } from './routes/maintenance.js';
 import type { AlertingConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -21,6 +23,8 @@ export interface BuildAppOptions {
   escalationDeps?: EscalationRouteDeps;
   statsDeps?: StatsRouteDeps;
   templateDeps?: TemplateRouteDeps;
+  groupDeps?: GroupRouteDeps;
+  maintenanceDeps?: MaintenanceRouteDeps;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -101,6 +105,16 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   // Rule templates
   if (opts.templateDeps) {
     await app.register(templateRoutes(opts.templateDeps), { prefix: '/api/v1/alerts/templates' });
+  }
+
+  // Alert groups
+  if (opts.groupDeps) {
+    await app.register(groupRoutes(opts.groupDeps), { prefix: '/api/v1/alerts/groups' });
+  }
+
+  // Maintenance windows
+  if (opts.maintenanceDeps) {
+    await app.register(maintenanceRoutes(opts.maintenanceDeps), { prefix: '/api/v1/alerts/maintenance-windows' });
   }
 
   return app;
