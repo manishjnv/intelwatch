@@ -29,6 +29,7 @@
     { "path": "apps/billing-service" },
     { "path": "apps/admin-service" },
     { "path": "apps/elasticsearch-indexing-service" },
-    { "path": "apps/reporting-service" }
+    { "path": "apps/reporting-service" },
+    { "path": "apps/alerting-service" }
   ]
 }
