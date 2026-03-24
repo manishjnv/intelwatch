@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 48 &middot; 2026-03-24 &middot; Phase 7 STARTED — D3 code-split + Elasticsearch IOC Indexing scaffolded</span>
+  <span class="version">Session 55 &middot; 2026-03-24 &middot; Phase 7 — Alerting + Analytics deployed, E2E Integration Plan approved</span>
 </div>
 </div>
 
@@ -87,14 +87,14 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">01</span>Executive Summary</h2>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Overall Completion</div></div>
-    <div class="stat-card"><div class="stat-value">29/29</div><div class="stat-label">Modules Built</div></div>
-    <div class="stat-card"><div class="stat-value">4,398</div><div class="stat-label">Tests Passing</div></div>
-    <div class="stat-card"><div class="stat-value">29</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~508</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">50</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
+    <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
+    <div class="stat-card"><div class="stat-value">~5,100</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~550</div><div class="stat-label">API Endpoints</div></div>
+    <div class="stat-card"><div class="stat-value">55</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">42</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
-    <div class="stat-card"><div class="stat-value">301</div><div class="stat-label">Production IOCs</div></div>
+    <div class="stat-card"><div class="stat-value">33%</div><div class="stat-label">Pipeline Wired</div></div>
+    <div class="stat-card"><div class="stat-value">18</div><div class="stat-label">Frontend Pages</div></div>
   </div>
 </div>
 </section>
@@ -111,7 +111,8 @@ li strong { color: var(--text-primary); }
       <tr><td>3</td><td><strong>Core Intelligence</strong></td><td>4</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
       <tr><td>4</td><td><strong>Advanced Intelligence</strong></td><td>4</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
       <tr><td>5</td><td><strong>Platform &amp; Integrations</strong></td><td>3</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
-      <tr><td>6</td><td><strong>Growth &amp; Monetization</strong></td><td>3</td><td><span class="badge badge-amber">IN PROGRESS (2/3)</span></td><td>67%</td><td><div class="progress-bar"><div class="progress-fill fill-amber" style="width:67%"></div></div></td></tr>
+      <tr><td>6</td><td><strong>Growth &amp; Monetization</strong></td><td>3</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
+      <tr><td>7</td><td><strong>Performance &amp; Hardening</strong></td><td>4</td><td><span class="badge badge-amber">IN PROGRESS (4/4 built)</span></td><td>75%</td><td><div class="progress-bar"><div class="progress-fill fill-amber" style="width:75%"></div></div></td></tr>
     </tbody>
   </table>
 </div>
@@ -161,6 +162,10 @@ li strong { color: var(--text-primary); }
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>190</td></tr>
       <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28</td><td>149</td></tr>
       <tr><td>admin-ops</td><td>3022</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>28</td><td>147</td></tr>
+      <tr><td>elasticsearch-indexing</td><td>3020</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>3</td><td>57</td></tr>
+      <tr><td>reporting</td><td>3021</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>25</td><td>217</td></tr>
+      <tr><td><strong>alerting</strong></td><td>3023</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>35</td><td>306</td></tr>
+      <tr><td><strong>analytics</strong></td><td>3024</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>12</td><td>83</td></tr>
     </tbody>
   </table>
 </div>
@@ -239,41 +244,164 @@ li strong { color: var(--text-primary); }
 </div>
 </section>
 
-<!-- LATEST SESSION HIGHLIGHTS -->
+<!-- PIPELINE STATUS -->
 <section>
 <div class="container">
-  <h2><span class="num">06</span>Latest: Sessions 39–40 — Phase 6 Monetization Layer</h2>
+  <h2><span class="num">06</span>Data Pipeline Status</h2>
+  <p style="color:var(--text-secondary);margin-bottom:20px">The mandatory data flow: Feed → Ingest → Normalize → Enrich → Graph → Correlate → Alert → Integrate</p>
+
+  <table>
+    <thead><tr><th>Link</th><th>From</th><th>Queue</th><th>To</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Ingestion</td><td>etip-normalize</td><td>Normalization</td><td><span class="badge badge-green">WIRED</span></td></tr>
+      <tr><td>2</td><td>Normalization</td><td>etip-enrich-realtime</td><td>AI Enrichment</td><td><span class="badge badge-green">WIRED</span></td></tr>
+      <tr><td>3</td><td>AI Enrichment</td><td>etip-graph-sync</td><td>Threat Graph</td><td><span class="badge badge-red">MISSING</span></td></tr>
+      <tr><td>4</td><td>AI Enrichment</td><td>etip-ioc-indexed</td><td>ES Indexing</td><td><span class="badge badge-red">MISSING</span></td></tr>
+      <tr><td>5</td><td>AI Enrichment</td><td>etip-correlate</td><td>Correlation</td><td><span class="badge badge-red">MISSING</span></td></tr>
+      <tr><td>6</td><td>Correlation</td><td>etip-alert-evaluate</td><td>Alerting</td><td><span class="badge badge-red">MISSING</span></td></tr>
+      <tr><td>7</td><td>Alerting</td><td>etip-integration-push</td><td>Integration</td><td><span class="badge badge-red">MISSING</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="progress-wrap" style="margin-top:20px">
+    <div class="progress-label"><span><strong>Pipeline Wired</strong></span><span>2 / 7 links (33%)</span></div>
+    <div class="progress-bar" style="height:16px"><div class="progress-fill fill-amber" style="width:33%"></div></div>
+  </div>
+</div>
+</section>
+
+<!-- E2E INTEGRATION PLAN -->
+<section>
+<div class="container">
+  <h2><span class="num">07</span>E2E Integration Plan — Make Every Feature Work</h2>
+  <p style="color:var(--text-secondary);margin-bottom:20px">12 sessions, 55 files, 96 tests. Approved 2026-03-24. Ordered by user-visible impact.</p>
+
+  <h3>Phase A — Complete BullMQ Pipeline (33% → 100%)</h3>
+  <table>
+    <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th><th>Pipeline After</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-red">A1</span></td><td>ai-enrichment</td><td>Add downstream enqueues → GRAPH_SYNC + IOC_INDEX + CORRELATE after enrichment completes</td><td>6</td><td>8</td><td>67%</td></tr>
+      <tr><td><span class="badge badge-red">A2</span></td><td>correlation-engine</td><td>Add downstream enqueues → ALERT_EVALUATE + INTEGRATION_PUSH after correlation matches</td><td>4</td><td>6</td><td>83%</td></tr>
+      <tr><td><span class="badge badge-red">A3</span></td><td>alerting-service</td><td>Add downstream enqueue → INTEGRATION_PUSH after alert fires</td><td>4</td><td>4</td><td>100%</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Phase B — Real Demo Seeding</h3>
+  <table>
+    <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-amber">B1</span></td><td>onboarding</td><td>DemoSeeder → real HTTP calls to IOC/Actor/Malware/Vuln APIs (persist via Prisma). Service JWT inter-service auth.</td><td>5</td><td>10</td></tr>
+      <tr><td><span class="badge badge-amber">B2</span></td><td>onboarding</td><td>Default OSINT feeds (AlienVault OTX, URLhaus, CISA KEV, Feodo Tracker). Redis-backed wizard state.</td><td>5</td><td>8</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Phase C — Wire Broken Frontend Actions</h3>
+  <table>
+    <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-blue">C1</span></td><td>frontend</td><td>FeedList retry button → POST /feeds/:id/trigger. ThreatGraph expand → GET /graph/entity/:id + add-node modal.</td><td>6</td><td>10</td></tr>
+      <tr><td><span class="badge badge-blue">C2</span></td><td>frontend</td><td>Correlation: Investigate → detail drawer. Create Ticket → integration push. Add to Hunt → POST /hunts/:id/entities.</td><td>5</td><td>12</td></tr>
+      <tr><td><span class="badge badge-blue">C3</span></td><td>frontend</td><td>DRP alert triage (TP/FP/Investigate) → POST /drp/alerts/:id/triage. IOC pivot → GET /iocs/:id/pivot + timeline.</td><td>5</td><td>8</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Phase D — Missing Pages</h3>
+  <table>
+    <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-purple">D1</span></td><td>frontend</td><td>AlertingPage — verify real data loads from deployed alerting-service (port 3023). Page + hooks already exist.</td><td>3</td><td>4</td></tr>
+      <tr><td><span class="badge badge-purple">D2</span></td><td>frontend</td><td>AnalyticsPage — 4 tabs (Overview, IOC Trends, Threat Landscape, Pipeline Health). Aggregates existing APIs.</td><td>6</td><td>15</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Phase E — Verification &amp; Monitoring</h3>
+  <table>
+    <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-gray">E1</span></td><td>test harness</td><td>E2E pipeline smoke test: feed → fetch → normalize → enrich → graph+ES+correlate → alert → integration</td><td>3</td><td>6</td></tr>
+      <tr><td><span class="badge badge-gray">E2</span></td><td>admin-ops</td><td>Queue monitoring: real BullMQ queue depths for all 12 queues in admin dashboard</td><td>3</td><td>5</td></tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:24px">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value">12</div><div class="stat-label">Sessions Planned</div></div>
+      <div class="stat-card"><div class="stat-value">55</div><div class="stat-label">Files to Modify</div></div>
+      <div class="stat-card"><div class="stat-value">96</div><div class="stat-label">New Tests</div></div>
+      <div class="stat-card"><div class="stat-value">5</div><div class="stat-label">Broken UI Buttons to Fix</div></div>
+    </div>
+  </div>
+
+  <h3>Execution Timeline</h3>
   <div class="card-grid">
     <div class="card">
-      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Onboarding Service (Module 18) — Session 39</div>
+      <div class="card-title"><span class="badge badge-red">Week 1</span> Pipeline Wiring (A1 → A2 → A3)</div>
       <div class="card-body">
-        8-step guided wizard, 8 data source connector types with DNS→TCP→auth→data validation, 6-stage pipeline health checker, 14-module readiness checker with transitive dependency validation, progress tracker with readiness scoring.<br>
-        P0: prerequisite validation, demo data seeding, integration testing, checklist persistence, welcome dashboard with guided tips.<br>
-        <strong>32 endpoints</strong>, <strong>190 tests</strong>. Port 3018. Deployed to VPS.
+        <strong>Highest impact.</strong> Single change in ai-enrichment (A1) takes pipeline from 33% to 67%. After all 3 sessions, every service receives real data via BullMQ.<br>
+        <strong>Key file:</strong> <code>apps/ai-enrichment/src/workers/enrich-worker.ts</code> — add 3 downstream enqueues.
       </div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Billing Service (Module 19) — Session 40</div>
+      <div class="card-title"><span class="badge badge-amber">Week 2</span> Real Data (B1 → B2)</div>
       <div class="card-body">
-        Plan management (Free/Starter/Pro/Enterprise), Razorpay customer + subscription + order lifecycle, HMAC-SHA256 webhook verification with timingSafeEqual, GST 18% invoices + receipt generation, upgrade/downgrade with 72hr grace period + proration calc, coupon codes (percentage + flat discount, expiry + maxUses).<br>
-        P0: contextual upgrade prompts (80/90/100%), usage threshold alerts (highest-crossing), grace period, admin billing dashboard (MRR/churn/distribution), coupon codes.<br>
-        <strong>28 endpoints</strong>, <strong>149 tests</strong>. Port 3019. CI triggered.
+        <strong>User-facing.</strong> New tenants clicking "Seed Demo Data" get 150 real IOCs, 10 actors, 20 malware, 50 CVEs persisted via Prisma. 4 OSINT feeds auto-configured.<br>
+        <strong>Key file:</strong> <code>apps/onboarding/src/services/demo-seeder.ts</code> — replace stubs with HTTP calls.
       </div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="badge badge-amber">REMAINING</span> Admin Ops (Module 22)</div>
+      <div class="card-title"><span class="badge badge-blue">Week 3</span> UI Polish (C1 → C2 → C3)</div>
       <div class="card-body">
-        System health dashboard (all services, DB, Redis, queue depths), maintenance mode toggle + banner, rate-limit tuning per tenant/plan, announcement banner system, audit log viewer, platform-wide metrics.<br>
-        <strong>~1 session</strong> to complete. Will finish Phase 6.
+        <strong>Every button works.</strong> Feed retry, graph expand, correlation investigate/ticket/hunt, DRP triage, IOC pivot — all connected to real backend mutations.
       </div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="badge badge-amber">UPCOMING</span> Platform Completion Path</div>
+      <div class="card-title"><span class="badge badge-purple">Week 4</span> Complete (D1 → D2 → E1 → E2)</div>
       <div class="card-body">
-        After Admin Ops: <strong>Billing frontend</strong> (plan cards, usage meters, upgrade flow, invoice history), <strong>Elasticsearch IOC indexing</strong> (full-text search across all IOCs), <strong>QA checklist update</strong>, <strong>production hardening</strong> (Prisma migration for in-memory stores, Redis caching layer).
+        <strong>Polish.</strong> AlertingPage verified live, AnalyticsPage built (4 tabs), E2E pipeline smoke test, admin queue monitoring dashboard with real BullMQ depths.
       </div>
     </div>
   </div>
+</div>
+</section>
+
+<!-- AUDIT: CURRENT BROKEN FEATURES -->
+<section>
+<div class="container">
+  <h2><span class="num">08</span>Feature Audit — What's Broken Today</h2>
+
+  <h3>Pipeline Dead Ends (5 missing links)</h3>
+  <table>
+    <thead><tr><th>Service</th><th>Worker Queue</th><th>Problem</th><th>Fix Session</th></tr></thead>
+    <tbody>
+      <tr><td>Threat Graph</td><td>etip-graph-sync</td><td>Worker exists, but no service enqueues to it</td><td>A1</td></tr>
+      <tr><td>ES Indexing</td><td>etip-ioc-indexed</td><td>Worker exists, but no service enqueues to it</td><td>A1</td></tr>
+      <tr><td>Correlation Engine</td><td>etip-correlate</td><td>Worker exists, but no service enqueues to it</td><td>A1</td></tr>
+      <tr><td>Alerting Service</td><td>etip-alert-evaluate</td><td>Worker exists, but no service enqueues to it</td><td>A2</td></tr>
+      <tr><td>Integration Service</td><td>etip-integration-push</td><td>Worker exists, but no service enqueues to it</td><td>A2 + A3</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Stub/Broken Seeders</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Problem</th><th>Fix Session</th></tr></thead>
+    <tbody>
+      <tr><td>DemoSeeder</td><td>Returns fake counts (150 IOCs) but makes NO API calls — data not persisted</td><td>B1</td></tr>
+      <tr><td>Default Feeds</td><td>No OSINT feeds pre-configured — users must manually add in wizard step 4</td><td>B2</td></tr>
+      <tr><td>Wizard State</td><td>In-memory Map — lost on container restart</td><td>B2</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Cosmetic UI Buttons (5 total)</h3>
+  <table>
+    <thead><tr><th>Page</th><th>Button</th><th>Current Behavior</th><th>Fix Session</th></tr></thead>
+    <tbody>
+      <tr><td>FeedListPage</td><td>Retry feed</td><td><code>e.stopPropagation()</code> — does nothing</td><td>C1</td></tr>
+      <tr><td>ThreatGraphPage</td><td>Add Node / Expand</td><td>Shows toast placeholder</td><td>C1</td></tr>
+      <tr><td>CorrelationPage</td><td>Investigate</td><td>Toast: "Investigation panel opened"</td><td>C2</td></tr>
+      <tr><td>CorrelationPage</td><td>Create Ticket</td><td>Toast: "Ticket created via integration-service"</td><td>C2</td></tr>
+      <tr><td>CorrelationPage</td><td>Add to Hunt</td><td>Toast: "Added to active hunt session"</td><td>C2</td></tr>
+    </tbody>
+  </table>
 </div>
 </section>
 
@@ -300,24 +428,25 @@ li strong { color: var(--text-primary); }
 </div>
 </section>
 
-<!-- NEXT STEPS -->
+<!-- NEXT ACTION -->
 <section>
 <div class="container">
-  <h2><span class="num">08</span>Next Steps</h2>
-  <ul>
-    <li><strong>Admin Ops (Module 22)</strong> — System health dashboard, maintenance mode, rate-limit tuning, announcement banner. Completes Phase 6.</li>
-    <li><strong>Billing Frontend</strong> — Plan cards (4 tiers), usage meters with threshold color, upgrade modal (Razorpay), invoice history, coupon input.</li>
-    <li><strong>Configure VPS Razorpay keys</strong> — TI_RAZORPAY_KEY_ID, TI_RAZORPAY_KEY_SECRET, TI_RAZORPAY_WEBHOOK_SECRET in .env</li>
-    <li><strong>Elasticsearch IOC indexing</strong> — Full-text search across all 301+ production IOCs</li>
-    <li><strong>QA Checklist update</strong> — Add Phase 6 modules to docs/QA_CHECKLIST.md</li>
-    <li><strong>Production hardening</strong> — Prisma DB migration for in-memory stores, Redis caching layer, rate limiting per plan tier</li>
-  </ul>
+  <h2><span class="num">09</span>Next Immediate Action</h2>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-red">START HERE</span> Session A1 — ai-enrichment downstream enqueues</div>
+    <div class="card-body">
+      <strong>Single highest-impact change.</strong> Add 3 downstream queue producers to <code>apps/ai-enrichment/src/workers/enrich-worker.ts</code>. After enrichment completes, fire jobs to GRAPH_SYNC, IOC_INDEX, and CORRELATE queues.<br><br>
+      <strong>Pattern:</strong> Follow <code>apps/normalization/src/service.ts:467</code> (existing fire-and-forget enqueue with .catch()).<br>
+      <strong>Feature flags:</strong> <code>TI_GRAPH_SYNC_ENABLED</code>, <code>TI_IOC_INDEX_ENABLED</code>, <code>TI_CORRELATE_ENABLED</code> (default: true).<br>
+      <strong>Result:</strong> Pipeline goes from 33% → 67% wired. Graph, ES, and Correlation services start receiving real data.
+    </div>
+  </div>
 </div>
 </section>
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 40 &middot; 2026-03-23 &middot; Generated by Claude Sonnet 4.6
+    ETIP v5.0 &middot; Session 55 &middot; 2026-03-24 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
