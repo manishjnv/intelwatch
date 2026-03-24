@@ -7,7 +7,7 @@
 import {
   IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
-  IconCustomization, IconBilling, IconAdmin, IconOnboarding,
+  IconCustomization, IconBilling, IconAdmin, IconOnboarding, IconReporting,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -187,6 +187,16 @@ export const MODULES: ModuleConfig[] = [
     phase: 6,
     route: '/onboarding',
   },
+  {
+    id: 'reporting',
+    title: 'Reporting',
+    description: 'Generate, schedule, and export threat intelligence reports in multiple formats.',
+    helpText: 'Create daily/weekly/monthly/executive reports with cron scheduling and PDF/HTML/CSV export.',
+    icon: IconReporting,
+    color: 'text-orange-400',
+    phase: 7,
+    route: '/reporting',
+  },
 ]
 
 /** Phase-specific accent color for badges and indicators. */
@@ -197,6 +207,7 @@ export function getPhaseColor(phase: number): string {
     case 4: return 'text-cyan-400'
     case 5: return 'text-sky-400'
     case 6: return 'text-amber-400'
+    case 7: return 'text-orange-400'
     default: return 'text-text-muted'
   }
 }
@@ -209,6 +220,7 @@ export function getPhaseBgColor(phase: number): string {
     case 4: return 'bg-cyan-400/10'
     case 5: return 'bg-sky-400/10'
     case 6: return 'bg-amber-400/10'
+    case 7: return 'bg-orange-400/10'
     default: return 'bg-bg-elevated'
   }
 }

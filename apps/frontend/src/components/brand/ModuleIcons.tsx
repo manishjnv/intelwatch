@@ -335,6 +335,21 @@ export function IconAdmin({ size = defaults.size, className }: IconProps) {
   )
 }
 
+/** Reporting — document with chart bars */
+export function IconReporting({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      {/* Document outline */}
+      <path d="M6 3h8l5 5v13H6V3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M14 3v5h5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" opacity="0.5"/>
+      {/* Chart bars */}
+      <rect x="9" y="12" width="2" height="6" rx="0.5" fill="currentColor" opacity="0.7"/>
+      <rect x="12.5" y="14" width="2" height="4" rx="0.5" fill="currentColor" opacity="0.5"/>
+      <rect x="16" y="10" width="0" height="0" rx="0" fill="none"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
@@ -354,4 +369,5 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'billing': IconBilling,
   'admin-ops': IconAdmin,
   'onboarding': IconOnboarding,
+  'reporting': IconReporting,
 }
