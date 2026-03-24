@@ -1,11 +1,12 @@
 import { Worker, Queue, type Job } from 'bullmq';
+import { QUEUES } from '@etip/shared-utils';
 import { getLogger } from '../logger.js';
 import type { IntegrationStore } from './integration-store.js';
 import type { SiemAdapter } from './siem-adapter.js';
 import type { WebhookService } from './webhook-service.js';
 import type { TriggerEvent } from '../schemas/integration.js';
 
-/** Shape of jobs on the etip:integration-push queue. */
+/** Shape of jobs on the etip-integration-push queue. */
 export interface IntegrationPushJob {
   tenantId: string;
   event: TriggerEvent;
@@ -13,7 +14,7 @@ export interface IntegrationPushJob {
 }
 
 /**
- * BullMQ worker that consumes the etip:integration-push queue.
+ * BullMQ worker that consumes the etip-integration-push queue.
  * For each event, finds all enabled integrations matching the trigger
  * and dispatches to the appropriate adapter (SIEM, webhook, or both).
  */
@@ -33,10 +34,10 @@ export class EventRouter {
     const logger = getLogger();
     const connection = this.parseRedisConnection(this.redisUrl);
 
-    this.queue = new Queue('etip:integration-push', { connection });
+    this.queue = new Queue(QUEUES.INTEGRATION_PUSH, { connection });
 
     this.worker = new Worker(
-      'etip:integration-push',
+      QUEUES.INTEGRATION_PUSH,
       async (job: Job<IntegrationPushJob>) => {
         await this.processJob(job);
       },
@@ -55,7 +56,7 @@ export class EventRouter {
       logger.error({ jobId: job?.id, error: err.message }, 'Integration push job failed');
     });
 
-    logger.info('EventRouter worker started on etip:integration-push');
+    logger.info(`EventRouter worker started on ${QUEUES.INTEGRATION_PUSH}`);
   }
 
   /** Stop the worker gracefully. */

@@ -1,5 +1,5 @@
 /**
- * BullMQ worker consuming QUEUES.CORRELATE ('etip:correlate').
+ * BullMQ worker consuming QUEUES.CORRELATE ('etip-correlate').
  * Processes incoming entity events and runs correlation algorithms.
  */
 import { Queue, Worker, type Job } from 'bullmq';
@@ -25,9 +25,7 @@ export function createCorrelateQueue(): Queue {
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
-  const queueName = QUEUES.CORRELATE.replace(/:/g, '-');
-
-  _queue = new Queue(queueName, {
+  _queue = new Queue(QUEUES.CORRELATE, {
     connection: {
       host: url.hostname,
       port: Number(url.port) || 6379,
@@ -79,10 +77,8 @@ export function createCorrelateWorker(deps: CorrelateWorkerDeps): Worker<Correla
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
-  const queueName = QUEUES.CORRELATE.replace(/:/g, '-');
-
   const worker = new Worker<CorrelatePayload>(
-    queueName,
+    QUEUES.CORRELATE,
     async (job: Job<CorrelatePayload>) => {
       logger.info({ jobId: job.id, entityType: job.data.entityType, tenantId: job.data.tenantId }, 'Processing correlation job');
 

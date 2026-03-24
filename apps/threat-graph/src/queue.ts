@@ -30,9 +30,7 @@ export function createGraphSyncQueue(): Queue {
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
-  const queueName = QUEUES.GRAPH_SYNC.replace(/:/g, '-');
-
-  _queue = new Queue(queueName, {
+  _queue = new Queue(QUEUES.GRAPH_SYNC, {
     connection: {
       host: url.hostname,
       port: Number(url.port) || 6379,
@@ -79,10 +77,8 @@ export function createGraphSyncWorker(deps: GraphWorkerDeps): Worker<GraphSyncJo
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
-  const queueName = QUEUES.GRAPH_SYNC.replace(/:/g, '-');
-
   const worker = new Worker<GraphSyncJob>(
-    queueName,
+    QUEUES.GRAPH_SYNC,
     async (job: Job<GraphSyncJob>) => {
       logger.info({ jobId: job.id, action: job.data.action, tenantId: job.data.tenantId }, 'Processing graph sync job');
 

@@ -19,20 +19,20 @@ describe('QUEUES', () => {
     expect(Object.keys(QUEUES)).toHaveLength(13);
   });
 
-  it('all queue names start with etip: prefix', () => {
+  it('all queue names start with etip- prefix (RCA #42: no colons)', () => {
     for (const name of Object.values(QUEUES)) {
-      expect(name).toMatch(/^etip:/);
+      expect(name).toMatch(/^etip-/);
     }
   });
 
   it('contains required pipeline queues', () => {
-    expect(QUEUES.FEED_FETCH).toBe('etip:feed-fetch');
-    expect(QUEUES.NORMALIZE).toBe('etip:normalize');
-    expect(QUEUES.ENRICH_REALTIME).toBe('etip:enrich-realtime');
-    expect(QUEUES.ENRICH_BATCH).toBe('etip:enrich-batch');
-    expect(QUEUES.GRAPH_SYNC).toBe('etip:graph-sync');
-    expect(QUEUES.CORRELATE).toBe('etip:correlate');
-    expect(QUEUES.ARCHIVE).toBe('etip:archive');
+    expect(QUEUES.FEED_FETCH).toBe('etip-feed-fetch');
+    expect(QUEUES.NORMALIZE).toBe('etip-normalize');
+    expect(QUEUES.ENRICH_REALTIME).toBe('etip-enrich-realtime');
+    expect(QUEUES.ENRICH_BATCH).toBe('etip-enrich-batch');
+    expect(QUEUES.GRAPH_SYNC).toBe('etip-graph-sync');
+    expect(QUEUES.CORRELATE).toBe('etip-correlate');
+    expect(QUEUES.ARCHIVE).toBe('etip-archive');
   });
 
   it('ALL_QUEUE_NAMES matches QUEUES values', () => {

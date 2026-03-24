@@ -9,8 +9,7 @@ export function createEnrichQueue(): Queue {
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
 
-  const queueName = QUEUES.ENRICH_REALTIME.replace(/:/g, '-');
-  _enrichQueue = new Queue(queueName, {
+  _enrichQueue = new Queue(QUEUES.ENRICH_REALTIME, {
     connection: {
       host: url.hostname,
       port: Number(url.port) || 6379,

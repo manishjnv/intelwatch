@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { IocTypeSchema } from './ioc.js';
 import { EntityTypeSchema } from './intel.js';
 
-/** Payload for etip:feed-fetch queue */
+/** Payload for etip-feed-fetch queue */
 export const FeedFetchPayloadSchema = z.object({
   feedId: z.string().uuid(),
   tenantId: z.string().min(1),
@@ -17,7 +17,7 @@ export const FeedFetchPayloadSchema = z.object({
 });
 export type FeedFetchPayload = z.infer<typeof FeedFetchPayloadSchema>;
 
-/** Payload for etip:feed-parse queue */
+/** Payload for etip-feed-parse queue */
 export const FeedParsePayloadSchema = z.object({
   feedId: z.string().uuid(),
   tenantId: z.string().min(1),
@@ -27,7 +27,7 @@ export const FeedParsePayloadSchema = z.object({
 });
 export type FeedParsePayload = z.infer<typeof FeedParsePayloadSchema>;
 
-/** Payload for etip:normalize queue */
+/** Payload for etip-normalize queue */
 export const NormalizePayloadSchema = z.object({
   tenantId: z.string().min(1),
   feedId: z.string().uuid(),
@@ -37,7 +37,7 @@ export const NormalizePayloadSchema = z.object({
 });
 export type NormalizePayload = z.infer<typeof NormalizePayloadSchema>;
 
-/** Payload for etip:deduplicate queue */
+/** Payload for etip-deduplicate queue */
 export const DeduplicatePayloadSchema = z.object({
   tenantId: z.string().min(1),
   entityType: EntityTypeSchema,
@@ -46,7 +46,7 @@ export const DeduplicatePayloadSchema = z.object({
 });
 export type DeduplicatePayload = z.infer<typeof DeduplicatePayloadSchema>;
 
-/** Payload for etip:enrich-realtime queue */
+/** Payload for etip-enrich-realtime queue */
 export const EnrichRealtimePayloadSchema = z.object({
   tenantId: z.string().min(1),
   entityType: EntityTypeSchema,
@@ -57,7 +57,7 @@ export const EnrichRealtimePayloadSchema = z.object({
 });
 export type EnrichRealtimePayload = z.infer<typeof EnrichRealtimePayloadSchema>;
 
-/** Payload for etip:enrich-batch queue */
+/** Payload for etip-enrich-batch queue */
 export const EnrichBatchPayloadSchema = z.object({
   tenantId: z.string().min(1),
   entityIds: z.array(z.string().uuid()).min(1),
@@ -65,7 +65,7 @@ export const EnrichBatchPayloadSchema = z.object({
 });
 export type EnrichBatchPayload = z.infer<typeof EnrichBatchPayloadSchema>;
 
-/** Payload for etip:graph-sync queue */
+/** Payload for etip-graph-sync queue */
 export const GraphSyncPayloadSchema = z.object({
   tenantId: z.string().min(1),
   entityType: EntityTypeSchema,
@@ -74,7 +74,7 @@ export const GraphSyncPayloadSchema = z.object({
 });
 export type GraphSyncPayload = z.infer<typeof GraphSyncPayloadSchema>;
 
-/** Payload for etip:correlate queue */
+/** Payload for etip-correlate queue */
 export const CorrelatePayloadSchema = z.object({
   tenantId: z.string().min(1),
   entityType: EntityTypeSchema,
@@ -83,7 +83,7 @@ export const CorrelatePayloadSchema = z.object({
 });
 export type CorrelatePayload = z.infer<typeof CorrelatePayloadSchema>;
 
-/** Payload for etip:alert-evaluate queue */
+/** Payload for etip-alert-evaluate queue */
 export const AlertEvaluatePayloadSchema = z.object({
   tenantId: z.string().min(1),
   correlationId: z.string().uuid(),
@@ -92,7 +92,7 @@ export const AlertEvaluatePayloadSchema = z.object({
 });
 export type AlertEvaluatePayload = z.infer<typeof AlertEvaluatePayloadSchema>;
 
-/** Payload for etip:integration-push queue */
+/** Payload for etip-integration-push queue */
 export const IntegrationPushPayloadSchema = z.object({
   tenantId: z.string().min(1),
   integrationId: z.string().uuid(),
@@ -101,7 +101,7 @@ export const IntegrationPushPayloadSchema = z.object({
 });
 export type IntegrationPushPayload = z.infer<typeof IntegrationPushPayloadSchema>;
 
-/** Payload for etip:archive queue */
+/** Payload for etip-archive queue */
 export const ArchivePayloadSchema = z.object({
   tenantId: z.string().min(1),
   entityType: EntityTypeSchema,
@@ -110,7 +110,7 @@ export const ArchivePayloadSchema = z.object({
 });
 export type ArchivePayload = z.infer<typeof ArchivePayloadSchema>;
 
-/** Payload for etip:report-generate queue */
+/** Payload for etip-report-generate queue */
 export const ReportGeneratePayloadSchema = z.object({
   tenantId: z.string().min(1),
   reportType: z.enum(['daily', 'weekly', 'monthly', 'custom', 'executive']),

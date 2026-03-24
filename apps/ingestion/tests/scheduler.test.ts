@@ -152,7 +152,7 @@ describe('FeedScheduler', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(queue.add).toHaveBeenCalledWith(
-      'etip:feed-fetch',
+      'etip-feed-fetch',
       expect.objectContaining({ feedId: 'feed-1', tenantId: TENANT_A, triggeredBy: 'schedule' }),
       expect.objectContaining({ jobId: expect.stringContaining('sched-feed-1-') }),
     );

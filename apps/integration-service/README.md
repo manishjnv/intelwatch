@@ -1,13 +1,13 @@
 # Enterprise Integration Service (Module 15)
 
-**Port:** 3015 | **Queue:** `etip:integration-push` | **Status:** 🔨 WIP | **Tests:** 174
+**Port:** 3015 | **Queue:** `etip-integration-push` | **Status:** 🔨 WIP | **Tests:** 174
 
 ## What It Does
 Connects ETIP to external enterprise systems — SIEM (Splunk HEC, Sentinel, Elastic), SOAR webhooks, ticketing (ServiceNow, Jira), and STIX/TAXII 2.1 export. Pushes alerts/IOCs outbound and pulls events inbound for correlation.
 
 ## Pipeline
 ```
-Alert/IOC created → BullMQ etip:integration-push → Integration Router
+Alert/IOC created → BullMQ etip-integration-push → Integration Router
   → Check tenant integrations (enabled + matching trigger)
   → Transform via field mapping
   → Send to target (SIEM/webhook/ticket)
@@ -28,7 +28,7 @@ Alert/IOC created → BullMQ etip:integration-push → Integration Router
 | Bulk export | services/bulk-export.ts | CSV/JSON/STIX bulk export |
 | Field mapper | services/field-mapper.ts | Configurable field mapping with transforms |
 | Integration store | services/integration-store.ts | In-memory store for configs, logs, DLQ, tickets |
-| Event router (P0) | services/event-router.ts | BullMQ worker auto-dispatching etip:integration-push events |
+| Event router (P0) | services/event-router.ts | BullMQ worker auto-dispatching etip-integration-push events |
 | Field mapping defaults (P0) | services/integration-store.ts | Auto-populates default mappings per integration type |
 | Credential encryption (P0) | services/credential-encryption.ts | AES-256-GCM encrypt/decrypt for stored credentials |
 | Rate limiter (P0) | services/rate-limiter.ts | Per-integration token bucket rate limiting |

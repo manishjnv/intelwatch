@@ -39,8 +39,7 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
   const password = decodeURIComponent(url.password || '');
 
   // Create normalize queue producer (for cross-service IOC handoff)
-  const normalizeQueueName = QUEUES.NORMALIZE.replace(/:/g, '-');
-  const normalizeQueue = new Queue(normalizeQueueName, {
+  const normalizeQueue = new Queue(QUEUES.NORMALIZE, {
     connection: {
       host: url.hostname,
       port: Number(url.port) || 6379,
@@ -69,10 +68,8 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
     aiExtractionModel: config.TI_AI_EXTRACTION_MODEL,
   });
 
-  const queueName = QUEUES.FEED_FETCH.replace(/:/g, '-');
-
   const worker = new Worker<FeedFetchJobData, FeedFetchResult>(
-    queueName,
+    QUEUES.FEED_FETCH,
     async (job: Job<FeedFetchJobData>) => {
       const { feedId, tenantId, triggeredBy } = job.data;
       logger.info({ feedId, tenantId, triggeredBy, jobId: job.id }, 'Processing feed fetch job');

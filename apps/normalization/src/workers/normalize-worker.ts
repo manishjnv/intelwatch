@@ -18,10 +18,9 @@ export function createNormalizeWorker(deps: NormalizeWorkerDeps): Worker<Normali
   const password = decodeURIComponent(url.password || '');
 
   const service = new NormalizationService(repo, logger);
-  const queueName = QUEUES.NORMALIZE.replace(/:/g, '-');
 
   const worker = new Worker<NormalizeBatchJob, NormalizationResult>(
-    queueName,
+    QUEUES.NORMALIZE,
     async (job: Job<NormalizeBatchJob>) => {
       logger.info(
         { jobId: job.id, articleId: job.data.articleId, iocCount: job.data.iocs.length },

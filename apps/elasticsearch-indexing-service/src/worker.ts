@@ -5,7 +5,7 @@ import { IocIndexJobSchema } from './schemas.js';
 import { getLogger } from './logger.js';
 
 /**
- * BullMQ worker that consumes IOC index jobs from the etip:ioc-indexed queue.
+ * BullMQ worker that consumes IOC index jobs from the etip-ioc-indexed queue.
  *
  * Job payload shape: { iocId, tenantId, action: 'index'|'update'|'delete', payload? }
  */
@@ -18,13 +18,11 @@ export class IocIndexWorker {
     private readonly indexer: IocIndexer,
   ) {
     const connection = parseRedisUrl(redisUrl);
-    // BullMQ 5.x rejects colons in queue names — replace with hyphens (same pattern as ingestion/normalization)
-    const queueName = QUEUES.IOC_INDEX.replace(/:/g, '-');
 
-    this.queue = new Queue(queueName, { connection });
+    this.queue = new Queue(QUEUES.IOC_INDEX, { connection });
 
     this.worker = new Worker(
-      queueName,
+      QUEUES.IOC_INDEX,
       async (job) => {
         await this.processJob(job.data);
       },

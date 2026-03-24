@@ -29,7 +29,7 @@ import {
 } from '@etip/shared-utils';
 
 // Queue names — never hardcode
-const queue = QUEUES.NORMALIZE; // 'etip:normalize'
+const queue = QUEUES.NORMALIZE; // 'etip-normalize'
 
 // Throw structured errors
 throw Errors.notFound('IOC', 'abc-123');

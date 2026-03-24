@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { QUEUES } from '@etip/shared-utils';
 
 export type ServiceStatus = 'healthy' | 'degraded' | 'critical' | 'unknown';
 
@@ -61,11 +62,11 @@ const KNOWN_SERVICES: Array<{ name: string; port: number }> = [
 
 /** Known BullMQ queue names for depth reporting. */
 const KNOWN_QUEUES = [
-  'etip:feed-fetch',
-  'etip:normalize',
-  'etip:enrich-realtime',
-  'etip:graph-sync',
-  'etip:correlate',
+  QUEUES.FEED_FETCH,
+  QUEUES.NORMALIZE,
+  QUEUES.ENRICH_REALTIME,
+  QUEUES.GRAPH_SYNC,
+  QUEUES.CORRELATE,
 ];
 
 /** In-memory service health registry (DECISION-013: no DB for Phase 6). */

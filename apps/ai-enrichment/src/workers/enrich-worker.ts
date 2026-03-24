@@ -16,10 +16,8 @@ export function createEnrichWorker(deps: EnrichWorkerDeps): Worker<EnrichJob, En
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
 
-  const queueName = QUEUES.ENRICH_REALTIME.replace(/:/g, '-');
-
   const worker = new Worker<EnrichJob, EnrichmentResult>(
-    queueName,
+    QUEUES.ENRICH_REALTIME,
     async (job: Job<EnrichJob>) => {
       logger.info(
         { jobId: job.id, iocId: job.data.iocId, iocType: job.data.iocType },

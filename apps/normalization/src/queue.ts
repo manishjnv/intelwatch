@@ -11,9 +11,7 @@ export function createNormalizeQueue(): Queue {
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
 
-  // BullMQ v5.71+ forbids ':' in queue names; use dashes instead
-  const queueName = QUEUES.NORMALIZE.replace(/:/g, '-');
-  _queue = new Queue(queueName, {
+  _queue = new Queue(QUEUES.NORMALIZE, {
     connection: {
       host: url.hostname,
       port: Number(url.port) || 6379,
@@ -44,8 +42,7 @@ export function createEnrichQueue(): Queue {
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
 
-  const queueName = QUEUES.ENRICH_REALTIME.replace(/:/g, '-');
-  _enrichQueue = new Queue(queueName, {
+  _enrichQueue = new Queue(QUEUES.ENRICH_REALTIME, {
     connection: {
       host: url.hostname,
       port: Number(url.port) || 6379,

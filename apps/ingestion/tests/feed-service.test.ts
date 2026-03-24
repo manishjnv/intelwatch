@@ -240,7 +240,7 @@ describe('FeedService.triggerFeed', () => {
     expect(result.jobId).toBe('job-1');
     expect(result.message).toBe('Feed fetch queued');
     expect(queue.add).toHaveBeenCalledWith(
-      'etip:feed-fetch',
+      'etip-feed-fetch',
       expect.objectContaining({ feedId: FEED_ID, tenantId: TENANT_ID }),
       expect.any(Object),
     );
