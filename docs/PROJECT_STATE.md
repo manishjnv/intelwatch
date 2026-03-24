@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 50
+**Session counter:** 51
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -36,8 +36,8 @@
 | Module | Phase | Status | Last Worked | Blockers |
 |--------|-------|--------|-------------|----------|
 | api-gateway | 1 | ✅ Deployed | 2026-03-15 | None |
-| shared-types | 1 | ✅ Deployed | 2026-03-15 | None |
-| shared-utils | 1 | ✅ Deployed | 2026-03-15 | None |
+| shared-types | 1 | ✅ Deployed | 2026-03-24 | None. Queue JSDoc comments updated (colon→dash). |
+| shared-utils | 1 | ✅ Deployed | 2026-03-24 | None. QUEUES constants migrated from colon to dash (RCA #42). |
 | shared-auth | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-cache | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-audit | 1 | ✅ Deployed | 2026-03-15 | None |
@@ -131,9 +131,9 @@ elasticsearch-indexing-service → shared-types, shared-utils, shared-auth, @ela
 ## Work In Progress
 
 - **Current phase:** Phase 7 — ES indexing service deployed (Module 20, port 3020). 29 containers live. 4398 total tests.
-- **Last session outcome:** Session 50 (2026-03-24). ES indexing service deploy wiring: docker-compose.etip.yml service block + deploy.yml build/recreate/health + nginx upstream /api/v1/search (fffc66f). Deploy failed initially: BullMQ v5.71.0 rejects colons in queue names (RCA #42) — fixed by replacing colon with dash in worker.ts (a51d643, ebc7716). Redeployed successfully: etip_es_indexing healthy, esConnected=true, nginx routing 400 (auth enforced). 29 containers running.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass). **BullMQ v5.71.0 colon restriction**: all other services still use `etip:` prefix queue names — will break on next fresh Docker build (cached layers masking issue). Need to migrate all workers to BullMQ prefix option.
-- **Next tasks:** (1) BullMQ colon migration: update all services using `etip:*` queue names to use BullMQ prefix option (prevents cascading failure on fresh Docker builds). (2) Reporting service (Module 21, port 3021) — Phase 7 item 2.
+- **Last session outcome:** Session 51 (2026-03-24). BullMQ colon migration: all 13 QUEUES constants changed from `etip:*` to `etip-*` at source (shared-utils/queues.ts). Removed `.replace(/:/g, '-')` workarounds from 6 services. Fixed hardcoded queue names in admin-service + integration-service (→ QUEUES imports). 19 files changed, 4398 tests pass. Deploy optimization (DECISION-026): all 19 backend services share one Docker image (`etip-backend:latest`), parallel health checks. deploy.yml 456→252 lines. Deploy time: 13min→1.5min. Commits: 1d00e99 (BullMQ fix), 066101e (deploy optimization), 3714b5a (docs). CI runs: 23472857601 + 23473599143 both green.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass). Pre-existing shared-auth bcrypt test timeout (flaky, not related to queue changes).
+- **Next tasks:** (1) Reporting service (Module 21, port 3021) — Phase 7 item 2. Core + P0 improvements. Prompt ready.
 
 ## Deployment Log
 
@@ -181,6 +181,7 @@ elasticsearch-indexing-service → shared-types, shared-utils, shared-auth, @ela
 | 48 | 2026-03-24 | etip_frontend updated (D3 bundle split) | ✅ CI green | e7587e3→2ece933 (5 commits) | D3 code-split (ThreatGraphPage + RelationshipGraph lazy-loaded, DECISION-025). Elasticsearch IOC Indexing Service Module 20 scaffolded (57 tests). Known Gaps P1: actor/malware detail panels + IOC campaign badge (+30 tests, 530 frontend total). CI fixes: Dockerfile COPY, TS implicit-any, orphaned containers (RCA #41). 4398 total tests. ES service NOT yet in docker-compose. |
 | 49 | 2026-03-24 | etip_frontend updated (demo fallbacks + client sort/filter) | ✅ CI green | 2ef750f→9b355bc (4 commits) | Demo fallbacks for Actor/Malware/Vuln (all 5 entity pages). ES service wired into docker-compose+nginx (fffc66f) then removed from active deploy.yml (9b355bc) because Elasticsearch not provisioned on VPS. Client-side sort/filter added to actor/malware/vuln pages in demo mode. 4398 total tests. |
 | 50 | 2026-03-24 | etip_es_indexing added (port 3020), etip_nginx updated | ✅ All 29 healthy | fffc66f→ebc7716 (6 commits) | ES indexing service deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42: BullMQ v5.71.0 colon restriction — fixed with dash replacement. Health verified: esConnected=true, queueDepth=0. 29 containers running. |
+| 51 | 2026-03-24 | All 29 containers redeployed (BullMQ queue name migration + deploy optimization) | ✅ All 29 healthy | 1d00e99, 066101e, 3714b5a | BullMQ colon→dash migration (19 files). Deploy pipeline: 2 builds instead of 20, parallel health checks. Deploy time: 13min→1.5min. DECISION-026. |
 
 ## E2E Verification Results (Session 13)
 

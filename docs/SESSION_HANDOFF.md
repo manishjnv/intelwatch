@@ -1,88 +1,71 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-03-24
-**Session:** 50
-**Session Summary:** Elasticsearch IOC Indexing Service (Module 20, port 3020) deploy wiring + deployed to VPS. RCA #42: BullMQ v5.71.0 colon restriction fixed.
+**Session:** 51
+**Session Summary:** BullMQ colon→dash migration across all services (RCA #42 complete). Deploy pipeline optimized from 13min to 1.5min (DECISION-026).
 
----
-
-## ✅ Changes Made
-
+## Changes Made
 | Commit | Files | Description |
 |--------|-------|-------------|
-| fffc66f | 3 | Wire ES indexing service: docker-compose.etip.yml service block + deploy.yml build/recreate/health + nginx upstream /api/v1/search |
-| f8114d4 | 2 | Remove ES indexing upstream from nginx config + add etip_customization to deploy |
-| 9b355bc | 1 | Remove ES indexing from deploy until ES provisioned |
-| 9b89eb5 | 4 | Session 49 end docs |
-| a51d643 | 2 | Fix BullMQ colon restriction: replace colon with dash in queue name (RCA #42) |
-| ebc7716 | 1 | Update worker test to expect etip-ioc-indexed |
+| 1d00e99 | 19 | fix: migrate all BullMQ queue names from colon to dash (RCA #42). All 13 QUEUES constants in shared-utils changed. Removed .replace() workarounds from 6 services. Fixed hardcoded strings in admin-service + integration-service. |
+| 066101e | 2 | chore: optimize deploy — 2 builds instead of 20, parallel health checks. docker-compose image tags + deploy.yml rewrite. |
+| 3714b5a | 2 | docs: DECISION-026 deploy optimization + session 51 RCA notes |
 
----
+## Files / Documents Affected
 
-## 📁 Files / Documents Affected
-
-**Modified files:**
+### Modified Files (19 — BullMQ migration)
 | File | Change |
 |------|--------|
-| docker-compose.etip.yml | Added etip_es_indexing service block (port 3020, depends on redis+elasticsearch) + nginx depends_on |
-| .github/workflows/deploy.yml | Added build + recreate + health check steps for etip_es_indexing |
-| docker/nginx/conf.d/default.conf | Added upstream etip_es_indexing_backend + location /api/v1/search |
-| apps/elasticsearch-indexing-service/src/worker.ts | BullMQ colon fix: queue name dash instead of colon (user commit) |
-| apps/elasticsearch-indexing-service/tests/worker.test.ts | Updated test expectations for dash queue name (user commit) |
+| packages/shared-utils/src/queues.ts | 13 constants: `etip:` → `etip-` |
+| packages/shared-utils/tests/constants-errors.test.ts | Test assertions updated |
+| packages/shared-types/src/queue.ts | 12 JSDoc comments updated |
+| packages/shared-utils/README.md | Example comment updated |
+| apps/ingestion/src/queue.ts | Removed .replace() workaround |
+| apps/ingestion/src/workers/feed-fetch.ts | Removed 2x .replace() workarounds |
+| apps/ingestion/tests/scheduler.test.ts | Job name assertion updated |
+| apps/ingestion/tests/feed-service.test.ts | Job name assertion updated |
+| apps/normalization/src/queue.ts | Removed 2x .replace() workarounds |
+| apps/normalization/src/workers/normalize-worker.ts | Removed .replace() workaround |
+| apps/ai-enrichment/src/queue.ts | Removed .replace() workaround |
+| apps/ai-enrichment/src/workers/enrich-worker.ts | Removed .replace() workaround |
+| apps/threat-graph/src/queue.ts | Removed 2x .replace() workarounds |
+| apps/correlation-engine/src/workers/correlate.ts | Removed 2x .replace() workarounds |
+| apps/elasticsearch-indexing-service/src/worker.ts | Removed .replace() workaround |
+| apps/admin-service/src/services/health-store.ts | Hardcoded strings → QUEUES import |
+| apps/integration-service/src/services/event-router.ts | Hardcoded strings → QUEUES import |
+| apps/integration-service/README.md | Docs updated |
+| docs/DEPLOYMENT_RCA.md | RCA #42 migration note + session 51 deploy note |
 
----
+### Modified Files (2 — Deploy optimization)
+| File | Change |
+|------|--------|
+| docker-compose.etip.yml | Added `image: etip-backend/frontend:latest` to all 20 services |
+| .github/workflows/deploy.yml | 2 builds + parallel health checks (456→252 lines) |
 
-## 🔧 Decisions & Rationale
+## Decisions & Rationale
+- **DECISION-026**: Single Docker image for all backend services. All 19 share the same Dockerfile → build once, tag as `etip-backend:latest`, reuse everywhere. Deploy 13min→1.5min.
 
-No new DECISION entries. Deploy wiring followed established patterns from onboarding/billing/admin services.
+## E2E / Deploy Verification Results
+- CI run 23472857601 (BullMQ migration): test ✅, deploy ✅, all 29 containers healthy
+- CI run 23473599143 (deploy optimization): test ✅, deploy ✅ in **1min 39sec** (was 13min 22sec)
+- No E2E pipeline test run this session (no data flow changes)
 
-**RCA #42:** BullMQ v5.71.0 added validation rejecting colons in queue names. All `etip:*` queue names break on fresh Docker builds. ES service was first to hit this because it was built fresh. Fix: replace colon with dash in worker.ts. Other services still use colons (masked by cached Docker layers).
+## Open Items / Next Steps
 
----
+### Immediate
+1. **Reporting Service (Module 21, port 3021)** — Phase 7 item 2. Prompt ready.
 
-## 🧪 E2E / Deploy Verification Results
+### Deferred
+- Demo fallback code should be gated by VITE_DEMO_MODE env var (before production users)
+- Razorpay keys need real values in VPS .env (before billing goes live)
+- Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui (cosmetic, tests pass)
+- Pre-existing shared-auth bcrypt test timeout (flaky on Windows, passes in CI)
 
-```
-CI Run: 23466658673 — Test + Deploy both green
-Container: etip_es_indexing — Up 4 minutes (healthy)
-Health: {"status":"ok","service":"elasticsearch-indexing-service","esConnected":true,"queueDepth":0}
-Nginx route: /api/v1/search/iocs → 400 (auth enforced, service reachable)
-Total containers: 29 (28 prior + etip_es_indexing)
-```
-
----
-
-## ⚠️ Open Items / Next Steps
-
-**Immediate (next session):**
-1. BullMQ colon migration: update ALL services using `etip:*` queue names to use BullMQ prefix option or dash replacement — prevents cascading failure on next fresh Docker build
-2. Reporting service (Module 21, port 3021) — Phase 7 item 2
-
-**Deferred:**
-- VITE_DEMO_MODE gating for demo fallback code — pre-launch task
-- Razorpay real keys in VPS .env — before billing goes live
-- VulnerabilityListPage.tsx + shared-ui PageStatsBarProps pre-existing TS warnings (cosmetic)
-
----
-
-## 🔁 How to Resume
-
-Paste this prompt:
-
+## How to Resume
 ```
 /session-start
-Working on: BullMQ colon migration (all services) OR Reporting service (Module 21, port 3021)
-Scope: depends on chosen task
 ```
+Then paste the Reporting Service prompt (Module 21, port 3021, Core + P0).
 
-### Module map (all 29 built / 29 deployed)
-Phase 1: api-gateway, shared-* (6 pkgs), user-service
-Phase 2: ingestion (3004), normalization (3005), ai-enrichment (3006)
-Phase 3: ioc-intelligence (3007), threat-actor (3008), malware (3009), vuln-intel (3010)
-Phase 4: drp (3011), threat-graph (3012), correlation (3013), hunting (3014)
-Phase 5: integration (3015), user-mgmt (3016), customization (3017)
-Phase 6: onboarding (3018), billing (3019), admin-ops (3022)
-Phase 7: elasticsearch-indexing (3020) — DEPLOYED
-Frontend: 16 pages, 530 tests. D3 code-split done.
-
-### Phase roadmap
-Phase 7 (current): ES indexing DONE → BullMQ colon migration → Reporting (3021) → API docs → launch prep
+**Phase roadmap:**
+- Phase 7: ES Indexing ✅ → **Reporting (next)** → Alerting → Dashboard Analytics
+- All 6 prior phases complete and deployed (29 containers)
