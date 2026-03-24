@@ -3,11 +3,10 @@
  * @description Cross-service data aggregator. Calls other ETIP service APIs
  * in parallel to build dashboard widget data. Uses AnalyticsStore cache.
  */
-import { AppError } from '@etip/shared-utils';
 import { getLogger } from '../logger.js';
 import { AnalyticsStore } from './analytics-store.js';
 import { TrendCalculator } from './trend-calculator.js';
-import { WIDGET_REGISTRY, type WidgetDefinition } from './widget-registry.js';
+import { WIDGET_REGISTRY } from './widget-registry.js';
 
 /** Service endpoint configuration. */
 export interface ServiceEndpoints {

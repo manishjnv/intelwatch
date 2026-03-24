@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { AppError } from '@etip/shared-utils';
 import type { Aggregator } from '../services/aggregator.js';
-import { getWidget, WIDGET_REGISTRY, type WidgetCategory } from '../services/widget-registry.js';
+import { getWidget, WIDGET_REGISTRY } from '../services/widget-registry.js';
 
 export interface DashboardRouteDeps {
   aggregator: Aggregator;

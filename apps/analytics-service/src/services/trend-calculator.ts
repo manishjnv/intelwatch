@@ -57,8 +57,10 @@ export class TrendCalculator {
       value: s.value,
     }));
 
-    const currentValue = filtered[filtered.length - 1].value;
-    const previousValue = filtered.length > 1 ? filtered[0].value : currentValue;
+    const last = filtered[filtered.length - 1]!;
+    const first = filtered[0]!;
+    const currentValue = last.value;
+    const previousValue = filtered.length > 1 ? first.value : currentValue;
     const delta = currentValue - previousValue;
     const deltaPercent = previousValue !== 0 ? (delta / previousValue) * 100 : 0;
 
