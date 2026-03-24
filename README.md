@@ -34,10 +34,10 @@
 | Onboarding Service (8-step wizard, connectors, health checks, 32 endpoints) | ✅ Deployed | 190 |
 | Billing Service (plan management, Razorpay, usage metering, GST invoices, 28 endpoints) | ✅ Built | 149 |
 | Admin Ops Service (system health, maintenance, backup/restore, tenant admin, audit, 28 endpoints) | ✅ Built | 147 |
-| Infrastructure (27 Docker containers) | ✅ All healthy | — |
+| Infrastructure (29 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | 🔨 Phase 7 scaffolded | 57 |
+| Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | ✅ Deployed | 57 |
 | **Phase 7 started — Elasticsearch indexing scaffolded** | **29/29 modules** | **4398** |
 
 ## Live API Endpoints

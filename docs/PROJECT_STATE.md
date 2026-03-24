@@ -1,14 +1,14 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 49
+**Session counter:** 50
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
 | etip_frontend | ✅ Running | 0.3.8 | 2026-03-24 | Dashboard + 16 data pages + demo fallbacks (all 5 entity types). All phases complete. Phase 6: Billing (pricing v3) + Admin Ops + Onboarding. 530 frontend tests (532 total, 2 skipped). **Known Gaps P1 COMPLETE: Actor detail panel (MITRE ATT&CK + linked IOCs), Malware detail panel (capabilities + linked IOCs), IOC campaign badge column.** D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB split). Demo fallbacks: IOC, Feed, Actor, Malware, Vulnerability all covered. |
-| etip_es_indexing | 📋 Not deployed | 0.1.0 | — | Port 3020. Module 20. Elasticsearch IOC indexing. Scaffolded + 57 tests. Needs docker-compose + deploy.yml + nginx before VPS deploy. |
-| etip_nginx | ✅ Running | - | 2026-03-23 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011). |
+| etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
+| etip_nginx | ✅ Running | - | 2026-03-24 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
 | etip_ingestion | ✅ Running | 0.1.0 | 2026-03-21 | Feed pipeline + 11 modules |
@@ -46,7 +46,7 @@
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **16 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, **Onboarding**). 19 viz components. 530 tests (532 total, 2 skipped). Phase 6 pages COMPLETE. **Known Gaps P1 COMPLETE**: Actor detail panel (MITRE ATT&CK + linked IOCs), Malware detail panel (capabilities + linked IOCs), IOC campaign badge column. D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB out of main bundle). Existing pages FROZEN. |
-| elasticsearch-indexing-service | 7 | 🔨 WIP | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip:ioc-indexed), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. NOT yet in docker-compose or deploy.yml. |
+| elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
@@ -130,10 +130,10 @@ elasticsearch-indexing-service → shared-types, shared-utils, shared-auth, @ela
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 — ES service wired into docker-compose + nginx; blocked on Elasticsearch container provisioning. 4398 total tests.
-- **Last session outcome:** Session 49 (2026-03-24). (1) Demo fallbacks for Actor/Malware/Vulnerability pages (all 5 entity types covered, 2ef750f). (2) ES service wired into docker-compose.etip.yml + deploy.yml + nginx (fffc66f). (3) Client-side sort/filter for actor/malware/vuln pages in demo mode — matching IocListPage/FeedListPage pattern (ca11e86, 3 pages). (4) Removed etip_es_indexing from active deploy.yml build/up because Elasticsearch container not provisioned on VPS — CI would fail health check (9b355bc). 530 frontend tests, 4398 total.
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass). **Elasticsearch container NOT provisioned on VPS — etip_es_indexing removed from deploy.yml until ES is set up.**
-- **Next tasks:** (1) Provision Elasticsearch on VPS (add etip_elasticsearch to docker-compose, re-add etip_es_indexing to deploy.yml, verify health). (2) Reporting service (Module 21, port 3021) — Phase 7 item 2.
+- **Current phase:** Phase 7 — ES indexing service deployed (Module 20, port 3020). 29 containers live. 4398 total tests.
+- **Last session outcome:** Session 50 (2026-03-24). ES indexing service deploy wiring: docker-compose.etip.yml service block + deploy.yml build/recreate/health + nginx upstream /api/v1/search (fffc66f). Deploy failed initially: BullMQ v5.71.0 rejects colons in queue names (RCA #42) — fixed by replacing colon with dash in worker.ts (a51d643, ebc7716). Redeployed successfully: etip_es_indexing healthy, esConnected=true, nginx routing 400 (auth enforced). 29 containers running.
+- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass). **BullMQ v5.71.0 colon restriction**: all other services still use `etip:` prefix queue names — will break on next fresh Docker build (cached layers masking issue). Need to migrate all workers to BullMQ prefix option.
+- **Next tasks:** (1) BullMQ colon migration: update all services using `etip:*` queue names to use BullMQ prefix option (prevents cascading failure on fresh Docker builds). (2) Reporting service (Module 21, port 3021) — Phase 7 item 2.
 
 ## Deployment Log
 
@@ -180,6 +180,7 @@ elasticsearch-indexing-service → shared-types, shared-utils, shared-auth, @ela
 | 47 | 2026-03-24 | No deploy (docs only) | — | eaea286 | QA_CHECKLIST full rewrite (session 23→46). Prompts prepared for D3 code-split + Known Gaps P1. |
 | 48 | 2026-03-24 | etip_frontend updated (D3 bundle split) | ✅ CI green | e7587e3→2ece933 (5 commits) | D3 code-split (ThreatGraphPage + RelationshipGraph lazy-loaded, DECISION-025). Elasticsearch IOC Indexing Service Module 20 scaffolded (57 tests). Known Gaps P1: actor/malware detail panels + IOC campaign badge (+30 tests, 530 frontend total). CI fixes: Dockerfile COPY, TS implicit-any, orphaned containers (RCA #41). 4398 total tests. ES service NOT yet in docker-compose. |
 | 49 | 2026-03-24 | etip_frontend updated (demo fallbacks + client sort/filter) | ✅ CI green | 2ef750f→9b355bc (4 commits) | Demo fallbacks for Actor/Malware/Vuln (all 5 entity pages). ES service wired into docker-compose+nginx (fffc66f) then removed from active deploy.yml (9b355bc) because Elasticsearch not provisioned on VPS. Client-side sort/filter added to actor/malware/vuln pages in demo mode. 4398 total tests. |
+| 50 | 2026-03-24 | etip_es_indexing added (port 3020), etip_nginx updated | ✅ All 29 healthy | fffc66f→ebc7716 (6 commits) | ES indexing service deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42: BullMQ v5.71.0 colon restriction — fixed with dash replacement. Health verified: esConnected=true, queueDepth=0. 29 containers running. |
 
 ## E2E Verification Results (Session 13)
 
@@ -194,7 +195,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 20 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 29 containers), 96GB disk (26% used)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel

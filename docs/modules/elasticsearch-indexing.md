@@ -1,5 +1,5 @@
 # Module 20: Elasticsearch IOC Indexing Service
-**Port:** 3020 | **Phase:** 7 | **Status:** 🔨 Scaffolded (not yet deployed) | **Tests:** 57
+**Port:** 3020 | **Phase:** 7 | **Status:** ✅ Deployed | **Tests:** 57
 
 ## Overview
 BullMQ worker consumes `etip:ioc-indexed` events from normalization pipeline and indexes IOC documents into Elasticsearch using per-tenant index pattern `etip_{tenantId}_iocs`. Provides full-text + faceted search, aggregations, and reindex capabilities.
@@ -39,9 +39,11 @@ BullMQ worker consumes `etip:ioc-indexed` events from normalization pipeline and
 |-------|----------|----------------|
 | etip:ioc-indexed | QUEUES.IOC_INDEX | index / update / delete actions from normalization |
 
-## Deploy Checklist (PENDING)
-- [ ] Add service block to docker-compose.etip.yml (port 3020, depends on elasticsearch + redis)
-- [ ] Add build + recreate + health check steps to .github/workflows/deploy.yml
-- [ ] Add nginx upstream etip_es_indexing_backend + location /api/v1/search
-- [ ] Add COPY apps/elasticsearch-indexing-service/package.json to Dockerfile deps stage
-- [ ] Verify TI_ES_URL and TI_REDIS_URL set in VPS .env
+## Deploy Checklist (COMPLETE — Session 50)
+
+- [x] Add service block to docker-compose.etip.yml (port 3020, depends on elasticsearch + redis)
+- [x] Add build + recreate + health check steps to .github/workflows/deploy.yml
+- [x] Add nginx upstream etip_es_indexing_backend + location /api/v1/search
+- [x] Add COPY apps/elasticsearch-indexing-service/package.json to Dockerfile deps stage
+- [x] Verify TI_ES_URL and TI_REDIS_URL set in VPS .env
+- [x] RCA #42: BullMQ colon restriction fixed (dash replacement)

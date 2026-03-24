@@ -618,8 +618,17 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 
 **Session 49:** Demo fallbacks for Actor/Malware/Vuln (all 5 entity pages). ES service wired into docker-compose+nginx (fffc66f) then removed from active deploy.yml (9b355bc) because Elasticsearch container not provisioned on VPS — would fail health check and block nginx. Client-side sort/filter added to actor/malware/vuln pages (ca11e86). 4 commits. No new RCA issues. CI green.
 
+**Session 50:** ES indexing service (Module 20, port 3020) deployed. Deploy wiring: docker-compose + deploy.yml + nginx /api/v1/search (fffc66f). Initial deploy failed: **RCA #42** — BullMQ v5.71.0 colon restriction. Fixed (a51d643, ebc7716). Redeployed successfully. 29 containers healthy. CI run 23466658673 green.
+
 ### Issue 41: Docker --force-recreate fails — orphaned containers with hash-prefix names conflict
 **Error**: `Error when allocating new name: Conflict. The container name "/etip_correlation" is already in use by container "0e6346cbce23..."` during `docker compose up -d --force-recreate`
 **Root Cause**: Old deploy runs without `-p etip` flag created containers named `0e6346cbce23_etip_correlation` (hash-prefixed). These orphaned containers block recreate because Docker considers the name `etip_correlation` already in use when docker compose tries to rename the orphan.
 **Fix**: Added pre-cleanup step in deploy.yml: `docker ps -a --format "{{.Names}}" | grep "_etip_" | xargs -r docker rm -f || true`. Also added `--remove-orphans` flag to `docker compose up` to prevent future orphan accumulation.
 **Prevention**: **RULE**: Always include `--remove-orphans` in `docker compose up` commands. Add a pre-cleanup step in deploy scripts to remove containers matching the old hash-prefix pattern before force-recreate.
+
+### Issue 42: BullMQ v5.71.0 rejects colons in queue names — etip_es_indexing crash loop
+**Error**: `Failed to start elasticsearch-indexing-service: Error: Queue name cannot contain :` — container enters crash loop, blocks nginx (depends_on: service_healthy).
+**Root Cause**: BullMQ 5.71.0 added validation in `QueueBase` constructor rejecting `:` in queue names. The canonical queue name `etip:ioc-indexed` (from `QUEUES.IOC_INDEX`) contains a colon. Existing services were unaffected because their Docker image layers cache an older BullMQ version. The ES service was built fresh, pulling the latest 5.71.0.
+**Fix**: Replaced colon with dash in worker.ts: `etip:ioc-indexed` → `etip-ioc-indexed`. Updated test expectations.
+**Commit**: `a51d643`, `ebc7716`
+**Prevention**: **RULE**: BullMQ queue names must NOT contain colons. All other services still use `etip:` prefix queue names — they will break on next fresh Docker build (e.g., lockfile update or --no-cache). **URGENT**: Migrate all workers to dash-based queue names or BullMQ `prefix` option before any fresh build. Affected files: ingestion/queue.ts, normalization/queue.ts, enrichment/queue.ts, threat-graph/queue.ts, correlation-engine/workers/correlate.ts, integration-service/services/event-router.ts.
