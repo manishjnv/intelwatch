@@ -10,7 +10,7 @@ import {
   type DashboardPreferenceInput,
   type DataSourceRecord,
 } from '../schemas/onboarding.js';
-import type Redis from 'ioredis';
+import type { Redis } from 'ioredis';
 
 const KEY_PREFIX = 'etip:';
 const KEY_SUFFIX = ':wizard';

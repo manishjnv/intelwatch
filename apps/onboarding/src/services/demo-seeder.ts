@@ -113,7 +113,7 @@ export class DemoSeeder {
     return this.seedResults.get(tenantId) ?? null;
   }
 
-  getAvailableDemoData(): { iocs: number; actors: number; malware: number; vulnerabilities: number; alerts: number } {
+  getAvailableDemoData(): { iocs: number; actors: number; malware: number; vulnerabilities: number; feeds: number; alerts: number } {
     return { iocs: DEMO_IOCS.length, actors: DEMO_ACTORS.length, malware: DEMO_MALWARE.length, vulnerabilities: DEMO_VULNS.length, feeds: DEFAULT_FEEDS.length, alerts: 0 };
   }
 

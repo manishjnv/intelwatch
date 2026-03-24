@@ -13,7 +13,7 @@ import { ServiceClient } from './services/service-client.js';
 import { IntegrationTester } from './services/integration-tester.js';
 import { ChecklistPersistence } from './services/checklist-persistence.js';
 import { WelcomeDashboardService } from './services/welcome-dashboard.js';
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 
 async function main(): Promise<void> {
   // 1. Config + Logger

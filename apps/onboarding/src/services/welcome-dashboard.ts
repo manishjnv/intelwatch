@@ -140,10 +140,10 @@ export class WelcomeDashboardService {
 
   /** Get quick actions with tenant-specific completion state. */
   getQuickActions(
-    tenantId: string,
-    stats?: { feedsActive: number; teamMembers: number; modulesEnabled: number },
+    _tenantId: string,
+    stats: { feedsActive: number; teamMembers: number; modulesEnabled: number },
   ): QuickAction[] {
-    const s = stats ?? this.progressTracker.getStats(tenantId);
+    const s = stats;
     return QUICK_ACTIONS.map((action) => {
       let completed = false;
       if (action.id === 'add_feed') completed = s.feedsActive > 0;
