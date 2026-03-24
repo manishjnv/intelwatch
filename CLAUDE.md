@@ -16,6 +16,16 @@ Tech: Node 20, Fastify 4, Prisma 5, React 18, TypeScript strict, Zod validation.
 Read docs/PROJECT_STATE.md FIRST — it has what's deployed, WIP, and stable.
 NEVER assume module status. Always verify from PROJECT_STATE.md.
 
+## Architecture Reference Docs
+
+For pipeline wiring, cross-service integration, or architectural decisions:
+
+- `docs/architecture/ETIP_Architecture_Blueprint_v4.html` — full system architecture, module inventory, data flow diagrams
+- `docs/architecture/CTI-Pipeline-Architecture-v2.0.html` — CTI pipeline design, BullMQ queue chain, event flow
+- `docs/ETIP_Project_Stats.html` — live project stats + E2E integration plan (12 sessions)
+
+Read these BEFORE any cross-service or pipeline work.
+
 ## Decisions
 Read docs/DECISIONS_LOG.md before proposing architectural alternatives.
 If you want to suggest a different approach, check if it was already rejected.
