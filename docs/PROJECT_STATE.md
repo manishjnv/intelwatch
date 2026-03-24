@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 56
+**Session counter:** 57
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.5.0 | 2026-03-24 | Dashboard + 18 data pages + demo fallbacks (all 5 entity types + reporting + alerting). Phase 7: AlertingPage (4 tabs: Rules/Alerts/Channels/Escalations). 624 frontend tests (626 total, 2 skipped). D3 code-split. Demo fallbacks: IOC, Feed, Actor, Malware, Vulnerability, Reporting, Alerting all covered. |
+| etip_frontend | ✅ Running | 0.6.0 | 2026-03-24 | Dashboard + 18 data pages + demo fallbacks (all 5 entity types + reporting + alerting). Phase 7: AlertingPage. 633 frontend tests (635 total, 2 skipped). Feed retry wired, graph expand wired. D3 code-split. |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-24 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -25,7 +25,7 @@
 | etip_integration | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. |
 | etip_user_management | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. |
 | etip_customization | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3017. 35 endpoints, 159 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. |
-| etip_onboarding | ✅ Deployed | 0.1.0 | 2026-03-23 | Port 3018. 32 endpoints, 190 tests. Setup wizard, data source connectors, pipeline health, module readiness, progress tracker. Added to deploy.yml + nginx + docker-compose. |
+| etip_onboarding | ✅ Deployed | 0.2.0 | 2026-03-24 | Port 3018. 32 endpoints, 230 tests. Setup wizard (Redis-backed), demo seeder (real API calls + 4 OSINT feeds), data source connectors, pipeline health, module readiness, progress tracker. |
 | etip_billing | ✅ Deployed | 0.1.0 | 2026-03-23 | Port 3019. 28 endpoints, 149 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. Added to deploy.yml + docker-compose. |
 | etip_admin | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3022. 28 endpoints, 147 tests. System health monitoring, maintenance windows, backup/restore, tenant administration, audit dashboard + 5 P0 improvements. |
 | etip_reporting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3021. Module 21. 20 endpoints, 199 tests. 5 report types (daily/weekly/monthly/custom/executive), BullMQ worker (etip-report-generate), cron scheduling, template engine (JSON/HTML/PDF). |
@@ -48,7 +48,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **18 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, Onboarding, Reporting, **Alerting**). 19 viz components. 624 tests (626 total, 2 skipped). Phase 7: AlertingPage (4 tabs: Rules/Alerts/Channels/Escalations, search, filters, bulk actions, history drawer, channel modal). D3 code-split. Existing pages FROZEN. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **18 data pages**. 19 viz components. 633 tests (635 total, 2 skipped). E2E C1: feed retry button wired (useRetryFeed → POST /feeds/:id/trigger), graph expand wired (useNodeNeighbors merges neighbors into graph). D3 code-split. Existing pages FROZEN (wiring-only changes). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
@@ -64,7 +64,7 @@
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
 | customization | 5 | ✅ Complete | 2026-03-23 | Port 3017. **Core + 5 P0 improvements COMPLETE**. 35 endpoints, 159 tests. Module toggles (per-tenant enable/disable, feature flags). AI model selection (Claude model per task, token budget/cost limits). Risk score weight customization (composite confidence weights, decay rate overrides). Dashboard customization (widget layout, default filters/time ranges). Notification preferences (per-user alert channels, severity thresholds). P0: config inheritance, versioning, validation engine, import/export, audit trail. FEATURE-COMPLETE. **Phase 5 COMPLETE (3/3).** |
-| onboarding | 6 | ✅ Deployed | 2026-03-23 | Port 3018. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 190 tests. 8-step wizard (welcome → org → team → feeds → integrations → dashboard → readiness → launch). Data source connectors (8 types). Pipeline health checker. Module readiness with dependency validation. Progress tracker with readiness scoring. P0: prerequisite validation, demo data seeding (150 IOCs, 10 actors, 20 malware, 50 CVEs), integration testing (DNS→TCP→auth→data), checklist persistence, welcome dashboard with guided tips. Phase 6: 1/3. |
+| onboarding | 6 | ✅ Deployed | 2026-03-24 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 230 tests. 8-step wizard (Redis-backed, etip:{tenantId}:wizard key, 7-day TTL). Demo seeder makes real API calls to 5 downstream services + seeds 4 OSINT feeds via ingestion service. ioredis dependency added. Phase 6: 1/3. |
 | billing | 6 | ✅ Complete | 2026-03-23 | Port 3019. 28 endpoints, 5 P0 improvements, 149 tests. Plan management (Free/Starter/Pro/Enterprise), usage metering (80/90/100% alerts), Razorpay subscriptions/webhooks, GST invoices (18%), upgrade/downgrade with 72hr grace, coupon codes. FEATURE-COMPLETE. |
 | admin-ops | 6 | ✅ Complete | 2026-03-23 | Port 3022. **Core + 5 P0 improvements COMPLETE**. 28 endpoints, 147 tests. System health (18 services), maintenance windows (CRUD + activate/deactivate), backup/restore, tenant admin (CRUD + suspend/reinstate/plan/usage), audit log (CSV export). P0: dependency map, alert rules (seeded 5 defaults), scheduled maintenance (cron), tenant analytics, admin activity log. FEATURE-COMPLETE. **Phase 6 COMPLETE (3/3).** |
 | reporting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3021. **Core + 10 P0 improvements COMPLETE**. 25 endpoints, 217 tests. 5 report types (daily/weekly/monthly/custom/executive). 4 formats (JSON/HTML/CSV/PDF). BullMQ worker (etip-report-generate). Cron scheduling (node-cron). Template engine. In-memory stores (DECISION-013). P0 batch 1: data aggregation, template engine, schedule persistence, report versioning, export validation. P0 batch 2: retention cron, CSV export, report cloning, bulk ops, period comparison. FEATURE-COMPLETE. |
@@ -97,7 +97,7 @@ drp-service           → shared-types, shared-utils, shared-auth (Phase 4)
 integration-service   → shared-types, shared-utils, shared-auth, bullmq (Phase 5)
 user-management       → shared-types, shared-utils, shared-auth (Phase 5)
 customization         → shared-types, shared-utils, shared-auth (Phase 5)
-onboarding            → shared-types, shared-utils, shared-auth (Phase 6)
+onboarding            → shared-types, shared-utils, shared-auth, ioredis (Phase 6)
 billing-service       → shared-types, shared-utils, shared-auth, razorpay (Phase 6)
 admin-service         → shared-types, shared-utils, shared-auth (Phase 6)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
@@ -139,10 +139,10 @@ analytics-service    → shared-types, shared-utils, shared-auth (Phase 7)
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 — All 4 Phase 7 modules deployed (ES Indexing, Reporting, Alerting, Analytics). 32 containers live. ~5098 total tests. **E2E Integration Plan approved** (12 sessions to wire pipeline 33%→100%, real seeding, UI actions).
-- **Last session outcome:** Session 56 (2026-03-24). Alerting Service built from scratch (Module 23, port 3023, 35 endpoints, 306 tests, 10 P0+P1 improvements). Deploy wiring (Dockerfile, compose, nginx, tsconfig). CI fix for TS strict errors. Deep frontend audit: pipeline 33% wired, 5 broken UI buttons, demo seeder is stub. E2E Integration Plan created (12 sessions, 55 files, 96 tests). ETIP_Project_Stats.html updated with plan. Architecture refs added to CLAUDE.md. session-end updated to 12 steps. Commits: 2d93dc4, ef475a8, 079458b, 82807a2, 6c0d5e4, c3f2870, 17e14cf.
-- **Known issues:** Pipeline only 33% wired (Ingest→Normalize→Enrich works, 5 downstream queues disconnected). Demo seeder is stub (returns counts, no API calls). 5 UI buttons cosmetic (feed retry, graph expand, correlation investigate/ticket/hunt). Plus prior known issues: Razorpay keys, VPS SSH, analytics aggregator empty data, billing priceInr mismatch.
-- **Next tasks:** **E2E Integration Plan Session A1** — wire ai-enrichment downstream enqueues to GRAPH_SYNC + IOC_INDEX + CORRELATE. Pipeline 33%→67%. See plan: `C:\Users\manis\.claude\plans\warm-plotting-flask.md`.
+- **Current phase:** E2E Integration Plan — Sessions B2+C1 complete. Pipeline 100% wired (A1-A3 done in prior commits). Onboarding seeder makes real API calls + seeds 4 OSINT feeds. Feed retry + graph expand UI wired. 32 containers live.
+- **Last session outcome:** Session 57 (2026-03-24). Two E2E tasks: **B2** (onboarding: default feed seeding via ingestion API + wizard Redis persistence with ioredis) and **C1** (frontend: wire feed retry button + graph expand action). Onboarding: 230 tests (40 new), WizardStore now async/Redis-backed. Frontend: 633 tests (9 new). Commits: e78239f (caching-service+pipeline), 065097f-794b3eb (onboarding fixes), 4eda8d3 (C1 frontend).
+- **Known issues:** 3 UI buttons still cosmetic (correlation investigate/ticket/hunt — planned C2). Prior known issues: Razorpay keys, VPS SSH, analytics aggregator empty data, billing priceInr mismatch.
+- **Next tasks:** **E2E Integration Plan Session C2** — Wire remaining 3 correlation UI buttons (investigate→modal, ticket→POST, hunt→navigate). Then **D1**: missing frontend pages (SearchPage, AnalyticsPage).
 
 ## Deployment Log
 
@@ -196,6 +196,7 @@ analytics-service    → shared-types, shared-utils, shared-auth (Phase 7)
 | 54 | 2026-03-24 | etip_frontend updated | ✅ CI green | 673dd72 | ReportingPage frontend: 3 tabs (Reports/Schedules/Templates), modals, bulk ops, compare, demo fallback. 44 new tests (574 frontend total). Route /reporting + module config + IconReporting. 4659 monorepo tests. |
 | 55 | 2026-03-24 | etip_frontend updated (AlertingPage) | ✅ CI green | 371b71c, 7d340d4 | AlertingPage frontend: 4 tabs (Rules/Alerts/Channels/Escalations), search, filters, bulk ack/resolve, history drawer, channel modal. 50 new tests (624 frontend). Route /alerting + IconAlerting. 18 data pages. |
 | 55 | 2026-03-24 | etip_analytics added (port 3024) | ✅ All 32 healthy | 14b7420, daa24ef | Analytics Service (Module 24): 12 endpoints, 83 tests, 5 P0 improvements. Dashboard aggregation, trends, executive summary, service health. 32 containers. ~5098 monorepo tests. |
+| 57 | 2026-03-24 | etip_onboarding + etip_frontend updated | ✅ Pushed | e78239f→4eda8d3 | E2E B2: onboarding feed seeding + Redis wizard. E2E C1: feed retry + graph expand. 230 onboarding tests, 633 frontend tests. |
 
 ## E2E Verification Results (Session 13)
 

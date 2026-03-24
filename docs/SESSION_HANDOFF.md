@@ -1,89 +1,84 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-03-24
-**Session:** 56
-**Session Summary:** Alerting Service (Module 23) built + deployed with 10 improvements. Deep frontend/pipeline audit. E2E Integration Plan approved (12 sessions). Stats HTML + session-end + CLAUDE.md updated.
+**Session:** 57
+**Session Summary:** E2E Integration Plan sessions B2 (onboarding feed seeding + wizard Redis persistence) and C1 (wire feed retry button + graph expand action). No visual UI changes — wiring only.
 
 ## ✅ Changes Made
 | Commit | Files | Description |
 |--------|-------|-------------|
-| 2d93dc4 | 45 | feat: add alerting service (Module 23, port 3023) with 5 P0 improvements. 28 endpoints, 242 tests. Dedup, history, escalation dispatch, templates, HMAC signing. |
-| ef475a8 | 19 | feat: alerting service P1 improvements — grouping, retry, maintenance, composite, search. 7 new endpoints (35 total), 306 tests. |
-| 079458b | 4 | feat: add alerting-service deploy wiring (port 3023, container 31). tsconfig, Dockerfile, docker-compose, nginx. |
-| 82807a2 | 3 | fix: alerting-service TS strict errors — unused imports, non-null assertions. CI fix. |
-| 6c0d5e4 | 1 | docs: update ETIP_Project_Stats.html with E2E integration plan. Pipeline status, feature audit, 12-session plan. |
-| c3f2870 | 1 | docs: add architecture reference docs to CLAUDE.md session protocol. |
-| 17e14cf | 1 | docs: add ETIP_Project_Stats.html to session-end ritual (step 8, 12 total). |
+| e78239f | 25 | feat: add caching-service (Module 25, port 3025) + E2E pipeline wiring (prior session work included in push) |
+| 065097f | 1 | fix: regenerate lockfile for onboarding ioredis dependency |
+| 3bb0206 | 3 | fix: onboarding TS strict errors — ioredis import, getQuickActions type safety |
+| 8739f9f | 1 | fix: update shared-utils queue count test from 13 to 14 |
+| 5e47f01 | 1 | fix: analytics trend-calculator flaky test — Date.now() drift at boundary |
+| 794b3eb | 10 | fix: onboarding tests — add async/await for WizardStore Redis refactor |
+| 4eda8d3 | 5 | feat: wire feed retry button + graph expand action (E2E C1) |
 
 ## 📁 Files / Documents Affected
 
-### New Files — Alerting Service (28 source + 22 test)
-| Category | Files |
-|----------|-------|
-| Config | package.json, tsconfig.json, vitest.config.ts |
-| Boilerplate | config.ts, logger.ts, error-handler.ts, validate.ts |
-| Schemas | schemas/alert.ts (threshold/pattern/anomaly/absence/composite) |
-| Stores (7) | rule-store, alert-store, channel-store, escalation-store, dedup-store, alert-history, alert-group-store, maintenance-store |
-| Services (3) | rule-engine, notifier (HMAC), escalation-dispatcher, rule-templates |
-| Worker | alert-worker.ts (BullMQ etip-alert-evaluate) |
-| Routes (8) | health, rules, alerts, channels, escalations, stats, templates, groups, maintenance |
-| App | app.ts, index.ts |
-| Tests (22) | health, schemas, rule-store, alert-store, channel-store, escalation-store, rule-engine, rules.routes, alerts.routes, channels.routes, dedup-store, alert-history, escalation-dispatcher, rule-templates, notifier-hmac, templates.routes, alert-group-store, maintenance-store, composite-rules, alert-search, groups.routes, maintenance.routes |
-
-### Modified Files
+### B2 — Onboarding Feed Seeding + Wizard Redis Persistence
 | File | Change |
 |------|--------|
-| tsconfig.build.json | Added alerting-service reference |
-| Dockerfile | Added COPY for alerting-service |
-| docker-compose.etip.yml | Added etip_alerting container + nginx depends_on |
-| docker/nginx/conf.d/default.conf | Added upstream + location for /api/v1/alerts |
-| CLAUDE.md | Added Architecture Reference Docs section |
-| .claude/commands/session-end.md | Added step 8 (ETIP_Project_Stats.html), 12 steps total |
-| docs/ETIP_Project_Stats.html | Full rewrite: pipeline status, E2E plan, feature audit |
+| apps/onboarding/src/config.ts | Added TI_INGESTION_SERVICE_URL |
+| apps/onboarding/src/schemas/onboarding.ts | Added `feeds` count to DemoSeedResult |
+| apps/onboarding/src/services/demo-seeder.ts | DEFAULT_FEEDS array, seedFeeds(), ingestionClient in deps |
+| apps/onboarding/src/services/wizard-store.ts | Redis-backed persistence (ioredis), all methods async |
+| apps/onboarding/src/index.ts | Redis init + ingestionClient wiring |
+| apps/onboarding/package.json | Added ioredis dependency |
+| 7 service files | Added `await` for async WizardStore calls |
+| 3 route files | Added `await` for async WizardStore/service calls |
+| 10 test files | Updated for async WizardStore + new feed/persistence tests |
+
+### C1 — Feed Retry + Graph Expand
+| File | Change |
+|------|--------|
+| apps/frontend/src/hooks/use-intel-data.ts | Added useRetryFeed mutation |
+| apps/frontend/src/pages/FeedListPage.tsx | Wired retry button to useRetryFeed + toast |
+| apps/frontend/src/pages/ThreatGraphPage.tsx | Wired expand via useNodeNeighbors + merge |
+| apps/frontend/src/__tests__/feed-list-page.test.tsx | 4 retry tests |
+| apps/frontend/src/__tests__/phase4-pages.test.tsx | 5 expand/add-node tests |
 
 ## 🔧 Decisions & Rationale
-- No new DECISION entries. Used existing DECISION-013 (in-memory stores) and DECISION-026 (shared Docker image).
-- E2E Integration Plan approved: 12 sessions, 55 files, 96 tests. Plan file: `C:\Users\manis\.claude\plans\warm-plotting-flask.md`
+- No new DECISION entries. Used existing patterns (DECISION-013 in-memory fallback for tests).
+- WizardStore Redis key pattern: `etip:{tenantId}:wizard` with 7-day TTL.
 
 ## 🧪 E2E / Deploy Verification Results
-- CI run 23484951270: build ✅, test ✅, typecheck ✅, lint ✅, docker ✅, deploy ✅
-- First CI run (23484863858) failed on TS strict errors → fixed in 82807a2
-- 306 alerting-service tests pass (22 test files)
-- 32 containers healthy on VPS
-- etip_alerting: healthy, port 3023, queue etip-alert-evaluate
+- Onboarding: 230 tests pass (18 test files, 27 new tests)
+- Frontend: 633 tests pass (15 test files, 9 new tests)
+- TypeScript build: clean (tsc -b --force tsconfig.build.json)
+- Pushed to master: 4eda8d3
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate — E2E Integration Plan
-1. **Session A1**: ai-enrichment downstream enqueues → GRAPH_SYNC + IOC_INDEX + CORRELATE. Pipeline 33%→67%.
-2. **Session A2**: correlation-engine → ALERT_EVALUATE + INTEGRATION_PUSH. Pipeline 67%→83%.
-3. **Session A3**: alerting-service → INTEGRATION_PUSH. Pipeline 83%→100%.
+1. **Session C2**: Wire remaining 3 correlation UI buttons (investigate→detail modal, create ticket→POST /integrations/tickets, hunt→navigate to /hunting).
+2. **Session D1**: Missing frontend pages (SearchPage for ES indexing, AnalyticsPage for Module 24).
 
 ### Deferred
+- 3 correlation UI buttons still cosmetic (investigate/ticket/hunt)
 - Demo fallback code gated by VITE_DEMO_MODE env var (before production users)
 - Razorpay keys need real values in VPS .env
 - Analytics aggregator returns empty data when services not co-located
 - Billing priceInr field mismatch (frontend has workaround)
-- P2 alerting improvements (#11-15: Prometheus metrics, CSV export, historical dry-run, rate limiter, graph correlation)
 
 ## 🔁 How to Resume
 ```
 /session-start
 ```
-Then paste the Session A1 prompt:
+Then paste the Session C2 prompt:
 
 ```
-Working on: E2E Pipeline Wiring — Session A1 (ai-enrichment downstream enqueues)
-Do not modify: frontend, any other backend service except ai-enrichment
+Working on: E2E Integration Plan — Session C2
+Module: frontend | Scope: Wire 3 remaining correlation buttons
 
-Task: Add 3 downstream queue producers to ai-enrichment. After enrichment
-completes, fire jobs to GRAPH_SYNC, IOC_INDEX, CORRELATE.
-Key file: apps/ai-enrichment/src/workers/enrich-worker.ts
-Pattern: apps/normalization/src/service.ts:467
-Plan: C:\Users\manis\.claude\plans\warm-plotting-flask.md (Phase A, Session A1)
+Context:
+- C1 complete: feed retry + graph expand wired
+- CorrelationPage.tsx has 3 placeholder buttons: investigate, create ticket, hunt
+- Investigate: open detail modal with correlation evidence
+- Create Ticket: POST /api/v1/integrations/tickets
+- Hunt: navigate to /hunting?correlationId=X
 ```
 
 **Phase roadmap:**
-- Phase 7: ES Indexing ✅ → Reporting ✅ → Alerting ✅ → Analytics ✅ → **E2E Pipeline Wiring (next, 12 sessions)**
-- All 7 phases modules built and deployed (32 containers)
-- 18 frontend data pages, ~5098 monorepo tests
-- Pipeline: 33% wired → needs A1-A3 to reach 100%
+- E2E Plan: A1-A3 ✅ (pipeline 100%), B1 ✅ (real seeding), B2 ✅ (feeds+Redis), C1 ✅ (feed retry+graph expand)
+- Next: C2 (correlation buttons), D1 (SearchPage+AnalyticsPage), D2 (onboarding UI), E1-E2 (smoke tests)

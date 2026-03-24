@@ -1,18 +1,19 @@
 # Onboarding Service (Module 18)
 
-**Port:** 3018 | **Status:** ✅ Deployed | **Tests:** 190 | **Endpoints:** 32
+**Port:** 3018 | **Status:** ✅ Deployed | **Tests:** 230 | **Endpoints:** 32
 
 ## Features
 
 | Feature | File | Description |
 |---------|------|-------------|
-| Setup Wizard | `services/wizard-store.ts` | 8-step flow: welcome → org → team → feeds → integrations → dashboard → readiness → launch |
+| Setup Wizard | `services/wizard-store.ts` | 8-step flow: welcome → org → team → feeds → integrations → dashboard → readiness → launch. Redis-backed persistence (etip:{tenantId}:wizard, 7-day TTL). |
+| Service Client | `services/service-client.ts` | HTTP client for inter-service calls with service JWT auth |
 | Data Source Connectors | `services/connector-validator.ts` | 8 types (RSS, STIX/TAXII, REST, CSV, Splunk, Sentinel, Elastic, webhook) |
 | Pipeline Health Check | `services/health-checker.ts` | 6-stage pipeline monitoring (ingest → normalize → enrich → IOC → graph → correlate) |
 | Module Readiness | `services/module-readiness.ts` | 14-module dependency graph, enable/disable with validation |
 | Progress Tracker | `services/progress-tracker.ts` | 8 readiness checks, completion scoring |
 | Prerequisite Validation (P0) | `services/prerequisite-validator.ts` | Transitive dep chain, config prereqs |
-| Demo Data Seeding (P0) | `services/demo-seeder.ts` | 150 IOCs, 10 actors, 20 malware, 50 CVEs, 5 alerts (tagged DEMO) |
+| Demo Data Seeding (P0) | `services/demo-seeder.ts` | 10 IOCs, 5 actors, 5 malware, 5 CVEs, 4 OSINT feeds via real API calls (tagged DEMO) |
 | Integration Testing (P0) | `services/integration-tester.ts` | DNS → TCP → auth → data pull multi-step test |
 | Checklist Persistence (P0) | `services/checklist-persistence.ts` | Versioned snapshots (max 10), save/resume |
 | Welcome Dashboard (P0) | `services/welcome-dashboard.ts` | Quick actions, 6 guided tips, tour tracking |
@@ -69,3 +70,9 @@
 | TI_CORS_ORIGINS | http://localhost:3002 | Allowed origins |
 | TI_RATE_LIMIT_MAX | 200 | Max requests per window |
 | TI_LOG_LEVEL | info | Pino log level |
+| TI_REDIS_URL | redis://localhost:6379/0 | Redis for wizard state persistence |
+| TI_IOC_SERVICE_URL | http://etip_ioc_intelligence:3007 | IOC service for demo seeding |
+| TI_ACTOR_SERVICE_URL | http://etip_threat_actor_intel:3008 | Actor service for demo seeding |
+| TI_MALWARE_SERVICE_URL | http://etip_malware_intel:3009 | Malware service for demo seeding |
+| TI_VULN_SERVICE_URL | http://etip_vulnerability_intel:3010 | Vuln service for demo seeding |
+| TI_INGESTION_SERVICE_URL | http://etip_ingestion:3004 | Ingestion service for feed seeding |
