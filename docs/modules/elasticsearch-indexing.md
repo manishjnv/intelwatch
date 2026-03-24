@@ -11,7 +11,7 @@ BullMQ worker consumes `etip:ioc-indexed` events from normalization pipeline and
 | EsIndexClient | src/es-client.ts | ping, ensureIndex, indexDoc, updateDoc, deleteDoc, search, bulkIndex, countDocs |
 | IocIndexer | src/ioc-indexer.ts | indexIOC, updateIOC, deleteIOC, reindexTenant — high-level document ops |
 | IocSearchService | src/search-service.ts | Full-text search, faceted filters (type/severity/TLP), aggregations, index stats |
-| IocIndexWorker | src/worker.ts | BullMQ consumer on etip:ioc-indexed — routes index/update/delete actions |
+| IocIndexWorker | src/worker.ts | BullMQ consumer on etip-ioc-indexed — routes index/update/delete actions |
 | Multi-tenant isolation | src/es-client.ts | Index pattern etip_{tenantId}_iocs — one index per tenant |
 
 ## API Endpoints
@@ -37,7 +37,7 @@ BullMQ worker consumes `etip:ioc-indexed` events from normalization pipeline and
 
 | Queue | Constant | Events handled |
 |-------|----------|----------------|
-| etip:ioc-indexed | QUEUES.IOC_INDEX | index / update / delete actions from normalization |
+| etip-ioc-indexed | QUEUES.IOC_INDEX (.replace(/:/g,'-')) | index / update / delete actions from normalization |
 
 ## Deploy Checklist (COMPLETE — Session 50)
 
