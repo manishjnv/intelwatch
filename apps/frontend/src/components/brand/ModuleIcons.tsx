@@ -350,6 +350,21 @@ export function IconReporting({ size = defaults.size, className }: IconProps) {
   )
 }
 
+/** Alerting — bell with signal waves */
+export function IconAlerting({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      {/* Bell body */}
+      <path d="M12 3a6 6 0 0 1 6 6v3l2 3H4l2-3V9a6 6 0 0 1 6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      {/* Clapper */}
+      <path d="M10 18h4a2 2 0 0 1-4 0z" fill="currentColor" opacity="0.7"/>
+      {/* Signal waves */}
+      <path d="M19 5c1.5 1.5 2 3.5 2 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+      <path d="M5 5c-1.5 1.5-2 3.5-2 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
@@ -370,4 +385,5 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'admin-ops': IconAdmin,
   'onboarding': IconOnboarding,
   'reporting': IconReporting,
+  'alerting': IconAlerting,
 }

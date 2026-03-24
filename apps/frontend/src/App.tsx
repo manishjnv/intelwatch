@@ -28,6 +28,7 @@ import { BillingPage } from '@/pages/BillingPage';
 import { AdminOpsPage } from '@/pages/AdminOpsPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
 import { ReportingPage } from '@/pages/ReportingPage';
+import { AlertingPage } from '@/pages/AlertingPage';
 
 // Lazy-loaded — D3 (~190KB) splits into its own chunk, only fetched on /graph navigation
 const ThreatGraphPage = React.lazy(() =>
@@ -92,6 +93,7 @@ export function App() {
             <Route path="/onboarding" element={<OnboardingPage />} />
             {/* Phase 7 module pages */}
             <Route path="/reporting" element={<ReportingPage />} />
+            <Route path="/alerting" element={<AlertingPage />} />
           </Route>
         </Route>
 

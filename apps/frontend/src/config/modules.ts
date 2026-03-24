@@ -8,6 +8,7 @@ import {
   IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
   IconCustomization, IconBilling, IconAdmin, IconOnboarding, IconReporting,
+  IconAlerting,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -196,6 +197,16 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-orange-400',
     phase: 7,
     route: '/reporting',
+  },
+  {
+    id: 'alerting',
+    title: 'Alerting',
+    description: 'Real-time alert rules, notification channels, escalation policies, and alert lifecycle management.',
+    helpText: 'Configure alert rules, receive notifications via email/Slack/webhook, and escalate unresolved alerts.',
+    icon: IconAlerting,
+    color: 'text-rose-400',
+    phase: 7,
+    route: '/alerting',
   },
 ]
 
