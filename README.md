@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-7%20started-00ff88)
-![Tests](https://img.shields.io/badge/tests-4398%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-4597%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -34,11 +34,12 @@
 | Onboarding Service (8-step wizard, connectors, health checks, 32 endpoints) | ✅ Deployed | 190 |
 | Billing Service (plan management, Razorpay, usage metering, GST invoices, 28 endpoints) | ✅ Built | 149 |
 | Admin Ops Service (system health, maintenance, backup/restore, tenant admin, audit, 28 endpoints) | ✅ Built | 147 |
-| Infrastructure (29 Docker containers) | ✅ All healthy | — |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
 | Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | ✅ Deployed | 57 |
-| **Phase 7 started — Elasticsearch indexing scaffolded** | **29/29 modules** | **4398** |
+| Reporting Service (5 report types, BullMQ worker, cron scheduling, template engine, 20 endpoints) | ✅ Deployed | 199 |
+| Infrastructure (30 Docker containers) | ✅ All healthy | — |
+| **Phase 7 — ES Indexing + Reporting deployed** | **30/30 modules** | **4597** |
 
 ## Live API Endpoints
 

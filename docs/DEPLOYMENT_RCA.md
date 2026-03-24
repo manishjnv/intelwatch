@@ -635,3 +635,5 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 **Migration (Session 51)**: All 13 QUEUES constants in `shared-utils/src/queues.ts` changed from `etip:*` to `etip-*`. Removed `.replace(/:/g, '-')` workarounds from 6 services (ingestion, normalization, ai-enrichment, threat-graph, correlation-engine, elasticsearch-indexing). Fixed hardcoded queue names in admin-service (health-store.ts → QUEUES import) and integration-service (event-router.ts → QUEUES import). Updated 2 ingestion tests + shared-types JSDoc comments. All 4398 tests pass. Safe for fresh Docker builds.
 
 **Session 51 (continued):** Deploy pipeline optimization (DECISION-026). All 19 backend services shared the same Dockerfile but were built 20 times sequentially (~5min wasted). Fixed: build one `etip-backend:latest` image, added `image:` tags to all services in docker-compose.etip.yml. Health checks parallelized via background bash jobs. deploy.yml: 456 → 252 lines. Commit 066101e.
+
+| Session 52 | 2026-03-24 | No new issues. etip_reporting added (port 3021). 30 containers healthy. CI run 23474434781 green. |
