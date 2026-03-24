@@ -3,7 +3,8 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-7%20started-00ff88)
-![Tests](https://img.shields.io/badge/tests-4659%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-5098%20passing-00ff88)
+![Containers](https://img.shields.io/badge/containers-32-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
 

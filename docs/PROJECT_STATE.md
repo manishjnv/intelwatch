@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 55
+**Session counter:** 56
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -139,10 +139,10 @@ analytics-service    → shared-types, shared-utils, shared-auth (Phase 7)
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 — ES Indexing (Module 20), Reporting (Module 21), Alerting (Module 23), Analytics (Module 24) all deployed. AlertingPage + analytics frontend pending. 32 containers live. ~5098 total tests.
-- **Last session outcome:** Session 55 (2026-03-24). AlertingPage frontend (4 tabs, 50 tests, 19 hooks, demo fallback). Analytics Service (Module 24, port 3024, 12 endpoints, 83 tests, 5 P0 improvements). Commits: 371b71c (alerting frontend), 7d340d4 (lint fix), 14b7420 (analytics service), daa24ef (TS fix). CI runs 23485610320 + 23486825951 green. Both deployed to VPS. 32 containers healthy. 624 frontend tests (626 total, 2 skipped).
-- **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (cosmetic, tests pass). Pre-existing shared-auth bcrypt test timeout (flaky on Windows, passes in CI). Analytics-service purgeExpired test flaky in parallel runs (timing-dependent, passes standalone). Analytics service aggregator returns demo/empty data when other services are not on same Docker network.
-- **Next tasks:** (1) Analytics Frontend Page — dashboard widgets, trends, executive summary UI. (2) Caching & Archival Service (Module 23/skill) — 48hr Redis dashboard cache, archive retrieval API. (3) Phase 7 remaining: mobile optimization, accessibility, load testing.
+- **Current phase:** Phase 7 — All 4 Phase 7 modules deployed (ES Indexing, Reporting, Alerting, Analytics). 32 containers live. ~5098 total tests. **E2E Integration Plan approved** (12 sessions to wire pipeline 33%→100%, real seeding, UI actions).
+- **Last session outcome:** Session 56 (2026-03-24). Alerting Service built from scratch (Module 23, port 3023, 35 endpoints, 306 tests, 10 P0+P1 improvements). Deploy wiring (Dockerfile, compose, nginx, tsconfig). CI fix for TS strict errors. Deep frontend audit: pipeline 33% wired, 5 broken UI buttons, demo seeder is stub. E2E Integration Plan created (12 sessions, 55 files, 96 tests). ETIP_Project_Stats.html updated with plan. Architecture refs added to CLAUDE.md. session-end updated to 12 steps. Commits: 2d93dc4, ef475a8, 079458b, 82807a2, 6c0d5e4, c3f2870, 17e14cf.
+- **Known issues:** Pipeline only 33% wired (Ingest→Normalize→Enrich works, 5 downstream queues disconnected). Demo seeder is stub (returns counts, no API calls). 5 UI buttons cosmetic (feed retry, graph expand, correlation investigate/ticket/hunt). Plus prior known issues: Razorpay keys, VPS SSH, analytics aggregator empty data, billing priceInr mismatch.
+- **Next tasks:** **E2E Integration Plan Session A1** — wire ai-enrichment downstream enqueues to GRAPH_SYNC + IOC_INDEX + CORRELATE. Pipeline 33%→67%. See plan: `C:\Users\manis\.claude\plans\warm-plotting-flask.md`.
 
 ## Deployment Log
 
