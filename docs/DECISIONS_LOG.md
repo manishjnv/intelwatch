@@ -181,3 +181,11 @@
 **Decision:** Lazy-load ThreatGraphPage via `React.lazy()` in App.tsx. Lazy-load RelationshipGraph in IocListPage.tsx. Use `import type` for GraphNode/GraphEdge to avoid any static module inclusion. Inline `generateStubRelations` (pure function, no D3) directly in IocListPage so the RelationshipGraph module import is 100% dynamic. Wrap both with `<Suspense>` fallbacks (spinner for full page, skeleton div for inline graph).
 **Alternatives:** manualChunks in vite.config.ts (works but couples build config to runtime behavior), lazy-load all routes (unnecessary — only D3 is large), dynamic `import('d3')` inside ThreatGraphPage (would require internal refactor, violates "do not touch ThreatGraphPage internals" rule)
 **Consequences:** ThreatGraphPage chunk: 36.95KB. RelationshipGraph chunk: 2.37KB. D3 internals chunk: 48.22KB. All three load only when user navigates to /graph or opens IOC relations tab. Rule: any future D3-heavy component must be lazy-loaded — do not statically import from a module that imports d3.
+
+### DECISION-026: Single Docker image for all backend services
+
+**Date:** 2026-03-24 | **Status:** Accepted
+**Context:** All 19 backend services share the same Dockerfile (monorepo build) but were built individually in deploy.yml — 20 sequential `docker compose build` calls producing identical images. This wasted ~5min of deploy time on the VPS.
+**Decision:** Build one `etip-backend:latest` image via `docker build -t etip-backend:latest .`, add `image: etip-backend:latest` to all backend services in docker-compose.etip.yml. Frontend gets `image: etip-frontend:latest`. Health checks run in parallel (background bash jobs + wait). deploy.yml: 456 → 252 lines.
+**Alternatives:** BuildKit parallel build (still runs Dockerfile N times), multi-target Dockerfile per service (over-engineering — services differ only in CMD), registry push/pull (adds complexity, no benefit for single VPS)
+**Consequences:** 2 builds instead of 20. Health checks: 60s wall-clock max instead of 20×60s sequential. Rule: when adding a new backend service, add `image: etip-backend:latest` to its docker-compose entry. `build:` section kept for local dev (`docker compose build`).

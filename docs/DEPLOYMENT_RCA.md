@@ -633,3 +633,5 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 **Commit**: `a51d643`, `ebc7716`
 **Prevention**: **RULE**: BullMQ queue names must NOT contain colons. Use `etip-` prefix (dash, not colon).
 **Migration (Session 51)**: All 13 QUEUES constants in `shared-utils/src/queues.ts` changed from `etip:*` to `etip-*`. Removed `.replace(/:/g, '-')` workarounds from 6 services (ingestion, normalization, ai-enrichment, threat-graph, correlation-engine, elasticsearch-indexing). Fixed hardcoded queue names in admin-service (health-store.ts → QUEUES import) and integration-service (event-router.ts → QUEUES import). Updated 2 ingestion tests + shared-types JSDoc comments. All 4398 tests pass. Safe for fresh Docker builds.
+
+**Session 51 (continued):** Deploy pipeline optimization (DECISION-026). All 19 backend services shared the same Dockerfile but were built 20 times sequentially (~5min wasted). Fixed: build one `etip-backend:latest` image, added `image:` tags to all services in docker-compose.etip.yml. Health checks parallelized via background bash jobs. deploy.yml: 456 → 252 lines. Commit 066101e.
