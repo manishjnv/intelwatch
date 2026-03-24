@@ -30,6 +30,7 @@
     { "path": "apps/admin-service" },
     { "path": "apps/elasticsearch-indexing-service" },
     { "path": "apps/reporting-service" },
-    { "path": "apps/alerting-service" }
+    { "path": "apps/alerting-service" },
+    { "path": "apps/analytics-service" }
   ]
 }
