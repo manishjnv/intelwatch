@@ -56,7 +56,7 @@ export class EscalationDispatcher {
     const policy = this.deps.escalationStore.getById(policyId);
     if (!policy || !policy.enabled || policy.steps.length === 0) return;
 
-    const firstStep = policy.steps[0];
+    const firstStep = policy.steps[0]!;
     this.pending.set(alertId, {
       alertId,
       policyId,
@@ -111,7 +111,7 @@ export class EscalationDispatcher {
       const nextStep = pending.currentStep + 1;
       if (nextStep < policy.steps.length) {
         pending.currentStep = nextStep;
-        pending.nextEscalationAt = now + policy.steps[nextStep].delayMinutes * 60_000;
+        pending.nextEscalationAt = now + policy.steps[nextStep]!.delayMinutes * 60_000;
       } else {
         this.handleRepeatOrStop(pending, policy);
       }

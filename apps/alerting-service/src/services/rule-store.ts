@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { AppError } from '@etip/shared-utils';
 import type { CreateRuleDto, UpdateRuleDto, RuleCondition, AlertSeverity } from '../schemas/alert.js';
 
 export interface AlertRule {

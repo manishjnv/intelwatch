@@ -1,5 +1,5 @@
 import type { AlertRule } from './rule-store.js';
-import type { RuleCondition, BaseCondition } from '../schemas/alert.js';
+import type { RuleCondition } from '../schemas/alert.js';
 import { getLogger } from '../logger.js';
 
 export interface EvaluationEvent {
@@ -48,7 +48,7 @@ export class RuleEngine {
 
     // Trim old events beyond max age
     const cutoff = Date.now() - this.maxBufferAgeMs;
-    while (buffer.length > 0 && new Date(buffer[0].timestamp).getTime() < cutoff) {
+    while (buffer.length > 0 && new Date(buffer[0]!.timestamp).getTime() < cutoff) {
       buffer.shift();
     }
 
