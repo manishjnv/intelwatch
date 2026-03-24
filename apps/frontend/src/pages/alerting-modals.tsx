@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import {
   useAlertHistory, useCreateChannel, type ChannelType,
 } from '@/hooks/use-alerting-data'
-import { X, Play, Mail, MessageSquare, Webhook } from 'lucide-react'
+import { X, Mail, MessageSquare, Webhook } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
