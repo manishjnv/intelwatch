@@ -22,6 +22,7 @@ describe('DemoSeeder', () => {
       expect(result.counts.actors).toBe(5);
       expect(result.counts.malware).toBe(5);
       expect(result.counts.vulnerabilities).toBe(5);
+      expect(result.counts.feeds).toBe(4);
     });
 
     it('is idempotent — returns same result on second call', async () => {

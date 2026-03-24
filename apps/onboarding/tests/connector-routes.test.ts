@@ -44,7 +44,7 @@ describe('Connector Routes', () => {
   });
 
   it('POST /connectors — adds a data source', async () => {
-    wizardStore.getOrCreate('conn-tenant');
+    await wizardStore.getOrCreate('conn-tenant');
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/onboarding/connectors',
@@ -57,7 +57,7 @@ describe('Connector Routes', () => {
   });
 
   it('POST /connectors — rejects invalid source', async () => {
-    wizardStore.getOrCreate('conn-tenant');
+    await wizardStore.getOrCreate('conn-tenant');
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/onboarding/connectors',
@@ -68,7 +68,7 @@ describe('Connector Routes', () => {
   });
 
   it('GET /connectors — lists sources for tenant', async () => {
-    wizardStore.getOrCreate('list-tenant');
+    await wizardStore.getOrCreate('list-tenant');
     // Add via store bypass to simplify
     const res = await app.inject({
       method: 'GET',
@@ -101,7 +101,7 @@ describe('Connector Routes', () => {
   });
 
   it('POST /connectors/:sourceId/test — tests connection', async () => {
-    wizardStore.getOrCreate('test-conn-tenant');
+    await wizardStore.getOrCreate('test-conn-tenant');
     // First add a source
     const addRes = await app.inject({
       method: 'POST',
@@ -121,7 +121,7 @@ describe('Connector Routes', () => {
   });
 
   it('POST /connectors/:sourceId/integration-test — full test', async () => {
-    wizardStore.getOrCreate('int-test-tenant');
+    await wizardStore.getOrCreate('int-test-tenant');
     const addRes = await app.inject({
       method: 'POST',
       url: '/api/v1/onboarding/connectors',

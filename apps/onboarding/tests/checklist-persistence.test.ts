@@ -6,30 +6,30 @@ describe('ChecklistPersistence', () => {
   let wizardStore: WizardStore;
   let persistence: ChecklistPersistence;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     wizardStore = new WizardStore();
     persistence = new ChecklistPersistence(wizardStore);
-    wizardStore.getOrCreate('t1');
+    await wizardStore.getOrCreate('t1');
   });
 
   describe('save', () => {
-    it('saves a snapshot of current wizard state', () => {
-      const snapshot = persistence.save('t1');
+    it('saves a snapshot of current wizard state', async () => {
+      const snapshot = await persistence.save('t1');
       expect(snapshot.tenantId).toBe('t1');
       expect(snapshot.version).toBe(1);
       expect(snapshot.savedAt).toBeDefined();
       expect(snapshot.wizardState).toBeDefined();
     });
 
-    it('increments version on each save', () => {
-      persistence.save('t1');
-      const second = persistence.save('t1');
+    it('increments version on each save', async () => {
+      await persistence.save('t1');
+      const second = await persistence.save('t1');
       expect(second.version).toBe(2);
     });
 
-    it('keeps max 10 snapshots', () => {
+    it('keeps max 10 snapshots', async () => {
       for (let i = 0; i < 15; i++) {
-        persistence.save('t1');
+        await persistence.save('t1');
       }
       const snapshots = persistence.listSnapshots('t1');
       expect(snapshots.length).toBeLessThanOrEqual(10);
@@ -37,9 +37,9 @@ describe('ChecklistPersistence', () => {
   });
 
   describe('restore', () => {
-    it('returns latest snapshot', () => {
-      wizardStore.completeStep('t1', 'welcome');
-      persistence.save('t1');
+    it('returns latest snapshot', async () => {
+      await wizardStore.completeStep('t1', 'welcome');
+      await persistence.save('t1');
       const snapshot = persistence.restore('t1');
       expect(snapshot.wizardState.steps.welcome).toBe('completed');
     });
@@ -55,10 +55,10 @@ describe('ChecklistPersistence', () => {
       expect(snapshots).toEqual([]);
     });
 
-    it('returns all snapshots in order', () => {
-      persistence.save('t1');
-      persistence.save('t1');
-      persistence.save('t1');
+    it('returns all snapshots in order', async () => {
+      await persistence.save('t1');
+      await persistence.save('t1');
+      await persistence.save('t1');
       const snapshots = persistence.listSnapshots('t1');
       expect(snapshots).toHaveLength(3);
       expect(snapshots[0].version).toBe(1);
@@ -67,15 +67,15 @@ describe('ChecklistPersistence', () => {
   });
 
   describe('getVersion', () => {
-    it('returns specific snapshot version', () => {
-      persistence.save('t1');
-      persistence.save('t1');
+    it('returns specific snapshot version', async () => {
+      await persistence.save('t1');
+      await persistence.save('t1');
       const snapshot = persistence.getVersion('t1', 1);
       expect(snapshot.version).toBe(1);
     });
 
-    it('throws for nonexistent version', () => {
-      persistence.save('t1');
+    it('throws for nonexistent version', async () => {
+      await persistence.save('t1');
       expect(() => persistence.getVersion('t1', 99)).toThrow('Snapshot version 99 not found');
     });
 
@@ -85,9 +85,9 @@ describe('ChecklistPersistence', () => {
   });
 
   describe('clear', () => {
-    it('removes all snapshots', () => {
-      persistence.save('t1');
-      persistence.save('t1');
+    it('removes all snapshots', async () => {
+      await persistence.save('t1');
+      await persistence.save('t1');
       persistence.clear('t1');
       expect(persistence.hasSavedState('t1')).toBe(false);
     });
@@ -98,8 +98,8 @@ describe('ChecklistPersistence', () => {
       expect(persistence.hasSavedState('t1')).toBe(false);
     });
 
-    it('returns true after save', () => {
-      persistence.save('t1');
+    it('returns true after save', async () => {
+      await persistence.save('t1');
       expect(persistence.hasSavedState('t1')).toBe(true);
     });
   });

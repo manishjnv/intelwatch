@@ -15,6 +15,7 @@ function createMockClients(): DemoSeederDeps {
     actorClient: createMockClient() as unknown as DemoSeederDeps['actorClient'],
     malwareClient: createMockClient() as unknown as DemoSeederDeps['malwareClient'],
     vulnClient: createMockClient() as unknown as DemoSeederDeps['vulnClient'],
+    ingestionClient: createMockClient() as unknown as DemoSeederDeps['ingestionClient'],
   };
 }
 
@@ -61,6 +62,7 @@ describe('DemoSeeder — Real API Calls (B1)', () => {
     expect(result.counts.actors).toBe(5);
     expect(result.counts.malware).toBe(5);
     expect(result.counts.vulnerabilities).toBe(5);
+    expect(result.counts.feeds).toBe(4);
     expect(result.tag).toBe('DEMO');
   });
 

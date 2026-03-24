@@ -6,10 +6,10 @@ describe('ConnectorValidator', () => {
   let wizardStore: WizardStore;
   let validator: ConnectorValidator;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     wizardStore = new WizardStore();
     validator = new ConnectorValidator(wizardStore);
-    wizardStore.getOrCreate('t1');
+    await wizardStore.getOrCreate('t1');
   });
 
   describe('validate', () => {
@@ -109,8 +109,8 @@ describe('ConnectorValidator', () => {
   });
 
   describe('addSource', () => {
-    it('creates a data source record', () => {
-      const source = validator.addSource('t1', {
+    it('creates a data source record', async () => {
+      const source = await validator.addSource('t1', {
         name: 'CISA',
         type: 'rss_feed',
         url: 'https://www.cisa.gov/feeds/current-activity.xml',
@@ -121,26 +121,26 @@ describe('ConnectorValidator', () => {
       expect(source.status).toBe('pending');
     });
 
-    it('adds source to wizard state', () => {
-      validator.addSource('t1', {
+    it('adds source to wizard state', async () => {
+      await validator.addSource('t1', {
         name: 'Feed1',
         type: 'rss_feed',
         url: 'https://feed1.test/rss',
       });
-      const wizard = wizardStore.get('t1');
+      const wizard = await wizardStore.get('t1');
       expect(wizard.dataSources).toHaveLength(1);
     });
 
-    it('throws for invalid source', () => {
-      expect(() =>
+    it('throws for invalid source', async () => {
+      await expect(
         validator.addSource('t1', { name: 'Bad', type: 'rest_api' })
-      ).toThrow('URL is required');
+      ).rejects.toThrow('URL is required');
     });
   });
 
   describe('testConnection', () => {
     it('marks RSS feed as connected', async () => {
-      const source = validator.addSource('t1', {
+      const source = await validator.addSource('t1', {
         name: 'Feed',
         type: 'rss_feed',
         url: 'https://feed.test/rss',
@@ -150,7 +150,7 @@ describe('ConnectorValidator', () => {
     });
 
     it('marks CSV upload as connected', async () => {
-      const source = validator.addSource('t1', {
+      const source = await validator.addSource('t1', {
         name: 'CSV',
         type: 'csv_upload',
       });
@@ -159,7 +159,7 @@ describe('ConnectorValidator', () => {
     });
 
     it('marks webhook as connected', async () => {
-      const source = validator.addSource('t1', {
+      const source = await validator.addSource('t1', {
         name: 'Webhook',
         type: 'webhook',
         url: 'https://hooks.test/in',
@@ -174,15 +174,15 @@ describe('ConnectorValidator', () => {
   });
 
   describe('listSources', () => {
-    it('returns empty array initially', () => {
-      const sources = validator.listSources('t1');
+    it('returns empty array initially', async () => {
+      const sources = await validator.listSources('t1');
       expect(sources).toEqual([]);
     });
 
-    it('returns added sources', () => {
-      validator.addSource('t1', { name: 'A', type: 'rss_feed', url: 'https://a.test/rss' });
-      validator.addSource('t1', { name: 'B', type: 'webhook', url: 'https://b.test/hook' });
-      const sources = validator.listSources('t1');
+    it('returns added sources', async () => {
+      await validator.addSource('t1', { name: 'A', type: 'rss_feed', url: 'https://a.test/rss' });
+      await validator.addSource('t1', { name: 'B', type: 'webhook', url: 'https://b.test/hook' });
+      const sources = await validator.listSources('t1');
       expect(sources).toHaveLength(2);
     });
   });

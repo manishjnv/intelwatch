@@ -8,16 +8,16 @@ describe('IntegrationTester', () => {
   let connector: ConnectorValidator;
   let tester: IntegrationTester;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     wizardStore = new WizardStore();
     connector = new ConnectorValidator(wizardStore);
     tester = new IntegrationTester(wizardStore);
-    wizardStore.getOrCreate('t1');
+    await wizardStore.getOrCreate('t1');
   });
 
   describe('testSource', () => {
     it('runs multi-step test for RSS feed', async () => {
-      const source = connector.addSource('t1', {
+      const source = await connector.addSource('t1', {
         name: 'CISA',
         type: 'rss_feed',
         url: 'https://www.cisa.gov/feeds/current-activity.xml',
@@ -31,7 +31,7 @@ describe('IntegrationTester', () => {
     });
 
     it('includes DNS, TCP, and data pull steps', async () => {
-      const source = connector.addSource('t1', {
+      const source = await connector.addSource('t1', {
         name: 'Feed',
         type: 'rss_feed',
         url: 'https://feed.test/rss',
@@ -44,7 +44,7 @@ describe('IntegrationTester', () => {
     });
 
     it('includes authentication step for SIEM sources', async () => {
-      const source = connector.addSource('t1', {
+      const source = await connector.addSource('t1', {
         name: 'Splunk',
         type: 'siem_splunk',
         url: 'https://splunk.test:8089',
@@ -56,7 +56,7 @@ describe('IntegrationTester', () => {
     });
 
     it('each step has name, passed, durationMs, message', async () => {
-      const source = connector.addSource('t1', {
+      const source = await connector.addSource('t1', {
         name: 'Feed',
         type: 'rss_feed',
         url: 'https://feed.test/rss',
@@ -71,7 +71,7 @@ describe('IntegrationTester', () => {
     });
 
     it('calculates total latency', async () => {
-      const source = connector.addSource('t1', {
+      const source = await connector.addSource('t1', {
         name: 'Feed',
         type: 'rss_feed',
         url: 'https://feed.test/rss',
@@ -81,13 +81,13 @@ describe('IntegrationTester', () => {
     });
 
     it('marks source as connected on success', async () => {
-      const source = connector.addSource('t1', {
+      const source = await connector.addSource('t1', {
         name: 'Feed',
         type: 'rss_feed',
         url: 'https://feed.test/rss',
       });
       await tester.testSource('t1', source.id);
-      const wizard = wizardStore.get('t1');
+      const wizard = await wizardStore.get('t1');
       const updated = wizard.dataSources.find((s) => s.id === source.id);
       expect(updated?.status).toBe('connected');
     });
@@ -103,7 +103,7 @@ describe('IntegrationTester', () => {
     });
 
     it('returns last result after test', async () => {
-      const source = connector.addSource('t1', {
+      const source = await connector.addSource('t1', {
         name: 'Feed',
         type: 'rss_feed',
         url: 'https://feed.test/rss',
@@ -117,8 +117,8 @@ describe('IntegrationTester', () => {
 
   describe('testAll', () => {
     it('tests all data sources', async () => {
-      connector.addSource('t1', { name: 'A', type: 'rss_feed', url: 'https://a.test/rss' });
-      connector.addSource('t1', { name: 'B', type: 'webhook', url: 'https://b.test/hook' });
+      await connector.addSource('t1', { name: 'A', type: 'rss_feed', url: 'https://a.test/rss' });
+      await connector.addSource('t1', { name: 'B', type: 'webhook', url: 'https://b.test/hook' });
       const results = await tester.testAll('t1');
       expect(results).toHaveLength(2);
       expect(results.every((r) => r.success)).toBe(true);
