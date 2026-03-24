@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-7%20started-00ff88)
-![Tests](https://img.shields.io/badge/tests-4615%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-4659%20passing-00ff88)
 
 **Live API**: https://ti.intelwatch.in/health
 
@@ -23,7 +23,7 @@
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
-| Frontend (React 18 + Vite, 16 data pages, 19 viz components, demo fallbacks all 5 entity types, Phase 6 pages, Known Gaps P1, D3 code-split) | ✅ Live on VPS | 530 |
+| Frontend (React 18 + Vite, 17 data pages, 19 viz components, demo fallbacks all 5 entity types + reporting, Phase 7 ReportingPage, D3 code-split) | ✅ Live on VPS | 574 |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |
@@ -37,9 +37,9 @@
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
 | Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | ✅ Deployed | 57 |
-| Reporting Service (5 report types, BullMQ worker, cron scheduling, template engine, 20 endpoints) | ✅ Deployed | 199 |
+| Reporting Service (5 report types, BullMQ worker, cron scheduling, template engine, 25 endpoints) | ✅ Deployed | 217 |
 | Infrastructure (30 Docker containers) | ✅ All healthy | — |
-| **Phase 7 — ES Indexing + Reporting deployed** | **30/30 modules** | **4597** |
+| **Phase 7 — ES Indexing + Reporting + Reporting UI deployed** | **30/30 modules** | **4659** |
 
 ## Live API Endpoints
 

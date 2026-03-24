@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-24 (update at end of EVERY session via /session-end)
-**Session counter:** 53
+**Session counter:** 54
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.3.8 | 2026-03-24 | Dashboard + 16 data pages + demo fallbacks (all 5 entity types). All phases complete. Phase 6: Billing (pricing v3) + Admin Ops + Onboarding. 530 frontend tests (532 total, 2 skipped). **Known Gaps P1 COMPLETE: Actor detail panel (MITRE ATT&CK + linked IOCs), Malware detail panel (capabilities + linked IOCs), IOC campaign badge column.** D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB split). Demo fallbacks: IOC, Feed, Actor, Malware, Vulnerability all covered. |
+| etip_frontend | ✅ Running | 0.4.0 | 2026-03-24 | Dashboard + 17 data pages + demo fallbacks (all 5 entity types + reporting). All phases complete. Phase 7: ReportingPage (3 tabs, modals, bulk ops, compare). 574 frontend tests (576 total, 2 skipped). D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB split). Demo fallbacks: IOC, Feed, Actor, Malware, Vulnerability, Reporting all covered. |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-24 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -46,7 +46,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **16 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, **Onboarding**). 19 viz components. 530 tests (532 total, 2 skipped). Phase 6 pages COMPLETE. **Known Gaps P1 COMPLETE**: Actor detail panel (MITRE ATT&CK + linked IOCs), Malware detail panel (capabilities + linked IOCs), IOC campaign badge column. D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded (~87KB out of main bundle). Existing pages FROZEN. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **17 data pages** (IOC, Feed, Actor, Malware, Vuln, Enrichment, DRP, Graph, Correlation, Hunting, Integration, User Management, Customization, Billing, Admin Ops, Onboarding, **Reporting**). 19 viz components. 574 tests (576 total, 2 skipped). Phase 7: ReportingPage (3 tabs: Reports/Schedules/Templates, new report/schedule modals, bulk delete, compare panel, status polling, demo fallback). D3 code-split: ThreatGraphPage + RelationshipGraph lazy-loaded. Existing pages FROZEN. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
@@ -133,10 +133,10 @@ reporting-service     → shared-types, shared-utils, shared-auth, bullmq, node-
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 — ES indexing (Module 20) + Reporting (Module 21) deployed. 30 containers live. 4615 total tests.
-- **Last session outcome:** Session 53 (2026-03-24). Reporting Service P0 batch 2: 5 improvements — retention cron (auto-purge expired reports hourly), CSV export format, report cloning (POST /:id/clone), bulk operations (bulk-delete + bulk-toggle schedules), period-over-period comparison (GET /:id/compare/:otherId). 3 new files, 7 modified files, 18 new tests (217 total reporting tests). Commit cff770d. No new deploy wiring needed — already in place from session 52.
+- **Current phase:** Phase 7 — ES indexing (Module 20) + Reporting (Module 21) deployed. ReportingPage frontend deployed. 30 containers live. 4659 total tests.
+- **Last session outcome:** Session 54 (2026-03-24). Reporting Frontend Page added to frontend: ReportingPage.tsx (3 tabs: Reports/Schedules/Templates), use-reporting-data.ts (11 query/mutation hooks), reporting-demo-data.ts (types + demo data), 44 new tests. Route /reporting. Module config + IconReporting. Commit 673dd72. CI run 23481852195 green. Deployed to VPS. 574 frontend tests (576 total, 2 skipped).
 - **Known issues:** Raw GH_TOKEN + SSH key previously committed — rotated, history not purged. VPS SSH occasionally times out (RCA #6). VT/AbuseIPDB free-tier keys exposed in chat — rotate after testing. Demo fallback code should be gated by VITE_DEMO_MODE env var before production users. Razorpay keys need real values in VPS .env. Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui PageStatsBarProps (missing title/isDemo — cosmetic, tests pass). Pre-existing shared-auth bcrypt test timeout (flaky, not related to queue changes). Reporting data-aggregator returns demo data — wire to real service APIs when ready.
-- **Next tasks:** (1) Reporting Frontend Page — add ReportingPage to frontend (list/create/download/compare/schedule). (2) Alerting Service (Module 23) — Phase 7 item 3. (3) Dashboard Analytics Service — Phase 7 item 4.
+- **Next tasks:** (1) Alerting Service (Module 23) — Phase 7 item 3. Real-time alert rules, notification channels, escalation policies. (2) Dashboard Analytics Service — Phase 7 item 4.
 
 ## Deployment Log
 
@@ -187,6 +187,7 @@ reporting-service     → shared-types, shared-utils, shared-auth, bullmq, node-
 | 51 | 2026-03-24 | All 29 containers redeployed (BullMQ queue name migration + deploy optimization) | ✅ All 29 healthy | 1d00e99, 066101e, 3714b5a | BullMQ colon→dash migration (19 files). Deploy pipeline: 2 builds instead of 20, parallel health checks. Deploy time: 13min→1.5min. DECISION-026. |
 | 52 | 2026-03-24 | etip_reporting added (port 3021) | ✅ All 30 healthy | edfbd07 | Reporting Service (Module 21): 20 endpoints, 199 tests, 5 report types, BullMQ worker, cron scheduling, template engine. 4597 monorepo tests. |
 | 53 | 2026-03-24 | No deploy (code-only session) | — | cff770d | Reporting P0 batch 2: retention cron, CSV export, clone, bulk ops, comparison. 25 endpoints, 217 tests. 4615 monorepo tests. |
+| 54 | 2026-03-24 | etip_frontend updated | ✅ CI green | 673dd72 | ReportingPage frontend: 3 tabs (Reports/Schedules/Templates), modals, bulk ops, compare, demo fallback. 44 new tests (574 frontend total). Route /reporting + module config + IconReporting. 4659 monorepo tests. |
 
 ## E2E Verification Results (Session 13)
 

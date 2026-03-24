@@ -1,62 +1,59 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-03-24
-**Session:** 53
-**Session Summary:** Reporting Service P0 batch 2 — 5 improvements (retention cron, CSV export, cloning, bulk ops, period comparison). 25 endpoints, 217 tests. No deploy changes needed.
+**Session:** 54
+**Session Summary:** Reporting Frontend Page (ReportingPage.tsx) added with 3 tabs, demo fallback, 44 tests. Deployed to VPS. 17 data pages total.
 
 ## ✅ Changes Made
 | Commit | Files | Description |
 |--------|-------|-------------|
-| cff770d | 11 | feat: reporting service P0 improvements — retention cron, CSV export, clone, bulk ops, comparison. 3 new files, 7 modified, 1 test fixed. |
+| 673dd72 | 7 | feat: add ReportingPage frontend — 3 tabs (Reports/Schedules/Templates), new report/schedule modals, bulk select/delete, status polling (5s auto-refresh), compare panel, download/clone actions. 11 query/mutation hooks with demo fallback. Route /reporting. Module config + IconReporting. 44 tests. |
 
 ## 📁 Files / Documents Affected
 
 ### New Files (4)
 | File | Purpose |
 |------|---------|
-| apps/reporting-service/src/services/retention-cron.ts | Hourly auto-purge of expired reports via setInterval |
-| apps/reporting-service/src/services/report-comparator.ts | Period-over-period structured diff between two completed reports |
-| apps/reporting-service/tests/retention-cron.test.ts | 8 tests: start/stop idempotency, purge on interval, manual runOnce |
-| apps/reporting-service/tests/report-comparator.test.ts | 10 tests: risk score direction, section deltas, nested metrics, edge cases |
+| apps/frontend/src/pages/ReportingPage.tsx | 3-tab reporting dashboard (Reports table + Schedules table + Templates cards) |
+| apps/frontend/src/hooks/use-reporting-data.ts | 11 TanStack Query hooks + mutations for reporting-service API |
+| apps/frontend/src/hooks/reporting-demo-data.ts | Types + realistic demo data for all 3 tabs |
+| apps/frontend/src/__tests__/reporting-page.test.tsx | 44 tests across 8 describe blocks |
 
-### Modified Files (7)
+### Modified Files (3)
 | File | Change |
 |------|--------|
-| apps/reporting-service/src/index.ts | Wire RetentionCron start/stop in lifecycle |
-| apps/reporting-service/src/schemas/report.ts | Add csv to ReportFormatEnum, BulkDeleteSchema, BulkToggleSchedulesSchema |
-| apps/reporting-service/src/routes/reports.ts | Add bulk-delete, clone, compare routes + CSV download content-type |
-| apps/reporting-service/src/routes/schedules.ts | Add bulk-toggle route |
-| apps/reporting-service/src/services/report-store.ts | Make purgeExpired() public (was _purgeExpired) |
-| apps/reporting-service/src/services/template-engine.ts | Add _renderCsv() + _csvEscape() + csv in validateFormat |
-| apps/reporting-service/tests/schemas.test.ts | Fix: csv is now valid format, xlsx is the rejected one |
+| apps/frontend/src/App.tsx | Added import + Route /reporting → ReportingPage |
+| apps/frontend/src/config/modules.ts | Added reporting module config (phase 7, /reporting) + phase 7 colors |
+| apps/frontend/src/components/brand/ModuleIcons.tsx | Added IconReporting SVG + registry entry |
 
 ## 🔧 Decisions & Rationale
-- No new architectural decisions. Used existing DECISION-013 (in-memory stores) and DECISION-026 (shared Docker image).
+- No new architectural decisions. Used existing patterns (demo fallback from use-phase6-data.ts, tab layout from AdminOpsPage.tsx).
 
 ## 🧪 E2E / Deploy Verification Results
-- No deploy this session — code-only. Deploy wiring already in place from session 52.
-- 217 reporting-service tests pass locally (10 test files, 0 failures).
-- Commit pushed to master (cff770d). CI will deploy on next run.
+- CI run 23481852195: test ✅, deploy ✅
+- 574 frontend tests passing (576 total, 2 skipped)
+- 4659 monorepo tests total
+- 30 containers healthy on VPS
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. **Reporting Frontend Page** — Add ReportingPage to frontend (list, create, download, compare, schedule). Prompt ready.
-2. **Alerting Service (Module 23)** — Phase 7 item 3. Real-time alert rules, notification channels, escalation policies.
+1. **Alerting Service (Module 23)** — Phase 7 item 3. Real-time alert rules, notification channels (email/Slack/webhook), escalation policies, alert lifecycle (open/ack/resolve/suppress).
+2. **Dashboard Analytics Service** — Phase 7 item 4. Aggregated metrics, trend analysis, executive dashboards.
 
 ### Deferred
 - Demo fallback code should be gated by VITE_DEMO_MODE env var (before production users)
 - Razorpay keys need real values in VPS .env (before billing goes live)
 - Pre-existing TS errors in VulnerabilityListPage.tsx + shared-ui (cosmetic, tests pass)
 - Pre-existing shared-auth bcrypt test timeout (flaky on Windows, passes in CI)
-- Reporting data-aggregator returns demo data — wire to real service APIs when services are on same network
+- Reporting data-aggregator currently returns demo data — wire to real service APIs when services are on same network
 
 ## 🔁 How to Resume
 ```
 /session-start
 ```
-Then paste the Reporting Frontend Page prompt (provided at end of session 53).
+Then provide the Alerting Service prompt (Module 23, Phase 7 item 3).
 
 **Phase roadmap:**
-- Phase 7: ES Indexing ✅ → Reporting ✅ → **Reporting Frontend (next)** → Alerting → Dashboard Analytics
+- Phase 7: ES Indexing ✅ → Reporting ✅ → Reporting Frontend ✅ → **Alerting (next)** → Dashboard Analytics
 - All 6 prior phases complete and deployed (30 containers)
-- 30/30 modules built, 4615 tests
+- 17 frontend data pages, 574 frontend tests, 4659 monorepo tests
