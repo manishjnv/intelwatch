@@ -5,7 +5,7 @@
  * Malware (:3009/malware), Vulnerabilities (:3010/vulnerabilities).
  * All queries go through nginx → backend services.
  */
-import { useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS, DEMO_FEEDS_RESPONSE, DEMO_ACTORS_RESPONSE, DEMO_MALWARE_RESPONSE, DEMO_VULNS_RESPONSE } from './demo-data'
 import type { EnrichmentStats } from './use-enrichment-data'
@@ -96,6 +96,17 @@ export function useFeeds(params: QueryParams = {}) {
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_FEEDS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
+}
+
+export function useRetryFeed() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (feedId: string) =>
+      api<{ feedId: string; status: string }>(`/feeds/${feedId}/trigger`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feeds'] })
+    },
+  })
 }
 
 // ─── Threat Actor types ─────────────────────────────────────────

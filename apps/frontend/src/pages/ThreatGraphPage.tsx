@@ -9,6 +9,8 @@ import * as d3 from 'd3'
 import { cn } from '@/lib/utils'
 import {
   useGraphNodes, useGraphStats, useGraphSearch, useGraphPath,
+  useNodeNeighbors,
+  type GraphNode, type GraphEdge,
 } from '@/hooks/use-phase4-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
@@ -47,6 +49,9 @@ export function ThreatGraphPage() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null)
   const [removedNodeIds, setRemovedNodeIds] = useState<Set<string>>(new Set())
   const [edgeTooltip, setEdgeTooltip] = useState<{ x: number; y: number; type: string; confidence: number } | null>(null)
+  const [expandNodeId, setExpandNodeId] = useState<string | null>(null)
+  const [mergedNodes, setMergedNodes] = useState<GraphNode[]>([])
+  const [mergedEdges, setMergedEdges] = useState<GraphEdge[]>([])
 
   // Path Finder state
   const [pathFinderActive, setPathFinderActive] = useState(false)
@@ -57,9 +62,44 @@ export function ThreatGraphPage() {
   const { data: graphStats } = useGraphStats()
   const { data: searchResults } = useGraphSearch(searchQuery)
   const { data: pathResult } = useGraphPath(pathSourceId, pathTargetId)
+  const { data: neighborData } = useNodeNeighbors(expandNodeId)
 
-  const allNodes = graphData?.nodes ?? []
-  const allEdges = graphData?.edges ?? []
+  // Merge neighbor data when expand completes
+  useEffect(() => {
+    if (!neighborData || !expandNodeId) return
+    const newNodes = neighborData.nodes ?? []
+    const newEdges = neighborData.edges ?? []
+    if (newNodes.length > 0) {
+      setMergedNodes(prev => {
+        const existingIds = new Set(prev.map(n => n.id))
+        return [...prev, ...newNodes.filter(n => !existingIds.has(n.id))]
+      })
+      setMergedEdges(prev => {
+        const existingIds = new Set(prev.map(e => e.id))
+        return [...prev, ...newEdges.filter(e => !existingIds.has(e.id))]
+      })
+      toast(`Expanded ${newNodes.length} neighbors`, 'success')
+    } else {
+      toast('No neighbors found', 'info')
+    }
+    setExpandNodeId(null)
+  }, [neighborData, expandNodeId])
+
+  const baseNodes = graphData?.nodes ?? []
+  const baseEdges = graphData?.edges ?? []
+
+  // Combine base graph + expanded neighbors
+  const allNodes = useMemo(() => {
+    if (mergedNodes.length === 0) return baseNodes
+    const ids = new Set(baseNodes.map(n => n.id))
+    return [...baseNodes, ...mergedNodes.filter(n => !ids.has(n.id))]
+  }, [baseNodes, mergedNodes])
+
+  const allEdges = useMemo(() => {
+    if (mergedEdges.length === 0) return baseEdges
+    const ids = new Set(baseEdges.map(e => e.id))
+    return [...baseEdges, ...mergedEdges.filter(e => !ids.has(e.id))]
+  }, [baseEdges, mergedEdges])
 
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -145,7 +185,7 @@ export function ThreatGraphPage() {
     if (!node) return
     switch (action) {
       case 'path': handlePathFind(nodeId); break
-      case 'expand': toast('Connect Graph service to expand neighbors', 'info'); break
+      case 'expand': setExpandNodeId(nodeId); break
       case 'remove': setRemovedNodeIds(prev => new Set([...prev, nodeId])); break
       case 'copy': navigator.clipboard.writeText(node.label); toast('Copied to clipboard'); break
     }

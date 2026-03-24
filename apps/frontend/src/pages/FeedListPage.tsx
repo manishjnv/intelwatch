@@ -7,7 +7,8 @@
  * source favicon, radial SVG gauge, 24h schedule timeline, card/table toggle.
  */
 import { useState, useMemo } from 'react'
-import { useFeeds, type FeedRecord } from '@/hooks/use-intel-data'
+import { useFeeds, useRetryFeed, type FeedRecord } from '@/hooks/use-intel-data'
+import { toast, ToastContainer } from '@/components/ui/Toast'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
@@ -77,6 +78,7 @@ export function FeedListPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('table')
 
   const { data, isLoading } = useFeeds({ page: 1, limit: 50 })
+  const retryFeed = useRetryFeed()
 
   const feeds = data?.data ?? []
 
@@ -211,9 +213,16 @@ export function FeedListPage() {
             <button
               className="text-text-muted hover:text-accent transition-colors"
               title="Retry feed fetch"
-              onClick={(e) => e.stopPropagation()}
+              data-testid={`retry-feed-${row.id}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                retryFeed.mutate(row.id, {
+                  onSuccess: () => toast(`Retry triggered for ${row.name}`, 'success'),
+                  onError: () => toast(`Failed to retry ${row.name}`, 'error'),
+                })
+              }}
             >
-              <RefreshCw className="w-3 h-3" />
+              <RefreshCw className={cn('w-3 h-3', retryFeed.isPending && 'animate-spin')} />
             </button>
           </span>
         )
@@ -284,6 +293,7 @@ export function FeedListPage() {
         page={page} limit={50} total={data?.total ?? 0}
         onPageChange={setPage} density={density} onDensityChange={setDensity}
       />
+      <ToastContainer />
     </div>
   )
 }

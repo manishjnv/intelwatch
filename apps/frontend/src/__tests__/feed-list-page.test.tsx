@@ -12,7 +12,10 @@ import { render, screen, fireEvent } from '@/test/test-utils'
 
 // ─── Mock hooks ───────────────────────────────────────────────
 
+const mockRetryMutate = vi.fn()
+
 vi.mock('@/hooks/use-intel-data', () => ({
+  useRetryFeed: vi.fn(() => ({ mutate: mockRetryMutate, isPending: false })),
   useFeeds: vi.fn(() => ({
     data: {
       data: [
@@ -89,6 +92,11 @@ vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
 
 vi.mock('@etip/shared-ui/components/SkeletonBlock', () => ({
   SkeletonBlock: () => <div data-testid="skeleton" />,
+}))
+
+vi.mock('@/components/ui/Toast', () => ({
+  toast: vi.fn(),
+  ToastContainer: () => <div data-testid="toast-container" />,
 }))
 
 import { FeedListPage } from '@/pages/FeedListPage'
@@ -382,5 +390,38 @@ describe('FeedCard', () => {
     render(<FeedCard feed={{ ...CARD_FEED, url: null }} />)
     const img = document.querySelector('img[src*="s2/favicons"]')
     expect(img).toBeNull()
+  })
+})
+
+/* ================================================================ */
+/* Feed retry button wiring (C1)                                      */
+/* ================================================================ */
+describe('FeedListPage retry button', () => {
+  it('calls useRetryFeed.mutate with feed id on click', () => {
+    mockRetryMutate.mockClear()
+    render(<FeedListPage />)
+    const retryBtn = screen.getByTestId('retry-feed-f2')
+    fireEvent.click(retryBtn)
+    expect(mockRetryMutate).toHaveBeenCalledTimes(1)
+    expect(mockRetryMutate).toHaveBeenCalledWith('f2', expect.objectContaining({
+      onSuccess: expect.any(Function),
+      onError: expect.any(Function),
+    }))
+  })
+
+  it('retry button has correct test id', () => {
+    render(<FeedListPage />)
+    expect(screen.getByTestId('retry-feed-f2')).toBeInTheDocument()
+  })
+
+  it('does not show retry button for feeds with 0 errors', () => {
+    render(<FeedListPage />)
+    expect(screen.queryByTestId('retry-feed-f1')).toBeNull()
+    expect(screen.queryByTestId('retry-feed-f3')).toBeNull()
+  })
+
+  it('renders ToastContainer for notifications', () => {
+    render(<FeedListPage />)
+    expect(screen.getByTestId('toast-container')).toBeInTheDocument()
   })
 })
