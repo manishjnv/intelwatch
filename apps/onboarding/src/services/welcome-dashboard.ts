@@ -110,9 +110,9 @@ export class WelcomeDashboardService {
   ) {}
 
   /** Get the welcome dashboard for a tenant. */
-  getDashboard(tenantId: string): WelcomeDashboard {
-    const wizard = this.wizardStore.getOrCreate(tenantId);
-    const stats = this.progressTracker.getStats(tenantId);
+  async getDashboard(tenantId: string): Promise<WelcomeDashboard> {
+    const wizard = await this.wizardStore.getOrCreate(tenantId);
+    const stats = await this.progressTracker.getStats(tenantId);
     const isComplete = this.wizardStore.isComplete(tenantId);
 
     // Determine next step

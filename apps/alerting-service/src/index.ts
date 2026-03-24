@@ -61,6 +61,7 @@ async function main(): Promise<void> {
     alertGroupStore,
     maintenanceStore,
     redisUrl: config.TI_REDIS_URL,
+    integrationPushEnabled: config.TI_INTEGRATION_PUSH_ENABLED,
   });
   alertWorker.start();
 

@@ -33,7 +33,7 @@ export class IntegrationTester {
 
   /** Run full integration test for a data source. */
   async testSource(tenantId: string, sourceId: string): Promise<IntegrationTestResult> {
-    const wizard = this.wizardStore.get(tenantId);
+    const wizard = await this.wizardStore.get(tenantId);
     const source = wizard.dataSources.find((s) => s.id === sourceId);
     if (!source) {
       throw new AppError(404, `Data source '${sourceId}' not found`, 'DATA_SOURCE_NOT_FOUND');
@@ -45,10 +45,10 @@ export class IntegrationTester {
 
     // Update source status based on test results
     if (allPassed) {
-      this.wizardStore.updateDataSourceStatus(tenantId, sourceId, 'connected');
+      await this.wizardStore.updateDataSourceStatus(tenantId, sourceId, 'connected');
     } else {
       const failedStep = steps.find((s) => !s.passed);
-      this.wizardStore.updateDataSourceStatus(
+      await this.wizardStore.updateDataSourceStatus(
         tenantId,
         sourceId,
         'failed',
@@ -77,7 +77,7 @@ export class IntegrationTester {
 
   /** Run test for all sources of a tenant. */
   async testAll(tenantId: string): Promise<IntegrationTestResult[]> {
-    const wizard = this.wizardStore.get(tenantId);
+    const wizard = await this.wizardStore.get(tenantId);
     const results: IntegrationTestResult[] = [];
     for (const source of wizard.dataSources) {
       const result = await this.testSource(tenantId, source.id);

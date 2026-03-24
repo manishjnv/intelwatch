@@ -14,7 +14,7 @@ import { CostPersistence } from './cost-persistence.js';
 import { BatchEnrichmentService } from './batch-enrichment.js';
 import { ReEnrichScheduler } from './workers/re-enrich-scheduler.js';
 import { createVTRateLimiter, createAbuseIPDBRateLimiter } from './rate-limiter.js';
-import { createEnrichQueue, closeEnrichQueue, getEnrichQueue } from './queue.js';
+import { createEnrichQueue, closeEnrichQueue, getEnrichQueue, createDownstreamQueues, closeDownstreamQueues } from './queue.js';
 import { createEnrichWorker } from './workers/enrich-worker.js';
 
 async function main(): Promise<void> {
@@ -71,8 +71,15 @@ async function main(): Promise<void> {
   const service = new EnrichmentService(repo, vtProvider, abuseProvider, haikuProvider, costTracker, config.TI_AI_ENABLED, logger);
 
   createEnrichQueue();
+  const downstream = createDownstreamQueues();
+  logger.info({
+    graphSync: !!downstream.graphSync,
+    iocIndex: !!downstream.iocIndex,
+    correlate: !!downstream.correlate,
+  }, 'Downstream queues initialized');
+
   const app = await buildApp({ config, repo, costTracker, batchService });
-  const worker = createEnrichWorker({ service, logger });
+  const worker = createEnrichWorker({ service, logger, downstream });
 
   // #15 Re-enrichment Scheduler
   const scheduler = new ReEnrichScheduler(
@@ -85,6 +92,7 @@ async function main(): Promise<void> {
     scheduler.stop();
     if (costPersistence) await costPersistence.stop();
     await worker.close();
+    await closeDownstreamQueues();
     await closeEnrichQueue();
     if (redis) await redis.quit();
     await disconnectPrisma();

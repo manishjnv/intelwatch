@@ -59,7 +59,7 @@ export class ConnectorValidator {
   }
 
   /** Add a data source and register it in the wizard state. */
-  addSource(tenantId: string, input: DataSourceInput): DataSourceRecord {
+  async addSource(tenantId: string, input: DataSourceInput): Promise<DataSourceRecord> {
     const validation = this.validate(input);
     if (!validation.valid) {
       throw new AppError(400, validation.errors.join('; '), 'DATA_SOURCE_INVALID');
@@ -78,28 +78,28 @@ export class ConnectorValidator {
       createdAt: now,
     };
 
-    this.wizardStore.addDataSource(tenantId, record);
+    await this.wizardStore.addDataSource(tenantId, record);
     return record;
   }
 
   /** Test a data source connection (simulated in Phase 6 — no actual HTTP calls). */
   async testConnection(tenantId: string, sourceId: string): Promise<DataSourceRecord> {
-    const wizard = this.wizardStore.get(tenantId);
+    const wizard = await this.wizardStore.get(tenantId);
     const source = wizard.dataSources.find((s) => s.id === sourceId);
     if (!source) {
       throw new AppError(404, `Data source '${sourceId}' not found`, 'DATA_SOURCE_NOT_FOUND');
     }
 
     // Mark as testing
-    this.wizardStore.updateDataSourceStatus(tenantId, sourceId, 'testing');
+    await this.wizardStore.updateDataSourceStatus(tenantId, sourceId, 'testing');
 
     // Simulate connection test (in production, would make actual HTTP request)
     const success = this.simulateConnectionTest(source);
 
     if (success) {
-      return this.wizardStore.updateDataSourceStatus(tenantId, sourceId, 'connected');
+      return await this.wizardStore.updateDataSourceStatus(tenantId, sourceId, 'connected');
     } else {
-      return this.wizardStore.updateDataSourceStatus(
+      return await this.wizardStore.updateDataSourceStatus(
         tenantId,
         sourceId,
         'failed',
@@ -109,19 +109,19 @@ export class ConnectorValidator {
   }
 
   /** List all data sources for a tenant. */
-  listSources(tenantId: string): DataSourceRecord[] {
-    const wizard = this.wizardStore.get(tenantId);
+  async listSources(tenantId: string): Promise<DataSourceRecord[]> {
+    const wizard = await this.wizardStore.get(tenantId);
     return wizard.dataSources;
   }
 
   /** Remove a data source. */
-  removeSource(tenantId: string, sourceId: string): void {
-    const wizard = this.wizardStore.get(tenantId);
+  async removeSource(tenantId: string, sourceId: string): Promise<void> {
+    const wizard = await this.wizardStore.get(tenantId);
     const idx = wizard.dataSources.findIndex((s) => s.id === sourceId);
     if (idx === -1) {
       throw new AppError(404, `Data source '${sourceId}' not found`, 'DATA_SOURCE_NOT_FOUND');
     }
-    this.wizardStore.updateDataSourceStatus(tenantId, sourceId, 'failed', 'Removed');
+    await this.wizardStore.updateDataSourceStatus(tenantId, sourceId, 'failed', 'Removed');
   }
 
   /** Get supported data source types with metadata. */

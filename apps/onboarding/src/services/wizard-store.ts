@@ -10,54 +10,91 @@ import {
   type DashboardPreferenceInput,
   type DataSourceRecord,
 } from '../schemas/onboarding.js';
+import type Redis from 'ioredis';
+
+const KEY_PREFIX = 'etip:';
+const KEY_SUFFIX = ':wizard';
+const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
+function redisKey(tenantId: string): string {
+  return `${KEY_PREFIX}${tenantId}${KEY_SUFFIX}`;
+}
 
 /**
- * In-memory store for onboarding wizard state (DECISION-013 pattern).
- * One wizard state per tenant. State lost on restart — acceptable for Phase 6.
+ * Wizard state store with optional Redis persistence.
+ * - When Redis is provided: state survives container restarts (key: etip:{tenantId}:wizard).
+ * - When Redis is null (test mode): falls back to in-memory Map.
  */
 export class WizardStore {
-  /** tenantId → WizardState */
+  /** tenantId → WizardState (in-memory cache / fallback) */
   private wizards = new Map<string, WizardState>();
+  private redis: Redis | null;
+
+  constructor(redis?: Redis | null) {
+    this.redis = redis ?? null;
+  }
 
   /** Get or create wizard state for a tenant. */
-  getOrCreate(tenantId: string): WizardState {
+  async getOrCreate(tenantId: string): Promise<WizardState> {
+    // Try cache first
     let wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      const now = new Date().toISOString();
-      wizard = {
-        id: randomUUID(),
-        tenantId,
-        currentStep: 'welcome',
-        steps: this.initSteps(),
-        completionPercent: 0,
-        orgProfile: null,
-        teamInvites: [],
-        dataSources: [],
-        dashboardPrefs: null,
-        startedAt: now,
-        updatedAt: now,
-        completedAt: null,
-      };
-      this.wizards.set(tenantId, wizard);
+    if (wizard) {
+      return this.clone(wizard);
     }
-    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+
+    // Try Redis
+    if (this.redis) {
+      const raw = await this.redis.get(redisKey(tenantId));
+      if (raw) {
+        wizard = JSON.parse(raw) as WizardState;
+        this.wizards.set(tenantId, wizard);
+        return this.clone(wizard);
+      }
+    }
+
+    // Create new
+    const now = new Date().toISOString();
+    wizard = {
+      id: randomUUID(),
+      tenantId,
+      currentStep: 'welcome',
+      steps: this.initSteps(),
+      completionPercent: 0,
+      orgProfile: null,
+      teamInvites: [],
+      dataSources: [],
+      dashboardPrefs: null,
+      startedAt: now,
+      updatedAt: now,
+      completedAt: null,
+    };
+    this.wizards.set(tenantId, wizard);
+    await this.persist(tenantId);
+    return this.clone(wizard);
   }
 
   /** Get wizard state (throws if not found). */
-  get(tenantId: string): WizardState {
-    const wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
+  async get(tenantId: string): Promise<WizardState> {
+    // Try cache
+    let wizard = this.wizards.get(tenantId);
+    if (wizard) return this.clone(wizard);
+
+    // Try Redis
+    if (this.redis) {
+      const raw = await this.redis.get(redisKey(tenantId));
+      if (raw) {
+        wizard = JSON.parse(raw) as WizardState;
+        this.wizards.set(tenantId, wizard);
+        return this.clone(wizard);
+      }
     }
-    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+
+    throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
   }
 
   /** Complete a step and advance. */
-  completeStep(tenantId: string, step: WizardStep, data?: Record<string, unknown>): WizardState {
-    const wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
-    }
+  async completeStep(tenantId: string, step: WizardStep, data?: Record<string, unknown>): Promise<WizardState> {
+    const wizard = await this.requireWizard(tenantId);
 
     wizard.steps[step] = 'completed';
     wizard.updatedAt = new Date().toISOString();
@@ -79,15 +116,13 @@ export class WizardStore {
       wizard.completedAt = wizard.updatedAt;
     }
 
-    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+    await this.persist(tenantId);
+    return this.clone(wizard);
   }
 
   /** Skip a step. */
-  skipStep(tenantId: string, step: WizardStep): WizardState {
-    const wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
-    }
+  async skipStep(tenantId: string, step: WizardStep): Promise<WizardState> {
+    const wizard = await this.requireWizard(tenantId);
 
     // Cannot skip required steps
     const required: WizardStep[] = ['welcome', 'org_profile', 'readiness_check', 'launch'];
@@ -104,53 +139,45 @@ export class WizardStore {
       wizard.completedAt = wizard.updatedAt;
     }
 
-    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+    await this.persist(tenantId);
+    return this.clone(wizard);
   }
 
   /** Set org profile data. */
-  setOrgProfile(tenantId: string, profile: OrgProfileInput): WizardState {
-    const wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
-    }
+  async setOrgProfile(tenantId: string, profile: OrgProfileInput): Promise<WizardState> {
+    const wizard = await this.requireWizard(tenantId);
     wizard.orgProfile = profile;
     wizard.updatedAt = new Date().toISOString();
-    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+    await this.persist(tenantId);
+    return this.clone(wizard);
   }
 
   /** Add team invites. */
-  addTeamInvites(tenantId: string, invites: TeamInviteInput['invites']): WizardState {
-    const wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
-    }
+  async addTeamInvites(tenantId: string, invites: TeamInviteInput['invites']): Promise<WizardState> {
+    const wizard = await this.requireWizard(tenantId);
     wizard.teamInvites = [...wizard.teamInvites, ...invites];
     wizard.updatedAt = new Date().toISOString();
-    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+    await this.persist(tenantId);
+    return this.clone(wizard);
   }
 
   /** Add a data source record. */
-  addDataSource(tenantId: string, source: DataSourceRecord): WizardState {
-    const wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
-    }
+  async addDataSource(tenantId: string, source: DataSourceRecord): Promise<WizardState> {
+    const wizard = await this.requireWizard(tenantId);
     wizard.dataSources.push(source);
     wizard.updatedAt = new Date().toISOString();
-    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+    await this.persist(tenantId);
+    return this.clone(wizard);
   }
 
   /** Update data source status. */
-  updateDataSourceStatus(
+  async updateDataSourceStatus(
     tenantId: string,
     sourceId: string,
     status: DataSourceRecord['status'],
     errorMessage?: string,
-  ): DataSourceRecord {
-    const wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
-    }
+  ): Promise<DataSourceRecord> {
+    const wizard = await this.requireWizard(tenantId);
     const source = wizard.dataSources.find((s) => s.id === sourceId);
     if (!source) {
       throw new AppError(404, `Data source '${sourceId}' not found`, 'DATA_SOURCE_NOT_FOUND');
@@ -159,12 +186,16 @@ export class WizardStore {
     source.lastTestedAt = new Date().toISOString();
     source.errorMessage = errorMessage ?? null;
     wizard.updatedAt = source.lastTestedAt;
+    await this.persist(tenantId);
     return { ...source };
   }
 
   /** Reset wizard (restart onboarding). */
-  reset(tenantId: string): WizardState {
+  async reset(tenantId: string): Promise<WizardState> {
     this.wizards.delete(tenantId);
+    if (this.redis) {
+      await this.redis.del(redisKey(tenantId));
+    }
     return this.getOrCreate(tenantId);
   }
 
@@ -175,17 +206,44 @@ export class WizardStore {
   }
 
   /** Set dashboard preferences. */
-  setDashboardPrefs(tenantId: string, prefs: DashboardPreferenceInput): WizardState {
-    const wizard = this.wizards.get(tenantId);
-    if (!wizard) {
-      throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
-    }
+  async setDashboardPrefs(tenantId: string, prefs: DashboardPreferenceInput): Promise<WizardState> {
+    const wizard = await this.requireWizard(tenantId);
     wizard.dashboardPrefs = prefs;
     wizard.updatedAt = new Date().toISOString();
-    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+    await this.persist(tenantId);
+    return this.clone(wizard);
   }
 
   // ─── Private helpers ─────────────────────────────────
+
+  /** Get wizard from cache or Redis, throw if not found. */
+  private async requireWizard(tenantId: string): Promise<WizardState> {
+    let wizard = this.wizards.get(tenantId);
+    if (wizard) return wizard;
+
+    if (this.redis) {
+      const raw = await this.redis.get(redisKey(tenantId));
+      if (raw) {
+        wizard = JSON.parse(raw) as WizardState;
+        this.wizards.set(tenantId, wizard);
+        return wizard;
+      }
+    }
+
+    throw new AppError(404, 'No onboarding session found', 'ONBOARDING_NOT_FOUND');
+  }
+
+  /** Persist current state to Redis (if available). */
+  private async persist(tenantId: string): Promise<void> {
+    if (!this.redis) return;
+    const wizard = this.wizards.get(tenantId);
+    if (!wizard) return;
+    await this.redis.set(redisKey(tenantId), JSON.stringify(wizard), 'EX', TTL_SECONDS);
+  }
+
+  private clone(wizard: WizardState): WizardState {
+    return { ...wizard, steps: { ...wizard.steps }, dataSources: [...wizard.dataSources] };
+  }
 
   private initSteps(): Record<WizardStep, StepStatus> {
     const steps = {} as Record<WizardStep, StepStatus>;

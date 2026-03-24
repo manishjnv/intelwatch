@@ -1175,6 +1175,52 @@ services:
         limits:
           memory: 256M
 
+  etip_caching:
+    image: etip-backend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: etip_caching
+    restart: unless-stopped
+    command: ["node", "apps/caching-service/dist/index.js"]
+    environment:
+      TI_NODE_ENV: ${TI_NODE_ENV:-production}
+      TI_SERVICE_PORT: 3025
+      TI_SERVICE_HOST: 0.0.0.0
+      TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
+      TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
+      TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
+      TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
+      TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD:?TI_REDIS_PASSWORD is required}@etip_redis:6379/0
+      TI_MINIO_ENDPOINT: etip_minio
+      TI_MINIO_PORT: 9000
+      TI_MINIO_ACCESS_KEY: ${TI_MINIO_ACCESS_KEY:-etip_minio_admin}
+      TI_MINIO_SECRET_KEY: ${TI_MINIO_SECRET_KEY:?TI_MINIO_SECRET_KEY is required}
+      TI_ANALYTICS_URL: http://etip_analytics:3024
+      TI_ARCHIVE_CRON: "0 2 * * *"
+      TI_CACHE_WARM_CRON: "*/30 * * * *"
+    ports:
+      - "3025:3025"
+    depends_on:
+      etip_redis:
+        condition: service_healthy
+      etip_minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:3025/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - etip_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
   # ─── Nginx — Reverse Proxy, Rate Limiting, Security Headers ─────
   etip_nginx:
     image: nginx:1.27-alpine
@@ -1233,6 +1279,8 @@ services:
       etip_alerting:
         condition: service_healthy
       etip_analytics:
+        condition: service_healthy
+      etip_caching:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "nginx", "-t"]

@@ -81,7 +81,7 @@ describe('Welcome Routes', () => {
     const body = res.json();
     expect(body.data.seeded).toBe(true);
     expect(body.data.tag).toBe('DEMO');
-    expect(body.data.counts.iocs).toBe(150);
+    expect(body.data.counts.iocs).toBe(10);
   });
 
   it('POST /welcome/seed-demo — is idempotent', async () => {
@@ -145,7 +145,7 @@ describe('Welcome Routes', () => {
   it('GET /welcome/demo-available — returns available counts', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/v1/onboarding/welcome/demo-available' });
     expect(res.statusCode).toBe(200);
-    expect(res.json().data.iocs).toBe(150);
+    expect(res.json().data.iocs).toBe(10);
   });
 
   it('POST /welcome/tour-complete — marks tour complete', async () => {

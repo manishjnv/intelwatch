@@ -140,7 +140,7 @@ jobs:
 
             # Force recreate app containers (picks up new images + compose config)
             echo "Recreating app containers..."
-            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_customization etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_es_indexing etip_frontend etip_nginx
+            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_customization etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_es_indexing etip_reporting etip_alerting etip_analytics etip_caching etip_frontend etip_nginx
 
             # ── Sync database schema (idempotent) ──
             echo "Syncing database schema..."
@@ -208,6 +208,9 @@ jobs:
             check_health "Admin"               3022 etip_admin                no  &
             check_health "ES Indexing"         3020 etip_es_indexing          no  &
             check_health "Reporting"           3021 etip_reporting            no  &
+            check_health "Alerting"            3023 etip_alerting             no  &
+            check_health "Analytics"           3024 etip_analytics            no  &
+            check_health "Caching"             3025 etip_caching              no  &
 
             # Wait for all background checks
             wait

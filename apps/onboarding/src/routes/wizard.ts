@@ -33,25 +33,25 @@ export function wizardRoutes(deps: WizardRouteDeps) {
     /** GET /wizard — Get current wizard state. */
     app.get('/', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const wizard = wizardStore.getOrCreate(tenantId);
+      const wizard = await wizardStore.getOrCreate(tenantId);
       return reply.send({ data: wizard });
     });
 
     /** POST /wizard/org-profile — Set organization profile. */
     app.post('/org-profile', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      wizardStore.getOrCreate(tenantId);
+      await wizardStore.getOrCreate(tenantId);
       const profile = validate(OrgProfileSchema, req.body);
-      const wizard = wizardStore.setOrgProfile(tenantId, profile);
+      const wizard = await wizardStore.setOrgProfile(tenantId, profile);
       return reply.status(201).send({ data: wizard });
     });
 
     /** POST /wizard/team-invite — Invite team members. */
     app.post('/team-invite', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      wizardStore.getOrCreate(tenantId);
+      await wizardStore.getOrCreate(tenantId);
       const input = validate(TeamInviteSchema, req.body);
-      const wizard = wizardStore.addTeamInvites(tenantId, input.invites);
+      const wizard = await wizardStore.addTeamInvites(tenantId, input.invites);
       return reply.status(201).send({ data: wizard });
     });
 
@@ -59,8 +59,8 @@ export function wizardRoutes(deps: WizardRouteDeps) {
     app.post('/complete-step', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const input = validate(CompleteStepSchema, req.body);
-      const wizard = wizardStore.completeStep(tenantId, input.step, input.data);
-      checklistPersistence.save(tenantId);
+      const wizard = await wizardStore.completeStep(tenantId, input.step, input.data);
+      await checklistPersistence.save(tenantId);
       return reply.send({ data: wizard });
     });
 
@@ -68,24 +68,24 @@ export function wizardRoutes(deps: WizardRouteDeps) {
     app.post('/skip-step', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const input = validate(SkipStepSchema, req.body);
-      const wizard = wizardStore.skipStep(tenantId, input.step);
-      checklistPersistence.save(tenantId);
+      const wizard = await wizardStore.skipStep(tenantId, input.step);
+      await checklistPersistence.save(tenantId);
       return reply.send({ data: wizard });
     });
 
     /** POST /wizard/dashboard-prefs — Set dashboard preferences. */
     app.post('/dashboard-prefs', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      wizardStore.getOrCreate(tenantId);
+      await wizardStore.getOrCreate(tenantId);
       const prefs = validate(DashboardPreferenceSchema, req.body);
-      const wizard = wizardStore.setDashboardPrefs(tenantId, prefs);
+      const wizard = await wizardStore.setDashboardPrefs(tenantId, prefs);
       return reply.send({ data: wizard });
     });
 
     /** POST /wizard/reset — Reset onboarding (restart wizard). */
     app.post('/reset', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const wizard = wizardStore.reset(tenantId);
+      const wizard = await wizardStore.reset(tenantId);
       return reply.send({ data: wizard });
     });
   };

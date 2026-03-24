@@ -43,6 +43,10 @@ const EnvSchema = z.object({
   // Graph Integration (#15)
   TI_GRAPH_SERVICE_URL: z.string().default('http://threat-graph:3012'),
   TI_GRAPH_SYNC_ENABLED: z.enum(['true', 'false']).default('false'),
+
+  // Downstream pipeline flags
+  TI_ALERT_ENABLED: z.coerce.boolean().default(true),
+  TI_INTEGRATION_PUSH_ENABLED: z.coerce.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

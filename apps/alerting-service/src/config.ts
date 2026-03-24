@@ -14,6 +14,8 @@ const ConfigSchema = z.object({
   TI_LOG_LEVEL: z.string().default('info'),
   TI_ALERT_MAX_PER_TENANT: z.coerce.number().int().min(10).default(5000),
   TI_ALERT_RETENTION_DAYS: z.coerce.number().int().min(1).default(90),
+  // Downstream pipeline flag
+  TI_INTEGRATION_PUSH_ENABLED: z.coerce.boolean().default(true),
 });
 
 export type AlertingConfig = z.infer<typeof ConfigSchema>;

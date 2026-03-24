@@ -45,6 +45,7 @@ COPY apps/elasticsearch-indexing-service/package.json apps/elasticsearch-indexin
 COPY apps/reporting-service/package.json      apps/reporting-service/tsconfig.json      apps/reporting-service/
 COPY apps/alerting-service/package.json       apps/alerting-service/tsconfig.json       apps/alerting-service/
 COPY apps/analytics-service/package.json      apps/analytics-service/tsconfig.json      apps/analytics-service/
+COPY apps/caching-service/package.json        apps/caching-service/tsconfig.json        apps/caching-service/
 COPY apps/frontend/package.json               apps/frontend/
 
 # RULE: strict --frozen-lockfile, NO fallback. Stale lockfile = build MUST fail. (Issues #11, #16)

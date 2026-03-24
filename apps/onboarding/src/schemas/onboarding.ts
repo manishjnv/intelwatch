@@ -246,6 +246,7 @@ export interface DemoSeedResult {
     actors: number;
     malware: number;
     vulnerabilities: number;
+    feeds: number;
     alerts: number;
   };
   tag: 'DEMO';

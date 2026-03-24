@@ -24,6 +24,7 @@ export interface AlertWorkerDeps {
   alertGroupStore: AlertGroupStore;
   maintenanceStore: MaintenanceStore;
   redisUrl: string;
+  integrationPushEnabled?: boolean;
 }
 
 interface AlertEvaluatePayload {
@@ -44,6 +45,7 @@ interface AlertEvaluatePayload {
 export class AlertWorker {
   private worker: Worker | null = null;
   private queue: Queue;
+  private integrationQueue: Queue | null = null;
   private readonly deps: AlertWorkerDeps;
 
   constructor(deps: AlertWorkerDeps) {
@@ -53,6 +55,14 @@ export class AlertWorker {
       connection: redisOpts,
       prefix: 'etip',
     });
+
+    // Downstream: INTEGRATION_PUSH queue
+    if (deps.integrationPushEnabled !== false) {
+      this.integrationQueue = new Queue(QUEUES.INTEGRATION_PUSH, {
+        connection: redisOpts,
+      });
+      getLogger().info('Integration push queue initialized');
+    }
   }
 
   /** Start the BullMQ worker. */
@@ -189,6 +199,20 @@ export class AlertWorker {
             logger.warn({ alertId: alert.id, failedNotifs }, 'Some notifications failed');
           }
         }
+
+        // 8. Push to integration service (fire-and-forget)
+        if (this.integrationQueue) {
+          this.integrationQueue.add('integration-push', {
+            tenantId: alert.tenantId,
+            eventType: 'alert.created',
+            entityType: 'alert',
+            entityId: alert.id,
+            severity: alert.severity,
+            title: alert.title,
+            ruleId: rule.id,
+            triggerEvent: 'alert_created',
+          }).catch((err) => logger.warn({ err: (err as Error).message, alertId: alert.id }, 'Failed to enqueue INTEGRATION_PUSH'));
+        }
       } catch (err) {
         logger.error({ ruleId: rule.id, err }, 'Failed to create alert for triggered rule');
       }
@@ -202,6 +226,10 @@ export class AlertWorker {
       this.worker = null;
     }
     await this.queue.close();
+    if (this.integrationQueue) {
+      await this.integrationQueue.close();
+      this.integrationQueue = null;
+    }
   }
 
   private parseRedisUrl(url: string): { host: string; port: number } {

@@ -33,7 +33,7 @@ export function connectorRoutes(deps: ConnectorRouteDeps) {
     /** GET /connectors — List data sources for tenant. */
     app.get('/', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const sources = connectorValidator.listSources(tenantId);
+      const sources = await connectorValidator.listSources(tenantId);
       return reply.send({ data: sources, total: sources.length });
     });
 
@@ -41,7 +41,7 @@ export function connectorRoutes(deps: ConnectorRouteDeps) {
     app.post('/', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const input = validate(DataSourceSchema, req.body);
-      const source = connectorValidator.addSource(tenantId, input);
+      const source = await connectorValidator.addSource(tenantId, input);
       return reply.status(201).send({ data: source });
     });
 

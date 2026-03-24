@@ -18,7 +18,7 @@ import { RuleTemplateService } from './services/rule-templates.js';
 import { ConfidenceDecayService } from './services/confidence-decay.js';
 import { BatchRecorrelationService } from './services/batch-recorrelation.js';
 import { GraphIntegrationService } from './services/graph-integration.js';
-import { createCorrelateQueue, closeCorrelateQueue, createCorrelateWorker } from './workers/correlate.js';
+import { createCorrelateQueue, closeCorrelateQueue, createCorrelateWorker, createDownstreamQueues, closeDownstreamQueues } from './workers/correlate.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -105,15 +105,22 @@ async function main(): Promise<void> {
   // BullMQ queue + worker (not in test mode)
   if (config.TI_NODE_ENV !== 'test') {
     createCorrelateQueue();
+    const downstream = createDownstreamQueues();
+    logger.info({
+      alertEvaluate: !!downstream.alertEvaluate,
+      integrationPush: !!downstream.integrationPush,
+    }, 'Downstream queues initialized');
     createCorrelateWorker({
       store, cooccurrence, infraCluster, temporalWave,
       campaignCluster, fpSuppression, confidenceScoring, logger,
+      downstream,
     });
   }
 
   // Graceful shutdown
   app.addHook('onClose', async () => {
     logger.info('Shutting down correlation engine...');
+    await closeDownstreamQueues();
     await closeCorrelateQueue();
   });
 

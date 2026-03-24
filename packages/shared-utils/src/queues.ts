@@ -18,9 +18,10 @@ export const QUEUES = {
   CORRELATE:        'etip-correlate',
   ALERT_EVALUATE:   'etip-alert-evaluate',
   INTEGRATION_PUSH: 'etip-integration-push',
-  ARCHIVE:          'etip-archive',
-  REPORT_GENERATE:  'etip-report-generate',
-  IOC_INDEX:        'etip-ioc-indexed',
+  ARCHIVE:            'etip-archive',
+  REPORT_GENERATE:    'etip-report-generate',
+  IOC_INDEX:          'etip-ioc-indexed',
+  CACHE_INVALIDATE:   'etip-cache-invalidate',
 } as const;
 
 /** Union type of all queue name string literals */

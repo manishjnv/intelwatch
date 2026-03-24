@@ -12,6 +12,13 @@ const ConfigSchema = z.object({
   TI_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
   TI_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(200),
   TI_LOG_LEVEL: z.string().default('info'),
+  // Service URLs for real demo seeding (B1)
+  TI_IOC_SERVICE_URL: z.string().default('http://etip_ioc_intelligence:3007'),
+  TI_ACTOR_SERVICE_URL: z.string().default('http://etip_threat_actor_intel:3008'),
+  TI_MALWARE_SERVICE_URL: z.string().default('http://etip_malware_intel:3009'),
+  TI_VULN_SERVICE_URL: z.string().default('http://etip_vulnerability_intel:3010'),
+  // Ingestion service for default feed seeding (B2)
+  TI_INGESTION_SERVICE_URL: z.string().default('http://etip_ingestion:3004'),
 });
 
 export type OnboardingConfig = z.infer<typeof ConfigSchema>;

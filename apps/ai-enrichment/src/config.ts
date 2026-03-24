@@ -44,6 +44,10 @@ const EnvSchema = z.object({
   TI_REENRICH_INTERVAL_MS: z.coerce.number().int().min(60000).default(3_600_000),
   /** Enable cost persistence to Redis (#14) */
   TI_COST_PERSISTENCE_ENABLED: z.coerce.boolean().default(true),
+  /** Downstream pipeline flags — enable/disable enqueuing after enrichment */
+  TI_GRAPH_SYNC_ENABLED: z.coerce.boolean().default(true),
+  TI_IOC_INDEX_ENABLED: z.coerce.boolean().default(true),
+  TI_CORRELATE_ENABLED: z.coerce.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

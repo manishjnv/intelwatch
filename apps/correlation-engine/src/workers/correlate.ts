@@ -17,23 +17,29 @@ import type { CampaignClusterService } from '../services/campaign-cluster.js';
 import type { FPSuppressionService } from '../services/fp-suppression.js';
 import type { ConfidenceScoringService } from '../services/confidence-scoring.js';
 
+// ── Redis Connection Helper ─────────────────────────────────────
+
+function parseRedisUrl(redisUrl: string) {
+  const url = new URL(redisUrl);
+  const password = decodeURIComponent(url.password || '');
+  return {
+    host: url.hostname,
+    port: Number(url.port) || 6379,
+    password: password || undefined,
+    maxRetriesPerRequest: null as null,
+    enableReadyCheck: false,
+    lazyConnect: true,
+  };
+}
+
 // ── Queue Producer ──────────────────────────────────────────────
 
 let _queue: Queue | null = null;
 
 export function createCorrelateQueue(): Queue {
   const config = getConfig();
-  const url = new URL(config.TI_REDIS_URL);
-  const password = decodeURIComponent(url.password || '');
   _queue = new Queue(QUEUES.CORRELATE, {
-    connection: {
-      host: url.hostname,
-      port: Number(url.port) || 6379,
-      password: password || undefined,
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-      lazyConnect: true,
-    },
+    connection: parseRedisUrl(config.TI_REDIS_URL),
     defaultJobOptions: {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
@@ -57,6 +63,35 @@ export async function closeCorrelateQueue(): Promise<void> {
   }
 }
 
+// ── Downstream Queue Producers ──────────────────────────────────
+
+export interface DownstreamQueues {
+  alertEvaluate: Queue | null;
+  integrationPush: Queue | null;
+}
+
+let _alertEvaluateQueue: Queue | null = null;
+let _integrationPushQueue: Queue | null = null;
+
+export function createDownstreamQueues(): DownstreamQueues {
+  const config = getConfig();
+  const connection = parseRedisUrl(config.TI_REDIS_URL);
+
+  _alertEvaluateQueue = config.TI_ALERT_ENABLED ? new Queue(QUEUES.ALERT_EVALUATE, { connection }) : null;
+  _integrationPushQueue = config.TI_INTEGRATION_PUSH_ENABLED ? new Queue(QUEUES.INTEGRATION_PUSH, { connection }) : null;
+
+  return { alertEvaluate: _alertEvaluateQueue, integrationPush: _integrationPushQueue };
+}
+
+export function getDownstreamQueues(): DownstreamQueues {
+  return { alertEvaluate: _alertEvaluateQueue, integrationPush: _integrationPushQueue };
+}
+
+export async function closeDownstreamQueues(): Promise<void> {
+  if (_alertEvaluateQueue) { await _alertEvaluateQueue.close(); _alertEvaluateQueue = null; }
+  if (_integrationPushQueue) { await _integrationPushQueue.close(); _integrationPushQueue = null; }
+}
+
 // ── Worker Dependencies ─────────────────────────────────────────
 
 export interface CorrelateWorkerDeps {
@@ -68,15 +103,14 @@ export interface CorrelateWorkerDeps {
   fpSuppression: FPSuppressionService;
   confidenceScoring: ConfidenceScoringService;
   logger: pino.Logger;
+  downstream?: DownstreamQueues;
 }
 
 // ── Worker Consumer ─────────────────────────────────────────────
 
 export function createCorrelateWorker(deps: CorrelateWorkerDeps): Worker<CorrelatePayload> {
-  const { logger } = deps;
+  const { logger, downstream } = deps;
   const config = getConfig();
-  const url = new URL(config.TI_REDIS_URL);
-  const password = decodeURIComponent(url.password || '');
   const worker = new Worker<CorrelatePayload>(
     QUEUES.CORRELATE,
     async (job: Job<CorrelatePayload>) => {
@@ -89,17 +123,15 @@ export function createCorrelateWorker(deps: CorrelateWorkerDeps): Worker<Correla
       }
 
       const data = parsed.data;
-      await processCorrelation(data, deps.store, deps, config, logger);
+      const matchCount = await processCorrelation(data, deps.store, deps, config, logger);
+
+      // Enqueue downstream: alert only when matches found, integration always
+      if (downstream) {
+        await enqueueDownstream(data, matchCount, downstream, logger);
+      }
     },
     {
-      connection: {
-        host: url.hostname,
-        port: Number(url.port) || 6379,
-        password: password || undefined,
-        maxRetriesPerRequest: null,
-        enableReadyCheck: false,
-        lazyConnect: true,
-      },
+      connection: parseRedisUrl(config.TI_REDIS_URL),
       concurrency: config.TI_CORRELATION_WORKER_CONCURRENCY,
       limiter: { max: 20, duration: 60_000 },
     },
@@ -119,13 +151,52 @@ export function createCorrelateWorker(deps: CorrelateWorkerDeps): Worker<Correla
 
 // ── Job Processing ──────────────────────────────────────────────
 
+/**
+ * Enqueue downstream jobs after correlation processing.
+ * ALERT_EVALUATE: only when matches found. INTEGRATION_PUSH: always.
+ */
+async function enqueueDownstream(
+  data: CorrelatePayload,
+  matchCount: number,
+  downstream: DownstreamQueues,
+  logger: pino.Logger,
+): Promise<void> {
+  const { tenantId, entityType, entityId } = data;
+
+  // Only push to alerting if correlation found matches
+  if (downstream.alertEvaluate && matchCount > 0) {
+    downstream.alertEvaluate.add('alert-evaluate', {
+      tenantId,
+      eventType: 'correlation.match',
+      metric: 'correlation_matches',
+      value: matchCount,
+      field: 'entityId',
+      fieldValue: entityId,
+      source: { entityType, entityId, triggerEvent: 'correlation_complete' },
+    }).catch((err) => logger.warn({ err: (err as Error).message, entityId }, 'Failed to enqueue ALERT_EVALUATE'));
+  }
+
+  // Always push to integration (let integration worker filter by tenant config)
+  if (downstream.integrationPush) {
+    downstream.integrationPush.add('integration-push', {
+      tenantId,
+      eventType: 'correlation.match',
+      entityType,
+      entityId,
+      matchCount,
+      triggerEvent: 'correlation_complete',
+    }).catch((err) => logger.warn({ err: (err as Error).message, entityId }, 'Failed to enqueue INTEGRATION_PUSH'));
+  }
+}
+
+/** Returns the number of correlation matches found. */
 async function processCorrelation(
   data: CorrelatePayload,
   store: CorrelationStore,
   deps: CorrelateWorkerDeps,
   config: AppConfig,
   logger: pino.Logger,
-): Promise<void> {
+): Promise<number> {
   const { tenantId, entityType, entityId } = data;
   const { cooccurrence, infraCluster, temporalWave, campaignCluster, fpSuppression } = deps;
   const iocs = store.getTenantIOCs(tenantId);
@@ -133,7 +204,7 @@ async function processCorrelation(
   // Only process IOC entities for now (other types in P2)
   if (entityType !== 'ioc') {
     logger.debug({ entityType, entityId }, 'Skipping non-IOC entity for correlation');
-    return;
+    return 0;
   }
 
   // Ensure the entity exists in the store (hydrated externally or by prior jobs)
@@ -184,4 +255,6 @@ async function processCorrelation(
     campaigns: campaigns.length,
     waves: waves.length,
   }, 'Correlation processing complete');
+
+  return suppressed.length;
 }

@@ -22,8 +22,8 @@ export class ChecklistPersistence {
   constructor(private wizardStore: WizardStore) {}
 
   /** Save current wizard state as a snapshot. */
-  save(tenantId: string): ChecklistSnapshot {
-    const wizard = this.wizardStore.getOrCreate(tenantId);
+  async save(tenantId: string): Promise<ChecklistSnapshot> {
+    const wizard = await this.wizardStore.getOrCreate(tenantId);
 
     const existing = this.snapshots.get(tenantId) ?? [];
     const version = existing.length + 1;

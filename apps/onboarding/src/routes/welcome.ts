@@ -29,7 +29,7 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
     /** GET /welcome — Get personalized welcome dashboard. */
     app.get('/', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const dashboard = welcomeDashboard.getDashboard(tenantId);
+      const dashboard = await welcomeDashboard.getDashboard(tenantId);
       return reply.send({ data: dashboard });
     });
 
@@ -44,7 +44,7 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
     app.post('/seed-demo', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const input = validate(SeedDemoSchema, req.body ?? {});
-      const result = demoSeeder.seed(tenantId, input.categories);
+      const result = await demoSeeder.seed(tenantId, input.categories);
       return reply.status(201).send({ data: result });
     });
 
@@ -87,7 +87,7 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
     /** POST /welcome/save-state — Save onboarding state. */
     app.post('/save-state', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const snapshot = checklistPersistence.save(tenantId);
+      const snapshot = await checklistPersistence.save(tenantId);
       return reply.status(201).send({ data: snapshot });
     });
 

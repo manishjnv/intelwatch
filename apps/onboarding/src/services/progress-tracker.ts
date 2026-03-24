@@ -20,7 +20,7 @@ export class ProgressTracker {
 
   /** Run all readiness checks for a tenant. */
   async runReadinessChecks(tenantId: string): Promise<ReadinessCheckResult> {
-    const wizard = this.wizardStore.getOrCreate(tenantId);
+    const wizard = await this.wizardStore.getOrCreate(tenantId);
     const checks: ReadinessCheck[] = [];
 
     // 1. Org profile completed
@@ -101,13 +101,13 @@ export class ProgressTracker {
   }
 
   /** Get summary stats for a tenant. */
-  getStats(tenantId: string): {
+  async getStats(tenantId: string): Promise<{
     feedsActive: number;
     iocsIngested: number;
     teamMembers: number;
     modulesEnabled: number;
-  } {
-    const wizard = this.wizardStore.getOrCreate(tenantId);
+  }> {
+    const wizard = await this.wizardStore.getOrCreate(tenantId);
     const activeSources = wizard.dataSources.filter((s) => s.status === 'connected');
     return {
       feedsActive: activeSources.length,
@@ -118,8 +118,8 @@ export class ProgressTracker {
   }
 
   /** Get completion percentage. */
-  getCompletionPercent(tenantId: string): number {
-    const wizard = this.wizardStore.getOrCreate(tenantId);
+  async getCompletionPercent(tenantId: string): Promise<number> {
+    const wizard = await this.wizardStore.getOrCreate(tenantId);
     return wizard.completionPercent;
   }
 }
