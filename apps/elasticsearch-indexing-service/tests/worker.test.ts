@@ -43,7 +43,7 @@ describe('IocIndexWorker', () => {
   it('creates a BullMQ Worker on the ioc-indexed queue', async () => {
     const { Worker } = await import('bullmq');
     expect(Worker).toHaveBeenCalledWith(
-      'etip:ioc-indexed',
+      'etip-ioc-indexed',
       expect.any(Function),
       expect.objectContaining({ connection: expect.objectContaining({}) }),
     );
