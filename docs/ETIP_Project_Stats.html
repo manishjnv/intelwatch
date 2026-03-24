@@ -323,12 +323,52 @@ li strong { color: var(--text-primary); }
     </tbody>
   </table>
 
+  <h3>Phase F — AI Processing Controls &amp; Cost Engine (per CTI Pipeline Architecture v2.0)</h3>
+  <table>
+    <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-amber">F1</span></td><td>ingestion</td><td>Feed Processing Policies: per-feed daily caps, feed categories (ioc_feed / news_feed / vuln_feed), per-source AI enable/disable toggle, midnight counter reset</td><td>8</td><td>12</td></tr>
+      <tr><td><span class="badge badge-amber">F2</span></td><td>customization</td><td>12 AI subtasks with per-task model selection (primary + fallback). 4 plan tiers (Starter/Professional/Enterprise/Custom) auto-populate all subtasks. Recommended model &#9733; badges per subtask.</td><td>6</td><td>14</td></tr>
+      <tr><td><span class="badge badge-amber">F3</span></td><td>customization + frontend</td><td>Cost estimator: predict $/month based on model &times; article count &times; avg tokens. Admin AI Config UI: plan selector cards, 12-row subtask table, live cost sidebar, recommended defaults.</td><td>7</td><td>12</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top:16px;color:var(--accent-cyan)">12 AI Subtasks (per CTI Pipeline Architecture v2.0)</h4>
+  <table>
+    <thead><tr><th>Stage</th><th>Subtask</th><th>Recommended &#9733;</th><th>Fallback</th><th>Runs On</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="4">Stage 1<br><small>100% of articles</small></td><td>Summarization</td><td>Sonnet</td><td>Haiku</td><td>Every article</td></tr>
+      <tr><td>Keyword Extraction</td><td>Sonnet</td><td>Haiku</td><td>Every article</td></tr>
+      <tr><td>Date Enrichment</td><td>Sonnet</td><td>Haiku</td><td>Every article</td></tr>
+      <tr><td>Classification</td><td>Sonnet</td><td>Haiku</td><td>Every article</td></tr>
+      <tr><td rowspan="6">Stage 2<br><small>~20% CTI only</small></td><td>IOC Extraction</td><td>Sonnet</td><td>Haiku</td><td>CTI articles</td></tr>
+      <tr><td>CVE Identification</td><td>Sonnet</td><td>Opus</td><td>CTI articles</td></tr>
+      <tr><td>Threat Actor Recognition</td><td>Sonnet</td><td>Haiku</td><td>CTI articles</td></tr>
+      <tr><td>Graph Relation Extraction</td><td>Sonnet</td><td>Haiku</td><td>CTI articles</td></tr>
+      <tr><td>IOC Expiry Assessment</td><td>Sonnet</td><td>Haiku</td><td>CTI articles</td></tr>
+      <tr><td>TTP Mapping</td><td>Sonnet</td><td>Opus</td><td>CTI articles</td></tr>
+      <tr><td rowspan="2">Stage 3<br><small>Dedup</small></td><td>Deduplication</td><td>Haiku</td><td>Sonnet</td><td>All persisted</td></tr>
+      <tr><td>Cross-Article Merge</td><td>Sonnet</td><td>Haiku</td><td>Multi-source</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top:16px;color:var(--accent-cyan)">Pre-Built Plan Tiers</h4>
+  <table>
+    <thead><tr><th>Plan</th><th>Stage 1</th><th>Stage 2</th><th>Stage 3</th><th>Est. $/1K Articles</th><th>Accuracy</th></tr></thead>
+    <tbody>
+      <tr><td>Starter</td><td>Haiku</td><td>Haiku</td><td>Haiku</td><td>~$4&ndash;6</td><td>~85%</td></tr>
+      <tr style="background:rgba(34,197,94,0.08)"><td><strong>Professional &#9733;</strong></td><td>Sonnet</td><td>Sonnet</td><td>Sonnet</td><td>~$27</td><td>~93%</td></tr>
+      <tr><td>Enterprise</td><td>Opus</td><td>Opus</td><td>Opus</td><td>~$85</td><td>~96%</td></tr>
+      <tr><td>Custom</td><td>Per-subtask</td><td>Per-subtask</td><td>Per-subtask</td><td>Variable</td><td>Variable</td></tr>
+    </tbody>
+  </table>
+
   <div style="margin-top:24px">
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-value">12</div><div class="stat-label">Sessions Planned</div></div>
-      <div class="stat-card"><div class="stat-value">55</div><div class="stat-label">Files to Modify</div></div>
-      <div class="stat-card"><div class="stat-value">96</div><div class="stat-label">New Tests</div></div>
-      <div class="stat-card"><div class="stat-value">5</div><div class="stat-label">Broken UI Buttons to Fix</div></div>
+      <div class="stat-card"><div class="stat-value">15</div><div class="stat-label">Sessions Planned</div></div>
+      <div class="stat-card"><div class="stat-value">76</div><div class="stat-label">Files to Modify</div></div>
+      <div class="stat-card"><div class="stat-value">134</div><div class="stat-label">New Tests</div></div>
+      <div class="stat-card"><div class="stat-value">12</div><div class="stat-label">AI Subtasks</div></div>
     </div>
   </div>
 
@@ -358,6 +398,13 @@ li strong { color: var(--text-primary); }
       <div class="card-title"><span class="badge badge-purple">Week 4</span> Complete (D1 → D2 → E1 → E2)</div>
       <div class="card-body">
         <strong>Polish.</strong> AlertingPage verified live, AnalyticsPage built (4 tabs), E2E pipeline smoke test, admin queue monitoring dashboard with real BullMQ depths.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-amber">Week 5</span> AI Cost Control (F1 → F2 → F3)</div>
+      <div class="card-body">
+        <strong>Cost governance.</strong> Per-feed daily caps (ioc/news/vuln categories). 12 AI subtasks with per-task model selection (primary + fallback). 4 plan tiers (Starter $4/Professional $27/Enterprise $85 per 1K articles). Real-time cost estimator in admin UI.<br>
+        <strong>Ref:</strong> <code>docs/architecture/CTI-Pipeline-Architecture-v2.0.html</code> Section 5 &amp; 6.
       </div>
     </div>
   </div>
@@ -446,7 +493,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 55 &middot; 2026-03-24 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 56 &middot; 2026-03-24 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
