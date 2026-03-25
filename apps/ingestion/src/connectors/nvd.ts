@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { AppError } from '@etip/shared-utils';
 import type pino from 'pino';
 import type { FetchedArticle, ConnectorResult } from './rss.js';
 
@@ -123,7 +122,7 @@ export class NVDConnector {
   }
 
   /** Fetch a single page from NVD API. Returns null on error. */
-  private async fetchPage(url: string, timeoutMs: number): ReturnType<typeof NvdResponseSchema.parseAsync> | null {
+  private async fetchPage(url: string, timeoutMs: number): Promise<z.infer<typeof NvdResponseSchema> | null> {
     let res: Response;
     try {
       res = await fetch(url, {

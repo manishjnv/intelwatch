@@ -19,6 +19,16 @@ const EnvSchema = z.object({
   TI_MAX_FEEDS_PER_TENANT: z.coerce.number().int().default(50),
   TI_MAX_CONSECUTIVE_FAILURES: z.coerce.number().int().default(5),
 
+  // ── Queue Lane Concurrency (P3-4) ──────────────────────────────────
+  TI_FEED_CONCURRENCY_RSS: z.coerce.number().int().min(1).default(5),
+  TI_FEED_CONCURRENCY_NVD: z.coerce.number().int().min(1).default(2),
+  TI_FEED_CONCURRENCY_STIX: z.coerce.number().int().min(1).default(2),
+  TI_FEED_CONCURRENCY_REST: z.coerce.number().int().min(1).default(3),
+
+  // ── Per-Tenant Fairness (P3-7) ────────────────────────────────────
+  // Max concurrent feed-fetch jobs per tenant across all queue lanes.
+  TI_FEED_MAX_CONCURRENT_PER_TENANT: z.coerce.number().int().min(1).default(3),
+
   // ── AI Configuration ────────────────────────────────────────────────
   // API key — set in .env on VPS. If empty, AI stages use rule-based fallback.
   TI_ANTHROPIC_API_KEY: z.string().optional(),

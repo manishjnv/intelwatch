@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { AppError } from '@etip/shared-utils';
 import type pino from 'pino';
 import type { FetchedArticle, ConnectorResult } from './rss.js';
 
@@ -160,7 +159,7 @@ export class TAXIIConnector {
   /** Discover the first readable collection from the TAXII server. */
   private async discoverFirstCollection(
     baseUrl: string, headers: Record<string, string>, timeoutMs: number,
-  ): Promise<string | null> {
+  ): Promise<string | undefined> {
     const url = `${normalizeUrl(baseUrl)}/collections/`;
     let res: Response;
     try {
@@ -171,12 +170,12 @@ export class TAXIIConnector {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn({ url, error: message }, 'TAXII collection discovery failed');
-      return null;
+      return undefined;
     }
 
     if (!res.ok) {
       this.logger.warn({ status: res.status, url }, 'TAXII collection discovery returned non-OK');
-      return null;
+      return undefined;
     }
 
     let body: unknown;
@@ -184,14 +183,14 @@ export class TAXIIConnector {
       body = await res.json();
     } catch {
       this.logger.warn('TAXII collection discovery response is not valid JSON');
-      return null;
+      return undefined;
     }
 
     const parsed = CollectionsResponseSchema.safeParse(body);
-    if (!parsed.success) return null;
+    if (!parsed.success) return undefined;
 
     const readable = (parsed.data.collections ?? []).find((c) => c.can_read !== false);
-    return readable?.id ?? null;
+    return readable?.id ?? undefined;
   }
 
   /** Build common headers including basic auth if credentials are provided. */

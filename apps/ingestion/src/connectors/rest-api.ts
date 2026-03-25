@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { AppError } from '@etip/shared-utils';
 import type pino from 'pino';
 import type { FetchedArticle, ConnectorResult } from './rss.js';
 
