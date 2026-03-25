@@ -6,7 +6,7 @@
  *   - Collapses/expands on toggle
  *   - Demo fallback renders correctly
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
 import { ConfidenceBreakdown } from '@/components/viz/ConfidenceBreakdown'
 import type { IOCRecord } from '@/hooks/use-intel-data'
