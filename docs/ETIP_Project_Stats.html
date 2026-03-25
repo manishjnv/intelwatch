@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 60 &middot; 2026-03-25 &middot; Phase 7 — E2E E1+E2 complete, queue monitor deployed, 5348 tests</span>
+  <span class="version">Session 62 &middot; 2026-03-25 &middot; Phase 7 — E2E A1-E2 COMPLETE, pipeline 100%, 33 containers, ~5348 tests</span>
 </div>
 </div>
 
@@ -89,11 +89,11 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">5,348</div><div class="stat-label">Tests Passing</div></div>
-    <div class="stat-card"><div class="stat-value">~551</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">60</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">~5,348</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~560</div><div class="stat-label">API Endpoints</div></div>
+    <div class="stat-card"><div class="stat-value">62</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">42</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
-    <div class="stat-card"><div class="stat-value">33%</div><div class="stat-label">Pipeline Wired</div></div>
+    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">19</div><div class="stat-label">Frontend Pages</div></div>
   </div>
 </div>
@@ -112,7 +112,7 @@ li strong { color: var(--text-primary); }
       <tr><td>4</td><td><strong>Advanced Intelligence</strong></td><td>4</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
       <tr><td>5</td><td><strong>Platform &amp; Integrations</strong></td><td>3</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
       <tr><td>6</td><td><strong>Growth &amp; Monetization</strong></td><td>3</td><td><span class="badge badge-green">COMPLETE</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
-      <tr><td>7</td><td><strong>Performance &amp; Hardening</strong></td><td>4</td><td><span class="badge badge-amber">IN PROGRESS (4/4 built)</span></td><td>75%</td><td><div class="progress-bar"><div class="progress-fill fill-amber" style="width:75%"></div></div></td></tr>
+      <tr><td>7</td><td><strong>Performance &amp; Hardening</strong></td><td>5</td><td><span class="badge badge-green">COMPLETE (E2E done)</span></td><td>100%</td><td><div class="progress-bar"><div class="progress-fill fill-green" style="width:100%"></div></div></td></tr>
     </tbody>
   </table>
 </div>
@@ -121,7 +121,7 @@ li strong { color: var(--text-primary); }
 <!-- MODULES -->
 <section>
 <div class="container">
-  <h2><span class="num">03</span>Module Status (28 Total)</h2>
+  <h2><span class="num">03</span>Module Status (33 Total — 8 shared + 25 services)</h2>
 
   <h3>Shared Packages — Tier 1 Frozen (8)</h3>
   <table>
@@ -138,13 +138,13 @@ li strong { color: var(--text-primary); }
     </tbody>
   </table>
 
-  <h3>Feature Services (20)</h3>
+  <h3>Feature Services (25)</h3>
   <table>
     <thead><tr><th>Module</th><th>Port</th><th>Phase</th><th>Status</th><th>Endpoints</th><th>Tests</th></tr></thead>
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy</td><td>45</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth</td><td>21</td></tr>
-      <tr><td>frontend</td><td>80</td><td>1</td><td><span class="badge badge-purple">UI Frozen</span></td><td>SPA (13 pages)</td><td>367</td></tr>
+      <tr><td>frontend</td><td>80</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (19 pages)</td><td>688</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD</td><td>276</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline</td><td>139</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
@@ -153,12 +153,12 @@ li strong { color: var(--text-primary); }
       <tr><td>malware-intel</td><td>3009</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>27</td><td>149</td></tr>
       <tr><td>vulnerability-intel</td><td>3010</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>28</td><td>119</td></tr>
       <tr><td>threat-graph</td><td>3012</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>294</td></tr>
-      <tr><td>correlation-engine</td><td>3013</td><td>4</td><td><span class="badge badge-blue">Feature-complete</span></td><td>20</td><td>166</td></tr>
-      <tr><td>threat-hunting</td><td>3014</td><td>4</td><td><span class="badge badge-blue">Feature-complete</span></td><td>47</td><td>222</td></tr>
-      <tr><td>digital-risk-protection</td><td>3011</td><td>4</td><td><span class="badge badge-blue">Feature-complete</span></td><td>36</td><td>310</td></tr>
-      <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-blue">Feature-complete</span></td><td>58</td><td>335</td></tr>
-      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-blue">Feature-complete</span></td><td>32</td><td>185</td></tr>
-      <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-blue">Feature-complete</span></td><td>35</td><td>159</td></tr>
+      <tr><td>correlation-engine</td><td>3013</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>20</td><td>166</td></tr>
+      <tr><td>threat-hunting</td><td>3014</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>47</td><td>222</td></tr>
+      <tr><td>digital-risk-protection</td><td>3011</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>36</td><td>310</td></tr>
+      <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58</td><td>335</td></tr>
+      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>185</td></tr>
+      <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>35</td><td>159</td></tr>
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>190</td></tr>
       <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28</td><td>149</td></tr>
       <tr><td>admin-ops</td><td>3022</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>28</td><td>147</td></tr>
@@ -177,12 +177,12 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">04</span>Status Summary</h2>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">29</div><div class="stat-label">Built / Complete (100%)</div></div>
-    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#60a5fa">0</div><div class="stat-label">In Progress (0%)</div></div>
-    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#94a3b8">0</div><div class="stat-label">Not Started (0%)</div></div>
+    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">33</div><div class="stat-label">Built &amp; Deployed (100%)</div></div>
+    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">7/7</div><div class="stat-label">Pipeline Links Wired</div></div>
+    <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">12/15</div><div class="stat-label">E2E Sessions Done</div></div>
   </div>
   <div class="progress-wrap">
-    <div class="progress-label"><span><strong>Overall Progress</strong></span><span>29 / 29 modules (100%)</span></div>
+    <div class="progress-label"><span><strong>Overall Progress</strong></span><span>33 / 33 modules deployed (100%)</span></div>
     <div class="progress-bar" style="height:16px"><div class="progress-fill fill-green" style="width:100%"></div></div>
   </div>
 </div>
@@ -256,17 +256,17 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>1</td><td>Ingestion</td><td>etip-normalize</td><td>Normalization</td><td><span class="badge badge-green">WIRED</span></td></tr>
       <tr><td>2</td><td>Normalization</td><td>etip-enrich-realtime</td><td>AI Enrichment</td><td><span class="badge badge-green">WIRED</span></td></tr>
-      <tr><td>3</td><td>AI Enrichment</td><td>etip-graph-sync</td><td>Threat Graph</td><td><span class="badge badge-red">MISSING</span></td></tr>
-      <tr><td>4</td><td>AI Enrichment</td><td>etip-ioc-indexed</td><td>ES Indexing</td><td><span class="badge badge-red">MISSING</span></td></tr>
-      <tr><td>5</td><td>AI Enrichment</td><td>etip-correlate</td><td>Correlation</td><td><span class="badge badge-red">MISSING</span></td></tr>
-      <tr><td>6</td><td>Correlation</td><td>etip-alert-evaluate</td><td>Alerting</td><td><span class="badge badge-red">MISSING</span></td></tr>
-      <tr><td>7</td><td>Alerting</td><td>etip-integration-push</td><td>Integration</td><td><span class="badge badge-red">MISSING</span></td></tr>
+      <tr><td>3</td><td>AI Enrichment</td><td>etip-graph-sync</td><td>Threat Graph</td><td><span class="badge badge-green">WIRED (A1)</span></td></tr>
+      <tr><td>4</td><td>AI Enrichment</td><td>etip-ioc-indexed</td><td>ES Indexing</td><td><span class="badge badge-green">WIRED (A1)</span></td></tr>
+      <tr><td>5</td><td>AI Enrichment</td><td>etip-correlate</td><td>Correlation</td><td><span class="badge badge-green">WIRED (A1)</span></td></tr>
+      <tr><td>6</td><td>Correlation</td><td>etip-alert-evaluate</td><td>Alerting</td><td><span class="badge badge-green">WIRED (A2)</span></td></tr>
+      <tr><td>7</td><td>Alerting</td><td>etip-integration-push</td><td>Integration</td><td><span class="badge badge-green">WIRED (A3)</span></td></tr>
     </tbody>
   </table>
 
   <div class="progress-wrap" style="margin-top:20px">
-    <div class="progress-label"><span><strong>Pipeline Wired</strong></span><span>2 / 7 links (33%)</span></div>
-    <div class="progress-bar" style="height:16px"><div class="progress-fill fill-amber" style="width:33%"></div></div>
+    <div class="progress-label"><span><strong>Pipeline Wired</strong></span><span>7 / 7 links (100%)</span></div>
+    <div class="progress-bar" style="height:16px"><div class="progress-fill fill-green" style="width:100%"></div></div>
   </div>
 </div>
 </section>
@@ -275,15 +275,15 @@ li strong { color: var(--text-primary); }
 <section>
 <div class="container">
   <h2><span class="num">07</span>E2E Integration Plan — Make Every Feature Work</h2>
-  <p style="color:var(--text-secondary);margin-bottom:20px">12 sessions, 55 files, 96 tests. Approved 2026-03-24. Ordered by user-visible impact.</p>
+  <p style="color:var(--text-secondary);margin-bottom:20px">15 sessions, 76 files, 134 tests. Approved 2026-03-24. <strong>Phases A-E COMPLETE (12/15 sessions done).</strong> Phase F remaining.</p>
 
   <h3>Phase A — Complete BullMQ Pipeline (33% → 100%)</h3>
   <table>
     <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th><th>Pipeline After</th></tr></thead>
     <tbody>
-      <tr><td><span class="badge badge-red">A1</span></td><td>ai-enrichment</td><td>Add downstream enqueues → GRAPH_SYNC + IOC_INDEX + CORRELATE after enrichment completes</td><td>6</td><td>8</td><td>67%</td></tr>
-      <tr><td><span class="badge badge-red">A2</span></td><td>correlation-engine</td><td>Add downstream enqueues → ALERT_EVALUATE + INTEGRATION_PUSH after correlation matches</td><td>4</td><td>6</td><td>83%</td></tr>
-      <tr><td><span class="badge badge-red">A3</span></td><td>alerting-service</td><td>Add downstream enqueue → INTEGRATION_PUSH after alert fires</td><td>4</td><td>4</td><td>100%</td></tr>
+      <tr style="background:#0f0f0f"><td><span class="badge badge-green">A1 ✅</span></td><td>ai-enrichment</td><td>Downstream enqueues → GRAPH_SYNC + IOC_INDEX + CORRELATE. Feature flags. <strong>DONE S57</strong></td><td>6</td><td>13</td><td>67%</td></tr>
+      <tr style="background:#0f0f0f"><td><span class="badge badge-green">A2 ✅</span></td><td>correlation-engine</td><td>Downstream enqueues → ALERT_EVALUATE + INTEGRATION_PUSH. <strong>DONE S57</strong></td><td>4</td><td>8</td><td>83%</td></tr>
+      <tr style="background:#0f0f0f"><td><span class="badge badge-green">A3 ✅</span></td><td>alerting-service</td><td>Downstream enqueue → INTEGRATION_PUSH. <strong>DONE S56</strong></td><td>4</td><td>4</td><td>100%</td></tr>
     </tbody>
   </table>
 
@@ -291,7 +291,7 @@ li strong { color: var(--text-primary); }
   <table>
     <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th></tr></thead>
     <tbody>
-      <tr><td><span class="badge badge-amber">B1</span></td><td>onboarding</td><td>DemoSeeder → real HTTP calls to IOC/Actor/Malware/Vuln APIs (persist via Prisma). Service JWT inter-service auth.</td><td>5</td><td>10</td></tr>
+      <tr style="background:#0f0f0f"><td><span class="badge badge-green">B1 ✅</span></td><td>onboarding</td><td>DemoSeeder → real HTTP calls to IOC/Actor/Malware/Vuln APIs. Service JWT. <strong>DONE S57</strong></td><td>5</td><td>10</td></tr>
       <tr style="background:#0f0f0f"><td><span class="badge badge-green">B2 ✅</span></td><td>onboarding</td><td>Default OSINT feeds (AlienVault OTX, URLhaus, CISA KEV, Feodo Tracker). Redis-backed wizard state. <strong>DONE S57</strong></td><td>5</td><td>27</td></tr>
     </tbody>
   </table>
@@ -319,8 +319,8 @@ li strong { color: var(--text-primary); }
   <table>
     <thead><tr><th>Session</th><th>Module</th><th>What</th><th>Files</th><th>Tests</th></tr></thead>
     <tbody>
-      <tr><td><span class="badge badge-green">E1</span></td><td>test harness</td><td>E2E pipeline smoke test: feed → fetch → normalize → enrich → graph+ES+correlate → alert → integration. CISA RSS. ioredis job-counter polling. 5-stage, skipped in CI.</td><td>3</td><td>5</td></tr>
-      <tr><td><span class="badge badge-green">E2</span></td><td>admin-ops</td><td>Queue monitoring: GET /api/v1/admin/queues reads 14 BullMQ queues via ioredis LLEN+ZCARD. Frontend queue health table (color-coded, 10s polling). 11 tests (injectable mock).</td><td>5</td><td>11</td></tr>
+      <tr style="background:#0f0f0f"><td><span class="badge badge-green">E1 ✅</span></td><td>test harness</td><td>E2E pipeline smoke test: 5-stage CISA RSS → ioredis job-counter polling. Skipped in CI. <strong>DONE S60</strong></td><td>3</td><td>5</td></tr>
+      <tr style="background:#0f0f0f"><td><span class="badge badge-green">E2 ✅</span></td><td>admin-ops</td><td>Queue monitoring: GET /api/v1/admin/queues, 14 BullMQ queues via ioredis. Frontend table (10s polling). <strong>DONE S60</strong></td><td>5</td><td>11</td></tr>
     </tbody>
   </table>
 
@@ -415,39 +415,51 @@ li strong { color: var(--text-primary); }
 <!-- AUDIT: CURRENT BROKEN FEATURES -->
 <section>
 <div class="container">
-  <h2><span class="num">08</span>Feature Audit — What's Broken Today</h2>
+  <h2><span class="num">08</span>Feature Audit — Current Status</h2>
 
-  <h3>Pipeline Dead Ends (5 missing links)</h3>
+  <h3>Pipeline Links — ALL WIRED ✅</h3>
   <table>
-    <thead><tr><th>Service</th><th>Worker Queue</th><th>Problem</th><th>Fix Session</th></tr></thead>
+    <thead><tr><th>Service</th><th>Worker Queue</th><th>Status</th><th>Fixed In</th></tr></thead>
     <tbody>
-      <tr><td>Threat Graph</td><td>etip-graph-sync</td><td>Worker exists, but no service enqueues to it</td><td>A1</td></tr>
-      <tr><td>ES Indexing</td><td>etip-ioc-indexed</td><td>Worker exists, but no service enqueues to it</td><td>A1</td></tr>
-      <tr><td>Correlation Engine</td><td>etip-correlate</td><td>Worker exists, but no service enqueues to it</td><td>A1</td></tr>
-      <tr><td>Alerting Service</td><td>etip-alert-evaluate</td><td>Worker exists, but no service enqueues to it</td><td>A2</td></tr>
-      <tr><td>Integration Service</td><td>etip-integration-push</td><td>Worker exists, but no service enqueues to it</td><td>A2 + A3</td></tr>
+      <tr><td>Threat Graph</td><td>etip-graph-sync</td><td><span class="badge badge-green">WIRED</span></td><td>A1 (S57)</td></tr>
+      <tr><td>ES Indexing</td><td>etip-ioc-indexed</td><td><span class="badge badge-green">WIRED</span></td><td>A1 (S57)</td></tr>
+      <tr><td>Correlation Engine</td><td>etip-correlate</td><td><span class="badge badge-green">WIRED</span></td><td>A1 (S57)</td></tr>
+      <tr><td>Alerting Service</td><td>etip-alert-evaluate</td><td><span class="badge badge-green">WIRED</span></td><td>A2 (S57)</td></tr>
+      <tr><td>Integration Service</td><td>etip-integration-push</td><td><span class="badge badge-green">WIRED</span></td><td>A3 (S56)</td></tr>
     </tbody>
   </table>
 
-  <h3>Stub/Broken Seeders</h3>
+  <h3>Seeders — FIXED ✅</h3>
   <table>
-    <thead><tr><th>Component</th><th>Problem</th><th>Fix Session</th></tr></thead>
+    <thead><tr><th>Component</th><th>Status</th><th>Fixed In</th></tr></thead>
     <tbody>
-      <tr><td>DemoSeeder</td><td>Returns fake counts (150 IOCs) but makes NO API calls — data not persisted</td><td>B1</td></tr>
-      <tr><td>Default Feeds</td><td>No OSINT feeds pre-configured — users must manually add in wizard step 4</td><td>B2</td></tr>
-      <tr><td>Wizard State</td><td>In-memory Map — lost on container restart</td><td>B2</td></tr>
+      <tr><td>DemoSeeder</td><td><span class="badge badge-green">Real HTTP calls to IOC/Actor/Malware/Vuln APIs</span></td><td>B1 (S57)</td></tr>
+      <tr><td>Default Feeds</td><td><span class="badge badge-green">4 OSINT feeds auto-configured (OTX, URLhaus, CISA, Feodo)</span></td><td>B2 (S57)</td></tr>
+      <tr><td>Wizard State</td><td><span class="badge badge-green">Redis-backed (survives restart)</span></td><td>B2 (S57)</td></tr>
     </tbody>
   </table>
 
-  <h3>Cosmetic UI Buttons (5 total)</h3>
+  <h3>UI Buttons — ALL WIRED ✅</h3>
   <table>
-    <thead><tr><th>Page</th><th>Button</th><th>Current Behavior</th><th>Fix Session</th></tr></thead>
+    <thead><tr><th>Page</th><th>Button</th><th>Status</th><th>Fixed In</th></tr></thead>
     <tbody>
-      <tr><td>FeedListPage</td><td>Retry feed</td><td><code>e.stopPropagation()</code> — does nothing</td><td>C1</td></tr>
-      <tr><td>ThreatGraphPage</td><td>Add Node / Expand</td><td>Shows toast placeholder</td><td>C1</td></tr>
-      <tr style="background:#0f0f0f"><td>CorrelationPage</td><td>Investigate</td><td><strong>WIRED S59</strong> → CorrelationDetailDrawer</td><td>C2 ✅</td></tr>
-      <tr style="background:#0f0f0f"><td>CorrelationPage</td><td>Create Ticket</td><td><strong>WIRED S59</strong> → POST /integrations/tickets</td><td>C2 ✅</td></tr>
-      <tr style="background:#0f0f0f"><td>CorrelationPage</td><td>Add to Hunt</td><td><strong>WIRED S59</strong> → POST /hunts/:id/entities + hunt selector</td><td>C2 ✅</td></tr>
+      <tr><td>FeedListPage</td><td>Retry feed</td><td><span class="badge badge-green">WIRED → POST /feeds/:id/trigger</span></td><td>C1 (S57)</td></tr>
+      <tr><td>ThreatGraphPage</td><td>Expand / Add Node</td><td><span class="badge badge-green">WIRED → useNodeNeighbors + merge</span></td><td>C1 (S57)</td></tr>
+      <tr><td>CorrelationPage</td><td>Investigate</td><td><span class="badge badge-green">WIRED → CorrelationDetailDrawer</span></td><td>C2 (S59)</td></tr>
+      <tr><td>CorrelationPage</td><td>Create Ticket</td><td><span class="badge badge-green">WIRED → POST /integrations/tickets</span></td><td>C2 (S59)</td></tr>
+      <tr><td>CorrelationPage</td><td>Add to Hunt</td><td><span class="badge badge-green">WIRED → POST /hunts/:id/entities</span></td><td>C2 (S59)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Remaining Items</h3>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Plan</th></tr></thead>
+    <tbody>
+      <tr><td>Per-feed daily processing caps</td><td><span class="badge badge-amber">NOT BUILT</span></td><td>F1</td></tr>
+      <tr><td>12 AI subtask model selection</td><td><span class="badge badge-amber">NOT BUILT</span></td><td>F2</td></tr>
+      <tr><td>Cost estimator + admin AI config UI</td><td><span class="badge badge-amber">NOT BUILT</span></td><td>F3</td></tr>
+      <tr><td>Razorpay live keys on VPS</td><td><span class="badge badge-gray">DEFERRED</span></td><td>Post-launch</td></tr>
+      <tr><td>Billing priceInr field mismatch</td><td><span class="badge badge-gray">DEFERRED</span></td><td>Frontend workaround in place</td></tr>
     </tbody>
   </table>
 </div>
@@ -456,7 +468,7 @@ li strong { color: var(--text-primary); }
 <!-- INFRASTRUCTURE -->
 <section>
 <div class="container">
-  <h2><span class="num">07</span>Infrastructure Stack</h2>
+  <h2><span class="num">09</span>Infrastructure Stack</h2>
   <table>
     <thead><tr><th>Component</th><th>Technology</th><th>Version</th></tr></thead>
     <tbody>
@@ -479,14 +491,15 @@ li strong { color: var(--text-primary); }
 <!-- NEXT ACTION -->
 <section>
 <div class="container">
-  <h2><span class="num">09</span>Next Immediate Action</h2>
+  <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-red">START HERE</span> Session A1 — ai-enrichment downstream enqueues</div>
+    <div class="card-title"><span class="badge badge-amber">START HERE</span> Session F1 — Feed Processing Policies + Daily Caps</div>
     <div class="card-body">
-      <strong>Single highest-impact change.</strong> Add 3 downstream queue producers to <code>apps/ai-enrichment/src/workers/enrich-worker.ts</code>. After enrichment completes, fire jobs to GRAPH_SYNC, IOC_INDEX, and CORRELATE queues.<br><br>
-      <strong>Pattern:</strong> Follow <code>apps/normalization/src/service.ts:467</code> (existing fire-and-forget enqueue with .catch()).<br>
-      <strong>Feature flags:</strong> <code>TI_GRAPH_SYNC_ENABLED</code>, <code>TI_IOC_INDEX_ENABLED</code>, <code>TI_CORRELATE_ENABLED</code> (default: true).<br>
-      <strong>Result:</strong> Pipeline goes from 33% → 67% wired. Graph, ES, and Correlation services start receiving real data.
+      <strong>Cost control before going live.</strong> Add per-feed daily processing caps to the ingestion service. Each feed gets a <code>FeedPolicy</code> with category (ioc_feed/news_feed/vuln_feed), daily limit, and AI enable/disable toggle.<br><br>
+      <strong>Module:</strong> <code>apps/ingestion</code><br>
+      <strong>Key file:</strong> <code>apps/ingestion/src/workers/feed-fetch.ts</code> — check dailyLimit before processing.<br>
+      <strong>New endpoints:</strong> GET/PUT <code>/feeds/:id/policy</code>, GET <code>/feeds/policies</code>, POST <code>/feeds/:id/policy/reset</code><br>
+      <strong>Result:</strong> Admin can limit news processing to 100/day, IOC feeds to 500/day — saving AI costs until paying customers arrive.
     </div>
   </div>
 </div>
@@ -494,7 +507,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 61 &middot; 2026-03-25 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 62 &middot; 2026-03-25 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
