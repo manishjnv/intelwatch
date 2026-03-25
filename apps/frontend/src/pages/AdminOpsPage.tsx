@@ -9,12 +9,12 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useSystemHealth, useMaintenanceWindows, useAdminTenants,
-  useAdminAuditLog, useAdminStats, useQueueHealth,
+  useAdminAuditLog, useAdminStats, useQueueHealth, useQueueAlerts,
   useActivateMaintenance, useDeactivateMaintenance,
   useSuspendTenant, useReinstateTenant, useChangeTenantPlan,
   useDlqStatus, useRetryDlqQueue, useDiscardDlqQueue, useRetryAllDlq,
   type ServiceHealth, type MaintenanceWindow, type TenantRecord, type AdminAuditEntry,
-  type QueueDepth, type DlqQueueEntry,
+  type QueueDepth, type DlqQueueEntry, type QueueAlert,
 } from '@/hooks/use-phase6-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
@@ -413,7 +413,10 @@ export function AdminOpsPage() {
   const { data: audit } = useAdminAuditLog()
   const { data: stats } = useAdminStats()
   const { data: queueHealth, isDemo: queueDemo } = useQueueHealth()
+  const { data: queueAlertsData }                = useQueueAlerts()
   const { data: dlqStatus, isDemo: dlqDemo }     = useDlqStatus()
+
+  const activeQueueAlerts: QueueAlert[] = queueAlertsData?.alerts ?? []
 
   const activateMutation    = useActivateMaintenance()
   const deactivateMutation  = useDeactivateMaintenance()
@@ -530,6 +533,20 @@ export function AdminOpsPage() {
                 <ServiceCard key={svc.name} svc={svc} />
               ))}
             </div>
+
+            {/* Queue alert banner */}
+            {activeQueueAlerts.length > 0 && (
+              <div
+                data-testid="queue-alert-banner"
+                className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-2 rounded-md flex items-center gap-2"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  {activeQueueAlerts.length} queue{activeQueueAlerts.length > 1 ? 's' : ''} in critical state:{' '}
+                  {activeQueueAlerts.map(a => a.queueName.replace('etip-', '')).join(', ')}
+                </span>
+              </div>
+            )}
 
             {/* Queue health table */}
             {queueHealth && (

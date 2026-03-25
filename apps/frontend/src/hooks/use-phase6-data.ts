@@ -47,6 +47,21 @@ interface QueueHealthResponse {
   redisUnavailable?: boolean
 }
 
+/** Single active queue alert (from GET /api/v1/admin/queues/alerts). */
+export interface QueueAlert {
+  queueName: string
+  severity: 'critical'
+  waitingCount: number
+  failedCount: number
+  firedAt: string
+  threshold: { waitingMax: number; failedMax: number }
+}
+
+/** Response shape from GET /api/v1/admin/queues/alerts */
+interface QueueAlertsResponse {
+  alerts: QueueAlert[]
+}
+
 /** Realistic idle-state demo data — all queues at zero. */
 const DEMO_QUEUE_HEALTH: QueueHealthResponse = {
   updatedAt: new Date().toISOString(),
@@ -388,6 +403,16 @@ export function useQueueHealth() {
     DEMO_QUEUE_HEALTH,
     d => d != null && Array.isArray((d as Record<string, unknown>)?.queues),
   )
+}
+
+/** Poll active queue alerts every 30 s. */
+export function useQueueAlerts() {
+  return useQuery<QueueAlertsResponse>({
+    queryKey: ['admin-queue-alerts'],
+    queryFn: () => api<QueueAlertsResponse>('/admin/queues/alerts').catch(() => ({ alerts: [] })),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  })
 }
 
 // ─── Onboarding Hooks ─────────────────────────────────────────────

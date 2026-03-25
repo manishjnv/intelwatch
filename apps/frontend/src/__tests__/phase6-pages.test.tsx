@@ -51,6 +51,7 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useAdminAuditLog:        (...args: any[]) => mockUseAdminAuditLog(...args),
   useAdminStats:           () => mockUseAdminStats(),
   useQueueHealth:          () => ({ data: { queues: [], updatedAt: new Date().toISOString() }, isDemo: false }),
+  useQueueAlerts:          () => ({ data: { alerts: [] } }),
   useDlqStatus:            () => ({ data: { queues: [], totalFailed: 0, updatedAt: new Date().toISOString() }, isDemo: false }),
   useRetryDlqQueue:        () => ({ mutate: vi.fn(), isPending: false }),
   useDiscardDlqQueue:      () => ({ mutate: vi.fn(), isPending: false }),

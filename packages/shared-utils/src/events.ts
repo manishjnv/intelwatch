@@ -31,6 +31,9 @@ export const EVENTS = {
   DRP_ALERT_CREATED:         'drp.alert.created',
   GRAPH_NODE_CREATED:        'graph.node.created',
   HUNT_COMPLETED:            'hunt.completed',
+  // Admin / Infrastructure (22)
+  QUEUE_ALERT:               'queue.alert',
+  QUEUE_ALERT_RESOLVED:      'queue.alert.resolved',
 } as const;
 
 /** Union type of all event type string literals */

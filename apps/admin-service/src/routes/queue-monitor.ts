@@ -1,6 +1,11 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { Redis } from 'ioredis';
 import { ALL_QUEUE_NAMES } from '@etip/shared-utils';
+import {
+  QueueAlertEvaluator,
+  type AlertRedisClient,
+  type QueueDepthEntry,
+} from '../services/queue-alert-evaluator.js';
 
 /** BullMQ default key prefix — all queues use `bull:{queueName}:{list}` keys. */
 const BULL_PREFIX = 'bull';
@@ -17,18 +22,15 @@ export interface RedisQueueClient {
 
 export interface QueueMonitorDeps {
   redisUrl: string;
-  /**
-   * Override Redis client — inject a mock in tests to avoid a real connection.
-   * When provided, the route never creates its own Redis instance.
-   */
   redisClient?: RedisQueueClient;
+  alertRedisClient?: AlertRedisClient;
+  alertEvaluator?: QueueAlertEvaluator;
 }
 
-/** Read wait + active + failed + completed depths for one BullMQ queue. */
 async function fetchQueueDepths(
   redis: RedisQueueClient,
   queueName: string,
-): Promise<{ name: string; waiting: number; active: number; failed: number; completed: number }> {
+): Promise<QueueDepthEntry> {
   const [waiting, active, failed, completed] = await Promise.all([
     redis.llen(`${BULL_PREFIX}:${queueName}:wait`),
     redis.llen(`${BULL_PREFIX}:${queueName}:active`),
@@ -38,53 +40,68 @@ async function fetchQueueDepths(
   return { name: queueName, waiting, active, failed, completed };
 }
 
-/** Returns zero-filled entry for every queue (used when Redis is unreachable). */
-function zeroEntry(name: string) {
+function zeroEntry(name: string): QueueDepthEntry {
   return { name, waiting: 0, active: 0, failed: 0, completed: 0 };
 }
 
 /**
- * Queue monitor routes.
- * Registered at prefix `/api/v1/admin`.
- *
- * GET /queues — returns real-time BullMQ queue depths for all 14 canonical queues.
+ * Queue monitor routes — prefix `/api/v1/admin`.
+ * GET /queues         — real-time BullMQ queue depths.
+ * GET /queues/alerts  — currently-firing queue alerts.
  */
 export function queueMonitorRoutes(deps: QueueMonitorDeps) {
   const { redisUrl } = deps;
   let _redis: RedisQueueClient | undefined = deps.redisClient;
+  let _alertRedis: AlertRedisClient | undefined = deps.alertRedisClient;
+  let _evaluator: QueueAlertEvaluator | undefined = deps.alertEvaluator;
 
-  /** Lazy Redis connection — created on first request, reused thereafter. */
   function getRedis(): RedisQueueClient {
     if (!_redis) {
       _redis = new Redis(redisUrl, {
-        lazyConnect: false,
-        enableReadyCheck: false,
-        maxRetriesPerRequest: 1,
-        connectTimeout: 5_000,
+        lazyConnect: false, enableReadyCheck: false,
+        maxRetriesPerRequest: 1, connectTimeout: 5_000,
       });
     }
     return _redis;
   }
 
+  function getAlertRedis(): AlertRedisClient {
+    if (!_alertRedis) {
+      _alertRedis = new Redis(redisUrl, {
+        lazyConnect: false, enableReadyCheck: false,
+        maxRetriesPerRequest: 1, connectTimeout: 5_000,
+      }) as unknown as AlertRedisClient;
+    }
+    return _alertRedis;
+  }
+
+  function getEvaluator(logger?: FastifyInstance['log']): QueueAlertEvaluator {
+    if (!_evaluator) {
+      _evaluator = new QueueAlertEvaluator(getAlertRedis(), logger);
+    }
+    return _evaluator;
+  }
+
   return async function (app: FastifyInstance): Promise<void> {
-    /** Close the Redis connection when Fastify shuts down (skip injected mocks). */
     app.addHook('onClose', async () => {
       if (_redis && !deps.redisClient) {
-        await (_redis as Redis).quit().catch(() => {/* ignore close errors */});
+        await (_redis as Redis).quit().catch(() => {/* ignore */});
+      }
+      if (_alertRedis && !deps.alertRedisClient) {
+        await (_alertRedis as unknown as Redis).quit().catch(() => {/* ignore */});
       }
     });
 
-    /**
-     * GET /api/v1/admin/queues
-     * Returns live BullMQ queue depths for all canonical ETIP queues.
-     * Falls back to zeros if Redis is unreachable — never throws 500.
-     */
     app.get('/queues', async (_req: FastifyRequest, reply: FastifyReply) => {
       try {
         const r = getRedis();
         const queues = await Promise.all(
           ALL_QUEUE_NAMES.map((name) => fetchQueueDepths(r, name)),
         );
+        const evaluator = getEvaluator(app.log);
+        evaluator.evaluate(queues).catch((err) => {
+          app.log.warn({ err }, 'queue-monitor: alert evaluation failed (best-effort)');
+        });
         return reply.send({ data: { queues, updatedAt: new Date().toISOString() } });
       } catch (err) {
         app.log.warn({ err }, 'queue-monitor: Redis unreachable, returning zeros');
@@ -95,6 +112,21 @@ export function queueMonitorRoutes(deps: QueueMonitorDeps) {
             redisUnavailable: true,
           },
         });
+      }
+    });
+
+    app.get('/queues/alerts', async (_req: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const r = getRedis();
+        const queues = await Promise.all(
+          ALL_QUEUE_NAMES.map((name) => fetchQueueDepths(r, name)),
+        );
+        const evaluator = getEvaluator(app.log);
+        const alerts = await evaluator.getActiveAlerts(queues);
+        return reply.send({ data: { alerts } });
+      } catch (err) {
+        app.log.warn({ err }, 'queue-monitor: failed to fetch active alerts');
+        return reply.send({ data: { alerts: [] } });
       }
     });
   };
