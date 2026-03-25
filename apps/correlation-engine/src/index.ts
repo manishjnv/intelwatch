@@ -19,6 +19,7 @@ import { ConfidenceDecayService } from './services/confidence-decay.js';
 import { BatchRecorrelationService } from './services/batch-recorrelation.js';
 import { GraphIntegrationService } from './services/graph-integration.js';
 import { createCorrelateQueue, closeCorrelateQueue, createCorrelateWorker, createDownstreamQueues, closeDownstreamQueues } from './workers/correlate.js';
+import { StoreCheckpointService } from './services/store-checkpoint.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -34,6 +35,18 @@ async function main(): Promise<void> {
 
   // Initialize in-memory store
   const store = new CorrelationStore();
+
+  // Restore persisted pattern state from Redis (P1-1)
+  let checkpoint: StoreCheckpointService | undefined;
+  if (config.TI_CORRELATION_CHECKPOINT_ENABLED === 'true' && config.TI_NODE_ENV !== 'test') {
+    checkpoint = new StoreCheckpointService(config.TI_REDIS_URL, config.TI_CORRELATION_CHECKPOINT_TTL_DAYS);
+    await checkpoint.restore(store);
+    logger.info({
+      iocTenants: store.iocs.size,
+      resultTenants: store.results.size,
+      campaignTenants: store.campaigns.size,
+    }, 'Correlation store restored from Redis checkpoint');
+  }
 
   // Create services with config tunables
   const cooccurrence = new CooccurrenceService({
@@ -113,13 +126,14 @@ async function main(): Promise<void> {
     createCorrelateWorker({
       store, cooccurrence, infraCluster, temporalWave,
       campaignCluster, fpSuppression, confidenceScoring, logger,
-      downstream,
+      downstream, checkpoint,
     });
   }
 
   // Graceful shutdown
   app.addHook('onClose', async () => {
     logger.info('Shutting down correlation engine...');
+    if (checkpoint) await checkpoint.close();
     await closeDownstreamQueues();
     await closeCorrelateQueue();
   });

@@ -47,6 +47,10 @@ const EnvSchema = z.object({
   // Downstream pipeline flags
   TI_ALERT_ENABLED: z.coerce.boolean().default(true),
   TI_INTEGRATION_PUSH_ENABLED: z.coerce.boolean().default(true),
+
+  // Redis pattern persistence (P1-1)
+  TI_CORRELATION_CHECKPOINT_ENABLED: z.enum(['true', 'false']).default('true'),
+  TI_CORRELATION_CHECKPOINT_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

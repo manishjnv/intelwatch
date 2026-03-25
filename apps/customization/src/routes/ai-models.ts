@@ -94,7 +94,7 @@ export function aiModelRoutes(deps: AiModelRouteDeps) {
     app.put('/subtasks/:subtask', async (req: FastifyRequest<{ Params: { subtask: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const userId   = (req.headers['x-user-id']   as string) || 'unknown';
-      let subtask: string;
+      let subtask: ReturnType<typeof SubtaskParamSchema.parse>['subtask'];
       let input: ReturnType<typeof SetSubtaskModelSchema.parse>;
       try {
         ({ subtask } = SubtaskParamSchema.parse(req.params));

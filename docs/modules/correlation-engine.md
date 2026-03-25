@@ -1,6 +1,6 @@
 # Correlation Engine (Module 13)
 
-**Port:** 3013 | **Status:** ✅ Deployed (15/15 improvements) | **Tests:** 173 | **Session:** 64
+**Port:** 3013 | **Status:** ✅ Deployed (15/15 improvements + P1-1 persistence) | **Tests:** 179 | **Session:** 65
 
 ## Features
 
@@ -16,6 +16,7 @@
 | 8 | Kill Chain Correlation | `src/services/kill-chain.ts` | MITRE tactic → Cyber Kill Chain phase mapping |
 | 9 | FP Suppression | `src/services/fp-suppression.ts` | Per-rule FP rate tracking, auto-suppress at threshold |
 | 10 | Relationship Inference | `src/services/relationship-inference.ts` | BFS transitive closure with confidence decay |
+| P1-1 | Redis Pattern Persistence | `src/services/store-checkpoint.ts` | Checkpoint all 6 store Maps to Redis on write (5s debounce), restore on startup, 7-day TTL |
 
 ## API Endpoints (12)
 
@@ -51,6 +52,8 @@
 | `TI_CORRELATION_WORKER_CONCURRENCY` | 5 | BullMQ worker concurrency |
 | `TI_CORRELATION_MAX_RESULTS` | 10000 | Max results per tenant |
 | `TI_CORRELATION_CONFIDENCE_THRESHOLD` | 0.6 | Min confidence to store result |
+| `TI_CORRELATION_CHECKPOINT_ENABLED` | `true` | Enable Redis pattern persistence |
+| `TI_CORRELATION_CHECKPOINT_TTL_DAYS` | 7 | Days before checkpoint key expires |
 
 ## Data Flow
 
@@ -58,7 +61,10 @@
 QUEUES.CORRELATE → Worker → CorrelationStore (in-memory Maps)
   → Run 10 algorithms → Filter by confidence ≥ 0.6
   → Apply FP suppression → Store results
+  → scheduleCheckpoint() → Redis (debounced 5s, 7-day TTL)
   → HIGH/CRITICAL → QUEUES.ALERT_EVALUATE
+
+Startup: StoreCheckpointService.restore() → hydrate CorrelationStore from Redis
 ```
 
 ## Pending (P2 — Session 28)

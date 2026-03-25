@@ -23,6 +23,7 @@
     "@fastify/rate-limit": "^9.1.0",
     "@fastify/sensible": "^5.3.0",
     "bullmq": "^5.13.0",
+    "ioredis": "^5.3.0",
     "fastify": "^4.28.0",
     "pino": "^9.4.0",
     "zod": "^3.23.0"

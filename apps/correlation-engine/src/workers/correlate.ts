@@ -16,6 +16,7 @@ import type { TemporalWaveService } from '../services/temporal-wave.js';
 import type { CampaignClusterService } from '../services/campaign-cluster.js';
 import type { FPSuppressionService } from '../services/fp-suppression.js';
 import type { ConfidenceScoringService } from '../services/confidence-scoring.js';
+import type { StoreCheckpointService } from '../services/store-checkpoint.js';
 
 // ── Redis Connection Helper ─────────────────────────────────────
 
@@ -104,6 +105,8 @@ export interface CorrelateWorkerDeps {
   confidenceScoring: ConfidenceScoringService;
   logger: pino.Logger;
   downstream?: DownstreamQueues;
+  /** Optional Redis checkpoint — schedules a debounced save after each correlation run. */
+  checkpoint?: StoreCheckpointService;
 }
 
 // ── Worker Consumer ─────────────────────────────────────────────
@@ -129,6 +132,9 @@ export function createCorrelateWorker(deps: CorrelateWorkerDeps): Worker<Correla
       if (downstream) {
         await enqueueDownstream(data, matchCount, downstream, logger);
       }
+
+      // Checkpoint pattern state to Redis (debounced 5s)
+      if (deps.checkpoint) deps.checkpoint.scheduleCheckpoint(deps.store);
     },
     {
       connection: parseRedisUrl(config.TI_REDIS_URL),
