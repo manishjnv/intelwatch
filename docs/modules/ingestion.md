@@ -1,6 +1,6 @@
 # Ingestion Service
 
-**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 276
+**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 339
 
 ## What It Does
 
