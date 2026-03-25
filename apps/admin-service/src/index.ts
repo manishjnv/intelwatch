@@ -42,6 +42,7 @@ async function main(): Promise<void> {
     backupDeps: { backupStore },
     tenantDeps: { tenantStore },
     auditDeps: { auditStore },
+    queueMonitorDeps: { redisUrl: config.TI_REDIS_URL },
     p0Deps: {
       alertRulesStore,
       scheduledMaintenanceStore,

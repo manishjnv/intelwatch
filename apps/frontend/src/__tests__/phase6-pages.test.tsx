@@ -50,6 +50,7 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useAdminTenants:         () => mockUseAdminTenants(),
   useAdminAuditLog:        (...args: any[]) => mockUseAdminAuditLog(...args),
   useAdminStats:           () => mockUseAdminStats(),
+  useQueueHealth:          () => ({ data: { queues: [], updatedAt: new Date().toISOString() }, isDemo: false }),
   useActivateMaintenance:  () => mockUseActivateMaintenance(),
   useDeactivateMaintenance:() => mockUseDeactivateMaintenance(),
   useSuspendTenant:        () => mockUseSuspendTenant(),

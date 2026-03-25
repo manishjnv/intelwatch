@@ -9,16 +9,17 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useSystemHealth, useMaintenanceWindows, useAdminTenants,
-  useAdminAuditLog, useAdminStats,
+  useAdminAuditLog, useAdminStats, useQueueHealth,
   useActivateMaintenance, useDeactivateMaintenance,
   useSuspendTenant, useReinstateTenant, useChangeTenantPlan,
   type ServiceHealth, type MaintenanceWindow, type TenantRecord, type AdminAuditEntry,
+  type QueueDepth,
 } from '@/hooks/use-phase6-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   Activity, Calendar, Users, FileText, Download,
   CheckCircle2, AlertTriangle, XCircle, Clock,
-  Play, Square, ChevronDown,
+  Play, Square, ChevronDown, Database,
 } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -286,6 +287,52 @@ function AuditRow({ entry }: { entry: AdminAuditEntry }) {
   )
 }
 
+// ─── Queue Health ────────────────────────────────────────────────
+
+function queueStatus(q: QueueDepth): 'green' | 'yellow' | 'red' {
+  if (q.failed > 0 || q.waiting > 100) return 'red'
+  if (q.waiting > 0)                   return 'yellow'
+  return 'green'
+}
+
+const QUEUE_STATUS_STYLES = {
+  green:  { dot: 'bg-sev-low',      badge: 'text-sev-low bg-sev-low/10',      label: 'Idle' },
+  yellow: { dot: 'bg-sev-medium',   badge: 'text-sev-medium bg-sev-medium/10', label: 'Active' },
+  red:    { dot: 'bg-sev-critical', badge: 'text-sev-critical bg-sev-critical/10', label: 'Attention' },
+}
+
+function QueueRow({ q }: { q: QueueDepth }) {
+  const status = queueStatus(q)
+  const styles = QUEUE_STATUS_STYLES[status]
+  const shortName = q.name.replace('etip-', '')
+
+  return (
+    <tr className="border-b border-border-subtle/50 hover:bg-bg-primary/50 transition-colors">
+      <td className="px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', styles.dot)} />
+          <span className="text-xs font-mono text-text-primary">{shortName}</span>
+        </div>
+      </td>
+      <td className="px-4 py-2.5 text-xs text-center">
+        <span className={cn(q.waiting > 0 ? 'text-sev-medium font-semibold' : 'text-text-muted')}>{q.waiting}</span>
+      </td>
+      <td className="px-4 py-2.5 text-xs text-center">
+        <span className={cn(q.active > 0 ? 'text-sev-low font-semibold' : 'text-text-muted')}>{q.active}</span>
+      </td>
+      <td className="px-4 py-2.5 text-xs text-center">
+        <span className={cn(q.failed > 0 ? 'text-sev-critical font-semibold' : 'text-text-muted')}>{q.failed}</span>
+      </td>
+      <td className="px-4 py-2.5 text-xs text-center text-text-muted">{q.completed.toLocaleString()}</td>
+      <td className="px-4 py-2.5">
+        <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', styles.badge)}>
+          {styles.label}
+        </span>
+      </td>
+    </tr>
+  )
+}
+
 // ─── Main Component ──────────────────────────────────────────────
 
 type AdminTab = 'health' | 'maintenance' | 'tenants' | 'audit'
@@ -305,6 +352,7 @@ export function AdminOpsPage() {
   const { data: tenants } = useAdminTenants()
   const { data: audit } = useAdminAuditLog()
   const { data: stats } = useAdminStats()
+  const { data: queueHealth, isDemo: queueDemo } = useQueueHealth()
 
   const activateMutation    = useActivateMaintenance()
   const deactivateMutation  = useDeactivateMaintenance()
@@ -418,6 +466,51 @@ export function AdminOpsPage() {
                 <ServiceCard key={svc.name} svc={svc} />
               ))}
             </div>
+
+            {/* Queue health table */}
+            {queueHealth && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-3.5 h-3.5 text-text-muted" />
+                    <h3 className="text-xs font-semibold text-text-secondary">BullMQ Queue Health</h3>
+                    {queueDemo && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">demo</span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-text-muted">
+                    Updated {timeAgo(queueHealth.updatedAt)} · auto-refresh 10s
+                  </span>
+                </div>
+                <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border-subtle">
+                          <th className="text-left px-4 py-2.5 text-[11px] text-text-muted font-medium">Queue</th>
+                          <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium" title="Jobs waiting to be processed">Waiting</th>
+                          <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium" title="Jobs currently being processed">Active</th>
+                          <th className="text-center px-4 py-2.5 text-[11px] text-sev-critical/70 font-medium" title="Jobs that failed">Failed</th>
+                          <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium">Completed</th>
+                          <th className="text-left px-4 py-2.5 text-[11px] text-text-muted font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(queueHealth.queues ?? []).map(q => (
+                          <QueueRow key={q.name} q={q} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                {(queueHealth as { redisUnavailable?: boolean }).redisUnavailable && (
+                  <p className="text-[11px] text-sev-high flex items-center gap-1.5">
+                    <AlertTriangle className="w-3 h-3" />
+                    Redis unreachable — showing cached values. Depths may be stale.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* CISO insight */}
             <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 text-[11px] text-text-secondary">

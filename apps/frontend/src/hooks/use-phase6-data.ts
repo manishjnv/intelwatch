@@ -31,6 +31,40 @@ export type {
   ReadinessResult, WelcomeDashboard,
 }
 
+/** Single BullMQ queue depth snapshot. */
+export interface QueueDepth {
+  name: string
+  waiting: number
+  active: number
+  failed: number
+  completed: number
+}
+
+/** Response shape from GET /api/v1/admin/queues */
+interface QueueHealthResponse {
+  queues: QueueDepth[]
+  updatedAt: string
+  redisUnavailable?: boolean
+}
+
+/** Realistic idle-state demo data — all queues at zero. */
+const DEMO_QUEUE_HEALTH: QueueHealthResponse = {
+  updatedAt: new Date().toISOString(),
+  queues: [
+    'etip-feed-fetch', 'etip-feed-parse', 'etip-normalize', 'etip-deduplicate',
+    'etip-enrich-realtime', 'etip-enrich-batch', 'etip-graph-sync', 'etip-correlate',
+    'etip-alert-evaluate', 'etip-integration-push', 'etip-archive',
+    'etip-report-generate', 'etip-ioc-indexed', 'etip-cache-invalidate',
+  ].map((name, i) => ({
+    name,
+    // Seed a few queues with demo non-zero values so the UI colour-coding is visible
+    waiting:   i === 0 ? 3 : i === 4 ? 12 : 0,
+    active:    i === 4 ? 2 : 0,
+    failed:    i === 6 ? 1 : 0,
+    completed: i < 5 ? Math.floor(Math.random() * 800) + 100 : 0,
+  })),
+}
+
 // ─── Generic helpers ────────────────────────────────────────────
 
 interface ListResponse<T> {
@@ -262,6 +296,21 @@ export function useAdminStats() {
   })
   return withDemoFallback(result, DEMO_ADMIN_STATS,
     d => d != null && typeof (d as Record<string, unknown>)?.totalTenants === 'number')
+}
+
+/** Poll live BullMQ queue depths every 10 s. Falls back to demo data when admin-service is unreachable. */
+export function useQueueHealth() {
+  const result = useQuery({
+    queryKey: ['admin-queue-health'],
+    queryFn: () => api<QueueHealthResponse>('/admin/queues').catch(() => null as unknown as QueueHealthResponse),
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+  })
+  return withDemoFallback(
+    result,
+    DEMO_QUEUE_HEALTH,
+    d => d != null && Array.isArray((d as Record<string, unknown>)?.queues),
+  )
 }
 
 // ─── Onboarding Hooks ─────────────────────────────────────────────
