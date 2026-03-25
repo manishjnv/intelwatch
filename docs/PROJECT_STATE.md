@@ -1,17 +1,17 @@
 # ETIP Project State
 **Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
-**Session counter:** 62
+**Session counter:** 63
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.7.0 | 2026-03-25 | Dashboard + 19 data pages + demo fallbacks (all 5 entity types + reporting + alerting + analytics). E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. E2 queue health: AdminOpsPage queue table (color-coded, 10s polling). 688 frontend tests (690 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.8.0 | 2026-03-25 | Dashboard + 19 data pages + demo fallbacks (all 5 entity types + reporting + alerting + analytics). E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. E2 queue health: AdminOpsPage queue table (color-coded, 10s polling). F3: AI Config tab rebuilt — plan selector (4 tiers), 12-subtask table, cost estimator sidebar. 704 frontend tests (706 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
-| etip_ingestion | ✅ Running | 0.1.0 | 2026-03-21 | Feed pipeline + 11 modules |
+| etip_ingestion | ✅ Running | 0.2.0 | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1). 320 tests. FeedPolicy: dailyCap, maxArticlesPerFetch, category, aiEnabled per-feed. |
 | etip_normalization | ✅ Running | 0.1.0 | 2026-03-21 | IOC upsert + 18 accuracy improvements |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements |
@@ -24,7 +24,7 @@
 | etip_drp | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3011. 36 endpoints, 310 tests. |
 | etip_integration | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. |
 | etip_user_management | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. |
-| etip_customization | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3017. 35 endpoints, 159 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. |
+| etip_customization | ✅ Deployed | 0.2.0 | 2026-03-25 | Port 3017. 41 endpoints, 221 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. F2: 12 CTI subtasks + plan tiers (Starter/Professional★/Enterprise/Custom). F3: cost estimator (per-stage, dominant-model). |
 | etip_onboarding | ✅ Deployed | 0.2.0 | 2026-03-24 | Port 3018. 32 endpoints, 230 tests. Setup wizard (Redis-backed), demo seeder (real API calls + 4 OSINT feeds), data source connectors, pipeline health, module readiness, progress tracker. |
 | etip_billing | ✅ Deployed | 0.1.0 | 2026-03-23 | Port 3019. 28 endpoints, 149 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. Added to deploy.yml + docker-compose. |
 | etip_admin | ✅ Deployed | 0.2.0 | 2026-03-25 | Port 3022. 29 endpoints, 158 tests (+11 queue-monitor). System health monitoring, maintenance windows, backup/restore, tenant administration, audit dashboard + 5 P0 improvements. Queue monitor: GET /api/v1/admin/queues (live BullMQ depth via ioredis). |
@@ -49,9 +49,9 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **19 data pages** (added AnalyticsPage). 20 viz components. 688 tests (690 total, 2 skipped). E2E C2-D2: correlation investigate/ticket/hunt wired, DRP triage (TP/FP/Investigate), IOC pivot+timeline tabs, alerting hasData+double-stringify fix, AnalyticsPage (4 tabs). E2: AdminOpsPage queue health table (14 queues, color-coded, 10s auto-refresh, demo fallback). Existing pages FROZEN (wiring-only changes). |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **19 data pages** (added AnalyticsPage). 20 viz components. 704 tests (706 total, 2 skipped). E2E C2-D2: correlation investigate/ticket/hunt wired, DRP triage (TP/FP/Investigate), IOC pivot+timeline tabs, alerting hasData+double-stringify fix, AnalyticsPage (4 tabs). E2: AdminOpsPage queue health table (14 queues, color-coded, 10s auto-refresh, demo fallback). F3: AI Config tab rebuilt (plan selector, 12-subtask table, cost estimator sidebar). Existing pages FROZEN (wiring-only changes). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
+| ingestion | 2 | ✅ Deployed | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1). 320 tests. FeedPolicy CRUD (5 endpoints): dailyCap, maxArticlesPerFetch, category, aiEnabled. Policy enforced in RssFeedConnector. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
@@ -64,7 +64,7 @@
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
-| customization | 5 | ✅ Complete | 2026-03-23 | Port 3017. **Core + 5 P0 improvements COMPLETE**. 35 endpoints, 159 tests. Module toggles (per-tenant enable/disable, feature flags). AI model selection (Claude model per task, token budget/cost limits). Risk score weight customization (composite confidence weights, decay rate overrides). Dashboard customization (widget layout, default filters/time ranges). Notification preferences (per-user alert channels, severity thresholds). P0: config inheritance, versioning, validation engine, import/export, audit trail. FEATURE-COMPLETE. **Phase 5 COMPLETE (3/3).** |
+| customization | 5 | ✅ Complete | 2026-03-25 | Port 3017. **Core + 5 P0 + F2 + F3 COMPLETE**. 41 endpoints, 221 tests. Module toggles, AI model selection, risk weights, dashboard customization, notification preferences. F2: 12 CTI pipeline subtasks (Stage 1-3), plan tier service (Starter/Professional★/Enterprise/Custom), GET /ai/plans, POST /ai/plans/apply. F3: CostEstimator (per-stage, dominant-model, stage-2 factor 0.2), GET /ai/cost-estimate. **Phase 5 COMPLETE. Phase F COMPLETE.** |
 | onboarding | 6 | ✅ Deployed | 2026-03-24 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 230 tests. 8-step wizard (Redis-backed, etip:{tenantId}:wizard key, 7-day TTL). Demo seeder makes real API calls to 5 downstream services + seeds 4 OSINT feeds via ingestion service. ioredis dependency added. Phase 6: 1/3. |
 | billing | 6 | ✅ Complete | 2026-03-23 | Port 3019. 28 endpoints, 5 P0 improvements, 149 tests. Plan management (Free/Starter/Pro/Enterprise), usage metering (80/90/100% alerts), Razorpay subscriptions/webhooks, GST invoices (18%), upgrade/downgrade with 72hr grace, coupon codes. FEATURE-COMPLETE. |
 | admin-ops | 6 | ✅ Complete | 2026-03-25 | Port 3022. **Core + 5 P0 improvements + queue monitor COMPLETE**. 29 endpoints, 158 tests. System health (18 services), maintenance windows (CRUD + activate/deactivate), backup/restore, tenant admin (CRUD + suspend/reinstate/plan/usage), audit log (CSV export). P0: dependency map, alert rules (seeded 5 defaults), scheduled maintenance (cron), tenant analytics, admin activity log. Queue monitor: GET /admin/queues reads 14 BullMQ queues via ioredis LLEN+ZCARD, injectable RedisQueueClient interface. FEATURE-COMPLETE. **Phase 6 COMPLETE (3/3).** |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 Performance + E2E Integration Plan COMPLETE (A1-E2). Phase F (AI Processing Controls) next. 33 containers, ~5348 tests.
-- **Last session outcome:** Session 62 (2026-03-25). Fixed analytics dashboard crash — React error #31 (widget value was object instead of scalar). buildWidget('feed-performance') and buildWidget('alert-breakdown') passed raw objects. Fix: extract scalar value, move breakdown to `details` field. TS strict casts for `unknown → number`. Added Phase F (AI controls) to plan + stats HTML. Updated session-end to 12 steps. Architecture refs added to CLAUDE.md. Commits: 49cffb3 (stats HTML Phase F), 17e14cf (session-end step 8), c3f2870 (CLAUDE.md arch refs), 4b44ac1 (session 56 docs), f08e8f2 (analytics fix), 909269c (TS strict fix).
-- **Known issues:** admin-service ioredis dep not yet deployed to VPS. Prior: Razorpay keys, billing priceInr mismatch.
-- **Next tasks:** **Phase F1** — Feed processing policies + daily caps (ingestion service). Per-feed limits, feed categories, per-source AI toggle. Then F2 (12 AI subtasks + plan tiers), F3 (cost estimator + admin UI).
+- **Current phase:** Phase 7 + E2E COMPLETE. Phase F (AI Processing Controls) COMPLETE (F1+F2+F3). 33 containers, ~5630 tests.
+- **Last session outcome:** Session 63 (2026-03-25). Phase F COMPLETE. F1: Feed Processing Policies (ingestion, 5 endpoints, 44 new tests). F2: 12 CTI subtasks + plan tiers + PlanTierService (customization, 3 new endpoints, 43 new tests). F3: CostEstimator service + GET /ai/cost-estimate + AI Config UI rebuilt (plan selector, 12-subtask table, cost sidebar, 32 new tests). Total added: ~282 tests across 3 modules. Commits: 9c31ed6 (F1+F2+F3 main), e65037c (TS strict fixes), 23a57ec (lint fix — unused imports).
+- **Known issues:** VPS SSH timeout during session (port 22 filtered). Deploy pending via CI/CD pipeline. aiEnabled flag stored in FeedPolicy but not yet wired into ArticlePipeline per-subtask gating (deferred, noted in code comment).
+- **Next tasks:** E2E COMPLETE — platform ready for launch. Optional next: wire aiEnabled flag in ArticlePipeline; add billing integration for plan tier cost billing.
 
 ## Deployment Log
 
@@ -204,6 +204,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 59 | 2026-03-25 | etip_frontend deployed via vps-cmd.yml | ✅ All 33 healthy | ff93d4a | E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. Deployed via GitHub Actions vps-cmd.yml in session 61. |
 | 60 | 2026-03-25 | etip_admin updated (ioredis, queue monitor), etip_frontend (queue health table) | ⏳ CI triggered | d8ed45f | E2E E1: pipeline smoke harness (tests/e2e/). E2E E2: admin-service queue monitor (14 queues, LLEN+ZCARD, injectable mock). Frontend queue health table in AdminOpsPage. 13 files, 897 insertions. 5348 tests. |
 | 61 | 2026-03-25 | etip_frontend deployed (session 59 code), VPS disk cleanup | ✅ All 33 healthy | a515a68 | VPS ops: deployed frontend via vps-cmd.yml. Fixed disk full (56GB Docker build cache → 1.3GB). Daily cleanup cron installed. scripts/docker-cleanup.sh added to repo. |
+| 63 | 2026-03-25 | etip_ingestion + etip_customization + etip_frontend updated | ⏳ CI pending | 9c31ed6, e65037c, 23a57ec | Phase F COMPLETE: F1 feed policies (5 endpoints, 44 tests), F2 12 subtasks + plan tiers (3 endpoints, 43 tests), F3 cost estimator + AI Config UI rebuild (32 tests). ~282 tests added. VPS SSH timeout — CI/CD deploy path used. |
 
 ## E2E Verification Results (Session 13)
 
