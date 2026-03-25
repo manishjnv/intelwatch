@@ -132,6 +132,34 @@ describe('ArticlePipeline', () => {
       // Should process without throwing
       expect(result.processed).toBe(2);
     });
+
+    it('respects feedAiEnabled=true as default (same as omitting the flag)', async () => {
+      const withFlag    = await pipeline.processBatch([makeCTIArticle()], FEED_ID, FEED_NAME, TENANT_ID, true);
+      const withDefault = await pipeline.processBatch([makeCTIArticle()], FEED_ID, FEED_NAME, TENANT_ID);
+      // Both should produce equivalent results
+      expect(withFlag.total).toBe(withDefault.total);
+      expect(withFlag.articles[0].isCtiRelevant).toBe(withDefault.articles[0].isCtiRelevant);
+    });
+
+    it('with feedAiEnabled=false: CTI-relevant articles still triaged but use rule-based path', async () => {
+      // Pipeline constructed without anthropicApiKey — rule-based mode is default
+      const result = await pipeline.processBatch([makeCTIArticle()], FEED_ID, FEED_NAME, TENANT_ID, false);
+      // Articles still flow through triage (rule-based), IOCs still extracted
+      expect(result.total).toBe(1);
+      expect(result.articles[0]).toBeDefined();
+      // Rule-based triage: isCtiRelevant may be true for the CTI article
+      expect(result.articles[0].pipelineStatus).not.toBe('failed');
+    });
+
+    it('with feedAiEnabled=false: no AI triage/extraction counts increment', async () => {
+      const pipeline2 = new ArticlePipeline({
+        logger: createMockLogger(),
+        aiEnabled: false,  // ensure rule-based mode
+      });
+      const result = await pipeline2.processBatch([makeCTIArticle()], FEED_ID, FEED_NAME, TENANT_ID, false);
+      // Cost should be zero (no AI calls)
+      expect(result.totalCostUsd).toBe(0);
+    });
   });
 
   describe('IOC processing', () => {

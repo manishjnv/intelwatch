@@ -1,5 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DedupService, type DedupArticle } from '../src/services/dedup.js';
+import Anthropic from '@anthropic-ai/sdk';
+
+vi.mock('@anthropic-ai/sdk');
 
 let dedup: DedupService;
 
@@ -52,6 +55,61 @@ describe('DedupService — Layer 3: LLM arbiter prompt', () => {
     expect(prompt).toContain('APT29 Campaign');
     expect(prompt).toContain('Cozy Bear Attack');
     expect(prompt).toContain('1.2.3.4');
+  });
+});
+
+describe('DedupService — Layer 3: arbitrate() Haiku call', () => {
+  const artA: DedupArticle = { id: 'a1', tenantId: 't1', title: 'APT29 Campaign', iocs: ['1.2.3.4', 'evil.com'] };
+  const artB: DedupArticle = { id: 'b1', tenantId: 't1', title: 'Cozy Bear TTP', iocs: ['1.2.3.4', 'evil.com'] };
+
+  function mockAnthropicResponse(text: string) {
+    vi.mocked(Anthropic).mockImplementation(() => ({
+      messages: {
+        create: vi.fn().mockResolvedValue({
+          content: [{ type: 'text', text }],
+        }),
+      },
+    }) as unknown as Anthropic);
+  }
+
+  beforeEach(() => { vi.clearAllMocks(); dedup = new DedupService(); });
+
+  it('returns skip when Haiku says is_duplicate: true', async () => {
+    mockAnthropicResponse('{ "is_duplicate": true, "reasoning": "same campaign" }');
+    const action = await dedup.arbitrate(artA, artB, 'test-key');
+    expect(action).toBe('skip');
+  });
+
+  it('returns create_new when Haiku says is_duplicate: false', async () => {
+    mockAnthropicResponse('{ "is_duplicate": false, "reasoning": "different actors" }');
+    const action = await dedup.arbitrate(artA, artB, 'test-key');
+    expect(action).toBe('create_new');
+  });
+
+  it('falls back to merge when Anthropic throws', async () => {
+    vi.mocked(Anthropic).mockImplementation(() => ({
+      messages: { create: vi.fn().mockRejectedValue(new Error('API error')) },
+    }) as unknown as Anthropic);
+    const action = await dedup.arbitrate(artA, artB, 'test-key');
+    expect(action).toBe('merge');
+  });
+
+  it('falls back to merge when no API key provided', async () => {
+    const action = await dedup.arbitrate(artA, artB, undefined);
+    expect(action).toBe('merge');
+  });
+
+  it('returns create_new when Haiku returns text with no JSON object', async () => {
+    // No {…} found → no duplicate signal → keep the article (create_new is the safe choice)
+    mockAnthropicResponse('Not valid JSON at all');
+    const action = await dedup.arbitrate(artA, artB, 'test-key');
+    expect(action).toBe('create_new');
+  });
+
+  it('returns create_new when JSON is valid but is_duplicate field missing', async () => {
+    mockAnthropicResponse('{ "reasoning": "not sure" }');
+    const action = await dedup.arbitrate(artA, artB, 'test-key');
+    expect(action).toBe('create_new');
   });
 });
 

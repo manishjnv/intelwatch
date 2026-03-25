@@ -2,11 +2,12 @@
  * 3-Layer Deduplication Service
  * Layer 1: Bloom filter (Set-based) — sub-millisecond exact-match
  * Layer 2: Jaccard similarity — semantic near-duplicate detection on IOC sets
- * Layer 3: LLM arbitration stub — for ambiguous cases (0.60-0.85 similarity)
+ * Layer 3: LLM arbitration (Haiku) — resolves ambiguous cases (0.60-0.85 similarity)
  * Differentiator: most TI platforms only do exact-match dedup. Jaccard catches
  * semantic duplicates where two reports cover the same campaign with slightly
  * different IOC extractions.
  */
+import Anthropic from '@anthropic-ai/sdk';
 import { buildDedupeKey } from '@etip/shared-utils';
 
 export interface DedupArticle {
@@ -77,6 +78,32 @@ export class DedupService {
       '',
       'Respond with JSON: { "is_duplicate": boolean, "reasoning": string }',
     ].join('\n');
+  }
+
+  /**
+   * Layer 3: LLM arbitration via Haiku — resolves ambiguous 60-85% Jaccard similarity.
+   * Returns 'skip' if Haiku says duplicate, 'create_new' if not, 'merge' on error (safe fallback).
+   */
+  async arbitrate(
+    articleA: DedupArticle,
+    articleB: DedupArticle,
+    anthropicApiKey?: string,
+  ): Promise<DedupAction> {
+    if (!anthropicApiKey) return 'merge';
+    try {
+      const client = new Anthropic({ apiKey: anthropicApiKey });
+      const prompt = this.buildArbiterPrompt(articleA, articleB);
+      const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 64,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const text = message.content[0]?.type === 'text' ? message.content[0].text : '';
+      const parsed = JSON.parse(text.match(/\{[^}]+\}/)?.[0] ?? '{}') as { is_duplicate?: boolean };
+      return parsed.is_duplicate === true ? 'skip' : 'create_new';
+    } catch {
+      return 'merge'; // safe fallback — treat as uncertain, do not discard
+    }
   }
 
   /** Full 3-layer dedup pipeline */
