@@ -1,0 +1,389 @@
+{
+  "uid": "etip-api-gateway",
+  "title": "ETIP API Gateway",
+  "description": "API Gateway traffic, error rates, rate limiting, and latency distribution. NOTE: Metrics require prom-client + fastify-metrics in api-gateway service. Add http_requests_total counter and http_request_duration_seconds histogram, then uncomment the etip-api-gateway scrape job in docker/prometheus/prometheus.yml.",
+  "tags": ["etip", "monitoring"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "route",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+        "query": "label_values(http_requests_total{job=\"etip-api-gateway\"}, route)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Traffic",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "title": "Requests per Second",
+      "description": "Metric not yet exported. Add 'http_requests_total{method, route, status_code}' counter via fastify-metrics in api-gateway. Then uncomment etip-api-gateway scrape job in prometheus.yml.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "fixedColor": "#3b82f6", "mode": "fixed" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{job=\"etip-api-gateway\", route=~\"$route\"}[5m]))",
+          "legendFormat": "RPS"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Error Rate (4xx + 5xx)",
+      "description": "Metric not yet exported. Requires http_requests_total counter with status_code label in api-gateway.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 10, "x": 10, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 0.01 },
+              { "color": "#ef4444", "value": 0.05 }
+            ]
+          },
+          "color": { "mode": "continuous-GrYlRd" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{job=\"etip-api-gateway\", status_code=~\"4..|5..\"}[5m])) / sum(rate(http_requests_total{job=\"etip-api-gateway\"}[5m]))",
+          "legendFormat": "Error %"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Current RPS",
+      "description": "Metric not yet exported. Requires http_requests_total counter in api-gateway.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 50 },
+              { "color": "#ef4444", "value": 100 }
+            ]
+          },
+          "mappings": [],
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{job=\"etip-api-gateway\"}[1m]))",
+          "legendFormat": "RPS",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Rate Limiting",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false
+    },
+    {
+      "id": 6,
+      "title": "429 Rate-Limited Responses / min",
+      "description": "Metric not yet exported. Requires http_requests_total counter with status_code='429' label in api-gateway.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "opm",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 10 },
+              { "color": "#ef4444", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(http_requests_total{job=\"etip-api-gateway\", status_code=\"429\"}[5m]) * 60",
+          "legendFormat": "429s / min"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Top Rate-Limited Routes",
+      "description": "Metric not yet exported. Requires http_requests_total counter with route and status_code labels. Shows which routes are hitting rate limits most frequently.",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false, "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [
+              { "id": "displayName", "value": "429 Count (5m)" },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "transparent", "value": null },
+                    { "color": "#f59e0b", "value": 5 },
+                    { "color": "#ef4444", "value": 20 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "route" },
+            "properties": [
+              { "id": "displayName", "value": "Route" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "429 Count (5m)", "desc": true }],
+        "footer": { "show": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, increase(http_requests_total{job=\"etip-api-gateway\", status_code=\"429\"}[5m]))",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "__name__": true, "Time": true, "job": true, "instance": true, "method": true, "status_code": true },
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Latency",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "collapsed": false
+    },
+    {
+      "id": 9,
+      "title": "Request Duration Heatmap",
+      "description": "Metric not yet exported. Add http_request_duration_seconds histogram via fastify-metrics in api-gateway. Heatmap shows distribution of request durations — darker = more requests at that latency.",
+      "type": "heatmap",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 19 },
+      "options": {
+        "calculate": false,
+        "yAxis": { "unit": "s" },
+        "color": {
+          "scheme": "Oranges",
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "exponent": 0.5
+        },
+        "cellGap": 1,
+        "tooltip": { "show": true, "yHistogram": true },
+        "exemplars": { "color": "rgba(255, 0, 255, 0.7)" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(http_request_duration_seconds_bucket{job=\"etip-api-gateway\"}[1m])) by (le)",
+          "legendFormat": "{{ le }}",
+          "format": "heatmap"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Latency Percentiles by Route — p50 / p95 / p99",
+      "description": "Metric not yet exported. Requires http_request_duration_seconds histogram with route label in api-gateway.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 0.5 },
+              { "color": "#ef4444", "value": 2 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"etip-api-gateway\", route=~\"$route\"}[5m])) by (le, route))",
+          "legendFormat": "{{ route }} p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"etip-api-gateway\", route=~\"$route\"}[5m])) by (le, route))",
+          "legendFormat": "{{ route }} p95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"etip-api-gateway\", route=~\"$route\"}[5m])) by (le, route))",
+          "legendFormat": "{{ route }} p99"
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Service Health",
+      "url": "/d/etip-service-health/etip-service-health",
+      "type": "link",
+      "icon": "heart"
+    },
+    {
+      "title": "Pipeline & Queues",
+      "url": "/d/etip-pipeline-queues/etip-pipeline-queues",
+      "type": "link",
+      "icon": "bolt"
+    }
+  ]
+}

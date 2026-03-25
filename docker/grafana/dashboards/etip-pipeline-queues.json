@@ -1,0 +1,374 @@
+{
+  "uid": "etip-pipeline-queues",
+  "title": "ETIP Pipeline & Queues",
+  "description": "BullMQ pipeline throughput, queue depths, and AI cost tracking. NOTE: Queue metrics require a bull-prom exporter or custom Prometheus exporter — services currently expose queue depths via REST JSON (GET /api/v1/admin/queues) not Prometheus format. Add prom-client gauges for bullmq_waiting, bullmq_active, bullmq_failed, bullmq_completed to admin-service to populate these panels.",
+  "tags": ["etip", "monitoring"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-1h", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "queue",
+        "type": "custom",
+        "query": "etip-feed-fetch,etip-feed-parse,etip-normalize,etip-deduplicate,etip-enrich-realtime,etip-enrich-batch,etip-graph-sync,etip-correlate,etip-alert-evaluate,etip-integration-push,etip-archive,etip-report-generate,etip-ioc-indexed,etip-cache-invalidate",
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Pipeline Throughput",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "title": "Articles Ingested / min",
+      "description": "Metric not yet exported. Add a Prometheus counter 'etip_articles_ingested_total' to ingestion-service (increment on each successful feed-fetch job completion). Then configure a scrape job for etip_ingestion:3004 in docker/prometheus/prometheus.yml.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "opm",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "fixedColor": "#22c55e", "mode": "fixed" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(etip_articles_ingested_total[5m]) * 60",
+          "legendFormat": "Articles / min"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "IOCs Extracted / min",
+      "description": "Metric not yet exported. Add a Prometheus counter 'etip_iocs_extracted_total' to normalization-service (increment on each IOC upsert). Then configure a scrape job for etip_normalization:3005.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "opm",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "fixedColor": "#3b82f6", "mode": "fixed" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(etip_iocs_extracted_total[5m]) * 60",
+          "legendFormat": "IOCs / min"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Total Articles Processed Today",
+      "description": "Metric not yet exported. Add counter 'etip_articles_ingested_total' to ingestion-service. This stat shows the increase since midnight.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#f59e0b", "value": null },
+              { "color": "#22c55e", "value": 100 }
+            ]
+          },
+          "mappings": [],
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(etip_articles_ingested_total[24h])",
+          "legendFormat": "Today",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "BullMQ Queue Health",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false
+    },
+    {
+      "id": 6,
+      "title": "Queue — Waiting Jobs",
+      "description": "Metric not yet exported. Add Prometheus gauges per queue: 'bullmq_waiting{queue=\"...\"}' via a custom exporter or bull-prom in admin-service. Current source: GET /api/v1/admin/queues (REST JSON, not Prometheus). 18 queues: etip-feed-fetch, etip-feed-parse, etip-normalize, etip-deduplicate, etip-enrich-realtime, etip-enrich-batch, etip-graph-sync, etip-correlate, etip-alert-evaluate, etip-integration-push, etip-archive, etip-report-generate, etip-ioc-indexed, etip-cache-invalidate, plus 4 lane queues.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "mode": "none" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "bullmq_waiting{queue=~\"$queue\"}",
+          "legendFormat": "{{ queue }}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Queue — Failed Jobs",
+      "description": "Metric not yet exported. Add Prometheus gauge 'bullmq_failed{queue=\"...\"}' to admin-service. Currently available via GET /api/v1/admin/queues REST endpoint.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 5 },
+              { "color": "#ef4444", "value": 20 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "bullmq_failed{queue=~\"$queue\"}",
+          "legendFormat": "{{ queue }}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Queue — Completed Jobs / min",
+      "description": "Metric not yet exported. Add Prometheus counter 'bullmq_completed_total{queue=\"...\"}' to admin-service. Rate shows throughput per queue.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "opm",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "never",
+            "stacking": { "mode": "normal" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(bullmq_completed_total{queue=~\"$queue\"}[5m]) * 60",
+          "legendFormat": "{{ queue }}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "AI Cost Tracking",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "collapsed": false
+    },
+    {
+      "id": 10,
+      "title": "Daily AI Token Spend",
+      "description": "Metric not yet exported. Add Prometheus counter 'etip_ai_tokens_total{model=\"...\"}' to ai-enrichment service (increment on each Claude API call with token count). Currently tracked via GET /api/v1/cost/stats REST endpoint.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "lastNotNull"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(etip_ai_tokens_total{model=\"haiku\"}[24h])",
+          "legendFormat": "Haiku tokens"
+        },
+        {
+          "refId": "B",
+          "expr": "increase(etip_ai_tokens_total{model=\"sonnet\"}[24h])",
+          "legendFormat": "Sonnet tokens"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Estimated Daily AI Cost (USD)",
+      "description": "Metric not yet exported. Add Prometheus counter 'etip_ai_cost_usd_total' to ai-enrichment service. Haiku: $0.25/MTok input, $1.25/MTok output. Sonnet: $3/MTok input, $15/MTok output. Currently tracked via GET /api/v1/cost/stats.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 5 },
+              { "color": "#ef4444", "value": 20 }
+            ]
+          },
+          "mappings": [],
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(etip_ai_cost_usd_total[24h])",
+          "legendFormat": "Daily Cost",
+          "instant": true
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Service Health",
+      "url": "/d/etip-service-health/etip-service-health",
+      "type": "link",
+      "icon": "heart"
+    },
+    {
+      "title": "API Gateway",
+      "url": "/d/etip-api-gateway/etip-api-gateway",
+      "type": "link",
+      "icon": "cloud"
+    }
+  ]
+}
