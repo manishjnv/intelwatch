@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 import { useCountUp } from '@/hooks/use-count-up'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import { useDashboardStats } from '@/hooks/use-intel-data'
-import { useCostStats, useEnrichmentStats } from '@/hooks/use-enrichment-data'
+import { useCostStats, useEnrichmentStats, useEnrichmentQuality } from '@/hooks/use-enrichment-data'
 import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain } from 'lucide-react'
 
 // UI improvements (#2, #13, #14, #15)
@@ -83,6 +83,48 @@ function getPhaseOpacity(phase: number): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* Enrichment Quality Widget                                          */
+/* ------------------------------------------------------------------ */
+interface EnrichmentQualityWidgetProps {
+  data: {
+    total: number; highConfidence: number; mediumConfidence: number; lowConfidence: number;
+    pendingEnrichment: number; highPct: number; mediumPct: number; lowPct: number;
+  } | null | undefined
+}
+
+function EnrichmentQualityWidget({ data }: EnrichmentQualityWidgetProps) {
+  if (!data) return null
+  const bars = [
+    { label: 'High', pct: data.highPct, count: data.highConfidence, color: 'bg-sev-low' },
+    { label: 'Medium', pct: data.mediumPct, count: data.mediumConfidence, color: 'bg-sev-medium' },
+    { label: 'Low', pct: data.lowPct, count: data.lowConfidence, color: 'bg-sev-high' },
+  ]
+  return (
+    <div data-testid="enrichment-quality-widget" className="p-3 bg-bg-secondary rounded-lg border border-border mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-medium text-text-primary">Enrichment Quality</span>
+        <span className="text-[10px] text-text-muted tabular-nums">
+          {data.pendingEnrichment.toLocaleString()} pending
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {bars.map(({ label, pct, count, color }) => (
+          <div key={label} className="flex items-center gap-2">
+            <span className="text-[10px] text-text-muted w-10 shrink-0">{label}</span>
+            <div className="flex-1 h-1.5 bg-bg-elevated rounded-full overflow-hidden">
+              <div className={cn('h-full rounded-full', color)} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-[10px] tabular-nums text-text-secondary w-14 text-right shrink-0">
+              {count.toLocaleString()} ({pct}%)
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 export function DashboardPage() {
@@ -92,6 +134,7 @@ export function DashboardPage() {
   const { data: liveStats, isDemo } = useDashboardStats()
   const { data: costStats } = useCostStats()
   const { data: enrichStats } = useEnrichmentStats()
+  const { data: enrichQuality } = useEnrichmentQuality()
 
   // Trigger Cmd+K search
   const triggerSearch = () => {
@@ -212,6 +255,9 @@ export function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Enrichment quality confidence tier breakdown */}
+        <EnrichmentQualityWidget data={enrichQuality} />
 
         {/* #2: Severity Heatmap Grid */}
         <SeverityHeatmap className="mb-6" />

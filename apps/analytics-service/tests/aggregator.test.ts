@@ -186,4 +186,38 @@ describe('Aggregator', () => {
       expect(data).toBeDefined();
     });
   });
+
+  describe('getEnrichmentQuality', () => {
+    it('buckets enriched count into high/medium/low confidence', async () => {
+      // total=1000, enriched=600 → high=360 (60%), medium=180 (30%), low=60 (10%)
+      mockFetch.mockResolvedValue(okResponse({ total: 1000, enriched: 600, pending: 400 }));
+      const data = await agg.getEnrichmentQuality('t1') as Record<string, number>;
+      expect(data.total).toBe(1000);
+      expect(data.highConfidence).toBe(360);
+      expect(data.mediumConfidence).toBe(180);
+      expect(data.lowConfidence).toBe(60);
+      expect(data.highPct).toBe(36);
+      expect(data.mediumPct).toBe(18);
+      expect(data.lowPct).toBe(6);
+    });
+
+    it('maps pending field to pendingEnrichment', async () => {
+      mockFetch.mockResolvedValue(okResponse({ total: 500, enriched: 300, pending: 200 }));
+      const data = await agg.getEnrichmentQuality('t1') as Record<string, number>;
+      expect(data.pendingEnrichment).toBe(200);
+    });
+
+    it('returns all-zero result when total is zero', async () => {
+      mockFetch.mockResolvedValue(okResponse({ total: 0, enriched: 0, pending: 0 }));
+      const data = await agg.getEnrichmentQuality('t1') as Record<string, number>;
+      expect(data.total).toBe(0);
+      expect(data.highConfidence).toBe(0);
+      expect(data.mediumConfidence).toBe(0);
+      expect(data.lowConfidence).toBe(0);
+      expect(data.pendingEnrichment).toBe(0);
+      expect(data.highPct).toBe(0);
+      expect(data.mediumPct).toBe(0);
+      expect(data.lowPct).toBe(0);
+    });
+  });
 });

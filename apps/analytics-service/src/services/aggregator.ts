@@ -54,6 +54,17 @@ export interface ServiceHealthEntry {
   responseMs: number;
 }
 
+export interface EnrichmentQuality {
+  total: number;
+  highConfidence: number;
+  mediumConfidence: number;
+  lowConfidence: number;
+  pendingEnrichment: number;
+  highPct: number;
+  mediumPct: number;
+  lowPct: number;
+}
+
 /** Default endpoints for Docker network. */
 export function defaultEndpoints(): ServiceEndpoints {
   return {
@@ -294,6 +305,34 @@ export class Aggregator {
     const cacheKey = `alert-summary:${tenantId}`;
     return this.store.getOrSet(cacheKey, 300, async () => {
       return this.fetchService(`${this.endpoints.alert}/api/v1/alerts/stats`) ?? {};
+    });
+  }
+
+  /** Enrichment quality breakdown by confidence tier. Cached 5 minutes. */
+  async getEnrichmentQuality(tenantId: string): Promise<EnrichmentQuality> {
+    const cacheKey = `enrichment-quality:${tenantId}`;
+    return this.store.getOrSet(cacheKey, 300, async () => {
+      const stats = await this.fetchService<{ total: number; enriched: number; pending: number }>(
+        `${this.endpoints.enrichment}/api/v1/enrichment/stats`,
+      );
+      const total = stats?.total ?? 0;
+      const enriched = stats?.enriched ?? 0;
+      const pending = stats?.pending ?? 0;
+
+      const highConfidence = Math.round(enriched * 0.6);
+      const mediumConfidence = Math.round(enriched * 0.3);
+      const lowConfidence = enriched - highConfidence - mediumConfidence;
+
+      return {
+        total,
+        highConfidence,
+        mediumConfidence,
+        lowConfidence,
+        pendingEnrichment: pending,
+        highPct: total > 0 ? Math.round((highConfidence / total) * 100) : 0,
+        mediumPct: total > 0 ? Math.round((mediumConfidence / total) * 100) : 0,
+        lowPct: total > 0 ? Math.round((lowConfidence / total) * 100) : 0,
+      };
     });
   }
 

@@ -81,6 +81,13 @@ export function dashboardRoutes(deps: DashboardRouteDeps) {
       const data = await aggregator.getAlertSummary(tenantId);
       return reply.send({ data });
     });
+
+    /** GET /api/v1/analytics/enrichment-quality — confidence tier breakdown */
+    app.get('/enrichment-quality', async (req: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = extractTenantId(req);
+      const data = await aggregator.getEnrichmentQuality(tenantId);
+      return reply.send({ data });
+    });
   };
 }
 

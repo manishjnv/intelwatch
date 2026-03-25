@@ -271,3 +271,33 @@ export function useBudgetStatus() {
   const fallback = withFallback(result.data, result.isLoading, DEMO_BUDGET, d => d != null)
   return { ...result, ...fallback }
 }
+
+// ─── Enrichment Quality (from analytics service) ────────────────
+
+export interface EnrichmentQuality {
+  total: number
+  highConfidence: number
+  mediumConfidence: number
+  lowConfidence: number
+  pendingEnrichment: number
+  highPct: number
+  mediumPct: number
+  lowPct: number
+}
+
+const DEMO_ENRICHMENT_QUALITY: EnrichmentQuality = {
+  total: 1000, highConfidence: 360, mediumConfidence: 180, lowConfidence: 60,
+  pendingEnrichment: 400, highPct: 36, mediumPct: 18, lowPct: 6,
+}
+
+/** Confidence tier breakdown — sourced from analytics aggregator (5-min cache) */
+export function useEnrichmentQuality() {
+  const result = useQuery({
+    queryKey: ['enrichment-quality'],
+    queryFn: () => api<{ data: EnrichmentQuality }>('/analytics/enrichment-quality').catch(() => null),
+    staleTime: 300_000,
+  })
+  const data = result.data?.data
+  const isDemo = !result.isLoading && data == null
+  return { ...result, data: isDemo ? DEMO_ENRICHMENT_QUALITY : data, isDemo }
+}
