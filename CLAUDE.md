@@ -111,6 +111,15 @@ Before every push: read docs/DEPLOYMENT_RCA.md.
 If change matches known issue → apply existing fix.
 If new issue → fix first, add RCA entry, then push.
 
+## Post-Deploy Checklist (MANDATORY after every successful CI/CD deploy)
+After containers are healthy on VPS, immediately update these docs:
+1. `docs/ETIP_Project_Stats.html` — update session number, test counts, container count, module statuses, next-action card
+2. `docs/PROJECT_STATE.md` — update Deployment Log + container status rows
+3. `docs/DEPLOYMENT_RCA.md` — append "No new issues" row or new RCA entry
+4. Commit: `git add docs/ && git commit -m "docs: post-deploy stats update — session N"`
+NEVER close a deploy session without updating ETIP_Project_Stats.html.
+The HTML is the live dashboard — stale stats = stakeholders see wrong platform state.
+
 ## Git
 Push to master with /pre-push checks. Feature branches for risky or cross-module work.
 Commit format: "feat|fix|chore|docs: [description]"

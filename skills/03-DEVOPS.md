@@ -223,6 +223,16 @@ make docker-test    # at minimum before every push
 make pre-push       # ideally (runs test + typecheck + lint + docker-test)
 ```
 
+### Post-Deploy Checklist (MANDATORY — run after CI confirms containers healthy)
+After every successful deploy (GitHub Actions green + VPS health checks pass):
+1. **Update `docs/ETIP_Project_Stats.html`** — session #, test counts, container count, module statuses, next-action section. This is the live dashboard — stale = wrong stakeholder view.
+2. **Update `docs/PROJECT_STATE.md`** — Deployment Log table row + container status rows
+3. **Update `docs/DEPLOYMENT_RCA.md`** — append "No new issues" row or new RCA entry
+4. **Commit docs**: `git add docs/ && git commit -m "docs: post-deploy stats update — session N"`
+
+**Rule:** NEVER close a deploy session without completing this checklist.
+**Trigger:** CI green + `docker compose ps` all healthy → run checklist immediately.
+
 ---
 
 ## ENV VARS
