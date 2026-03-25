@@ -84,6 +84,10 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useCostEstimate:      () => ({ data: { data: null }, isDemo: true }),
   useApplyPlan:         () => ({ mutate: vi.fn(), isPending: false }),
   useSetSubtaskModel:   () => ({ mutate: vi.fn(), isPending: false }),
+  // BYOK hooks
+  useAnthropicKeyStatus: () => ({ data: { data: { tenantId: 'default', hasKey: false, maskedKey: null } }, isDemo: false, isLoading: false }),
+  useSaveAnthropicKey:   () => ({ mutate: vi.fn(), isPending: false, isError: false }),
+  useDeleteAnthropicKey: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 // Mock shared-ui components

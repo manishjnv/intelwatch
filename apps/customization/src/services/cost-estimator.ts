@@ -22,10 +22,10 @@ const STAGE_TOKENS: Record<1 | 2 | 3, { input: number; output: number }> = {
   3: { input: 2000, output: 500 },   // Stage 3 — dedup / merge
 };
 
-// Stage 2 only runs on ~20% of articles (CTI-relevant)
-const STAGE_ARTICLE_FACTOR: Record<1 | 2 | 3, number> = {
+// Stage 1 and 3 run on all articles; Stage 2 factor is configurable.
+const BASE_STAGE_FACTOR: Record<1 | 2 | 3, number> = {
   1: 1.0,
-  2: 0.2,
+  2: 0.2,  // default — overridden by TI_COST_STAGE2_FACTOR
   3: 1.0,
 };
 
@@ -60,8 +60,20 @@ export interface CostEstimate {
  * (not one call per subtask). The cost therefore scales with article volume,
  * not subtask count. The dominant model (majority vote per stage) is used
  * when subtasks within a stage have mixed models.
+ *
+ * @param stage2Factor - Fraction of articles that reach Stage 2 deep extraction.
+ *   Must be in [0.0, 1.0]. Values outside this range fall back to the default (0.2).
+ *   Configurable via TI_COST_STAGE2_FACTOR env var.
  */
 export class CostEstimator {
+  private readonly stageArticleFactor: Record<1 | 2 | 3, number>;
+
+  constructor(stage2Factor: number = 0.2) {
+    // Clamp to valid range; out-of-range falls back to the default 0.2
+    const clamped = stage2Factor >= 0 && stage2Factor <= 1 ? stage2Factor : 0.2;
+    this.stageArticleFactor = { ...BASE_STAGE_FACTOR, 2: clamped };
+  }
+
   /**
    * Estimate monthly cost given per-subtask model assignments
    * and a monthly article volume.
@@ -84,7 +96,7 @@ export class CostEstimator {
     let total = 0;
 
     for (const [stage, models] of byStage.entries()) {
-      const articles = Math.round(articleCount * STAGE_ARTICLE_FACTOR[stage]);
+      const articles = Math.round(articleCount * this.stageArticleFactor[stage]);
 
       // Pick the model used by the most subtasks in this stage
       const counts = new Map<AiModel, number>();
@@ -125,7 +137,7 @@ export class CostEstimator {
   private uniformTotal(model: AiModel, articleCount: number): number {
     let total = 0;
     for (const stage of [1, 2, 3] as const) {
-      const articles = Math.round(articleCount * STAGE_ARTICLE_FACTOR[stage]);
+      const articles = Math.round(articleCount * this.stageArticleFactor[stage]);
       total += this.stageCost(model, stage, articles);
     }
     return total;

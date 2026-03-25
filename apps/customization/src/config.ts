@@ -12,6 +12,8 @@ const ConfigSchema = z.object({
   TI_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
   TI_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(200),
   TI_LOG_LEVEL: z.string().default('info'),
+  /** Stage-2 article factor: fraction of articles that reach deep extraction (Stage 2). */
+  TI_COST_STAGE2_FACTOR: z.coerce.number().default(0.2),
 });
 
 export type CustomizationConfig = z.infer<typeof ConfigSchema>;

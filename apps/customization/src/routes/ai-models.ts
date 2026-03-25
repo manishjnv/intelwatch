@@ -20,11 +20,12 @@ import {
 export interface AiModelRouteDeps {
   aiModelStore: AiModelStore;
   planTierService?: PlanTierService;
+  /** Stage-2 article fraction for cost estimation (default 0.2). Injected from config in production. */
+  stage2Factor?: number;
 }
 
-const costEstimator = new CostEstimator();
-
 export function aiModelRoutes(deps: AiModelRouteDeps) {
+  const costEstimator = new CostEstimator(deps.stage2Factor ?? 0.2);
   const { aiModelStore, planTierService } = deps;
 
   return async function (app: FastifyInstance): Promise<void> {

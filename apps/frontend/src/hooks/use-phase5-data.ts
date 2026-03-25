@@ -502,3 +502,44 @@ export function useSetSubtaskModel() {
     },
   })
 }
+
+// ─── BYOK: Provider API Keys ─────────────────────────────────────
+
+export interface AnthropicKeyStatus {
+  tenantId: string
+  hasKey: boolean
+  maskedKey: string | null
+}
+
+/** GET /customization/api-keys/anthropic — BYOK key status. Never returns the raw key. */
+export function useAnthropicKeyStatus() {
+  const fallback: AnthropicKeyStatus = { tenantId: 'default', hasKey: false, maskedKey: null }
+  const result = useQuery({
+    queryKey: ['anthropic-key-status'],
+    queryFn: () =>
+      api<{ data: AnthropicKeyStatus }>('/customization/api-keys/anthropic')
+        .catch(() => ({ data: fallback })),
+    staleTime: 30_000,
+  })
+  return withDemoFallback(result, { data: fallback }, d => d?.data != null)
+}
+
+/** PUT /customization/api-keys/anthropic — Store tenant Anthropic API key. */
+export function useSaveAnthropicKey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (apiKey: string) =>
+      api<{ data: AnthropicKeyStatus }>('/customization/api-keys/anthropic', { method: 'PUT', body: { apiKey } }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['anthropic-key-status'] }) },
+  })
+}
+
+/** DELETE /customization/api-keys/anthropic — Remove tenant Anthropic API key. */
+export function useDeleteAnthropicKey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api<{ data: AnthropicKeyStatus }>('/customization/api-keys/anthropic', { method: 'DELETE' }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['anthropic-key-status'] }) },
+  })
+}

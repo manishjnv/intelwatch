@@ -16,6 +16,31 @@ export interface DBSCANConfig {
   weights: { infra: number; temporal: number; ttp: number; feed: number };
 }
 
+/**
+ * Default DBSCAN configuration for campaign auto-clustering.
+ *
+ * Weight rationale — each dimension contributes to the feature-vector distance
+ * used to decide whether two IOC sets belong to the same campaign:
+ *
+ *   infra    0.30 — Infrastructure overlap (shared ASN, CIDR, registrar) is the
+ *                   strongest structural signal: attackers re-use C2 nodes across
+ *                   campaigns far more consistently than they vary TTPs or timing.
+ *
+ *   temporal 0.20 — Timing correlation reinforces a cluster but is weak alone.
+ *                   Unrelated actors can hit targets in the same window by chance;
+ *                   temporal proximity is necessary but not sufficient evidence.
+ *
+ *   ttp      0.30 — Shared MITRE ATT&CK techniques are a high-confidence actor
+ *                   fingerprint. TTP sets are expensive to change and tend to
+ *                   persist across campaigns from the same threat group.
+ *
+ *   feed     0.20 — Multi-source corroboration adds breadth, not depth. Seeing
+ *                   the same IOC cluster across independent feeds lowers false-
+ *                   positive risk but does not by itself prove attribution.
+ *
+ * Weights sum to 1.0. Adjust via DBSCANConfig constructor argument if per-tenant
+ * tuning is required (DECISION-013 — no Prisma migration needed).
+ */
 const DEFAULT_CONFIG: DBSCANConfig = {
   epsilon: 0.3,
   minPoints: 3,

@@ -78,6 +78,11 @@ export class AiModelStore {
   private tenantUsage = new Map<string, UsageRecord[]>();
   /** Per-tenant CTI subtask model mappings (12 subtasks) */
   private subtaskMappings = new Map<string, SubtaskMapping>();
+  /**
+   * BYOK: tenant → Anthropic API key (plaintext in-memory).
+   * P3 hardening: encrypt at rest before persisting to DB.
+   */
+  private anthropicKeys = new Map<string, string>();
 
   constructor(
     private auditTrail: AuditTrail,
@@ -391,6 +396,32 @@ export class AiModelStore {
         alertThreshold: budget.alertThreshold,
       },
     };
+  }
+
+  // ─── BYOK: Bring Your Own API Key ────────────────────────────────
+
+  /** Mask a raw API key: show first 10 + last 4 chars. Returns "***" if key is too short to mask safely. */
+  maskKey(key: string): string {
+    if (key.length < 14) return '***';
+    return `${key.slice(0, 10)}...${key.slice(-4)}`;
+  }
+
+  /** Return BYOK Anthropic key status for a tenant. Never exposes the raw key. */
+  getAnthropicKeyStatus(tenantId: string): { tenantId: string; hasKey: boolean; maskedKey: string | null } {
+    const key = this.anthropicKeys.get(tenantId);
+    return { tenantId, hasKey: key !== undefined, maskedKey: key !== undefined ? this.maskKey(key) : null };
+  }
+
+  /** Store a tenant's Anthropic API key. Caller must validate the sk-ant- prefix before calling. */
+  setAnthropicKey(tenantId: string, apiKey: string): { tenantId: string; hasKey: true; maskedKey: string } {
+    this.anthropicKeys.set(tenantId, apiKey);
+    return { tenantId, hasKey: true, maskedKey: this.maskKey(apiKey) };
+  }
+
+  /** Remove a tenant's Anthropic API key. Safe to call even if no key is stored. */
+  deleteAnthropicKey(tenantId: string): { tenantId: string; hasKey: false; maskedKey: null } {
+    this.anthropicKeys.delete(tenantId);
+    return { tenantId, hasKey: false, maskedKey: null };
   }
 
   importData(tenantId: string, data: Record<string, unknown>, _userId: string): void {

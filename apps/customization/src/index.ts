@@ -66,7 +66,8 @@ async function main(): Promise<void> {
   const app = await buildApp({
     config,
     moduleToggleDeps: { moduleToggleStore },
-    aiModelDeps: { aiModelStore, planTierService },
+    aiModelDeps: { aiModelStore, planTierService, stage2Factor: config.TI_COST_STAGE2_FACTOR },
+    apiKeyDeps: { aiModelStore },
     riskWeightDeps: { riskWeightStore },
     dashboardDeps: { dashboardStore },
     notificationDeps: { notificationStore },

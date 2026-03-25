@@ -88,6 +88,22 @@ describe('CostEstimator', () => {
       expect(s1.articles).toBe(ARTICLES);
       expect(s3.articles).toBe(ARTICLES);
     });
+
+    it('custom stage2Factor changes stage-2 article count proportionally', () => {
+      const customEstimator = new CostEstimator(0.4);
+      const models = Object.fromEntries(AI_CTI_SUBTASKS.map(s => [s, 'sonnet' as const]));
+      const result = customEstimator.estimate(models, ARTICLES);
+      const s2 = result.perStage.find(s => s.stage === 2)!;
+      expect(s2.articles).toBe(Math.round(ARTICLES * 0.4));
+    });
+
+    it('out-of-range stage2Factor (> 1) falls back to default 0.2', () => {
+      const outOfRange = new CostEstimator(2.0);
+      const models = Object.fromEntries(AI_CTI_SUBTASKS.map(s => [s, 'sonnet' as const]));
+      const result = outOfRange.estimate(models, ARTICLES);
+      const s2 = result.perStage.find(s => s.stage === 2)!;
+      expect(s2.articles).toBe(Math.round(ARTICLES * 0.2));
+    });
   });
 
   // ── subtask counts ──────────────────────────────────────────────

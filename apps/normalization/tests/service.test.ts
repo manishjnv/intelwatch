@@ -4,6 +4,7 @@ import {
   escalateTLP, escalateSeverity, clampConfidence, batchPenalty,
   configureClassifier, classifySeverity,
 } from '../src/service.js';
+import { getUnknownTypeStats, resetUnknownTypeCounter } from '../src/stats-counter.js';
 import type { IOCRepository } from '../src/repository.js';
 import type { NormalizeBatchJob } from '../src/schema.js';
 import pino from 'pino';
@@ -845,5 +846,60 @@ describe('G4b: configureClassifier — extensible severity sets', () => {
     configureClassifier({ extraRansomwareFamilies: [] });
     const result = classifySeverity({ iocType: 'domain', threatActors: [], malwareFamilies: ['lockbit'], mitreAttack: [], corroborationCount: 1 });
     expect(result).toBe('critical');
+  });
+});
+
+describe('unknownTypeCount stats counter', () => {
+  let repo: IOCRepository;
+  let service: NormalizationService;
+
+  beforeEach(() => {
+    resetUnknownTypeCounter();
+    repo = {
+      upsert: vi.fn().mockResolvedValue({ id: 'mock-id' }),
+      findById: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue({ data: [], total: 0 }),
+      getStats: vi.fn().mockResolvedValue({ total: 0, byType: {}, byLifecycle: {}, bySeverity: {} }),
+      findByDedupeHash: vi.fn().mockResolvedValue(null),
+      findFeedReliability: vi.fn().mockResolvedValue(50),
+    } as unknown as IOCRepository;
+    service = new NormalizationService(repo, pino({ level: 'silent' }));
+  });
+
+  it('starts at zero — resets on service restart', () => {
+    const stats = getUnknownTypeStats();
+    expect(stats.unknownTypeCount).toBe(0);
+    expect(stats.lastUnknownType).toBeNull();
+  });
+
+  it('increments counter and records rawType when IOC type is unknown', async () => {
+    const job: NormalizeBatchJob = {
+      articleId: '00000000-0000-0000-0000-000000000001',
+      feedSourceId: '00000000-0000-0000-0000-000000000002',
+      tenantId: '00000000-0000-0000-0000-000000000003',
+      feedName: 'Test Feed',
+      iocs: [{ rawValue: 'INVALID_IOC_12345', rawType: 'yara_rule' }],
+    };
+    await service.normalizeBatch(job);
+    const stats = getUnknownTypeStats();
+    expect(stats.unknownTypeCount).toBe(1);
+    expect(stats.lastUnknownType).toBe('yara_rule');
+  });
+
+  it('accumulates across multiple unknown IOCs and tracks the last rawType seen', async () => {
+    const job: NormalizeBatchJob = {
+      articleId: '00000000-0000-0000-0000-000000000001',
+      feedSourceId: '00000000-0000-0000-0000-000000000002',
+      tenantId: '00000000-0000-0000-0000-000000000003',
+      feedName: 'Test Feed',
+      iocs: [
+        { rawValue: 'INVALID_IOC_ONE', rawType: 'yara_rule' },
+        { rawValue: 'INVALID_IOC_TWO', rawType: 'registry_key' },
+      ],
+    };
+    await service.normalizeBatch(job);
+    const stats = getUnknownTypeStats();
+    expect(stats.unknownTypeCount).toBe(2);
+    expect(stats.lastUnknownType).toBe('registry_key');
   });
 });

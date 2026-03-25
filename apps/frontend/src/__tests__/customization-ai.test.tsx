@@ -37,6 +37,10 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useResetRiskWeights:      () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateNotificationChannel: () => ({ mutate: vi.fn(), isPending: false }),
   useTestNotification:      () => ({ mutate: vi.fn(), isPending: false }),
+  // BYOK hooks — stub for tests that don't focus on the API keys card
+  useAnthropicKeyStatus:    () => ({ data: { data: { tenantId: 'default', hasKey: false, maskedKey: null } }, isDemo: false, isLoading: false }),
+  useSaveAnthropicKey:      () => ({ mutate: vi.fn(), isPending: false, isError: false }),
+  useDeleteAnthropicKey:    () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/stores/auth-store', () => ({

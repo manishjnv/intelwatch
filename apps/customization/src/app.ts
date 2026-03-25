@@ -11,12 +11,14 @@ import { riskWeightRoutes, type RiskWeightRouteDeps } from './routes/risk-weight
 import { dashboardRoutes, type DashboardRouteDeps } from './routes/dashboard.js';
 import { notificationRoutes, type NotificationRouteDeps } from './routes/notifications.js';
 import { configRoutes, type ConfigRouteDeps } from './routes/config.js';
+import { apiKeyRoutes, type ApiKeyRouteDeps } from './routes/api-keys.js';
 import type { CustomizationConfig } from './config.js';
 
 export interface BuildAppOptions {
   config: CustomizationConfig;
   moduleToggleDeps?: ModuleToggleRouteDeps;
   aiModelDeps?: AiModelRouteDeps;
+  apiKeyDeps?: ApiKeyRouteDeps;
   riskWeightDeps?: RiskWeightRouteDeps;
   dashboardDeps?: DashboardRouteDeps;
   notificationDeps?: NotificationRouteDeps;
@@ -85,6 +87,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   }
   if (opts.notificationDeps) {
     await app.register(notificationRoutes(opts.notificationDeps), { prefix: '/api/v1/customization/notifications' });
+  }
+  if (opts.apiKeyDeps) {
+    await app.register(apiKeyRoutes(opts.apiKeyDeps), { prefix: '/api/v1/customization/api-keys' });
   }
   if (opts.configDeps) {
     await app.register(configRoutes(opts.configDeps), { prefix: '/api/v1/customization' });

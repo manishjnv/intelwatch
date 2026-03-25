@@ -12,6 +12,7 @@ import {
   useToggleModule, useUpdateRiskWeight,
   useResetRiskWeights, useUpdateNotificationChannel, useTestNotification,
   usePlanTiers, useSubtaskMappings, useRecommendedModels, useCostEstimate, useApplyPlan, useSetSubtaskModel,
+  useAnthropicKeyStatus, useSaveAnthropicKey, useDeleteAnthropicKey,
   type ModuleToggle, type AIModelConfig, type RiskWeight, type NotificationChannel,
   type PlanTierMeta, type SubtaskMapping,
 } from '@/hooks/use-phase5-data'
@@ -19,7 +20,7 @@ import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsB
 import {
   Puzzle, Brain, Scale, LayoutDashboard, Bell,
   ToggleLeft, ToggleRight, AlertTriangle, Send,
-  RotateCcw, Sliders, Star,
+  RotateCcw, Sliders, Star, Key, Trash2,
 } from 'lucide-react'
 
 // ─── Tab type ───────────────────────────────────────────────────
@@ -368,6 +369,98 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
           </div>
         </div>
       )}
+
+      <ProviderApiKeysCard />
+    </div>
+  )
+}
+
+// ─── Provider API Keys Card ──────────────────────────────────────
+
+function ProviderApiKeysCard() {
+  const { data: keyData, isDemo } = useAnthropicKeyStatus()
+  const saveMutation = useSaveAnthropicKey()
+  const deleteMutation = useDeleteAnthropicKey()
+  const [keyInput, setKeyInput] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const status = keyData?.data
+  const hasKey = status?.hasKey ?? false
+  const maskedKey = status?.maskedKey ?? null
+
+  const handleSave = () => {
+    const trimmed = keyInput.trim()
+    if (!trimmed || isDemo) return
+    saveMutation.mutate(trimmed, { onSuccess: () => setKeyInput('') })
+  }
+
+  const handleDelete = () => {
+    if (isDemo) return
+    if (!confirmDelete) { setConfirmDelete(true); return }
+    deleteMutation.mutate(undefined, { onSuccess: () => setConfirmDelete(false) })
+  }
+
+  return (
+    <div className="p-4 bg-bg-secondary rounded-lg border border-border space-y-3">
+      <div className="flex items-center gap-2">
+        <Key className="w-4 h-4 text-accent shrink-0" />
+        <h3 className="text-xs font-semibold text-text-primary">Provider API Keys</h3>
+      </div>
+
+      {/* Anthropic key row */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-text-secondary">Anthropic API Key</span>
+          {hasKey
+            ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-sev-low/10 text-sev-low font-medium">Configured</span>
+            : <span className="text-[10px] px-1.5 py-0.5 rounded bg-sev-medium/10 text-sev-medium font-medium">Using platform key</span>
+          }
+        </div>
+
+        {hasKey ? (
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-[11px] text-text-muted bg-bg-primary px-2 py-1 rounded border border-border font-mono truncate">
+              {maskedKey}
+            </code>
+            <button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending || isDemo}
+              aria-label="Remove Anthropic API key"
+              className={cn(
+                'flex items-center gap-1 text-[10px] px-2 py-1 rounded border transition-colors disabled:opacity-50',
+                confirmDelete
+                  ? 'border-sev-high text-sev-high hover:bg-sev-high/10'
+                  : 'border-border text-text-muted hover:text-sev-high hover:border-sev-high',
+              )}>
+              <Trash2 className="w-3 h-3" />
+              {confirmDelete ? 'Confirm remove' : 'Remove'}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input
+              type="password"
+              value={keyInput}
+              onChange={e => setKeyInput(e.target.value)}
+              placeholder="sk-ant-..."
+              disabled={isDemo}
+              className="flex-1 text-[11px] bg-bg-primary border border-border rounded px-2 py-1 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
+            />
+            <button
+              onClick={handleSave}
+              disabled={!keyInput.trim() || saveMutation.isPending || isDemo}
+              className="text-[10px] px-3 py-1 rounded bg-accent text-bg-primary font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+              {saveMutation.isPending ? 'Saving…' : 'Save Key'}
+            </button>
+          </div>
+        )}
+
+        {saveMutation.isError && (
+          <p className="text-[10px] text-sev-high">
+            Failed to save key — ensure it starts with &quot;sk-ant-&quot;
+          </p>
+        )}
+      </div>
     </div>
   )
 }

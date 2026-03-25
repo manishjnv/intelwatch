@@ -16,9 +16,14 @@
 | 8 | Kill Chain Correlation | `src/services/kill-chain.ts` | MITRE tactic → Cyber Kill Chain phase mapping |
 | 9 | FP Suppression | `src/services/fp-suppression.ts` | Per-rule FP rate tracking, auto-suppress at threshold |
 | 10 | Relationship Inference | `src/services/relationship-inference.ts` | BFS transitive closure with confidence decay |
+| 11 | AI Pattern Detection | `src/services/ai-pattern-detection.ts` | Claude Sonnet cluster analysis — identifies non-obvious cross-campaign patterns and produces human-readable explanations |
+| 12 | Rule Template Library | `src/services/rule-templates.ts` | 6 pre-built templates (APT infra reuse, ransomware, C2 beacon, supply chain, phishing, lateral movement) with condition scoring |
+| 13 | Confidence Decay | `src/services/confidence-decay.ts` | Per-type exponential decay with half-life derivations; JSDoc cites VT IOC aging and MISP decay model research |
+| 14 | Batch Re-correlation | `src/services/batch-recorrelation.ts` | Queue-driven re-analysis of historical IOC sets; supports algorithm selection and time-window override |
+| 15 | Threat-Graph Integration | `src/services/graph-integration.ts` | Publishes correlation matches as Neo4j relationships (HOSTED_ON, USES_TTP, INDICATES, RESOLVES_TO, CO_OCCURS) |
 | P1-1 | Redis Pattern Persistence | `src/services/store-checkpoint.ts` | Checkpoint all 6 store Maps to Redis on write (5s debounce), restore on startup, 7-day TTL |
 
-## API Endpoints (12)
+## API Endpoints (20)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -66,11 +71,3 @@ QUEUES.CORRELATE → Worker → CorrelationStore (in-memory Maps)
 
 Startup: StoreCheckpointService.restore() → hydrate CorrelationStore from Redis
 ```
-
-## Pending (P2 — Session 28)
-
-- #11 AI-assisted pattern detection (Claude Sonnet)
-- #12 Correlation rule template library
-- #13 Correlation confidence decay
-- #14 Batch re-correlation
-- #15 Threat-graph integration

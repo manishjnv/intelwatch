@@ -5,6 +5,7 @@ import type { IOCRepository } from './repository.js';
 import type { NormalizeBatchJob } from './schema.js';
 import { applyQualityFilters } from './filters.js';
 import { getEnrichQueue } from './queue.js';
+import { incrementUnknownType } from './stats-counter.js';
 
 /** Map shared-normalization IOCType to Prisma IocType enum values */
 function mapIOCType(rawType: string): string {
@@ -355,7 +356,8 @@ export class NormalizationService {
         const iocType = detectedType !== 'unknown' ? mapIOCType(detectedType) : mappedRawType;
 
         if (iocType === 'unknown') {
-          this.logger.debug({ rawValue: ioc.rawValue, rawType: ioc.rawType }, 'Skipping unknown IOC type');
+          this.logger.warn({ rawValue: ioc.rawValue, rawType: ioc.rawType }, 'Skipping unknown IOC type');
+          incrementUnknownType(ioc.rawType);
           result.skipped++;
           continue;
         }

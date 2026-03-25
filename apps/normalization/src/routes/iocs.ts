@@ -3,6 +3,7 @@ import { AppError } from '@etip/shared-utils';
 import type { IOCRepository } from '../repository.js';
 import { ListIOCsQuerySchema, IOCIdParamsSchema } from '../schema.js';
 import { authenticate, getUser } from '../plugins/auth.js';
+import { getUnknownTypeStats } from '../stats-counter.js';
 
 export function iocRoutes(repo: IOCRepository) {
   return async function (app: FastifyInstance): Promise<void> {
@@ -29,7 +30,7 @@ export function iocRoutes(repo: IOCRepository) {
     }, async (req: FastifyRequest, reply: FastifyReply) => {
       const user = getUser(req);
       const stats = await repo.getStats(user.tenantId);
-      return reply.send({ data: stats });
+      return reply.send({ data: { ...stats, ...getUnknownTypeStats() } });
     });
 
     /** GET /api/v1/iocs/:id — Get single IOC by ID */
