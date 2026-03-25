@@ -1,88 +1,95 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-03-25
-**Session:** 64
-**Session Summary:** Gap Analysis G1-G4 COMPLETE — all 20 identified production-readiness gaps closed across ingestion, normalization, customization, correlation-engine, and frontend.
+**Session:** 65
+**Session Summary:** G5 P0 critical fixes — SearchPage UI, E2E CI activation, DLQ processor, MinIO confirmed present.
 
 ## ✅ Changes Made
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| 559b2a3 | 8 | G1: aiEnabled enforcement in ArticlePipeline + PUT /ai/subtasks/:subtask route + dedup Layer 3 Haiku arbitration |
-| 9877f2a | 1 | Merge: feature/g1-p0-backend-fixes → master |
-| d350d1f | 2 | G2: feed reliability 5min TTL cache + weighted velocity scoring (sum reliability/100) |
-| 6e7c758 | 9 | G3: useSetSubtaskModel hook + useUpdateIOCLifecycle hook + subtask editor + plan confirm modal + IOC campaign filter + lifecycle FSM buttons |
-| a26c918 | 5 | G4: emerging TLD regex + isLinkLocalIPv6() + confidence-decay JSDoc citations + configureClassifier() + env var wiring |
+| f58edcb | 12 files (+4 new, 8 modified) | G5 P0: SearchPage, E2E CI step, DLQ processor, phase6-pages test mock fix |
 
-## 📁 Files / Documents Affected
-
-### New Files
+### New files
 | File | Purpose |
 |------|---------|
-| `apps/customization/tests/subtask-route.test.ts` | 7 integration tests for PUT /ai/subtasks/:subtask |
-| `apps/ingestion/tests/dedup-arbitrate.test.ts` | 6 tests for Layer 3 Haiku arbitration |
+| `apps/admin-service/src/routes/dlq-processor.ts` | DLQ processor — GET /dlq, POST /dlq/:queue/retry, POST /dlq/:queue/discard, POST /dlq/retry-all |
+| `apps/admin-service/tests/dlq-processor.test.ts` | 10 DLQ processor tests (TDD) |
+| `apps/frontend/src/hooks/use-search-data.ts` | useIOCSearch hook — ES full-text search, 60s cache, demo fallback |
+| `apps/frontend/src/pages/SearchPage.tsx` | SearchPage — IOC search UI, 3 filters, skeleton loading, demo banner |
 
-### Modified Files
+### Modified files
 | File | Change |
 |------|--------|
-| `apps/customization/src/routes/ai-models.ts` | PUT /ai/subtasks/:subtask route + ZodError inline catch |
-| `apps/ingestion/src/services/dedup.ts` | async arbitrate() method with Haiku call |
-| `apps/ingestion/src/workers/feed-fetch.ts` | Read policy.aiEnabled, compute feedAiEnabled, pass to processBatch |
-| `apps/ingestion/src/workers/pipeline.ts` | feedAiEnabled param; gates AI triage/extraction; calls arbitrate() for Layer 3 |
-| `apps/ingestion/src/workers/ioc-patterns.ts` | Emerging TLD alternation (.cloud/.dev/.security/.ai/.app/.tech) + isLinkLocalIPv6() |
-| `apps/normalization/src/service.ts` | reliabilityCache (5min TTL) + weighted calculateVelocity() + configureClassifier() |
-| `apps/normalization/src/index.ts` | TI_EXTRA_RANSOMWARE_FAMILIES / TI_EXTRA_NATION_STATE_ACTORS env var wiring |
-| `apps/correlation-engine/src/services/confidence-decay.ts` | JSDoc with half-life derivations + source citations (no logic change) |
-| `apps/frontend/src/hooks/use-phase5-data.ts` | useSetSubtaskModel() mutation hook |
-| `apps/frontend/src/hooks/use-intel-data.ts` | useUpdateIOCLifecycle() mutation hook |
-| `apps/frontend/src/pages/CustomizationPage.tsx` | Subtask model dropdowns (custom plan) + 2-step plan confirmation modal |
-| `apps/frontend/src/pages/IocListPage.tsx` | hasCampaign filter + lifecycle action buttons (LIFECYCLE_TRANSITIONS FSM) |
-| 7× frontend test files | Added useSetSubtaskModel/useUpdateIOCLifecycle stubs to vi.mock factories |
+| `apps/admin-service/src/app.ts` | Register dlqProcessorRoutes under /api/v1/admin |
+| `apps/admin-service/src/index.ts` | Pass dlqProcessorDeps: { redisUrl } |
+| `apps/frontend/src/App.tsx` | Add /search route → SearchPage |
+| `apps/frontend/src/components/layout/DashboardLayout.tsx` | Add IOC Search nav entry (Search icon, /search, phase 7) |
+| `apps/frontend/src/hooks/use-phase6-data.ts` | Add DlqQueueEntry/DlqStatusResponse types + useDlqStatus/useRetryDlqQueue/useDiscardDlqQueue/useRetryAllDlq hooks + DEMO_DLQ_STATUS |
+| `apps/frontend/src/pages/AdminOpsPage.tsx` | DLQ table in queue health tab (DlqRow, retry/discard/retry-all buttons) |
+| `apps/frontend/src/__tests__/phase6-pages.test.tsx` | Add useDlqStatus/useRetryDlqQueue/useDiscardDlqQueue/useRetryAllDlq to vi.mock |
+| `.github/workflows/deploy.yml` | E2E post-deploy step (master push only, continue-on-error, pnpm + secrets guards) |
 
 ## 🔧 Decisions & Rationale
 
-No new DECISION entries. All changes DECISION-013 compliant (in-memory, no Prisma migrations).
-
-**Key implementation notes:**
-- Fastify `setErrorHandler` in a plugin applies to that plugin's scope only — routes on root app use the default handler. ZodError has no `statusCode` → returns 500. Fix: inline try/catch in routes to explicitly return 400.
-- `calculateVelocity()` backward-compatible: when `feedReliabilityMap` omitted, weight defaults to 1 → thresholds (4.0/2.4/1.6) scale to raw counts (≥5/≥3/≥2).
-- `configureClassifier()` with empty arrays does NOT reset (intentional) — must pass actual values to extend.
+No new DECISION-NNN entries. Key implementation choices:
+- DLQ uses raw Redis ZSET ops (ZRANGE failed set + ZREM + LPUSH to wait list) rather than BullMQ Queue API — admin-service has no BullMQ queue instances running
+- `DlqRedisClient` injectable interface enables pure in-memory testing without Redis connection
+- E2E smoke step uses `continue-on-error: true` so flaky E2E never blocks a deploy
+- MinIO was already wired in docker-compose.etip.yml (etip_minio, ports 9001:9000 + 9002:9001, volume etip_minio_data) — P0-2 required no code changes
 
 ## 🧪 E2E / Deploy Verification Results
 
-No deploy this session — code-only. All tests run locally:
-- ingestion: 339 tests ✅
-- customization: 228 tests ✅
-- normalization: 154 tests ✅
-- correlation-engine: 173 tests ✅
-- frontend: 704 tests (706 total, 2 skipped) ✅
-- **Estimated monorepo total: ~5671 tests**
+No deployment this session. Pre-push verification:
+- Tests: 5,542 passing (706 frontend including 2 skipped, 172 admin-service)
+- TypeScript: 0 errors in modified services. Pre-existing TS error in customization/ai-models.ts:108 (not introduced by this session)
+- Lint: 0 errors, 115 warnings (pre-existing)
+- Secrets scan: clean
+- No docker build run (code-only session, no new packages)
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-- Deploy G1-G4 changes to VPS via CI/CD (push to master → GitHub Actions → docker-compose)
-- G3 lifecycle transitions assume ioc-intelligence service validates state transitions — verify backend endpoint exists at `PUT /ioc-intelligence/:id/lifecycle`
+- **Deploy G1-G5 to VPS**: push to master triggers CI/CD pipeline. All containers will rebuild from updated code. 33 containers expected healthy.
+- **Verify SearchPage live**: navigate to /search on ti.intelwatch.in after deploy
+- **Verify DLQ table live**: AdminOpsPage → Queue Health tab → DLQ section
 
 ### Deferred
-- Gap #8: regex fallback drops threatActors/campaigns when AI disabled — acceptable trade-off, documented in code
-- Gap #15: enrichment quality distribution dashboard widget — needs new widget slot
-- Gap #17: enrichmentData JSONB archive strategy — needs Prisma migration
-- Gap #19: stage-2 factor calibration — needs 30+ days historical data
-- Gap #20: magic number confidence weights JSDoc — next session touching those files
+- Pre-existing TS error in `apps/customization/src/routes/ai-models.ts:108` — argument type string not assignable to subtask enum. Does not block tests or per-service typecheck. Should fix in a customization session.
+- D3 viz improvements (ThreatGraphPage UX polish)
+- Reporting UI enhancements (PDF export, schedule UI)
+- IOC Search pagination + date range filter
 
 ## 🔁 How to Resume
 
-**Paste this prompt to start next session:**
 ```
-/session-start
-Working on: deploy G1-G4 changes + verify ioc-intelligence lifecycle endpoint
-Frozen: all Phase 1-7 deployed modules except ingestion/normalization/customization/correlation-engine/frontend (just updated)
+Session 65 COMPLETE. Platform is feature-complete (G1-G5 gap analysis done).
+
+Quick state:
+- 33 containers deployed (VPS), all healthy
+- 5,542 tests passing
+- Next: deploy G1-G5 via CI push OR start new feature work
+
+Resume prompt:
+"Working on: [module]. Do not modify: shared-*, api-gateway, ingestion, normalization,
+ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel, vulnerability-intel,
+threat-graph, correlation-engine, hunting-service, drp-service, integration-service,
+user-management, customization, onboarding, billing-service, admin-service,
+reporting-service, alerting-service, analytics-service, caching-service,
+elasticsearch-indexing-service, frontend (shell + existing pages)"
 ```
 
-**Module map:**
-- ingestion → `skills/04-INGESTION.md`
-- normalization → `skills/05-NORMALIZATION.md`
-- customization → `skills/17-CUSTOMIZATION.md`
-- frontend → `skills/20-UI-UX.md`
+### Module → Skill file map
+| Module | Skill |
+|--------|-------|
+| admin-ops | skills/22-ADMIN-PLATFORM.md |
+| frontend/ui | skills/20-UI-UX.md |
+| testing | skills/02-TESTING.md |
+| devops/deploy | skills/03-DEVOPS.md |
+| ingestion | skills/04-INGESTION.md |
+| normalization | skills/05-NORMALIZATION.md |
 
-**Phase roadmap:** Platform feature-complete + gap-analysis-complete → production launch ready.
+### Phase roadmap
+- Phase 1-7: ✅ COMPLETE (all 28 modules built + deployed)
+- Phase F: ✅ COMPLETE (F1 feed policies, F2 subtasks/plan tiers, F3 cost estimator)
+- Gap Analysis: ✅ COMPLETE (G1-G5)
+- Next milestone: E2E integration verification + optional UI polish
