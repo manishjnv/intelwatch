@@ -12,7 +12,7 @@
  */
 import type pino from 'pino';
 import type { FetchedArticle } from '../connectors/rss.js';
-import { IOC_PATTERNS, isPrivateIP, isCommonDomain } from './ioc-patterns.js';
+import { IOC_PATTERNS, isPrivateIP, isLinkLocalIPv6, isCommonDomain } from './ioc-patterns.js';
 import { TriageService, type TriageResult } from '../services/triage.js';
 import { ExtractionService, type CTIExtractionResult } from '../services/extraction.js';
 import { ContextExtractor, type IOCContext } from '../services/context-extractor.js';
@@ -311,6 +311,7 @@ export class ArticlePipeline {
         const value = match[0];
         if (pat.type === 'domain' && isCommonDomain(value)) continue;
         if (pat.type === 'ip' && isPrivateIP(value)) continue;
+        if (pat.type === 'ipv6' && isLinkLocalIPv6(value)) continue; // G4a: filter fe80::/10 link-local
         foundIOCs.push({ value, type: pat.type });
       }
     }

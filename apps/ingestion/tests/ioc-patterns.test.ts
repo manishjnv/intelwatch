@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { IOC_PATTERNS, isPrivateIP, isCommonDomain } from '../src/workers/ioc-patterns.js';
+import { IOC_PATTERNS, isPrivateIP, isLinkLocalIPv6, isCommonDomain } from '../src/workers/ioc-patterns.js';
 
 /** Helper: run all IOC_PATTERNS against content, return matched types */
 function extractTypes(content: string): string[] {
@@ -93,4 +93,46 @@ describe('isCommonDomain', () => {
   it('passes evil-c2.xyz', () => expect(isCommonDomain('evil-c2.xyz')).toBe(false));
   it('passes unknown.ru', () => expect(isCommonDomain('unknown.ru')).toBe(false));
   it('case insensitive', () => expect(isCommonDomain('GOOGLE.COM')).toBe(true));
+});
+
+describe('G4a: isLinkLocalIPv6', () => {
+  it('rejects fe80:: link-local address', () => expect(isLinkLocalIPv6('fe80::1')).toBe(true));
+  it('rejects fe80::/10 with interface ID', () => expect(isLinkLocalIPv6('fe80::1%eth0')).toBe(true));
+  it('rejects uppercase FE80::', () => expect(isLinkLocalIPv6('FE80::1234:5678')).toBe(true));
+  it('accepts routable IPv6 2001:db8::1', () => expect(isLinkLocalIPv6('2001:db8::1')).toBe(false));
+  it('accepts ::1 loopback (handled separately)', () => expect(isLinkLocalIPv6('::1')).toBe(false));
+  it('accepts 2a00:: public prefix', () => expect(isLinkLocalIPv6('2a00:1450:4001::1')).toBe(false));
+});
+
+describe('G4a: emerging TLD domain detection', () => {
+  const extractDomains = (text: string) => {
+    const domains: string[] = [];
+    for (const pat of IOC_PATTERNS) {
+      if (pat.type !== 'domain') continue;
+      pat.re.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = pat.re.exec(text)) !== null) domains.push(m[0]);
+    }
+    return domains;
+  };
+
+  it('detects .cloud TLD domain', () => {
+    const d = extractDomains('attacker-c2.cloud is hosting malware');
+    expect(d.some(v => v.includes('.cloud'))).toBe(true);
+  });
+
+  it('detects .dev TLD domain', () => {
+    const d = extractDomains('exfil.malicious.dev dropping payload');
+    expect(d.some(v => v.includes('.dev'))).toBe(true);
+  });
+
+  it('detects .ai TLD domain', () => {
+    const d = extractDomains('command.evil-actor.ai connected');
+    expect(d.some(v => v.includes('.ai'))).toBe(true);
+  });
+
+  it('detects .app TLD domain', () => {
+    const d = extractDomains('download.phish.app malicious download');
+    expect(d.some(v => v.includes('.app'))).toBe(true);
+  });
 });

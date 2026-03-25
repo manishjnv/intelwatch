@@ -7,6 +7,7 @@ import { IOCRepository } from './repository.js';
 import { createNormalizeQueue, createEnrichQueue, closeNormalizeQueue } from './queue.js';
 import { createNormalizeWorker } from './workers/normalize-worker.js';
 import { createLifecycleWorker } from './workers/lifecycle-worker.js';
+import { configureClassifier } from './service.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -19,6 +20,12 @@ async function main(): Promise<void> {
     TI_JWT_REFRESH_EXPIRY: String(config.TI_JWT_REFRESH_EXPIRY),
   });
   loadServiceJwtSecret({ TI_SERVICE_JWT_SECRET: config.TI_SERVICE_JWT_SECRET });
+
+  // G4b: Extend severity classifier from env vars (DECISION-013 compliant — no migration)
+  configureClassifier({
+    extraRansomwareFamilies: process.env.TI_EXTRA_RANSOMWARE_FAMILIES?.split(',').map(s => s.trim()).filter(Boolean),
+    extraNationStateActors: process.env.TI_EXTRA_NATION_STATE_ACTORS?.split(',').map(s => s.trim()).filter(Boolean),
+  });
 
   const repo = new IOCRepository(prisma);
   createNormalizeQueue();

@@ -55,18 +55,37 @@ export function buildDedupeHash(type: string, normalizedValue: string, tenantId:
 
 /** Known APT / nation-state actor prefixes → always HIGH or CRITICAL */
 const APT_PATTERNS = /^(apt|fin|unc|ta)\d+$/i;
-const NATION_STATE_ACTORS = new Set([
+let NATION_STATE_ACTORS = new Set([
   'lazarus', 'kimsuky', 'turla', 'fancy bear', 'cozy bear',
   'sandworm', 'charming kitten', 'hafnium', 'nobelium',
   'volt typhoon', 'salt typhoon', 'flax typhoon', 'silk typhoon',
 ]);
 
 /** Known ransomware families → always CRITICAL */
-const RANSOMWARE_FAMILIES = new Set([
+let RANSOMWARE_FAMILIES = new Set([
   'lockbit', 'blackcat', 'alphv', 'cl0p', 'clop', 'revil', 'sodinokibi',
   'conti', 'ryuk', 'maze', 'darkside', 'blackmatter', 'hive',
   'royal', 'akira', 'play', 'medusa', 'rhysida', 'bianlian',
 ]);
+
+export interface SeverityClassifierConfig {
+  extraRansomwareFamilies?: string[];
+  extraNationStateActors?: string[];
+}
+
+/**
+ * G4b: Extend the severity classifier with additional known families/actors.
+ * Called at service startup from env vars TI_EXTRA_RANSOMWARE_FAMILIES and TI_EXTRA_NATION_STATE_ACTORS.
+ * Zero Prisma migration — in-memory extension (DECISION-013).
+ */
+export function configureClassifier(cfg: SeverityClassifierConfig): void {
+  if (cfg.extraRansomwareFamilies?.length) {
+    RANSOMWARE_FAMILIES = new Set([...RANSOMWARE_FAMILIES, ...cfg.extraRansomwareFamilies.map(f => f.toLowerCase())]);
+  }
+  if (cfg.extraNationStateActors?.length) {
+    NATION_STATE_ACTORS = new Set([...NATION_STATE_ACTORS, ...cfg.extraNationStateActors.map(a => a.toLowerCase())]);
+  }
+}
 
 interface AutoSeverityInput {
   iocType: string;

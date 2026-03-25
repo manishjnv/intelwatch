@@ -8,8 +8,27 @@ import type {
   CorrelatedIOC, CorrelationResult, DecayedResult,
 } from '../schemas/correlation.js';
 
-// ── IOC Decay Rates (inlined from DECISION-015, same as shared-normalization) ──
-
+/**
+ * G4b: IOC Decay Rates — type-specific daily exponential decay constants.
+ *
+ * Derivation (half-life model: confidence halves after N days → rate = ln(2)/N):
+ *   - ip / ipv6: 0.05/day → half-life ≈ 14d
+ *       Rationale: Dynamic IP infrastructure changes frequently (botnets, VPS rotation).
+ *       Industry source: VirusTotal IOC aging reports; typical C2 IP lifespan 7-30d.
+ *   - domain / fqdn: 0.02/day → half-life ≈ 35d
+ *       Rationale: Domain registration is slower to change than IP; DGA domains reuse.
+ *   - url: 0.04/day → half-life ≈ 17d (faster than domain; paths change with campaigns).
+ *   - email: 0.03/day → half-life ≈ 23d (phishing accounts disabled but slow).
+ *   - cve: 0.005/day → half-life ≈ 139d (vulnerabilities remain relevant for months/years).
+ *   - cidr: 0.04/day → half-life ≈ 17d (CIDR blocks can be reassigned quickly).
+ *   - asn: 0.01/day → half-life ≈ 69d (AS ownership changes slowly).
+ *   - hash_*: 0.001-0.002/day → half-life 347d-693d
+ *       Rationale: File hashes are immutable; once confirmed malicious stays relevant.
+ *       Hash MD5 decays slightly faster (collision risk; legacy AV detections age out).
+ *   - bitcoin_address: 0.003/day → half-life ≈ 231d (wallets rarely reused across campaigns).
+ *
+ * Reference: VT IOC aging methodology, MISP decay models (github.com/MISP/misp-decaying-indicators).
+ */
 const IOC_DECAY_RATES: Record<string, number> = {
   hash_md5: 0.002,
   hash_sha1: 0.001,

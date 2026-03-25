@@ -44,7 +44,8 @@ export const IOC_PATTERNS: IOCPattern[] = [
   { re: /https?:\/\/[^\s"'<>]{5,200}/gi, type: 'url' },
 
   // ── Domains ──────────────────────────────────────────────────────────
-  { re: /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|xyz|ru|cn|tk|top|info|biz|cc|pw|ws|club|online|site|live|me|co|uk|de|fr|jp|kr|br|in)\b/gi, type: 'domain' },
+  // Includes emerging TLDs (.cloud .dev .security .ai .app .tech) common in malicious infra
+  { re: /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|xyz|ru|cn|tk|top|info|biz|cc|pw|ws|club|online|site|live|me|co|uk|de|fr|jp|kr|br|in|cloud|dev|security|ai|app|tech)\b/gi, type: 'domain' },
   // Defanged domains: evil[.]com
   { re: /\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\[\.\][a-z]{2,10}\b/gi, type: 'domain' },
 
@@ -101,6 +102,14 @@ export function isPrivateIP(ip: string): boolean {
     a === 0 ||                             // 0.0.0.0/8
     (a === 169 && b === 254)              // 169.254.0.0/16 (link-local)
   );
+}
+
+/**
+ * G4a: Check if an IPv6 address is in the link-local range (fe80::/10).
+ * Link-local addresses are non-routable and should be filtered out at ingestion.
+ */
+export function isLinkLocalIPv6(ip: string): boolean {
+  return ip.toLowerCase().startsWith('fe80');
 }
 
 /** Check if domain matches a known safe domain (including subdomains) */

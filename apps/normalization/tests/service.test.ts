@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   NormalizationService, buildDedupeHash, type NormalizationResult,
   escalateTLP, escalateSeverity, clampConfidence, batchPenalty,
+  configureClassifier, classifySeverity,
 } from '../src/service.js';
 import type { IOCRepository } from '../src/repository.js';
 import type { NormalizeBatchJob } from '../src/schema.js';
@@ -803,5 +804,46 @@ describe('Improvement B3: Confidence history tracking', () => {
     await service.normalizeBatch(job);
     const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(call.enrichmentData.confidenceHistory.length).toBeLessThanOrEqual(20);
+  });
+});
+
+describe('G4b: configureClassifier — extensible severity sets', () => {
+  // Reset between tests to avoid cross-contamination
+  beforeEach(() => {
+    configureClassifier({ extraRansomwareFamilies: [], extraNationStateActors: [] });
+  });
+
+  it('known ransomware family is classified critical without configuration', () => {
+    const result = classifySeverity({ iocType: 'domain', threatActors: [], malwareFamilies: ['lockbit'], mitreAttack: [], corroborationCount: 1 });
+    expect(result).toBe('critical');
+  });
+
+  it('new ransomware family defaults to medium without configuration', () => {
+    const result = classifySeverity({ iocType: 'domain', threatActors: [], malwareFamilies: ['blackbasta'], mitreAttack: [], corroborationCount: 1 });
+    expect(result).not.toBe('critical');
+  });
+
+  it('after configureClassifier, new ransomware is classified critical', () => {
+    configureClassifier({ extraRansomwareFamilies: ['blackbasta', 'play2'] });
+    const result = classifySeverity({ iocType: 'domain', threatActors: [], malwareFamilies: ['blackbasta'], mitreAttack: [], corroborationCount: 1 });
+    expect(result).toBe('critical');
+  });
+
+  it('configureClassifier works for new nation-state actors', () => {
+    configureClassifier({ extraNationStateActors: ['phantom panda'] });
+    const result = classifySeverity({ iocType: 'ip', threatActors: ['Phantom Panda'], malwareFamilies: [], mitreAttack: [], corroborationCount: 1 });
+    expect(result).toBe('high');
+  });
+
+  it('configureClassifier is case-insensitive for families', () => {
+    configureClassifier({ extraRansomwareFamilies: ['BlackBasta'] });
+    const result = classifySeverity({ iocType: 'domain', threatActors: [], malwareFamilies: ['BLACKBASTA'], mitreAttack: [], corroborationCount: 1 });
+    expect(result).toBe('critical');
+  });
+
+  it('empty arrays do not reset existing sets', () => {
+    configureClassifier({ extraRansomwareFamilies: [] });
+    const result = classifySeverity({ iocType: 'domain', threatActors: [], malwareFamilies: ['lockbit'], mitreAttack: [], corroborationCount: 1 });
+    expect(result).toBe('critical');
   });
 });
