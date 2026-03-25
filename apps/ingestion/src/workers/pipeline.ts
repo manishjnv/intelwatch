@@ -17,6 +17,10 @@ import { TriageService, type TriageResult } from '../services/triage.js';
 import { ExtractionService, type CTIExtractionResult } from '../services/extraction.js';
 import { ContextExtractor, type IOCContext } from '../services/context-extractor.js';
 import { DedupService, type DedupResult, type DedupArticle } from '../services/dedup.js';
+
+/** Haiku token pricing (March 2026): $0.25/MTok input, $1.25/MTok output */
+const HAIKU_INPUT_USD_PER_TOKEN = 0.25 / 1_000_000;
+const HAIKU_OUTPUT_USD_PER_TOKEN = 1.25 / 1_000_000;
 import { CostTracker } from '../services/cost-tracker.js';
 import { CorroborationEngine } from '../services/corroboration.js';
 import { SourceTriangulation } from '../services/source-triangulation.js';
@@ -45,8 +49,15 @@ export interface ProcessedArticle {
   extractionResult: CTIExtractionResult | null;
   /** Deduplication result (Stage 3) */
   dedupResult: DedupResult | null;
-  /** Per-stage cost breakdown */
-  costBreakdown: { triageTokens: number; triageCostUsd: number; extractionTokens: number; extractionCostUsd: number };
+  /** Per-stage cost breakdown — includes dedup Layer 3 LLM arbitration tokens */
+  costBreakdown: {
+    triageTokens: number;
+    triageCostUsd: number;
+    extractionTokens: number;
+    extractionCostUsd: number;
+    dedupArbitrationTokens: number;
+    dedupArbitrationCostUsd: number;
+  };
   /** IOC-level enrichment results */
   iocResults: IOCProcessingResult[];
   /** Processing time in ms */
@@ -167,7 +178,9 @@ export class ArticlePipeline {
         if (processed.triageResult?.triageMode === 'haiku') aiTriageCount++;
         if (processed.extractionResult?.extractionMode === 'sonnet') aiExtractionCount++;
         results.push(processed);
-        totalCostUsd += processed.costBreakdown.triageCostUsd;
+        totalCostUsd += processed.costBreakdown.triageCostUsd
+          + processed.costBreakdown.extractionCostUsd
+          + processed.costBreakdown.dedupArbitrationCostUsd;
 
         if (processed.isCtiRelevant) relevant++;
         if (processed.dedupResult?.isDuplicate) duplicates++;
@@ -227,7 +240,14 @@ export class ArticlePipeline {
     // Track triage cost
     this.costTracker.trackStage(articleId, 'triage', triageResult.inputTokens, triageResult.outputTokens, 'haiku');
     const triageCost = this.costTracker.getArticleCost(articleId);
-    const emptyCostBreakdown = { triageTokens: triageResult.inputTokens + triageResult.outputTokens, triageCostUsd: triageCost.totalCostUsd, extractionTokens: 0, extractionCostUsd: 0 };
+    const emptyCostBreakdown = {
+      triageTokens: triageResult.inputTokens + triageResult.outputTokens,
+      triageCostUsd: triageCost.totalCostUsd,
+      extractionTokens: 0,
+      extractionCostUsd: 0,
+      dedupArbitrationTokens: 0,
+      dedupArbitrationCostUsd: 0,
+    };
 
     if (!triageResult.isCtiRelevant) {
       return {
@@ -256,25 +276,32 @@ export class ArticlePipeline {
     const dedupResult = this.dedup.dedup(dedupArticle, []);
     this.dedup.bloomAdd(`${tenantId}:${article.title}:${article.url ?? ''}`);
 
+    // Layer 3 arbitration: when dedup returns 'llm' layer, resolve with Haiku (AI-gated)
+    let dedupArbitrationTokens = 0;
+    let dedupArbitrationCostUsd = 0;
+    if (dedupResult.dedupLayer === 'llm' && useAiTriage && this.anthropicApiKey) {
+      const arbiterArticle: DedupArticle = {
+        id: articleId, tenantId, title: article.title, iocs: iocContexts.map((c) => c.iocValue),
+      };
+      const existingArticle: DedupArticle = {
+        id: dedupResult.existingId ?? 'unknown', tenantId, title: '', iocs: [],
+      };
+      const arbitrateResult = await this.dedup.arbitrate(arbiterArticle, existingArticle, this.anthropicApiKey);
+      dedupResult.action = arbitrateResult.action;
+      if (arbitrateResult.action === 'skip') dedupResult.isDuplicate = true;
+      dedupArbitrationTokens = arbitrateResult.inputTokens + arbitrateResult.outputTokens;
+      dedupArbitrationCostUsd = (arbitrateResult.inputTokens * HAIKU_INPUT_USD_PER_TOKEN)
+        + (arbitrateResult.outputTokens * HAIKU_OUTPUT_USD_PER_TOKEN);
+    }
+
     const fullCostBreakdown = {
       triageTokens: triageResult.inputTokens + triageResult.outputTokens,
       triageCostUsd: triageCost.totalCostUsd,
       extractionTokens: extractionResult.inputTokens + extractionResult.outputTokens,
       extractionCostUsd: extractionCost.totalCostUsd - triageCost.totalCostUsd,
+      dedupArbitrationTokens,
+      dedupArbitrationCostUsd,
     };
-
-    // Layer 3 arbitration: when dedup returns 'llm' layer, resolve with Haiku (AI-gated)
-    if (dedupResult.dedupLayer === 'llm' && useAiTriage && this.anthropicApiKey) {
-      const arbiterArticle: import('../services/dedup.js').DedupArticle = {
-        id: articleId, tenantId, title: article.title, iocs: iocContexts.map((c) => c.iocValue),
-      };
-      const existingArticle: import('../services/dedup.js').DedupArticle = {
-        id: dedupResult.existingId ?? 'unknown', tenantId, title: '', iocs: [],
-      };
-      const arbitratedAction = await this.dedup.arbitrate(arbiterArticle, existingArticle, this.anthropicApiKey);
-      dedupResult.action = arbitratedAction;
-      if (arbitratedAction === 'skip') dedupResult.isDuplicate = true;
-    }
 
     if (dedupResult.isDuplicate && dedupResult.action === 'skip') {
       return {
@@ -427,7 +454,7 @@ export class ArticlePipeline {
       extractionResult: null,
       iocContexts: [],
       dedupResult: null,
-      costBreakdown: { triageTokens: 0, triageCostUsd: 0, extractionTokens: 0, extractionCostUsd: 0 },
+      costBreakdown: { triageTokens: 0, triageCostUsd: 0, extractionTokens: 0, extractionCostUsd: 0, dedupArbitrationTokens: 0, dedupArbitrationCostUsd: 0 },
       iocResults: [],
       processingTimeMs: 0,
       skipped: false,

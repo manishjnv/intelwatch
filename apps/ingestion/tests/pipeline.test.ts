@@ -99,6 +99,9 @@ describe('ArticlePipeline', () => {
       expect(processed.costBreakdown.triageCostUsd).toBeGreaterThanOrEqual(0);
       expect(processed.costBreakdown.extractionTokens).toBeGreaterThanOrEqual(0);
       expect(processed.costBreakdown.extractionCostUsd).toBeGreaterThanOrEqual(0);
+      // Dedup Layer 3 arbitration cost — 0 when no API key / no LLM call fired
+      expect(processed.costBreakdown.dedupArbitrationTokens).toBeGreaterThanOrEqual(0);
+      expect(processed.costBreakdown.dedupArbitrationCostUsd).toBeGreaterThanOrEqual(0);
     });
 
     it('processes mixed batch: CTI and irrelevant articles', async () => {
