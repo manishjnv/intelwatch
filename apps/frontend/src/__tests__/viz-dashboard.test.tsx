@@ -20,6 +20,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   })),
   useIOCs: vi.fn(() => ({ data: { data: [], total: 0 } })),
   useDashboardStats: vi.fn(() => ({ data: null })),
+  useUpdateIOCLifecycle: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'

@@ -83,6 +83,7 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useRecommendedModels: () => ({ data: { data: [] }, isDemo: true }),
   useCostEstimate:      () => ({ data: { data: null }, isDemo: true }),
   useApplyPlan:         () => ({ mutate: vi.fn(), isPending: false }),
+  useSetSubtaskModel:   () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 // Mock shared-ui components

@@ -109,6 +109,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useIOCStats: () => mockUseIOCStats(),
   useIOCPivot: (...args: any[]) => mockUseIOCPivot(...args),
   useIOCTimeline: (...args: any[]) => mockUseIOCTimeline(...args),
+  useUpdateIOCLifecycle: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/components/viz/SplitPane', () => ({

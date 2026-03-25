@@ -25,6 +25,7 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useRecommendedModels:     () => mockRecommendedModels(),
   useCostEstimate:          (...args: unknown[]) => mockCostEstimate(...args),
   useApplyPlan:             () => mockApplyPlan(),
+  useSetSubtaskModel:       () => ({ mutate: vi.fn(), isPending: false }),
   useModuleToggles:         () => mockModuleToggles(),
   useAIConfigs:             () => mockAIConfigs(),
   useRiskWeights:           () => mockRiskWeights(),
@@ -198,13 +199,16 @@ describe('CustomizationPage — AI Config tab', () => {
       expect(mockCostEstimate).toHaveBeenCalled()
     })
 
-    it('clicking Apply Plan calls applyPlan.mutate in non-demo mode', () => {
+    it('clicking Apply Plan opens confirmation modal, then Confirm calls applyPlan.mutate', () => {
       const mutateMock = vi.fn()
       mockApplyPlan.mockReturnValue({ mutate: mutateMock, isPending: false })
       mockCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31, theme: 'dark' }, isDemo: false })
       renderAITab()
       const applyBtn = screen.getByText(/Apply.*Plan/i)
       fireEvent.click(applyBtn)
+      // Confirmation modal should appear
+      const confirmBtn = screen.getByText('Confirm')
+      fireEvent.click(confirmBtn)
       expect(mutateMock).toHaveBeenCalledWith('professional')
     })
   })

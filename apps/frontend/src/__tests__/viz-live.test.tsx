@@ -20,6 +20,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   })),
   useIOCStats: vi.fn(() => ({ data: null })),
   useDashboardStats: vi.fn(() => ({ data: null })),
+  useUpdateIOCLifecycle: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 import { ThreatPulseStrip } from '@/components/viz/ThreatPulseStrip'

@@ -487,3 +487,18 @@ export function useApplyPlan() {
     },
   })
 }
+
+export function useSetSubtaskModel() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ subtask, model, fallbackModel }: { subtask: string; model: string; fallbackModel?: string }) =>
+      api<{ data: SubtaskMapping }>(
+        `/customization/ai/subtasks/${encodeURIComponent(subtask)}`,
+        { method: 'PUT', body: fallbackModel ? { model, fallbackModel } : { model } },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ai-subtask-mappings'] })
+      qc.invalidateQueries({ queryKey: ['ai-cost-estimate'] })
+    },
+  })
+}

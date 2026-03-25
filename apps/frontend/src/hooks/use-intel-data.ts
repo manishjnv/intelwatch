@@ -274,3 +274,17 @@ export function useDashboardStats() {
   })
   return withDemoFallback(result, DEMO_DASHBOARD_STATS, d => (d?.totalIOCs ?? 0) > 0)
 }
+
+/** G3b: IOC lifecycle state transitions */
+export function useUpdateIOCLifecycle() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ iocId, state }: { iocId: string; state: string }) =>
+      api<{ data: { id: string; lifecycle: string } }>(
+        `/ioc-intelligence/${iocId}/lifecycle`, { method: 'PUT', body: { state } },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['iocs'] })
+    },
+  })
+}

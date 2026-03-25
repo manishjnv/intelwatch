@@ -46,6 +46,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useDashboardStats: vi.fn(() => ({
     data: { totalIOCs: 301, criticalIOCs: 10, activeFeeds: 3, enrichedToday: 19, lastIngestTime: '5m ago' },
   })),
+  useUpdateIOCLifecycle: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 // Mock auth/theme stores

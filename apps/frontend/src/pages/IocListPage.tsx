@@ -5,7 +5,7 @@
  * P0-3: Inline entity hover preview. P0-5: Radial confidence gauge.
  */
 import { useState, useMemo, lazy, Suspense } from 'react'
-import { useIOCs, useIOCStats, useIOCPivot, useIOCTimeline, type IOCRecord, type IOCPivotResult, type IOCTimelineEvent } from '@/hooks/use-intel-data'
+import { useIOCs, useIOCStats, useIOCPivot, useIOCTimeline, useUpdateIOCLifecycle, type IOCRecord, type IOCPivotResult, type IOCTimelineEvent } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
@@ -64,7 +64,21 @@ const IOC_FILTERS: FilterOption[] = [
     { value: 'new', label: 'New' }, { value: 'active', label: 'Active' },
     { value: 'aging', label: 'Aging' }, { value: 'expired', label: 'Expired' },
   ]},
+  { key: 'hasCampaign', label: 'Campaign', options: [
+    { value: 'true', label: 'Campaign IOCs only' },
+  ]},
 ]
+
+/** G3b: Valid lifecycle transitions from a given state */
+const LIFECYCLE_TRANSITIONS: Record<string, string[]> = {
+  new:            ['active', 'false_positive', 'watchlisted'],
+  active:         ['aging', 'revoked', 'false_positive', 'watchlisted'],
+  aging:          ['expired', 'active', 'revoked', 'false_positive'],
+  expired:        ['active', 'revoked'],
+  revoked:        [],
+  false_positive: [],
+  watchlisted:    ['active', 'revoked'],
+}
 
 /** P0-5: Radial confidence gauge (SVG arc) */
 function ConfidenceGauge({ value }: { value: number }) {
@@ -130,6 +144,7 @@ export function IocListPage() {
   const { data: stats } = useIOCStats()
   const { data: pivotData, isLoading: pivotLoading } = useIOCPivot(selectedId)
   const { data: timelineData, isLoading: timelineLoading } = useIOCTimeline(selectedId)
+  const updateLifecycleMutation = useUpdateIOCLifecycle()
 
   // Client-side filter + sort for demo data (API doesn't apply to static fallback)
   const rows = useMemo(() => {
@@ -143,6 +158,7 @@ export function IocListPage() {
     if (filters.iocType) items = items.filter(r => r.iocType === filters.iocType)
     if (filters.severity) items = items.filter(r => r.severity === filters.severity)
     if (filters.lifecycle) items = items.filter(r => r.lifecycle === filters.lifecycle)
+    if (filters.hasCampaign === 'true') items = items.filter(r => r.campaignId != null && r.campaignId !== '')
     // Sort
     return [...items].sort((a, b) => {
       const av = a[sortBy as keyof IOCRecord] ?? ''
@@ -293,11 +309,33 @@ export function IocListPage() {
                 <span className="text-sm font-semibold text-text-primary truncate max-w-[70%]">{selectedRecord.normalizedValue}</span>
                 <SeverityBadge severity={selectedRecord.severity.toUpperCase() as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'} />
               </div>
-              <div className="flex items-center gap-3 text-[10px] text-text-muted">
+              <div className="flex items-center gap-3 text-[10px] text-text-muted flex-wrap">
                 <span className="uppercase font-mono">{selectedRecord.iocType}</span>
                 <span>Conf: <span className="text-text-primary tabular-nums">{selectedRecord.confidence}%</span></span>
                 <span className="uppercase">{selectedRecord.tlp}</span>
-                <span>{selectedRecord.lifecycle}</span>
+                <span className="capitalize font-medium text-text-primary">{selectedRecord.lifecycle}</span>
+                {/* G3b: Lifecycle transition actions */}
+                {(LIFECYCLE_TRANSITIONS[selectedRecord.lifecycle] ?? []).length > 0 && !isDemo && (
+                  <div className="flex items-center gap-1 ml-1">
+                    {(LIFECYCLE_TRANSITIONS[selectedRecord.lifecycle] ?? []).map(nextState => (
+                      <button
+                        key={nextState}
+                        title={`Mark as ${nextState}`}
+                        disabled={updateLifecycleMutation.isPending}
+                        onClick={() => updateLifecycleMutation.mutate({ iocId: selectedRecord.id, state: nextState })}
+                        className={cn(
+                          'text-[9px] px-1.5 py-0.5 rounded border font-medium transition-colors disabled:opacity-50',
+                          nextState === 'false_positive' || nextState === 'revoked'
+                            ? 'border-sev-critical/40 text-sev-critical hover:bg-sev-critical/10'
+                            : nextState === 'watchlisted'
+                            ? 'border-purple-400/40 text-purple-400 hover:bg-purple-400/10'
+                            : 'border-border text-text-muted hover:text-text-primary hover:border-accent',
+                        )}>
+                        {nextState.replace(/_/g, ' ')}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

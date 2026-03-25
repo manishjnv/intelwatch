@@ -11,7 +11,7 @@ import {
   useNotificationChannels, useCustomizationStats,
   useToggleModule, useUpdateRiskWeight,
   useResetRiskWeights, useUpdateNotificationChannel, useTestNotification,
-  usePlanTiers, useSubtaskMappings, useRecommendedModels, useCostEstimate, useApplyPlan,
+  usePlanTiers, useSubtaskMappings, useRecommendedModels, useCostEstimate, useApplyPlan, useSetSubtaskModel,
   type ModuleToggle, type AIModelConfig, type RiskWeight, type NotificationChannel,
   type PlanTierMeta, type SubtaskMapping,
 } from '@/hooks/use-phase5-data'
@@ -147,11 +147,14 @@ const MODEL_COLOR: Record<string, string> = {
 
 const STAGE_LABEL: Record<number, string> = { 1: 'S1', 2: 'S2', 3: 'S3' }
 
+const AI_MODELS = ['haiku', 'sonnet', 'opus'] as const
+
 function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) {
   const { data: planData } = usePlanTiers()
   const { data: subtaskData } = useSubtaskMappings()
   const { data: recData } = useRecommendedModels()
   const applyPlanMutation = useApplyPlan()
+  const setSubtaskModelMutation = useSetSubtaskModel()
 
   const plans = planData?.data ?? []
   const subtasks = subtaskData?.data ?? []
@@ -162,13 +165,20 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
 
   const [selectedPlan, setSelectedPlan] = useState<string>('professional')
   const [articleCount, setArticleCount] = useState(1000)
+  const [confirmPlan, setConfirmPlan] = useState<string | null>(null)
 
   const { data: costData } = useCostEstimate(selectedPlan, articleCount)
   const cost = costData?.data
 
   const handleApplyPlan = () => {
     if (isDemo || selectedPlan === 'custom') return
-    applyPlanMutation.mutate(selectedPlan)
+    setConfirmPlan(selectedPlan)
+  }
+
+  const confirmAndApply = () => {
+    if (!confirmPlan) return
+    applyPlanMutation.mutate(confirmPlan)
+    setConfirmPlan(null)
   }
 
   return (
@@ -245,7 +255,19 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
                         </span>
                       </td>
                       <td className="px-2 py-2">
-                        <span className={cn('font-mono font-medium capitalize', MODEL_COLOR[m.model])}>{m.model}</span>
+                        {selectedPlan === 'custom' ? (
+                          <select
+                            value={m.model}
+                            disabled={isDemo || setSubtaskModelMutation.isPending}
+                            onChange={e => setSubtaskModelMutation.mutate({ subtask: m.subtask, model: e.target.value })}
+                            className="text-[10px] font-mono bg-bg-primary border border-border rounded px-1 py-0.5 text-text-primary disabled:opacity-50 capitalize">
+                            {AI_MODELS.map(model => (
+                              <option key={model} value={model} className="capitalize">{model}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className={cn('font-mono font-medium capitalize', MODEL_COLOR[m.model])}>{m.model}</span>
+                        )}
                       </td>
                       <td className="px-2 py-2">
                         <span className={cn('font-mono text-text-muted capitalize')}>{m.fallbackModel}</span>
@@ -318,6 +340,34 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
           )}
         </div>
       </div>
+
+      {/* Plan change confirmation modal */}
+      {confirmPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-bg-primary border border-border rounded-xl shadow-xl p-5 w-full max-w-sm space-y-4">
+            <h3 className="text-sm font-semibold text-text-primary">Apply {plans.find(p => p.plan === confirmPlan)?.displayName ?? confirmPlan} Plan?</h3>
+            <p className="text-[11px] text-text-muted">
+              This will overwrite all 12 subtask model assignments. Your current custom settings will be replaced.
+            </p>
+            {cost && (
+              <div className="flex items-center justify-between p-2 bg-bg-secondary rounded border border-border">
+                <span className="text-[10px] text-text-muted">Estimated monthly cost</span>
+                <span className="text-sm font-bold text-accent tabular-nums">${cost.totalMonthlyUsd.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setConfirmPlan(null)}
+                className="flex-1 text-[11px] px-3 py-1.5 rounded border border-border text-text-muted hover:text-text-primary transition-colors">
+                Cancel
+              </button>
+              <button onClick={confirmAndApply} disabled={applyPlanMutation.isPending}
+                className="flex-1 text-[11px] px-3 py-1.5 rounded bg-accent text-bg-primary font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+                {applyPlanMutation.isPending ? 'Applying…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

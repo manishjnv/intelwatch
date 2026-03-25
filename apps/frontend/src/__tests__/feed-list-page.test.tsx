@@ -61,6 +61,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useMalware: vi.fn(() => ({ data: { data: [], total: 0 } })),
   useVulnerabilities: vi.fn(() => ({ data: { data: [], total: 0 } })),
   useDashboardStats: vi.fn(() => ({ data: { totalIOCs: 0, criticalIOCs: 0, activeFeeds: 0, enrichedToday: 0, lastIngestTime: 'Demo' } })),
+  useUpdateIOCLifecycle: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 vi.mock('@/stores/auth-store', () => ({
