@@ -33,8 +33,9 @@ export interface DashboardData {
 export interface WidgetData {
   id: string;
   label: string;
-  value: unknown;
+  value: number | string;
   trend?: { delta: number; deltaPercent: number; direction: string };
+  details?: Record<string, unknown>;
 }
 
 export interface ExecutiveSummary {
@@ -123,22 +124,29 @@ export class Aggregator {
     widgets['enrichment-rate'] = buildWidget('enrichment-rate', enrichStats?.enrichmentRate ?? 0);
     widgets['critical-iocs'] = buildWidget('critical-iocs', iocStats?.critical ?? 0);
 
-    // Alert breakdown
-    widgets['alert-breakdown'] = buildWidget('alert-breakdown', {
-      total: alertStats?.total ?? 0,
-      open: alertStats?.open ?? 0,
-      acknowledged: alertStats?.acknowledged ?? 0,
-      resolved: alertStats?.resolved ?? 0,
-      escalated: alertStats?.escalated ?? 0,
-      bySeverity: alertStats?.bySeverity ?? {},
-    });
+    // Alert breakdown — scalar value for display, details for drill-down
+    const alertTotal = (alertStats?.total as number) ?? 0;
+    widgets['alert-breakdown'] = {
+      ...buildWidget('alert-breakdown', alertTotal),
+      details: {
+        open: alertStats?.open ?? 0,
+        acknowledged: alertStats?.acknowledged ?? 0,
+        resolved: alertStats?.resolved ?? 0,
+        escalated: alertStats?.escalated ?? 0,
+        bySeverity: alertStats?.bySeverity ?? {},
+      },
+    };
 
-    // Feed performance
-    widgets['feed-performance'] = buildWidget('feed-performance', {
-      activeFeeds: feedStats?.activeCount ?? 0,
-      totalArticles: feedStats?.totalArticles ?? 0,
-      avgReliability: feedStats?.avgReliability ?? 0,
-    });
+    // Feed performance — scalar value for display, details for drill-down
+    const feedCount = (feedStats?.activeCount as number) ?? 0;
+    widgets['feed-performance'] = {
+      ...buildWidget('feed-performance', feedCount),
+      details: {
+        activeFeeds: feedStats?.activeCount ?? 0,
+        totalArticles: feedStats?.totalArticles ?? 0,
+        avgReliability: feedStats?.avgReliability ?? 0,
+      },
+    };
 
     // Record trends for future delta calculations
     this.recordTrends(iocStats, alertStats, feedStats, enrichStats);
@@ -324,7 +332,7 @@ export class Aggregator {
   }
 }
 
-function buildWidget(id: string, value: unknown): WidgetData {
+function buildWidget(id: string, value: number | string): WidgetData {
   const def = WIDGET_REGISTRY.find(w => w.id === id);
   return { id, label: def?.label ?? id, value };
 }
