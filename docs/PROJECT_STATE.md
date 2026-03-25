@@ -19,7 +19,7 @@
 | etip_malware_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements |
 | etip_vulnerability_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements |
 | etip_threat_graph | ✅ Deployed | 2.0.0 | 2026-03-24 | Port 3012. Neo4j knowledge graph. 32 endpoints, 20 improvements (#1-20), 294 tests. |
-| etip_correlation | ✅ Deployed | 0.1.0 | 2026-03-25 | Port 3013. 20 endpoints, 15/15 improvements + P1-1 Redis persistence, 179 tests. store-checkpoint.ts: 6 store Maps persisted to Redis (5s debounce, 7-day TTL), restored on startup. |
+| etip_correlation | ✅ Deployed | 0.1.1 | 2026-03-25 | Port 3013. 20 endpoints, 15/15 improvements + P1-1 Redis persistence, 179 tests. store-checkpoint.ts: 6 store Maps persisted to Redis (5s debounce, 7-day TTL), restored on startup. Deployed session 67. |
 | etip_hunting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3014. 47 endpoints, 15/15 improvements, 222 tests. |
 | etip_drp | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3011. 36 endpoints, 310 tests. |
 | etip_integration | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. |

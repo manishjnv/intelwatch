@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 67 &middot; 2026-03-25 &middot; BYOK + Enrichment Quality + P0-P2 fixes, 33 containers, 5,617 tests</span>
+  <span class="version">Session 67 &middot; 2026-03-25 &middot; BYOK + Enrichment Quality + P0-P2 fixes, 33 containers, 5,617 tests — DEPLOYED</span>
 </div>
 </div>
 
@@ -508,7 +508,7 @@ li strong { color: var(--text-primary); }
   <div class="card">
     <div class="card-title"><span class="badge badge-green">AC-2 COMPLETE ✅</span> ArticlePipeline per-tenant AI subtask model routing via CustomizationClient</div>
     <div class="card-body">
-      <strong>Session 67 COMPLETE.</strong> BYOK backend (GET/PUT/DELETE /api-keys/anthropic, in-memory Map, masked key). BYOK frontend (ProviderApiKeysCard). Correlation Redis persistence (store-checkpoint.ts). IOC lifecycle FSM (P0-4). Normalization unknownTypeCount stats (P2-1). Analytics enrichment-quality endpoint (D1) + dashboard widget (D2). 5 commits. ~5,617 total tests. 33 containers. No deploy this session.<br><br>
+      <strong>Session 67 COMPLETE.</strong> BYOK backend (GET/PUT/DELETE /api-keys/anthropic, in-memory Map, masked key). BYOK frontend (ProviderApiKeysCard). Correlation Redis persistence (store-checkpoint.ts). IOC lifecycle FSM (P0-4). Normalization unknownTypeCount stats (P2-1). Analytics enrichment-quality endpoint (D1) + dashboard widget (D2). 5 commits. ~5,617 total tests. 33 containers. Deployed: CI run 23543550086 green (1m49s). All 33 containers healthy.<br><br>
       <strong>Immediate next steps:</strong><br>
       1. <strong>Deploy AC-2 + G1-G5 changes</strong> — Push triggers deploy.yml → ingestion rebuilds with per-tenant AI config<br>
       2. <strong>Verify SearchPage live</strong> — Navigate to /search on ti.intelwatch.in after deploy<br>
