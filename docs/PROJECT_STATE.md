@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
-**Session counter:** 58
+**Session counter:** 59
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.6.0 | 2026-03-24 | Dashboard + 18 data pages + demo fallbacks (all 5 entity types + reporting + alerting). Phase 7: AlertingPage. 633 frontend tests (635 total, 2 skipped). Feed retry wired, graph expand wired. D3 code-split. |
+| etip_frontend | ✅ Running | 0.7.0 | 2026-03-25 | Dashboard + 19 data pages + demo fallbacks (all 5 entity types + reporting + alerting + analytics). E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. 688 frontend tests (690 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-24 | **18 data pages**. 19 viz components. 633 tests (635 total, 2 skipped). E2E C1: feed retry button wired (useRetryFeed → POST /feeds/:id/trigger), graph expand wired (useNodeNeighbors merges neighbors into graph). D3 code-split. Existing pages FROZEN (wiring-only changes). |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **19 data pages** (added AnalyticsPage). 20 viz components. 688 tests (690 total, 2 skipped). E2E C2-D2: correlation investigate/ticket/hunt wired, DRP triage (TP/FP/Investigate), IOC pivot+timeline tabs, alerting hasData+double-stringify fix, AnalyticsPage (4 tabs). Existing pages FROZEN (wiring-only changes). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 Performance + E2E Integration Plan. Caching & Archival Service (Module 25) deployed. 33 containers live. Pipeline wiring: downstream queues added to ai-enrichment (graph-sync, ioc-index, correlate).
-- **Last session outcome:** Session 58 (2026-03-25). Caching & Archival Service (Module 25, port 3025) committed and deployed. 94 tests. 6 commits: e78239f (caching-service + pipeline wiring), 065097f (lockfile fix), 3bb0206 (onboarding TS fixes), 8739f9f (queue count test), 5e47f01 (analytics flaky test), 794b3eb (onboarding async/await tests). CI required 4 fix pushes before green. Deploy succeeded on rerun (first attempt SSH timeout).
-- **Known issues:** 3 UI buttons still cosmetic (correlation investigate/ticket/hunt — planned C2). Uncommitted frontend WIP: CorrelationDetailDrawer + mutation hooks (from another session). Prior: Razorpay keys, VPS SSH, analytics aggregator empty data, billing priceInr mismatch.
-- **Next tasks:** **E2E Integration Plan Session C2** — Wire remaining 3 correlation UI buttons (investigate→modal, ticket→POST, hunt→navigate). Then **D1**: missing frontend pages (SearchPage, AnalyticsPage).
+- **Current phase:** Phase 7 Performance + E2E Integration Plan. All 33 containers live. E2E sessions C2-D2 complete. AnalyticsPage built (19th data page).
+- **Last session outcome:** Session 59 (2026-03-25). E2E Integration Plan sessions C2, C3, D1, D2 complete in one session. Commit ff93d4a (20 files, 1867 insertions). 688 frontend tests (22 new). C2: correlation investigate/ticket/hunt buttons wired. C3: DRP triage + IOC pivot/timeline. D1: alerting response shape fix + hasData + double-stringify. D2: AnalyticsPage (4 tabs) + hooks + demo data + route + sidebar.
+- **Known issues:** Deploy pending user manual SSH (SSH denied in session). Prior: Razorpay keys, VPS SSH access, analytics aggregator empty data, billing priceInr mismatch.
+- **Next tasks:** **Deploy frontend to VPS** (manual SSH: git pull + docker compose build/up). Then **E2E D3-E2** per integration plan. SearchPage still missing.
 
 ## Deployment Log
 
@@ -201,6 +201,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 55 | 2026-03-24 | etip_analytics added (port 3024) | ✅ All 32 healthy | 14b7420, daa24ef | Analytics Service (Module 24): 12 endpoints, 83 tests, 5 P0 improvements. Dashboard aggregation, trends, executive summary, service health. 32 containers. ~5098 monorepo tests. |
 | 57 | 2026-03-24 | etip_onboarding + etip_frontend updated | ✅ Pushed | e78239f→4eda8d3 | E2E B2: onboarding feed seeding + Redis wizard. E2E C1: feed retry + graph expand. 230 onboarding tests, 633 frontend tests. |
 | 58 | 2026-03-25 | etip_caching added (port 3025) | ✅ All 33 healthy | e78239f→794b3eb | Caching & Archival Service (Module 25): 94 tests. Redis cache mgmt, MinIO archival, event-driven invalidation. 4 CI fix commits (lockfile, TS, queue count, async tests). CI run 23499248314 green. Deploy rerun succeeded (first attempt SSH timeout). |
+| 59 | 2026-03-25 | etip_frontend update pending (pushed, deploy manual) | ⏳ Deploy pending | ff93d4a | E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. 20 files changed, 688 frontend tests. Pushed to master. VPS deploy requires manual SSH (permission denied in session). |
 
 ## E2E Verification Results (Session 13)
 

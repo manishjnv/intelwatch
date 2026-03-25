@@ -1,100 +1,82 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-03-25
-**Session:** 58
-**Session Summary:** Caching & Archival Service (Module 25, port 3025) committed, CI fixed (4 iterations), and deployed to VPS. 33 containers live.
+**Session:** 59
+**Session Summary:** E2E Integration Plan sessions C2, C3, D1, D2 — wired correlation actions, DRP triage, IOC pivot/timeline, fixed alerting hooks, built AnalyticsPage (19th data page).
 
 ## ✅ Changes Made
 | Commit | Files | Description |
 |--------|-------|-------------|
-| e78239f | 65 | feat: add caching-service (Module 25, port 3025) + E2E pipeline wiring. Downstream BullMQ queues for ai-enrichment, alerting, correlation. |
-| 065097f | 1 | fix: regenerate lockfile for onboarding ioredis dependency |
-| 3bb0206 | 4 | fix: onboarding TS strict errors — ioredis import type, getQuickActions type safety |
-| 8739f9f | 1 | fix: update shared-utils queue count test from 13 to 14 (CACHE_INVALIDATE added) |
-| 5e47f01 | 1 | fix: analytics trend-calculator flaky test — Date.now() drift at boundary |
-| 794b3eb | 10 | fix: onboarding tests — add async/await for WizardStore Redis refactor (66 CI failures) |
+| ff93d4a | 20 | feat: E2E integration sessions C2-D2 — wire actions, fix alerting, build AnalyticsPage |
 
 ## 📁 Files / Documents Affected
 
-### New Files (caching-service)
+### New Files (8)
 | File | Purpose |
 |------|---------|
-| apps/caching-service/src/app.ts | Fastify app factory |
-| apps/caching-service/src/config.ts | Zod-validated env config |
-| apps/caching-service/src/index.ts | Entry point, DI, cron jobs |
-| apps/caching-service/src/logger.ts | Pino logger |
-| apps/caching-service/src/plugins/error-handler.ts | AppError/ZodError handler |
-| apps/caching-service/src/routes/health.ts | /health, /ready endpoints |
-| apps/caching-service/src/routes/cache.ts | 7 cache management endpoints |
-| apps/caching-service/src/routes/archive.ts | 6 archive endpoints |
-| apps/caching-service/src/services/cache-manager.ts | Redis admin ops, warming |
-| apps/caching-service/src/services/cache-invalidator.ts | Event-driven debounced invalidation |
-| apps/caching-service/src/services/archive-engine.ts | Cron archival to MinIO |
-| apps/caching-service/src/services/archive-store.ts | In-memory manifest store |
-| apps/caching-service/src/services/minio-client.ts | MinIO/S3 client |
-| apps/caching-service/src/workers/event-listener.ts | BullMQ event listener |
-| apps/caching-service/tests/* | 7 test files, 94 tests |
-| apps/caching-service/package.json | Dependencies |
-| apps/caching-service/tsconfig.json | Composite TS config |
-| apps/caching-service/vitest.config.ts | Test config |
+| apps/frontend/src/components/CorrelationDetailDrawer.tsx | Side drawer: correlation detail, timeline, confidence breakdown, linked entities |
+| apps/frontend/src/hooks/analytics-demo-data.ts | Types + demo data for Analytics Service |
+| apps/frontend/src/hooks/use-analytics-data.ts | 4 hooks: widgets, trends, executive, health |
+| apps/frontend/src/pages/AnalyticsPage.tsx | 4-tab analytics page (Overview/Trends/Landscape/Health) |
+| apps/frontend/src/__tests__/analytics-page.test.tsx | 22 tests for AnalyticsPage |
+| apps/frontend/src/__tests__/correlation-drawer.test.tsx | 9 tests for CorrelationDetailDrawer |
+| apps/frontend/src/__tests__/correlation-mutations.test.tsx | 9 tests for correlation action buttons |
+| apps/frontend/src/__tests__/drp-triage-ioc-tabs.test.tsx | 15 tests for DRP triage + IOC pivot/timeline |
 
-### Modified Files (infrastructure + fixes)
+### Modified Files (12)
 | File | Change |
 |------|--------|
-| Dockerfile | COPY line for caching-service |
-| docker-compose.etip.yml | etip_caching container entry |
-| docker/nginx/conf.d/default.conf | /api/v1/cache + /api/v1/archive proxy |
-| tsconfig.build.json | Reference to apps/caching-service |
-| packages/shared-utils/src/queues.ts | Added CACHE_INVALIDATE queue |
-| .github/workflows/deploy.yml | Health check for caching/alerting/analytics |
-| pnpm-lock.yaml | Updated for caching-service + onboarding ioredis |
-| apps/onboarding/src/index.ts | import { Redis } from 'ioredis' fix |
-| apps/onboarding/src/services/wizard-store.ts | import type { Redis } fix |
-| apps/onboarding/src/services/welcome-dashboard.ts | getQuickActions type safety |
-| apps/onboarding/tests/*.test.ts | 10 test files updated for async/await |
-| apps/analytics-service/tests/trend-calculator.test.ts | Flaky test fix (Date.now drift) |
-| packages/shared-utils/tests/constants-errors.test.ts | Queue count 13→14 |
+| apps/frontend/src/App.tsx | Added /analytics route |
+| apps/frontend/src/config/modules.ts | Added analytics sidebar entry |
+| apps/frontend/src/components/brand/ModuleIcons.tsx | Added IconAnalytics |
+| apps/frontend/src/hooks/use-phase4-data.ts | Added useCreateTicket, useAddToHunt, useTriageAlert |
+| apps/frontend/src/hooks/use-intel-data.ts | Added useIOCPivot, useIOCTimeline |
+| apps/frontend/src/hooks/use-alerting-data.ts | Fixed response shape mismatch, hasData, double-stringify |
+| apps/frontend/src/pages/CorrelationPage.tsx | Wired investigate/ticket/hunt buttons |
+| apps/frontend/src/pages/IocListPage.tsx | Added pivot + timeline tabs |
+| apps/frontend/src/components/viz/DRPModals.tsx | Wired triage TP/FP/Investigate buttons |
+| apps/frontend/src/__tests__/phase4-pages.test.tsx | Updated mocks for new hooks |
+| apps/frontend/src/__tests__/demo-fallback.test.tsx | Added IOC pivot/timeline mocks |
+| apps/frontend/src/__tests__/integration-pages.test.tsx | Added IOC pivot/timeline mocks |
 
 ## 🔧 Decisions & Rationale
-No new DECISION entries. Caching-service follows DECISION-013 (in-memory stores) and DECISION-026 (shared Docker image).
+No new DECISION entries. All changes follow existing patterns (DECISION-013 in-memory stores, DECISION-025 demo fallback).
 
 ## 🧪 E2E / Deploy Verification Results
-- CI run 23499248314: ✅ All steps passed (install, build, test, typecheck, lint, audit, Docker validation)
-- Deploy rerun succeeded (first attempt SSH timeout on `tsc -b --force` — 14min exceeded SSH timeout)
-- 33 containers expected (32 prior + etip_caching)
+- `npx vitest run`: 688 passed, 2 skipped, 0 failed (19 test files)
+- Git push to master: successful (ff93d4a)
+- VPS deploy: **PENDING** — SSH access denied in session, requires manual deployment
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. **E2E C2** — Wire remaining 3 correlation UI buttons (investigate→modal, ticket→POST, hunt→navigate)
-2. **D1** — Missing frontend pages (SearchPage, AnalyticsPage)
-3. **Uncommitted WIP** — CorrelationDetailDrawer + mutation hooks in working tree (from another session)
+1. **Deploy frontend to VPS** (manual SSH): `cd /opt/etip && git pull origin master && docker compose build etip_frontend && docker compose up -d etip_frontend`
+2. **E2E D3** — Wire remaining missing pages (SearchPage)
+3. **E2E E1-E2** — Final integration verification
 
 ### Deferred
 - Real Razorpay keys (post-launch)
-- VPS SSH access (Cloudflare tunnel workaround)
-- Analytics aggregator empty data (needs real service data)
+- VPS SSH access from Claude (Cloudflare tunnel)
+- Analytics aggregator empty data (needs real service data flowing)
+- Billing priceInr mismatch
 
 ## 🔁 How to Resume
 ```
 /session-start
 
-Working on: E2E Integration Plan — Session C2
-Do not modify: caching-service, any deployed backend services (except additive wiring)
+Working on: E2E Integration Plan — remaining sessions (D3 onwards)
+Do not modify: any deployed backend services (frontend wiring-only)
 
-## Task
-Wire remaining correlation UI buttons:
-1. Investigate button → CorrelationDetailDrawer modal
-2. Create ticket → POST /api/v1/integration/tickets
-3. Start hunt → navigate to /hunting?correlationId=X
+## Immediate
+Deploy frontend to VPS first (manual SSH), then continue E2E plan.
+SearchPage is the last missing frontend page.
 ```
 
 ### Module → Skill Map
 | Module | Skill |
 |--------|-------|
-| caching-service | skills/23-CACHING-ARCHIVAL.md |
 | frontend | skills/20-UI-UX.md |
-| correlation-engine | skills/13-CORRELATION-ENGINE.md |
+| analytics-service | skills/24-ANALYTICS.md |
 
 ### Phase Roadmap
 - Phase 7 (Performance): ES Indexing ✅, Reporting ✅, Alerting ✅, Analytics ✅, Caching ✅
-- E2E Integration Plan: A1-A3 ✅, B1-B2 ✅, C1 ✅, C2 next
+- E2E Integration Plan: A1-A3 ✅, B1-B2 ✅, C1-C3 ✅, D1-D2 ✅, D3-E2 remaining
