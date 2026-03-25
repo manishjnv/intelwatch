@@ -88,12 +88,10 @@ export function useBillingPlans() {
     queryFn: () => api<BillingPlan[]>('/billing/plans').catch(() => [] as BillingPlan[]),
     staleTime: 300_000,
   })
-  // Validate shape: API returns PlanDefinition (priceInr) not BillingPlan (price)
-  // Fall through to demo data if shape doesn't match
   return withDemoFallback(
     result,
     DEMO_BILLING_PLANS,
-    d => Array.isArray(d) && d.length > 0 && typeof (d[0] as Record<string, unknown>)?.price === 'number',
+    d => Array.isArray(d) && d.length > 0 && typeof (d[0] as unknown as Record<string, unknown>)?.priceInr === 'number',
   )
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { IOCService } from '../src/service.js';
+import { IOCService, LIFECYCLE_TRANSITIONS } from '../src/service.js';
 
 // ── Mock repository ─────────────────────────────────────────────
 
@@ -405,6 +405,110 @@ describe('IOCService', () => {
       // Both have relevance scores
       expect(items[0].relevance.relevanceScore).toBeGreaterThanOrEqual(0);
       expect(items[1].relevance.relevanceScore).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // ── Lifecycle FSM ────────────────────────────────────────────
+
+  describe('LIFECYCLE_TRANSITIONS (exported FSM)', () => {
+    it('new can transition to active, false_positive, watchlisted', () => {
+      expect(LIFECYCLE_TRANSITIONS['new']).toEqual(expect.arrayContaining(['active', 'false_positive', 'watchlisted']));
+    });
+
+    it('revoked is terminal (no outbound transitions)', () => {
+      expect(LIFECYCLE_TRANSITIONS['revoked']).toHaveLength(0);
+    });
+
+    it('false_positive is terminal (no outbound transitions)', () => {
+      expect(LIFECYCLE_TRANSITIONS['false_positive']).toHaveLength(0);
+    });
+
+    it('watchlisted can transition to active or revoked', () => {
+      expect(LIFECYCLE_TRANSITIONS['watchlisted']).toEqual(expect.arrayContaining(['active', 'revoked']));
+    });
+
+    it('active can transition to aging, watchlisted, false_positive, revoked', () => {
+      expect(LIFECYCLE_TRANSITIONS['active']).toEqual(
+        expect.arrayContaining(['aging', 'watchlisted', 'false_positive', 'revoked']),
+      );
+    });
+  });
+
+  describe('transitionLifecycle', () => {
+    it('valid transition: new → watchlisted', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'new' }));
+      repo.update.mockResolvedValue(makeIoc({ lifecycle: 'watchlisted' }));
+      const result = await service.transitionLifecycle(TENANT, 'ioc-001', 'watchlisted');
+      expect(repo.update).toHaveBeenCalledWith(TENANT, 'ioc-001', { lifecycle: 'watchlisted' });
+      expect((result as Record<string, unknown>).lifecycle).toBe('watchlisted');
+    });
+
+    it('valid transition: active → aging', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'active' }));
+      repo.update.mockResolvedValue(makeIoc({ lifecycle: 'aging' }));
+      await service.transitionLifecycle(TENANT, 'ioc-001', 'aging');
+      expect(repo.update).toHaveBeenCalledWith(TENANT, 'ioc-001', { lifecycle: 'aging' });
+    });
+
+    it('valid transition: aging → expired', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'aging' }));
+      repo.update.mockResolvedValue(makeIoc({ lifecycle: 'expired' }));
+      await service.transitionLifecycle(TENANT, 'ioc-001', 'expired');
+      expect(repo.update).toHaveBeenCalledWith(TENANT, 'ioc-001', { lifecycle: 'expired' });
+    });
+
+    it('valid transition: watchlisted → active', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'watchlisted' }));
+      repo.update.mockResolvedValue(makeIoc({ lifecycle: 'active' }));
+      await service.transitionLifecycle(TENANT, 'ioc-001', 'active');
+      expect(repo.update).toHaveBeenCalledWith(TENANT, 'ioc-001', { lifecycle: 'active' });
+    });
+
+    it('invalid transition: revoked → active throws 409', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'revoked' }));
+      await expect(service.transitionLifecycle(TENANT, 'ioc-001', 'active'))
+        .rejects.toMatchObject({ statusCode: 409, code: 'INVALID_LIFECYCLE_TRANSITION' });
+    });
+
+    it('invalid transition: false_positive → active throws 409', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'false_positive' }));
+      await expect(service.transitionLifecycle(TENANT, 'ioc-001', 'active'))
+        .rejects.toMatchObject({ statusCode: 409, code: 'INVALID_LIFECYCLE_TRANSITION' });
+    });
+
+    it('invalid transition: new → expired throws 409', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'new' }));
+      await expect(service.transitionLifecycle(TENANT, 'ioc-001', 'expired'))
+        .rejects.toMatchObject({ statusCode: 409, code: 'INVALID_LIFECYCLE_TRANSITION' });
+    });
+
+    it('invalid transition: expired → watchlisted throws 409', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'expired' }));
+      await expect(service.transitionLifecycle(TENANT, 'ioc-001', 'watchlisted'))
+        .rejects.toMatchObject({ statusCode: 409, code: 'INVALID_LIFECYCLE_TRANSITION' });
+    });
+
+    it('throws 404 when IOC not found', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(service.transitionLifecycle(TENANT, 'missing', 'active'))
+        .rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it('triggers FP propagation on → false_positive transition', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'active' }));
+      repo.update.mockResolvedValue(makeIoc({ lifecycle: 'false_positive' }));
+      repo.findFPRelated.mockResolvedValue(['r1', 'r2']);
+      await service.transitionLifecycle(TENANT, 'ioc-001', 'false_positive');
+      expect(repo.findFPRelated).toHaveBeenCalled();
+      expect(repo.tagForReview).toHaveBeenCalledWith(TENANT, ['r1', 'r2'], 'fp_review_suggested');
+    });
+
+    it('skips FP propagation when no related IOCs', async () => {
+      repo.findById.mockResolvedValue(makeIoc({ lifecycle: 'active' }));
+      repo.update.mockResolvedValue(makeIoc({ lifecycle: 'false_positive' }));
+      repo.findFPRelated.mockResolvedValue([]);
+      await service.transitionLifecycle(TENANT, 'ioc-001', 'false_positive');
+      expect(repo.tagForReview).not.toHaveBeenCalled();
     });
   });
 });

@@ -14,8 +14,13 @@ export const TlpEnum = z.enum(['white', 'green', 'amber', 'red']);
 
 export const LifecycleEnum = z.enum([
   'new', 'active', 'aging', 'expired', 'archived',
-  'false_positive', 'revoked', 'reactivated',
+  'false_positive', 'revoked', 'reactivated', 'watchlisted',
 ]);
+
+/** Body schema for the dedicated lifecycle transition endpoint. */
+export const LifecycleTransitionBodySchema = z.object({
+  state: LifecycleEnum,
+});
 
 // ── Query schemas ───────────────────────────────────────────────
 

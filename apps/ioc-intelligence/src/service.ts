@@ -31,6 +31,19 @@ const ANALYST_TRANSITIONS: Record<string, string[]> = {
   archived: [],
 };
 
+// ── Lifecycle FSM for the dedicated lifecycle endpoint ───────────
+// Terminal states (revoked, false_positive) have no outbound edges.
+
+export const LIFECYCLE_TRANSITIONS: Record<string, string[]> = {
+  new:            ['active', 'false_positive', 'watchlisted'],
+  active:         ['aging', 'revoked', 'false_positive', 'watchlisted'],
+  aging:          ['expired', 'active', 'revoked', 'false_positive'],
+  expired:        ['active', 'revoked'],
+  revoked:        [],   // terminal
+  false_positive: [],   // terminal
+  watchlisted:    ['active', 'revoked'],
+};
+
 /** IOC type definition for internal use. */
 interface IocRecord {
   id: string; tenantId: string; feedSourceId: string | null;
@@ -403,6 +416,37 @@ export class IOCService {
       return `"${value.replace(/"/g, '""')}"`;
     }
     return value;
+  }
+
+  /**
+   * PUT /:id/lifecycle — dedicated lifecycle transition endpoint.
+   * Enforces LIFECYCLE_TRANSITIONS FSM. Returns 409 on invalid transition.
+   */
+  async transitionLifecycle(tenantId: string, id: string, targetState: string): Promise<unknown> {
+    const ioc = await this.getIoc(tenantId, id);
+    const allowed = LIFECYCLE_TRANSITIONS[ioc.lifecycle];
+    if (allowed === undefined) {
+      throw new AppError(409, `Unknown current state '${ioc.lifecycle}'`, 'INVALID_LIFECYCLE_STATE', {
+        current: ioc.lifecycle,
+      });
+    }
+    if (!allowed.includes(targetState)) {
+      throw new AppError(409, `Cannot transition from '${ioc.lifecycle}' to '${targetState}'`, 'INVALID_LIFECYCLE_TRANSITION', {
+        current: ioc.lifecycle, target: targetState, allowed,
+      });
+    }
+    const result = await this.repo.update(tenantId, id, { lifecycle: targetState as never });
+    if (!result) throw new AppError(404, 'IOC not found', 'NOT_FOUND');
+
+    // FP propagation: tag related IOCs for review
+    if (targetState === 'false_positive') {
+      const relatedIds = await this.repo.findFPRelated(tenantId, ioc);
+      if (relatedIds.length > 0) {
+        await this.repo.tagForReview(tenantId, relatedIds, 'fp_review_suggested');
+      }
+    }
+
+    return result;
   }
 
   /** Validate analyst-initiated lifecycle transition. */

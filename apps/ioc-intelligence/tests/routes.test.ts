@@ -33,6 +33,7 @@ function createMockService() {
     exportIocs: vi.fn().mockResolvedValue({ data: '[]', contentType: 'application/json', filename: 'export.json' }),
     getStats: vi.fn().mockResolvedValue({ total: 10, byType: { ip: 5 } }),
     bulkOperation: vi.fn().mockResolvedValue({ affected: 3 }),
+    transitionLifecycle: vi.fn().mockResolvedValue({ id: 'ioc-1', lifecycle: 'active' }),
   };
 }
 
@@ -212,5 +213,52 @@ describe('IOC Intelligence — Routes', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).data).toHaveProperty('events');
+  });
+
+  // ── Lifecycle transition ─────────────────────────────────────
+
+  it('PUT /api/v1/ioc/:id/lifecycle — valid transition returns 200 with updated IOC', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/ioc/550e8400-e29b-41d4-a716-446655440000/lifecycle',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: 'active' }),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.data).toHaveProperty('lifecycle', 'active');
+    expect(mockService.transitionLifecycle).toHaveBeenCalledWith(
+      'tenant-001',
+      '550e8400-e29b-41d4-a716-446655440000',
+      'active',
+    );
+  });
+
+  it('PUT /api/v1/ioc/:id/lifecycle — invalid state enum returns 400', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/ioc/550e8400-e29b-41d4-a716-446655440000/lifecycle',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: 'not_a_state' }),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('PUT /api/v1/ioc/:id/lifecycle — 409 from service propagates to response', async () => {
+    const { AppError } = await import('@etip/shared-utils');
+    mockService.transitionLifecycle.mockRejectedValueOnce(
+      new AppError(409, "Cannot transition from 'revoked' to 'active'", 'INVALID_LIFECYCLE_TRANSITION', {
+        current: 'revoked', target: 'active', allowed: [],
+      }),
+    );
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/ioc/550e8400-e29b-41d4-a716-446655440000/lifecycle',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: 'active' }),
+    });
+    expect(res.statusCode).toBe(409);
+    const body = JSON.parse(res.body);
+    expect(body.error.code).toBe('INVALID_LIFECYCLE_TRANSITION');
   });
 });

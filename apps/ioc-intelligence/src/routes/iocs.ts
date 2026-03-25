@@ -4,7 +4,7 @@ import type { IOCService } from '../service.js';
 import {
   ListIocsQuerySchema, CreateIocBodySchema, UpdateIocBodySchema,
   BulkOperationSchema, SearchIocsBodySchema, ExportIocsBodySchema,
-  IocIdParamSchema, CampaignQuerySchema,
+  IocIdParamSchema, CampaignQuerySchema, LifecycleTransitionBodySchema,
 } from '../schemas/ioc.js';
 
 /** Creates the IOC routes plugin bound to a service instance. */
@@ -115,6 +115,16 @@ export function iocRoutes(service: IOCService): FastifyPluginCallback {
       const { id } = IocIdParamSchema.parse(req.params);
       const timeline = await service.getTimeline(user.tenantId, id);
       return reply.send({ data: timeline });
+    });
+
+    // ── PUT /:id/lifecycle — FSM-gated lifecycle transition ──────
+    // Valid transitions enforced server-side. Returns 409 on invalid.
+    app.put('/:id/lifecycle', { preHandler: [authenticate, rbac('ioc:update')] }, async (req, reply) => {
+      const user = getUser(req);
+      const { id } = IocIdParamSchema.parse(req.params);
+      const { state } = LifecycleTransitionBodySchema.parse(req.body);
+      const ioc = await service.transitionLifecycle(user.tenantId, id, state);
+      return reply.send({ data: ioc });
     });
 
     done();
