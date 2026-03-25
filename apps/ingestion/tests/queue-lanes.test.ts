@@ -14,11 +14,19 @@ vi.mock('../src/config.js', () => ({
   }),
 }));
 
+const mockPipeline = {
+  incr: vi.fn().mockReturnThis(),
+  expire: vi.fn().mockReturnThis(),
+  exec: vi.fn().mockResolvedValue([]),
+};
 const mockRedis = {
   get: vi.fn().mockResolvedValue(null),
   incr: vi.fn().mockResolvedValue(1),
   decr: vi.fn().mockResolvedValue(0),
   expire: vi.fn().mockResolvedValue(1),
+  pipeline: vi.fn().mockReturnValue(mockPipeline),
+  eval: vi.fn().mockResolvedValue(0),
+  quit: vi.fn().mockResolvedValue('OK'),
 };
 vi.mock('ioredis', () => ({
   default: vi.fn().mockImplementation(() => mockRedis),
@@ -34,6 +42,7 @@ vi.mock('bullmq', () => ({
     add: vi.fn().mockResolvedValue({ id: 'mock-job' }),
     close: vi.fn(),
   })),
+  DelayedError: class DelayedError extends Error { constructor() { super('DelayedError'); this.name = 'DelayedError'; } },
 }));
 
 vi.mock('../src/queue.js', () => ({
@@ -180,7 +189,7 @@ describe('Per-tenant BullMQ fairness (P3-7)', () => {
     mockRedis.decr.mockResolvedValue(0);
   });
 
-  it('increments tenant counter on job start', async () => {
+  it('increments tenant counter atomically via pipeline on job start', async () => {
     const repo = createMockRepo();
     repo.findById.mockResolvedValue(makeFeed('f1', 't1'));
     repo.updateHealth.mockResolvedValue({});
@@ -188,11 +197,13 @@ describe('Per-tenant BullMQ fairness (P3-7)', () => {
     createFeedFetchWorkers({ repo: repo as never, logger: createMockLogger() as never, db: createMockDb() as never });
     await processorFns[0](makeJob('f1', 't1'));
 
-    expect(mockRedis.incr).toHaveBeenCalledWith('etip-feed-active:t1');
-    expect(mockRedis.expire).toHaveBeenCalledWith('etip-feed-active:t1', 300);
+    // Atomic INCR+EXPIRE via pipeline (W1 fix)
+    expect(mockPipeline.incr).toHaveBeenCalledWith('etip-feed-active:t1');
+    expect(mockPipeline.expire).toHaveBeenCalledWith('etip-feed-active:t1', 300);
+    expect(mockPipeline.exec).toHaveBeenCalled();
   });
 
-  it('decrements tenant counter on job completion', async () => {
+  it('safe-decrements tenant counter on job completion via Lua', async () => {
     const repo = createMockRepo();
     repo.findById.mockResolvedValue(makeFeed('f1', 't1'));
     repo.updateHealth.mockResolvedValue({});
@@ -200,31 +211,33 @@ describe('Per-tenant BullMQ fairness (P3-7)', () => {
     createFeedFetchWorkers({ repo: repo as never, logger: createMockLogger() as never, db: createMockDb() as never });
     await processorFns[0](makeJob('f1', 't1'));
 
-    expect(mockRedis.decr).toHaveBeenCalledWith('etip-feed-active:t1');
+    // Safe DECR via Lua eval (W2 fix — never goes below 0)
+    expect(mockRedis.eval).toHaveBeenCalledWith(expect.stringContaining('decr'), 1, 'etip-feed-active:t1');
   });
 
-  it('decrements tenant counter even on job failure (try/finally)', async () => {
+  it('safe-decrements tenant counter even on job failure (try/finally)', async () => {
     const repo = createMockRepo();
     repo.findById.mockResolvedValue(null); // Will throw NOT_FOUND
 
     createFeedFetchWorkers({ repo: repo as never, logger: createMockLogger() as never, db: createMockDb() as never });
     await expect(processorFns[0](makeJob('f1', 't1'))).rejects.toThrow('Feed not found');
 
-    expect(mockRedis.decr).toHaveBeenCalledWith('etip-feed-active:t1');
+    // Lua eval DECR must still fire despite error
+    expect(mockRedis.eval).toHaveBeenCalledWith(expect.stringContaining('decr'), 1, 'etip-feed-active:t1');
   });
 
-  it('delays job when tenant at max concurrent slots', async () => {
+  it('delays job and throws DelayedError when tenant at max concurrent slots (C3 fix)', async () => {
     mockRedis.get.mockResolvedValue('3'); // At limit
 
     const repo = createMockRepo();
     createFeedFetchWorkers({ repo: repo as never, logger: createMockLogger() as never, db: createMockDb() as never });
 
     const job = makeJob('f1', 't1');
-    const result = await processorFns[0](job) as { status: string };
+    // C3 fix: throws DelayedError so BullMQ does NOT mark job as completed
+    await expect(processorFns[0](job)).rejects.toThrow('DelayedError');
 
     expect(job.moveToDelayed).toHaveBeenCalledWith(expect.any(Number));
-    expect(result.status).toBe('success'); // Returns empty result, job will retry
-    expect(mockRedis.incr).not.toHaveBeenCalled(); // Counter NOT incremented when delayed
+    expect(mockPipeline.incr).not.toHaveBeenCalled(); // Counter NOT incremented when delayed
   });
 
   it('allows job when tenant below max concurrent slots', async () => {
@@ -239,7 +252,7 @@ describe('Per-tenant BullMQ fairness (P3-7)', () => {
     const result = await processorFns[0](job) as { status: string };
 
     expect(job.moveToDelayed).not.toHaveBeenCalled();
-    expect(mockRedis.incr).toHaveBeenCalledWith('etip-feed-active:t1');
+    expect(mockPipeline.incr).toHaveBeenCalledWith('etip-feed-active:t1');
     expect(result.status).toBe('success');
   });
 });

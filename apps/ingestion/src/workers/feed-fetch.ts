@@ -1,4 +1,4 @@
-import { Worker, Queue, type Job } from 'bullmq';
+import { Worker, Queue, DelayedError, type Job } from 'bullmq';
 import Redis from 'ioredis';
 import { QUEUES, AppError } from '@etip/shared-utils';
 import type pino from 'pino';
@@ -45,6 +45,19 @@ const TENANT_ACTIVE_KEY_PREFIX = 'etip-feed-active';
 /** Safety TTL for tenant counter — prevents stuck counters from blocking forever */
 const TENANT_COUNTER_TTL_SECONDS = 300;
 
+/** Lua script: DECR only if value > 0 (prevents negative counter drift) */
+const SAFE_DECR_LUA = `
+  local val = tonumber(redis.call('get', KEYS[1]) or '0')
+  if val > 0 then return redis.call('decr', KEYS[1]) end
+  return 0
+`;
+
+export interface FeedFetchWorkersResult {
+  workers: Worker<FeedFetchJobData, FeedFetchResult>[];
+  /** Close all workers, Redis clients, and queues */
+  close(): Promise<void>;
+}
+
 /** Per-queue concurrency config mapping */
 const QUEUE_CONCURRENCY_MAP: Record<string, keyof import('../config.js').AppConfig> = {
   [QUEUES.FEED_FETCH_RSS]:  'TI_FEED_CONCURRENCY_RSS',
@@ -57,7 +70,7 @@ const QUEUE_CONCURRENCY_MAP: Record<string, keyof import('../config.js').AppConf
  * Create all 4 per-feed-type workers (P3-4). Each uses the same job processor but
  * different concurrency settings. Includes per-tenant fairness via Redis counters (P3-7).
  */
-export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): Worker<FeedFetchJobData, FeedFetchResult>[] {
+export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWorkersResult {
   const { repo, logger, db, policyStore } = deps;
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
@@ -124,12 +137,14 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): Worker<FeedFe
         'Tenant at max concurrent jobs — delaying job by 5s',
       );
       await job.moveToDelayed(Date.now() + 5000);
-      return buildEmptyResult(job.data.feedId);
+      throw new DelayedError(); // Signal BullMQ to NOT mark job as completed
     }
 
-    // Increment tenant counter with TTL safety net
-    await fairnessRedis.incr(tenantKey);
-    await fairnessRedis.expire(tenantKey, TENANT_COUNTER_TTL_SECONDS);
+    // Atomic INCR + EXPIRE via pipeline (W1: prevents orphaned keys on crash)
+    const pipe = fairnessRedis.pipeline();
+    pipe.incr(tenantKey);
+    pipe.expire(tenantKey, TENANT_COUNTER_TTL_SECONDS);
+    await pipe.exec();
 
     try {
       return await executeJobProcessor(
@@ -137,8 +152,8 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): Worker<FeedFe
         processorDeps,
       );
     } finally {
-      // ALWAYS decrement — even on error (try/finally guarantees this)
-      await fairnessRedis.decr(tenantKey).catch((err) => {
+      // Safe DECR — Lua ensures counter never goes below 0 (W2)
+      await fairnessRedis.eval(SAFE_DECR_LUA, 1, tenantKey).catch((err) => {
         logger.error({ tenantId, error: (err as Error).message }, 'Failed to decrement tenant counter');
       });
     }
@@ -166,12 +181,20 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): Worker<FeedFe
     workers.push(worker);
   }
 
-  return workers;
+  return {
+    workers,
+    async close() {
+      await Promise.all(workers.map((w) => w.close()));
+      await normalizeQueue.close();
+      await fairnessRedis.quit();
+    },
+  };
 }
 
 /** @deprecated Use createFeedFetchWorkers (plural) instead */
 export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFetchJobData, FeedFetchResult> {
-  return createFeedFetchWorkers(deps)[0];
+  const result = createFeedFetchWorkers(deps);
+  return result.workers[0]!
 }
 
 function buildEmptyResult(feedId: string): FeedFetchResult {

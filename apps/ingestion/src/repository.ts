@@ -118,7 +118,7 @@ export class FeedRepository {
   async findAllActive(): Promise<FeedSource[]> {
     return this.db.feedSource.findMany({
       where: { enabled: true, status: 'active' },
-      select: { id: true, tenantId: true, schedule: true } as Record<string, boolean>,
+      select: { id: true, tenantId: true, schedule: true, feedType: true } as Record<string, boolean>,
     }) as unknown as FeedSource[];
   }
 

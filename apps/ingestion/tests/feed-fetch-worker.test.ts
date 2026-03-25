@@ -14,11 +14,19 @@ vi.mock('../src/config.js', () => ({
 }));
 
 // Mock ioredis for tenant fairness
+const mockPipeline = {
+  incr: vi.fn().mockReturnThis(),
+  expire: vi.fn().mockReturnThis(),
+  exec: vi.fn().mockResolvedValue([]),
+};
 const mockRedisInstance = {
   get: vi.fn().mockResolvedValue(null),
   incr: vi.fn().mockResolvedValue(1),
   decr: vi.fn().mockResolvedValue(0),
   expire: vi.fn().mockResolvedValue(1),
+  pipeline: vi.fn().mockReturnValue(mockPipeline),
+  eval: vi.fn().mockResolvedValue(0),
+  quit: vi.fn().mockResolvedValue('OK'),
 };
 vi.mock('ioredis', () => ({
   default: vi.fn().mockImplementation(() => mockRedisInstance),
@@ -40,6 +48,7 @@ vi.mock('bullmq', () => ({
     return { ...mockWorkerInstance };
   }),
   Queue: vi.fn().mockImplementation(() => mockQueueInstance),
+  DelayedError: class DelayedError extends Error { constructor() { super('DelayedError'); this.name = 'DelayedError'; } },
 }));
 
 // Mock queue.ts
@@ -236,8 +245,9 @@ describe('FeedFetchWorker', () => {
     );
   });
 
-  it('registers event handlers on all workers', () => {
-    const workers = createFeedFetchWorkers({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
-    expect(workers).toHaveLength(4);
+  it('returns 4 workers and a close function', () => {
+    const result = createFeedFetchWorkers({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
+    expect(result.workers).toHaveLength(4);
+    expect(typeof result.close).toBe('function');
   });
 });

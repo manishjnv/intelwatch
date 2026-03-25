@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   const app = await buildApp({ config, repo, queue: queues.values().next().value!, policyStore });
 
   // Start 4 per-feed-type BullMQ workers (P3-4) with per-tenant fairness (P3-7)
-  const workers = createFeedFetchWorkers({ repo, logger, db: prisma, policyStore });
+  const workerResult = createFeedFetchWorkers({ repo, logger, db: prisma, policyStore });
 
   // Start cron scheduler to enqueue feeds on their schedule (routes to per-type queues)
   const scheduler = new FeedScheduler({ repo, queues, logger });
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   app.addHook('onClose', async () => {
     clearInterval(midnightResetInterval);
     await scheduler.stop();
-    await Promise.all(workers.map((w) => w.close()));
+    await workerResult.close(); // Closes workers + fairnessRedis + normalizeQueue
     await closeFeedFetchQueues();
     await disconnectPrisma();
   });
