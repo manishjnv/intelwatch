@@ -210,10 +210,24 @@ interface SightingTimestamp {
  * Calculate velocity score (0-100) based on how fast IOC spreads.
  * High velocity = active campaign indicator.
  */
+/**
+ * G2b: Weighted velocity — uses feed reliability to weight each sighting.
+ * A feed with reliability 80% contributes 0.80 to the weighted count.
+ * Falls back to raw count when no reliability map is provided.
+ *
+ * Thresholds (weighted counts):
+ *   1h: >= 4.0 → 100, >= 2.4 → 80, >= 1.6 → 60
+ *  24h: >= 4.0 → 70,  >= 2.4 → 50, >= 1.6 → 35
+ *   7d: >= 4.0 → 40,  >= 2.4 → 20, >= 1.6 → 10
+ *
+ * Example: 5 spam feeds at 30% reliability → weighted 1.5 (low velocity).
+ *          3 APT feeds at 90% reliability  → weighted 2.7 (high velocity).
+ */
 export function calculateVelocity(
   sightingTimestamps: SightingTimestamp[],
   currentTimestamp: string,
   currentFeedId: string,
+  feedReliabilityMap?: Map<string, number>,
 ): { velocityScore: number; sightingTimestamps: SightingTimestamp[] } {
   const updated = [
     ...sightingTimestamps,
@@ -222,35 +236,38 @@ export function calculateVelocity(
 
   if (updated.length <= 1) return { velocityScore: 0, sightingTimestamps: updated };
 
-  // Count unique feeds in the last 1h, 24h, 7d windows
   const now = new Date(currentTimestamp).getTime();
-  const feedsIn1h = new Set<string>();
-  const feedsIn24h = new Set<string>();
-  const feedsIn7d = new Set<string>();
+
+  // Accumulate weighted counts per unique feed per window
+  const seen1h = new Map<string, number>();
+  const seen24h = new Map<string, number>();
+  const seen7d = new Map<string, number>();
 
   for (const s of updated) {
     const age = now - new Date(s.timestamp).getTime();
     const ageHours = age / (1000 * 60 * 60);
-    if (ageHours <= 1) feedsIn1h.add(s.feedId);
-    if (ageHours <= 24) feedsIn24h.add(s.feedId);
-    if (ageHours <= 168) feedsIn7d.add(s.feedId);
+    const weight = feedReliabilityMap ? (feedReliabilityMap.get(s.feedId) ?? 50) / 100 : 1;
+    // Use max weight if same feed appears multiple times in a window
+    if (ageHours <= 1)   seen1h.set(s.feedId,  Math.max(seen1h.get(s.feedId)   ?? 0, weight));
+    if (ageHours <= 24)  seen24h.set(s.feedId, Math.max(seen24h.get(s.feedId)  ?? 0, weight));
+    if (ageHours <= 168) seen7d.set(s.feedId,  Math.max(seen7d.get(s.feedId)   ?? 0, weight));
   }
 
-  // Score: weight recent spread higher
-  // 3+ feeds in 1h = critical velocity (80-100)
-  // 3+ feeds in 24h = high velocity (50-79)
-  // 3+ feeds in 7d = medium velocity (20-49)
-  // Otherwise low (0-19)
+  const sum = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0);
+  const w1h  = sum(seen1h);
+  const w24h = sum(seen24h);
+  const w7d  = sum(seen7d);
+
   let score = 0;
-  if (feedsIn1h.size >= 5) score = 100;
-  else if (feedsIn1h.size >= 3) score = 80;
-  else if (feedsIn1h.size >= 2) score = 60;
-  else if (feedsIn24h.size >= 5) score = 70;
-  else if (feedsIn24h.size >= 3) score = 50;
-  else if (feedsIn24h.size >= 2) score = 35;
-  else if (feedsIn7d.size >= 5) score = 40;
-  else if (feedsIn7d.size >= 3) score = 20;
-  else if (feedsIn7d.size >= 2) score = 10;
+  if      (w1h  >= 4.0) score = 100;
+  else if (w1h  >= 2.4) score = 80;
+  else if (w1h  >= 1.6) score = 60;
+  else if (w24h >= 4.0) score = 70;
+  else if (w24h >= 2.4) score = 50;
+  else if (w24h >= 1.6) score = 35;
+  else if (w7d  >= 4.0) score = 40;
+  else if (w7d  >= 2.4) score = 20;
+  else if (w7d  >= 1.6) score = 10;
 
   return { velocityScore: score, sightingTimestamps: updated };
 }
@@ -286,6 +303,9 @@ export interface ConfidenceBreakdown {
 }
 
 export class NormalizationService {
+  private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private reliabilityCache = new Map<string, { score: number; cachedAt: number }>();
+
   constructor(
     private readonly repo: IOCRepository,
     private readonly logger: pino.Logger,
@@ -301,8 +321,12 @@ export class NormalizationService {
     // ── Improvement #10: Batch anomaly scoring ────────────────
     const batchMultiplier = batchPenalty(job.iocs.length);
 
-    // ── Improvement #2: Fetch feed reliability from DB ──────────
+    // ── G2a: Fetch feed reliability with TTL cache ───────────────
     const feedReliability = await this.getFeedReliability(job.feedSourceId);
+
+    // ── G2b: Build reliability map for weighted velocity scoring ─
+    // Includes current job's feed; other feeds in sighting history default to 50%
+    const feedReliabilityMap = new Map<string, number>([[job.feedSourceId, feedReliability]]);
 
     for (const ioc of job.iocs) {
       try {
@@ -405,12 +429,13 @@ export class NormalizationService {
           { date: now.toISOString().slice(0, 10), score: finalConfidence, source: job.feedSourceId },
         ];
 
-        // ── Improvement B5: IOC velocity scoring ──────────────────
+        // ── G2b: IOC velocity scoring (weighted by feed reliability) ─
         const prevTimestamps = existingEnrichment?.sightingTimestamps ?? [];
         const { velocityScore, sightingTimestamps } = calculateVelocity(
           prevTimestamps,
           now.toISOString(),
           job.feedSourceId,
+          feedReliabilityMap,
         );
 
         const enrichmentData: ConfidenceBreakdown = {
@@ -545,13 +570,17 @@ export class NormalizationService {
   }
 
   /**
-   * Improvement #2: Fetch actual feed reliability score from DB.
+   * G2a: Fetch feed reliability with 5-minute TTL in-memory cache.
+   * Eliminates redundant DB queries when same feedSourceId is hit across concurrent jobs.
    * Falls back to 50 (neutral) if feed not found or field is null.
    */
   private async getFeedReliability(feedSourceId: string): Promise<number> {
+    const hit = this.reliabilityCache.get(feedSourceId);
+    if (hit && Date.now() - hit.cachedAt < this.CACHE_TTL_MS) return hit.score;
     try {
-      const feed = await this.repo.findFeedReliability(feedSourceId);
-      return feed ?? 50;
+      const score = (await this.repo.findFeedReliability(feedSourceId)) ?? 50;
+      this.reliabilityCache.set(feedSourceId, { score, cachedAt: Date.now() });
+      return score;
     } catch {
       return 50;
     }

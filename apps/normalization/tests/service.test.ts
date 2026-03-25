@@ -655,6 +655,74 @@ describe('Improvement C2: 3-signal confidence weights', () => {
   });
 });
 
+describe('G2a: Feed reliability TTL cache', () => {
+  it('calls findFeedReliability once for same feedId within TTL', async () => {
+    const findFeedReliability = vi.fn().mockResolvedValue(75);
+    const repo = mockRepo({ findFeedReliability });
+    const service = new NormalizationService(repo, logger);
+    const job = buildJob([{ rawValue: '1.2.3.4', rawType: 'ip' }]);
+
+    // Two batches with same feedSourceId — DB should only be called once
+    await service.normalizeBatch(job);
+    await service.normalizeBatch(job);
+
+    expect(findFeedReliability).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns cached reliability score on second call', async () => {
+    const findFeedReliability = vi.fn().mockResolvedValue(88);
+    const repo = mockRepo({ findFeedReliability });
+    const service = new NormalizationService(repo, logger);
+    const job = buildJob([{ rawValue: '9.8.7.6', rawType: 'ip' }]);
+
+    await service.normalizeBatch(job);
+    await service.normalizeBatch(job);
+
+    // Feed reliability should be 88 (from cache, not 50 default)
+    const call = (repo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.enrichmentData.feedReliability).toBe(88);
+  });
+
+  it('calls DB again after TTL expires (using time-mock)', async () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const findFeedReliability = vi.fn().mockResolvedValue(60);
+    const repo = mockRepo({ findFeedReliability });
+    const service = new NormalizationService(repo, logger);
+    const job = buildJob([{ rawValue: '5.5.5.5', rawType: 'ip' }]);
+
+    await service.normalizeBatch(job);
+    expect(findFeedReliability).toHaveBeenCalledTimes(1);
+
+    // Advance time past TTL (5 min + 1ms)
+    vi.setSystemTime(now + 5 * 60 * 1000 + 1);
+    await service.normalizeBatch(job);
+
+    expect(findFeedReliability).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
+  });
+
+  it('different feedIds each get their own cache entry', async () => {
+    const findFeedReliability = vi.fn().mockResolvedValue(70);
+    const repo = mockRepo({ findFeedReliability });
+    const service = new NormalizationService(repo, logger);
+
+    const jobA = { ...buildJob([{ rawValue: '1.1.1.1', rawType: 'ip' }]), feedSourceId: 'feed-a' };
+    const jobB = { ...buildJob([{ rawValue: '2.2.2.2', rawType: 'ip' }]), feedSourceId: 'feed-b' };
+
+    await service.normalizeBatch(jobA);
+    await service.normalizeBatch(jobB);
+    // Each unique feedId triggers one DB call
+    expect(findFeedReliability).toHaveBeenCalledTimes(2);
+
+    // Third call to feed-a should use cache (no new DB call)
+    await service.normalizeBatch(jobA);
+    expect(findFeedReliability).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('Improvement C3: Severity escalation protection', () => {
   it('escalateSeverity never downgrades', () => {
     expect(escalateSeverity('critical', 'low')).toBe('critical');
