@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. P3-4/P3-7 COMPLETE. 32 containers, 405 ingestion tests, 734 frontend tests.
-- **Last session outcome:** Session 70 (2026-03-26). P3-4 per-feed-type queue lanes + P3-7 per-tenant BullMQ fairness. 6 commits: 8c201b9 (feat: P3-4+P3-7), d53d003 (fix: review C1-C3/W1-W2), f8c21c4 (fix: TS index type), 48fa040+79ec3bf (fix: queue count 14→18), aed6e73 (feat: Grafana dashboards — separate session). 405 ingestion tests. Deployed to VPS, 32 containers healthy, functional verification passed (4 queue workers running, tenant counter active).
-- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. MISP connector still 501. Untracked WIP files: admin-service queue-alert-evaluator, frontend admin-queue-alerts test. Deploy SSH timeout on first attempt (VPS build cache invalidated + Vite rendering slow under load).
-- **Next tasks:** Admin-service queue monitor update for 4 per-type queues (TODO in scheduler.ts). MISP connector. IOC search pagination. Production hardening. Grafana dashboard metric wiring (prom-client + fastify-metrics).
+- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. P3-4/P3-7 COMPLETE. P2-4 Grafana dashboards COMPLETE. 33 containers, 5,692 tests.
+- **Last session outcome:** Session 70 (2026-03-26). P2-4 Grafana dashboards — 3 provisioned dashboards (service health, pipeline queues, API gateway). Commits: aed6e73 (feat: dashboards), d53d003 (fix: review), f8c21c4 (fix: TS index), 48fa040+79ec3bf (fix: queue count 14→18). Grafana recreated on VPS via vps-cmd.yml. All 33 containers healthy. Dashboard JSON at docker/grafana/dashboards/, provisioning at docker/grafana/provisioning/dashboards/. Panels use Prometheus self-metrics where available, placeholders for service-level metrics.
+- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. MISP connector still 501. WIP files renamed to .wip: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip, queue-alert-evaluator.test.ts.wip. Deploy.yml 15min timeout insufficient for fresh backend build on VPS. Grafana panels are placeholders — services don't export Prometheus /metrics yet.
+- **Next tasks:** Wire prom-client + fastify-metrics to services for Grafana data. MISP connector. IOC search pagination. Production hardening.
 
 ## Deployment Log
 
@@ -212,6 +212,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 68 | 2026-03-25 | etip_frontend updated | ⏳ CI triggered | 1ff8c88, 17e60be | Mobile responsive grid fixes (9 pages), api-gateway rate-limit, ConfidenceBreakdown component, P2-3 ticket guard, P3-5 analytics staleness indicator. 734 frontend tests. |
 | 69 | 2026-03-25 | etip_ingestion updated (3 new connectors) | ⏳ CI triggered | 886e4b3, d298226 | P3-1/P3-2/P3-3: NVD + STIX/TAXII + REST_API feed connectors. 32 new tests (392 total ingestion). TI_NVD_API_KEY, TI_TAXII_URL/USER/PASSWORD env vars. Only MISP remains 501. |
 | 70 | 2026-03-26 | etip_ingestion + shared-utils updated, all 32 containers recreated | ✅ All 32 healthy | 8c201b9→79ec3bf (6 commits) | P3-4: 4 per-feed-type queue lanes (RSS c=5, NVD c=2, STIX c=2, REST c=3). P3-7: per-tenant BullMQ fairness (Redis counter + DelayedError + Lua safe DECR). Review fixes: C1 feedType select, C2 close() cleanup, C3 DelayedError, W1 atomic pipeline, W2 safe DECR. 405 ingestion tests. Grafana dashboards also deployed (aed6e73). Manual VPS deploy after CI SSH timeout. |
+| 71 | 2026-03-26 | etip_admin + etip_frontend + shared-utils updated | ✅ CI green (23561851508) | aa8400f | P2-1 queue alerting: QueueAlertEvaluator (Redis debounce, QUEUE_ALERT/RESOLVED), GET /queues/alerts, AdminOpsPage red banner. 190 admin tests, 739 frontend tests, 5,692 total. |
 
 ## E2E Verification Results (Session 13)
 
