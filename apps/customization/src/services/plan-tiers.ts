@@ -6,7 +6,6 @@ import {
   FALLBACK_SUBTASK_MODELS,
   type AiPlan,
   type AiModel,
-  type AiCtiSubtask,
 } from '../schemas/customization.js';
 import type { AiModelStore, SubtaskMapping } from './ai-model-store.js';
 
@@ -134,7 +133,10 @@ export class PlanTierService {
     if (!AI_PLANS.includes(plan)) {
       throw new AppError(400, `Unknown plan: ${plan}`, 'PLAN_INVALID');
     }
-    if (plan === 'custom') {
+    // Note: TypeScript enforces plan !== 'custom' via Exclude<AiPlan, 'custom'>,
+    // but we guard at runtime for safety (called from the route which re-casts).
+    // Cast to string to avoid TS2367 unreachable comparison warning.
+    if ((plan as string) === 'custom') {
       throw new AppError(
         400,
         "Custom plan cannot be applied in bulk — set each subtask model individually via PUT /ai/tasks/:subtask",

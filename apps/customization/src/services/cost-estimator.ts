@@ -89,7 +89,7 @@ export class CostEstimator {
       // Pick the model used by the most subtasks in this stage
       const counts = new Map<AiModel, number>();
       for (const m of models) counts.set(m, (counts.get(m) ?? 0) + 1);
-      const dominantModel = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      const dominantModel = ([...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? ['sonnet'])[0] as AiModel;
 
       const stageCost = this.stageCost(dominantModel, stage, articles);
 
