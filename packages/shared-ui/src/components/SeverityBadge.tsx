@@ -20,7 +20,8 @@ interface SeverityBadgeProps {
 }
 
 export function SeverityBadge({ severity, showDot = true, size = 'sm' }: SeverityBadgeProps) {
-  const s = SEVERITY_STYLES[severity]
+  const key = severity?.toUpperCase() as Severity
+  const s = SEVERITY_STYLES[key] ?? SEVERITY_STYLES.INFO
   const textSize = size === 'sm' ? 'text-[10px]' : 'text-xs'
 
   return (
@@ -33,9 +34,11 @@ export function SeverityBadge({ severity, showDot = true, size = 'sm' }: Severit
 
 // Standalone dot — used in tables and inline text
 export function SeverityDot({ severity }: { severity: Severity }) {
+  const key = severity?.toUpperCase() as Severity
+  const style = SEVERITY_STYLES[key] ?? SEVERITY_STYLES.INFO
   return (
     <span
-      className={`w-1.5 h-1.5 rounded-full shrink-0 ${SEVERITY_STYLES[severity].dot}`}
+      className={`w-1.5 h-1.5 rounded-full shrink-0 ${style.dot}`}
       title={severity}
     />
   )

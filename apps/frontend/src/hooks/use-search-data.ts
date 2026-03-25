@@ -57,7 +57,7 @@ export const DEMO_SEARCH_RESULTS: SearchResult[] = [
     firstSeen: daysAgo(5), lastSeen: daysAgo(0), score: 9.5,
   },
   {
-    id: 'srch-3', iocType: 'hash_sha256', normalizedValue: 'e3b0c44298fc1c149afb4c8996fb92427ae41e4649b934ca495991b7852b855',
+    id: 'srch-3', iocType: 'file_hash_sha256', normalizedValue: 'e3b0c44298fc1c149afb4c8996fb92427ae41e4649b934ca495991b7852b855',
     severity: 'high', confidence: 88, lifecycle: 'active', tlp: 'amber',
     firstSeen: daysAgo(12), lastSeen: daysAgo(1), score: 7.4,
   },

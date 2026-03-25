@@ -73,8 +73,8 @@ export function EntityChip({
   showCopy = true, showSearch = true,
   onInvestigate, onGraph,
 }: EntityChipProps) {
-  const cfg = ENTITY_TYPE_CONFIG[type]
-  const isHash = type.startsWith('file_hash')
+  const cfg = ENTITY_TYPE_CONFIG[type] ?? { bg: 'bg-slate-500/10', text: 'text-slate-300', border: 'border-slate-500/20', icon: 'HelpCircle', label: type }
+  const isHash = type.startsWith('file_hash') || type.startsWith('hash')
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation()
