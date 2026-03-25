@@ -1,52 +1,56 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-03-25
-**Session:** 61
-**Session Summary:** VPS ops — deployed session 59 frontend, fixed disk space crisis (56GB Docker build cache), added daily cleanup cron.
+**Session:** 62
+**Session Summary:** Fixed analytics dashboard crash (React #31), added Phase F to E2E plan, updated session-end to 12 steps, added architecture refs to CLAUDE.md.
 
-## Changes Made
+## ✅ Changes Made
 | Commit | Files | Description |
 |--------|-------|-------------|
-| a515a68 | 1 | chore: add daily Docker cleanup script (build cache + unused images) |
+| 49cffb3 | 1 | docs: add Phase F (AI processing controls) to ETIP_Project_Stats.html |
+| 17e14cf | 1 | docs: add ETIP_Project_Stats.html to session-end ritual (step 8, 12 total) |
+| c3f2870 | 1 | docs: add architecture reference docs to CLAUDE.md session protocol |
+| 4b44ac1 | 4 | docs: session 56 end — alerting service deployed, E2E plan approved |
+| f08e8f2 | 1 | fix: analytics dashboard crash — widget value was object instead of scalar |
+| 909269c | 1 | fix: analytics aggregator TS strict — cast unknown to number for buildWidget |
 
-## Files / Documents Affected
+## 📁 Files / Documents Affected
 
-### New Files (1)
-| File | Purpose |
-|------|---------|
-| scripts/docker-cleanup.sh | Daily Docker build cache + unused image pruning (keeps 48h) |
+### Modified Files
+| File | Change |
+|------|--------|
+| apps/analytics-service/src/services/aggregator.ts | Fixed: buildWidget value must be scalar (number/string), not object. Added details field. Cast unknown to number. |
+| docs/ETIP_Project_Stats.html | Added Phase F section (3 sessions, 12 subtasks table, plan tiers, Week 5 timeline) |
+| .claude/commands/session-end.md | Added step 8 (update stats HTML), 12 steps total, 7 critical systems |
+| CLAUDE.md | Added Architecture Reference Docs section |
 
-## Decisions & Rationale
-No new DECISION entries. Standard ops/maintenance.
+## 🔧 Decisions & Rationale
+No new DECISION entries.
 
-## E2E / Deploy Verification Results
-- Deployed session 59 frontend via GitHub Actions vps-cmd.yml workflow
-- Neo4j failed health check during full rebuild (memory pressure) — restarted separately
-- Final state: all 33 containers healthy (verified via `docker ps --filter name=etip_`)
-- VPS disk: 56GB Docker build cache pruned to 1.3GB. 81GB free (16% used).
-- Daily cleanup cron installed: /etc/cron.daily/docker-cleanup
+## 🧪 E2E / Deploy Verification Results
+- Analytics-service: 83/83 tests pass
+- CI run for 909269c: deploying
 
-## Open Items / Next Steps
+## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. Deploy admin-service to VPS (session 60 commit d8ed45f — ioredis queue monitor dep)
-2. E2E D3 — SearchPage (full-text IOC search via ES service port 3020)
+1. **Phase F1** — Feed processing policies + daily caps (ingestion service)
+2. **Phase F2** — 12 AI subtasks + plan tiers (customization service)
+3. **Phase F3** — Cost estimator + admin AI config UI
 
 ### Deferred
-- Razorpay keys (post-launch)
-- Analytics aggregator empty data
-- Billing priceInr mismatch
+- admin-service ioredis dep not yet deployed to VPS
+- Razorpay real keys (post-launch)
+- Billing priceInr field mismatch
 
-## How to Resume
+## 🔁 How to Resume
 ```
 /session-start
 
-Working on: E2E D3 — SearchPage
-Do not modify: backend services (frontend wiring-only)
-
-First: deploy admin-service (vps-cmd.yml: docker compose -p etip -f docker-compose.etip.yml build etip_admin && docker compose -p etip -f docker-compose.etip.yml up -d etip_admin)
-Then: build SearchPage using ES indexing service (port 3020, GET /api/v1/search/iocs)
+Working on: E2E Phase F1 — Feed Processing Policies + Daily Caps
+Do not modify: frontend, any other backend service except ingestion
+Plan: C:\Users\manis\.claude\plans\warm-plotting-flask.md (Phase F)
 ```
 
 ### Phase Roadmap
-- Phase 7 (Performance): ES Indexing, Reporting, Alerting, Analytics, Caching — all deployed
-- E2E Integration Plan: A1-A3, B1-B2, C1-C3, D1-D2, E1-E2 DONE. D3-remaining.
+- E2E Plan: A1-E2 ✅ COMPLETE, F1-F3 remaining (AI cost controls)
+- 33 containers, ~5348 tests, 19 frontend pages

@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
-**Session counter:** 61
+**Session counter:** 62
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 Performance + E2E Integration Plan. All 33 containers live and healthy. E2E sessions A1-E2 complete.
-- **Last session outcome:** Session 61 (2026-03-25). VPS ops session: deployed session 59 frontend via GitHub Actions vps-cmd.yml workflow (etip_frontend healthy). Fixed VPS disk space crisis — Docker build cache had grown to 56GB, pruned to 1.3GB (81GB free now). Added daily Docker cleanup script (scripts/docker-cleanup.sh) installed as /etc/cron.daily/docker-cleanup. All 33 containers verified healthy. Commit a515a68.
-- **Known issues:** admin-service ioredis dep not yet deployed to VPS (session 60 commit d8ed45f). Prior: Razorpay keys, analytics aggregator empty data, billing priceInr mismatch.
-- **Next tasks:** Deploy admin-service to VPS (queue monitor endpoint). Then E2E D3 (SearchPage) per integration plan.
+- **Current phase:** Phase 7 Performance + E2E Integration Plan COMPLETE (A1-E2). Phase F (AI Processing Controls) next. 33 containers, ~5348 tests.
+- **Last session outcome:** Session 62 (2026-03-25). Fixed analytics dashboard crash — React error #31 (widget value was object instead of scalar). buildWidget('feed-performance') and buildWidget('alert-breakdown') passed raw objects. Fix: extract scalar value, move breakdown to `details` field. TS strict casts for `unknown → number`. Added Phase F (AI controls) to plan + stats HTML. Updated session-end to 12 steps. Architecture refs added to CLAUDE.md. Commits: 49cffb3 (stats HTML Phase F), 17e14cf (session-end step 8), c3f2870 (CLAUDE.md arch refs), 4b44ac1 (session 56 docs), f08e8f2 (analytics fix), 909269c (TS strict fix).
+- **Known issues:** admin-service ioredis dep not yet deployed to VPS. Prior: Razorpay keys, billing priceInr mismatch.
+- **Next tasks:** **Phase F1** — Feed processing policies + daily caps (ingestion service). Per-feed limits, feed categories, per-source AI toggle. Then F2 (12 AI subtasks + plan tiers), F3 (cost estimator + admin UI).
 
 ## Deployment Log
 
