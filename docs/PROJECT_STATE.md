@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
-**Session counter:** 60
+**Session counter:** 61
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 Performance + E2E Integration Plan. All 33 containers live. E2E sessions E1-E2 complete.
-- **Last session outcome:** Session 60 (2026-03-25). E2E E1: pipeline smoke test harness (tests/e2e/: pipeline-smoke.test.ts + helpers.ts + vitest.config.ts). E2E E2: admin-service queue monitor (GET /api/v1/admin/queues, 14 queues via ioredis LLEN+ZCARD, 11 tests, injectable mock). Frontend: AdminOpsPage queue health table (color-coded dots, 10s polling, demo fallback). Commit d8ed45f (13 files, 897 insertions). 5348 tests passing (158 admin-service, 688 frontend).
-- **Known issues:** VPS deploy pending manual SSH for admin-service (updated with ioredis dep). Prior: Razorpay keys, analytics aggregator empty data, billing priceInr mismatch.
-- **Next tasks:** E2E D3 (SearchPage) per integration plan. Alternatively: VPS admin-service redeploy (git pull + docker compose build etip_admin + docker compose up -d etip_admin).
+- **Current phase:** Phase 7 Performance + E2E Integration Plan. All 33 containers live and healthy. E2E sessions A1-E2 complete.
+- **Last session outcome:** Session 61 (2026-03-25). VPS ops session: deployed session 59 frontend via GitHub Actions vps-cmd.yml workflow (etip_frontend healthy). Fixed VPS disk space crisis — Docker build cache had grown to 56GB, pruned to 1.3GB (81GB free now). Added daily Docker cleanup script (scripts/docker-cleanup.sh) installed as /etc/cron.daily/docker-cleanup. All 33 containers verified healthy. Commit a515a68.
+- **Known issues:** admin-service ioredis dep not yet deployed to VPS (session 60 commit d8ed45f). Prior: Razorpay keys, analytics aggregator empty data, billing priceInr mismatch.
+- **Next tasks:** Deploy admin-service to VPS (queue monitor endpoint). Then E2E D3 (SearchPage) per integration plan.
 
 ## Deployment Log
 
@@ -201,8 +201,9 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 55 | 2026-03-24 | etip_analytics added (port 3024) | ✅ All 32 healthy | 14b7420, daa24ef | Analytics Service (Module 24): 12 endpoints, 83 tests, 5 P0 improvements. Dashboard aggregation, trends, executive summary, service health. 32 containers. ~5098 monorepo tests. |
 | 57 | 2026-03-24 | etip_onboarding + etip_frontend updated | ✅ Pushed | e78239f→4eda8d3 | E2E B2: onboarding feed seeding + Redis wizard. E2E C1: feed retry + graph expand. 230 onboarding tests, 633 frontend tests. |
 | 58 | 2026-03-25 | etip_caching added (port 3025) | ✅ All 33 healthy | e78239f→794b3eb | Caching & Archival Service (Module 25): 94 tests. Redis cache mgmt, MinIO archival, event-driven invalidation. 4 CI fix commits (lockfile, TS, queue count, async tests). CI run 23499248314 green. Deploy rerun succeeded (first attempt SSH timeout). |
-| 59 | 2026-03-25 | etip_frontend update pending (pushed, deploy manual) | ⏳ Deploy pending | ff93d4a | E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. 20 files changed, 688 frontend tests. Pushed to master. VPS deploy requires manual SSH (permission denied in session). |
+| 59 | 2026-03-25 | etip_frontend deployed via vps-cmd.yml | ✅ All 33 healthy | ff93d4a | E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. Deployed via GitHub Actions vps-cmd.yml in session 61. |
 | 60 | 2026-03-25 | etip_admin updated (ioredis, queue monitor), etip_frontend (queue health table) | ⏳ CI triggered | d8ed45f | E2E E1: pipeline smoke harness (tests/e2e/). E2E E2: admin-service queue monitor (14 queues, LLEN+ZCARD, injectable mock). Frontend queue health table in AdminOpsPage. 13 files, 897 insertions. 5348 tests. |
+| 61 | 2026-03-25 | etip_frontend deployed (session 59 code), VPS disk cleanup | ✅ All 33 healthy | a515a68 | VPS ops: deployed frontend via vps-cmd.yml. Fixed disk full (56GB Docker build cache → 1.3GB). Daily cleanup cron installed. scripts/docker-cleanup.sh added to repo. |
 
 ## E2E Verification Results (Session 13)
 
@@ -217,7 +218,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 33 containers), 96GB disk (26% used)
+- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 33 containers), 96GB disk (16% used, daily Docker cleanup cron active)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
