@@ -114,11 +114,13 @@ export class ArticlePipeline {
   private readonly aiGate: AIGate | null;
   private readonly maxTriagePerFetch: number;
   private readonly maxExtractionPerFetch: number;
+  private readonly anthropicApiKey: string | undefined;
 
   constructor(deps: PipelineDeps) {
     this.logger = deps.logger.child({ component: 'pipeline' });
     this.maxTriagePerFetch = deps.aiMaxTriagePerFetch ?? 10;
     this.maxExtractionPerFetch = deps.aiMaxExtractionPerFetch ?? 5;
+    this.anthropicApiKey = deps.anthropicApiKey;
     this.aiGate = deps.db ? new AIGate(deps.db, deps.aiEnabled ?? false, this.logger) : null;
     this.triage = new TriageService();
     this.triage.init(deps.anthropicApiKey, this.logger, { aiEnabled: deps.aiEnabled, model: deps.aiTriageModel });
@@ -145,6 +147,7 @@ export class ArticlePipeline {
     feedId: string,
     feedName: string,
     tenantId: string,
+    feedAiEnabled: boolean = true,
   ): Promise<PipelineBatchResult> {
     const batchStart = Date.now();
     const results: ProcessedArticle[] = [];
@@ -157,8 +160,9 @@ export class ArticlePipeline {
 
     for (const article of articles) {
       try {
-        const useAiTriage = aiTriageCount < this.maxTriagePerFetch;
-        const useAiExtraction = aiExtractionCount < this.maxExtractionPerFetch;
+        // feedAiEnabled=false overrides the per-fetch budget limits
+        const useAiTriage = feedAiEnabled && aiTriageCount < this.maxTriagePerFetch;
+        const useAiExtraction = feedAiEnabled && aiExtractionCount < this.maxExtractionPerFetch;
         const processed = await this.processArticle(article, feedId, feedName, tenantId, useAiTriage, useAiExtraction);
         if (processed.triageResult?.triageMode === 'haiku') aiTriageCount++;
         if (processed.extractionResult?.extractionMode === 'sonnet') aiExtractionCount++;
@@ -258,6 +262,19 @@ export class ArticlePipeline {
       extractionTokens: extractionResult.inputTokens + extractionResult.outputTokens,
       extractionCostUsd: extractionCost.totalCostUsd - triageCost.totalCostUsd,
     };
+
+    // Layer 3 arbitration: when dedup returns 'llm' layer, resolve with Haiku (AI-gated)
+    if (dedupResult.dedupLayer === 'llm' && useAiTriage && this.anthropicApiKey) {
+      const arbiterArticle: import('../services/dedup.js').DedupArticle = {
+        id: articleId, tenantId, title: article.title, iocs: iocContexts.map((c) => c.iocValue),
+      };
+      const existingArticle: import('../services/dedup.js').DedupArticle = {
+        id: dedupResult.existingId ?? 'unknown', tenantId, title: '', iocs: [],
+      };
+      const arbitratedAction = await this.dedup.arbitrate(arbiterArticle, existingArticle, this.anthropicApiKey);
+      dedupResult.action = arbitratedAction;
+      if (arbitratedAction === 'skip') dedupResult.isDuplicate = true;
+    }
 
     if (dedupResult.isDuplicate && dedupResult.action === 'skip') {
       return {

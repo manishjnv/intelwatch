@@ -97,12 +97,11 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
         return buildEmptyResult(feedId);
       }
 
-      // ── Log AI-disabled advisory ──────────────────────────────────────────
-      if (policyStore) {
-        const policy = policyStore.getPolicy(tenantId, feedId);
-        if (policy && !policy.aiEnabled) {
-          logger.info({ feedId }, 'Feed policy has aiEnabled=false (enforcement in F2)');
-        }
+      // ── Compute effective AI flag: global AND per-feed ────────────────────
+      const feedPolicy = policyStore?.getPolicy(tenantId, feedId);
+      const feedAiEnabled = feedPolicy ? feedPolicy.aiEnabled : true;
+      if (!feedAiEnabled) {
+        logger.info({ feedId, tenantId }, 'Feed policy aiEnabled=false — AI stages will be skipped for this feed');
       }
 
       try {
@@ -119,6 +118,7 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
           feedId,
           feed.name,
           tenantId,
+          feedAiEnabled,
         );
 
         // ── Persist processed articles to DB ──────────────────────

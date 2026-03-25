@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { ZodError } from 'zod';
 import type { AiModelStore } from '../services/ai-model-store.js';
 import type { PlanTierService } from '../services/plan-tiers.js';
 import { CostEstimator } from '../services/cost-estimator.js';
@@ -7,6 +8,8 @@ import {
   SetTaskModelSchema,
   SetBudgetSchema,
   TaskParamSchema,
+  SubtaskParamSchema,
+  SetSubtaskModelSchema,
   UsageQuerySchema,
   ApplyPlanSchema,
   CostEstimateQuerySchema,
@@ -85,6 +88,25 @@ export function aiModelRoutes(deps: AiModelRouteDeps) {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const mappings = aiModelStore.getSubtaskMappings(tenantId);
       return reply.send({ data: mappings, total: mappings.length });
+    });
+
+    /** PUT /ai/subtasks/:subtask — Set model for a specific CTI subtask. */
+    app.put('/subtasks/:subtask', async (req: FastifyRequest<{ Params: { subtask: string } }>, reply: FastifyReply) => {
+      const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
+      const userId   = (req.headers['x-user-id']   as string) || 'unknown';
+      let subtask: string;
+      let input: ReturnType<typeof SetSubtaskModelSchema.parse>;
+      try {
+        ({ subtask } = SubtaskParamSchema.parse(req.params));
+        input = SetSubtaskModelSchema.parse(req.body);
+      } catch (err) {
+        if (err instanceof ZodError) {
+          return reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: 'Request validation failed' } });
+        }
+        throw err;
+      }
+      const mapping = aiModelStore.setSubtaskModel(tenantId, subtask, input, userId);
+      return reply.send({ data: mapping });
     });
 
     /** GET /ai/plans — List all 4 plan tiers with metadata. */
