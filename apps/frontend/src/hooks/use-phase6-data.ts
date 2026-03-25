@@ -298,6 +298,85 @@ export function useAdminStats() {
     d => d != null && typeof (d as Record<string, unknown>)?.totalTenants === 'number')
 }
 
+// ─── DLQ types ────────────────────────────────────────────────────
+
+/** Single queue's dead-letter count. */
+export interface DlqQueueEntry {
+  name: string
+  failed: number
+}
+
+/** Response shape from GET /api/v1/admin/dlq */
+interface DlqStatusResponse {
+  queues: DlqQueueEntry[]
+  totalFailed: number
+  updatedAt: string
+  redisUnavailable?: boolean
+}
+
+/** Demo DLQ data — a few queues with non-zero failed counts. */
+const DEMO_DLQ_STATUS: DlqStatusResponse = {
+  updatedAt: new Date().toISOString(),
+  totalFailed: 3,
+  queues: [
+    'etip-feed-fetch', 'etip-feed-parse', 'etip-normalize', 'etip-deduplicate',
+    'etip-enrich-realtime', 'etip-enrich-batch', 'etip-graph-sync', 'etip-correlate',
+    'etip-alert-evaluate', 'etip-integration-push', 'etip-archive',
+    'etip-report-generate', 'etip-ioc-indexed', 'etip-cache-invalidate',
+  ].map((name, i) => ({ name, failed: i === 4 ? 2 : i === 6 ? 1 : 0 })),
+}
+
+/** Poll DLQ failed counts every 15 s. */
+export function useDlqStatus() {
+  const result = useQuery({
+    queryKey: ['admin-dlq-status'],
+    queryFn: () => api<DlqStatusResponse>('/admin/dlq').catch(() => null as unknown as DlqStatusResponse),
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  })
+  return withDemoFallback(
+    result,
+    DEMO_DLQ_STATUS,
+    d => d != null && Array.isArray((d as Record<string, unknown>)?.queues),
+  )
+}
+
+/** Retry all failed jobs for a single queue. */
+export function useRetryDlqQueue() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (queue: string) =>
+      api<{ retried: number; message: string }>(`/admin/dlq/${queue}/retry`, { method: 'POST' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-dlq-status'] })
+      qc.invalidateQueries({ queryKey: ['admin-queue-health'] })
+    },
+  })
+}
+
+/** Discard all failed jobs for a single queue. */
+export function useDiscardDlqQueue() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (queue: string) =>
+      api<{ discarded: number; message: string }>(`/admin/dlq/${queue}/discard`, { method: 'POST' }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-dlq-status'] }) },
+  })
+}
+
+/** Retry all queues that have >0 failed jobs. */
+export function useRetryAllDlq() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api<{ totalRetried: number; message: string }>('/admin/dlq/retry-all', { method: 'POST' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-dlq-status'] })
+      qc.invalidateQueries({ queryKey: ['admin-queue-health'] })
+    },
+  })
+}
+
 /** Poll live BullMQ queue depths every 10 s. Falls back to demo data when admin-service is unreachable. */
 export function useQueueHealth() {
   const result = useQuery({

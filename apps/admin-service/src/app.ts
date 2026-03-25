@@ -12,6 +12,7 @@ import { tenantRoutes, type TenantRouteDeps } from './routes/tenants.js';
 import { auditRoutes, type AuditRouteDeps } from './routes/audit.js';
 import { p0Routes, type P0RouteDeps } from './routes/p0-features.js';
 import { queueMonitorRoutes, type QueueMonitorDeps } from './routes/queue-monitor.js';
+import { dlqProcessorRoutes, type DlqProcessorDeps } from './routes/dlq-processor.js';
 import type { AdminConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -23,6 +24,7 @@ export interface BuildAppOptions {
   auditDeps?: AuditRouteDeps;
   p0Deps?: P0RouteDeps;
   queueMonitorDeps?: QueueMonitorDeps;
+  dlqProcessorDeps?: DlqProcessorDeps;
 }
 
 /** Build and configure the Fastify application. */
@@ -103,6 +105,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   if (opts.queueMonitorDeps) {
     await app.register(queueMonitorRoutes(opts.queueMonitorDeps), { prefix: '/api/v1/admin' });
+  }
+
+  if (opts.dlqProcessorDeps) {
+    await app.register(dlqProcessorRoutes(opts.dlqProcessorDeps), { prefix: '/api/v1/admin' });
   }
 
   return app;

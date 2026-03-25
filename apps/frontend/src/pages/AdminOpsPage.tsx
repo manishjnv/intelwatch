@@ -12,14 +12,15 @@ import {
   useAdminAuditLog, useAdminStats, useQueueHealth,
   useActivateMaintenance, useDeactivateMaintenance,
   useSuspendTenant, useReinstateTenant, useChangeTenantPlan,
+  useDlqStatus, useRetryDlqQueue, useDiscardDlqQueue, useRetryAllDlq,
   type ServiceHealth, type MaintenanceWindow, type TenantRecord, type AdminAuditEntry,
-  type QueueDepth,
+  type QueueDepth, type DlqQueueEntry,
 } from '@/hooks/use-phase6-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   Activity, Calendar, Users, FileText, Download,
   CheckCircle2, AlertTriangle, XCircle, Clock,
-  Play, Square, ChevronDown, Database,
+  Play, Square, ChevronDown, Database, RefreshCw, Trash2, RotateCcw,
 } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -333,6 +334,65 @@ function QueueRow({ q }: { q: QueueDepth }) {
   )
 }
 
+// ─── DLQ Row ─────────────────────────────────────────────────────
+
+function DlqRow({ q, onRetry, onDiscard }: {
+  q: DlqQueueEntry
+  onRetry: (name: string) => void
+  onDiscard: (name: string) => void
+}) {
+  const shortName = q.name.replace('etip-', '')
+  const hasFailed = q.failed > 0
+
+  return (
+    <tr className="border-b border-border-subtle/50 hover:bg-bg-primary/50 transition-colors">
+      <td className="px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', hasFailed ? 'bg-sev-critical' : 'bg-sev-low')} />
+          <span className="text-xs font-mono text-text-primary">{shortName}</span>
+        </div>
+      </td>
+      <td className="px-4 py-2.5 text-xs text-center">
+        <span className={cn('font-semibold', hasFailed ? 'text-sev-critical' : 'text-text-muted')}>
+          {q.failed}
+        </span>
+      </td>
+      <td className="px-4 py-2.5">
+        <div className="flex items-center gap-2 justify-end">
+          <button
+            onClick={() => onRetry(q.name)}
+            disabled={!hasFailed}
+            className={cn(
+              'flex items-center gap-1 text-[10px] px-2 py-1 rounded transition-colors',
+              hasFailed
+                ? 'bg-sev-low/10 text-sev-low hover:bg-sev-low/20'
+                : 'bg-bg-elevated text-text-muted cursor-not-allowed opacity-50',
+            )}
+            title={hasFailed ? `Retry ${q.failed} failed job(s)` : 'No failed jobs'}
+          >
+            <RefreshCw className="w-3 h-3" />
+            Retry
+          </button>
+          <button
+            onClick={() => onDiscard(q.name)}
+            disabled={!hasFailed}
+            className={cn(
+              'flex items-center gap-1 text-[10px] px-2 py-1 rounded transition-colors',
+              hasFailed
+                ? 'bg-sev-critical/10 text-sev-critical hover:bg-sev-critical/20'
+                : 'bg-bg-elevated text-text-muted cursor-not-allowed opacity-50',
+            )}
+            title={hasFailed ? `Discard ${q.failed} failed job(s)` : 'No failed jobs'}
+          >
+            <Trash2 className="w-3 h-3" />
+            Discard
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 // ─── Main Component ──────────────────────────────────────────────
 
 type AdminTab = 'health' | 'maintenance' | 'tenants' | 'audit'
@@ -353,12 +413,16 @@ export function AdminOpsPage() {
   const { data: audit } = useAdminAuditLog()
   const { data: stats } = useAdminStats()
   const { data: queueHealth, isDemo: queueDemo } = useQueueHealth()
+  const { data: dlqStatus, isDemo: dlqDemo }     = useDlqStatus()
 
   const activateMutation    = useActivateMaintenance()
   const deactivateMutation  = useDeactivateMaintenance()
   const suspendMutation     = useSuspendTenant()
   const reinstateMutation   = useReinstateTenant()
   const changePlanMutation  = useChangeTenantPlan()
+  const retryDlqMutation    = useRetryDlqQueue()
+  const discardDlqMutation  = useDiscardDlqQueue()
+  const retryAllDlqMutation = useRetryAllDlq()
 
   const services = health?.services ?? []
   const summary  = health?.summary
@@ -519,6 +583,69 @@ export function AdminOpsPage() {
               AI enrichment service is showing elevated response times (340ms vs 50ms baseline) —
               likely due to upstream VirusTotal rate limiting. Monitor and consider burst scheduling.
             </div>
+
+            {/* DLQ table */}
+            {dlqStatus && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <RotateCcw className="w-3.5 h-3.5 text-text-muted" />
+                    <h3 className="text-xs font-semibold text-text-secondary">Dead-Letter Queue</h3>
+                    {dlqDemo && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">demo</span>
+                    )}
+                    {(dlqStatus.totalFailed ?? 0) > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-sev-critical/10 text-sev-critical font-semibold">
+                        {dlqStatus.totalFailed} failed
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => retryAllDlqMutation.mutate()}
+                    disabled={!dlqStatus.totalFailed || retryAllDlqMutation.isPending}
+                    className={cn(
+                      'flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded transition-colors',
+                      dlqStatus.totalFailed
+                        ? 'bg-sev-low/10 text-sev-low hover:bg-sev-low/20 border border-sev-low/20'
+                        : 'bg-bg-elevated text-text-muted cursor-not-allowed opacity-50 border border-border-subtle',
+                    )}
+                    title="Retry all failed jobs across all queues"
+                  >
+                    <RefreshCw className={cn('w-3 h-3', retryAllDlqMutation.isPending && 'animate-spin')} />
+                    Retry All ({dlqStatus.totalFailed ?? 0})
+                  </button>
+                </div>
+                <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border-subtle">
+                          <th className="text-left px-4 py-2.5 text-[11px] text-text-muted font-medium">Queue</th>
+                          <th className="text-center px-4 py-2.5 text-[11px] text-sev-critical/70 font-medium">Failed</th>
+                          <th className="text-right px-4 py-2.5 text-[11px] text-text-muted font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(dlqStatus.queues ?? []).map(q => (
+                          <DlqRow
+                            key={q.name}
+                            q={q}
+                            onRetry={(name) => retryDlqMutation.mutate(name)}
+                            onDiscard={(name) => discardDlqMutation.mutate(name)}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                {dlqStatus.redisUnavailable && (
+                  <p className="text-[11px] text-sev-high flex items-center gap-1.5">
+                    <AlertTriangle className="w-3 h-3" />
+                    Redis unreachable — DLQ counts may be stale.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

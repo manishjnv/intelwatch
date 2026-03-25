@@ -72,6 +72,7 @@ function SidebarCollapseToggle({ collapsed, onClick }: { collapsed: boolean; onC
 /* ------------------------------------------------------------------ */
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/dashboard', icon: IconDashboard, phase: 0, color: 'text-accent' },
+  { label: 'IOC Search', path: '/search', icon: Search, phase: 7, color: 'text-cyan-400' },
   ...MODULES.map(m => ({ label: m.title, path: m.route, icon: m.icon, phase: m.phase, color: m.color })),
 ]
 

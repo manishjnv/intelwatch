@@ -253,3 +253,52 @@ jobs:
 
             echo ""
             echo "═══ ETIP Deploy Complete ═══"
+
+      # ─── E2E Smoke Tests (master push only, non-blocking) ──────────
+      # Runs pipeline-smoke.test.ts on VPS against live containers.
+      # Uses continue-on-error so a flaky E2E never blocks a deploy.
+      # Requires E2E_ADMIN_EMAIL + E2E_ADMIN_PASSWORD GitHub secrets.
+      # CISA KEV feed is public — no API key needed.
+      - name: E2E pipeline smoke tests (post-deploy)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: E2E_ADMIN_EMAIL,E2E_ADMIN_PASSWORD
+          script_stop: false
+          command_timeout: 10m
+          script: |
+            set +e
+            echo "═══ E2E Smoke Tests ═══"
+            cd /opt/intelwatch
+
+            # Guard: skip gracefully if pnpm not installed on VPS host
+            if ! command -v pnpm &>/dev/null; then
+              echo "⚠️  pnpm not found on VPS host — E2E tests skipped."
+              echo "   Install Node 20 + pnpm on the host to enable post-deploy E2E."
+              exit 0
+            fi
+
+            # Guard: skip if secrets not provided
+            if [ -z "$E2E_ADMIN_EMAIL" ] || [ -z "$E2E_ADMIN_PASSWORD" ]; then
+              echo "⚠️  E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD not set — smoke tests skipped."
+              echo "   Add these as GitHub repository secrets to enable E2E CI."
+              exit 0
+            fi
+
+            E2E_ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
+            E2E_ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" \
+            E2E_API_BASE="http://localhost:3001" \
+            E2E_REDIS_URL="redis://localhost:6379" \
+            pnpm vitest run tests/e2e/pipeline-smoke.test.ts \
+              --config tests/e2e/vitest.config.ts \
+              --reporter=verbose 2>&1 | tail -50 || true
+
+            echo "═══ E2E complete (non-blocking) ═══"
+            exit 0
