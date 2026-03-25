@@ -106,9 +106,15 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
 
       try {
         // ── Fetch articles from source ────────────────────────────
+        const feedUrl = feed.url ?? '';
+        const feedHeaders: Record<string, string> = { ...(feed.headers as Record<string, string>) };
+        // Auto-inject OTX API key header for AlienVault feeds when key is configured
+        if (feedUrl.includes('alienvault.com') && config.TI_OTX_API_KEY) {
+          feedHeaders['X-OTX-API-Key'] = config.TI_OTX_API_KEY;
+        }
         const fetchResult = await routeToConnector(feed.feedType, {
-          url: feed.url ?? '',
-          headers: (feed.headers as Record<string, string>) ?? {},
+          url: feedUrl,
+          headers: feedHeaders,
           rssConnector,
         });
 

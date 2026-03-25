@@ -1,6 +1,6 @@
 # QA Checklist — Backend Features → UI Visibility
 
-**Last updated:** 2026-03-24 (Session 46)
+**Last updated:** 2026-03-25 (Session 65)
 **Rule:** Update this file after every implementation session via /session-end.
 **Rule:** A feature is "DONE" only when it is visible and functional in the browser, not just coded.
 
@@ -176,6 +176,26 @@
 | - | Notification preferences | [B] | [U] | CustomizationPage.tsx | Alert channel settings |
 | - | Custom fields | [B] | [U] | CustomizationPage.tsx | Schema extension UI |
 
+### AI Model Control (F1–F3 + G1–G5)
+
+| # | Feature | Backend | UI | Route/Component | Notes |
+|---|---------|---------|-----|-----------------|-------|
+| F1 | Per-feed AI policy (aiEnabled flag) | [B] 44 tests, 5 endpoints | [U] | CustomizationPage.tsx → AI Config tab | Enable/disable AI per feed, schedule override |
+| F2 | 12 CTI subtask model assignments | [B] 62 tests, 3 endpoints | [U] | CustomizationPage.tsx → AI Config → Subtasks | Per-subtask model picker (haiku/sonnet/opus) |
+| F2 | Plan tier apply (starter/professional/enterprise) | [B] budget enforcement (P1-6) | [U] | CustomizationPage.tsx → AI Config → Plans | Apply plan sets all 12 subtasks at once |
+| F3 | Cost estimator | [B] 16 tests | [U] | CustomizationPage.tsx → AI Config → Cost tab | Monthly cost prediction by plan + article volume |
+| G1 | aiEnabled per-feed enforcement in pipeline | [B] | - | apps/ingestion/workers/feed-fetch.ts | Backend-only enforcement — transparent |
+| G1 | Dedup Layer 3 LLM arbitration wired | [B] | - | apps/ingestion/services/dedup.ts | Haiku call in pipeline dedup path |
+| G3 | Campaign badge + filter on IOC list | [B] | [U] | IocListPage.tsx | Campaign column with badge |
+| G3 | IOC lifecycle management UI | [B] | [U] | IocListPage.tsx | Revoke/archive actions per IOC |
+| G3 | Custom subtask editor per-row | [B] | [U] | CustomizationPage.tsx | Per-subtask model + cost preview |
+| G3 | Plan confirm modal | [B] | [U] | CustomizationPage.tsx | Confirmation before tier change |
+| G4 | IOC regex hardening + IPv6 link-local filter | [B] | - | apps/ingestion/services/ioc-classifier.ts | fe80::/10 filtered, regex tightened |
+| G4 | Extensible IOC classifier | [B] | - | apps/ingestion/services/ioc-classifier.ts | configureClassifier() API |
+| G5 | Dedup cost tracking (dedupArbitrationTokens) | [B] | - | apps/ingestion/workers/pipeline.ts | costBreakdown includes dedup LLM cost |
+| G5 | Title n-gram Layer 2b in dedup | [B] | - | apps/ingestion/services/dedup.ts | Catches same-campaign / disjoint-IOC duplicates |
+| G5 | Plan tier budget gate (P1-6) | [B] | - | apps/customization/routes/ai-models.ts | professional≥50K/day, enterprise≥500K/day |
+
 ---
 
 ## Phase 6: Operations & Growth (Sessions 39–45)
@@ -224,18 +244,21 @@
 
 ---
 
-## Known Gaps (Backend Built, UI Missing)
+## Known Gaps (Backend Built, UI Missing or Incomplete)
 
-| # | Feature | Module | Where it belongs | Priority |
-|---|---------|--------|-----------------|----------|
-| 1 | Campaign detection | Module 07 IOC Intel | IOC list page — campaign badge/filter | P1 |
-| 2 | MITRE ATT&CK mapping (actor detail) | Module 08 Threat Actor | Actor detail panel | P1 |
-| 3 | IOC linkage on actors | Module 08 Threat Actor | Actor detail → linked IOC list | P1 |
-| 4 | IOC linkage on malware | Module 09 Malware Intel | Malware detail → linked IOC list | P1 |
-| 5 | IOC extraction results | Module 09 Malware Intel | Malware detail → extracted IOCs | P1 |
-| 6 | Enrichment quality distribution chart | Module 06 | Dashboard or EnrichmentPage | P2 |
-| 7 | Cost summary widget | Module 06 | Dashboard | P2 |
-| 8 | IOC lifecycle management UI | Module 05 | IocListPage — lifecycle state transitions | P2 |
+| # | Feature | Module | Where it belongs | Priority | Status |
+|---|---------|--------|-----------------|----------| ------ |
+| 1 | Enrichment quality distribution chart | Module 06 | Dashboard or EnrichmentPage | P2 | Open |
+| 2 | Cost summary widget | Module 06 | Dashboard | P2 | Open |
+| 3 | SearchPage (full-text IOC search UI) | Module 20 ES | /search route — ES service live on port 3020 | P0 | Open |
+| 4 | AnalyticsPage staleness indicator | Frontend | AnalyticsPage.tsx — "data as of" timestamp | P3 | Open |
+
+**Resolved gaps (no longer in backlog):**
+
+- Campaign badge + filter on IOC list → done Session 48/G3 ✓
+- MITRE ATT&CK mapping on actor detail → done Session 48 ✓
+- IOC linkage on actors + malware → done Session 48 ✓
+- IOC lifecycle management UI → done G3 ✓
 
 ---
 

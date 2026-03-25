@@ -36,6 +36,10 @@ const EnvSchema = z.object({
   TI_AI_EXTRACTION_MODEL: z.string().default('claude-sonnet-4-20250514'),
   // Customization service URL — used to fetch per-tenant subtask model assignments
   TI_CUSTOMIZATION_URL: z.string().default('http://localhost:3017'),
+
+  // ── External Feed API Keys ───────────────────────────────────────────────
+  // AlienVault OTX — required for subscribed pulses endpoint. Get from otx.alienvault.com.
+  TI_OTX_API_KEY: z.string().optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
