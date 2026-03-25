@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  useCreateAsset, useChangeAlertStatus, useAssignAlert, useAlertFeedback,
+  useCreateAsset, useChangeAlertStatus, useAssignAlert, useAlertFeedback, useTriageAlert,
   type DRPAlert,
 } from '@/hooks/use-phase4-data'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
@@ -188,6 +188,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
   const statusMutation = useChangeAlertStatus()
   const assignMutation = useAssignAlert()
   const feedbackMutation = useAlertFeedback()
+  const triageMutation = useTriageAlert()
 
   const nextStatuses = STATUS_TRANSITIONS[alert.status] ?? []
   const riskColor = alert.confidence >= 80 ? 'text-sev-critical' : alert.confidence >= 50 ? 'text-sev-medium' : 'text-sev-low'
@@ -286,7 +287,41 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
           />
         </div>
 
-        {/* Feedback — TP/FP */}
+        {/* Triage Actions — TP / FP / Investigate */}
+        <div>
+          <h4 className="text-[10px] text-text-muted uppercase mb-2">Triage</h4>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => triageMutation.mutate({ id: alert.id, verdict: 'true_positive', notes: triageNotes || undefined })}
+              disabled={triageMutation.isPending || isDemo}
+              className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-critical/10 border border-sev-critical/20 text-sev-critical hover:bg-sev-critical/20 transition-colors disabled:opacity-50"
+            >
+              <ThumbsDown className="w-3 h-3" />
+              True Positive
+            </button>
+            <button
+              onClick={() => triageMutation.mutate({ id: alert.id, verdict: 'false_positive', notes: triageNotes || undefined })}
+              disabled={triageMutation.isPending || isDemo}
+              className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-low/10 border border-sev-low/20 text-sev-low hover:bg-sev-low/20 transition-colors disabled:opacity-50"
+            >
+              <ThumbsUp className="w-3 h-3" />
+              False Positive
+            </button>
+            <button
+              onClick={() => triageMutation.mutate({ id: alert.id, verdict: 'investigate', notes: triageNotes || undefined })}
+              disabled={triageMutation.isPending || isDemo}
+              className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
+            >
+              <Eye className="w-3 h-3" />
+              Investigate
+            </button>
+          </div>
+          {triageMutation.isSuccess && (
+            <p className="text-[10px] text-sev-low mt-1">Triage recorded. Alert status and accuracy signals updated.</p>
+          )}
+        </div>
+
+        {/* Legacy Feedback — TP/FP */}
         <div>
           <h4 className="text-[10px] text-text-muted uppercase mb-2">Verdict Feedback</h4>
           <div className="flex items-center gap-2">

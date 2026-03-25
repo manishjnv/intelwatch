@@ -201,6 +201,18 @@ export function useAlertFeedback() {
   })
 }
 
+export function useTriageAlert() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, verdict, notes }: { id: string; verdict: 'true_positive' | 'false_positive' | 'investigate'; notes?: string }) =>
+      api<{ id: string; verdict: string; status: string }>(`/drp/alerts/${id}/triage`, { method: 'POST', body: { verdict, notes } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-alert-stats'] })
+    },
+  })
+}
+
 // ─── Threat Graph Hooks ─────────────────────────────────────────
 
 export function useGraphNodes(params: QueryParams = {}) {
@@ -422,6 +434,31 @@ export function useAddEvidence() {
       method: 'POST', body: { type, title, description, entityType, entityValue, tags: tags ?? [] },
     }),
     onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['hunt-evidence', vars.huntId] })
+    },
+  })
+}
+
+// ─── Integration + Hunt Action Hooks ────────────────────────────
+
+export function useCreateTicket() {
+  return useMutation({
+    mutationFn: (input: { correlationId: string; tenantId: string; title: string; description: string }) =>
+      api<{ ticketId: string; status: string; url?: string }>(
+        '/integrations/tickets', { method: 'POST', body: input },
+      ),
+  })
+}
+
+export function useAddToHunt() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ huntId, entityType, entityId }: { huntId: string; entityType: string; entityId: string }) =>
+      api<{ id: string; huntId: string }>(`/hunts/${huntId}/entities`, {
+        method: 'POST', body: { entityType, entityId },
+      }),
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['hunt-sessions'] })
       queryClient.invalidateQueries({ queryKey: ['hunt-evidence', vars.huntId] })
     },
   })

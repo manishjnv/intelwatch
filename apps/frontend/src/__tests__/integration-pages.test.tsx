@@ -37,6 +37,8 @@ vi.mock('@/hooks/use-intel-data', () => ({
       byLifecycle: { new: 285, active: 16 },
     },
   })),
+  useIOCPivot: vi.fn(() => ({ data: { relatedIOCs: [], actors: [], malware: [], campaigns: [] }, isLoading: false })),
+  useIOCTimeline: vi.fn(() => ({ data: [], isLoading: false })),
   useFeeds: vi.fn(() => ({ data: { data: [], total: 0 } })),
   useActors: vi.fn(() => ({ data: { data: [], total: 0 } })),
   useMalware: vi.fn(() => ({ data: { data: [], total: 0 } })),

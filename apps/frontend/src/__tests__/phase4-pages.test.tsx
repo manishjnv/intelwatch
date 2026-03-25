@@ -53,6 +53,7 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useChangeAlertStatus: () => mockUseChangeAlertStatus(),
   useAssignAlert: () => mockUseAssignAlert(),
   useAlertFeedback: () => mockUseAlertFeedback(),
+  useTriageAlert: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false }),
   useGraphPath: (...args: any[]) => mockUseGraphPath(...args),
   useCreateGraphNode: () => mockUseCreateGraphNode(),
   useStixExport: () => mockUseStixExport(),
@@ -61,6 +62,8 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useAddHypothesis: () => mockUseAddHypothesis(),
   useAddEvidence: () => mockUseAddEvidence(),
   useCorrelationFeedback: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false }),
+  useCreateTicket: () => ({ mutate: vi.fn(), isPending: false }),
+  useAddToHunt: () => ({ mutate: vi.fn(), isPending: false }),
   useGraphNodes: (...args: any[]) => mockUseGraphNodes(...args),
   useGraphStats: () => mockUseGraphStats(),
   useGraphSearch: (...args: any[]) => mockUseGraphSearch(...args),
@@ -84,6 +87,12 @@ vi.mock('@/hooks/phase4-demo-data', () => ({
   DEMO_TYPOSQUAT_RESULTS: [
     { domain: 'intelvvatch.in', method: 'homoglyph', similarity: 0.94, editDistance: 1, riskScore: 0.92, isRegistered: true, registrationDate: null, hostingProvider: 'Namecheap', compositeScore: 0.91, jaroWinkler: 0.96, soundexMatch: true, tldRisk: 0.7 },
   ],
+}))
+
+// Mock CorrelationDetailDrawer
+vi.mock('@/components/CorrelationDetailDrawer', () => ({
+  CorrelationDetailDrawer: ({ correlationId, onClose }: any) =>
+    correlationId ? <div data-testid="correlation-detail-drawer"><button onClick={onClose}>Close Drawer</button></div> : null,
 }))
 
 // Mock shared-ui components
@@ -352,8 +361,8 @@ describe('DRPDashboardPage', () => {
   it('shows TP/FP feedback buttons in alert detail', () => {
     render(<DRPDashboardPage />)
     fireEvent.click(screen.getByText('Typosquat: test.com → t3st.com'))
-    expect(screen.getByText('True Positive')).toBeTruthy()
-    expect(screen.getByText('False Positive')).toBeTruthy()
+    expect(screen.getAllByText('True Positive').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('False Positive').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows assign to me button in alert detail', () => {

@@ -365,6 +365,19 @@ export function IconAlerting({ size = defaults.size, className }: IconProps) {
   )
 }
 
+export function IconAnalytics({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      {/* Bar chart bars */}
+      <rect x="3" y="14" width="4" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="10" y="9" width="4" height="12" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="17" y="4" width="4" height="17" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+      {/* Trend line */}
+      <path d="M5 12 L12 7 L19 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
@@ -386,4 +399,5 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'onboarding': IconOnboarding,
   'reporting': IconReporting,
   'alerting': IconAlerting,
+  'analytics': IconAnalytics,
 }

@@ -77,6 +77,41 @@ export function useIOCStats() {
   return withDemoFallback(result, DEMO_IOC_STATS, d => (d?.total ?? 0) > 0)
 }
 
+// ─── IOC Pivot + Timeline hooks ──────────────────────────────────
+
+export interface IOCPivotResult {
+  relatedIOCs: { id: string; iocType: string; normalizedValue: string; severity: string; relationship: string }[]
+  actors: { id: string; name: string; confidence: number }[]
+  malware: { id: string; name: string; confidence: number }[]
+  campaigns: { id: string; name: string }[]
+}
+
+export interface IOCTimelineEvent {
+  timestamp: string
+  eventType: 'first_seen' | 'enrichment' | 'sighting' | 'severity_change' | 'correlation' | 'triage'
+  summary: string
+  source?: string
+}
+
+export function useIOCPivot(iocId: string | null) {
+  const empty: IOCPivotResult = { relatedIOCs: [], actors: [], malware: [], campaigns: [] }
+  return useQuery({
+    queryKey: ['ioc-pivot', iocId],
+    queryFn: () => api<IOCPivotResult>(`/iocs/${iocId}/pivot`).catch(() => empty),
+    enabled: !!iocId,
+    staleTime: 60_000,
+  })
+}
+
+export function useIOCTimeline(iocId: string | null) {
+  return useQuery({
+    queryKey: ['ioc-timeline', iocId],
+    queryFn: () => api<{ events: IOCTimelineEvent[] }>(`/iocs/${iocId}/timeline`).then(r => r?.events ?? []).catch(() => [] as IOCTimelineEvent[]),
+    enabled: !!iocId,
+    staleTime: 60_000,
+  })
+}
+
 // ─── Feed types ─────────────────────────────────────────────────
 
 export interface FeedRecord {

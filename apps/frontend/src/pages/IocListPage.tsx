@@ -5,14 +5,14 @@
  * P0-3: Inline entity hover preview. P0-5: Radial confidence gauge.
  */
 import { useState, useMemo, lazy, Suspense } from 'react'
-import { useIOCs, useIOCStats, type IOCRecord } from '@/hooks/use-intel-data'
+import { useIOCs, useIOCStats, useIOCPivot, useIOCTimeline, type IOCRecord, type IOCPivotResult, type IOCTimelineEvent } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 // Stats merged inline with FilterBar (no separate PageStatsBar)
 import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
-import { Brain, GitBranch, FileText } from 'lucide-react'
+import { Brain, GitBranch, FileText, Compass, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // UI improvements (#3, #6, #7, #8, #9, #10)
@@ -118,7 +118,7 @@ export function IocListPage() {
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [detailTab, setDetailTab] = useState<'enrichment' | 'details' | 'relations'>('enrichment')
+  const [detailTab, setDetailTab] = useState<'enrichment' | 'details' | 'relations' | 'pivot' | 'timeline'>('enrichment')
 
   const queryParams = useMemo(() => ({
     page, limit: 50, sortBy, sortOrder,
@@ -128,6 +128,8 @@ export function IocListPage() {
 
   const { data, isLoading, isDemo } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
+  const { data: pivotData, isLoading: pivotLoading } = useIOCPivot(selectedId)
+  const { data: timelineData, isLoading: timelineLoading } = useIOCTimeline(selectedId)
 
   // Client-side filter + sort for demo data (API doesn't apply to static fallback)
   const rows = useMemo(() => {
@@ -305,6 +307,8 @@ export function IocListPage() {
                 { key: 'enrichment' as const, label: 'Enrichment', icon: Brain },
                 { key: 'details' as const, label: 'Details', icon: FileText },
                 { key: 'relations' as const, label: 'Relations', icon: GitBranch },
+                { key: 'pivot' as const, label: 'Pivot', icon: Compass },
+                { key: 'timeline' as const, label: 'Timeline', icon: Clock },
               ]).map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
@@ -346,6 +350,117 @@ export function IocListPage() {
                       edges={stubRelations.edges}
                     />
                   </Suspense>
+                </div>
+              )}
+
+              {detailTab === 'pivot' && (
+                <div className="p-3 space-y-3" data-testid="ioc-pivot-tab">
+                  {pivotLoading && (
+                    <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-4 bg-bg-elevated rounded animate-pulse" />)}</div>
+                  )}
+                  {!pivotLoading && pivotData && (
+                    <>
+                      {/* Related IOCs */}
+                      {(pivotData as IOCPivotResult).relatedIOCs?.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] text-text-muted uppercase mb-1.5">Related IOCs ({(pivotData as IOCPivotResult).relatedIOCs.length})</h4>
+                          <div className="space-y-1">
+                            {(pivotData as IOCPivotResult).relatedIOCs.map(r => (
+                              <div key={r.id} className="flex items-center justify-between text-[11px] px-2 py-1 bg-bg-secondary rounded border border-border">
+                                <span className="text-text-primary font-mono truncate max-w-[60%]">{r.normalizedValue}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] text-text-muted uppercase">{r.iocType}</span>
+                                  <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent">{r.relationship}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Actors */}
+                      {(pivotData as IOCPivotResult).actors?.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] text-text-muted uppercase mb-1.5">Threat Actors</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(pivotData as IOCPivotResult).actors.map(a => (
+                              <span key={a.id} className="text-[10px] px-2 py-1 rounded bg-sev-critical/10 text-sev-critical border border-sev-critical/20">
+                                {a.name} <span className="text-text-muted">({a.confidence}%)</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Malware */}
+                      {(pivotData as IOCPivotResult).malware?.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] text-text-muted uppercase mb-1.5">Malware Families</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(pivotData as IOCPivotResult).malware.map(m => (
+                              <span key={m.id} className="text-[10px] px-2 py-1 rounded bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                                {m.name} <span className="text-text-muted">({m.confidence}%)</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Campaigns */}
+                      {(pivotData as IOCPivotResult).campaigns?.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] text-text-muted uppercase mb-1.5">Campaigns</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(pivotData as IOCPivotResult).campaigns.map(c => (
+                              <span key={c.id} className="text-[10px] px-2 py-1 rounded bg-purple-400/10 text-purple-400 border border-purple-400/20">{c.name}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Empty state */}
+                      {!(pivotData as IOCPivotResult).relatedIOCs?.length && !(pivotData as IOCPivotResult).actors?.length && !(pivotData as IOCPivotResult).malware?.length && (
+                        <div className="text-center py-6 text-text-muted">
+                          <Compass className="w-6 h-6 mx-auto mb-1.5 opacity-40" />
+                          <p className="text-xs">No pivot data available yet</p>
+                          <p className="text-[10px] mt-0.5">Enrich this IOC to discover related entities</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {detailTab === 'timeline' && (
+                <div className="p-3" data-testid="ioc-timeline-tab">
+                  {timelineLoading && (
+                    <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-4 bg-bg-elevated rounded animate-pulse" />)}</div>
+                  )}
+                  {!timelineLoading && (timelineData as IOCTimelineEvent[] | undefined)?.length ? (
+                    <div className="space-y-2 relative before:absolute before:left-[5px] before:top-1 before:bottom-1 before:w-px before:bg-border">
+                      {(timelineData as IOCTimelineEvent[]).map((evt, i) => {
+                        const typeColors: Record<string, string> = {
+                          first_seen: 'bg-accent', enrichment: 'bg-sev-low', sighting: 'bg-sev-medium',
+                          severity_change: 'bg-sev-critical', correlation: 'bg-purple-400', triage: 'bg-amber-400',
+                        }
+                        return (
+                          <div key={i} className="flex items-start gap-3 pl-4 relative">
+                            <div className={cn('absolute left-0.5 top-1 w-2 h-2 rounded-full border border-bg-primary', typeColors[evt.eventType] ?? 'bg-text-muted')} />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] tabular-nums text-text-muted">{new Date(evt.timestamp).toLocaleString()}</span>
+                                <span className="text-[9px] px-1 py-0.5 rounded bg-bg-elevated text-text-muted uppercase">{evt.eventType.replace('_', ' ')}</span>
+                              </div>
+                              <div className="text-[11px] text-text-primary mt-0.5">{evt.summary}</div>
+                              {evt.source && <div className="text-[10px] text-text-muted">via {evt.source}</div>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : !timelineLoading ? (
+                    <div className="text-center py-6 text-text-muted">
+                      <Clock className="w-6 h-6 mx-auto mb-1.5 opacity-40" />
+                      <p className="text-xs">No timeline events yet</p>
+                      <p className="text-[10px] mt-0.5">Events appear as this IOC is enriched and observed</p>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

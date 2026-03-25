@@ -8,7 +8,7 @@ import {
   IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
   IconCustomization, IconBilling, IconAdmin, IconOnboarding, IconReporting,
-  IconAlerting,
+  IconAlerting, IconAnalytics,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -207,6 +207,16 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-rose-400',
     phase: 7,
     route: '/alerting',
+  },
+  {
+    id: 'analytics',
+    title: 'Analytics',
+    description: 'Platform-wide analytics: IOC trends, threat landscape, executive summary, and pipeline health.',
+    helpText: 'Dashboards and trends across all services — risk posture, top threats, service health matrix.',
+    icon: IconAnalytics,
+    color: 'text-blue-400',
+    phase: 7,
+    route: '/analytics',
   },
 ]
 

@@ -47,7 +47,9 @@ export function useAlerts(page = 1, severity?: AlertSeverity, status?: AlertStat
   const empty: ListResponse<Alert> = { data: [], total: 0, page, limit: 50 }
   const result = useQuery({
     queryKey: ['alerts', page, severity, status],
-    queryFn: () => api<ListResponse<Alert>>(`/alerts?${params}`).catch(() => empty),
+    queryFn: () => api<Alert[] | ListResponse<Alert>>(`/alerts?${params}`)
+      .then(raw => Array.isArray(raw) ? { data: raw, total: raw.length, page, limit: 50 } : raw)
+      .catch(() => empty),
     staleTime: 15_000,
   })
   return withDemoFallback(
@@ -65,7 +67,7 @@ export function useAlertStats() {
     staleTime: 30_000,
   })
   return withDemoFallback(result, DEMO_STATS,
-    d => d != null && typeof (d as Record<string, unknown>)?.total === 'number')
+    d => typeof (d as Record<string, unknown>)?.total === 'number' && typeof (d as Record<string, unknown>)?.bySeverity === 'object')
 }
 
 /** Fetch alert history timeline. */
@@ -82,9 +84,12 @@ export function useAlertHistory(alertId?: string) {
 
 /** Search alerts by keyword. */
 export function useAlertSearch(query: string) {
+  const empty: ListResponse<Alert> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['alert-search', query],
-    queryFn: () => api<ListResponse<Alert>>(`/alerts/search?q=${encodeURIComponent(query)}`).catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => api<Alert[] | ListResponse<Alert>>(`/alerts/search?q=${encodeURIComponent(query)}`)
+      .then(raw => Array.isArray(raw) ? { data: raw, total: raw.length, page: 1, limit: 50 } : raw)
+      .catch(() => empty),
     enabled: query.length >= 2,
     staleTime: 15_000,
   })
@@ -176,7 +181,7 @@ export function useSuppressAlert() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, durationMinutes, reason }: { id: string; durationMinutes: number; reason: string }) =>
-      api<Alert>(`/alerts/${id}/suppress`, { method: 'POST', body: JSON.stringify({ durationMinutes, reason }) }),
+      api<Alert>(`/alerts/${id}/suppress`, { method: 'POST', body: { durationMinutes, reason } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['alerts'] })
       qc.invalidateQueries({ queryKey: ['alert-stats'] })
@@ -201,7 +206,7 @@ export function useBulkAcknowledge() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (ids: string[]) =>
-      api<{ acknowledged: number }>('/alerts/bulk-acknowledge', { method: 'POST', body: JSON.stringify({ ids }) }),
+      api<{ acknowledged: number }>('/alerts/bulk-acknowledge', { method: 'POST', body: { ids } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['alerts'] })
       qc.invalidateQueries({ queryKey: ['alert-stats'] })
@@ -214,7 +219,7 @@ export function useBulkResolve() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (ids: string[]) =>
-      api<{ resolved: number }>('/alerts/bulk-resolve', { method: 'POST', body: JSON.stringify({ ids }) }),
+      api<{ resolved: number }>('/alerts/bulk-resolve', { method: 'POST', body: { ids } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['alerts'] })
       qc.invalidateQueries({ queryKey: ['alert-stats'] })
@@ -229,7 +234,7 @@ export function useCreateRule() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: Partial<AlertRule>) =>
-      api<AlertRule>('/alerts/rules', { method: 'POST', body: JSON.stringify(body) }),
+      api<AlertRule>('/alerts/rules', { method: 'POST', body }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['alert-rules'] }) },
   })
 }
@@ -270,7 +275,7 @@ export function useCreateChannel() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: Partial<NotificationChannel>) =>
-      api<NotificationChannel>('/alerts/channels', { method: 'POST', body: JSON.stringify(body) }),
+      api<NotificationChannel>('/alerts/channels', { method: 'POST', body }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['notification-channels'] }) },
   })
 }
@@ -300,7 +305,7 @@ export function useCreateEscalation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: Partial<EscalationPolicy>) =>
-      api<EscalationPolicy>('/alerts/escalations', { method: 'POST', body: JSON.stringify(body) }),
+      api<EscalationPolicy>('/alerts/escalations', { method: 'POST', body }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['escalation-policies'] }) },
   })
 }

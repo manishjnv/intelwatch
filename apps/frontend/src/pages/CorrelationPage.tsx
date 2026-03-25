@@ -9,9 +9,10 @@ import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
   useCorrelations, useCorrelationStats, useCampaigns, useTriggerCorrelation,
-  useCorrelationFeedback,
+  useCorrelationFeedback, useCreateTicket, useAddToHunt, useHuntSessions,
   type CorrelationResult, type CampaignCluster,
 } from '@/hooks/use-phase4-data'
+import { CorrelationDetailDrawer } from '@/components/CorrelationDetailDrawer'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
@@ -205,12 +206,21 @@ function ConfidenceBar({ value }: { value: number }) {
 
 // ─── Correlation Detail Panel ───────────────────────────────────
 
-function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondNavigate }: {
+function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondNavigate,
+  onInvestigate, onCreateTicket, onAddToHunt, activeHunts, ticketPending, huntPending,
+}: {
   corr: CorrelationResult; onClose: () => void; isDemo: boolean
   onKillChainClick?: (phase: string) => void
   onDiamondNavigate?: (route: string, search: string) => void
+  onInvestigate?: (corr: CorrelationResult) => void
+  onCreateTicket?: (corr: CorrelationResult) => void
+  onAddToHunt?: (corr: CorrelationResult, huntId: string) => void
+  activeHunts?: { id: string; name: string }[]
+  ticketPending?: boolean
+  huntPending?: boolean
 }) {
   const feedbackMutation = useCorrelationFeedback()
+  const [showHuntSelector, setShowHuntSelector] = useState(false)
 
   const handleFeedback = (verdict: 'true_positive' | 'false_positive') => {
     feedbackMutation.mutate({ id: corr.id, verdict })
@@ -264,18 +274,36 @@ function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondN
         <div>
           <h4 className="text-[10px] text-text-muted uppercase mb-2">Actions</h4>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => toast('Investigation panel opened', 'info')}
+            <button onClick={() => onInvestigate?.(corr)}
               className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 transition-colors">
               <SearchIcon className="w-3 h-3" />Investigate
             </button>
-            <button onClick={() => toast('Ticket created via integration-service', 'success')}
-              className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-purple-400/10 border border-purple-400/20 text-purple-400 hover:bg-purple-400/20 transition-colors">
-              <Send className="w-3 h-3" />Create Ticket
+            <button onClick={() => onCreateTicket?.(corr)} disabled={ticketPending}
+              className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-purple-400/10 border border-purple-400/20 text-purple-400 hover:bg-purple-400/20 transition-colors disabled:opacity-50">
+              <Send className="w-3 h-3" />{ticketPending ? 'Creating…' : 'Create Ticket'}
             </button>
-            <button onClick={() => toast('Added to active hunt session', 'success')}
-              className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 hover:bg-emerald-400/20 transition-colors">
-              <Crosshair className="w-3 h-3" />Add to Hunt
-            </button>
+            <div className="relative">
+              <button onClick={() => {
+                const hunts = activeHunts ?? []
+                if (hunts.length === 1) { onAddToHunt?.(corr, hunts[0].id) }
+                else if (hunts.length > 1) { setShowHuntSelector(s => !s) }
+                else { toast('No active hunts — create one first', 'info') }
+              }} disabled={huntPending}
+                className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 hover:bg-emerald-400/20 transition-colors disabled:opacity-50">
+                <Crosshair className="w-3 h-3" />{huntPending ? 'Adding…' : 'Add to Hunt'}
+              </button>
+              {showHuntSelector && (activeHunts?.length ?? 0) > 1 && (
+                <div className="absolute top-full left-0 mt-1 w-52 bg-bg-secondary border border-border rounded-lg shadow-lg z-20 py-1"
+                  data-testid="hunt-selector">
+                  {activeHunts!.map(h => (
+                    <button key={h.id} onClick={() => { onAddToHunt?.(corr, h.id); setShowHuntSelector(false) }}
+                      className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover transition-colors truncate">
+                      {h.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -347,10 +375,52 @@ export function CorrelationPage() {
   const [killChainFilter, setKillChainFilter] = useState<string | null>(null)
   const [autoCorrelating, setAutoCorrelating] = useState(false)
 
+  const [drawerCorrId, setDrawerCorrId] = useState<string | null>(null)
+
   const { data: corrData, isLoading, isDemo } = useCorrelations({ page, ...filters })
   const { data: stats } = useCorrelationStats()
   const { data: campData } = useCampaigns()
   const correlateMutation = useTriggerCorrelation()
+  const ticketMutation = useCreateTicket()
+  const huntMutation = useAddToHunt()
+  const { data: huntData } = useHuntSessions({ status: 'active', limit: 20 })
+
+  const activeHunts = useMemo(
+    () => (huntData?.data ?? []).filter(h => h.status === 'active').map(h => ({ id: h.id, name: h.name })),
+    [huntData],
+  )
+
+  const handleInvestigate = useCallback((corr: CorrelationResult) => {
+    setDrawerCorrId(corr.id)
+  }, [])
+
+  const handleCreateTicket = useCallback((corr: CorrelationResult) => {
+    if (isDemo) {
+      toast('Ticket created via integration-service (demo)', 'success')
+      return
+    }
+    ticketMutation.mutate(
+      { correlationId: corr.id, tenantId: 'default', title: corr.title, description: corr.description },
+      {
+        onSuccess: (res) => toast(`Ticket created: ${res.ticketId}`, 'success'),
+        onError: () => toast('Failed to create ticket', 'error'),
+      },
+    )
+  }, [isDemo, ticketMutation])
+
+  const handleAddToHunt = useCallback((corr: CorrelationResult, huntId: string) => {
+    if (isDemo) {
+      toast('Added to active hunt session (demo)', 'success')
+      return
+    }
+    huntMutation.mutate(
+      { huntId, entityType: 'correlation', entityId: corr.id },
+      {
+        onSuccess: () => toast('Added to hunt session', 'success'),
+        onError: () => toast('Failed to add to hunt', 'error'),
+      },
+    )
+  }, [isDemo, huntMutation])
 
   const handleAutoCorrelate = useCallback(() => {
     if (isDemo) {
@@ -573,7 +643,17 @@ export function CorrelationPage() {
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelectedId(null)} />
           <CorrelationDetail corr={selectedCorrelation} onClose={() => setSelectedId(null)} isDemo={isDemo}
-            onKillChainClick={handleKillChainClick} onDiamondNavigate={handleDiamondNavigate} />
+            onKillChainClick={handleKillChainClick} onDiamondNavigate={handleDiamondNavigate}
+            onInvestigate={handleInvestigate} onCreateTicket={handleCreateTicket} onAddToHunt={handleAddToHunt}
+            activeHunts={activeHunts} ticketPending={ticketMutation.isPending} huntPending={huntMutation.isPending} />
+        </>
+      )}
+      {/* Investigation Drawer */}
+      {drawerCorrId && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setDrawerCorrId(null)} />
+          <CorrelationDetailDrawer correlationId={drawerCorrId} fallback={correlations.find(c => c.id === drawerCorrId) ?? null}
+            onClose={() => setDrawerCorrId(null)} />
         </>
       )}
       <ToastContainer />
