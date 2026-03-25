@@ -1,15 +1,15 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-25
-**Session:** 68
-**Session Summary:** Section B Frontend UX Guards — P2-3 ticket guard (CorrelationPage) + P3-5 analytics staleness indicator (AnalyticsPage). Mobile responsive grid fixes committed from prior WIP.
+**Session:** 69
+**Session Summary:** P3-1/P3-2/P3-3 — Implemented NVD, STIX/TAXII, and REST_API feed connectors in ingestion service. 3 new connectors, 32 new tests, 392 total ingestion tests.
 
 ## ✅ Changes Made
 
 | Commit  | Files | Description                                                                      |
 |---------|-------|----------------------------------------------------------------------------------|
-| 1ff8c88 | 19    | Mobile responsive grid fixes (9 pages), api-gateway rate-limit, ConfidenceBreakdown component, mobile tests |
-| 17e60be | 5     | P2-3 ticket guard + P3-5 analytics staleness indicator (9 new tests)             |
+| 886e4b3 | 9     | feat: P3-1/P3-2/P3-3 NVD + STIX/TAXII + REST_API feed connectors               |
+| d298226 | 4     | fix: remove unused AppError imports + TS null/undefined alignment in connectors  |
 
 ## 📁 Files / Documents Affected
 
@@ -17,72 +17,62 @@
 
 | File | Purpose |
 |------|---------|
-| `apps/frontend/src/__tests__/mobile-responsive.test.tsx` | Mobile responsive grid tests |
-| `apps/frontend/src/__tests__/confidence-breakdown.test.tsx` | ConfidenceBreakdown component tests |
-| `apps/frontend/src/components/viz/ConfidenceBreakdown.tsx` | Confidence breakdown visualization component |
-| `apps/api-gateway/tests/rate-limit.test.ts` | Rate limiting tests for api-gateway |
+| `apps/ingestion/src/connectors/nvd.ts` | NVD 2.0 REST API connector — pagination, rate limiting (6s/0.6s), Zod validation, CVE→FetchedArticle mapping |
+| `apps/ingestion/src/connectors/taxii.ts` | STIX/TAXII 2.1 connector — collection discovery, basic auth, STIX indicator→FetchedArticle mapping |
+| `apps/ingestion/src/connectors/rest-api.ts` | Generic REST API connector — Zod-validated feedMeta, configurable fieldMap + responseArrayPath, 10MB limit |
+| `apps/ingestion/tests/nvd-connector.test.ts` | 9 NVD tests (fetch, empty, 403, timeout, invalid JSON, Zod fail, apiKey, pagination, date window) |
+| `apps/ingestion/tests/taxii-connector.test.ts` | 10 TAXII tests (fetch, unconfigured, explicit collection, auth 401/403, basic auth, network, no collections, addedAfter, empty bundle) |
+| `apps/ingestion/tests/rest-api-connector.test.ts` | 13 REST_API tests (fieldMap, no URL, validation fail, top-level array, nested path, non-OK, oversized, network, non-JSON, non-array path, defaults, POST, custom headers) |
 
 ### Modified Files
 
 | File | Change |
 |------|--------|
-| `apps/frontend/src/pages/CorrelationPage.tsx` | P2-3: useTicketingIntegrations import, ticketingConfigured prop + disabled button + tooltip |
-| `apps/frontend/src/pages/AnalyticsPage.tsx` | P3-5: StalenessIndicator component (generatedAt/dataUpdatedAt, amber/red color, refresh) |
-| `apps/frontend/src/__tests__/correlation-mutations.test.tsx` | 3 ticket guard tests + useTicketingIntegrations mock |
-| `apps/frontend/src/__tests__/analytics-page.test.tsx` | 6 staleness indicator tests (fresh/amber/red/refresh/fallback) |
-| `apps/frontend/src/__tests__/phase4-pages.test.tsx` | Added useTicketingIntegrations mock (fixed test after P2-3 change) |
-| `apps/frontend/src/pages/AdminOpsPage.tsx` | Mobile grid: grid-cols-1 on small screens |
-| `apps/frontend/src/pages/CustomizationPage.tsx` | Mobile grid: grid-cols-1 on small screens |
-| `apps/frontend/src/pages/DRPDashboardPage.tsx` | Mobile grid: grid-cols-1 on small screens |
-| `apps/frontend/src/pages/HuntingWorkbenchPage.tsx` | Mobile grid: grid-cols-1 on small screens |
-| `apps/frontend/src/pages/IntegrationPage.tsx` | Mobile grid: grid-cols-1, hidden tab labels on small screens |
-| `apps/frontend/src/pages/IocListPage.tsx` | Mobile grid: grid-cols-1 on small screens |
-| `apps/frontend/src/pages/OnboardingPage.tsx` | Mobile grid: grid-cols-1 on small screens |
-| `apps/frontend/src/pages/UserManagementPage.tsx` | Mobile grid: grid-cols-1 on small screens |
-| `apps/frontend/src/hooks/use-intel-data.ts` | Minor hook update |
-| `apps/api-gateway/src/app.ts` | Rate limiting middleware |
-| `apps/api-gateway/src/config.ts` | Rate limit config |
-| `apps/api-gateway/src/routes/health.ts` | Health route update |
-| `apps/api-gateway/__tests__/gateway.test.ts` | Gateway test update |
+| `apps/ingestion/src/config.ts` | Added TI_NVD_API_KEY, TI_TAXII_URL, TI_TAXII_USER, TI_TAXII_PASSWORD env vars |
+| `apps/ingestion/src/workers/feed-fetch.ts` | Imported 3 new connectors, expanded RouteOptions, updated routeToConnector switch (nvd→NVDConnector, stix/taxii→TAXIIConnector, rest_api→RestAPIConnector, only misp remains 501) |
+| `apps/ingestion/tests/feed-fetch-worker.test.ts` | Added vi.mock for 3 new connectors, changed 501 test from 'stix' to 'misp' |
 
 ## 🔧 Decisions & Rationale
 
-No new DECISIONS_LOG entries. Both fixes follow existing patterns:
-- P2-3: Option A (prevent bad call) preferred over Option B (handle error) — existing pattern from hunt session validation
-- P3-5: Uses API `generatedAt` timestamp with `dataUpdatedAt` fallback — existing react-query pattern
+No new DECISIONS_LOG entries. Follows existing patterns:
+- Native fetch (Node 20 built-in) — no axios/node-fetch added per simplicity rule
+- Zod validation on all external API responses (NVD, TAXII envelope, REST feedMeta)
+- Return empty array on error (log warning, don't throw) — matches RSS connector pattern
+- parseConfig (Prisma Json column) used for per-feed connector configuration
 
 ## 🧪 E2E / Deploy Verification Results
 
-- Frontend tests: 734 pass, 2 skipped (736 total)
-- Pushed to master: `cee8731..17e60be`
-- CI deploy: triggered, pending verification
+No VPS deploy verification this session. All test suites verified locally:
+- Ingestion: 392/392 pass (26 test files, 0 TS errors)
+- Full monorepo: ~5,730 tests passing (0 failures)
+- TypeScript: 0 errors (tsc -b clean)
+- Lint: 0 new errors
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-- **Verify CI deploy**: Check GitHub Actions for green CI, 33 containers healthy on VPS
-- **Uncommitted ingestion files**: `apps/ingestion/src/connectors/` (nvd.ts, rest-api.ts, taxii.ts) + tests — from prior WIP, not session 68 scope
+- Verify CI deploy completes (33 containers healthy)
+- MISP connector still returns 501 (only remaining stub)
 
 ### Deferred
-- VulnerabilityListPage.tsx pre-existing TS errors (icon prop type mismatch)
+- Queue lane concurrency per connector type (P3-4)
 - IOC search pagination improvements
 - D3 code-split further improvements
 - Production hardening (rate limiting, error alerting, log aggregation)
+- Pre-existing TS errors in VulnerabilityListPage.tsx (icon prop mismatch)
 
 ## 🔁 How to Resume
 
 **Paste this at the start of the next session:**
 ```
 /session-start
-Working on: verify CI deploy + next feature work.
-Scope: frontend — session 68 commits pushed.
-Next: verify 33 containers healthy. Then: IOC search pagination,
-production hardening, or ingestion connectors (nvd/rest-api/taxii).
+Working on: ingestion service — remaining connector work.
+Scope: apps/ingestion only. Do not modify any other service or shared package.
+Next: MISP connector (P3-4), queue lane concurrency per connector type,
+or move to IOC search pagination / production hardening.
 ```
 
 **Module map:**
-- frontend/ui: `skills/20-UI-UX.md`
-- api-gateway: `skills/` (no dedicated file — Tier 1 frozen)
 - ingestion: `skills/04-INGESTION.md`
 - testing: `skills/02-TESTING.md`
 
@@ -90,5 +80,5 @@ production hardening, or ingestion connectors (nvd/rest-api/taxii).
 - Phase 7 COMPLETE (all services deployed)
 - E2E integration plan: ongoing
 - Gap analysis: G1-G5 COMPLETE, AC-2 COMPLETE
-- Session 68: P2-3 + P3-5 COMPLETE
-- Next: deploy verification + production hardening
+- Session 69: P3-1/P3-2/P3-3 COMPLETE
+- Remaining 501 stubs: MISP only

@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
-**Session counter:** 68
+**Session counter:** 69
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -11,7 +11,7 @@
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
-| etip_ingestion | ✅ Running | 0.3.0 | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a gap fixes + AC-2 per-tenant subtask model routing. 360 tests. FeedPolicy aiEnabled enforced in ArticlePipeline; dedup Layer 3 Haiku arbitration; emerging TLD regex; IPv6 link-local filtering. CustomizationClient: per-tenant model assignments (classification/ioc_extraction/deduplication), 5-min TTL cache, safe fallback. |
+| etip_ingestion | ✅ Running | 0.4.0 | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a gap fixes + AC-2 per-tenant subtask model routing + P3-1/P3-2/P3-3 connectors. 392 tests. NVD 2.0 connector (pagination, rate limiting, Zod validation). STIX/TAXII 2.1 connector (collection discovery, basic auth, STIX indicator mapping). Generic REST_API connector (fieldMap, responseArrayPath, 10MB limit). Only MISP remains 501. |
 | etip_normalization | ✅ Running | 0.1.0 | 2026-03-25 | IOC upsert + 18 accuracy improvements + G2/G4b gap fixes. 157 tests. Feed reliability TTL cache (5min); weighted velocity scoring; configureClassifier(); unknownTypeCount stats in GET /stats (P2-1). |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
@@ -51,7 +51,7 @@
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **20 data pages** + G3/G5 gap fixes + BYOK + D2 widget + P2-3 ticket guard + P3-5 staleness indicator. 734 tests (736 total, 2 skipped). P2-3: CorrelationPage Create Ticket button disabled + tooltip when no ticketing integration configured. P3-5: AnalyticsPage staleness indicator (Data as of timestamp, amber/red color coding, refresh button). Mobile responsive grid fixes across 9 pages. ConfidenceBreakdown viz component. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a + AC-2. 360 tests. aiEnabled enforced in ArticlePipeline (feedAiEnabled param). Dedup Layer 3 Haiku arbitration. Emerging TLDs. isLinkLocalIPv6() filter. AC-2: CustomizationClient fetches per-tenant subtask models (classification→triage, ioc_extraction→extraction, deduplication→arbitrate) with 5-min TTL cache + safe defaults on error. TI_CUSTOMIZATION_URL env var added (default localhost:3017). |
+| ingestion | 2 | ✅ Deployed | 2026-03-25 | Feed pipeline + 11 modules + policies + AC-2 + **P3-1/P3-2/P3-3 connectors**. 392 tests. NVD 2.0 connector (pagination, rate limiting, CVE→FetchedArticle). STIX/TAXII 2.1 connector (collection discovery, basic auth, indicator mapping). Generic REST_API connector (Zod-validated feedMeta, fieldMap, responseArrayPath, 10MB limit). Only MISP remains 501. TI_NVD_API_KEY, TI_TAXII_URL/USER/PASSWORD env vars added. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. Session 68 COMPLETE. 33 containers, 734 frontend tests (736 total, 2 skipped).
-- **Last session outcome:** Session 68 (2026-03-25). 2 commits: (1) 1ff8c88 — mobile responsive grid fixes across 9 pages + api-gateway rate-limit + ConfidenceBreakdown component; (2) 17e60be — P2-3 ticket guard (CorrelationPage Create Ticket disabled when no ticketing integration, tooltip) + P3-5 analytics staleness indicator (StalenessIndicator component, amber/red color coding, refresh button). 9 new tests (3 ticket guard, 6 staleness). 734/736 frontend tests pass (2 skipped pre-existing). Pushed to master, CI triggered.
-- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx (icon prop — unrelated). Uncommitted ingestion connector files in working tree (nvd, rest-api, taxii connectors — from prior WIP, not part of session 68 scope).
-- **Next tasks:** Verify CI deploy completes (33 containers healthy). Then: IOC search pagination improvements, D3 code-split further improvements, production hardening (rate limiting, error alerting, log aggregation).
+- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. Session 69 (P3-1/P3-2/P3-3 connectors) COMPLETE. 33 containers, ~5,730 total tests.
+- **Last session outcome:** Session 69 (2026-03-25). 2 commits: (1) 886e4b3 — P3-1/P3-2/P3-3 NVD + STIX/TAXII + REST_API feed connectors (3 new connectors, router wiring, 32 new tests); (2) d298226 — TS fix (unused imports + null/undefined alignment). 392 ingestion tests passing. Pushed to master, CI triggered.
+- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx (icon prop — unrelated). MISP connector still returns 501. Pre-existing frontend lint error (unused `vi` import in test file).
+- **Next tasks:** Verify CI deploy completes (33 containers healthy). Then: MISP connector (P3-4), queue lane concurrency per connector type, IOC search pagination improvements, production hardening.
 
 ## Deployment Log
 
@@ -210,6 +210,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 66 | 2026-03-25 | No deploy (code-only) | — | 242c132 | AC-2: CustomizationClient + per-tenant subtask model routing in ArticlePipeline. setModel() on Triage/Extraction services. dedup.arbitrate() model param. TI_CUSTOMIZATION_URL env var. 15 new tests (360 ingestion total). ~5,557 monorepo total. |
 | 67 | 2026-03-25 | No deploy (code-only) | — | 7dfb799, 85d1612, 744c977, f6e7dc3, 12f6bc5 | P1-1 correlation Redis persistence (store-checkpoint, 179 tests). P0-3 billing priceInr fix. P0-4 IOC lifecycle FSM (138 ioc-intelligence tests). P2-1 normalization unknownTypeCount (157 tests). P2-2 stage2Factor DI + BYOK backend+frontend (241 customization, 713 frontend). D1 analytics enrichment-quality. D2 dashboard widget. ~5,617 monorepo total. |
 | 68 | 2026-03-25 | etip_frontend updated | ⏳ CI triggered | 1ff8c88, 17e60be | Mobile responsive grid fixes (9 pages), api-gateway rate-limit, ConfidenceBreakdown component, P2-3 ticket guard, P3-5 analytics staleness indicator. 734 frontend tests. |
+| 69 | 2026-03-25 | etip_ingestion updated (3 new connectors) | ⏳ CI triggered | 886e4b3, d298226 | P3-1/P3-2/P3-3: NVD + STIX/TAXII + REST_API feed connectors. 32 new tests (392 total ingestion). TI_NVD_API_KEY, TI_TAXII_URL/USER/PASSWORD env vars. Only MISP remains 501. |
 
 ## E2E Verification Results (Session 13)
 

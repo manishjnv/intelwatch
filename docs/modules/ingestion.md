@@ -1,6 +1,6 @@
 # Ingestion Service
 
-**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 360
+**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 392
 
 ## What It Does
 
@@ -26,7 +26,10 @@ RSS Feed → Scheduler (cron 5min sync)
 
 | Feature | File | Description |
 |---------|------|-------------|
-| RSS Connector | connectors/rss-connector.ts | RSS/Atom feed parsing |
+| RSS Connector | connectors/rss.ts | RSS/Atom feed parsing |
+| NVD Connector | connectors/nvd.ts | NVD 2.0 REST API — CVE feeds with pagination + rate limiting |
+| STIX/TAXII Connector | connectors/taxii.ts | TAXII 2.1 — collection discovery, basic auth, STIX indicator mapping |
+| REST API Connector | connectors/rest-api.ts | Generic JSON REST — configurable fieldMap + responseArrayPath |
 | Scheduler | workers/scheduler.ts | node-cron feed sync every 5 min |
 | Feed Fetch Worker | workers/feed-fetch.ts | BullMQ worker: fetch → pipeline → persist |
 | Pipeline | workers/pipeline.ts | 5-stage article processing |
@@ -65,3 +68,7 @@ RSS Feed → Scheduler (cron 5min sync)
 | TI_AI_DAILY_BUDGET_USD | 0.50 | Per-tenant daily limit |
 | TI_AI_MAX_TRIAGE_PER_FETCH | 10 | Haiku calls per fetch |
 | TI_AI_MAX_EXTRACTION_PER_FETCH | 5 | Sonnet calls per fetch |
+| TI_NVD_API_KEY | (optional) | NVD API key for higher rate limits (50 req/30s vs 5) |
+| TI_TAXII_URL | (optional) | STIX/TAXII 2.1 server discovery URL |
+| TI_TAXII_USER | (optional) | TAXII basic auth username |
+| TI_TAXII_PASSWORD | (optional) | TAXII basic auth password |
