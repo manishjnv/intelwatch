@@ -14,7 +14,7 @@ const EnvSchema = z.object({
   TI_SERVICE_JWT_SECRET: z.string().min(16),
   TI_CORS_ORIGINS: z.string().default('http://localhost:3002'),
   TI_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().default(60000),
-  TI_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().default(100),
+  TI_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().default(200),
   TI_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   TI_GOOGLE_CLIENT_ID: z.string().optional(),
   TI_GOOGLE_CLIENT_SECRET: z.string().optional(),

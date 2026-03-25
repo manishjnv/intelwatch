@@ -71,7 +71,7 @@ export function CustomizationPage() {
             <button key={key} onClick={() => setActiveTab(key)}
               className={cn('flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors',
                 activeTab === key ? 'text-accent border-b-2 border-accent' : 'text-text-muted hover:text-text-secondary')}>
-              <Icon className="w-3 h-3" />{label}
+              <Icon className="w-3 h-3" /><span className="hidden sm:inline">{label}</span>
             </button>
           ))}
         </div>
@@ -187,7 +187,7 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
       {/* Plan selector */}
       <div>
         <h3 className="text-[10px] text-text-muted uppercase font-medium mb-2">AI Plan Tier</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
           {plans.map((plan: PlanTierMeta) => (
             <button key={plan.plan}
               onClick={() => setSelectedPlan(plan.plan)}
@@ -588,7 +588,7 @@ function DashboardConfigTab() {
 
       <div className="p-4 bg-bg-secondary rounded-lg border border-border">
         <h3 className="text-xs font-semibold text-text-primary mb-2">Widget Layout</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
           {['IOC Summary', 'Alert Feed', 'Risk Score', 'Feed Status', 'AI Cost', 'Recent Activity'].map(widget => (
             <div key={widget} className="p-3 bg-bg-primary rounded border border-border border-dashed text-center">
               <Sliders className="w-4 h-4 mx-auto text-text-muted mb-1" />

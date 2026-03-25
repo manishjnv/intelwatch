@@ -54,6 +54,8 @@ export interface IOCRecord {
   confidence: number; lifecycle: string; tlp: string; tags: string[]
   threatActors: string[]; malwareFamilies: string[]; firstSeen: string; lastSeen: string
   campaignId?: string | null
+  /** Confidence formula inputs (returned by backend when available) */
+  feedReliability?: number; corroborationCount?: number; aiConfidence?: number
 }
 
 export function useIOCs(params: QueryParams = {}) {

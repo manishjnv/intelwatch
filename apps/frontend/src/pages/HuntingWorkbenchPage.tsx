@@ -220,7 +220,7 @@ function HypothesisKanban({ hypotheses, verdictOverrides, onMoveHypothesis }: {
   const getVerdict = (h: HuntHypothesis) => verdictOverrides[h.id] ?? h.verdict
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {KANBAN_COLUMNS.map(col => {
         const items = hypotheses.filter(h => getVerdict(h) === col.key)
         return (

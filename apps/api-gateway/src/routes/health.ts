@@ -5,7 +5,7 @@ const VERSION = '1.0.0';
 const startTime = Date.now();
 
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/health', async (_req, reply) => {
+  app.get('/health', { config: { rateLimit: false } }, async (_req, reply) => {
     return reply.status(200).send({
       status: 'ok',
       service: SERVICE_NAME,
@@ -15,7 +15,7 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  app.get('/ready', async (_req, reply) => {
+  app.get('/ready', { config: { rateLimit: false } }, async (_req, reply) => {
     return reply.status(200).send({
       status: 'ok',
       service: SERVICE_NAME,

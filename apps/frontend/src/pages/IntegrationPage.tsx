@@ -195,8 +195,8 @@ export function IntegrationPage() {
             <button key={key} onClick={() => setActiveTab(key)}
               className={cn('flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors',
                 activeTab === key ? 'text-accent border-b-2 border-accent' : 'text-text-muted hover:text-text-secondary')}>
-              <Icon className="w-3 h-3" />{label}
-              <span className="text-[10px] text-text-muted">({tabContent[key].data.length})</span>
+              <Icon className="w-3 h-3" /><span className="hidden sm:inline">{label}</span>
+              <span className="text-[10px] text-text-muted hidden sm:inline">({tabContent[key].data.length})</span>
             </button>
           ))}
           <button onClick={() => setShowModal(activeTab)}
@@ -208,7 +208,7 @@ export function IntegrationPage() {
 
         {/* Tab Summary Cards */}
         {activeTab === 'siem' && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             {(siemData?.data ?? []).map(s => (
               <div key={s.id} className="p-3 bg-bg-secondary rounded-lg border border-border cursor-pointer hover:border-accent/30 transition-colors"
                 onClick={() => setSelectedItem({ tab: 'siem', item: s })}>

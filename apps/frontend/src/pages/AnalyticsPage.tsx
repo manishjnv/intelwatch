@@ -70,7 +70,7 @@ function OverviewTab({ isDemo }: { isDemo: boolean }) {
           Demo data — connect Analytics Service for live metrics
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" data-testid="widget-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" data-testid="widget-grid">
         {widgets.map(w => (
           <div key={w.id} className="p-3 bg-bg-secondary rounded-lg border border-border hover:border-accent/30 transition-colors">
             <div className="text-[10px] text-text-muted uppercase mb-1">{w.label}</div>
@@ -155,7 +155,7 @@ function LandscapeTab() {
       </div>
 
       {/* Key metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {exec.keyMetrics.map(m => (
           <div key={m.label} className="p-3 bg-bg-secondary rounded-lg border border-border">
             <div className="text-[10px] text-text-muted uppercase mb-1">{m.label}</div>
@@ -215,7 +215,7 @@ function HealthTab() {
         <TooltipHelp message="Real-time health status of all ETIP microservices. Checks run every 60 seconds." />
         <span className="ml-auto text-[10px] text-text-muted">{healthy}/{total} healthy</span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2" data-testid="health-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2" data-testid="health-grid">
         {items.map(s => {
           const isHealthy = s.status === 'healthy'
           const StatusIcon = isHealthy ? CheckCircle : s.status === 'unhealthy' ? XCircle : HelpCircle
@@ -283,7 +283,7 @@ export function AnalyticsPage() {
           <button key={key} onClick={() => setActiveTab(key)}
             className={cn('flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
               activeTab === key ? 'bg-accent/10 text-accent' : 'text-text-muted hover:text-text-secondary hover:bg-bg-hover')}>
-            <Icon className="w-3 h-3" />{label}
+            <Icon className="w-3 h-3" /><span className="hidden sm:inline">{label}</span>
           </button>
         ))}
       </div>

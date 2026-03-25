@@ -288,8 +288,8 @@ export function DRPDashboardPage() {
             <button key={key} onClick={() => setActiveTab(key)}
               className={cn('flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors',
                 activeTab === key ? 'text-accent border-b-2 border-accent' : 'text-text-muted hover:text-text-secondary')}>
-              <Icon className="w-3 h-3" />{label}
-              {count != null && <span className="text-[10px] text-text-muted">({count})</span>}
+              <Icon className="w-3 h-3" /><span className="hidden sm:inline">{label}</span>
+              {count != null && <span className="text-[10px] text-text-muted hidden sm:inline">({count})</span>}
             </button>
           ))}
 

@@ -197,7 +197,7 @@ function QuickStartTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Feeds Active',    value: stats.feedsActive },
           { label: 'IOCs Ingested',   value: stats.iocsIngested.toLocaleString() },

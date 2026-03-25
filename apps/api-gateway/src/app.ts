@@ -38,12 +38,19 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
 
   await app.register(rateLimit, {
+    global: true,
     max: config.TI_RATE_LIMIT_MAX_REQUESTS,
     timeWindow: config.TI_RATE_LIMIT_WINDOW_MS,
-    keyGenerator: (req) => {
-      const user = (req as unknown as Record<string, unknown>).user as { sub?: string } | undefined;
-      return user?.sub ?? req.ip;
-    },
+    keyGenerator: (req) =>
+      (req.headers['x-tenant-id'] as string) ?? req.ip,
+    errorResponseBuilder: (_req, context) => ({
+      statusCode: 429,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: `Too many requests — limit is ${context.max} per minute`,
+        retryAfter: context.after,
+      },
+    }),
   });
 
   await app.register(sensible);

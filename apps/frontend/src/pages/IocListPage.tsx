@@ -47,6 +47,7 @@ function generateStubRelations(record: { id: string; normalizedValue: string; io
   return { nodes, edges }
 }
 import { EnrichmentDetailPanel } from '@/components/viz/EnrichmentDetailPanel'
+import { ConfidenceBreakdown } from '@/components/viz/ConfidenceBreakdown'
 
 const IOC_FILTERS: FilterOption[] = [
   { key: 'iocType', label: 'Type', options: [
@@ -337,6 +338,11 @@ export function IocListPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Confidence breakdown — expandable */}
+            <div className="shrink-0 px-3 py-2">
+              <ConfidenceBreakdown record={selectedRecord} isDemo={isDemo} />
             </div>
 
             {/* Tab bar */}

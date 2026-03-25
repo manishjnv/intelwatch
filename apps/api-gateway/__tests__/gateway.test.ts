@@ -383,7 +383,7 @@ describe('API Gateway', () => {
       expect(config.TI_API_PORT).toBe(3001);
       expect(config.TI_NODE_ENV).toBe('development');
       expect(config.TI_LOG_LEVEL).toBe('info');
-      expect(config.TI_RATE_LIMIT_MAX_REQUESTS).toBe(100);
+      expect(config.TI_RATE_LIMIT_MAX_REQUESTS).toBe(200);
       expect(config.TI_RATE_LIMIT_WINDOW_MS).toBe(60000);
     });
   });

@@ -13,7 +13,8 @@
       "Skill(update-config:*)",
       "Skill(session-end)",
       "Skill(session-end:*)",
-      "WebSearch"
+      "WebSearch",
+      "Read(//c/Users/manis/.claude/projects/e--code-IntelWatch/memory/**)"
     ],
     "deny": [
       "Read(./.env)",
