@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import {
   useModuleToggles, useAIConfigs, useRiskWeights,
   useNotificationChannels, useCustomizationStats,
-  useToggleModule, useUpdateAIConfig, useUpdateRiskWeight,
+  useToggleModule, useUpdateRiskWeight,
   useResetRiskWeights, useUpdateNotificationChannel, useTestNotification,
   usePlanTiers, useSubtaskMappings, useRecommendedModels, useCostEstimate, useApplyPlan,
   type ModuleToggle, type AIModelConfig, type RiskWeight, type NotificationChannel,
@@ -19,7 +19,7 @@ import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsB
 import {
   Puzzle, Brain, Scale, LayoutDashboard, Bell,
   ToggleLeft, ToggleRight, AlertTriangle, Send,
-  RotateCcw, DollarSign, Sliders, Star, ChevronDown,
+  RotateCcw, Sliders, Star,
 } from 'lucide-react'
 
 // ─── Tab type ───────────────────────────────────────────────────
