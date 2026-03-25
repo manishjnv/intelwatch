@@ -45,6 +45,7 @@ export function mapFeedTypeToQueue(feedType: string): QueueName {
     case 'taxii':
       return QUEUES.FEED_FETCH_STIX;
     case 'rest_api':
+    case 'misp':
       return QUEUES.FEED_FETCH_REST;
     default:
       return QUEUES.FEED_FETCH_RSS;

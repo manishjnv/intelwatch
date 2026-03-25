@@ -130,13 +130,16 @@ jobs:
             echo "Building frontend image..."
             DOCKER_BUILDKIT=1 docker build -t etip-frontend:latest -f Dockerfile.frontend .
 
+            # ── Pre-cleanup: remove ALL orphaned/hash-prefixed containers (RCA #41) ──
+            # Must run BEFORE compose up — otherwise compose creates hash-prefixed
+            # duplicates when it finds name collisions with stale containers.
+            echo "Removing stale orphan containers..."
+            docker ps -a --filter "status=created" --filter "status=exited" \
+              --format "{{.Names}}" | grep "etip" | xargs -r docker rm -f 2>/dev/null || true
+
             # Start infra services (no recreate — preserves uptime)
             echo "Starting infrastructure..."
             docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_elasticsearch etip_neo4j etip_minio etip_prometheus etip_grafana
-
-            # Remove orphaned containers from old deploys (RCA #41)
-            echo "Removing stale orphan containers..."
-            docker ps -a --format "{{.Names}}" | grep "_etip_" | xargs -r docker rm -f 2>/dev/null || true
 
             # Force recreate app containers (picks up new images + compose config)
             echo "Recreating app containers..."
@@ -248,7 +251,9 @@ jobs:
             echo "=== Existing Site (should be unchanged) ==="
             docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
 
-            # ── Cleanup ──
+            # ── Cleanup: prune images + any orphan containers created during deploy ──
+            docker ps -a --filter "status=created" --filter "status=exited" \
+              --format "{{.Names}}" | grep "etip" | xargs -r docker rm -f 2>/dev/null || true
             docker image prune -f 2>/dev/null || true
 
             echo ""

@@ -8,6 +8,7 @@ import { RSSConnector, type ConnectorResult } from '../connectors/rss.js';
 import { NVDConnector } from '../connectors/nvd.js';
 import { TAXIIConnector } from '../connectors/taxii.js';
 import { RestAPIConnector } from '../connectors/rest-api.js';
+import { MISPConnector, type MISPConnectorResult } from '../connectors/misp.js';
 import { getConfig } from '../config.js';
 import { ArticlePipeline, type PipelineBatchResult } from './pipeline.js';
 import type { FeedPolicyStore } from '../services/feed-policy-store.js';
@@ -108,6 +109,7 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const nvdConnector = new NVDConnector(logger);
   const taxiiConnector = new TAXIIConnector(logger);
   const restApiConnector = new RestAPIConnector(logger);
+  const mispConnector = new MISPConnector(logger);
   const pipeline = new ArticlePipeline({
     logger, db,
     anthropicApiKey: config.TI_ANTHROPIC_API_KEY,
@@ -121,7 +123,7 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const maxPerTenant = config.TI_FEED_MAX_CONCURRENT_PER_TENANT;
   const processorDeps = {
     repo, logger, db, policyStore, normalizeQueue, pipeline, config,
-    rssConnector, nvdConnector, taxiiConnector, restApiConnector,
+    rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector,
   };
 
   /** Shared processor function used by all 4 workers */
@@ -212,11 +214,12 @@ async function executeJobProcessor(
     normalizeQueue: Queue; pipeline: ArticlePipeline; config: import('../config.js').AppConfig;
     rssConnector: RSSConnector; nvdConnector: NVDConnector;
     taxiiConnector: TAXIIConnector; restApiConnector: RestAPIConnector;
+    mispConnector: MISPConnector;
   },
 ): Promise<FeedFetchResult> {
   const { feedId, tenantId, triggeredBy, jobId } = jobCtx;
   const { repo, logger, db, policyStore, normalizeQueue, pipeline, config,
-    rssConnector, nvdConnector, taxiiConnector, restApiConnector } = deps;
+    rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector } = deps;
 
   logger.info({ feedId, tenantId, triggeredBy, jobId }, 'Processing feed fetch job');
 
@@ -245,7 +248,7 @@ async function executeJobProcessor(
     const fetchResult = await routeToConnector(feed.feedType, {
       url: feedUrl, headers: feedHeaders,
       parseConfig: feed.parseConfig as Record<string, unknown> | null,
-      rssConnector, nvdConnector, taxiiConnector, restApiConnector, config,
+      rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, config,
     });
 
     const pipelineResult = await pipeline.processBatch(fetchResult.articles, feedId, feed.name, tenantId, feedAiEnabled);
@@ -259,6 +262,18 @@ async function executeJobProcessor(
       itemsRelevant24h: { increment: pipelineResult.relevant },
       avgProcessingTimeMs: pipelineResult.processingTimeMs,
     });
+
+    // P1-6: Persist MISP incremental fetch cursor for next run
+    if (feed.feedType === 'misp') {
+      const mispResult = fetchResult as MISPConnectorResult;
+      if (mispResult.latestEventTimestamp) {
+        const existingConfig = (feed.parseConfig as Record<string, unknown>) ?? {};
+        await repo.update(tenantId, feedId, {
+          parseConfig: { ...existingConfig, publishedAfter: mispResult.latestEventTimestamp },
+        });
+        logger.info({ feedId, cursor: mispResult.latestEventTimestamp }, 'MISP incremental cursor saved');
+      }
+    }
 
     const iocsFound = pipelineResult.articles.reduce((sum, a) => sum + a.iocResults.length, 0);
     logger.info({ feedId, total: fetchResult.articles.length, relevant: pipelineResult.relevant,
@@ -290,6 +305,7 @@ interface RouteOptions {
   url: string; headers: Record<string, string>; parseConfig: Record<string, unknown> | null;
   rssConnector: RSSConnector; nvdConnector: NVDConnector;
   taxiiConnector: TAXIIConnector; restApiConnector: RestAPIConnector;
+  mispConnector: MISPConnector;
   config: import('../config.js').AppConfig;
 }
 
@@ -309,7 +325,24 @@ async function routeToConnector(feedType: string, opts: RouteOptions): Promise<C
       addedAfter: (opts.parseConfig?.addedAfter as string) ?? undefined,
     });
     case 'rest_api': return opts.restApiConnector.fetch({ feedMeta: { url: opts.url, ...opts.parseConfig } });
-    case 'misp': throw new AppError(501, `Connector not yet implemented: ${feedType}`, 'CONNECTOR_NOT_IMPLEMENTED');
+    case 'misp': {
+      // P1-10: Flat file feed mode when parseConfig.format === 'misp_feed'
+      if (opts.parseConfig?.format === 'misp_feed') {
+        return opts.mispConnector.fetchFeed({
+          feedUrl: opts.url || ((opts.parseConfig?.feedUrl as string) ?? ''),
+          apiKey: opts.headers?.['Authorization'] ?? ((opts.parseConfig?.apiKey as string) ?? undefined),
+          publishedAfter: (opts.parseConfig?.publishedAfter as string) ?? undefined,
+          onlyIdsAttributes: (opts.parseConfig?.onlyIdsAttributes as boolean) ?? undefined,
+        });
+      }
+      return opts.mispConnector.fetch({
+        baseUrl: opts.url || ((opts.parseConfig?.baseUrl as string) ?? ''),
+        apiKey: opts.headers?.['Authorization'] ?? ((opts.parseConfig?.apiKey as string) ?? ''),
+        publishedAfter: (opts.parseConfig?.publishedAfter as string) ?? undefined,
+        tags: (opts.parseConfig?.tags as string[]) ?? undefined,
+        limit: (opts.parseConfig?.limit as number) ?? undefined,
+      });
+    }
     default: throw new AppError(400, `Unsupported feed type: ${feedType}`, 'CONNECTOR_UNSUPPORTED');
   }
 }
