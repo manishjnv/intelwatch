@@ -132,13 +132,14 @@ export class DedupService {
     articleA: DedupArticle,
     articleB: DedupArticle,
     anthropicApiKey?: string,
+    model?: string,
   ): Promise<ArbitrateResult> {
     if (!anthropicApiKey) return { action: 'merge', inputTokens: 0, outputTokens: 0 };
     try {
       const client = new Anthropic({ apiKey: anthropicApiKey });
       const prompt = this.buildArbiterPrompt(articleA, articleB);
       const message = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: model ?? 'claude-haiku-4-5-20251001',
         max_tokens: 64,
         messages: [{ role: 'user', content: prompt }],
       });

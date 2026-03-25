@@ -34,6 +34,8 @@ const EnvSchema = z.object({
   TI_AI_TRIAGE_MODEL: z.string().default('claude-haiku-4-5-20251001'),
   // Extraction model override
   TI_AI_EXTRACTION_MODEL: z.string().default('claude-sonnet-4-20250514'),
+  // Customization service URL — used to fetch per-tenant subtask model assignments
+  TI_CUSTOMIZATION_URL: z.string().default('http://localhost:3017'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

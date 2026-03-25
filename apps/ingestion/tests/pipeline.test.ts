@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ArticlePipeline, type ProcessedArticle, type PipelineBatchResult } from '../src/workers/pipeline.js';
 import type { FetchedArticle } from '../src/connectors/rss.js';
+import type { CustomizationClient } from '../src/services/customization-client.js';
 
 function createMockLogger() {
   const noop = (): void => {};
@@ -249,6 +250,55 @@ describe('ArticlePipeline', () => {
       expect(triage.confidence).toBeLessThanOrEqual(1);
       expect(['critical', 'high', 'normal', 'low']).toContain(triage.priority);
       expect(triage.detectedLanguage).toBe('en');
+    });
+  });
+
+  describe('customization client integration (AC-2)', () => {
+    it('calls customizationClient.getSubtaskModels with the tenant ID when client is injected', async () => {
+      const mockClient = {
+        getSubtaskModels: vi.fn().mockResolvedValue({
+          classification: 'claude-haiku-4-5-20251001',
+          ioc_extraction: 'claude-sonnet-4-20250514',
+          deduplication: 'claude-haiku-4-5-20251001',
+        }),
+      } as unknown as CustomizationClient;
+
+      const p = new ArticlePipeline({
+        logger: createMockLogger(),
+        customizationClient: mockClient,
+      });
+
+      await p.processBatch([makeCTIArticle()], FEED_ID, FEED_NAME, TENANT_ID);
+
+      expect(mockClient.getSubtaskModels).toHaveBeenCalledWith(TENANT_ID);
+    });
+
+    it('uses the tenant custom model (pipeline completes without error)', async () => {
+      // Tenant has configured opus for ioc_extraction (unusual but valid)
+      const mockClient = {
+        getSubtaskModels: vi.fn().mockResolvedValue({
+          classification: 'claude-haiku-4-5-20251001',
+          ioc_extraction: 'claude-opus-4-6',
+          deduplication: 'claude-haiku-4-5-20251001',
+        }),
+      } as unknown as CustomizationClient;
+
+      const p = new ArticlePipeline({
+        logger: createMockLogger(),
+        customizationClient: mockClient,
+      });
+
+      const result = await p.processBatch([makeCTIArticle()], FEED_ID, FEED_NAME, TENANT_ID);
+      // Pipeline must complete without crashing — model is only sent to Claude when aiEnabled+apiKey set
+      expect(result.total).toBe(1);
+      expect(result.articles[0].pipelineStatus).not.toBe('failed');
+    });
+
+    it('existing tests work unchanged when no customizationClient is injected (fallback path)', async () => {
+      // pipeline from beforeEach has no customizationClient
+      const result = await pipeline.processBatch([makeCTIArticle()], FEED_ID, FEED_NAME, TENANT_ID);
+      expect(result.total).toBe(1);
+      expect(result.articles[0].isCtiRelevant).toBe(true);
     });
   });
 });

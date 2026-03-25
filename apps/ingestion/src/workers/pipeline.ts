@@ -30,6 +30,7 @@ import { LeadTimeScorer } from '../services/lead-time-scorer.js';
 import { AttributionTracker } from '../services/attribution-tracker.js';
 import { ReliabilityScorer, type FeedMetrics } from '../services/reliability.js';
 import { AIGate } from '../services/ai-gate.js';
+import { CustomizationClient } from '../services/customization-client.js';
 import { detectIOCType, normalizeIOCValue } from '@etip/shared-normalization';
 import type { PrismaClient } from '@prisma/client';
 
@@ -101,6 +102,14 @@ export interface PipelineDeps {
   aiMaxExtractionPerFetch?: number;
   aiTriageModel?: string;
   aiExtractionModel?: string;
+  /**
+   * Optional client for per-tenant AI subtask model assignments.
+   * When provided, processArticle() will fetch the tenant's configured
+   * models for classification, ioc_extraction, and deduplication subtasks,
+   * overriding the construction-time defaults.
+   * If absent (test mode or aiEnabled=false), construction defaults are used.
+   */
+  customizationClient?: CustomizationClient;
 }
 
 /**
@@ -126,13 +135,20 @@ export class ArticlePipeline {
   private readonly maxTriagePerFetch: number;
   private readonly maxExtractionPerFetch: number;
   private readonly anthropicApiKey: string | undefined;
+  private readonly aiEnabled: boolean;
+  private readonly customizationClient: CustomizationClient | null;
+  /** Active dedup arbitration model — updated per-article when customizationClient is set */
+  private dedupModel: string;
 
   constructor(deps: PipelineDeps) {
     this.logger = deps.logger.child({ component: 'pipeline' });
     this.maxTriagePerFetch = deps.aiMaxTriagePerFetch ?? 10;
     this.maxExtractionPerFetch = deps.aiMaxExtractionPerFetch ?? 5;
     this.anthropicApiKey = deps.anthropicApiKey;
-    this.aiGate = deps.db ? new AIGate(deps.db, deps.aiEnabled ?? false, this.logger) : null;
+    this.aiEnabled = deps.aiEnabled ?? false;
+    this.customizationClient = deps.customizationClient ?? null;
+    this.dedupModel = 'claude-haiku-4-5-20251001'; // construction-time default; overridden per-article
+    this.aiGate = deps.db ? new AIGate(deps.db, this.aiEnabled, this.logger) : null;
     this.triage = new TriageService();
     this.triage.init(deps.anthropicApiKey, this.logger, { aiEnabled: deps.aiEnabled, model: deps.aiTriageModel });
     this.extraction = new ExtractionService();
@@ -223,6 +239,14 @@ export class ArticlePipeline {
     const start = Date.now();
     const articleId = crypto.randomUUID();
 
+    // ── Per-tenant subtask model override (cached 5 min) ─────────────
+    if (this.customizationClient) {
+      const models = await this.customizationClient.getSubtaskModels(tenantId);
+      this.triage.setModel(models.classification);
+      this.extraction.setModel(models.ioc_extraction);
+      this.dedupModel = models.deduplication;
+    }
+
     // ── Runtime AI gate check (reads tenant.settings from DB, cached 60s) ──
     let aiAllowed = useAiTriage;
     if (this.aiGate && aiAllowed) {
@@ -286,7 +310,7 @@ export class ArticlePipeline {
       const existingArticle: DedupArticle = {
         id: dedupResult.existingId ?? 'unknown', tenantId, title: '', iocs: [],
       };
-      const arbitrateResult = await this.dedup.arbitrate(arbiterArticle, existingArticle, this.anthropicApiKey);
+      const arbitrateResult = await this.dedup.arbitrate(arbiterArticle, existingArticle, this.anthropicApiKey, this.dedupModel);
       dedupResult.action = arbitrateResult.action;
       if (arbitrateResult.action === 'skip') dedupResult.isDuplicate = true;
       dedupArbitrationTokens = arbitrateResult.inputTokens + arbitrateResult.outputTokens;

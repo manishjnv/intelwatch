@@ -70,6 +70,14 @@ export class ExtractionService {
   private model: string = DEFAULT_SONNET_MODEL;
   private aiEnabled: boolean = false;
 
+  /**
+   * Override the active model without reinitializing the Anthropic client.
+   * Call before extract() to apply a per-tenant model from the customization service.
+   */
+  setModel(model: string): void {
+    this.model = model;
+  }
+
   /** Initialize with optional API key. Falls back to regex-only extraction. */
   init(apiKey?: string, logger?: pino.Logger, opts?: { aiEnabled?: boolean; model?: string }): void {
     this.logger = logger ?? null;
