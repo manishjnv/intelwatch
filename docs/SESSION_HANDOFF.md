@@ -1,99 +1,111 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-25
-**Session:** 66
-**Session Summary:** AC-2 COMPLETE — ArticlePipeline reads per-tenant AI subtask model
-assignments from the customization service. CustomizationClient with 5-min TTL cache
-and safe fallback. 15 new tests. 360 ingestion tests pass.
+**Session:** 67
+**Session Summary:** 5 sub-tasks across 5 commits — P1-1 correlation Redis persistence, P0-3/P0-4 billing+IOC lifecycle fixes, P2-1/P2-2 normalization stats+stage2Factor, BYOK backend+frontend, D1/D2 analytics enrichment-quality endpoint + dashboard widget.
 
 ## ✅ Changes Made
 
-| Commit  | Files | Description                               |
-|---------|-------|-------------------------------------------|
-| 242c132 | 8     | AC-2: CustomizationClient + pipeline wire |
+| Commit  | Files | Description                                                                      |
+|---------|-------|----------------------------------------------------------------------------------|
+| 7dfb799 | 4     | Session A: OTX API key config + QA checklist cleanup (P2-6 + P2-5)             |
+| 85d1612 | 9     | P1-1: Correlation Engine Redis pattern persistence (store-checkpoint.ts)         |
+| 744c977 | 6     | P0-3: billing priceInr hasData fix; P0-4: IOC lifecycle FSM (+19 tests)         |
+| f6e7dc3 | 10+5  | P2-1/P2-2/P2-3/P2-4 + BYOK backend (customization) + BYOK frontend             |
+| 12f6bc5 | 6     | D1: analytics enrichment-quality endpoint; D2: EnrichmentQualityWidget           |
 
 ## 📁 Files / Documents Affected
 
 ### New Files
 
-- `apps/ingestion/src/services/customization-client.ts` — HTTP client for
-  GET /api/v1/customization/ai/subtasks. 5-min TTL cache per tenant, service JWT auth,
-  safe Haiku/Sonnet defaults on network error or HTTP 5xx.
-- `apps/ingestion/tests/customization-client.test.ts` — 12 tests: alias→model-ID
-  mapping, TTL cache hit, per-tenant isolation, clearCache, error fallback (network +
-  503), no cache on error, BYOK string passthrough.
+| File | Purpose |
+|------|---------|
+| `apps/correlation-engine/src/services/store-checkpoint.ts` | Redis persistence for 6 correlation store Maps (5s debounce, 7-day TTL) |
+| `apps/correlation-engine/tests/store-checkpoint.test.ts` | 13 tests for checkpoint/restore |
+| `apps/normalization/src/stats-counter.ts` | Module-level singleton tracking unknownTypeCount + lastUnknownType |
+| `apps/customization/src/routes/api-keys.ts` | GET/PUT/DELETE /api-keys/anthropic BYOK endpoints |
+| `apps/customization/tests/api-keys.test.ts` | 6 BYOK tests (no-key, save, mask, invalid prefix, delete, tenant isolation) |
+| `apps/frontend/src/__tests__/byok-card.test.tsx` | 6 tests for ProviderApiKeysCard component |
+| `apps/frontend/src/__tests__/enrichment-quality-widget.test.tsx` | 3 tests for EnrichmentQualityWidget |
 
 ### Modified Files
 
-- `apps/ingestion/src/config.ts` — Added `TI_CUSTOMIZATION_URL` (default: localhost:3017)
-- `apps/ingestion/src/services/triage.ts` — Added `setModel(model)` for lightweight
-  per-article model override (no Anthropic client recreation)
-- `apps/ingestion/src/services/extraction.ts` — Same `setModel(model)` pattern
-- `apps/ingestion/src/services/dedup.ts` — Added optional `model?: string` to
-  `arbitrate()`, replaces hardcoded haiku ID
-- `apps/ingestion/src/workers/pipeline.ts` — Added `customizationClient?: CustomizationClient`
-  to PipelineDeps; stores `aiEnabled` + `dedupModel`; in `processArticle()`: fetches
-  tenant models → `setModel()` on triage/extraction → passes `dedupModel` to arbitrate()
-- `apps/ingestion/tests/pipeline.test.ts` — 3 AC-2 tests: getSubtaskModels called with
-  tenantId; custom opus model completes without error; fallback when no client injected
+| File | Change |
+|------|--------|
+| `apps/correlation-engine/src/services/campaign-cluster.ts` | P2-3 DBSCAN weight JSDoc |
+| `apps/correlation-engine/src/config.ts` | TI_REDIS_URL env var added |
+| `apps/correlation-engine/src/index.ts` | Wire store-checkpoint into startup |
+| `apps/correlation-engine/src/workers/correlate.ts` | Call checkpoint on store writes |
+| `apps/customization/src/services/ai-model-store.ts` | BYOK methods: maskKey, getAnthropicKeyStatus, setAnthropicKey, deleteAnthropicKey |
+| `apps/customization/src/routes/ai-models.ts` | stage2Factor DI (removed module-level getConfig call) |
+| `apps/customization/src/services/cost-estimator.ts` | stage2Factor constructor param |
+| `apps/customization/src/config.ts` | TI_COST_STAGE2_FACTOR env var (z.coerce.number().default(0.2)) |
+| `apps/customization/src/app.ts` | Register apiKeyRoutes under /api-keys prefix |
+| `apps/customization/src/index.ts` | Pass apiKeyDeps + stage2Factor to buildApp |
+| `apps/ioc-intelligence/src/routes/iocs.ts` | PUT /:id/lifecycle route |
+| `apps/ioc-intelligence/src/service.ts` | transitionLifecycle() + LIFECYCLE_TRANSITIONS FSM |
+| `apps/normalization/src/service.ts` | warn + increment statsCounter on unknown IOC type |
+| `apps/normalization/src/routes/iocs.ts` | Spread statsCounter into /stats response |
+| `apps/frontend/src/hooks/use-phase5-data.ts` | useAnthropicKeyStatus, useSaveAnthropicKey, useDeleteAnthropicKey hooks |
+| `apps/frontend/src/pages/CustomizationPage.tsx` | ProviderApiKeysCard component added to AI tab |
+| `apps/frontend/src/__tests__/customization-ai.test.tsx` | Added 3 BYOK hook stubs to vi.mock block |
+| `apps/frontend/src/__tests__/phase5-pages.test.tsx` | Added 3 BYOK hook stubs to vi.mock block |
+| `apps/analytics-service/src/services/aggregator.ts` | EnrichmentQuality interface + getEnrichmentQuality() method |
+| `apps/analytics-service/src/routes/dashboard.ts` | GET /enrichment-quality route |
+| `apps/analytics-service/tests/aggregator.test.ts` | 3 new enrichment-quality tests |
+| `apps/frontend/src/hooks/use-enrichment-data.ts` | useEnrichmentQuality hook + EnrichmentQuality interface |
+| `apps/frontend/src/pages/DashboardPage.tsx` | EnrichmentQualityWidget component + useEnrichmentQuality integration |
+| `docs/modules/correlation-engine.md` | Updated test count + P1-1 feature row |
 
 ## 🔧 Decisions & Rationale
 
-No new DECISION entries. All changes DECISION-013 compliant (in-memory, no Prisma migrations).
-
-Key implementation notes:
-
-- `setModel()` used instead of re-calling `init()` — avoids Anthropic client recreation per article.
-- `customizationClient` is OPTIONAL — all 345 pre-AC-2 tests pass unmodified (null by default, falls back
-  to construction-time models).
-- AiModel aliases (`haiku`, `sonnet`, `opus`) mapped to full Anthropic model IDs. Unknown strings
-  passed through as-is (BYOK / custom fine-tuned models supported).
-- Cache entries are per-tenant; error responses are NOT cached (retry on next article).
-- Pipeline never crashes if customization service is unreachable — always has safe defaults.
+No new DECISIONS_LOG entries. All patterns follow existing decisions:
+- DECISION-013: in-memory Maps for BYOK storage (no Prisma migration)
+- DECISION-013: in-memory AnalyticsStore cache for enrichment-quality (5-min TTL)
+- DI pattern for CostEstimator stage2Factor follows existing testability practices
 
 ## 🧪 E2E / Deploy Verification Results
 
-No deploy this session — code-only.
-
-Local test results:
-
-- ingestion: **360 tests** (23 test files, all pass) ✅
-- ingestion typecheck: **0 errors** ✅
-- ingestion lint: **0 errors** ✅
-- Pre-existing TS error in `apps/customization/src/routes/ai-models.ts:108`
-  confirmed pre-existing (not introduced by AC-2)
-- **Estimated monorepo total: ~5,557 tests**
+No VPS deploy this session. All test suites verified locally:
+- Customization: 241/241 pass (0 TS errors)
+- Analytics: 86/86 pass (0 TS errors)
+- Frontend: 713 pass + 2 skipped (0 TS errors in our files)
+- IOC Intelligence: 138 tests (per 744c977)
+- Correlation Engine: 179 tests (per 85d1612)
+- Normalization: 157 tests (per f6e7dc3)
+- Estimated total: ~5,617 tests
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-
-- Push to master → CI/CD → VPS deploy (AC-2 + G1-G5 + G5 P0 all pending)
-- Verify `PUT /ioc-intelligence/:id/lifecycle` endpoint in ioc-intelligence service (deferred from G3)
+- **Push to master**: `git push origin master` → triggers CI/CD deploy to VPS
+- All 5 commits from this session are unpushed (session 66 already pushed d5fe620)
 
 ### Deferred
-
-- `apps/correlation-engine/src/services/store-checkpoint.ts` — pre-existing uncommitted WIP, not AC-2
-- Gap #8: regex fallback drops threatActors/campaigns when AI disabled — documented, acceptable
-- Gap #15: enrichment quality distribution widget — needs new widget slot
-- Gap #17: enrichmentData JSONB archive strategy — needs Prisma migration
-- Gap #19: stage-2 factor calibration — needs 30+ days historical data
+- VulnerabilityListPage.tsx pre-existing TS errors (icon prop type mismatch on CompactStat)
+- IOC search pagination improvements
+- D3 code-split further improvements
 
 ## 🔁 How to Resume
 
-Paste this prompt to start next session:
-
-```text
+**Paste this at the start of the next session:**
+```
 /session-start
-Working on: deploy AC-2 + G1-G5 to VPS (git push origin master → CI/CD)
-Frozen: all deployed modules. Do not modify: apps/customization, shared packages.
-Note: pre-existing uncommitted changes in apps/correlation-engine —
-leave unstaged unless working on correlation engine.
+Working on: push session 67 changes to VPS + any remaining feature work.
+Scope: frontend, analytics-service, customization — all commits already done.
+Next: git push origin master → CI deploy → verify 33 containers healthy.
+Then consider: IOC search pagination, further viz improvements, or Module 26+.
 ```
 
-| Module        | Skill file                      |
-|---------------|---------------------------------|
-| ingestion     | skills/04-INGESTION.md          |
-| customization | skills/17-CUSTOMIZATION.md      |
-| correlation   | skills/13-CORRELATION-ENGINE.md |
-| devops/deploy | skills/03-DEVOPS.md             |
+**Module map:**
+- customization: `skills/17-CUSTOMIZATION.md`
+- analytics: `skills/` (no dedicated file — use general pattern)
+- frontend/ui: `skills/20-UI-UX.md`
+- testing: `skills/02-TESTING.md`
+
+**Phase roadmap:**
+- Phase 7 COMPLETE (all services deployed)
+- E2E integration plan: ongoing
+- Gap analysis: G1-G5 COMPLETE, AC-2 COMPLETE
+- Session 67 sub-tasks A-D2: ALL COMPLETE
+- Next: push + deploy
