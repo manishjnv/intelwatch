@@ -80,8 +80,16 @@ const SERVICES = [
 
 // ─── Setup ──────────────────────────────────────────────────────
 
-function setupMocks() {
-  mockUseAnalyticsWidgets.mockReturnValue({ data: DASHBOARD, isDemo: false })
+const mockRefetch = vi.fn()
+
+function setupMocks(overrides?: { generatedAt?: string; dataUpdatedAt?: number }) {
+  const dashboard = overrides?.generatedAt !== undefined
+    ? { ...DASHBOARD, generatedAt: overrides.generatedAt }
+    : DASHBOARD
+  mockUseAnalyticsWidgets.mockReturnValue({
+    data: dashboard, isDemo: false, refetch: mockRefetch,
+    dataUpdatedAt: overrides?.dataUpdatedAt ?? Date.now(), isFetching: false,
+  })
   mockUseAnalyticsTrends.mockReturnValue({ data: TRENDS })
   mockUseExecutiveSummary.mockReturnValue({ data: EXECUTIVE })
   mockUseServiceHealth.mockReturnValue({ data: SERVICES })
@@ -259,6 +267,59 @@ describe('AnalyticsPage', () => {
       render(<AnalyticsPage />)
       fireEvent.click(screen.getByText('Pipeline Health'))
       expect(screen.getByText('No service health data')).toBeInTheDocument()
+    })
+  })
+
+  // ── P3-5: Staleness Indicator ──
+  describe('Staleness indicator', () => {
+    it('renders staleness indicator with "Data as of" text', () => {
+      setupMocks()
+      render(<AnalyticsPage />)
+      expect(screen.getByTestId('staleness-indicator')).toBeInTheDocument()
+      expect(screen.getByText(/Data as of/)).toBeInTheDocument()
+    })
+
+    it('shows default muted style for fresh data (< 1 hour)', () => {
+      setupMocks({ generatedAt: new Date().toISOString() })
+      render(<AnalyticsPage />)
+      const indicator = screen.getByTestId('staleness-indicator')
+      expect(indicator.querySelector('.text-red-400')).toBeNull()
+      expect(indicator.querySelector('.text-amber-400')).toBeNull()
+      expect(indicator.querySelector('.text-text-muted')).toBeTruthy()
+    })
+
+    it('shows amber style for data 2 hours old', () => {
+      const twoHoursAgo = new Date(Date.now() - 2 * 3_600_000).toISOString()
+      setupMocks({ generatedAt: twoHoursAgo })
+      render(<AnalyticsPage />)
+      const indicator = screen.getByTestId('staleness-indicator')
+      expect(indicator.querySelector('.text-amber-400')).toBeTruthy()
+    })
+
+    it('shows red stale warning for data > 24 hours old', () => {
+      const twoDaysAgo = new Date(Date.now() - 48 * 3_600_000).toISOString()
+      setupMocks({ generatedAt: twoDaysAgo })
+      render(<AnalyticsPage />)
+      expect(screen.getByText('⚠ Stale data')).toBeInTheDocument()
+      const indicator = screen.getByTestId('staleness-indicator')
+      expect(indicator.querySelector('.text-red-400')).toBeTruthy()
+    })
+
+    it('renders refresh button that calls refetch', () => {
+      setupMocks()
+      render(<AnalyticsPage />)
+      const refreshBtn = screen.getByTestId('staleness-refresh')
+      fireEvent.click(refreshBtn)
+      expect(mockRefetch).toHaveBeenCalled()
+    })
+
+    it('falls back to dataUpdatedAt when generatedAt is empty', () => {
+      const oneHourAgo = Date.now() - 2 * 3_600_000
+      setupMocks({ generatedAt: '', dataUpdatedAt: oneHourAgo })
+      render(<AnalyticsPage />)
+      const indicator = screen.getByTestId('staleness-indicator')
+      // Should be amber (2 hours old via dataUpdatedAt fallback)
+      expect(indicator.querySelector('.text-amber-400')).toBeTruthy()
     })
   })
 })

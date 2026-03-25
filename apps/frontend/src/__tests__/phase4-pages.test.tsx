@@ -79,6 +79,13 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useHuntTemplates: () => mockUseHuntTemplates(),
 }))
 
+vi.mock('@/hooks/use-phase5-data', () => ({
+  useTicketingIntegrations: () => ({
+    data: { data: [{ id: 'int-1', name: 'Jira', type: 'jira' }], total: 1, page: 1, limit: 50 },
+    isDemo: false,
+  }),
+}))
+
 vi.mock('@/hooks/phase4-demo-data', () => ({
   generateAlertHeatmap: () => Array.from({ length: 90 }, (_, i) => ({
     date: new Date(Date.now() - i * 86400000).toISOString().split('T')[0],

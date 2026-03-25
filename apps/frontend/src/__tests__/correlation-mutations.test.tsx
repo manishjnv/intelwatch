@@ -27,6 +27,11 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useHuntSessions: (...args: any[]) => mockUseHuntSessions(...args),
 }))
 
+const mockUseTicketingIntegrations = vi.fn()
+vi.mock('@/hooks/use-phase5-data', () => ({
+  useTicketingIntegrations: () => mockUseTicketingIntegrations(),
+}))
+
 vi.mock('@/components/CorrelationDetailDrawer', () => ({
   CorrelationDetailDrawer: ({ correlationId, onClose }: any) =>
     correlationId ? <div data-testid="correlation-detail-drawer"><button onClick={onClose}>Close Drawer</button></div> : null,
@@ -60,12 +65,13 @@ const CORRELATION = {
 const HUNT_ACTIVE_1 = { id: 'hunt-1', name: 'APT28 Hunt', status: 'active', huntType: 'hypothesis', createdBy: 'Analyst', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), findingsCount: 4, evidenceCount: 7, hypothesisCount: 3, score: 78, description: 'test' }
 const HUNT_ACTIVE_2 = { id: 'hunt-2', name: 'Emotet Analysis', status: 'active', huntType: 'indicator', createdBy: 'Analyst', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), findingsCount: 2, evidenceCount: 3, hypothesisCount: 1, score: 60, description: 'test' }
 
-function setupMocks(hunts = [HUNT_ACTIVE_1]) {
+function setupMocks(hunts = [HUNT_ACTIVE_1], ticketingIntegrations: any[] = [{ id: 'int-1', name: 'Jira', type: 'jira' }]) {
   mockUseCorrelations.mockReturnValue({ data: { data: [CORRELATION], total: 1, page: 1, limit: 50 }, isLoading: false, isDemo: true })
   mockUseCorrelationStats.mockReturnValue({ data: { total: 1, byType: {}, bySeverity: { critical: 1 }, suppressedCount: 0, avgConfidence: 91 } })
   mockUseCampaigns.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 } })
   mockUseTriggerCorrelation.mockReturnValue({ mutate: mockMutate, isPending: false })
   mockUseHuntSessions.mockReturnValue({ data: { data: hunts, total: hunts.length, page: 1, limit: 50 }, isDemo: true })
+  mockUseTicketingIntegrations.mockReturnValue({ data: { data: ticketingIntegrations, total: ticketingIntegrations.length, page: 1, limit: 50 }, isDemo: false })
 }
 
 function openDetailPanel() {
@@ -149,5 +155,29 @@ describe('CorrelationPage — Add to Hunt button', () => {
     // No mutation, no selector
     expect(mockHuntMutate).not.toHaveBeenCalled()
     expect(screen.queryByTestId('hunt-selector')).toBeNull()
+  })
+})
+
+describe('CorrelationPage — P2-3 Ticket Guard', () => {
+  it('disables Create Ticket button when no ticketing configured', () => {
+    setupMocks([HUNT_ACTIVE_1], [])
+    openDetailPanel()
+    const btn = screen.getByTestId('create-ticket-btn')
+    expect(btn).toHaveProperty('disabled', true)
+  })
+
+  it('shows guard tooltip when no ticketing configured', () => {
+    setupMocks([HUNT_ACTIVE_1], [])
+    openDetailPanel()
+    expect(screen.getByTestId('ticket-guard-tooltip')).toBeTruthy()
+    expect(screen.getByText(/No ticketing system configured/)).toBeTruthy()
+  })
+
+  it('enables Create Ticket button when ticketing is configured', () => {
+    setupMocks([HUNT_ACTIVE_1], [{ id: 'int-1', name: 'ServiceNow', type: 'servicenow' }])
+    openDetailPanel()
+    const btn = screen.getByTestId('create-ticket-btn')
+    expect(btn).toHaveProperty('disabled', false)
+    expect(screen.queryByTestId('ticket-guard-tooltip')).toBeNull()
   })
 })

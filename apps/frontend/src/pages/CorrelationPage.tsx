@@ -12,6 +12,7 @@ import {
   useCorrelationFeedback, useCreateTicket, useAddToHunt, useHuntSessions,
   type CorrelationResult, type CampaignCluster,
 } from '@/hooks/use-phase4-data'
+import { useTicketingIntegrations } from '@/hooks/use-phase5-data'
 import { CorrelationDetailDrawer } from '@/components/CorrelationDetailDrawer'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
@@ -208,6 +209,7 @@ function ConfidenceBar({ value }: { value: number }) {
 
 function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondNavigate,
   onInvestigate, onCreateTicket, onAddToHunt, activeHunts, ticketPending, huntPending,
+  ticketingConfigured,
 }: {
   corr: CorrelationResult; onClose: () => void; isDemo: boolean
   onKillChainClick?: (phase: string) => void
@@ -218,6 +220,7 @@ function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondN
   activeHunts?: { id: string; name: string }[]
   ticketPending?: boolean
   huntPending?: boolean
+  ticketingConfigured?: boolean
 }) {
   const feedbackMutation = useCorrelationFeedback()
   const [showHuntSelector, setShowHuntSelector] = useState(false)
@@ -278,10 +281,19 @@ function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondN
               className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 transition-colors">
               <SearchIcon className="w-3 h-3" />Investigate
             </button>
-            <button onClick={() => onCreateTicket?.(corr)} disabled={ticketPending}
-              className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-purple-400/10 border border-purple-400/20 text-purple-400 hover:bg-purple-400/20 transition-colors disabled:opacity-50">
-              <Send className="w-3 h-3" />{ticketPending ? 'Creating…' : 'Create Ticket'}
-            </button>
+            <div className="relative group">
+              <button onClick={() => onCreateTicket?.(corr)} disabled={ticketPending || !ticketingConfigured}
+                className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-purple-400/10 border border-purple-400/20 text-purple-400 hover:bg-purple-400/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                data-testid="create-ticket-btn">
+                <Send className="w-3 h-3" />{ticketPending ? 'Creating…' : 'Create Ticket'}
+              </button>
+              {!ticketingConfigured && (
+                <div className="absolute bottom-full left-0 mb-1 w-52 px-2.5 py-1.5 bg-bg-elevated border border-border rounded-md text-[10px] text-text-muted shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30"
+                  data-testid="ticket-guard-tooltip">
+                  No ticketing system configured — go to Settings → Integrations to connect ServiceNow or Jira
+                </div>
+              )}
+            </div>
             <div className="relative">
               <button onClick={() => {
                 const hunts = activeHunts ?? []
@@ -384,6 +396,8 @@ export function CorrelationPage() {
   const ticketMutation = useCreateTicket()
   const huntMutation = useAddToHunt()
   const { data: huntData } = useHuntSessions({ status: 'active', limit: 20 })
+  const { data: ticketingData } = useTicketingIntegrations()
+  const ticketingConfigured = (ticketingData?.data?.length ?? 0) > 0
 
   const activeHunts = useMemo(
     () => (huntData?.data ?? []).filter(h => h.status === 'active').map(h => ({ id: h.id, name: h.name })),
@@ -645,7 +659,8 @@ export function CorrelationPage() {
           <CorrelationDetail corr={selectedCorrelation} onClose={() => setSelectedId(null)} isDemo={isDemo}
             onKillChainClick={handleKillChainClick} onDiamondNavigate={handleDiamondNavigate}
             onInvestigate={handleInvestigate} onCreateTicket={handleCreateTicket} onAddToHunt={handleAddToHunt}
-            activeHunts={activeHunts} ticketPending={ticketMutation.isPending} huntPending={huntMutation.isPending} />
+            activeHunts={activeHunts} ticketPending={ticketMutation.isPending} huntPending={huntMutation.isPending}
+            ticketingConfigured={ticketingConfigured} />
         </>
       )}
       {/* Investigation Drawer */}

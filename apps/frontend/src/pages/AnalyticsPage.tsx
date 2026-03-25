@@ -14,6 +14,7 @@ import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
 import {
   BarChart3, TrendingUp, TrendingDown, Minus, Shield, Activity,
   Server, AlertTriangle, CheckCircle, XCircle, HelpCircle,
+  Clock, RefreshCw,
 } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -249,11 +250,42 @@ function HealthTab() {
   )
 }
 
+// ─── Staleness Indicator ────────────────────────────────────────
+
+function StalenessIndicator({ generatedAt, dataUpdatedAt, onRefresh, isRefreshing }: {
+  generatedAt?: string; dataUpdatedAt?: number; onRefresh: () => void; isRefreshing: boolean
+}) {
+  const timestamp = generatedAt && generatedAt.length > 0
+    ? new Date(generatedAt).getTime()
+    : dataUpdatedAt ?? Date.now()
+  const ageMs = Date.now() - timestamp
+  const ageHours = ageMs / 3_600_000
+
+  const label = new Date(timestamp).toLocaleString()
+  const isAmber = ageHours >= 1 && ageHours < 24
+  const isRed = ageHours >= 24
+
+  const colorClass = isRed ? 'text-red-400' : isAmber ? 'text-amber-400' : 'text-text-muted'
+
+  return (
+    <div className="px-4 py-1 flex items-center gap-2 text-[10px]" data-testid="staleness-indicator">
+      {isRed && <span className="text-red-400 font-medium">⚠ Stale data</span>}
+      {(isAmber || isRed) && <Clock className={cn('w-3 h-3', colorClass)} />}
+      <span className={colorClass}>Data as of {label}</span>
+      <button onClick={onRefresh} disabled={isRefreshing}
+        className="ml-1 p-0.5 rounded hover:bg-bg-hover transition-colors text-text-muted hover:text-accent disabled:opacity-50"
+        data-testid="staleness-refresh" aria-label="Refresh analytics data">
+        <RefreshCw className={cn('w-3 h-3', isRefreshing && 'animate-spin')} />
+      </button>
+    </div>
+  )
+}
+
 // ─── Main Component ─────────────────────────────────────────────
 
 export function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview')
-  const { data: dashboard, isDemo } = useAnalyticsWidgets()
+  const { data: dashboard, isDemo, refetch, dataUpdatedAt, isFetching } = useAnalyticsWidgets()
   const { data: exec } = useExecutiveSummary()
   const { data: services } = useServiceHealth()
 
@@ -276,6 +308,13 @@ export function AnalyticsPage() {
         <CompactStat label="Services" value={totalServices > 0 ? `${healthyCount}/${totalServices}` : '—'} color={healthyCount === totalServices ? 'text-sev-low' : 'text-sev-medium'} />
         <CompactStat label="Posture" value={exec?.riskPosture?.toUpperCase() ?? '—'} />
       </PageStatsBar>
+
+      <StalenessIndicator
+        generatedAt={dashboard?.generatedAt}
+        dataUpdatedAt={dataUpdatedAt}
+        onRefresh={() => refetch()}
+        isRefreshing={isFetching}
+      />
 
       {/* Tab bar */}
       <div className="px-4 py-2 border-b border-border flex items-center gap-1">
