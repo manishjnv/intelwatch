@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-26 (update at end of EVERY session via /session-end)
-**Session counter:** 71
+**Session counter:** 72
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -11,7 +11,7 @@
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
-| etip_ingestion | ✅ Running | 0.4.0 | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a gap fixes + AC-2 per-tenant subtask model routing + P3-1/P3-2/P3-3 connectors. 392 tests. NVD 2.0 connector (pagination, rate limiting, Zod validation). STIX/TAXII 2.1 connector (collection discovery, basic auth, STIX indicator mapping). Generic REST_API connector (fieldMap, responseArrayPath, 10MB limit). Only MISP remains 501. |
+| etip_ingestion | ✅ Running | 0.5.0 | 2026-03-26 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors functional** (RSS, NVD, STIX/TAXII, REST_API, MISP). 486 tests. MISP connector: 15 improvements (P0-P2), Object support, sighting confidence, warning list filtering, galaxy enrichment, to_ids filter, incremental fetch, exponential backoff, response size guard, attribute dedup, flat file feed, UUID passthrough, IPv6 detection, first_seen/last_seen, composite context. 81 MISP tests. |
 | etip_normalization | ✅ Running | 0.1.0 | 2026-03-25 | IOC upsert + 18 accuracy improvements + G2/G4b gap fixes. 157 tests. Feed reliability TTL cache (5min); weighted velocity scoring; configureClassifier(); unknownTypeCount stats in GET /stats (P2-1). |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
@@ -51,7 +51,7 @@
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-26 | **20 data pages** + P2-1 queue alert banner on AdminOpsPage. 739 tests (741 total, 2 skipped). useQueueAlerts hook polls GET /admin/queues/alerts every 30s. Red banner with queue names when alerts active. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-26 | Feed pipeline + 11 modules + policies + AC-2 + connectors + **P3-4 queue lanes + P3-7 tenant fairness**. 405 tests. 4 per-type queues (RSS/NVD/STIX/REST), per-tenant Redis counter with DelayedError + Lua safe DECR. Review fixes: C1-C3, W1-W2. |
+| ingestion | 2 | ✅ Deployed | 2026-03-26 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness + **P3-6 MISP connector (15 improvements)**. 486 tests. MISP routes to REST queue. 501 stub removed. Flat file feed via parseConfig.format='misp_feed'. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. P3-4/P3-7 COMPLETE. P2-4 Grafana dashboards COMPLETE. 33 containers, 5,692 tests.
-- **Last session outcome:** Session 70 (2026-03-26). P2-4 Grafana dashboards — 3 provisioned dashboards (service health, pipeline queues, API gateway). Commits: aed6e73 (feat: dashboards), d53d003 (fix: review), f8c21c4 (fix: TS index), 48fa040+79ec3bf (fix: queue count 14→18). Grafana recreated on VPS via vps-cmd.yml. All 33 containers healthy. Dashboard JSON at docker/grafana/dashboards/, provisioning at docker/grafana/provisioning/dashboards/. Panels use Prometheus self-metrics where available, placeholders for service-level metrics.
-- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. MISP connector still 501. WIP files renamed to .wip: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip, queue-alert-evaluator.test.ts.wip. Deploy.yml 15min timeout insufficient for fresh backend build on VPS. Grafana panels are placeholders — services don't export Prometheus /metrics yet.
-- **Next tasks:** Wire prom-client + fastify-metrics to services for Grafana data. MISP connector. IOC search pagination. Production hardening.
+- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. P3-4/P3-7 COMPLETE. P3-6 MISP COMPLETE. P2-4 Grafana dashboards COMPLETE. 33 containers, 5,773 tests.
+- **Last session outcome:** Session 72 (2026-03-26). P3-6 MISP feed connector — full implementation with 15 accuracy/reliability improvements. Commit: 1754609. 486 ingestion tests (81 new MISP). All 5 connectors functional. Deploy.yml RCA #41 orphan cleanup fix. CI green, 33 containers healthy on VPS.
+- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. WIP files renamed to .wip: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip, queue-alert-evaluator.test.ts.wip. Deploy.yml 15min timeout insufficient for fresh backend build on VPS. Grafana panels are placeholders — services don't export Prometheus /metrics yet.
+- **Next tasks:** Wire prom-client + fastify-metrics to services for Grafana data. IOC search pagination. Production hardening.
 
 ## Deployment Log
 
@@ -213,6 +213,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 69 | 2026-03-25 | etip_ingestion updated (3 new connectors) | ⏳ CI triggered | 886e4b3, d298226 | P3-1/P3-2/P3-3: NVD + STIX/TAXII + REST_API feed connectors. 32 new tests (392 total ingestion). TI_NVD_API_KEY, TI_TAXII_URL/USER/PASSWORD env vars. Only MISP remains 501. |
 | 70 | 2026-03-26 | etip_ingestion + shared-utils updated, all 32 containers recreated | ✅ All 32 healthy | 8c201b9→79ec3bf (6 commits) | P3-4: 4 per-feed-type queue lanes (RSS c=5, NVD c=2, STIX c=2, REST c=3). P3-7: per-tenant BullMQ fairness (Redis counter + DelayedError + Lua safe DECR). Review fixes: C1 feedType select, C2 close() cleanup, C3 DelayedError, W1 atomic pipeline, W2 safe DECR. 405 ingestion tests. Grafana dashboards also deployed (aed6e73). Manual VPS deploy after CI SSH timeout. |
 | 71 | 2026-03-26 | etip_admin + etip_frontend + shared-utils updated | ✅ CI green (23561851508) | aa8400f | P2-1 queue alerting: QueueAlertEvaluator (Redis debounce, QUEUE_ALERT/RESOLVED), GET /queues/alerts, AdminOpsPage red banner. 190 admin tests, 739 frontend tests, 5,692 total. |
+| 72 | 2026-03-26 | etip_ingestion updated (MISP connector + deploy.yml) | ✅ CI green (23565670507) | 1754609 | P3-6 MISP connector: 15 improvements, 81 tests, 486 ingestion total. All 5 connectors functional. Deploy.yml RCA #41 orphan cleanup fix. 33 containers healthy. |
 
 ## E2E Verification Results (Session 13)
 

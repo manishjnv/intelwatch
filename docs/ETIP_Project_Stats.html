@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 71 &middot; 2026-03-26 &middot; P2-1 queue alerting + P3-4 queue lanes + P3-7 tenant fairness, 32 containers, 5,692 tests — DEPLOYED</span>
+  <span class="version">Session 72 &middot; 2026-03-26 &middot; P3-6 MISP connector (15 improvements, 81 tests), all 5 connectors functional, 33 containers, 5,773 tests — DEPLOYED</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">5,692</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">5,773</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~574</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">71</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">72</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">42</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">20</div><div class="stat-label">Frontend Pages</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy</td><td>45</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth</td><td>21</td></tr>
       <tr><td>frontend</td><td>80</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (20 pages)</td><td>734</td></tr>
-      <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + AC-2</td><td>360</td></tr>
+      <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + AC-2 + 5 Connectors (RSS/NVD/STIX/REST/MISP)</td><td>486</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline</td><td>154</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
       <tr><td>ioc-intelligence</td><td>3007</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>15</td><td>119</td></tr>
@@ -508,7 +508,7 @@ li strong { color: var(--text-primary); }
   <div class="card">
     <div class="card-title"><span class="badge badge-green">Session 71 COMPLETE ✅</span> P2-1 queue alerting + P3-4 queue lanes + P3-7 tenant fairness</div>
     <div class="card-body">
-      <strong>Session 71 COMPLETE.</strong> Sessions 69-71: P3-1/P3-2/P3-3 NVD/STIX-TAXII/REST_API connectors. P3-4 per-feed-type queue lanes (4 BullMQ workers). P3-7 per-tenant fairness (Redis counter). P2-1 queue alerting (QueueAlertEvaluator, Redis debounce, AdminOpsPage red banner). CI run 23561851508 green. 32 containers deployed. 5,692 tests.<br><br>
+      <strong>Session 72 COMPLETE.</strong> P3-6 MISP feed connector — full implementation with 15 accuracy/reliability improvements, 81 tests. All 5 ingestion connectors functional (RSS, NVD, STIX/TAXII, REST_API, MISP). MISP features: Object support, sighting confidence, warning list filtering, galaxy enrichment, to_ids filter, incremental fetch, exponential backoff, response size guard, attribute dedup, flat file feed, UUID passthrough, IPv6 detection, first_seen/last_seen, composite context. Deploy.yml RCA #41 orphan cleanup fix. CI run 23565670507 green. 33 containers deployed. 5,773 tests.<br><br>
       <strong>Immediate next steps:</strong><br>
       1. <strong>Verify CI deploy</strong> — 33 containers healthy on VPS<br>
       2. <strong>IOC search pagination</strong> — Improve search UX with proper pagination<br>

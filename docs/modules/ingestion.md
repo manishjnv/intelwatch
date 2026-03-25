@@ -1,6 +1,6 @@
 # Ingestion Service
 
-**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 392
+**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 486
 
 ## What It Does
 
@@ -9,7 +9,7 @@ Fetches threat intelligence from RSS feeds, processes articles through an 11-mod
 ## Pipeline
 
 ```
-RSS Feed → Scheduler (cron 5min sync)
+Feed Source (RSS/NVD/STIX/REST/MISP) → Scheduler (cron 5min sync)
   → Feed Fetch Worker (BullMQ)
   → Triage (rule-based + optional Haiku AI)
   → IOC Extraction (regex + optional Sonnet AI)
@@ -30,6 +30,7 @@ RSS Feed → Scheduler (cron 5min sync)
 | NVD Connector | connectors/nvd.ts | NVD 2.0 REST API — CVE feeds with pagination + rate limiting |
 | STIX/TAXII Connector | connectors/taxii.ts | TAXII 2.1 — collection discovery, basic auth, STIX indicator mapping |
 | REST API Connector | connectors/rest-api.ts | Generic JSON REST — configurable fieldMap + responseArrayPath |
+| MISP Connector | connectors/misp.ts | MISP REST API + flat file feed — 15 improvements: Object support, sighting confidence, warning list filtering, galaxy enrichment, to_ids filter, incremental fetch, exponential backoff, response size guard, attribute dedup, flat file feed, UUID passthrough, IPv6 detection, first_seen/last_seen, composite context |
 | Scheduler | workers/scheduler.ts | node-cron feed sync every 5 min |
 | Feed Fetch Worker | workers/feed-fetch.ts | BullMQ worker: fetch → pipeline → persist |
 | Pipeline | workers/pipeline.ts | 5-stage article processing |

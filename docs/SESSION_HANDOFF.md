@@ -1,58 +1,62 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-26
-**Session:** 71
-**Session Summary:** P2-1 queue alerting deployed. CI verified green (run 23561851508). Sessions 69-71 all deployed to VPS.
+**Session:** 72
+**Session Summary:** P3-6 MISP feed connector — full implementation with 15 accuracy/reliability improvements, 81 tests. All 5 ingestion connectors now functional.
 
 ## ✅ Changes Made
-
-| Commit  | Files | Description                                                                      |
-|---------|-------|----------------------------------------------------------------------------------|
-| 886e4b3 | 9     | feat: P3-1/P3-2/P3-3 NVD + STIX/TAXII + REST_API feed connectors (session 69)  |
-| 8c201b9 | 11    | feat: P3-4 per-feed-type queue lanes + P3-7 per-tenant BullMQ fairness (session 70) |
-| aa8400f | 9     | feat: P2-1 queue alerting — QueueAlertEvaluator + AdminOpsPage banner (session 71) |
+| Commit | Files | Description |
+|--------|-------|-------------|
+| 1754609 | 5 | feat: P3-6 MISP feed connector — 15 improvements, 81 tests |
 
 ## 📁 Files / Documents Affected
 
-Key new files across sessions 69-71:
-- `apps/ingestion/src/connectors/nvd.ts` — NVD 2.0 REST API connector
-- `apps/ingestion/src/connectors/taxii.ts` — STIX/TAXII 2.1 connector
-- `apps/ingestion/src/connectors/rest-api.ts` — Generic REST API connector
-- `apps/admin-service/src/services/queue-alert-evaluator.ts` — Redis-debounced queue alerting
-- `docker/grafana/` — Grafana dashboard provisioning (3 dashboards)
+### New Files
+| File | Purpose |
+|------|---------|
+| apps/ingestion/src/connectors/misp.ts | MISP connector — REST API + flat file feed, 858 lines |
+| apps/ingestion/tests/misp-connector.test.ts | 81 MISP tests (22 core + 59 improvement tests), 1401 lines |
+
+### Modified Files
+| File | Changes |
+|------|---------|
+| apps/ingestion/src/queue.ts | MISP routes to REST queue lane (+1 line) |
+| apps/ingestion/src/workers/feed-fetch.ts | Wire MISPConnector, remove 501 stub, incremental cursor, flat feed routing (+41 lines) |
+| .github/workflows/deploy.yml | RCA #41: orphan cleanup runs before compose up (+15/-9) |
 
 ## 🔧 Decisions & Rationale
-
-No new DECISIONS_LOG entries.
+- MISP shares REST queue lane (no new queue in shared-utils) — MISP uses HTTP REST under the hood, same throughput profile
+- Flat file feed detected via parseConfig.format='misp_feed' — no schema change, just convention on existing JSON field
+- IPv6 detection via `:` presence in value — simple, correct for all MISP IP formats
 
 ## 🧪 E2E / Deploy Verification Results
-
-- CI run 23561851508: **SUCCESS** (test + typecheck + lint + deploy all green)
-- VPS: 32 containers healthy
-- All tests: 5,692 passed, 2 skipped
-- TypeScript: 0 errors | Lint: 0 errors
+- CI run 23565670507: ✅ SUCCESS
+- 33 containers healthy on VPS (all etip_* + infra)
+- etip_ingestion: Up (healthy), port 3004
+- 486 ingestion tests, 5,773 monorepo total (estimate from test run)
+- 0 TS errors, 0 lint errors
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-- Deploy verified — no action needed
+- Wire prom-client + fastify-metrics to services for real Grafana data
+- IOC search pagination on SearchPage
+- Production hardening (rate limits, input validation audit)
 
 ### Deferred
-- MISP connector (last 501 stub)
-- IOC search pagination
-- Grafana metric wiring (prom-client + fastify-metrics)
-- Production hardening
-- VulnerabilityListPage.tsx pre-existing TS errors
+- P2-11 TLP enforcement (policy layer, not connector)
+- P2-12 Taxonomy extraction (low ROI beyond galaxies)
+- P2-15 Attribute decay scoring (overlaps normalization TTL)
 
 ## 🔁 How to Resume
-
 ```
 /session-start
-Working on: next priority — MISP connector, Grafana metric wiring, or IOC search pagination.
-All sessions 69-71 deployed and verified.
+Working on: [next module]. Do not modify: ingestion (P3-6 complete).
 ```
 
-**Module map:**
-- ingestion: `skills/04-INGESTION.md`
-- admin-service: `skills/22-ADMIN-PLATFORM.md`
-- frontend: `skills/20-UI-UX.md`
+### MISP Connector Feature Map (for reference)
+- Core: REST API POST /events/restSearch, Zod validation, pagination, 14 attribute types
+- P0: Objects, sightings, warning lists, galaxies, to_ids filter
+- P1: Incremental cursor, 429 backoff, size guard, dedup, flat file feed
+- P2: UUID passthrough
+- Bonus: IPv6, first_seen/last_seen, composite context
