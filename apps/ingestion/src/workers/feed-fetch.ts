@@ -162,8 +162,8 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const workers: Worker<FeedFetchJobData, FeedFetchResult>[] = [];
 
   for (const queueName of FEED_FETCH_QUEUE_NAMES) {
-    const concurrencyKey = QUEUE_CONCURRENCY_MAP[queueName];
-    const concurrency = (config[concurrencyKey] as number) ?? 3;
+    const concurrencyKey = QUEUE_CONCURRENCY_MAP[queueName] as keyof typeof config | undefined;
+    const concurrency = concurrencyKey ? (config[concurrencyKey] as number) : 3;
 
     const worker = new Worker<FeedFetchJobData, FeedFetchResult>(
       queueName, processJob,
