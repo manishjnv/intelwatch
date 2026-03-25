@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
-**Session counter:** 67
+**Session counter:** 68
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.8.0 | 2026-03-25 | Dashboard + 20 data pages + demo fallbacks (all 5 entity types + reporting + alerting + analytics + IOC search). E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. E2 queue health: AdminOpsPage queue table. F3: AI Config tab rebuilt — plan selector, 12-subtask table, cost estimator sidebar. BYOK: ProviderApiKeysCard (save/delete Anthropic key, confirm UX). D2: EnrichmentQualityWidget on Dashboard (confidence tier bars + pending count). 713 frontend tests (715 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.9.0 | 2026-03-25 | Dashboard + 20 data pages + demo fallbacks (all 5 entity types + reporting + alerting + analytics + IOC search). E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. E2 queue health: AdminOpsPage queue table. F3: AI Config tab rebuilt — plan selector, 12-subtask table, cost estimator sidebar. BYOK: ProviderApiKeysCard (save/delete Anthropic key, confirm UX). D2: EnrichmentQualityWidget on Dashboard (confidence tier bars + pending count). P2-3: ticket guard on CorrelationPage. P3-5: analytics staleness indicator. Mobile responsive grid fixes. 734 frontend tests (736 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **20 data pages** + G3/G5 gap fixes + BYOK + D2 widget. 713 tests (715 total, 2 skipped). BYOK: ProviderApiKeysCard — save/delete Anthropic API key, masked display, confirm-before-delete UX. D2: EnrichmentQualityWidget on Dashboard — high/medium/low confidence tier bars, pending count. useAnthropicKeyStatus/useSaveAnthropicKey/useDeleteAnthropicKey hooks. useEnrichmentQuality hook. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **20 data pages** + G3/G5 gap fixes + BYOK + D2 widget + P2-3 ticket guard + P3-5 staleness indicator. 734 tests (736 total, 2 skipped). P2-3: CorrelationPage Create Ticket button disabled + tooltip when no ticketing integration configured. P3-5: AnalyticsPage staleness indicator (Data as of timestamp, amber/red color coding, refresh button). Mobile responsive grid fixes across 9 pages. ConfidenceBreakdown viz component. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a + AC-2. 360 tests. aiEnabled enforced in ArticlePipeline (feedAiEnabled param). Dedup Layer 3 Haiku arbitration. Emerging TLDs. isLinkLocalIPv6() filter. AC-2: CustomizationClient fetches per-tenant subtask models (classification→triage, ioc_extraction→extraction, deduplication→arbitrate) with 5-min TTL cache + safe defaults on error. TI_CUSTOMIZATION_URL env var added (default localhost:3017). |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. Session 67 COMPLETE. 33 containers, ~5,617 tests.
-- **Last session outcome:** Session 67 (2026-03-25). 5 commits across 5 sub-tasks: (1) P1-1 correlation Redis persistence (store-checkpoint.ts, 179 tests); (2) P0-3/P0-4 billing priceInr + IOC lifecycle FSM (+19 tests, 138 ioc-intelligence); (3) P2-1 normalization unknownTypeCount stats +3 tests (157); (4) P2-2 stage2Factor DI + BYOK backend/frontend (44 customization endpoints, 241 tests; BYOK UI card, 713 frontend tests); (5) D1 analytics enrichment-quality +3 tests (86) + D2 EnrichmentQualityWidget. Commits: 7dfb799, 85d1612, 744c977, f6e7dc3, 12f6bc5. Code-only, no deploy.
-- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx (icon prop — unrelated to this session's work). All test suites for touched modules pass.
-- **Next tasks:** Push to master → CI deploy to VPS (git push origin master). Then: push to deploy all pending changes (correlation Redis, IOC lifecycle, normalization stats, BYOK, enrichment quality widget). Optional: IOC search pagination, D3 code-split improvements.
+- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. Session 68 COMPLETE. 33 containers, 734 frontend tests (736 total, 2 skipped).
+- **Last session outcome:** Session 68 (2026-03-25). 2 commits: (1) 1ff8c88 — mobile responsive grid fixes across 9 pages + api-gateway rate-limit + ConfidenceBreakdown component; (2) 17e60be — P2-3 ticket guard (CorrelationPage Create Ticket disabled when no ticketing integration, tooltip) + P3-5 analytics staleness indicator (StalenessIndicator component, amber/red color coding, refresh button). 9 new tests (3 ticket guard, 6 staleness). 734/736 frontend tests pass (2 skipped pre-existing). Pushed to master, CI triggered.
+- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx (icon prop — unrelated). Uncommitted ingestion connector files in working tree (nvd, rest-api, taxii connectors — from prior WIP, not part of session 68 scope).
+- **Next tasks:** Verify CI deploy completes (33 containers healthy). Then: IOC search pagination improvements, D3 code-split further improvements, production hardening (rate limiting, error alerting, log aggregation).
 
 ## Deployment Log
 
@@ -209,6 +209,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 65 | 2026-03-25 | No deploy (code-only) | — | f58edcb | G5 P0 fixes: SearchPage (/search + sidebar), E2E CI smoke step in deploy.yml, DLQ processor (4 routes + 10 tests). Admin-service: 33 endpoints, 172 tests. Frontend: 704 tests. 5,542 total. |
 | 66 | 2026-03-25 | No deploy (code-only) | — | 242c132 | AC-2: CustomizationClient + per-tenant subtask model routing in ArticlePipeline. setModel() on Triage/Extraction services. dedup.arbitrate() model param. TI_CUSTOMIZATION_URL env var. 15 new tests (360 ingestion total). ~5,557 monorepo total. |
 | 67 | 2026-03-25 | No deploy (code-only) | — | 7dfb799, 85d1612, 744c977, f6e7dc3, 12f6bc5 | P1-1 correlation Redis persistence (store-checkpoint, 179 tests). P0-3 billing priceInr fix. P0-4 IOC lifecycle FSM (138 ioc-intelligence tests). P2-1 normalization unknownTypeCount (157 tests). P2-2 stage2Factor DI + BYOK backend+frontend (241 customization, 713 frontend). D1 analytics enrichment-quality. D2 dashboard widget. ~5,617 monorepo total. |
+| 68 | 2026-03-25 | etip_frontend updated | ⏳ CI triggered | 1ff8c88, 17e60be | Mobile responsive grid fixes (9 pages), api-gateway rate-limit, ConfidenceBreakdown component, P2-3 ticket guard, P3-5 analytics staleness indicator. 734 frontend tests. |
 
 ## E2E Verification Results (Session 13)
 
