@@ -117,12 +117,12 @@ export class Aggregator {
       this.fetchService<Record<string, unknown>>(`${this.endpoints.enrichment}/api/v1/enrichment/stats`),
     ]);
 
-    // Overview widgets
-    widgets['total-iocs'] = buildWidget('total-iocs', iocStats?.total ?? 0);
-    widgets['active-feeds'] = buildWidget('active-feeds', feedStats?.activeCount ?? 0);
-    widgets['open-alerts'] = buildWidget('open-alerts', alertStats?.open ?? 0);
-    widgets['enrichment-rate'] = buildWidget('enrichment-rate', enrichStats?.enrichmentRate ?? 0);
-    widgets['critical-iocs'] = buildWidget('critical-iocs', iocStats?.critical ?? 0);
+    // Overview widgets — cast to number (API returns Record<string, unknown>)
+    widgets['total-iocs'] = buildWidget('total-iocs', (iocStats?.total as number) ?? 0);
+    widgets['active-feeds'] = buildWidget('active-feeds', (feedStats?.activeCount as number) ?? 0);
+    widgets['open-alerts'] = buildWidget('open-alerts', (alertStats?.open as number) ?? 0);
+    widgets['enrichment-rate'] = buildWidget('enrichment-rate', (enrichStats?.enrichmentRate as number) ?? 0);
+    widgets['critical-iocs'] = buildWidget('critical-iocs', (iocStats?.critical as number) ?? 0);
 
     // Alert breakdown — scalar value for display, details for drill-down
     const alertTotal = (alertStats?.total as number) ?? 0;
