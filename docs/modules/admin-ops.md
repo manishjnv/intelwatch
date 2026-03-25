@@ -1,6 +1,6 @@
 # Admin Ops Service — Module 22
 
-**Status:** ✅ Feature-Complete (5 core + 5 P0) | **Tests:** 147 | **Port:** 3022 | **Session:** 41
+**Status:** ✅ Feature-Complete (5 core + 5 P0 + queue monitor) | **Tests:** 158 | **Port:** 3022 | **Session:** 60
 
 Platform administration service for ETIP. System health monitoring, maintenance windows, backup/restore, tenant administration, audit dashboard, and operational intelligence.
 
@@ -20,6 +20,7 @@ Platform administration service for ETIP. System health monitoring, maintenance 
 | P0 #8: Scheduled Maintenance | `services/scheduled-maintenance-store.ts`, `routes/p0-features.ts` | Cron expression validation (regex); create/list/toggle/delete; enabled/disabled toggle |
 | P0 #9: Tenant Analytics | `services/tenant-analytics-store.ts`, `routes/p0-features.ts` | Per-tenant usage analytics (7d/30d/90d); registerTenant() lazy-init; simulated daily trend |
 | P0 #10: Admin Activity Log | `services/admin-activity-store.ts`, `routes/p0-features.ts` | Max 5,000 entries; filter by adminId; pagination; POST /activity to log actions |
+| Queue Monitor | `routes/queue-monitor.ts` | Live BullMQ queue depths via ioredis LLEN+ZCARD; 14 canonical queues (etip-*); injectable RedisQueueClient interface for testing; never 500s on Redis errors |
 
 ---
 
@@ -64,6 +65,7 @@ Platform administration service for ETIP. System health monitoring, maintenance 
 | GET | `/api/v1/admin/tenants/:id/analytics` | Per-tenant analytics (7d/30d/90d) |
 | GET | `/api/v1/admin/activity` | Admin activity log (filter by adminId) |
 | POST | `/api/v1/admin/activity` | Log admin action |
+| GET | `/api/v1/admin/queues` | Live BullMQ queue depths (14 queues: waiting/active/failed/completed + updatedAt) |
 
 ---
 

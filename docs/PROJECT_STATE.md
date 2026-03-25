@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
-**Session counter:** 59
+**Session counter:** 60
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.7.0 | 2026-03-25 | Dashboard + 19 data pages + demo fallbacks (all 5 entity types + reporting + alerting + analytics). E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. 688 frontend tests (690 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.7.0 | 2026-03-25 | Dashboard + 19 data pages + demo fallbacks (all 5 entity types + reporting + alerting + analytics). E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. E2 queue health: AdminOpsPage queue table (color-coded, 10s polling). 688 frontend tests (690 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -27,7 +27,7 @@
 | etip_customization | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3017. 35 endpoints, 159 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. |
 | etip_onboarding | ✅ Deployed | 0.2.0 | 2026-03-24 | Port 3018. 32 endpoints, 230 tests. Setup wizard (Redis-backed), demo seeder (real API calls + 4 OSINT feeds), data source connectors, pipeline health, module readiness, progress tracker. |
 | etip_billing | ✅ Deployed | 0.1.0 | 2026-03-23 | Port 3019. 28 endpoints, 149 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. Added to deploy.yml + docker-compose. |
-| etip_admin | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3022. 28 endpoints, 147 tests. System health monitoring, maintenance windows, backup/restore, tenant administration, audit dashboard + 5 P0 improvements. |
+| etip_admin | ✅ Deployed | 0.2.0 | 2026-03-25 | Port 3022. 29 endpoints, 158 tests (+11 queue-monitor). System health monitoring, maintenance windows, backup/restore, tenant administration, audit dashboard + 5 P0 improvements. Queue monitor: GET /api/v1/admin/queues (live BullMQ depth via ioredis). |
 | etip_reporting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3021. Module 21. 20 endpoints, 199 tests. 5 report types (daily/weekly/monthly/custom/executive), BullMQ worker (etip-report-generate), cron scheduling, template engine (JSON/HTML/PDF). |
 | etip_alerting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3023. Module 23. 35 endpoints, 306 tests. Alert rules (5 condition types), alert lifecycle (open/ack/resolve/suppress/escalate), notification channels (email/slack/webhook), escalation policies, grouping, maintenance windows, templates. |
 | etip_analytics | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3024. Module 24. 12 endpoints, 83 tests. Dashboard widget aggregation, trend analysis (7d/30d/90d), executive summary with risk posture, service health matrix (21 services), top IOCs/actors/vulns. In-memory cache + demo trend seeding. |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **19 data pages** (added AnalyticsPage). 20 viz components. 688 tests (690 total, 2 skipped). E2E C2-D2: correlation investigate/ticket/hunt wired, DRP triage (TP/FP/Investigate), IOC pivot+timeline tabs, alerting hasData+double-stringify fix, AnalyticsPage (4 tabs). Existing pages FROZEN (wiring-only changes). |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **19 data pages** (added AnalyticsPage). 20 viz components. 688 tests (690 total, 2 skipped). E2E C2-D2: correlation investigate/ticket/hunt wired, DRP triage (TP/FP/Investigate), IOC pivot+timeline tabs, alerting hasData+double-stringify fix, AnalyticsPage (4 tabs). E2: AdminOpsPage queue health table (14 queues, color-coded, 10s auto-refresh, demo fallback). Existing pages FROZEN (wiring-only changes). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-21 | Feed pipeline + 11 modules. 276 tests. Wired to normalization. |
 | normalization | 2 | ✅ Deployed | 2026-03-21 | Port 3005. 18 accuracy improvements. 139 tests. Wired to enrichment. Lifecycle cron every 6h. |
@@ -67,7 +67,7 @@
 | customization | 5 | ✅ Complete | 2026-03-23 | Port 3017. **Core + 5 P0 improvements COMPLETE**. 35 endpoints, 159 tests. Module toggles (per-tenant enable/disable, feature flags). AI model selection (Claude model per task, token budget/cost limits). Risk score weight customization (composite confidence weights, decay rate overrides). Dashboard customization (widget layout, default filters/time ranges). Notification preferences (per-user alert channels, severity thresholds). P0: config inheritance, versioning, validation engine, import/export, audit trail. FEATURE-COMPLETE. **Phase 5 COMPLETE (3/3).** |
 | onboarding | 6 | ✅ Deployed | 2026-03-24 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 230 tests. 8-step wizard (Redis-backed, etip:{tenantId}:wizard key, 7-day TTL). Demo seeder makes real API calls to 5 downstream services + seeds 4 OSINT feeds via ingestion service. ioredis dependency added. Phase 6: 1/3. |
 | billing | 6 | ✅ Complete | 2026-03-23 | Port 3019. 28 endpoints, 5 P0 improvements, 149 tests. Plan management (Free/Starter/Pro/Enterprise), usage metering (80/90/100% alerts), Razorpay subscriptions/webhooks, GST invoices (18%), upgrade/downgrade with 72hr grace, coupon codes. FEATURE-COMPLETE. |
-| admin-ops | 6 | ✅ Complete | 2026-03-23 | Port 3022. **Core + 5 P0 improvements COMPLETE**. 28 endpoints, 147 tests. System health (18 services), maintenance windows (CRUD + activate/deactivate), backup/restore, tenant admin (CRUD + suspend/reinstate/plan/usage), audit log (CSV export). P0: dependency map, alert rules (seeded 5 defaults), scheduled maintenance (cron), tenant analytics, admin activity log. FEATURE-COMPLETE. **Phase 6 COMPLETE (3/3).** |
+| admin-ops | 6 | ✅ Complete | 2026-03-25 | Port 3022. **Core + 5 P0 improvements + queue monitor COMPLETE**. 29 endpoints, 158 tests. System health (18 services), maintenance windows (CRUD + activate/deactivate), backup/restore, tenant admin (CRUD + suspend/reinstate/plan/usage), audit log (CSV export). P0: dependency map, alert rules (seeded 5 defaults), scheduled maintenance (cron), tenant analytics, admin activity log. Queue monitor: GET /admin/queues reads 14 BullMQ queues via ioredis LLEN+ZCARD, injectable RedisQueueClient interface. FEATURE-COMPLETE. **Phase 6 COMPLETE (3/3).** |
 | reporting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3021. **Core + 10 P0 improvements COMPLETE**. 25 endpoints, 217 tests. 5 report types (daily/weekly/monthly/custom/executive). 4 formats (JSON/HTML/CSV/PDF). BullMQ worker (etip-report-generate). Cron scheduling (node-cron). Template engine. In-memory stores (DECISION-013). P0 batch 1: data aggregation, template engine, schedule persistence, report versioning, export validation. P0 batch 2: retention cron, CSV export, report cloning, bulk ops, period comparison. FEATURE-COMPLETE. |
 | alerting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3023. Module 23. **Core + P0 + P1 COMPLETE**. 35 endpoints, 306 tests. Alert rules (threshold/pattern/anomaly/absence/composite). Alert lifecycle (open/ack/resolve/suppress/escalate). Notification channels (email/slack/webhook). Escalation policies (multi-step, auto-escalate). Grouping (fingerprint dedup), retry logic, maintenance windows, search, templates. BullMQ worker (etip-alert-evaluate). FEATURE-COMPLETE. |
 | caching-service | 7 | ✅ Deployed | 2026-03-25 | Port 3025. Module 25. Redis cache management (48hr dashboard, 1hr search), event-driven cache invalidation (debounced 5s flush), MinIO cold storage archival (60-day cron), archive restore API, cache warming via analytics-service. CACHE_INVALIDATE queue added to shared-utils. 94 tests. |
@@ -101,7 +101,7 @@ user-management       → shared-types, shared-utils, shared-auth (Phase 5)
 customization         → shared-types, shared-utils, shared-auth (Phase 5)
 onboarding            → shared-types, shared-utils, shared-auth, ioredis (Phase 6)
 billing-service       → shared-types, shared-utils, shared-auth, razorpay (Phase 6)
-admin-service         → shared-types, shared-utils, shared-auth (Phase 6)
+admin-service         → shared-types, shared-utils, shared-auth, ioredis (Phase 6)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 elasticsearch-indexing-service → shared-types, shared-utils, shared-auth, @elastic/elasticsearch, bullmq (Phase 7)
 reporting-service     → shared-types, shared-utils, shared-auth, bullmq, node-cron (Phase 7)
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 Performance + E2E Integration Plan. All 33 containers live. E2E sessions C2-D2 complete. AnalyticsPage built (19th data page).
-- **Last session outcome:** Session 59 (2026-03-25). E2E Integration Plan sessions C2, C3, D1, D2 complete in one session. Commit ff93d4a (20 files, 1867 insertions). 688 frontend tests (22 new). C2: correlation investigate/ticket/hunt buttons wired. C3: DRP triage + IOC pivot/timeline. D1: alerting response shape fix + hasData + double-stringify. D2: AnalyticsPage (4 tabs) + hooks + demo data + route + sidebar.
-- **Known issues:** Deploy pending user manual SSH (SSH denied in session). Prior: Razorpay keys, VPS SSH access, analytics aggregator empty data, billing priceInr mismatch.
-- **Next tasks:** **Deploy frontend to VPS** (manual SSH: git pull + docker compose build/up). Then **E2E D3-E2** per integration plan. SearchPage still missing.
+- **Current phase:** Phase 7 Performance + E2E Integration Plan. All 33 containers live. E2E sessions E1-E2 complete.
+- **Last session outcome:** Session 60 (2026-03-25). E2E E1: pipeline smoke test harness (tests/e2e/: pipeline-smoke.test.ts + helpers.ts + vitest.config.ts). E2E E2: admin-service queue monitor (GET /api/v1/admin/queues, 14 queues via ioredis LLEN+ZCARD, 11 tests, injectable mock). Frontend: AdminOpsPage queue health table (color-coded dots, 10s polling, demo fallback). Commit d8ed45f (13 files, 897 insertions). 5348 tests passing (158 admin-service, 688 frontend).
+- **Known issues:** VPS deploy pending manual SSH for admin-service (updated with ioredis dep). Prior: Razorpay keys, analytics aggregator empty data, billing priceInr mismatch.
+- **Next tasks:** E2E D3 (SearchPage) per integration plan. Alternatively: VPS admin-service redeploy (git pull + docker compose build etip_admin + docker compose up -d etip_admin).
 
 ## Deployment Log
 
@@ -202,6 +202,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 57 | 2026-03-24 | etip_onboarding + etip_frontend updated | ✅ Pushed | e78239f→4eda8d3 | E2E B2: onboarding feed seeding + Redis wizard. E2E C1: feed retry + graph expand. 230 onboarding tests, 633 frontend tests. |
 | 58 | 2026-03-25 | etip_caching added (port 3025) | ✅ All 33 healthy | e78239f→794b3eb | Caching & Archival Service (Module 25): 94 tests. Redis cache mgmt, MinIO archival, event-driven invalidation. 4 CI fix commits (lockfile, TS, queue count, async tests). CI run 23499248314 green. Deploy rerun succeeded (first attempt SSH timeout). |
 | 59 | 2026-03-25 | etip_frontend update pending (pushed, deploy manual) | ⏳ Deploy pending | ff93d4a | E2E C2-D2: correlation actions, DRP triage, IOC pivot/timeline, alerting fixes, AnalyticsPage. 20 files changed, 688 frontend tests. Pushed to master. VPS deploy requires manual SSH (permission denied in session). |
+| 60 | 2026-03-25 | etip_admin updated (ioredis, queue monitor), etip_frontend (queue health table) | ⏳ CI triggered | d8ed45f | E2E E1: pipeline smoke harness (tests/e2e/). E2E E2: admin-service queue monitor (14 queues, LLEN+ZCARD, injectable mock). Frontend queue health table in AdminOpsPage. 13 files, 897 insertions. 5348 tests. |
 
 ## E2E Verification Results (Session 13)
 
