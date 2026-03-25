@@ -127,6 +127,26 @@ export function aiModelRoutes(deps: AiModelRouteDeps) {
           error: { code: 'PLAN_CUSTOM_BULK_NOT_ALLOWED', message: 'Custom plan cannot be applied in bulk — set each subtask via PUT /ai/subtasks/:subtask' },
         });
       }
+      // Budget enforcement: reject plans whose dominant model exceeds the tenant's daily token budget.
+      // dailyTokenLimit=0 means unlimited — always allow.
+      const PLAN_MIN_DAILY_TOKENS: Record<Exclude<AiPlan, 'custom'>, number> = {
+        starter: 0,           // haiku is cheap — any budget allows it
+        professional: 50_000, // sonnet needs meaningful headroom
+        enterprise: 500_000,  // opus needs substantial headroom (12× haiku cost)
+      };
+      const budget = aiModelStore.getBudget(tenantId);
+      const minRequired = PLAN_MIN_DAILY_TOKENS[plan as Exclude<AiPlan, 'custom'>];
+      if (budget.dailyTokenLimit > 0 && budget.dailyTokenLimit < minRequired) {
+        return reply.status(400).send({
+          error: {
+            code: 'PLAN_EXCEEDS_BUDGET',
+            message: `Plan '${plan}' requires a daily token budget of at least ${minRequired.toLocaleString()} tokens. Current budget: ${budget.dailyTokenLimit.toLocaleString()} tokens. Increase via PUT /ai/budget or choose a lower plan.`,
+            required: minRequired,
+            current: budget.dailyTokenLimit,
+          },
+        });
+      }
+
       const mappings = planTierService.applyPlan(tenantId, plan as Exclude<AiPlan, 'custom'>, aiModelStore, userId);
       return reply.send({ data: mappings, plan, total: mappings.length });
     });

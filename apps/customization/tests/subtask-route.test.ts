@@ -139,3 +139,107 @@ describe('PUT /ai/subtasks/:subtask — G1b', () => {
     expect(classification?.model).not.toBe('opus');
   });
 });
+
+describe('POST /ai/plans/apply — budget enforcement (P1-6)', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    const auditTrail = new AuditTrail();
+    const versioning = new ConfigVersioning();
+    const aiModelStore = new AiModelStore(auditTrail, versioning);
+    const planTierService = new PlanTierService();
+    app = await buildApp({
+      config: TEST_CONFIG,
+      aiModelDeps: { aiModelStore, planTierService },
+    });
+    await app.ready();
+  });
+
+  afterAll(async () => { await app.close(); });
+
+  it('allows starter plan regardless of budget (haiku is cheap)', async () => {
+    // Set very low budget
+    await app.inject({
+      method: 'PUT',
+      url: `${BASE}/budget`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { dailyTokenLimit: 1_000, monthlyTokenLimit: 30_000, alertThreshold: 0.9 },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: `${BASE}/plans/apply`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { plan: 'starter' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().plan).toBe('starter');
+  });
+
+  it('rejects professional plan when budget is below 50K tokens/day', async () => {
+    await app.inject({
+      method: 'PUT',
+      url: `${BASE}/budget`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { dailyTokenLimit: 10_000, monthlyTokenLimit: 300_000, alertThreshold: 0.9 },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: `${BASE}/plans/apply`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { plan: 'professional' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('PLAN_EXCEEDS_BUDGET');
+    expect(res.json().error.required).toBe(50_000);
+    expect(res.json().error.current).toBe(10_000);
+  });
+
+  it('rejects enterprise plan when budget is below 500K tokens/day', async () => {
+    await app.inject({
+      method: 'PUT',
+      url: `${BASE}/budget`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { dailyTokenLimit: 100_000, monthlyTokenLimit: 3_000_000, alertThreshold: 0.9 },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: `${BASE}/plans/apply`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { plan: 'enterprise' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('PLAN_EXCEEDS_BUDGET');
+  });
+
+  it('allows enterprise plan when dailyTokenLimit is 0 (unlimited)', async () => {
+    await app.inject({
+      method: 'PUT',
+      url: `${BASE}/budget`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { dailyTokenLimit: 0, monthlyTokenLimit: 0, alertThreshold: 0.9 },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: `${BASE}/plans/apply`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { plan: 'enterprise' },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('allows professional plan when budget meets minimum (50K tokens/day)', async () => {
+    await app.inject({
+      method: 'PUT',
+      url: `${BASE}/budget`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { dailyTokenLimit: 100_000, monthlyTokenLimit: 3_000_000, alertThreshold: 0.9 },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: `${BASE}/plans/apply`,
+      headers: { 'x-tenant-id': TENANT, 'x-user-id': 'admin-1' },
+      payload: { plan: 'professional' },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+});
