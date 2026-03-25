@@ -4,6 +4,9 @@ import type pino from 'pino';
 import type { PrismaClient } from '@prisma/client';
 import type { FeedRepository } from '../repository.js';
 import { RSSConnector, type ConnectorResult } from '../connectors/rss.js';
+import { NVDConnector } from '../connectors/nvd.js';
+import { TAXIIConnector } from '../connectors/taxii.js';
+import { RestAPIConnector } from '../connectors/rest-api.js';
 import { getConfig } from '../config.js';
 import { ArticlePipeline, type PipelineBatchResult } from './pipeline.js';
 import type { FeedPolicyStore } from '../services/feed-policy-store.js';
@@ -60,6 +63,9 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
   });
 
   const rssConnector = new RSSConnector(logger);
+  const nvdConnector = new NVDConnector(logger);
+  const taxiiConnector = new TAXIIConnector(logger);
+  const restApiConnector = new RestAPIConnector(logger);
   const pipeline = new ArticlePipeline({
     logger,
     db,
@@ -115,7 +121,12 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
         const fetchResult = await routeToConnector(feed.feedType, {
           url: feedUrl,
           headers: feedHeaders,
+          parseConfig: feed.parseConfig as Record<string, unknown> | null,
           rssConnector,
+          nvdConnector,
+          taxiiConnector,
+          restApiConnector,
+          config,
         });
 
         // ── Run articles through pipeline ─────────────────────────
@@ -247,18 +258,38 @@ function buildEmptyResult(feedId: string): FeedFetchResult {
 interface RouteOptions {
   url: string;
   headers: Record<string, string>;
+  parseConfig: Record<string, unknown> | null;
   rssConnector: RSSConnector;
+  nvdConnector: NVDConnector;
+  taxiiConnector: TAXIIConnector;
+  restApiConnector: RestAPIConnector;
+  config: import('../config.js').AppConfig;
 }
 
 async function routeToConnector(feedType: string, opts: RouteOptions): Promise<ConnectorResult> {
   switch (feedType) {
     case 'rss':
       return opts.rssConnector.fetch({ url: opts.url, headers: opts.headers });
+    case 'nvd':
+      return opts.nvdConnector.fetch({
+        apiKey: opts.config.TI_NVD_API_KEY,
+        pubStartDate: (opts.parseConfig?.pubStartDate as string) ?? undefined,
+        pubEndDate: (opts.parseConfig?.pubEndDate as string) ?? undefined,
+      });
     case 'stix':
     case 'taxii':
-    case 'misp':
+      return opts.taxiiConnector.fetch({
+        taxiiUrl: opts.config.TI_TAXII_URL ?? (opts.parseConfig?.taxiiUrl as string) ?? undefined,
+        username: opts.config.TI_TAXII_USER ?? (opts.parseConfig?.username as string) ?? undefined,
+        password: opts.config.TI_TAXII_PASSWORD ?? (opts.parseConfig?.password as string) ?? undefined,
+        collectionId: (opts.parseConfig?.collectionId as string) ?? undefined,
+        addedAfter: (opts.parseConfig?.addedAfter as string) ?? undefined,
+      });
     case 'rest_api':
-    case 'nvd':
+      return opts.restApiConnector.fetch({
+        feedMeta: { url: opts.url, ...opts.parseConfig },
+      });
+    case 'misp':
       throw new AppError(501, `Connector not yet implemented: ${feedType}`, 'CONNECTOR_NOT_IMPLEMENTED');
     default:
       throw new AppError(400, `Unsupported feed type: ${feedType}`, 'CONNECTOR_UNSUPPORTED');

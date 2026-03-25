@@ -40,6 +40,17 @@ const EnvSchema = z.object({
   // ── External Feed API Keys ───────────────────────────────────────────────
   // AlienVault OTX — required for subscribed pulses endpoint. Get from otx.alienvault.com.
   TI_OTX_API_KEY: z.string().optional(),
+
+  // ── NVD Connector ──────────────────────────────────────────────────────
+  // NVD API key for higher rate limits (50 req/30s vs 5 req/30s unauthenticated).
+  TI_NVD_API_KEY: z.string().optional(),
+
+  // ── STIX/TAXII 2.1 Connector ──────────────────────────────────────────
+  // TAXII 2.1 server discovery URL (e.g. https://cti-taxii.mitre.org/taxii2).
+  TI_TAXII_URL: z.string().optional(),
+  // TAXII basic auth credentials (optional — some feeds are public).
+  TI_TAXII_USER: z.string().optional(),
+  TI_TAXII_PASSWORD: z.string().optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

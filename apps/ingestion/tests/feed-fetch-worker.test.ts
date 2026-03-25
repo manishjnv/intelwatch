@@ -25,10 +25,25 @@ vi.mock('bullmq', () => ({
   Queue: vi.fn().mockImplementation(() => mockQueueInstance),
 }));
 
-// Mock RSS connector
+// Mock connectors
 vi.mock('../src/connectors/rss.js', () => ({
   RSSConnector: vi.fn().mockImplementation(() => ({
     fetch: vi.fn(),
+  })),
+}));
+vi.mock('../src/connectors/nvd.js', () => ({
+  NVDConnector: vi.fn().mockImplementation(() => ({
+    fetch: vi.fn().mockResolvedValue({ articles: [], fetchDurationMs: 0, feedTitle: null, feedDescription: null }),
+  })),
+}));
+vi.mock('../src/connectors/taxii.js', () => ({
+  TAXIIConnector: vi.fn().mockImplementation(() => ({
+    fetch: vi.fn().mockResolvedValue({ articles: [], fetchDurationMs: 0, feedTitle: null, feedDescription: null }),
+  })),
+}));
+vi.mock('../src/connectors/rest-api.js', () => ({
+  RestAPIConnector: vi.fn().mockImplementation(() => ({
+    fetch: vi.fn().mockResolvedValue({ articles: [], fetchDurationMs: 0, feedTitle: null, feedDescription: null }),
   })),
 }));
 
@@ -228,7 +243,7 @@ describe('FeedFetchWorker', () => {
     createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
-    repo.findById.mockResolvedValue(makeFeed({ feedType: 'stix' }));
+    repo.findById.mockResolvedValue(makeFeed({ feedType: 'misp' }));
     repo.updateHealth.mockResolvedValue(makeFeed());
 
     const result = await processor(makeJob({ feedId: FEED_ID, tenantId: TENANT_ID, triggeredBy: 'manual' }));
