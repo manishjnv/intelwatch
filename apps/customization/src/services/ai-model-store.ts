@@ -3,10 +3,16 @@ import { AppError } from '@etip/shared-utils';
 import {
   AI_TASKS,
   AI_MODELS,
+  AI_CTI_SUBTASKS,
+  AI_CTI_SUBTASK_STAGE,
+  RECOMMENDED_SUBTASK_MODELS,
+  FALLBACK_SUBTASK_MODELS,
   DEFAULT_TASK_MODELS,
   type AiTask,
   type AiModel,
+  type AiCtiSubtask,
   type SetTaskModelInput,
+  type SetSubtaskModelInput,
   type SetBudgetInput,
 } from '../schemas/customization.js';
 import type { AuditTrail } from './audit-trail.js';
@@ -30,6 +36,27 @@ export interface BudgetConfig {
   updatedAt: string;
 }
 
+/** Per-subtask model mapping for the 12 CTI pipeline subtasks */
+export interface SubtaskMapping {
+  id: string;
+  tenantId: string;
+  subtask: AiCtiSubtask;
+  stage: 1 | 2 | 3;
+  model: AiModel;
+  fallbackModel: AiModel;
+  /** True when model matches the recommended default for this subtask */
+  isRecommended: boolean;
+  updatedAt: string;
+}
+
+export interface RecommendedSubtask {
+  subtask: AiCtiSubtask;
+  stage: 1 | 2 | 3;
+  recommendedModel: AiModel;
+  fallbackModel: AiModel;
+  description: string;
+}
+
 export interface UsageRecord {
   task: string;
   tokens: number;
@@ -49,6 +76,8 @@ export class AiModelStore {
   private budgets = new Map<string, BudgetConfig>();
   /** tenantId → usage records */
   private tenantUsage = new Map<string, UsageRecord[]>();
+  /** Per-tenant CTI subtask model mappings (12 subtasks) */
+  private subtaskMappings = new Map<string, SubtaskMapping>();
 
   constructor(
     private auditTrail: AuditTrail,
@@ -57,6 +86,29 @@ export class AiModelStore {
 
   private taskKey(tenantId: string, task: string): string {
     return `${tenantId}:${task}`;
+  }
+
+  private subtaskKey(tenantId: string, subtask: AiCtiSubtask): string {
+    return `${tenantId}:subtask:${subtask}`;
+  }
+
+  private ensureSubtaskDefaults(tenantId: string): void {
+    for (const subtask of AI_CTI_SUBTASKS) {
+      const k = this.subtaskKey(tenantId, subtask);
+      if (!this.subtaskMappings.has(k)) {
+        const model = RECOMMENDED_SUBTASK_MODELS[subtask];
+        this.subtaskMappings.set(k, {
+          id:             randomUUID(),
+          tenantId,
+          subtask,
+          stage:          AI_CTI_SUBTASK_STAGE[subtask],
+          model,
+          fallbackModel:  FALLBACK_SUBTASK_MODELS[subtask],
+          isRecommended:  true,
+          updatedAt:      new Date().toISOString(),
+        });
+      }
+    }
   }
 
   private ensureDefaults(tenantId: string): void {
@@ -215,6 +267,113 @@ export class AiModelStore {
         ? monthlyUsage / budget.monthlyTokenLimit
         : 0,
     };
+  }
+
+  // ─── CTI Subtask Methods ──────────────────────────────────────────
+
+  /** Return all 12 CTI subtask mappings for a tenant (auto-seeds defaults). */
+  getSubtaskMappings(tenantId: string): SubtaskMapping[] {
+    this.ensureSubtaskDefaults(tenantId);
+    return AI_CTI_SUBTASKS.map((subtask) => {
+      const mapping = this.subtaskMappings.get(this.subtaskKey(tenantId, subtask))!;
+      return { ...mapping };
+    });
+  }
+
+  /**
+   * Set model (and optional fallback) for a single CTI subtask.
+   * Records one audit event + one version snapshot.
+   */
+  setSubtaskModel(
+    tenantId: string,
+    subtask: AiCtiSubtask,
+    input: SetSubtaskModelInput,
+    userId: string,
+  ): SubtaskMapping {
+    this.ensureSubtaskDefaults(tenantId);
+    const k = this.subtaskKey(tenantId, subtask);
+    const existing = this.subtaskMappings.get(k)!;
+    const before = { ...existing };
+
+    existing.model         = input.model;
+    existing.fallbackModel = input.fallbackModel ?? existing.fallbackModel;
+    existing.isRecommended = input.model === RECOMMENDED_SUBTASK_MODELS[subtask];
+    existing.updatedAt     = new Date().toISOString();
+
+    this.auditTrail.log({
+      tenantId, userId, section: 'ai', action: 'subtask_model.updated',
+      before: before as unknown as Record<string, unknown>,
+      after:  existing as unknown as Record<string, unknown>,
+    });
+    this.versioning.snapshot(
+      tenantId, 'ai', this.getExportData(tenantId), userId,
+      `Set subtask ${subtask} model to ${input.model}`,
+    );
+
+    return { ...existing };
+  }
+
+  /**
+   * Set all 12 subtasks at once — used by plan tier application.
+   * Records ONE audit event + ONE version snapshot for the entire batch.
+   */
+  applySubtaskBatch(
+    tenantId: string,
+    configs: Record<string, { model: AiModel; fallbackModel: AiModel }>,
+    userId: string,
+    label: string,
+  ): SubtaskMapping[] {
+    this.ensureSubtaskDefaults(tenantId);
+    const now = new Date().toISOString();
+
+    for (const subtask of AI_CTI_SUBTASKS) {
+      const cfg = configs[subtask];
+      if (!cfg) continue;
+      const k = this.subtaskKey(tenantId, subtask);
+      const mapping = this.subtaskMappings.get(k)!;
+      mapping.model         = cfg.model;
+      mapping.fallbackModel = cfg.fallbackModel;
+      mapping.isRecommended = cfg.model === RECOMMENDED_SUBTASK_MODELS[subtask];
+      mapping.updatedAt     = now;
+    }
+
+    this.auditTrail.log({
+      tenantId, userId, section: 'ai', action: 'subtask_batch.applied',
+      before: {},
+      after:  { label, subtaskCount: AI_CTI_SUBTASKS.length },
+    });
+    this.versioning.snapshot(tenantId, 'ai', this.getExportData(tenantId), userId, label);
+
+    return this.getSubtaskMappings(tenantId);
+  }
+
+  /**
+   * Return the recommended (★) model + fallback for every subtask.
+   * Static — does not depend on tenant config.
+   */
+  listRecommended(): RecommendedSubtask[] {
+    const DESCRIPTIONS: Record<AiCtiSubtask, string> = {
+      summarization:       'Stage 1 — generate 2-3 sentence article summary',
+      keyword_extraction:  'Stage 1 — extract key threat terms and named entities',
+      date_enrichment:     'Stage 1 — normalise and enrich timestamps',
+      classification:      'Stage 1 — classify article type and CTI relevance',
+      ioc_extraction:      'Stage 2 — extract all IOC values with context',
+      cve_identification:  'Stage 2 — identify and validate CVE identifiers',
+      threat_actor:        'Stage 2 — attribute activity to known threat groups',
+      graph_relations:     'Stage 2 — extract entity relationships for knowledge graph',
+      ioc_expiry:          'Stage 2 — determine IOC validity and expiry signal',
+      ttp_mapping:         'Stage 2 — map behaviours to MITRE ATT&CK techniques',
+      deduplication:       'Stage 3 — detect near-duplicate articles (LLM arbitration)',
+      cross_article_merge: 'Stage 3 — merge IOC context across related articles',
+    };
+
+    return AI_CTI_SUBTASKS.map((subtask) => ({
+      subtask,
+      stage:            AI_CTI_SUBTASK_STAGE[subtask],
+      recommendedModel: RECOMMENDED_SUBTASK_MODELS[subtask],
+      fallbackModel:    FALLBACK_SUBTASK_MODELS[subtask],
+      description:      DESCRIPTIONS[subtask],
+    }));
   }
 
   getExportData(tenantId: string): Record<string, unknown> {

@@ -77,6 +77,12 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useResetRiskWeights: () => mockUseResetRiskWeights(),
   useUpdateNotificationChannel: () => mockUseUpdateNotificationChannel(),
   useTestNotification: () => mockUseTestNotification(),
+  // AI plan / subtask hooks (F2/F3)
+  usePlanTiers:         () => ({ data: { data: [] }, isDemo: true }),
+  useSubtaskMappings:   () => ({ data: { data: [] }, isDemo: true }),
+  useRecommendedModels: () => ({ data: { data: [] }, isDemo: true }),
+  useCostEstimate:      () => ({ data: { data: null }, isDemo: true }),
+  useApplyPlan:         () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 // Mock shared-ui components
@@ -594,24 +600,24 @@ describe('CustomizationPage', () => {
     expect(screen.getByText('Protection')).toBeTruthy()
   })
 
-  it('switches to AI Config tab and shows task configs', () => {
+  it('switches to AI Config tab and shows plan tier section', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('AI Config'))
-    expect(screen.getByText('IOC Triage')).toBeTruthy()
-    expect(screen.getByText('claude-haiku-4-5')).toBeTruthy()
-    expect(screen.getByText('Monthly AI Budget')).toBeTruthy()
+    expect(screen.getByText('AI Plan Tier')).toBeTruthy()
+    expect(screen.getByText('12 Pipeline Subtasks')).toBeTruthy()
+    expect(screen.getByText('Cost Estimator')).toBeTruthy()
   })
 
-  it('shows AI budget progress bar', () => {
+  it('shows AI plan tier heading on AI Config tab', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('AI Config'))
-    expect(screen.getByText('$18.40 / $50')).toBeTruthy()
+    expect(screen.getByText('AI Plan Tier')).toBeTruthy()
   })
 
-  it('shows AI confidence threshold', () => {
+  it('shows cost estimator slider on AI Config tab', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('AI Config'))
-    expect(screen.getByText('70%')).toBeTruthy()
+    expect(screen.getByText('Cost Estimator')).toBeTruthy()
   })
 
   it('switches to Risk Weights tab and shows sliders', () => {

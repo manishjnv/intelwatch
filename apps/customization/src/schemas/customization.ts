@@ -73,6 +73,72 @@ export const TaskParamSchema = z.object({
   task: z.enum(AI_TASKS),
 });
 
+// ─── AI CTI Pipeline Subtasks (12) ───────────────────────────────
+// Expanded from 5 generic tasks to 12 pipeline-specific subtasks
+// per CTI-Pipeline-Architecture-v2.0, Sections 5 & 6.
+
+export const AI_CTI_SUBTASKS = [
+  // Stage 1 — runs on 100% of articles
+  'summarization', 'keyword_extraction', 'date_enrichment', 'classification',
+  // Stage 2 — runs on ~20% of CTI-relevant articles
+  'ioc_extraction', 'cve_identification', 'threat_actor', 'graph_relations',
+  'ioc_expiry', 'ttp_mapping',
+  // Stage 3 — deduplication
+  'deduplication', 'cross_article_merge',
+] as const;
+export type AiCtiSubtask = (typeof AI_CTI_SUBTASKS)[number];
+
+/** Pipeline stage each subtask belongs to */
+export const AI_CTI_SUBTASK_STAGE: Record<AiCtiSubtask, 1 | 2 | 3> = {
+  summarization: 1, keyword_extraction: 1, date_enrichment: 1, classification: 1,
+  ioc_extraction: 2, cve_identification: 2, threat_actor: 2, graph_relations: 2,
+  ioc_expiry: 2, ttp_mapping: 2,
+  deduplication: 3, cross_article_merge: 3,
+};
+
+/**
+ * Recommended (★) primary model per subtask.
+ * Maps GPT-4.1 → sonnet, Gemini Flash → haiku per DECISIONS_LOG note.
+ */
+export const RECOMMENDED_SUBTASK_MODELS: Record<AiCtiSubtask, AiModel> = {
+  summarization: 'sonnet', keyword_extraction: 'sonnet',
+  date_enrichment: 'sonnet', classification: 'sonnet',
+  ioc_extraction: 'sonnet', cve_identification: 'sonnet',
+  threat_actor: 'sonnet', graph_relations: 'sonnet',
+  ioc_expiry: 'sonnet', ttp_mapping: 'sonnet',
+  deduplication: 'haiku', cross_article_merge: 'sonnet',
+};
+
+/** Fallback model used when primary exceeds budget or returns error */
+export const FALLBACK_SUBTASK_MODELS: Record<AiCtiSubtask, AiModel> = {
+  summarization: 'haiku', keyword_extraction: 'haiku',
+  date_enrichment: 'haiku', classification: 'haiku',
+  ioc_extraction: 'haiku', cve_identification: 'opus',
+  threat_actor: 'haiku', graph_relations: 'haiku',
+  ioc_expiry: 'haiku', ttp_mapping: 'opus',
+  deduplication: 'sonnet', cross_article_merge: 'haiku',
+};
+
+// ─── AI Plan Tiers ───────────────────────────────────────────────
+
+export const AI_PLANS = ['starter', 'professional', 'enterprise', 'custom'] as const;
+export type AiPlan = (typeof AI_PLANS)[number];
+
+export const ApplyPlanSchema = z.object({
+  plan: z.enum(AI_PLANS),
+});
+export type ApplyPlanInput = z.infer<typeof ApplyPlanSchema>;
+
+export const SubtaskParamSchema = z.object({
+  subtask: z.enum(AI_CTI_SUBTASKS),
+});
+
+export const SetSubtaskModelSchema = z.object({
+  model: z.enum(AI_MODELS),
+  fallbackModel: z.enum(AI_MODELS).optional(),
+});
+export type SetSubtaskModelInput = z.infer<typeof SetSubtaskModelSchema>;
+
 export const SetBudgetSchema = z.object({
   dailyTokenLimit: z.coerce.number().int().min(0).max(100_000_000),
   monthlyTokenLimit: z.coerce.number().int().min(0).max(1_000_000_000),
@@ -83,6 +149,12 @@ export type SetBudgetInput = z.infer<typeof SetBudgetSchema>;
 export const UsageQuerySchema = z.object({
   period: z.enum(['day', 'week', 'month']).default('day'),
 });
+
+export const CostEstimateQuerySchema = z.object({
+  plan: z.enum(AI_PLANS).default('professional'),
+  articles: z.coerce.number().int().min(1).max(1_000_000).default(1000),
+});
+export type CostEstimateQuery = z.infer<typeof CostEstimateQuerySchema>;
 
 // ─── Risk Weights ────────────────────────────────────────────────
 

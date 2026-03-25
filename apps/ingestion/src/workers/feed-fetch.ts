@@ -6,6 +6,7 @@ import type { FeedRepository } from '../repository.js';
 import { RSSConnector, type ConnectorResult } from '../connectors/rss.js';
 import { getConfig } from '../config.js';
 import { ArticlePipeline, type PipelineBatchResult } from './pipeline.js';
+import type { FeedPolicyStore } from '../services/feed-policy-store.js';
 
 export interface FeedFetchJobData {
   feedId: string;
@@ -30,10 +31,12 @@ export interface FeedFetchWorkerDeps {
   repo: FeedRepository;
   logger: pino.Logger;
   db: PrismaClient;
+  /** Optional policy store — when provided, enforces per-feed daily article caps */
+  policyStore?: FeedPolicyStore;
 }
 
 export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFetchJobData, FeedFetchResult> {
-  const { repo, logger, db } = deps;
+  const { repo, logger, db, policyStore } = deps;
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
@@ -84,6 +87,24 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
         return buildEmptyResult(feedId);
       }
 
+      // ── Daily cap enforcement ─────────────────────────────────────────────
+      if (policyStore?.isCapReached(tenantId, feedId)) {
+        const policy = policyStore.getPolicy(tenantId, feedId);
+        logger.warn(
+          { feedId, tenantId, currentDayCount: policy?.currentDayCount, dailyLimit: policy?.dailyLimit },
+          'Feed daily cap reached — skipping until midnight reset',
+        );
+        return buildEmptyResult(feedId);
+      }
+
+      // ── Log AI-disabled advisory ──────────────────────────────────────────
+      if (policyStore) {
+        const policy = policyStore.getPolicy(tenantId, feedId);
+        if (policy && !policy.aiEnabled) {
+          logger.info({ feedId }, 'Feed policy has aiEnabled=false (enforcement in F2)');
+        }
+      }
+
       try {
         // ── Fetch articles from source ────────────────────────────
         const fetchResult = await routeToConnector(feed.feedType, {
@@ -105,6 +126,9 @@ export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFet
 
         // ── Enqueue IOCs to normalization service ───────────────
         await enqueueIOCsForNormalization(normalizeQueue, pipelineResult, feedId, feed.name, tenantId, logger);
+
+        // ── Increment daily policy counter ────────────────────────
+        policyStore?.incrementCount(tenantId, feedId, fetchResult.articles.length);
 
         // ── Update feed health on success ─────────────────────────
         await repo.updateHealth(tenantId, feedId, {

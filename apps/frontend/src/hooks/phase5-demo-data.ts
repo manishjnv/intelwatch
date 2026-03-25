@@ -244,3 +244,80 @@ export const DEMO_NOTIFICATION_CHANNELS: NotificationChannel[] = [
 export const DEMO_CUSTOMIZATION_STATS: CustomizationStats = {
   modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31.6, theme: 'dark',
 }
+
+// ─── AI Plan Tiers Demo Data ─────────────────────────────────────
+
+export interface PlanTierMeta {
+  plan: 'starter' | 'professional' | 'enterprise' | 'custom'
+  displayName: string; description: string; stageModel: string
+  costPer1KArticlesUsd: string; accuracyPct: string; isRecommended: boolean
+}
+
+export const DEMO_PLAN_TIERS: PlanTierMeta[] = [
+  { plan: 'starter',      displayName: 'Starter',      description: 'Cost-efficient tier — all stages use Haiku. Best for high-volume, lower-stakes feeds.',      stageModel: 'haiku (all stages)',    costPer1KArticlesUsd: '$4–6',   accuracyPct: '~85%', isRecommended: false },
+  { plan: 'professional', displayName: 'Professional', description: 'Balanced tier — all stages use Sonnet. Recommended for most production deployments.',         stageModel: 'sonnet (all stages)',   costPer1KArticlesUsd: '~$27',   accuracyPct: '~93%', isRecommended: true  },
+  { plan: 'enterprise',   displayName: 'Enterprise',   description: 'Maximum accuracy — all stages use Opus. Best for high-stakes CTI operations.',               stageModel: 'opus (all stages)',     costPer1KArticlesUsd: '~$85',   accuracyPct: '~96%', isRecommended: false },
+  { plan: 'custom',       displayName: 'Custom',       description: 'Per-subtask configuration — set each of the 12 subtasks individually.',                      stageModel: 'per-subtask',           costPer1KArticlesUsd: 'variable', accuracyPct: 'variable', isRecommended: false },
+]
+
+export interface SubtaskMapping {
+  id: string; tenantId: string; subtask: string; stage: 1 | 2 | 3
+  model: 'haiku' | 'sonnet' | 'opus'; fallbackModel: 'haiku' | 'sonnet' | 'opus'
+  isRecommended: boolean; updatedAt: string
+}
+
+export const DEMO_SUBTASK_MAPPINGS: SubtaskMapping[] = [
+  { id: 'sm-1',  tenantId: 'default', subtask: 'summarization',       stage: 1, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-2',  tenantId: 'default', subtask: 'keyword_extraction',  stage: 1, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-3',  tenantId: 'default', subtask: 'date_enrichment',     stage: 1, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-4',  tenantId: 'default', subtask: 'classification',      stage: 1, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-5',  tenantId: 'default', subtask: 'ioc_extraction',      stage: 2, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-6',  tenantId: 'default', subtask: 'cve_identification',  stage: 2, model: 'sonnet', fallbackModel: 'opus',   isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-7',  tenantId: 'default', subtask: 'threat_actor',        stage: 2, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-8',  tenantId: 'default', subtask: 'graph_relations',     stage: 2, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-9',  tenantId: 'default', subtask: 'ioc_expiry',          stage: 2, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-10', tenantId: 'default', subtask: 'ttp_mapping',         stage: 2, model: 'sonnet', fallbackModel: 'opus',   isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-11', tenantId: 'default', subtask: 'deduplication',       stage: 3, model: 'haiku',  fallbackModel: 'sonnet', isRecommended: true,  updatedAt: daysAgo(1) },
+  { id: 'sm-12', tenantId: 'default', subtask: 'cross_article_merge', stage: 3, model: 'sonnet', fallbackModel: 'haiku',  isRecommended: true,  updatedAt: daysAgo(1) },
+]
+
+export interface RecommendedSubtask {
+  subtask: string; stage: 1 | 2 | 3
+  recommendedModel: 'haiku' | 'sonnet' | 'opus'; fallbackModel: 'haiku' | 'sonnet' | 'opus'
+  description: string
+}
+
+export const DEMO_RECOMMENDED_MODELS: RecommendedSubtask[] = [
+  { subtask: 'summarization',       stage: 1, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 1 — generate 2-3 sentence article summary' },
+  { subtask: 'keyword_extraction',  stage: 1, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 1 — extract key threat terms and named entities' },
+  { subtask: 'date_enrichment',     stage: 1, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 1 — normalise and enrich timestamps' },
+  { subtask: 'classification',      stage: 1, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 1 — classify article type and CTI relevance' },
+  { subtask: 'ioc_extraction',      stage: 2, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 2 — extract all IOC values with context' },
+  { subtask: 'cve_identification',  stage: 2, recommendedModel: 'sonnet', fallbackModel: 'opus',   description: 'Stage 2 — identify and validate CVE identifiers' },
+  { subtask: 'threat_actor',        stage: 2, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 2 — attribute activity to known threat groups' },
+  { subtask: 'graph_relations',     stage: 2, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 2 — extract entity relationships for knowledge graph' },
+  { subtask: 'ioc_expiry',          stage: 2, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 2 — determine IOC validity and expiry signal' },
+  { subtask: 'ttp_mapping',         stage: 2, recommendedModel: 'sonnet', fallbackModel: 'opus',   description: 'Stage 2 — map behaviours to MITRE ATT&CK techniques' },
+  { subtask: 'deduplication',       stage: 3, recommendedModel: 'haiku',  fallbackModel: 'sonnet', description: 'Stage 3 — detect near-duplicate articles (LLM arbitration)' },
+  { subtask: 'cross_article_merge', stage: 3, recommendedModel: 'sonnet', fallbackModel: 'haiku',  description: 'Stage 3 — merge IOC context across related articles' },
+]
+
+export interface StageEstimate {
+  stage: 1 | 2 | 3; model: string; articles: number; subtasks: number; costUsd: number
+}
+
+export interface CostEstimate {
+  perStage: StageEstimate[]
+  totalMonthlyUsd: number
+  comparedTo: { starter: number; professional: number; enterprise: number }
+}
+
+export const DEMO_COST_ESTIMATE: CostEstimate = {
+  perStage: [
+    { stage: 1, model: 'sonnet', articles: 1000, subtasks: 4, costUsd: 25.5 },
+    { stage: 2, model: 'sonnet', articles: 200,  subtasks: 6, costUsd: 6.6  },
+    { stage: 3, model: 'haiku',  articles: 1000, subtasks: 2, costUsd: 1.13 },
+  ],
+  totalMonthlyUsd: 33.23,
+  comparedTo: { starter: 3.8, professional: 45.6, enterprise: 228 },
+}

@@ -9,6 +9,7 @@ import { ConfigInheritance } from './services/config-inheritance.js';
 import { ConfigPortability } from './services/config-portability.js';
 import { ModuleToggleStore } from './services/module-toggle-store.js';
 import { AiModelStore } from './services/ai-model-store.js';
+import { PlanTierService } from './services/plan-tiers.js';
 import { RiskWeightStore } from './services/risk-weight-store.js';
 import { DashboardStore } from './services/dashboard-store.js';
 import { NotificationStore } from './services/notification-store.js';
@@ -34,6 +35,7 @@ async function main(): Promise<void> {
   // 4. Feature stores (inject P0 deps)
   const moduleToggleStore = new ModuleToggleStore(validationEngine, auditTrail, configVersioning);
   const aiModelStore = new AiModelStore(auditTrail, configVersioning);
+  const planTierService = new PlanTierService();
   const riskWeightStore = new RiskWeightStore(validationEngine, auditTrail, configVersioning);
   const dashboardStore = new DashboardStore(configInheritance, auditTrail, configVersioning);
   const notificationStore = new NotificationStore(configInheritance, auditTrail, configVersioning);
@@ -64,7 +66,7 @@ async function main(): Promise<void> {
   const app = await buildApp({
     config,
     moduleToggleDeps: { moduleToggleStore },
-    aiModelDeps: { aiModelStore },
+    aiModelDeps: { aiModelStore, planTierService },
     riskWeightDeps: { riskWeightStore },
     dashboardDeps: { dashboardStore },
     notificationDeps: { notificationStore },

@@ -11,13 +11,15 @@ import {
   useNotificationChannels, useCustomizationStats,
   useToggleModule, useUpdateAIConfig, useUpdateRiskWeight,
   useResetRiskWeights, useUpdateNotificationChannel, useTestNotification,
+  usePlanTiers, useSubtaskMappings, useRecommendedModels, useCostEstimate, useApplyPlan,
   type ModuleToggle, type AIModelConfig, type RiskWeight, type NotificationChannel,
+  type PlanTierMeta, type SubtaskMapping,
 } from '@/hooks/use-phase5-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   Puzzle, Brain, Scale, LayoutDashboard, Bell,
   ToggleLeft, ToggleRight, AlertTriangle, Send,
-  RotateCcw, DollarSign, Sliders,
+  RotateCcw, DollarSign, Sliders, Star, ChevronDown,
 } from 'lucide-react'
 
 // ─── Tab type ───────────────────────────────────────────────────
@@ -74,7 +76,7 @@ export function CustomizationPage() {
         </div>
 
         {activeTab === 'modules' && <ModulesTab modules={moduleData?.data ?? []} isDemo={isDemo} />}
-        {activeTab === 'ai' && <AIConfigTab configs={aiData?.data ?? []} isDemo={isDemo} />}
+        {activeTab === 'ai' && <AIConfigTab configs={aiData?.data ?? []} isDemo={isDemo ?? false} />}
         {activeTab === 'risk' && <RiskWeightsTab weights={riskData?.data ?? []} isDemo={isDemo} />}
         {activeTab === 'dashboard' && <DashboardConfigTab />}
         {activeTab === 'notifications' && <NotificationsTab channels={notifData?.data ?? []} isDemo={isDemo} />}
@@ -137,78 +139,184 @@ function ModulesTab({ modules, isDemo }: { modules: ModuleToggle[]; isDemo: bool
 
 // ─── AI Config Tab ──────────────────────────────────────────────
 
-function AIConfigTab({ configs, isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) {
-  const updateMutation = useUpdateAIConfig()
+const MODEL_COLOR: Record<string, string> = {
+  haiku:  'text-sev-low',
+  sonnet: 'text-accent',
+  opus:   'text-sev-critical',
+}
 
-  const totalBudget = configs.reduce((sum, c) => sum + c.monthlyBudget, 0)
-  const totalSpent = configs.reduce((sum, c) => sum + c.spent, 0)
+const STAGE_LABEL: Record<number, string> = { 1: 'S1', 2: 'S2', 3: 'S3' }
+
+function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) {
+  const { data: planData } = usePlanTiers()
+  const { data: subtaskData } = useSubtaskMappings()
+  const { data: recData } = useRecommendedModels()
+  const applyPlanMutation = useApplyPlan()
+
+  const plans = planData?.data ?? []
+  const subtasks = subtaskData?.data ?? []
+  const recommended = recData?.data ?? []
+  const recMap = useMemo(() =>
+    Object.fromEntries(recommended.map(r => [r.subtask, r.recommendedModel])),
+  [recommended])
+
+  const [selectedPlan, setSelectedPlan] = useState<string>('professional')
+  const [articleCount, setArticleCount] = useState(1000)
+
+  const { data: costData } = useCostEstimate(selectedPlan, articleCount)
+  const cost = costData?.data
+
+  const handleApplyPlan = () => {
+    if (isDemo || selectedPlan === 'custom') return
+    applyPlanMutation.mutate(selectedPlan)
+  }
 
   return (
     <div className="space-y-4">
-      {/* Budget overview */}
-      <div className="p-4 bg-bg-secondary rounded-lg border border-border">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-text-primary">Monthly AI Budget</h3>
-          <span className="text-xs text-text-muted">${totalSpent.toFixed(2)} / ${totalBudget.toFixed(2)}</span>
+      {/* Plan selector */}
+      <div>
+        <h3 className="text-[10px] text-text-muted uppercase font-medium mb-2">AI Plan Tier</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {plans.map((plan: PlanTierMeta) => (
+            <button key={plan.plan}
+              onClick={() => setSelectedPlan(plan.plan)}
+              className={cn(
+                'relative p-3 rounded-lg border text-left transition-all',
+                selectedPlan === plan.plan
+                  ? 'border-accent bg-accent/10'
+                  : 'border-border bg-bg-secondary hover:border-accent/50',
+              )}>
+              {plan.isRecommended && (
+                <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 text-[9px] text-amber-400 font-medium">
+                  <Star className="w-2.5 h-2.5 fill-current" />REC
+                </span>
+              )}
+              <p className="text-xs font-semibold text-text-primary">{plan.displayName}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">{plan.costPer1KArticlesUsd}/1K</p>
+              <p className="text-[10px] text-sev-low mt-0.5">{plan.accuracyPct}</p>
+            </button>
+          ))}
         </div>
-        <div className="w-full h-2 bg-bg-elevated rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${Math.min(100, (totalSpent / totalBudget) * 100)}%`,
-              backgroundColor: totalSpent / totalBudget >= 0.8 ? 'var(--sev-critical)' : totalSpent / totalBudget >= 0.5 ? 'var(--sev-medium)' : 'var(--sev-low)',
-            }} />
-        </div>
-        <div className="flex items-center gap-4 mt-2 text-[10px] text-text-muted">
-          <span><DollarSign className="w-3 h-3 inline" /> {((totalSpent / totalBudget) * 100).toFixed(1)}% used</span>
-          <span>${(totalBudget - totalSpent).toFixed(2)} remaining</span>
-        </div>
+        {selectedPlan !== 'custom' && (
+          <button
+            onClick={handleApplyPlan}
+            disabled={isDemo || applyPlanMutation.isPending}
+            className="mt-2 text-[10px] px-3 py-1.5 rounded bg-accent text-bg-primary font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+            {applyPlanMutation.isPending ? 'Applying…' : `Apply ${plans.find(p => p.plan === selectedPlan)?.displayName ?? ''} Plan`}
+          </button>
+        )}
       </div>
 
-      {/* Per-task configs */}
-      <div className="space-y-3">
-        {configs.map(config => (
-          <div key={config.id} className="p-3 bg-bg-secondary rounded-lg border border-border">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Brain className={cn('w-4 h-4', config.enabled ? 'text-accent' : 'text-text-muted')} />
-                <span className="text-xs font-medium text-text-primary">{config.task}</span>
-              </div>
-              <button
-                onClick={() => { if (!isDemo) updateMutation.mutate({ id: config.id, enabled: !config.enabled }) }}
-                disabled={isDemo || updateMutation.isPending}>
-                {config.enabled
-                  ? <ToggleRight className="w-5 h-5 text-sev-low" />
-                  : <ToggleLeft className="w-5 h-5 text-text-muted" />}
-              </button>
+      {/* Subtask table + cost sidebar */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* 12-subtask table */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[10px] text-text-muted uppercase font-medium mb-2">12 Pipeline Subtasks</h3>
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="bg-bg-elevated border-b border-border">
+                  <th className="px-3 py-2 text-left text-text-muted font-medium">Subtask</th>
+                  <th className="px-2 py-2 text-center text-text-muted font-medium">Stg</th>
+                  <th className="px-2 py-2 text-left text-text-muted font-medium">Model</th>
+                  <th className="px-2 py-2 text-left text-text-muted font-medium">Fallback</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subtasks.map((m: SubtaskMapping, i: number) => {
+                  const rec = recMap[m.subtask]
+                  const isRec = m.model === rec
+                  return (
+                    <tr key={m.id}
+                      className={cn('border-b border-border/50 last:border-0',
+                        i % 2 === 0 ? 'bg-bg-secondary' : 'bg-bg-primary')}>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-text-primary font-mono">{m.subtask.replace(/_/g, ' ')}</span>
+                          {isRec && <Star className="w-2.5 h-2.5 text-amber-400 fill-current shrink-0" />}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <span className={cn('text-[9px] px-1 py-0.5 rounded font-medium',
+                          m.stage === 1 ? 'bg-accent/10 text-accent'
+                          : m.stage === 2 ? 'bg-sev-medium/10 text-sev-medium'
+                          : 'bg-sev-low/10 text-sev-low')}>
+                          {STAGE_LABEL[m.stage]}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2">
+                        <span className={cn('font-mono font-medium capitalize', MODEL_COLOR[m.model])}>{m.model}</span>
+                      </td>
+                      <td className="px-2 py-2">
+                        <span className={cn('font-mono text-text-muted capitalize')}>{m.fallbackModel}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Cost sidebar */}
+        <div className="lg:w-56 shrink-0 space-y-3">
+          <h3 className="text-[10px] text-text-muted uppercase font-medium">Cost Estimator</h3>
+
+          {/* Article slider */}
+          <div className="p-3 bg-bg-secondary rounded-lg border border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-text-muted">Articles/month</span>
+              <span className="text-xs font-bold tabular-nums text-text-primary">{articleCount.toLocaleString()}</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
-              <div>
-                <span className="text-text-muted">Model</span>
-                <p className="text-text-primary font-mono">{config.model}</p>
-              </div>
-              <div>
-                <span className="text-text-muted">Max Tokens</span>
-                <p className="text-text-primary tabular-nums">{config.maxTokens.toLocaleString()}</p>
-              </div>
-              <div>
-                <span className="text-text-muted">Budget</span>
-                <p className="text-text-primary tabular-nums">${config.spent.toFixed(2)} / ${config.monthlyBudget}</p>
-              </div>
-              <div>
-                <span className="text-text-muted">Confidence</span>
-                <p className="text-text-primary tabular-nums">{(config.confidenceThreshold * 100).toFixed(0)}%</p>
-              </div>
-            </div>
-            {/* Budget bar per task */}
-            <div className="mt-2 w-full h-1 bg-bg-elevated rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, (config.spent / config.monthlyBudget) * 100)}%`,
-                  backgroundColor: config.spent / config.monthlyBudget >= 0.8 ? 'var(--sev-critical)' : 'var(--accent)',
-                }} />
+            <input type="range" min={100} max={50000} step={100} value={articleCount}
+              onChange={e => setArticleCount(Number(e.target.value))}
+              className="w-full h-1 accent-[var(--accent)]" />
+            <div className="flex justify-between text-[9px] text-text-muted">
+              <span>100</span><span>50K</span>
             </div>
           </div>
-        ))}
+
+          {/* Per-stage breakdown */}
+          {cost && (
+            <div className="p-3 bg-bg-secondary rounded-lg border border-border space-y-2">
+              {cost.perStage.map(s => (
+                <div key={s.stage} className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn('text-[9px] px-1 py-0.5 rounded font-medium',
+                      s.stage === 1 ? 'bg-accent/10 text-accent'
+                      : s.stage === 2 ? 'bg-sev-medium/10 text-sev-medium'
+                      : 'bg-sev-low/10 text-sev-low')}>
+                      S{s.stage}
+                    </span>
+                    <span className={cn('text-[10px] font-mono capitalize', MODEL_COLOR[s.model])}>{s.model}</span>
+                  </div>
+                  <span className="text-[10px] tabular-nums text-text-primary">${s.costUsd.toFixed(2)}</span>
+                </div>
+              ))}
+              <div className="pt-1 border-t border-border flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-text-primary">Total</span>
+                <span className="text-sm font-bold tabular-nums text-accent">${cost.totalMonthlyUsd.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Compare to plans */}
+          {cost && (
+            <div className="p-3 bg-bg-secondary rounded-lg border border-border space-y-1.5">
+              <p className="text-[9px] text-text-muted uppercase font-medium mb-1">vs other plans</p>
+              {[
+                { label: 'Starter', val: cost.comparedTo.starter, color: 'text-sev-low' },
+                { label: 'Professional', val: cost.comparedTo.professional, color: 'text-accent' },
+                { label: 'Enterprise', val: cost.comparedTo.enterprise, color: 'text-sev-critical' },
+              ].map(({ label, val, color }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="text-[10px] text-text-muted">{label}</span>
+                  <span className={cn('text-[10px] tabular-nums font-medium', color)}>${val.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

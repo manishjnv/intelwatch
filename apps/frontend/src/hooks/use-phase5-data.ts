@@ -13,12 +13,14 @@ import {
   DEMO_AUDIT_LOG, DEMO_USER_MANAGEMENT_STATS,
   DEMO_MODULE_TOGGLES, DEMO_AI_CONFIGS, DEMO_RISK_WEIGHTS,
   DEMO_NOTIFICATION_CHANNELS, DEMO_CUSTOMIZATION_STATS,
+  DEMO_PLAN_TIERS, DEMO_SUBTASK_MAPPINGS, DEMO_RECOMMENDED_MODELS, DEMO_COST_ESTIMATE,
   type SIEMIntegration, type WebhookConfig, type TicketingIntegration,
   type STIXCollection, type BulkExport, type IntegrationStats,
   type UserRecord, type TeamRecord, type RoleRecord,
   type SessionRecord, type AuditLogEntry, type UserManagementStats,
   type ModuleToggle, type AIModelConfig, type RiskWeight,
   type NotificationChannel, type CustomizationStats,
+  type PlanTierMeta, type SubtaskMapping, type RecommendedSubtask, type CostEstimate,
 } from './phase5-demo-data'
 
 // Re-export types for page consumption
@@ -29,6 +31,7 @@ export type {
   SessionRecord, AuditLogEntry, UserManagementStats,
   ModuleToggle, AIModelConfig, RiskWeight,
   NotificationChannel, CustomizationStats,
+  PlanTierMeta, SubtaskMapping, RecommendedSubtask, CostEstimate,
 }
 
 // ─── Generic helpers ────────────────────────────────────────────
@@ -417,5 +420,70 @@ export function useTestNotification() {
   return useMutation({
     mutationFn: (channelId: string) =>
       api<{ success: boolean }>(`/customization/notifications/${channelId}/test`, { method: 'POST' }),
+  })
+}
+
+// ─── AI Plan & Subtask Hooks (F2/F3) ────────────────────────────
+
+export function usePlanTiers() {
+  const result = useQuery({
+    queryKey: ['ai-plan-tiers'],
+    queryFn: () => api<{ data: PlanTierMeta[] }>('/customization/ai/plans').catch(() => ({ data: [] })),
+    staleTime: 300_000,
+  })
+  return withDemoFallback(result,
+    { data: DEMO_PLAN_TIERS },
+    d => (d?.data?.length ?? 0) > 0,
+  )
+}
+
+export function useSubtaskMappings() {
+  const result = useQuery({
+    queryKey: ['ai-subtask-mappings'],
+    queryFn: () => api<{ data: SubtaskMapping[] }>('/customization/ai/subtasks').catch(() => ({ data: [] })),
+    staleTime: 60_000,
+  })
+  return withDemoFallback(result,
+    { data: DEMO_SUBTASK_MAPPINGS },
+    d => (d?.data?.length ?? 0) > 0,
+  )
+}
+
+export function useRecommendedModels() {
+  const result = useQuery({
+    queryKey: ['ai-recommended-models'],
+    queryFn: () => api<{ data: RecommendedSubtask[] }>('/customization/ai/recommended').catch(() => ({ data: [] })),
+    staleTime: 300_000,
+  })
+  return withDemoFallback(result,
+    { data: DEMO_RECOMMENDED_MODELS },
+    d => (d?.data?.length ?? 0) > 0,
+  )
+}
+
+export function useCostEstimate(plan: string, articles: number) {
+  const result = useQuery({
+    queryKey: ['ai-cost-estimate', plan, articles],
+    queryFn: () => api<{ data: CostEstimate }>(`/customization/ai/cost-estimate?plan=${encodeURIComponent(plan)}&articles=${articles}`).catch(() => ({ data: null as unknown as CostEstimate })),
+    staleTime: 60_000,
+    enabled: articles > 0,
+  })
+  return withDemoFallback(result,
+    { data: DEMO_COST_ESTIMATE },
+    d => d?.data?.totalMonthlyUsd != null,
+  )
+}
+
+export function useApplyPlan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (plan: string) =>
+      api<{ data: SubtaskMapping[]; plan: string; total: number }>(
+        '/customization/ai/plans/apply', { method: 'POST', body: { plan } },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ai-subtask-mappings'] })
+      qc.invalidateQueries({ queryKey: ['ai-cost-estimate'] })
+    },
   })
 }

@@ -8,19 +8,22 @@ import { createLogger } from './logger.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { feedRoutes } from './routes/feeds.js';
+import { feedPolicyRoutes } from './routes/feed-policies.js';
 import { articleRoutes } from './routes/articles.js';
 import { FeedRepository } from './repository.js';
 import { FeedService } from './service.js';
+import { FeedPolicyStore } from './services/feed-policy-store.js';
 import type { Queue } from 'bullmq';
 
 export interface BuildAppOptions {
   config: AppConfig;
   repo: FeedRepository;
   queue: Queue;
+  policyStore?: FeedPolicyStore;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, repo, queue } = opts;
+  const { config, repo, queue, policyStore = new FeedPolicyStore() } = opts;
   const logger = createLogger(config.TI_LOG_LEVEL);
 
   const app = Fastify({
@@ -68,6 +71,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(feedRoutes(service), { prefix: '/api/v1/feeds' });
+  await app.register(feedPolicyRoutes(policyStore, repo), { prefix: '/api/v1/feeds' });
   await app.register(articleRoutes(repo), { prefix: '/api/v1/articles' });
 
   logger.info('Ingestion service configured successfully');
