@@ -1,95 +1,99 @@
 # SESSION HANDOFF DOCUMENT
+
 **Date:** 2026-03-25
-**Session:** 65
-**Session Summary:** G5 P0 critical fixes — SearchPage UI, E2E CI activation, DLQ processor, MinIO confirmed present.
+**Session:** 66
+**Session Summary:** AC-2 COMPLETE — ArticlePipeline reads per-tenant AI subtask model
+assignments from the customization service. CustomizationClient with 5-min TTL cache
+and safe fallback. 15 new tests. 360 ingestion tests pass.
 
 ## ✅ Changes Made
 
-| Commit | Files | Description |
-|--------|-------|-------------|
-| f58edcb | 12 files (+4 new, 8 modified) | G5 P0: SearchPage, E2E CI step, DLQ processor, phase6-pages test mock fix |
+| Commit  | Files | Description                               |
+|---------|-------|-------------------------------------------|
+| 242c132 | 8     | AC-2: CustomizationClient + pipeline wire |
 
-### New files
-| File | Purpose |
-|------|---------|
-| `apps/admin-service/src/routes/dlq-processor.ts` | DLQ processor — GET /dlq, POST /dlq/:queue/retry, POST /dlq/:queue/discard, POST /dlq/retry-all |
-| `apps/admin-service/tests/dlq-processor.test.ts` | 10 DLQ processor tests (TDD) |
-| `apps/frontend/src/hooks/use-search-data.ts` | useIOCSearch hook — ES full-text search, 60s cache, demo fallback |
-| `apps/frontend/src/pages/SearchPage.tsx` | SearchPage — IOC search UI, 3 filters, skeleton loading, demo banner |
+## 📁 Files / Documents Affected
 
-### Modified files
-| File | Change |
-|------|--------|
-| `apps/admin-service/src/app.ts` | Register dlqProcessorRoutes under /api/v1/admin |
-| `apps/admin-service/src/index.ts` | Pass dlqProcessorDeps: { redisUrl } |
-| `apps/frontend/src/App.tsx` | Add /search route → SearchPage |
-| `apps/frontend/src/components/layout/DashboardLayout.tsx` | Add IOC Search nav entry (Search icon, /search, phase 7) |
-| `apps/frontend/src/hooks/use-phase6-data.ts` | Add DlqQueueEntry/DlqStatusResponse types + useDlqStatus/useRetryDlqQueue/useDiscardDlqQueue/useRetryAllDlq hooks + DEMO_DLQ_STATUS |
-| `apps/frontend/src/pages/AdminOpsPage.tsx` | DLQ table in queue health tab (DlqRow, retry/discard/retry-all buttons) |
-| `apps/frontend/src/__tests__/phase6-pages.test.tsx` | Add useDlqStatus/useRetryDlqQueue/useDiscardDlqQueue/useRetryAllDlq to vi.mock |
-| `.github/workflows/deploy.yml` | E2E post-deploy step (master push only, continue-on-error, pnpm + secrets guards) |
+### New Files
+
+- `apps/ingestion/src/services/customization-client.ts` — HTTP client for
+  GET /api/v1/customization/ai/subtasks. 5-min TTL cache per tenant, service JWT auth,
+  safe Haiku/Sonnet defaults on network error or HTTP 5xx.
+- `apps/ingestion/tests/customization-client.test.ts` — 12 tests: alias→model-ID
+  mapping, TTL cache hit, per-tenant isolation, clearCache, error fallback (network +
+  503), no cache on error, BYOK string passthrough.
+
+### Modified Files
+
+- `apps/ingestion/src/config.ts` — Added `TI_CUSTOMIZATION_URL` (default: localhost:3017)
+- `apps/ingestion/src/services/triage.ts` — Added `setModel(model)` for lightweight
+  per-article model override (no Anthropic client recreation)
+- `apps/ingestion/src/services/extraction.ts` — Same `setModel(model)` pattern
+- `apps/ingestion/src/services/dedup.ts` — Added optional `model?: string` to
+  `arbitrate()`, replaces hardcoded haiku ID
+- `apps/ingestion/src/workers/pipeline.ts` — Added `customizationClient?: CustomizationClient`
+  to PipelineDeps; stores `aiEnabled` + `dedupModel`; in `processArticle()`: fetches
+  tenant models → `setModel()` on triage/extraction → passes `dedupModel` to arbitrate()
+- `apps/ingestion/tests/pipeline.test.ts` — 3 AC-2 tests: getSubtaskModels called with
+  tenantId; custom opus model completes without error; fallback when no client injected
 
 ## 🔧 Decisions & Rationale
 
-No new DECISION-NNN entries. Key implementation choices:
-- DLQ uses raw Redis ZSET ops (ZRANGE failed set + ZREM + LPUSH to wait list) rather than BullMQ Queue API — admin-service has no BullMQ queue instances running
-- `DlqRedisClient` injectable interface enables pure in-memory testing without Redis connection
-- E2E smoke step uses `continue-on-error: true` so flaky E2E never blocks a deploy
-- MinIO was already wired in docker-compose.etip.yml (etip_minio, ports 9001:9000 + 9002:9001, volume etip_minio_data) — P0-2 required no code changes
+No new DECISION entries. All changes DECISION-013 compliant (in-memory, no Prisma migrations).
+
+Key implementation notes:
+
+- `setModel()` used instead of re-calling `init()` — avoids Anthropic client recreation per article.
+- `customizationClient` is OPTIONAL — all 345 pre-AC-2 tests pass unmodified (null by default, falls back
+  to construction-time models).
+- AiModel aliases (`haiku`, `sonnet`, `opus`) mapped to full Anthropic model IDs. Unknown strings
+  passed through as-is (BYOK / custom fine-tuned models supported).
+- Cache entries are per-tenant; error responses are NOT cached (retry on next article).
+- Pipeline never crashes if customization service is unreachable — always has safe defaults.
 
 ## 🧪 E2E / Deploy Verification Results
 
-No deployment this session. Pre-push verification:
-- Tests: 5,542 passing (706 frontend including 2 skipped, 172 admin-service)
-- TypeScript: 0 errors in modified services. Pre-existing TS error in customization/ai-models.ts:108 (not introduced by this session)
-- Lint: 0 errors, 115 warnings (pre-existing)
-- Secrets scan: clean
-- No docker build run (code-only session, no new packages)
+No deploy this session — code-only.
+
+Local test results:
+
+- ingestion: **360 tests** (23 test files, all pass) ✅
+- ingestion typecheck: **0 errors** ✅
+- ingestion lint: **0 errors** ✅
+- Pre-existing TS error in `apps/customization/src/routes/ai-models.ts:108`
+  confirmed pre-existing (not introduced by AC-2)
+- **Estimated monorepo total: ~5,557 tests**
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-- **Deploy G1-G5 to VPS**: push to master triggers CI/CD pipeline. All containers will rebuild from updated code. 33 containers expected healthy.
-- **Verify SearchPage live**: navigate to /search on ti.intelwatch.in after deploy
-- **Verify DLQ table live**: AdminOpsPage → Queue Health tab → DLQ section
+
+- Push to master → CI/CD → VPS deploy (AC-2 + G1-G5 + G5 P0 all pending)
+- Verify `PUT /ioc-intelligence/:id/lifecycle` endpoint in ioc-intelligence service (deferred from G3)
 
 ### Deferred
-- Pre-existing TS error in `apps/customization/src/routes/ai-models.ts:108` — argument type string not assignable to subtask enum. Does not block tests or per-service typecheck. Should fix in a customization session.
-- D3 viz improvements (ThreatGraphPage UX polish)
-- Reporting UI enhancements (PDF export, schedule UI)
-- IOC Search pagination + date range filter
+
+- `apps/correlation-engine/src/services/store-checkpoint.ts` — pre-existing uncommitted WIP, not AC-2
+- Gap #8: regex fallback drops threatActors/campaigns when AI disabled — documented, acceptable
+- Gap #15: enrichment quality distribution widget — needs new widget slot
+- Gap #17: enrichmentData JSONB archive strategy — needs Prisma migration
+- Gap #19: stage-2 factor calibration — needs 30+ days historical data
 
 ## 🔁 How to Resume
 
-```
-Session 65 COMPLETE. Platform is feature-complete (G1-G5 gap analysis done).
+Paste this prompt to start next session:
 
-Quick state:
-- 33 containers deployed (VPS), all healthy
-- 5,542 tests passing
-- Next: deploy G1-G5 via CI push OR start new feature work
-
-Resume prompt:
-"Working on: [module]. Do not modify: shared-*, api-gateway, ingestion, normalization,
-ai-enrichment, ioc-intelligence, threat-actor-intel, malware-intel, vulnerability-intel,
-threat-graph, correlation-engine, hunting-service, drp-service, integration-service,
-user-management, customization, onboarding, billing-service, admin-service,
-reporting-service, alerting-service, analytics-service, caching-service,
-elasticsearch-indexing-service, frontend (shell + existing pages)"
+```text
+/session-start
+Working on: deploy AC-2 + G1-G5 to VPS (git push origin master → CI/CD)
+Frozen: all deployed modules. Do not modify: apps/customization, shared packages.
+Note: pre-existing uncommitted changes in apps/correlation-engine —
+leave unstaged unless working on correlation engine.
 ```
 
-### Module → Skill file map
-| Module | Skill |
-|--------|-------|
-| admin-ops | skills/22-ADMIN-PLATFORM.md |
-| frontend/ui | skills/20-UI-UX.md |
-| testing | skills/02-TESTING.md |
-| devops/deploy | skills/03-DEVOPS.md |
-| ingestion | skills/04-INGESTION.md |
-| normalization | skills/05-NORMALIZATION.md |
-
-### Phase roadmap
-- Phase 1-7: ✅ COMPLETE (all 28 modules built + deployed)
-- Phase F: ✅ COMPLETE (F1 feed policies, F2 subtasks/plan tiers, F3 cost estimator)
-- Gap Analysis: ✅ COMPLETE (G1-G5)
-- Next milestone: E2E integration verification + optional UI polish
+| Module        | Skill file                      |
+|---------------|---------------------------------|
+| ingestion     | skills/04-INGESTION.md          |
+| customization | skills/17-CUSTOMIZATION.md      |
+| correlation   | skills/13-CORRELATION-ENGINE.md |
+| devops/deploy | skills/03-DEVOPS.md             |

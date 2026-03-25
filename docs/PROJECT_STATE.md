@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-25 (update at end of EVERY session via /session-end)
-**Session counter:** 65
+**Session counter:** 66
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -11,7 +11,7 @@
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
-| etip_ingestion | ✅ Running | 0.2.0 | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a gap fixes. 339 tests. FeedPolicy aiEnabled enforced in ArticlePipeline; dedup Layer 3 Haiku arbitration; emerging TLD regex; IPv6 link-local filtering. |
+| etip_ingestion | ✅ Running | 0.3.0 | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a gap fixes + AC-2 per-tenant subtask model routing. 360 tests. FeedPolicy aiEnabled enforced in ArticlePipeline; dedup Layer 3 Haiku arbitration; emerging TLD regex; IPv6 link-local filtering. CustomizationClient: per-tenant model assignments (classification/ioc_extraction/deduplication), 5-min TTL cache, safe fallback. |
 | etip_normalization | ✅ Running | 0.1.0 | 2026-03-25 | IOC upsert + 18 accuracy improvements + G2/G4b gap fixes. 154 tests. Feed reliability TTL cache (5min); weighted velocity scoring; configureClassifier() extensible via TI_EXTRA_RANSOMWARE_FAMILIES/TI_EXTRA_NATION_STATE_ACTORS env vars. |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements |
@@ -51,7 +51,7 @@
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-25 | **20 data pages** + G3/G5 gap fixes. 704 tests (706 total, 2 skipped). G3: useSetSubtaskModel hook, useUpdateIOCLifecycle hook, custom subtask editor, plan confirm modal, IOC campaign filter + lifecycle FSM buttons. G5: SearchPage (/search) — useIOCSearch hook, IOC type/severity/TLP filters, ES demo fallback, sidebar entry. AdminOpsPage DLQ table — useDlqStatus + retry/discard/retry-all mutations. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a. 339 tests. aiEnabled enforced in ArticlePipeline (feedAiEnabled param). Dedup Layer 3 Haiku arbitration. Emerging TLDs (.cloud/.dev/.security/.ai/.app/.tech). isLinkLocalIPv6() filter. |
+| ingestion | 2 | ✅ Deployed | 2026-03-25 | Feed pipeline + 11 modules + feed processing policies (F1) + G1a/G4a + AC-2. 360 tests. aiEnabled enforced in ArticlePipeline (feedAiEnabled param). Dedup Layer 3 Haiku arbitration. Emerging TLDs. isLinkLocalIPv6() filter. AC-2: CustomizationClient fetches per-tenant subtask models (classification→triage, ioc_extraction→extraction, deduplication→arbitrate) with 5-min TTL cache + safe defaults on error. TI_CUSTOMIZATION_URL env var added (default localhost:3017). |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b. 154 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring (sum reliability/100). configureClassifier() + TI_EXTRA_RANSOMWARE_FAMILIES/TI_EXTRA_NATION_STATE_ACTORS env vars. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-21 | Port 3007. 15 endpoints, 13 accuracy improvements, 119 tests. Campaign detection, multi-dimensional search. |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. 33 containers, ~5,542 tests.
-- **Last session outcome:** Session 65 (2026-03-25). G5 P0 critical fixes. P0-1: SearchPage (/search) — useIOCSearch hook with 3 filters, ES demo fallback (5 results), sidebar entry wired. P0-2: MinIO already in docker-compose (no changes needed). P0-3: E2E CI — post-deploy smoke test step in deploy.yml (master push only, continue-on-error, pnpm/secrets guards). P0-4: DLQ processor (GET /admin/dlq, POST retry/discard/retry-all, raw Redis BullMQ ZSET ops, 10 tests). Admin-service: 33 endpoints, 172 tests. Frontend: 704 tests (706 total). Commit: f58edcb. Code-only, no deploy.
+- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. 33 containers, ~5,557 tests.
+- **Last session outcome:** Session 66 (2026-03-25). AC-2: ArticlePipeline now reads per-tenant AI subtask model assignments from customization service (port 3017). CustomizationClient: GET /api/v1/customization/ai/subtasks, service JWT auth, 5-min TTL cache per tenant, safe Haiku/Sonnet defaults on network error. setModel() added to TriageService + ExtractionService (lightweight, no Anthropic client recreation). arbitrate() in DedupService accepts optional model param. PipelineDeps.customizationClient optional — all 345 existing tests pass unchanged. 15 new tests: 12 customization-client.test.ts + 3 pipeline AC-2 tests. TI_CUSTOMIZATION_URL env var added. Commit: 242c132. Code-only, no deploy.
 - **Known issues:** Pre-existing TS error in apps/customization/src/routes/ai-models.ts:108 (argument type mismatch). Does not block tests or typecheck of individual services. Tracked, deferred.
-- **Next tasks:** Deploy G1-G5 changes to VPS via CI push. Then: optional D3 viz improvements, reporting UI enhancements, or additional IOC search features (pagination, date range filter).
+- **Next tasks:** Deploy AC-2 + G1-G5 changes to VPS via CI push (git push origin master). Then: optional correlation-engine store-checkpoint work (pre-existing WIP), D3 viz improvements, or IOC search pagination.
 
 ## Deployment Log
 
@@ -207,6 +207,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 63 | 2026-03-25 | etip_ingestion + etip_customization + etip_frontend updated | ⏳ CI pending | 9c31ed6, e65037c, 23a57ec | Phase F COMPLETE: F1 feed policies (5 endpoints, 44 tests), F2 12 subtasks + plan tiers (3 endpoints, 43 tests), F3 cost estimator + AI Config UI rebuild (32 tests). ~282 tests added. VPS SSH timeout — CI/CD deploy path used. |
 | 64 | 2026-03-25 | No deploy (code-only) | — | 559b2a3, 9877f2a, d350d1f, 6e7c758, a26c918 | Gap Analysis G1-G4 COMPLETE. G1: aiEnabled pipeline + PUT /ai/subtasks/:subtask + dedup Haiku arbitration. G2: reliability TTL cache + weighted velocity. G3: subtask editor + plan confirm modal + IOC lifecycle UI. G4: TLD regex + IPv6 filter + decay JSDoc + configureClassifier. ~41 tests added (~5671 total). |
 | 65 | 2026-03-25 | No deploy (code-only) | — | f58edcb | G5 P0 fixes: SearchPage (/search + sidebar), E2E CI smoke step in deploy.yml, DLQ processor (4 routes + 10 tests). Admin-service: 33 endpoints, 172 tests. Frontend: 704 tests. 5,542 total. |
+| 66 | 2026-03-25 | No deploy (code-only) | — | 242c132 | AC-2: CustomizationClient + per-tenant subtask model routing in ArticlePipeline. setModel() on Triage/Extraction services. dedup.arbitrate() model param. TI_CUSTOMIZATION_URL env var. 15 new tests (360 ingestion total). ~5,557 monorepo total. |
 
 ## E2E Verification Results (Session 13)
 

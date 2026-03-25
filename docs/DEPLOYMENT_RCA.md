@@ -646,3 +646,4 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 61 | 2026-03-25 | VPS disk full — 56GB Docker build cache. Pruned via docker builder prune. Neo4j health check failed during full rebuild (memory pressure during parallel container start) — restarted separately, recovered. Daily cleanup cron installed. All 33 containers healthy post-recovery. |
 | Session 64 | 2026-03-25 | No new issues. Code-only session (G1-G4 gap analysis). No deploy. ~5671 tests. |
 | Session 65 | 2026-03-25 | No new issues. Code-only session (G5 P0 fixes). No deploy. 5,542 tests. |
+| Session 66 | 2026-03-25 | No new issues. Code-only session (AC-2 per-tenant subtask model routing). No deploy. 360 ingestion tests, ~5,557 total. |
