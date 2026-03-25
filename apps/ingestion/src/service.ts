@@ -1,13 +1,14 @@
 import type { Queue } from 'bullmq';
 import type { FeedSource, Prisma } from '@prisma/client';
 import type pino from 'pino';
-import { AppError, QUEUES } from '@etip/shared-utils';
+import { AppError } from '@etip/shared-utils';
 
 type JsonValue = Prisma.InputJsonValue;
 import { type FeedRepository, type FeedStats, type FeedHealth } from './repository.js';
 import { CreateFeedSchema, UpdateFeedSchema, ListFeedsQuerySchema } from './schema.js';
 import type { CreateFeedInput, UpdateFeedInput, ListFeedsQuery } from './schema.js';
 import { getConfig } from './config.js';
+import { getQueueForFeedType, mapFeedTypeToQueue } from './queue.js';
 
 export interface PaginatedFeeds {
   data: FeedSource[];
@@ -115,13 +116,23 @@ export class FeedService {
       throw new AppError(400, 'Feed circuit-breaker open — too many consecutive failures', 'FEED_CIRCUIT_OPEN');
     }
 
-    const job = await this.queue.add(
-      QUEUES.FEED_FETCH,
+    // Route to per-feed-type queue (P3-4)
+    const queueName = mapFeedTypeToQueue(feed.feedType);
+    let targetQueue: Queue;
+    try {
+      targetQueue = getQueueForFeedType(feed.feedType);
+    } catch {
+      // Fallback to legacy queue if per-type queues not initialized (e.g. in tests)
+      targetQueue = this.queue;
+    }
+
+    const job = await targetQueue.add(
+      queueName,
       { feedId, tenantId, triggeredBy: 'manual' },
       { jobId: `manual-${feedId}-${Date.now()}` },
     );
 
-    this.logger.info({ feedId, tenantId, jobId: job.id }, 'Feed fetch queued');
+    this.logger.info({ feedId, tenantId, jobId: job.id, queue: queueName }, 'Feed fetch queued to per-type queue');
     return { jobId: job.id ?? 'unknown', message: 'Feed fetch queued' };
   }
 

@@ -44,6 +44,18 @@ vi.mock('../src/config.js', () => ({
   })),
 }));
 
+// Mock queue.js — service.ts imports mapFeedTypeToQueue and getQueueForFeedType (P3-4)
+vi.mock('../src/queue.js', () => ({
+  mapFeedTypeToQueue: () => 'etip-feed-fetch-rss',
+  getQueueForFeedType: () => { throw new Error('not initialized in test'); },
+  createFeedFetchQueue: vi.fn(() => new Map()),
+  createFeedFetchQueues: vi.fn(() => new Map()),
+  closeFeedFetchQueue: vi.fn(),
+  closeFeedFetchQueues: vi.fn(),
+  getFeedFetchQueue: vi.fn(),
+  FEED_FETCH_QUEUE_NAMES: [],
+}));
+
 import { verifyAccessToken, hasPermission } from '@etip/shared-auth';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';

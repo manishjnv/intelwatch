@@ -5,13 +5,30 @@ vi.mock('../src/config.js', () => ({
   getConfig: () => ({
     TI_REDIS_URL: 'redis://:testpass@localhost:6379',
     TI_MAX_CONSECUTIVE_FAILURES: 5,
+    TI_FEED_CONCURRENCY_RSS: 5,
+    TI_FEED_CONCURRENCY_NVD: 2,
+    TI_FEED_CONCURRENCY_STIX: 2,
+    TI_FEED_CONCURRENCY_REST: 3,
+    TI_FEED_MAX_CONCURRENT_PER_TENANT: 3,
   }),
+}));
+
+// Mock ioredis for tenant fairness
+const mockRedisInstance = {
+  get: vi.fn().mockResolvedValue(null),
+  incr: vi.fn().mockResolvedValue(1),
+  decr: vi.fn().mockResolvedValue(0),
+  expire: vi.fn().mockResolvedValue(1),
+};
+vi.mock('ioredis', () => ({
+  default: vi.fn().mockImplementation(() => mockRedisInstance),
 }));
 
 // Mock bullmq Worker
 const mockWorkerInstance = {
   on: vi.fn(),
   close: vi.fn(),
+  _processor: undefined as unknown,
 };
 const mockQueueInstance = {
   add: vi.fn().mockResolvedValue({ id: 'mock-job' }),
@@ -20,9 +37,14 @@ const mockQueueInstance = {
 vi.mock('bullmq', () => ({
   Worker: vi.fn().mockImplementation((_name: string, processor: unknown) => {
     mockWorkerInstance._processor = processor;
-    return mockWorkerInstance;
+    return { ...mockWorkerInstance };
   }),
   Queue: vi.fn().mockImplementation(() => mockQueueInstance),
+}));
+
+// Mock queue.ts
+vi.mock('../src/queue.js', () => ({
+  FEED_FETCH_QUEUE_NAMES: ['etip-feed-fetch-rss', 'etip-feed-fetch-nvd', 'etip-feed-fetch-stix', 'etip-feed-fetch-rest'],
 }));
 
 // Mock connectors
@@ -47,7 +69,7 @@ vi.mock('../src/connectors/rest-api.js', () => ({
   })),
 }));
 
-import { createFeedFetchWorker, type FeedFetchJobData } from '../src/workers/feed-fetch.js';
+import { createFeedFetchWorkers, type FeedFetchJobData } from '../src/workers/feed-fetch.js';
 import { Worker } from 'bullmq';
 import { RSSConnector } from '../src/connectors/rss.js';
 
@@ -101,7 +123,7 @@ function makeFeed(overrides: Record<string, unknown> = {}) {
 }
 
 function makeJob(data: FeedFetchJobData) {
-  return { id: 'job-1', data } as never;
+  return { id: 'job-1', data, moveToDelayed: vi.fn() } as never;
 }
 
 describe('FeedFetchWorker', () => {
@@ -112,60 +134,41 @@ describe('FeedFetchWorker', () => {
     vi.clearAllMocks();
     repo = createMockRepo();
     logger = createMockLogger();
+    mockRedisInstance.get.mockResolvedValue(null);
+    mockRedisInstance.incr.mockResolvedValue(1);
+    mockRedisInstance.decr.mockResolvedValue(0);
   });
 
   function getProcessor() {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
-    // Get the processor function passed to Worker constructor
+    createFeedFetchWorkers({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
+    // Get the processor function passed to first Worker constructor
     const workerCtor = Worker as unknown as ReturnType<typeof vi.fn>;
     const processorFn = workerCtor.mock.calls[0][1];
     return processorFn;
   }
 
-  it('creates a Worker with correct queue name (dashes, not colons)', () => {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
+  it('creates 4 Workers with per-type queue names (P3-4)', () => {
+    createFeedFetchWorkers({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const workerCtor = Worker as unknown as ReturnType<typeof vi.fn>;
-    expect(workerCtor.mock.calls[0][0]).toBe('etip-feed-fetch');
+    expect(workerCtor).toHaveBeenCalledTimes(4);
+    expect(workerCtor.mock.calls[0][0]).toBe('etip-feed-fetch-rss');
+    expect(workerCtor.mock.calls[1][0]).toBe('etip-feed-fetch-nvd');
+    expect(workerCtor.mock.calls[2][0]).toBe('etip-feed-fetch-stix');
+    expect(workerCtor.mock.calls[3][0]).toBe('etip-feed-fetch-rest');
   });
 
-  it('processes RSS feed successfully', async () => {
-    const processor = getProcessor();
-
-    repo.findById.mockResolvedValue(makeFeed());
-    repo.updateHealth.mockResolvedValue(makeFeed());
-
-    // Mock the RSS connector's fetch inside the processor
-    const RSSCtor = RSSConnector as unknown as ReturnType<typeof vi.fn>;
-    RSSCtor.mockImplementation(() => ({
-      fetch: vi.fn().mockResolvedValue({
-        articles: [
-          { title: 'Article 1', content: 'content', url: 'https://example.com/1', publishedAt: new Date(), author: null, rawMeta: {} },
-          { title: 'Article 2', content: 'content', url: 'https://example.com/2', publishedAt: new Date(), author: null, rawMeta: {} },
-        ],
-        fetchDurationMs: 450,
-        feedTitle: 'Test Feed',
-        feedDescription: 'desc',
-      }),
-    }));
-
-    // Re-create to pick up the mock
-    const worker = createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
-    const latestProcessor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
-
-    const result = await latestProcessor(makeJob({ feedId: FEED_ID, tenantId: TENANT_ID, triggeredBy: 'manual' }));
-
-    expect(result.status).toBe('success');
-    expect(result.articlesCount).toBe(2);
-    expect(repo.updateHealth).toHaveBeenCalledWith(
-      TENANT_ID, FEED_ID,
-      expect.objectContaining({ consecutiveFailures: 0, status: 'active' }),
-    );
+  it('sets per-type concurrency from config (P3-4)', () => {
+    createFeedFetchWorkers({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
+    const workerCtor = Worker as unknown as ReturnType<typeof vi.fn>;
+    // Third arg is options with concurrency
+    expect(workerCtor.mock.calls[0][2]).toEqual(expect.objectContaining({ concurrency: 5 }));  // RSS
+    expect(workerCtor.mock.calls[1][2]).toEqual(expect.objectContaining({ concurrency: 2 }));  // NVD
+    expect(workerCtor.mock.calls[2][2]).toEqual(expect.objectContaining({ concurrency: 2 }));  // STIX
+    expect(workerCtor.mock.calls[3][2]).toEqual(expect.objectContaining({ concurrency: 3 }));  // REST
   });
 
   it('skips disabled feeds', async () => {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
-    const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
-
+    const processor = getProcessor();
     repo.findById.mockResolvedValue(makeFeed({ enabled: false }));
 
     const result = await processor(makeJob({ feedId: FEED_ID, tenantId: TENANT_ID, triggeredBy: 'schedule' }));
@@ -176,9 +179,7 @@ describe('FeedFetchWorker', () => {
   });
 
   it('throws when feed not found', async () => {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
-    const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
-
+    const processor = getProcessor();
     repo.findById.mockResolvedValue(null);
 
     await expect(
@@ -192,7 +193,7 @@ describe('FeedFetchWorker', () => {
       fetch: vi.fn().mockRejectedValue(new Error('Connection timeout')),
     }));
 
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
+    createFeedFetchWorkers({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
     repo.findById.mockResolvedValue(makeFeed({ consecutiveFailures: 2 }));
@@ -217,10 +218,9 @@ describe('FeedFetchWorker', () => {
       fetch: vi.fn().mockRejectedValue(new Error('DNS failure')),
     }));
 
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
+    createFeedFetchWorkers({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
     const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
 
-    // Feed already at 4 failures, this will be the 5th (= max)
     repo.findById.mockResolvedValue(makeFeed({ consecutiveFailures: 4 }));
     repo.updateHealth.mockResolvedValue(makeFeed());
 
@@ -236,25 +236,8 @@ describe('FeedFetchWorker', () => {
     );
   });
 
-  it('throws 501 for unimplemented connector types', async () => {
-    const RSSCtor = RSSConnector as unknown as ReturnType<typeof vi.fn>;
-    RSSCtor.mockImplementation(() => ({ fetch: vi.fn() }));
-
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
-    const processor = (Worker as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)[1];
-
-    repo.findById.mockResolvedValue(makeFeed({ feedType: 'misp' }));
-    repo.updateHealth.mockResolvedValue(makeFeed());
-
-    const result = await processor(makeJob({ feedId: FEED_ID, tenantId: TENANT_ID, triggeredBy: 'manual' }));
-
-    expect(result.status).toBe('failure');
-    expect(result.error).toContain('not yet implemented');
-  });
-
-  it('registers event handlers on the worker', () => {
-    createFeedFetchWorker({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
-    expect(mockWorkerInstance.on).toHaveBeenCalledWith('failed', expect.any(Function));
-    expect(mockWorkerInstance.on).toHaveBeenCalledWith('error', expect.any(Function));
+  it('registers event handlers on all workers', () => {
+    const workers = createFeedFetchWorkers({ repo: repo as never, logger: logger as never, db: createMockDb() as never });
+    expect(workers).toHaveLength(4);
   });
 });

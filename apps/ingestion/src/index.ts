@@ -4,8 +4,8 @@ import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
 import { buildApp } from './app.js';
 import { prisma, disconnectPrisma } from './prisma.js';
 import { FeedRepository } from './repository.js';
-import { createFeedFetchQueue, closeFeedFetchQueue } from './queue.js';
-import { createFeedFetchWorker } from './workers/feed-fetch.js';
+import { createFeedFetchQueues, closeFeedFetchQueues } from './queue.js';
+import { createFeedFetchWorkers } from './workers/feed-fetch.js';
 import { FeedScheduler } from './workers/scheduler.js';
 import { FeedPolicyStore } from './services/feed-policy-store.js';
 
@@ -22,16 +22,16 @@ async function main(): Promise<void> {
   loadServiceJwtSecret({ TI_SERVICE_JWT_SECRET: config.TI_SERVICE_JWT_SECRET });
 
   const repo = new FeedRepository(prisma);
-  const queue = createFeedFetchQueue();
+  const queues = createFeedFetchQueues();
   const policyStore = new FeedPolicyStore();
 
-  const app = await buildApp({ config, repo, queue, policyStore });
+  const app = await buildApp({ config, repo, queue: queues.values().next().value!, policyStore });
 
-  // Start BullMQ worker to process feed fetch jobs (with DB for article persistence)
-  const worker = createFeedFetchWorker({ repo, logger, db: prisma, policyStore });
+  // Start 4 per-feed-type BullMQ workers (P3-4) with per-tenant fairness (P3-7)
+  const workers = createFeedFetchWorkers({ repo, logger, db: prisma, policyStore });
 
-  // Start cron scheduler to enqueue feeds on their schedule
-  const scheduler = new FeedScheduler({ repo, queue, logger });
+  // Start cron scheduler to enqueue feeds on their schedule (routes to per-type queues)
+  const scheduler = new FeedScheduler({ repo, queues, logger });
   await scheduler.start();
 
   // Daily reset of per-feed article counters — fires at midnight UTC
@@ -40,8 +40,8 @@ async function main(): Promise<void> {
   app.addHook('onClose', async () => {
     clearInterval(midnightResetInterval);
     await scheduler.stop();
-    await worker.close();
-    await closeFeedFetchQueue();
+    await Promise.all(workers.map((w) => w.close()));
+    await closeFeedFetchQueues();
     await disconnectPrisma();
   });
 

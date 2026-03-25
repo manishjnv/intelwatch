@@ -14,6 +14,19 @@ vi.mock('node-cron', () => ({
   },
 }));
 
+// Mock queue.js for mapFeedTypeToQueue (P3-4)
+vi.mock('../src/queue.js', () => ({
+  mapFeedTypeToQueue: (feedType: string) => {
+    switch (feedType) {
+      case 'rss': return 'etip-feed-fetch-rss';
+      case 'nvd': return 'etip-feed-fetch-nvd';
+      case 'stix': case 'taxii': return 'etip-feed-fetch-stix';
+      case 'rest_api': return 'etip-feed-fetch-rest';
+      default: return 'etip-feed-fetch-rss';
+    }
+  },
+}));
+
 import cron from 'node-cron';
 
 function createMockRepo() {
@@ -48,6 +61,7 @@ function makeActiveFeed(overrides: Record<string, unknown> = {}) {
     id: 'feed-1',
     tenantId: TENANT_A,
     schedule: '*/15 * * * *',
+    feedType: 'rss',
     enabled: true,
     status: 'active',
     ...overrides,
@@ -57,6 +71,7 @@ function makeActiveFeed(overrides: Record<string, unknown> = {}) {
 describe('FeedScheduler', () => {
   let repo: ReturnType<typeof createMockRepo>;
   let queue: ReturnType<typeof createMockQueue>;
+  let queues: Map<string, ReturnType<typeof createMockQueue>>;
   let logger: ReturnType<typeof createMockLogger>;
   let scheduler: FeedScheduler;
 
@@ -64,10 +79,17 @@ describe('FeedScheduler', () => {
     vi.clearAllMocks();
     repo = createMockRepo();
     queue = createMockQueue();
+    // P3-4: Create per-type queue map with mock queues
+    queues = new Map([
+      ['etip-feed-fetch-rss', queue],
+      ['etip-feed-fetch-nvd', createMockQueue()],
+      ['etip-feed-fetch-stix', createMockQueue()],
+      ['etip-feed-fetch-rest', createMockQueue()],
+    ]);
     logger = createMockLogger();
     scheduler = new FeedScheduler({
       repo: repo as never,
-      queue: queue as never,
+      queues: queues as never,
       logger: logger as never,
     });
   });
@@ -151,8 +173,9 @@ describe('FeedScheduler', () => {
     // Wait for the async enqueue
     await new Promise((r) => setTimeout(r, 10));
 
+    // P3-4: RSS feed routes to etip-feed-fetch-rss queue
     expect(queue.add).toHaveBeenCalledWith(
-      'etip-feed-fetch',
+      'etip-feed-fetch-rss',
       expect.objectContaining({ feedId: 'feed-1', tenantId: TENANT_A, triggeredBy: 'schedule' }),
       expect.objectContaining({ jobId: expect.stringContaining('sched-feed-1-') }),
     );

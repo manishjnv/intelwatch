@@ -9,6 +9,12 @@ vi.mock('../src/config.js', () => ({
   }),
 }));
 
+// Mock queue.js — service.ts imports mapFeedTypeToQueue and getQueueForFeedType (P3-4)
+vi.mock('../src/queue.js', () => ({
+  mapFeedTypeToQueue: () => 'etip-feed-fetch-rss',
+  getQueueForFeedType: () => { throw new Error('not initialized in test'); },
+}));
+
 function createMockRepo() {
   return {
     create: vi.fn(),
@@ -239,8 +245,9 @@ describe('FeedService.triggerFeed', () => {
 
     expect(result.jobId).toBe('job-1');
     expect(result.message).toBe('Feed fetch queued');
+    // P3-4: triggerFeed now routes to per-type queue (fallback to injected queue)
     expect(queue.add).toHaveBeenCalledWith(
-      'etip-feed-fetch',
+      'etip-feed-fetch-rss',
       expect.objectContaining({ feedId: FEED_ID, tenantId: TENANT_ID }),
       expect.any(Object),
     );

@@ -1,12 +1,16 @@
 import cron from 'node-cron';
 import type { Queue } from 'bullmq';
-import { QUEUES } from '@etip/shared-utils';
 import type pino from 'pino';
 import type { FeedRepository } from '../repository.js';
+import { mapFeedTypeToQueue } from '../queue.js';
+
+// TODO: admin-service queue monitor needs update for per-type queues
+// (currently watches single etip-feed-fetch; now there are 4 per-type queues)
 
 export interface SchedulerDeps {
   repo: FeedRepository;
-  queue: Queue;
+  /** Per-type queue map: queue name -> Queue instance */
+  queues: Map<string, Queue>;
   logger: pino.Logger;
 }
 
@@ -14,6 +18,7 @@ interface ScheduledFeed {
   id: string;
   tenantId: string;
   schedule: string;
+  feedType: string;
 }
 
 const SYNC_INTERVAL_CRON = '*/5 * * * *'; // Re-sync active feeds every 5 minutes
@@ -31,11 +36,11 @@ export class FeedScheduler {
 
     this.deps.logger.info('Feed scheduler starting');
 
-    // Initial sync — catch errors so missing DB tables don't crash the service
+    // Initial sync -- catch errors so missing DB tables don't crash the service
     try {
       await this.syncFeeds();
     } catch (err) {
-      this.deps.logger.warn({ error: (err as Error).message }, 'Initial feed sync failed — will retry on next interval');
+      this.deps.logger.warn({ error: (err as Error).message }, 'Initial feed sync failed -- will retry on next interval');
     }
 
     // Periodic re-sync to pick up new/updated/deleted feeds
@@ -87,17 +92,17 @@ export class FeedScheduler {
       const existing = this.jobs.get(feed.id);
 
       if (existing) {
-        // Already scheduled — skip (schedule changes picked up on next sync via re-register)
+        // Already scheduled -- skip (schedule changes picked up on next sync via re-register)
         continue;
       }
 
       if (!cron.validate(feed.schedule)) {
-        this.deps.logger.warn({ feedId: feed.id, schedule: feed.schedule }, 'Invalid cron expression — skipping');
+        this.deps.logger.warn({ feedId: feed.id, schedule: feed.schedule }, 'Invalid cron expression -- skipping');
         continue;
       }
 
       const task = cron.schedule(feed.schedule, () => {
-        this.enqueueFetch(feed.id, feed.tenantId).catch((err) => {
+        this.enqueueFetch(feed.id, feed.tenantId, feed.feedType).catch((err) => {
           this.deps.logger.error({ feedId: feed.id, error: (err as Error).message }, 'Failed to enqueue feed fetch');
         });
       });
@@ -109,18 +114,23 @@ export class FeedScheduler {
     this.deps.logger.info({ activeFeeds: activeFeeds.length, scheduledJobs: this.jobs.size }, 'Feed sync completed');
   }
 
-  private async enqueueFetch(feedId: string, tenantId: string): Promise<void> {
-    await this.deps.queue.add(
-      QUEUES.FEED_FETCH,
+  private async enqueueFetch(feedId: string, tenantId: string, feedType: string): Promise<void> {
+    const queueName = mapFeedTypeToQueue(feedType);
+    const queue = this.deps.queues.get(queueName);
+    if (!queue) {
+      this.deps.logger.error({ feedId, feedType, queueName }, 'No queue found for feed type');
+      return;
+    }
+
+    await queue.add(
+      queueName,
       { feedId, tenantId, triggeredBy: 'schedule' },
       { jobId: `sched-${feedId}-${Date.now()}` },
     );
-    this.deps.logger.debug({ feedId, tenantId }, 'Scheduled feed fetch enqueued');
+    this.deps.logger.debug({ feedId, tenantId, feedType, queueName }, 'Scheduled feed fetch enqueued to per-type queue');
   }
 
   private async getActiveFeeds(): Promise<ScheduledFeed[]> {
-    // Query all active + enabled feeds across all tenants
-    // The repo.findMany requires tenantId, so we use a raw approach via listAllActive
     const feeds = await this.deps.repo.findAllActive();
     return feeds
       .filter((f) => f.schedule != null)
@@ -128,6 +138,7 @@ export class FeedScheduler {
         id: f.id,
         tenantId: f.tenantId,
         schedule: f.schedule as string,
+        feedType: f.feedType,
       }));
   }
 }

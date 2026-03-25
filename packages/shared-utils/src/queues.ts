@@ -9,6 +9,11 @@
 /** All BullMQ queues use the `etip-` prefix (RCA #42: BullMQ 5.71+ forbids colons in queue names) */
 export const QUEUES = {
   FEED_FETCH:       'etip-feed-fetch',
+  /** Per-feed-type queue lanes (P3-4) — isolate slow connectors from fast ones */
+  FEED_FETCH_RSS:   'etip-feed-fetch-rss',
+  FEED_FETCH_NVD:   'etip-feed-fetch-nvd',
+  FEED_FETCH_STIX:  'etip-feed-fetch-stix',
+  FEED_FETCH_REST:  'etip-feed-fetch-rest',
   FEED_PARSE:       'etip-feed-parse',
   NORMALIZE:        'etip-normalize',
   DEDUPLICATE:      'etip-deduplicate',
