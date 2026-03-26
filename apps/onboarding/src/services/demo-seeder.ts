@@ -35,11 +35,95 @@ const DEMO_MALWARE = [
 ];
 
 /** Default OSINT feeds to seed via ingestion service. */
-const DEFAULT_FEEDS = [
-  { name: 'AlienVault OTX', url: 'https://otx.alienvault.com/api/v1/pulses/subscribed', type: 'json' as const, schedule: '*/30 * * * *' },
-  { name: 'Abuse.ch URLhaus', url: 'https://urlhaus-api.abuse.ch/v1/', type: 'json' as const, schedule: '*/30 * * * *' },
-  { name: 'CISA KEV', url: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', type: 'json' as const, schedule: '*/30 * * * *' },
-  { name: 'Feodo Tracker', url: 'https://feodotracker.abuse.ch/downloads/ipblocklist.json', type: 'json' as const, schedule: '*/30 * * * *' },
+const DEFAULT_FEEDS: ReadonlyArray<{
+  name: string; url: string; feedType: 'rss' | 'rest_api' | 'nvd';
+  schedule: string; parseConfig?: Record<string, unknown>;
+}> = [
+  // ── REST API feeds (JSON endpoints) ─────────────────────────────
+  {
+    name: 'AlienVault OTX',
+    url: 'https://otx.alienvault.com/api/v1/pulses/subscribed',
+    feedType: 'rest_api',
+    schedule: '0 */2 * * *',
+    parseConfig: {
+      responseArrayPath: 'results',
+      fieldMap: { title: 'name', content: 'description', url: 'id', publishedAt: 'created' },
+    },
+  },
+  {
+    name: 'Abuse.ch URLhaus',
+    url: 'https://urlhaus-api.abuse.ch/v1/urls/recent/',
+    feedType: 'rest_api',
+    schedule: '0 */2 * * *',
+    parseConfig: {
+      responseArrayPath: 'urls',
+      fieldMap: { title: 'url', content: 'threat', url: 'url', publishedAt: 'date_added', sourceId: 'id' },
+    },
+  },
+  {
+    name: 'CISA KEV',
+    url: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+    feedType: 'rest_api',
+    schedule: '0 */4 * * *',
+    parseConfig: {
+      responseArrayPath: 'vulnerabilities',
+      fieldMap: { title: 'vulnerabilityName', content: 'shortDescription', sourceId: 'cveID', publishedAt: 'dateAdded' },
+    },
+  },
+  {
+    name: 'Feodo Tracker',
+    url: 'https://feodotracker.abuse.ch/downloads/ipblocklist.json',
+    feedType: 'rest_api',
+    schedule: '0 */2 * * *',
+    parseConfig: {
+      responseArrayPath: '',
+      fieldMap: { title: 'ip_address', content: 'malware', publishedAt: 'first_seen_utc', sourceId: 'ip_address' },
+    },
+  },
+  {
+    name: 'MalwareBazaar Recent',
+    url: 'https://mb-api.abuse.ch/api/v1/',
+    feedType: 'rest_api',
+    schedule: '0 */2 * * *',
+    parseConfig: {
+      method: 'POST',
+      body: { query: 'get_recent', selector: 100 },
+      responseArrayPath: 'data',
+      fieldMap: { title: 'sha256_hash', content: 'file_type', publishedAt: 'first_seen_utc', sourceId: 'sha256_hash' },
+    },
+  },
+  // ── RSS feeds ───────────────────────────────────────────────────
+  {
+    name: 'CISA Advisories RSS',
+    url: 'https://www.cisa.gov/cybersecurity-advisories/all.xml',
+    feedType: 'rss',
+    schedule: '0 */2 * * *',
+  },
+  {
+    name: 'The Hacker News',
+    url: 'https://feeds.feedburner.com/TheHackersNews',
+    feedType: 'rss',
+    schedule: '*/30 * * * *',
+  },
+  {
+    name: 'BleepingComputer',
+    url: 'https://www.bleepingcomputer.com/feed/',
+    feedType: 'rss',
+    schedule: '*/30 * * * *',
+  },
+  {
+    name: 'US-CERT Alerts',
+    url: 'https://www.us-cert.gov/ncas/alerts.xml',
+    feedType: 'rss',
+    schedule: '0 */2 * * *',
+  },
+  // ── NVD connector (URL handled internally) ─────────────────────
+  {
+    name: 'NVD Recent CVEs',
+    url: '',
+    feedType: 'nvd',
+    schedule: '0 */4 * * *',
+  },
 ];
 
 /** Demo CVEs. */
@@ -218,9 +302,10 @@ export class DemoSeeder {
       const result = await this.clients.ingestionClient.post('/api/v1/feeds', {
         tenantId,
         name: feed.name,
-        url: feed.url,
-        type: feed.type,
+        url: feed.url || undefined,
+        feedType: feed.feedType,
         schedule: feed.schedule,
+        parseConfig: feed.parseConfig ?? {},
         enabled: true,
         tags: ['DEMO'],
       });

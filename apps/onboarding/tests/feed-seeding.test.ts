@@ -29,15 +29,15 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
     seeder.setClients(clients);
   });
 
-  it('seeds 4 default OSINT feeds via ingestion service', async () => {
+  it('seeds 10 default OSINT feeds via ingestion service', async () => {
     const result = await seeder.seed('tenant-1', ['feeds']);
     expect(result.seeded).toBe(true);
-    expect(result.counts.feeds).toBe(4);
+    expect(result.counts.feeds).toBe(10);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
-    expect(post).toHaveBeenCalledTimes(4);
+    expect(post).toHaveBeenCalledTimes(10);
   });
 
-  it('sends correct payload to ingestion service', async () => {
+  it('sends correct payload with feedType (not type) to ingestion service', async () => {
     await seeder.seed('tenant-1', ['feeds']);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
 
@@ -48,15 +48,16 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
         tenantId: 'tenant-1',
         name: 'AlienVault OTX',
         url: 'https://otx.alienvault.com/api/v1/pulses/subscribed',
-        type: 'json',
-        schedule: '*/30 * * * *',
+        feedType: 'rest_api',
+        schedule: '0 */2 * * *',
+        parseConfig: expect.objectContaining({ responseArrayPath: 'results' }),
         enabled: true,
         tags: ['DEMO'],
       }),
     );
   });
 
-  it('seeds all 4 feeds: OTX, URLhaus, CISA KEV, Feodo', async () => {
+  it('seeds all 10 feeds with correct names', async () => {
     await seeder.seed('tenant-1', ['feeds']);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
     const names = post.mock.calls.map((c: unknown[]) => (c[1] as { name: string }).name);
@@ -65,37 +66,41 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
       'Abuse.ch URLhaus',
       'CISA KEV',
       'Feodo Tracker',
+      'MalwareBazaar Recent',
+      'CISA Advisories RSS',
+      'The Hacker News',
+      'BleepingComputer',
+      'US-CERT Alerts',
+      'NVD Recent CVEs',
     ]);
   });
 
   it('includes feeds in default seed (all categories)', async () => {
     const result = await seeder.seed('tenant-1');
-    expect(result.counts.feeds).toBe(4);
+    expect(result.counts.feeds).toBe(10);
     expect(result.counts.iocs).toBe(10);
     expect(result.counts.actors).toBe(5);
   });
 
   it('counts partial failures for feeds', async () => {
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
-    post
-      .mockResolvedValueOnce({ data: { id: '1' } })
-      .mockResolvedValueOnce(null) // failure
-      .mockResolvedValueOnce({ data: { id: '3' } })
-      .mockResolvedValueOnce({ data: { id: '4' } });
+    // First 9 succeed, last fails
+    for (let i = 0; i < 9; i++) post.mockResolvedValueOnce({ data: { id: `${i}` } });
+    post.mockResolvedValueOnce(null);
 
     const result = await seeder.seed('tenant-1', ['feeds']);
-    expect(result.counts.feeds).toBe(3); // 4 - 1 failure
+    expect(result.counts.feeds).toBe(9);
   });
 
   it('falls back to static count without clients', async () => {
     const noClients = new DemoSeeder();
     const result = await noClients.seed('tenant-1', ['feeds']);
-    expect(result.counts.feeds).toBe(4);
+    expect(result.counts.feeds).toBe(10);
   });
 
   it('getAvailableDemoData includes feeds count', () => {
     const data = seeder.getAvailableDemoData();
-    expect(data.feeds).toBe(4);
+    expect(data.feeds).toBe(10);
     expect(data.iocs).toBe(10);
   });
 
@@ -103,9 +108,9 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
     await seeder.seed('tenant-1', ['feeds']);
     const result2 = await seeder.seed('tenant-1', ['feeds']);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
-    // Only called 4 times total (first seed), not 8
-    expect(post).toHaveBeenCalledTimes(4);
-    expect(result2.counts.feeds).toBe(4);
+    // Only called 10 times total (first seed), not 20
+    expect(post).toHaveBeenCalledTimes(10);
+    expect(result2.counts.feeds).toBe(10);
   });
 
   it('clearDemoData resets feed seeding', async () => {
@@ -116,6 +121,6 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
     // Re-seed should call API again
     await seeder.seed('tenant-1', ['feeds']);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
-    expect(post).toHaveBeenCalledTimes(8); // 4 + 4
+    expect(post).toHaveBeenCalledTimes(20); // 10 + 10
   });
 });
