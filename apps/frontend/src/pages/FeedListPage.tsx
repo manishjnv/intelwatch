@@ -8,8 +8,10 @@
  */
 import { useState, useMemo } from 'react'
 import { useFeeds, useRetryFeed, useFeedQuota, type FeedRecord } from '@/hooks/use-intel-data'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
+import { TableSkeleton } from '@/components/data/TableSkeleton'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
@@ -77,6 +79,8 @@ export function FeedListPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [viewMode, setViewMode] = useState<ViewMode>('table')
 
+  const debouncedSearch = useDebouncedValue(search, 300)
+
   const { data, isLoading } = useFeeds({ page: 1, limit: 50 })
   const retryFeed = useRetryFeed()
   const { data: quota } = useFeedQuota()
@@ -87,8 +91,8 @@ export function FeedListPage() {
   const displayFeeds = useMemo(() => {
     let result = feeds
 
-    if (search) {
-      const q = search.toLowerCase()
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase()
       result = result.filter(f =>
         f.name.toLowerCase().includes(q) ||
         (f.description ?? '').toLowerCase().includes(q) ||
@@ -104,7 +108,7 @@ export function FeedListPage() {
       const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
       return sortOrder === 'asc' ? cmp : -cmp
     })
-  }, [feeds, search, filters, sortBy, sortOrder])
+  }, [feeds, debouncedSearch, filters, sortBy, sortOrder])
 
   function handleSort(key: string) {
     if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
@@ -268,18 +272,22 @@ export function FeedListPage() {
 
       {viewMode === 'table' ? (
         <div className="flex-1 overflow-hidden">
-          <DataTable
-            columns={columns}
-            data={displayFeeds}
-            loading={isLoading}
-            rowKey={(r) => r.id}
-            density={density}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSort={handleSort}
-            emptyMessage="No feeds matching your search or filters."
-            severityField={(row) => row.status === 'error' ? 'critical' : undefined}
-          />
+          {isLoading ? (
+            <TableSkeleton rows={10} columns={columns.length} />
+          ) : (
+            <DataTable
+              columns={columns}
+              data={displayFeeds}
+              loading={false}
+              rowKey={(r) => r.id}
+              density={density}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+              emptyMessage="No feeds matching your search or filters."
+              severityField={(row) => row.status === 'error' ? 'critical' : undefined}
+            />
+          )}
         </div>
       ) : (
         <div

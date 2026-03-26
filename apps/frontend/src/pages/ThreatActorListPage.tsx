@@ -7,6 +7,7 @@
 import { useState, useMemo } from 'react'
 import { useActors, useActorDetail, useActorLinkedIOCs, type ActorRecord, type LinkedIOC } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
+import { TableSkeleton } from '@/components/data/TableSkeleton'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
@@ -282,11 +283,13 @@ export function ThreatActorListPage() {
 
       <SplitPane
         onCloseRight={() => setSelectedActorId(null)}
-        left={
+        left={isLoading ? (
+          <TableSkeleton rows={10} columns={columns.length} />
+        ) : (
           <DataTable
             columns={columns}
             data={rows}
-            loading={isLoading}
+            loading={false}
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
@@ -296,7 +299,7 @@ export function ThreatActorListPage() {
             onRowClick={(r) => setSelectedActorId(r.id === selectedActorId ? null : r.id)}
             emptyMessage="No threat actors found."
           />
-        }
+        )}
         right={selectedActor ? <ActorDetailPanel actor={selectedActor} /> : null}
         showRight={!!selectedActorId}
       />

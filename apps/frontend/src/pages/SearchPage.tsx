@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useIOCSearch, type SearchResult, type SearchFilters } from '@/hooks/use-search-data'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
@@ -184,8 +185,9 @@ export function SearchPage() {
   const navigate = useNavigate()
   const [query, setQuery]       = useState('')
   const [filters, setFilters]   = useState<SearchFilters>({})
+  const debouncedQuery = useDebouncedValue(query, 300)
 
-  const { data, isLoading, isDemo } = useIOCSearch(query, filters)
+  const { data, isLoading, isDemo } = useIOCSearch(debouncedQuery, filters)
 
   const results  = data?.data  ?? []
   const total    = data?.total ?? 0

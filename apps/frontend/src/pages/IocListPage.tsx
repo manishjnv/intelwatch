@@ -6,7 +6,9 @@
  */
 import { useState, useMemo } from 'react'
 import { useIOCs, useIOCStats, type IOCRecord } from '@/hooks/use-intel-data'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
+import { TableSkeleton } from '@/components/data/TableSkeleton'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { EntityChip } from '@etip/shared-ui/components/EntityChip'
@@ -90,11 +92,13 @@ export function IocListPage() {
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  const debouncedSearch = useDebouncedValue(search, 300)
+
   const queryParams = useMemo(() => ({
     page, limit: 50, sortBy, sortOrder,
-    ...(search ? { q: search } : {}),
+    ...(debouncedSearch ? { q: debouncedSearch } : {}),
     ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
-  }), [page, search, sortBy, sortOrder, filters])
+  }), [page, debouncedSearch, sortBy, sortOrder, filters])
 
   const { data, isLoading, isDemo } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
@@ -229,11 +233,13 @@ export function IocListPage() {
 
       <SplitPane
         onCloseRight={() => setSelectedId(null)}
-        left={
+        left={isLoading ? (
+          <TableSkeleton rows={10} columns={columns.length} />
+        ) : (
           <DataTable
             columns={columns}
             data={rows}
-            loading={isLoading}
+            loading={false}
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
@@ -246,7 +252,7 @@ export function IocListPage() {
             }}
             emptyMessage="No IOCs found. Activate a feed to start ingesting threat intelligence."
           />
-        }
+        )}
         right={selectedRecord ? (
           <IocDetailPanel record={selectedRecord} isDemo={isDemo} />
         ) : null}

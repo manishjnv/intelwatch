@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { notifyApiError } from './useApiError'
 import {
   DEMO_DRP_ALERTS, DEMO_DRP_ALERT_STATS, DEMO_DRP_ASSETS, DEMO_DRP_ASSET_STATS,
   DEMO_CERTSTREAM_STATUS,
@@ -88,7 +89,7 @@ export function useDRPAlerts(params: QueryParams = {}) {
   const empty: ListResponse<DRPAlert> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['drp-alerts', params],
-    queryFn: () => api<ListResponse<DRPAlert>>(`/drp/alerts${query}`).catch(() => empty),
+    queryFn: () => api<ListResponse<DRPAlert>>(`/drp/alerts${query}`).catch(err => notifyApiError(err, 'DRP alerts', empty)),
     staleTime: 30_000,
   })
   return withDemoFallback(result,
@@ -263,7 +264,7 @@ export function useCorrelations(params: QueryParams = {}) {
   const empty: ListResponse<CorrelationResult> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['correlations', params],
-    queryFn: () => api<ListResponse<CorrelationResult>>(`/correlations${query}`).catch(() => empty),
+    queryFn: () => api<ListResponse<CorrelationResult>>(`/correlations${query}`).catch(err => notifyApiError(err, 'correlations', empty)),
     staleTime: 30_000,
   })
   return withDemoFallback(result,
