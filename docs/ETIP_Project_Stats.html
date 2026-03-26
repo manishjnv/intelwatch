@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 79 &middot; 2026-03-26 &middot; 27/27 E2E gap items closed, 3/3 activation phases complete, 33 containers, ~5,891+ tests (755 frontend)</span>
+  <span class="version">Session 80 &middot; 2026-03-26 &middot; 10 bug fixes, TS errors 60→14, PlanStore Prisma-backed, IocListPage split. 33 containers, ~5,891+ tests (755 frontend)</span>
 </div>
 </div>
 
@@ -91,7 +91,7 @@ li strong { color: var(--text-primary); }
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
     <div class="stat-card"><div class="stat-value">~5,891+</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~580</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">78</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">80</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">20</div><div class="stat-label">Frontend Pages</div></div>
@@ -160,7 +160,7 @@ li strong { color: var(--text-primary); }
       <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>185</td></tr>
       <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>50 (+BYOK +FeedQuota)</td><td>273</td></tr>
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>241</td></tr>
-      <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28</td><td>149</td></tr>
+      <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28 (PlanStore Prisma-backed)</td><td>174</td></tr>
       <tr><td>admin-ops</td><td>3022</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>35 (+feed-usage)</td><td>190</td></tr>
       <tr><td>elasticsearch-indexing</td><td>3020</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>3</td><td>57</td></tr>
       <tr><td>reporting</td><td>3021</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>25</td><td>217</td></tr>
@@ -471,6 +471,11 @@ li strong { color: var(--text-primary); }
       <tr><td>G5a: SearchPage (/search) with useIOCSearch + 3 filters + demo fallback</td><td><span class="badge badge-green">DONE (G5, S65)</span></td><td>✅ Sidebar entry, skeleton loading, ES connected</td></tr>
       <tr><td>G5b: E2E CI smoke test step in deploy.yml</td><td><span class="badge badge-green">DONE (G5, S65)</span></td><td>✅ Post-deploy, master only, continue-on-error, guards</td></tr>
       <tr><td>G5c: DLQ processor — GET/retry/discard/retry-all + AdminOpsPage table</td><td><span class="badge badge-green">DONE (G5, S65)</span></td><td>✅ Raw Redis ZSET ops, injectable client, 10 tests</td></tr>
+      <tr><td>Admin KNOWN_QUEUES 5→18</td><td><span class="badge badge-green">DONE (S80)</span></td><td>✅ ALL_QUEUE_NAMES from shared-utils</td></tr>
+      <tr><td>useFeeds() api() unwrap bug</td><td><span class="badge badge-green">DONE (S80)</span></td><td>✅ raw fetch()→api(), feeds no longer stuck on demo</td></tr>
+      <tr><td>Billing PlanStore → Prisma</td><td><span class="badge badge-green">DONE (S80)</span></td><td>✅ SubscriptionRepo wired, graceful fallback</td></tr>
+      <tr><td>IocListPage over 400 lines</td><td><span class="badge badge-green">DONE (S80)</span></td><td>✅ Split to 271+298 (IocDetailPanel)</td></tr>
+      <tr><td>Frontend TS errors (60+)</td><td><span class="badge badge-green">DONE (S80)</span></td><td>✅ Down to 14 (1 D3 lib + 13 test-only)</td></tr>
       <tr><td>Razorpay live keys on VPS</td><td><span class="badge badge-gray">DEFERRED</span></td><td>Post-launch</td></tr>
       <tr><td>Billing priceInr field mismatch</td><td><span class="badge badge-gray">DEFERRED</span></td><td>Frontend workaround in place</td></tr>
     </tbody>
@@ -506,16 +511,23 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 79 COMPLETE ✅</span> 27/27 gap items closed — all activation phases verified</div>
+    <div class="card-title"><span class="badge badge-green">Session 80 COMPLETE ✅</span> 10 bug fixes, TS cleanup, Prisma wiring, IocListPage split</div>
     <div class="card-body">
-      <strong>Session 79:</strong> Planning/review session. Confirmed all 27 E2E gap analysis items are closed (sessions 64–78). Confirmed all 3 platform activation phases complete: Phase 1 live feeds (S77), Phase 2 UI drill-downs (S76), Phase 3 downstream pipeline (S78). Platform is fully built but shows demo data — real feeds need VPS activation.<br><br>
+      <strong>Session 80:</strong> Cleanup &amp; stabilization. Fixed 10 known issues across 22 files:<br>
+      &bull; <strong>useFeeds() bug fix</strong> — was using raw fetch() causing feeds to always show demo data; now uses api() like all other hooks<br>
+      &bull; <strong>Admin KNOWN_QUEUES 5→18</strong> — full pipeline queue visibility via ALL_QUEUE_NAMES<br>
+      &bull; <strong>Billing PlanStore → Prisma</strong> — SubscriptionRepo wired with graceful fallback (try/catch on all 5 Prisma calls)<br>
+      &bull; <strong>IocListPage split</strong> — 569→271+298 lines (IocDetailPanel extracted)<br>
+      &bull; <strong>shared-ui PageStatsBar</strong> — added icon/highlight/title/isDemo props used by 7+ pages<br>
+      &bull; <strong>Frontend TS errors 60→14</strong> — VulnerabilityListPage, Record casts, phase6 Teams type, nullability fixes<br><br>
       <strong>Next session priorities:</strong><br>
       1. <strong>Activate real feeds on VPS</strong> — run seed-feeds.sh to configure 10 OSINT feeds<br>
       2. <strong>Verify pipeline health</strong> — run check-pipeline-health.ts after feeds activate<br>
-      3. <strong>Wire billing Prisma</strong> in index.ts (persistence migration B2)<br>
-      4. <strong>Fix api() unwrap bug</strong> in remaining hooks (useIOCs, useActors, useMalware, useVulns, useDashboardStats)<br>
+      3. <strong>Wire remaining billing stores</strong> — UsageStore/InvoiceStore/CouponStore dual-mode (prisma generate first)<br>
+      4. <strong>Persistence migration B2</strong> — alerting-service → Postgres<br>
       5. <strong>Production hardening</strong> — Rate limiting, error alerting, log aggregation<br><br>
-      <strong>Deferred gaps:</strong> enrichmentData JSONB archive (Prisma migration), per-service Docker images (when independent deploys needed), admin-service KNOWN_QUEUES expansion (5→15).
+      <strong>Resolved this session:</strong> registerMetrics (confirmed all 23 services OK), api() unwrap (useFeeds fixed), admin KNOWN_QUEUES (5→18), billing Prisma (PlanStore wired), IocListPage split (under 400 lines), VulnerabilityListPage TS errors (all fixed).<br>
+      <strong>Remaining known issues:</strong> Deploy timeout 25min, Grafana dashboard empty, 3 billing stores still in-memory, 1 D3 lib TS error, 13 test-file TS errors, FeedSource corrupted rows, VPS seed script pending.
     </div>
   </div>
 </div>
@@ -523,7 +535,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 79 &middot; 2026-03-26 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 80 &middot; 2026-03-26 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
