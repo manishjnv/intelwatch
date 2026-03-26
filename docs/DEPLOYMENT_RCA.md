@@ -656,3 +656,12 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 73 | 2026-03-26 | No new issues. Prometheus metrics wired to all 23 services. Deploy.yml orphan cleanup further improved (pre+post). CI run 23574054284 green. 33 containers healthy. 5,785 tests. |
 | Session 74 | 2026-03-26 | No deploy. Code-only session: persistence migration foundation (shared-persistence package + billing-service Prisma). 5,825 tests. |
 | Session 77 | 2026-03-26 | Deploy succeeded (25m timeout). tsc -b timed out at 15m on first attempt — increased to 25m (deploy.yml). Billing unused import blocked tsc (fixed). Neo4j transient unhealthy during compose up (recovered <2min). Seed script: jsonwebtoken require() fails in pnpm store — switched to crypto.createHmac. VPS SSH timeout blocked final seed run. All 33 containers healthy. |
+
+### Issue 43: VPS OOM during Docker build — SSH pipe broken, deploy fails
+**Error**: `client_loop: send disconnect: Broken pipe` — SSH drops during `tsc -b --force` on VPS. Deploy never completes.
+**Root Cause**: 8GB VPS runs 33 containers (~3-4GB) + `tsc -b --force` for 23 services (~4-6GB) = exceeds RAM. OOM killer or swap thrashing kills processes. Recurring pattern (sessions 61, 70, 77, 78).
+**Fix (DECISION-028)**: Build Docker images in GitHub Actions CI runner (7GB RAM), push to GHCR (ghcr.io). VPS only pulls pre-built images. Deploy time: 25min → 2m41s.
+**Commit**: `5c1e76e`
+**Prevention**: **RULE**: Never build Docker images on VPS. Always build in CI, push to registry, pull on VPS.
+
+| Session 78 | 2026-03-26 | RCA #43: VPS OOM during build. Fix: CI-built Docker images (GHCR). Deploy 25m→2m41s. Per-plan feed quotas (7 components, 5 modules, 54 tests). Passwordless SSH. All 33 containers healthy. CI run 23597460387 green. |

@@ -196,3 +196,10 @@
 **Decision:** Hybrid approach: Postgres (via shared Prisma schema) for business entities needing queries/reporting (billing, alerting, reporting, integration, DRP). Redis JSON (via new @etip/shared-persistence package) for config-like data needing restart-survival but not SQL (customization, user-management, hunting). Keep in-memory for TTL caches and rate limiters. Dual-mode stores: constructor takes optional repo/checkpoint — if not provided, falls back to in-memory Maps (backward compatible for tests).
 **Alternatives:** All Postgres (80+ models in one schema, impractical), all Redis (no SQL queries for reporting), per-service databases (overkill for single VPS)
 **Consequences:** 12-session migration plan (A1 foundation → E1 verification). Billing-service is first migration (session 74). Existing tests run unchanged in in-memory mode. Production uses DB mode via TI_DATABASE_URL env var. Rollback: git tag + feature flag per service.
+
+### DECISION-028: CI-built Docker images — never build on VPS
+**Date:** 2026-03-26 | **Status:** Accepted
+**Context:** VPS (8GB RAM) running 33 containers (~3-4GB) + tsc -b build (~4-6GB) during deploy = OOM kills, SSH pipe breaks, 15-25min deploy times. Failed deploys in sessions 61, 70, 77, 78 (RCA #43).
+**Decision:** Build etip-backend + etip-frontend images in GitHub Actions CI runner (7GB RAM), push to GHCR (ghcr.io). VPS only pulls pre-built images + restarts containers. Deploy pipeline: test → build-images → deploy (pull + compose up).
+**Alternatives:** Upgrade VPS to 16GB (solves but costs more), stop containers during build (30s downtime), per-service images (premature optimization)
+**Consequences:** Deploy time: 25min → 2m41s. No more VPS OOM during deploy. CI runner handles all compilation. VPS needs GHCR authentication (via GITHUB_TOKEN passed in deploy script). Future: per-service images when independent deploys needed.
