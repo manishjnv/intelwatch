@@ -41,7 +41,8 @@ export class FeedQuotaRepo {
     const rows = await this.db.feedQuotaPlanAssignment.findMany({
       orderBy: { updatedAt: 'desc' },
     });
-    return rows.map((r) => this.toAssignment(r));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return rows.map((r: any) => this.toAssignment(r));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
