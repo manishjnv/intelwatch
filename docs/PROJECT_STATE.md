@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-26 (update at end of EVERY session via /session-end)
-**Session counter:** 78 — Per-plan feed quotas + CI-built Docker images
+**Session counter:** 79 — Planning/review session: gap analysis audit, phase prompts, platform activation verified
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Pipeline Activation + Persistence Migration. All pipeline phases complete. 33 containers, ~5,868+ tests (755 frontend, 19 new wiring tests).
-- **Last session outcome:** Session 78 (2026-03-26). **Downstream pipeline verification.** Audited all 8 pipeline event chains across 23 services. Fixed 2 broken INTEGRATION_PUSH payload chains (alerting + correlation → integration service). Created pipeline health check script (`scripts/check-pipeline-health.ts`). 19 new wiring alignment tests. All queue/event names use canonical constants — no hardcoded strings. 3 unused queues documented (DEDUPLICATE, ENRICH_BATCH, ARCHIVE — future use).
-- **Known issues:** Pre-existing TS errors: `registerMetrics` import (session 73, 3 services). IocListPage.tsx at 569 lines (over 400 limit, pre-existing). Deploy.yml at 25min timeout. Grafana pipeline-queues dashboard still empty. Billing stores not yet wired to Prisma in index.ts. FeedSource table has corrupted non-UUID tenant_id rows from previous seeder runs — must TRUNCATE before seeding. Seed script needs manual VPS run (`bash /opt/intelwatch/scripts/seed-feeds.sh`). Admin-service KNOWN_QUEUES only monitors 5 of 15 active queues.
-- **Next tasks:** (1) Deploy session 78 fixes. (2) Run seed-feeds.sh on VPS manually. (3) Verify pipeline health with `npx tsx scripts/check-pipeline-health.ts`. (4) Wire billing-service Prisma in index.ts. (5) Persistence migration B2: alerting-service → Postgres.
+- **Current phase:** Platform Activation + Persistence Migration. All 7 build phases complete. 27/27 E2E gap items closed. 3/3 activation phases complete. 33 containers, ~5,891+ tests.
+- **Last session outcome:** Session 79 (2026-03-26). **Planning/review only — no code changes.** Audited all 27 E2E gap items — confirmed 27/27 closed. Audited 3 activation phases (live feeds, UI drill-downs, downstream pipeline) — confirmed 3/3 complete. Created session prompts for all remaining work items. Identified platform is deployed but still showing demo data on VPS (feeds need manual activation via seed-feeds.sh).
+- **Known issues:** Pre-existing TS errors: `registerMetrics` import (session 73, 3 services). IocListPage.tsx at 569 lines (over 400 limit, pre-existing). Deploy.yml at 25min timeout. Grafana pipeline-queues dashboard still empty (needs BullMQ custom counters). Billing stores not yet wired to Prisma in index.ts. FeedSource table has corrupted non-UUID tenant_id rows from previous seeder runs — must TRUNCATE before seeding. Seed script needs manual VPS run (`bash /opt/intelwatch/scripts/seed-feeds.sh`). Admin-service KNOWN_QUEUES only monitors 5 of 15 active queues. **Platform shows demo data — real feeds not yet activated on VPS.**
+- **Next tasks:** (1) Run seed-feeds.sh on VPS to activate real OSINT feeds. (2) Verify pipeline health with `npx tsx scripts/check-pipeline-health.ts`. (3) Wire billing-service Prisma in index.ts. (4) Persistence migration B2: alerting-service → Postgres. (5) Expand admin-service KNOWN_QUEUES to monitor all 15 active queues.
 
 ## Deployment Log
 
@@ -218,6 +218,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 73 | 2026-03-26 | All 23 backend services updated (Prometheus metrics) | ✅ CI green (23574054284) | 050eb58 | prom-client wired to all 23 services via shared-utils registerMetrics(). Prometheus scrape config: 23 targets. Deploy.yml orphan cleanup improved. 12 new tests, 5,785 total. |
 | 76 | 2026-03-26 | No deploy (frontend-only, code session) | — | 75b5657 | Frontend interactivity: VulnDetailPanel, SearchPage drill-down, IOC enrichment/relations wiring, sort on 4 pages. 16 new tests, 755 frontend. |
 | 77 | 2026-03-26 | All 33 containers redeployed (backend image rebuild) | ✅ All 33 healthy | 75c733b→cd194ad (5 commits) | Live feed activation: DemoSeeder 3-bug fix (type/feedType/parseConfig), 10 OSINT feeds, seed-feeds.sh script, billing unused import fix, deploy timeout 25m. 12 new tests. Neo4j transient health delay (recovered). Seed script blocked by SSH timeout. |
+| 78 | 2026-03-26 | etip_api, etip_alerting, etip_correlation rebuilt | ✅ 31 healthy | 2425673 | INTEGRATION_PUSH payload shape fix (alerting+correlation→integration). Pipeline health check script. 19 wiring tests. Deploy via nohup (CI SSH broken pipe). Caddy restarted. |
 
 ## E2E Verification Results (Session 13)
 

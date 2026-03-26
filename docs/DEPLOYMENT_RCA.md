@@ -656,6 +656,7 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 73 | 2026-03-26 | No new issues. Prometheus metrics wired to all 23 services. Deploy.yml orphan cleanup further improved (pre+post). CI run 23574054284 green. 33 containers healthy. 5,785 tests. |
 | Session 74 | 2026-03-26 | No deploy. Code-only session: persistence migration foundation (shared-persistence package + billing-service Prisma). 5,825 tests. |
 | Session 77 | 2026-03-26 | Deploy succeeded (25m timeout). tsc -b timed out at 15m on first attempt — increased to 25m (deploy.yml). Billing unused import blocked tsc (fixed). Neo4j transient unhealthy during compose up (recovered <2min). Seed script: jsonwebtoken require() fails in pnpm store — switched to crypto.createHmac. VPS SSH timeout blocked final seed run. All 33 containers healthy. |
+| Session 78 | 2026-03-26 | CI green (tests+typecheck+lint+Docker). Deploy.yml SSH broken pipe (2 attempts). Deployed via vps-cmd.yml: git pull + nohup docker build + force-recreate etip_api/etip_alerting/etip_correlation. 31 containers healthy. Caddy restart required after nginx recreate. No new RCA issues — used existing nohup workaround for SSH timeout. |
 
 ### Issue 43: VPS OOM during Docker build — SSH pipe broken, deploy fails
 **Error**: `client_loop: send disconnect: Broken pipe` — SSH drops during `tsc -b --force` on VPS. Deploy never completes.
