@@ -26,7 +26,8 @@ docker exec "$CONTAINER" node -e '
 const crypto = require("crypto");
 
 const SECRET = process.env.TI_JWT_SECRET;
-const TENANT = "demo-tenant";
+// Use a fixed UUID for the demo tenant (consistent across runs)
+const TENANT = "00000000-0000-0000-0000-000000000001";
 const PORT = process.env.TI_INGESTION_PORT || 3004;
 const API = `http://localhost:${PORT}`;
 
