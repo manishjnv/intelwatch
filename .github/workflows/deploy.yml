@@ -90,15 +90,29 @@ jobs:
       ((github.event_name == 'push' && github.ref == 'refs/heads/master') ||
        github.event_name == 'workflow_dispatch')
     steps:
+      - name: Install cloudflared
+        run: |
+          curl -sL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+          chmod +x /usr/local/bin/cloudflared
+
+      - name: Setup SSH via Cloudflare Tunnel
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          cat > ~/.ssh/config << EOF
+          Host vps
+            HostName ssh.intelwatch.in
+            User ${{ secrets.VPS_USER }}
+            IdentityFile ~/.ssh/id_deploy
+            StrictHostKeyChecking no
+            ProxyCommand cloudflared access ssh --hostname %h
+          EOF
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script_stop: true
-          command_timeout: 25m
-          script: |
+        timeout-minutes: 25
+        run: |
+          ssh vps << 'DEPLOY_SCRIPT'
             set -e
 
             echo "═══ ETIP Deploy Started ═══"
@@ -258,27 +272,15 @@ jobs:
 
             echo ""
             echo "═══ ETIP Deploy Complete ═══"
+          DEPLOY_SCRIPT
 
       # ─── E2E Smoke Tests (master push only, non-blocking) ──────────
-      # Runs pipeline-smoke.test.ts on VPS against live containers.
-      # Uses continue-on-error so a flaky E2E never blocks a deploy.
-      # Requires E2E_ADMIN_EMAIL + E2E_ADMIN_PASSWORD GitHub secrets.
-      # CISA KEV feed is public — no API key needed.
       - name: E2E pipeline smoke tests (post-deploy)
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
-        env:
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          envs: E2E_ADMIN_EMAIL,E2E_ADMIN_PASSWORD
-          script_stop: false
-          command_timeout: 10m
-          script: |
+        timeout-minutes: 10
+        run: |
+          ssh vps << 'E2E_SCRIPT'
             set +e
             echo "═══ E2E Smoke Tests ═══"
             cd /opt/intelwatch
@@ -307,3 +309,4 @@ jobs:
 
             echo "═══ E2E complete (non-blocking) ═══"
             exit 0
+          E2E_SCRIPT

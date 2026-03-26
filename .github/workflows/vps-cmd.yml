@@ -1,20 +1,9 @@
 # ═══════════════════════════════════════════════════════════════
 # ETIP VPS Command Runner
-# Allows Claude (and developers) to run arbitrary commands on the
-# VPS via GitHub Actions, since the Claude sandbox blocks raw TCP
-# on port 22 and cannot SSH directly.
+# Uses Cloudflare Tunnel (ssh.intelwatch.in) for reliable SSH.
+# No more port 22 filtering timeouts.
 #
-# Usage via GitHub API:
-#   POST /repos/manishjnv/intelwatch/actions/workflows/vps-cmd.yml/dispatches
-#   { "ref": "master", "inputs": { "cmd": "docker ps --filter name=etip_" } }
-#
-# Then poll:
-#   GET /repos/manishjnv/intelwatch/actions/runs?event=workflow_dispatch&per_page=1
-#   GET /repos/manishjnv/intelwatch/actions/runs/{run_id}/jobs
-#   GET /repos/manishjnv/intelwatch/actions/jobs/{job_id}/logs
-#
-# SAFETY: Read-only commands encouraged. Destructive commands require
-# explicit confirmation. Never touches non-etip_ containers.
+# Usage: gh workflow run vps-cmd.yml -f cmd="docker ps"
 # ═══════════════════════════════════════════════════════════════
 
 name: VPS Command
@@ -32,22 +21,36 @@ jobs:
     name: Run on VPS
     runs-on: ubuntu-latest
     steps:
+      - name: Install cloudflared
+        run: |
+          curl -sL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+          chmod +x /usr/local/bin/cloudflared
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          cat >> ~/.ssh/config << 'EOF'
+          Host ssh.intelwatch.in
+            User ${{ secrets.VPS_USER }}
+            IdentityFile ~/.ssh/id_deploy
+            StrictHostKeyChecking no
+            ProxyCommand cloudflared access ssh --hostname %h
+          EOF
+
       - name: Execute command on VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          command_timeout: 5m
-          script_stop: false
-          script: |
-            set -e
-            cd /opt/intelwatch
-            echo "━━━ VPS Command Runner ━━━"
-            echo "Time: $(date -u)"
-            echo "Cmd: ${{ inputs.cmd }}"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo ""
-            ${{ inputs.cmd }}
-            echo ""
-            echo "━━━ Done ━━━"
+        timeout-minutes: 5
+        run: |
+          ssh ssh.intelwatch.in << 'REMOTE'
+          set -e
+          cd /opt/intelwatch
+          echo "━━━ VPS Command Runner ━━━"
+          echo "Time: $(date -u)"
+          echo "Cmd: ${{ inputs.cmd }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          ${{ inputs.cmd }}
+          echo ""
+          echo "━━━ Done ━━━"
+          REMOTE
