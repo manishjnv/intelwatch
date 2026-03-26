@@ -13,6 +13,7 @@ import { PlanTierService } from './services/plan-tiers.js';
 import { RiskWeightStore } from './services/risk-weight-store.js';
 import { DashboardStore } from './services/dashboard-store.js';
 import { NotificationStore } from './services/notification-store.js';
+import { FeedQuotaStore } from './services/feed-quota-store.js';
 
 async function main(): Promise<void> {
   // 1. Config + Logger
@@ -39,6 +40,7 @@ async function main(): Promise<void> {
   const riskWeightStore = new RiskWeightStore(validationEngine, auditTrail, configVersioning);
   const dashboardStore = new DashboardStore(configInheritance, auditTrail, configVersioning);
   const notificationStore = new NotificationStore(configInheritance, auditTrail, configVersioning);
+  const feedQuotaStore = new FeedQuotaStore();
 
   // 5. Register stores with config portability
   configPortability.registerStore('modules', {
@@ -72,6 +74,7 @@ async function main(): Promise<void> {
     dashboardDeps: { dashboardStore },
     notificationDeps: { notificationStore },
     configDeps: { configPortability, auditTrail, configVersioning },
+    feedQuotaDeps: { feedQuotaStore },
   });
 
   // 7. Graceful shutdown

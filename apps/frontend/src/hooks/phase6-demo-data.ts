@@ -111,11 +111,12 @@ export interface TenantRecord {
   id: string
   name: string
   domain: string
-  plan: 'Free' | 'Starter' | 'Pro' | 'Enterprise'
+  plan: 'Free' | 'Starter' | 'Pro' | 'Teams' | 'Enterprise'
   status: 'active' | 'suspended' | 'trial'
   seats: number
   usedSeats: number
   iocCount: number
+  feedCount: number
   createdAt: string
   lastActiveAt: string
 }
@@ -359,11 +360,11 @@ export const DEMO_MAINTENANCE_WINDOWS: MaintenanceWindow[] = [
 ]
 
 export const DEMO_TENANTS: TenantRecord[] = [
-  { id: 'tenant-1', name: 'IntelWatch (Internal)', domain: 'intelwatch.in', plan: 'Enterprise', status: 'active', seats: -1, usedSeats: 5, iocCount: 312_445, createdAt: daysAgo(90), lastActiveAt: hoursAgo(0.1) },
-  { id: 'tenant-2', name: 'Acme Security Labs', domain: 'acme-sec.com', plan: 'Pro', status: 'active', seats: 50, usedSeats: 23, iocCount: 98_234, createdAt: daysAgo(60), lastActiveAt: hoursAgo(2) },
-  { id: 'tenant-3', name: 'SecureFinance Ltd', domain: 'securefinance.io', plan: 'Pro', status: 'active', seats: 50, usedSeats: 41, iocCount: 201_872, createdAt: daysAgo(45), lastActiveAt: hoursAgo(1) },
-  { id: 'tenant-4', name: 'CyberShield Startup', domain: 'cybershield.dev', plan: 'Starter', status: 'trial', seats: 10, usedSeats: 3, iocCount: 4_231, createdAt: daysAgo(10), lastActiveAt: daysAgo(1) },
-  { id: 'tenant-5', name: 'Blocked Corp', domain: 'blocked.example', plan: 'Free', status: 'suspended', seats: 2, usedSeats: 0, iocCount: 512, createdAt: daysAgo(30), lastActiveAt: daysAgo(15) },
+  { id: 'tenant-1', name: 'IntelWatch (Internal)', domain: 'intelwatch.in', plan: 'Enterprise', status: 'active', seats: -1, usedSeats: 5, iocCount: 312_445, feedCount: 10, createdAt: daysAgo(90), lastActiveAt: hoursAgo(0.1) },
+  { id: 'tenant-2', name: 'Acme Security Labs', domain: 'acme-sec.com', plan: 'Teams', status: 'active', seats: 50, usedSeats: 23, iocCount: 98_234, feedCount: 10, createdAt: daysAgo(60), lastActiveAt: hoursAgo(2) },
+  { id: 'tenant-3', name: 'SecureFinance Ltd', domain: 'securefinance.io', plan: 'Teams', status: 'active', seats: 50, usedSeats: 41, iocCount: 201_872, feedCount: 10, createdAt: daysAgo(45), lastActiveAt: hoursAgo(1) },
+  { id: 'tenant-4', name: 'CyberShield Startup', domain: 'cybershield.dev', plan: 'Starter', status: 'trial', seats: 10, usedSeats: 3, iocCount: 4_231, feedCount: 7, createdAt: daysAgo(10), lastActiveAt: daysAgo(1) },
+  { id: 'tenant-5', name: 'Blocked Corp', domain: 'blocked.example', plan: 'Free', status: 'suspended', seats: 2, usedSeats: 0, iocCount: 512, feedCount: 3, createdAt: daysAgo(30), lastActiveAt: daysAgo(15) },
 ]
 
 export const DEMO_ADMIN_AUDIT: AdminAuditEntry[] = [

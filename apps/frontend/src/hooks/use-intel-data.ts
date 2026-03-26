@@ -145,6 +145,37 @@ export function useFeeds(params: QueryParams = {}) {
   return withDemoFallback(result, DEMO_FEEDS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
 }
 
+// ─── Feed Quota ─────────────────────────────────────────────────
+
+export interface FeedQuotaData {
+  planId: string
+  displayName: string
+  maxFeeds: number        // -1 = unlimited
+  minFetchInterval: string
+  retentionDays: number
+  nextPlan: string | null
+  nextPlanMaxFeeds: number | null
+}
+
+const DEFAULT_QUOTA: FeedQuotaData = {
+  planId: 'free', displayName: 'Free', maxFeeds: 3,
+  minFetchInterval: '0 */4 * * *', retentionDays: 7,
+  nextPlan: 'starter', nextPlanMaxFeeds: 10,
+}
+
+export function useFeedQuota() {
+  return useQuery({
+    queryKey: ['feed-quota'],
+    queryFn: async () => {
+      try {
+        const data = await api<FeedQuotaData>('/customization/feed-quota/tenants/me')
+        return data ?? DEFAULT_QUOTA
+      } catch { return DEFAULT_QUOTA }
+    },
+    staleTime: 5 * 60_000, // 5 minutes, matches backend cache TTL
+  })
+}
+
 export function useRetryFeed() {
   const queryClient = useQueryClient()
   return useMutation({

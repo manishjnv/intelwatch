@@ -119,5 +119,34 @@ export function tenantRoutes(deps: TenantRouteDeps) {
         return reply.status(204).send();
       },
     );
+
+    /** GET /feed-usage/summary — aggregate feed usage stats across tenants. */
+    app.get(
+      '/feed-usage/summary',
+      async (_req: FastifyRequest, reply: FastifyReply) => {
+        const tenants = tenantStore.list();
+        const byPlan: Record<string, number> = { free: 0, starter: 0, teams: 0, enterprise: 0 };
+        let totalFeeds = 0;
+
+        for (const t of tenants) {
+          const plan = t.plan ?? 'free';
+          byPlan[plan] = (byPlan[plan] ?? 0) + 1;
+          try {
+            const usage = tenantStore.getUsage(t.id);
+            totalFeeds += usage.feedCount;
+          } catch {
+            // Usage record may not exist for some tenants
+          }
+        }
+
+        return reply.send({
+          data: {
+            totalTenants: tenants.length,
+            byPlan,
+            totalFeeds,
+          },
+        });
+      },
+    );
   };
 }

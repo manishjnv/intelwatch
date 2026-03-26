@@ -34,17 +34,20 @@ const DEMO_MALWARE = [
   { name: 'BlackCat', type: 'ransomware', severity: 'critical', description: 'Rust-based ransomware-as-a-service (ALPHV).' },
 ];
 
-/** Default OSINT feeds to seed via ingestion service. */
+/** Default OSINT feeds to seed via ingestion service.
+ * freeTier=true → seeded for Free plan (3 feeds).
+ * freeTier=false → seeded only on Starter+ plan upgrade (all 10). */
 const DEFAULT_FEEDS: ReadonlyArray<{
   name: string; url: string; feedType: 'rss' | 'rest_api' | 'nvd';
-  schedule: string; parseConfig?: Record<string, unknown>;
+  schedule: string; parseConfig?: Record<string, unknown>; freeTier: boolean;
 }> = [
-  // ── REST API feeds (JSON endpoints) ─────────────────────────────
+  // ── REST API feeds (JSON endpoints) — Starter+ only ────────────
   {
     name: 'AlienVault OTX',
     url: 'https://otx.alienvault.com/api/v1/pulses/subscribed',
     feedType: 'rest_api',
     schedule: '0 */2 * * *',
+    freeTier: false,
     parseConfig: {
       responseArrayPath: 'results',
       fieldMap: { title: 'name', content: 'description', url: 'id', publishedAt: 'created' },
@@ -55,6 +58,7 @@ const DEFAULT_FEEDS: ReadonlyArray<{
     url: 'https://urlhaus-api.abuse.ch/v1/urls/recent/',
     feedType: 'rest_api',
     schedule: '0 */2 * * *',
+    freeTier: false,
     parseConfig: {
       responseArrayPath: 'urls',
       fieldMap: { title: 'url', content: 'threat', url: 'url', publishedAt: 'date_added', sourceId: 'id' },
@@ -65,6 +69,7 @@ const DEFAULT_FEEDS: ReadonlyArray<{
     url: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
     feedType: 'rest_api',
     schedule: '0 */4 * * *',
+    freeTier: false,
     parseConfig: {
       responseArrayPath: 'vulnerabilities',
       fieldMap: { title: 'vulnerabilityName', content: 'shortDescription', sourceId: 'cveID', publishedAt: 'dateAdded' },
@@ -75,6 +80,7 @@ const DEFAULT_FEEDS: ReadonlyArray<{
     url: 'https://feodotracker.abuse.ch/downloads/ipblocklist.json',
     feedType: 'rest_api',
     schedule: '0 */2 * * *',
+    freeTier: false,
     parseConfig: {
       responseArrayPath: '',
       fieldMap: { title: 'ip_address', content: 'malware', publishedAt: 'first_seen_utc', sourceId: 'ip_address' },
@@ -85,6 +91,7 @@ const DEFAULT_FEEDS: ReadonlyArray<{
     url: 'https://mb-api.abuse.ch/api/v1/',
     feedType: 'rest_api',
     schedule: '0 */2 * * *',
+    freeTier: false,
     parseConfig: {
       method: 'POST',
       body: { query: 'get_recent', selector: 100 },
@@ -97,25 +104,29 @@ const DEFAULT_FEEDS: ReadonlyArray<{
     name: 'CISA Advisories RSS',
     url: 'https://www.cisa.gov/cybersecurity-advisories/all.xml',
     feedType: 'rss',
-    schedule: '0 */2 * * *',
+    schedule: '0 */4 * * *',
+    freeTier: true,   // ★ Free tier default
   },
   {
     name: 'The Hacker News',
     url: 'https://feeds.feedburner.com/TheHackersNews',
     feedType: 'rss',
-    schedule: '*/30 * * * *',
+    schedule: '0 */4 * * *',
+    freeTier: true,   // ★ Free tier default
   },
   {
     name: 'BleepingComputer',
     url: 'https://www.bleepingcomputer.com/feed/',
     feedType: 'rss',
-    schedule: '*/30 * * * *',
+    schedule: '0 */2 * * *',
+    freeTier: false,
   },
   {
     name: 'US-CERT Alerts',
     url: 'https://www.us-cert.gov/ncas/alerts.xml',
     feedType: 'rss',
     schedule: '0 */2 * * *',
+    freeTier: false,
   },
   // ── NVD connector (URL handled internally) ─────────────────────
   {
@@ -123,6 +134,7 @@ const DEFAULT_FEEDS: ReadonlyArray<{
     url: '',
     feedType: 'nvd',
     schedule: '0 */4 * * *',
+    freeTier: true,   // ★ Free tier default
   },
 ];
 
@@ -197,8 +209,9 @@ export class DemoSeeder {
     return this.seedResults.get(tenantId) ?? null;
   }
 
-  getAvailableDemoData(): { iocs: number; actors: number; malware: number; vulnerabilities: number; feeds: number; alerts: number } {
-    return { iocs: DEMO_IOCS.length, actors: DEMO_ACTORS.length, malware: DEMO_MALWARE.length, vulnerabilities: DEMO_VULNS.length, feeds: DEFAULT_FEEDS.length, alerts: 0 };
+  getAvailableDemoData(): { iocs: number; actors: number; malware: number; vulnerabilities: number; feeds: number; feedsFreeTier: number; alerts: number } {
+    const freeTierCount = DEFAULT_FEEDS.filter((f) => f.freeTier).length;
+    return { iocs: DEMO_IOCS.length, actors: DEMO_ACTORS.length, malware: DEMO_MALWARE.length, vulnerabilities: DEMO_VULNS.length, feeds: DEFAULT_FEEDS.length, feedsFreeTier: freeTierCount, alerts: 0 };
   }
 
   clearDemoData(tenantId: string): void {
@@ -296,9 +309,12 @@ export class DemoSeeder {
   private async seedFeeds(tenantId: string): Promise<number> {
     if (!this.clients) return this.fallbackCount('feeds');
     const logger = getLogger();
+
+    // Default: seed only Free-tier feeds (3 feeds)
+    const freeTierFeeds = DEFAULT_FEEDS.filter((f) => f.freeTier);
     let count = 0;
 
-    for (const feed of DEFAULT_FEEDS) {
+    for (const feed of freeTierFeeds) {
       const result = await this.clients.ingestionClient.post('/api/v1/feeds', {
         tenantId,
         name: feed.name,
@@ -312,8 +328,47 @@ export class DemoSeeder {
       if (result) count++;
     }
 
-    logger.info({ tenantId, count }, 'Demo feeds seeded');
+    logger.info({ tenantId, count, tier: 'free' }, 'Free-tier feeds seeded');
     return count;
+  }
+
+  /**
+   * Seed additional feeds when tenant is upgraded to Starter+ plan.
+   * Only seeds feeds not already present (idempotent).
+   */
+  async seedUpgradeFeeds(tenantId: string): Promise<number> {
+    if (!this.clients) return 0;
+    const logger = getLogger();
+
+    const nonFreeFeeds = DEFAULT_FEEDS.filter((f) => !f.freeTier);
+    let count = 0;
+
+    for (const feed of nonFreeFeeds) {
+      const result = await this.clients.ingestionClient.post('/api/v1/feeds', {
+        tenantId,
+        name: feed.name,
+        url: feed.url || undefined,
+        feedType: feed.feedType,
+        schedule: feed.schedule,
+        parseConfig: feed.parseConfig ?? {},
+        enabled: true,
+        tags: ['DEMO'],
+      });
+      if (result) count++;
+    }
+
+    logger.info({ tenantId, count, tier: 'upgraded' }, 'Upgrade feeds seeded');
+    return count;
+  }
+
+  /** Get all DEFAULT_FEEDS with freeTier flag exposed for external use. */
+  static getDefaultFeeds(): ReadonlyArray<typeof DEFAULT_FEEDS[number]> {
+    return DEFAULT_FEEDS;
+  }
+
+  /** Get only Free-tier default feed count. */
+  static getFreeTierFeedCount(): number {
+    return DEFAULT_FEEDS.filter((f) => f.freeTier).length;
   }
 
   /** Fallback counts when service clients not configured (e.g., test mode). */
@@ -323,7 +378,7 @@ export class DemoSeeder {
       actors: DEMO_ACTORS.length,
       malware: DEMO_MALWARE.length,
       vulnerabilities: DEMO_VULNS.length,
-      feeds: DEFAULT_FEEDS.length,
+      feeds: DEFAULT_FEEDS.filter((f) => f.freeTier).length,
     };
     return map[category] ?? 0;
   }

@@ -7,7 +7,7 @@
  * source favicon, radial SVG gauge, 24h schedule timeline, card/table toggle.
  */
 import { useState, useMemo } from 'react'
-import { useFeeds, useRetryFeed, type FeedRecord } from '@/hooks/use-intel-data'
+import { useFeeds, useRetryFeed, useFeedQuota, type FeedRecord } from '@/hooks/use-intel-data'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
@@ -79,6 +79,7 @@ export function FeedListPage() {
 
   const { data, isLoading } = useFeeds({ page: 1, limit: 50 })
   const retryFeed = useRetryFeed()
+  const { data: quota } = useFeedQuota()
 
   const feeds = data?.data ?? []
 
@@ -233,7 +234,14 @@ export function FeedListPage() {
   return (
     <div className="flex flex-col h-full">
       <PageStatsBar>
-        <CompactStat icon={<Rss className="w-3 h-3" />} label="Total Feeds" value={data?.total?.toString() ?? '—'} />
+        {(() => {
+          const max = quota?.maxFeeds ?? -1
+          const count = feeds.length
+          const pct = max > 0 ? Math.round((count / max) * 100) : 0
+          const quotaColor = max === -1 ? 'text-sev-low' : pct >= 90 ? 'text-sev-critical' : pct >= 70 ? 'text-sev-high' : 'text-sev-low'
+          const label = max === -1 ? `${count} (${quota?.displayName ?? 'Enterprise'})` : `${count}/${max} (${quota?.displayName ?? 'Free'})`
+          return <CompactStat icon={<Rss className="w-3 h-3" />} label="Feeds" value={label} color={quotaColor} />
+        })()}
         <CompactStat icon={<CheckCircle className="w-3 h-3" />} label="Active" value={activeCount.toString()} color="text-sev-low" />
         <CompactStat icon={<AlertTriangle className="w-3 h-3" />} label="Errors" value={errorCount.toString()} color={errorCount > 0 ? 'text-sev-critical' : undefined} />
         <CompactStat icon={<Clock className="w-3 h-3" />} label="Items Ingested" value={totalIngested.toLocaleString()} />

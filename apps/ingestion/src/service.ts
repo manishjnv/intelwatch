@@ -9,6 +9,8 @@ import { CreateFeedSchema, UpdateFeedSchema, ListFeedsQuerySchema } from './sche
 import type { CreateFeedInput, UpdateFeedInput, ListFeedsQuery } from './schema.js';
 import { getConfig } from './config.js';
 import { getQueueForFeedType, mapFeedTypeToQueue } from './queue.js';
+import type { CustomizationClient } from './services/customization-client.js';
+import { cronToMinutes } from './cron-utils.js';
 
 export interface PaginatedFeeds {
   data: FeedSource[];
@@ -20,15 +22,57 @@ export class FeedService {
     private readonly repo: FeedRepository,
     private readonly queue: Queue,
     private readonly logger: pino.Logger,
+    private readonly customizationClient?: CustomizationClient,
   ) {}
 
   async createFeed(tenantId: string, input: CreateFeedInput): Promise<FeedSource> {
     const data = CreateFeedSchema.parse(input);
     const config = getConfig();
 
+    // ── Quota enforcement via customization service ──────────
     const currentCount = await this.repo.countByTenant(tenantId);
-    if (currentCount >= config.TI_MAX_FEEDS_PER_TENANT) {
-      throw new AppError(429, `Feed limit reached (max ${config.TI_MAX_FEEDS_PER_TENANT} per tenant)`, 'FEED_LIMIT_EXCEEDED');
+    let maxFeeds = config.TI_MAX_FEEDS_PER_TENANT;
+    let planId = 'free';
+    let nextPlan: string | null = 'starter';
+    let nextPlanMaxFeeds: number | null = 10;
+
+    if (this.customizationClient) {
+      const quota = await this.customizationClient.getFeedQuota(tenantId);
+      maxFeeds = quota.maxFeeds;
+      planId = quota.planId;
+      nextPlan = quota.nextPlan;
+      nextPlanMaxFeeds = quota.nextPlanMaxFeeds;
+
+      // Validate schedule against plan minimum frequency
+      if (data.schedule) {
+        const feedMins = cronToMinutes(data.schedule);
+        const planMins = cronToMinutes(quota.minFetchInterval);
+        if (feedMins > 0 && planMins > 0 && feedMins < planMins) {
+          throw new AppError(
+            400,
+            `Schedule "${data.schedule}" exceeds ${quota.displayName} plan minimum (${quota.minFetchInterval})`,
+            'SCHEDULE_TOO_FREQUENT',
+          );
+        }
+      }
+    }
+
+    if (maxFeeds !== -1 && currentCount >= maxFeeds) {
+      const upgradeMsg = nextPlan
+        ? ` Upgrade to ${nextPlan.charAt(0).toUpperCase() + nextPlan.slice(1)} for up to ${nextPlanMaxFeeds === -1 ? 'unlimited' : nextPlanMaxFeeds} feeds.`
+        : '';
+      throw new AppError(
+        403,
+        `Feed limit reached (${currentCount}/${maxFeeds}).${upgradeMsg}`,
+        'FEED_QUOTA_EXCEEDED',
+        {
+          upgradeUrl: '/billing',
+          currentPlan: planId,
+          requiredPlan: nextPlan,
+          currentCount,
+          maxFeeds,
+        },
+      );
     }
 
     const feed = await this.repo.create(tenantId, {
@@ -42,7 +86,10 @@ export class FeedService {
       parseConfig: (data.parseConfig ?? {}) as JsonValue,
     });
 
-    this.logger.info({ feedId: feed.id, tenantId, feedType: data.feedType }, 'Feed created');
+    this.logger.info(
+      { feedId: feed.id, tenantId, feedType: data.feedType, feedCount: currentCount + 1, maxFeeds, plan: planId },
+      'Feed created',
+    );
     return feed;
   }
 

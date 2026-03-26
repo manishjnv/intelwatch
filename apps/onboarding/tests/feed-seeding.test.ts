@@ -29,78 +29,70 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
     seeder.setClients(clients);
   });
 
-  it('seeds 10 default OSINT feeds via ingestion service', async () => {
+  it('seeds 3 free-tier default feeds via ingestion service', async () => {
     const result = await seeder.seed('tenant-1', ['feeds']);
     expect(result.seeded).toBe(true);
-    expect(result.counts.feeds).toBe(10);
+    expect(result.counts.feeds).toBe(3);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
-    expect(post).toHaveBeenCalledTimes(10);
+    expect(post).toHaveBeenCalledTimes(3);
   });
 
-  it('sends correct payload with feedType (not type) to ingestion service', async () => {
+  it('sends correct payload with feedType to ingestion service', async () => {
     await seeder.seed('tenant-1', ['feeds']);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
 
-    // Check first call — AlienVault OTX
+    // Check first call — CISA Advisories RSS (first free-tier feed)
     expect(post).toHaveBeenCalledWith(
       '/api/v1/feeds',
       expect.objectContaining({
         tenantId: 'tenant-1',
-        name: 'AlienVault OTX',
-        url: 'https://otx.alienvault.com/api/v1/pulses/subscribed',
-        feedType: 'rest_api',
-        schedule: '0 */2 * * *',
-        parseConfig: expect.objectContaining({ responseArrayPath: 'results' }),
+        name: 'CISA Advisories RSS',
+        feedType: 'rss',
         enabled: true,
         tags: ['DEMO'],
       }),
     );
   });
 
-  it('seeds all 10 feeds with correct names', async () => {
+  it('seeds only free-tier feeds (3 feeds)', async () => {
     await seeder.seed('tenant-1', ['feeds']);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
     const names = post.mock.calls.map((c: unknown[]) => (c[1] as { name: string }).name);
     expect(names).toEqual([
-      'AlienVault OTX',
-      'Abuse.ch URLhaus',
-      'CISA KEV',
-      'Feodo Tracker',
-      'MalwareBazaar Recent',
       'CISA Advisories RSS',
       'The Hacker News',
-      'BleepingComputer',
-      'US-CERT Alerts',
       'NVD Recent CVEs',
     ]);
   });
 
   it('includes feeds in default seed (all categories)', async () => {
     const result = await seeder.seed('tenant-1');
-    expect(result.counts.feeds).toBe(10);
+    expect(result.counts.feeds).toBe(3); // free-tier default
     expect(result.counts.iocs).toBe(10);
     expect(result.counts.actors).toBe(5);
   });
 
   it('counts partial failures for feeds', async () => {
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
-    // First 9 succeed, last fails
-    for (let i = 0; i < 9; i++) post.mockResolvedValueOnce({ data: { id: `${i}` } });
+    // First 2 succeed, last fails
+    post.mockResolvedValueOnce({ data: { id: '0' } });
+    post.mockResolvedValueOnce({ data: { id: '1' } });
     post.mockResolvedValueOnce(null);
 
     const result = await seeder.seed('tenant-1', ['feeds']);
-    expect(result.counts.feeds).toBe(9);
+    expect(result.counts.feeds).toBe(2);
   });
 
-  it('falls back to static count without clients', async () => {
+  it('falls back to free-tier static count without clients', async () => {
     const noClients = new DemoSeeder();
     const result = await noClients.seed('tenant-1', ['feeds']);
-    expect(result.counts.feeds).toBe(10);
+    expect(result.counts.feeds).toBe(3); // free-tier count
   });
 
-  it('getAvailableDemoData includes feeds count', () => {
+  it('getAvailableDemoData includes total feeds and free-tier count', () => {
     const data = seeder.getAvailableDemoData();
-    expect(data.feeds).toBe(10);
+    expect(data.feeds).toBe(10); // total available
+    expect(data.feedsFreeTier).toBe(3); // free tier subset
     expect(data.iocs).toBe(10);
   });
 
@@ -108,9 +100,9 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
     await seeder.seed('tenant-1', ['feeds']);
     const result2 = await seeder.seed('tenant-1', ['feeds']);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
-    // Only called 10 times total (first seed), not 20
-    expect(post).toHaveBeenCalledTimes(10);
-    expect(result2.counts.feeds).toBe(10);
+    // Only called 3 times total (first seed), not 6
+    expect(post).toHaveBeenCalledTimes(3);
+    expect(result2.counts.feeds).toBe(3);
   });
 
   it('clearDemoData resets feed seeding', async () => {
@@ -121,6 +113,17 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
     // Re-seed should call API again
     await seeder.seed('tenant-1', ['feeds']);
     const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
-    expect(post).toHaveBeenCalledTimes(20); // 10 + 10
+    expect(post).toHaveBeenCalledTimes(6); // 3 + 3
+  });
+
+  it('seedUpgradeFeeds seeds only non-free-tier feeds (7 feeds)', async () => {
+    const upgradeCount = await seeder.seedUpgradeFeeds('tenant-1');
+    expect(upgradeCount).toBe(7);
+    const post = (clients.ingestionClient as unknown as { post: ReturnType<typeof vi.fn> }).post;
+    expect(post).toHaveBeenCalledTimes(7);
+  });
+
+  it('getFreeTierFeedCount returns 3', () => {
+    expect(DemoSeeder.getFreeTierFeedCount()).toBe(3);
   });
 });

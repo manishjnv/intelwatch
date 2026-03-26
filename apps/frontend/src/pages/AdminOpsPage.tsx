@@ -68,6 +68,7 @@ const PLAN_COLORS: Record<string, string> = {
   Free:       'text-text-muted bg-bg-elevated',
   Starter:    'text-sev-low bg-sev-low/10',
   Pro:        'text-accent bg-accent/10',
+  Teams:      'text-accent bg-accent/10',
   Enterprise: 'text-violet-400 bg-violet-400/10',
 }
 
@@ -214,6 +215,7 @@ function TenantRow({ tenant, onSuspend, onReinstate, onChangePlan }: {
           className={cn('capitalize', TENANT_STATUS_COLORS[tenant.status] ?? '')}
         />
       </td>
+      <td className="px-4 py-3 text-xs text-text-secondary">{tenant.feedCount ?? 0}</td>
       <td className="px-4 py-3 text-xs text-text-secondary">{seatDisplay}</td>
       <td className="px-4 py-3 text-xs text-text-secondary">{(tenant.iocCount ?? 0).toLocaleString()}</td>
       <td className="px-4 py-3 text-[11px] text-text-muted">{timeAgo(tenant.lastActiveAt)}</td>
@@ -241,7 +243,7 @@ function TenantRow({ tenant, onSuspend, onReinstate, onChangePlan }: {
                 Reinstate tenant
               </button>
             )}
-            {(['Free', 'Starter', 'Pro', 'Enterprise'] as const).filter(p => p !== tenant.plan).map(p => (
+            {(['Free', 'Starter', 'Teams', 'Enterprise'] as const).filter(p => p !== tenant.plan).map(p => (
               <button
                 key={p}
                 onClick={() => { onChangePlan(tenant.id, p); setOpen(false) }}
@@ -728,6 +730,7 @@ export function AdminOpsPage() {
                       <th className="text-left px-4 py-3 text-text-muted font-medium">Tenant</th>
                       <th className="text-left px-4 py-3 text-text-muted font-medium">Plan</th>
                       <th className="text-left px-4 py-3 text-text-muted font-medium">Status</th>
+                      <th className="text-left px-4 py-3 text-text-muted font-medium">Feeds</th>
                       <th className="text-left px-4 py-3 text-text-muted font-medium">Seats</th>
                       <th className="text-left px-4 py-3 text-text-muted font-medium">IOCs</th>
                       <th className="text-left px-4 py-3 text-text-muted font-medium">Last Active</th>

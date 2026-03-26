@@ -3,6 +3,8 @@ import type { Queue } from 'bullmq';
 import type pino from 'pino';
 import type { FeedRepository } from '../repository.js';
 import { mapFeedTypeToQueue } from '../queue.js';
+import type { CustomizationClient, FeedQuota } from '../services/customization-client.js';
+import { cronToMinutes } from '../cron-utils.js';
 
 // TODO: admin-service queue monitor needs update for per-type queues
 // (currently watches single etip-feed-fetch; now there are 4 per-type queues)
@@ -12,6 +14,8 @@ export interface SchedulerDeps {
   /** Per-type queue map: queue name -> Queue instance */
   queues: Map<string, Queue>;
   logger: pino.Logger;
+  /** Optional: customization client for plan-based schedule clamping */
+  customizationClient?: CustomizationClient;
 }
 
 interface ScheduledFeed {
@@ -87,6 +91,19 @@ export class FeedScheduler {
       }
     }
 
+    // Fetch per-tenant quotas for schedule clamping
+    const tenantQuotas = new Map<string, FeedQuota>();
+    if (this.deps.customizationClient) {
+      const tenantIds = [...new Set(activeFeeds.map((f) => f.tenantId))];
+      for (const tid of tenantIds) {
+        try {
+          tenantQuotas.set(tid, await this.deps.customizationClient.getFeedQuota(tid));
+        } catch {
+          // Fallback: no clamping if quota fetch fails
+        }
+      }
+    }
+
     // Add or update jobs for active feeds
     for (const feed of activeFeeds) {
       const existing = this.jobs.get(feed.id);
@@ -96,19 +113,34 @@ export class FeedScheduler {
         continue;
       }
 
-      if (!cron.validate(feed.schedule)) {
-        this.deps.logger.warn({ feedId: feed.id, schedule: feed.schedule }, 'Invalid cron expression -- skipping');
+      // Clamp schedule to plan minimum if needed
+      let effectiveSchedule = feed.schedule;
+      const quota = tenantQuotas.get(feed.tenantId);
+      if (quota) {
+        const feedMins = cronToMinutes(feed.schedule);
+        const planMins = cronToMinutes(quota.minFetchInterval);
+        if (feedMins > 0 && planMins > 0 && feedMins < planMins) {
+          this.deps.logger.info(
+            { feedId: feed.id, original: feed.schedule, clamped: quota.minFetchInterval, plan: quota.planId },
+            `Feed schedule clamped: ${feed.schedule} → ${quota.minFetchInterval} (${quota.displayName} plan limit)`,
+          );
+          effectiveSchedule = quota.minFetchInterval;
+        }
+      }
+
+      if (!cron.validate(effectiveSchedule)) {
+        this.deps.logger.warn({ feedId: feed.id, schedule: effectiveSchedule }, 'Invalid cron expression -- skipping');
         continue;
       }
 
-      const task = cron.schedule(feed.schedule, () => {
+      const task = cron.schedule(effectiveSchedule, () => {
         this.enqueueFetch(feed.id, feed.tenantId, feed.feedType).catch((err) => {
           this.deps.logger.error({ feedId: feed.id, error: (err as Error).message }, 'Failed to enqueue feed fetch');
         });
       });
 
       this.jobs.set(feed.id, task);
-      this.deps.logger.info({ feedId: feed.id, schedule: feed.schedule }, 'Cron job registered');
+      this.deps.logger.info({ feedId: feed.id, schedule: effectiveSchedule }, 'Cron job registered');
     }
 
     this.deps.logger.info({ activeFeeds: activeFeeds.length, scheduledJobs: this.jobs.size }, 'Feed sync completed');

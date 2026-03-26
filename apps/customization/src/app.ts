@@ -12,6 +12,7 @@ import { dashboardRoutes, type DashboardRouteDeps } from './routes/dashboard.js'
 import { notificationRoutes, type NotificationRouteDeps } from './routes/notifications.js';
 import { configRoutes, type ConfigRouteDeps } from './routes/config.js';
 import { apiKeyRoutes, type ApiKeyRouteDeps } from './routes/api-keys.js';
+import { feedQuotaRoutes, type FeedQuotaRouteDeps } from './routes/feed-quota.js';
 import { registerMetrics } from '@etip/shared-utils';
 import type { CustomizationConfig } from './config.js';
 
@@ -24,6 +25,7 @@ export interface BuildAppOptions {
   dashboardDeps?: DashboardRouteDeps;
   notificationDeps?: NotificationRouteDeps;
   configDeps?: ConfigRouteDeps;
+  feedQuotaDeps?: FeedQuotaRouteDeps;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -95,6 +97,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   }
   if (opts.configDeps) {
     await app.register(configRoutes(opts.configDeps), { prefix: '/api/v1/customization' });
+  }
+  if (opts.feedQuotaDeps) {
+    await app.register(feedQuotaRoutes(opts.feedQuotaDeps), { prefix: '/api/v1/customization/feed-quota' });
   }
 
   return app;

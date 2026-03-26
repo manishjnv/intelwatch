@@ -41,8 +41,35 @@ export interface SubtaskModels {
   deduplication: string;
 }
 
+/** Feed quota returned by customization service for a tenant's plan */
+export interface FeedQuota {
+  planId: string;
+  displayName: string;
+  maxFeeds: number;          // -1 = unlimited
+  minFetchInterval: string;  // cron expression
+  retentionDays: number;     // -1 = unlimited
+  nextPlan: string | null;
+  nextPlanMaxFeeds: number | null;
+}
+
+/** Default feed quota (Free tier) when customization service is unreachable */
+const DEFAULT_FEED_QUOTA: FeedQuota = {
+  planId: 'free',
+  displayName: 'Free',
+  maxFeeds: 3,
+  minFetchInterval: '0 */4 * * *',
+  retentionDays: 7,
+  nextPlan: 'starter',
+  nextPlanMaxFeeds: 10,
+};
+
 interface CacheEntry {
   models: SubtaskModels;
+  expiresAt: number;
+}
+
+interface QuotaCacheEntry {
+  quota: FeedQuota;
   expiresAt: number;
 }
 
@@ -55,6 +82,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export class CustomizationClient {
   private readonly cache = new Map<string, CacheEntry>();
+  private readonly quotaCache = new Map<string, QuotaCacheEntry>();
   private readonly baseUrl: string;
 
   constructor(
@@ -103,12 +131,50 @@ export class CustomizationClient {
   }
 
   /**
-   * Invalidate cached models for a tenant.
+   * Get the feed quota for a tenant's current plan.
+   *
+   * Results are cached for CACHE_TTL_MS. Falls back to DEFAULT_FEED_QUOTA (Free tier)
+   * if the customization service is unreachable.
+   */
+  async getFeedQuota(tenantId: string): Promise<FeedQuota> {
+    const cached = this.quotaCache.get(tenantId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.quota;
+    }
+
+    try {
+      const token = signServiceToken('ingestion-service', 'customization-service');
+      const url = `${this.baseUrl}/api/v1/customization/feed-quota/tenants/me`;
+      const res = await fetch(url, {
+        headers: {
+          'x-tenant-id': tenantId,
+          'x-service-token': token,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} from customization service`);
+      }
+
+      const body = (await res.json()) as { data: FeedQuota };
+      const quota = body.data ?? { ...DEFAULT_FEED_QUOTA };
+      this.quotaCache.set(tenantId, { quota, expiresAt: Date.now() + CACHE_TTL_MS });
+      return quota;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger?.warn({ tenantId, error: message }, 'CustomizationClient: feed quota fetch failed, using Free defaults');
+      return { ...DEFAULT_FEED_QUOTA };
+    }
+  }
+
+  /**
+   * Invalidate cached models and quota for a tenant.
    * Call after a PUT /ai/subtasks/:subtask succeeds if pipeline and
    * customization service are colocated in the same process (tests).
    */
   clearCache(tenantId: string): void {
     this.cache.delete(tenantId);
+    this.quotaCache.delete(tenantId);
   }
 
   /** Map alias names ('haiku', 'sonnet', 'opus') to full Anthropic model IDs */

@@ -141,8 +141,26 @@ function PlanCard({ plan, currentPlanId, billingCycle, onUpgrade, onCancel }: Pl
       {/* Limits summary */}
       <div className="grid grid-cols-2 gap-2 mb-4 text-[11px]">
         <div className="bg-bg-primary rounded p-2">
+          <p className="text-text-muted">Max Feeds</p>
+          <p className="font-medium text-text-primary">{
+            plan.id === 'free' ? '3' : plan.id === 'starter' ? '10' : plan.id === 'teams' ? '25' : 'Unlimited'
+          }</p>
+        </div>
+        <div className="bg-bg-primary rounded p-2">
+          <p className="text-text-muted">Fetch Interval</p>
+          <p className="font-medium text-text-primary">{
+            plan.id === 'free' ? '4 hours' : plan.id === 'starter' ? '2 hours' : plan.id === 'teams' ? '30 min' : '15 min'
+          }</p>
+        </div>
+        <div className="bg-bg-primary rounded p-2">
           <p className="text-text-muted">Seats</p>
           <p className="font-medium text-text-primary">{plan.seats < 0 ? 'Unlimited' : plan.seats}</p>
+        </div>
+        <div className="bg-bg-primary rounded p-2">
+          <p className="text-text-muted">Retention</p>
+          <p className="font-medium text-text-primary">{
+            plan.id === 'free' ? '7 days' : plan.id === 'starter' ? '30 days' : plan.id === 'teams' ? '90 days' : 'Unlimited'
+          }</p>
         </div>
         <div className="bg-bg-primary rounded p-2">
           <p className="text-text-muted">IOC Limit</p>
@@ -151,10 +169,6 @@ function PlanCard({ plan, currentPlanId, billingCycle, onUpgrade, onCancel }: Pl
         <div className="bg-bg-primary rounded p-2">
           <p className="text-text-muted">API Calls</p>
           <p className="font-medium text-text-primary">{fmtNumber(plan.apiCallsPerMonth)}/mo</p>
-        </div>
-        <div className="bg-bg-primary rounded p-2">
-          <p className="text-text-muted">Storage</p>
-          <p className="font-medium text-text-primary">{plan.storageGb < 0 ? 'Custom' : `${plan.storageGb} GB`}</p>
         </div>
       </div>
 
