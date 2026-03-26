@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 85 — Tiered rate limiting + error alerting + response compression
+**Session counter:** 86 — Fix 14 TS errors + notifyApiError wiring + debounce + TableSkeleton
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.1 | 2026-03-27 | Health check passing. **Session 85:** Tiered rate limiting (search 10/write 30/read 120), error alerting (5-min window, QUEUE_ALERT), @fastify/compress (gzip >1KB), GET /api/v1/gateway/error-stats. 59 tests. |
-| etip_frontend | ✅ Running | 0.12.1 | 2026-03-27 | Dashboard + 20 data pages. **Session 85:** In-flight GET request deduplication (100ms window). 786 tests (788 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.12.2 | 2026-03-27 | Dashboard + 20 data pages. **Session 86:** Fix 14 TS errors, notifyApiError wired to 7 hooks, useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 794 tests (796 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 786 tests (788 total, 2 skipped). **Session 85:** In-flight GET request deduplication (100ms window). 2 new tests. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 794 tests (796 total, 2 skipped). **Session 86:** Fix 14 TS errors, notifyApiError wired to 7 hooks (20 catches), useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 8 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 84:** Scheduler retry (exponential backoff + circuit breaker for customization-client). 502 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,965 tests.
-- **Last session outcome:** Session 85 (2026-03-27). **Tiered rate limiting + error alerting + response compression.** (1) API Gateway: tiered rate limits (search 10/min, write 30/min, read 120/min, health exempt), error alerting (5-min sliding window, QUEUE_ALERT on >5 errors, Redis pub/sub), @fastify/compress (gzip >1KB), GET /api/v1/gateway/error-stats. (2) Frontend: in-flight GET request deduplication (100ms window, inflightRequests Map). 12 new tests (10 gateway + 2 frontend). Commit: 1420c77.
+- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,973 tests.
+- **Last session outcome:** Session 86 (2026-03-27). **Fix 14 TS errors + UX wiring.** (1) Fixed 14 frontend TS errors (non-null assertions on array access in 5 test files + D3 `.attr('fill')` fallback). (2) Wired `notifyApiError` into 7 data hooks (20 catches: alerting, analytics, enrichment, phase5, phase6, reporting, search). (3) Added `useDebouncedValue(300ms)` to ThreatActorListPage, MalwareListPage, VulnerabilityListPage. (4) Added `TableSkeleton` to MalwareListPage + VulnerabilityListPage. 8 new tests. Commit: 426794d.
 - **Known issues:** Customization FeedQuotaStore is in-memory — plan assignment lost on restart. Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in billing-service Prisma models (29 errors, needs `prisma generate`).
-- **Next tasks:** (1) Verify CI/CD deploy succeeded for S85. (2) Persist FeedQuotaStore to Postgres. (3) Persistence migration B2: alerting-service → Postgres. (4) Wire notifyApiError into remaining 48 hooks. (5) Persistence migration B3: correlation-service Redis → Postgres.
+- **Next tasks:** (1) Verify CI/CD deploy succeeded for S86. (2) Persist FeedQuotaStore to Postgres. (3) Persistence migration B2: alerting-service → Postgres. (4) Wire notifyApiError into remaining ~28 hooks (20 done in S86). (5) Persistence migration B3: correlation-service Redis → Postgres.
 
 ## Deployment Log
 
@@ -224,6 +224,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 83 | 2026-03-27 | etip_billing + etip_admin updated | ⏳ CI triggered | bc6f392 | Billing: all 4 stores Prisma-backed (Usage, Invoice, Coupon + PlanStore from S74). Admin: 10s queue cache. 21 new tests. 190 billing + 195 admin tests. |
 | 84 | 2026-03-27 | etip_ingestion + etip_frontend updated | ⏳ CI triggered | d2ff728, a97b8ff | Scheduler: exponential backoff + circuit breaker. Frontend: feed health indicators (HealthDot, FailureSparkline, overdue). 19 new tests. 5,953 total. |
 | 85 | 2026-03-27 | etip_api + etip_frontend updated | ⏳ CI triggered | 1420c77 | API Gateway: tiered rate limits (search/write/read), error alerting (5-min window, QUEUE_ALERT), @fastify/compress (gzip >1KB), GET /gateway/error-stats. Frontend: GET request dedup (100ms). 12 new tests. ~5,965 total. |
+| 86 | 2026-03-27 | etip_frontend updated | ⏳ CI triggered | 426794d | Fix 14 TS errors, notifyApiError wired to 7 hooks (20 catches), useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 8 new tests. 794 frontend tests. ~5,973 total. |
 
 ## E2E Verification Results (Session 13)
 
