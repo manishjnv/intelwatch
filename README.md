@@ -33,7 +33,7 @@
 | User Management Service (RBAC, teams, SSO, MFA, break-glass, 32 endpoints) | 🔨 Feature-complete (5 P0) | 185 |
 | Customization Service (module toggles, AI config, risk weights, 35 endpoints) | 🔨 Feature-complete (5 P0) | 159 |
 | Onboarding Service (8-step wizard, connectors, health checks, 32 endpoints) | ✅ Deployed | 190 |
-| Billing Service (plan management, Razorpay, usage metering, GST invoices, 28 endpoints) | ✅ Built | 149 |
+| Billing Service (plan management, Razorpay, usage metering, GST invoices, Prisma persistence, 28 endpoints) | ✅ Built | 190 |
 | Admin Ops Service (system health, maintenance, backup/restore, tenant admin, audit, 28 endpoints) | ✅ Built | 147 |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |

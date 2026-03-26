@@ -1,6 +1,6 @@
 # Billing Service (Module 19)
 
-**Port:** 3019 | **Phase:** 6 | **Status:** ✅ Complete + Persistence-Ready | **Tests:** 174
+**Port:** 3019 | **Phase:** 6 | **Status:** ✅ Complete + Fully Persistent | **Tests:** 190
 
 Handles plan management, usage metering, Razorpay billing, invoice generation, and free-to-paid conversion for ETIP.
 
@@ -21,7 +21,7 @@ Handles plan management, usage metering, Razorpay billing, invoice generation, a
 | Grace Period (P0 #8) | `services/upgrade-flow.ts` | 72-hour tolerance after limit hit before hard cutoff |
 | Billing Dashboard (P0 #9) | `routes/admin.ts` | Revenue, MRR, churn rate, plan distribution |
 | Prisma Repository (S74) | `repository.ts` | 5 repo classes: SubscriptionRepo, UsageRepo, InvoiceRepo, CouponRepo, GracePeriodRepo |
-| Dual-mode Stores (S74) | `services/plan-store.ts` | Accepts optional repo — Prisma or in-memory fallback |
+| Dual-mode Stores (S74+S83) | `services/plan-store.ts`, `services/usage-store.ts`, `services/invoice-store.ts`, `services/coupon-store.ts` | All 4 stores accept optional repo — Prisma or in-memory fallback. try/catch on every Prisma call. |
 
 ---
 

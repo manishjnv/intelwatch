@@ -1,66 +1,73 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-27
-**Session:** 82
-**Session Summary:** Frontend UX improvements: error toast visibility on API failures, search debounce (300ms) to reduce API spam, loading skeletons on 3 list pages. 15 new tests.
+**Session:** 83
+**Session Summary:** Billing dual-mode persistence (UsageStore, InvoiceStore, CouponStore → Prisma) + admin queue monitor 10s cache. 21 new tests.
 
 ## ✅ Changes Made
-- `68a6adb` — feat: error toasts, search debounce, loading skeletons — session 82 (10 files)
-- `6fcdc85` — fix: resolve TS errors in session82 test file (1 file)
+- `bc6f392` — feat: billing dual-mode persistence + admin queue cache — session 83 (17 files, 660 insertions, 194 deletions)
 
 ## 📁 Files / Documents Affected
 
 ### New Files
 | File | Purpose |
 |------|---------|
-| apps/frontend/src/hooks/useApiError.ts | notifyApiError() — toast + console.warn + fallback return. Classifies 401/403/500/network. 10s debounce. |
-| apps/frontend/src/hooks/useDebouncedValue.ts | Generic debounce hook (useState + useEffect + setTimeout cleanup). Default 300ms. |
-| apps/frontend/src/components/data/TableSkeleton.tsx | `<TableSkeleton rows columns />` — animate-pulse skeleton matching DataTable layout |
-| apps/frontend/src/__tests__/session82-ux.test.tsx | 15 tests covering all 3 new modules + page wiring |
+| apps/billing-service/tests/dual-mode-stores.test.ts | 16 tests for UsageStore/InvoiceStore/CouponStore dual-mode (repo delegation + error fallback) |
+| apps/admin-service/tests/queue-cache.test.ts | 5 tests for GET /queues 10s cache (fresh, cached, expiry, sequential, error) |
 
 ### Modified Files
 | File | Change |
 |------|--------|
-| apps/frontend/src/hooks/use-intel-data.ts | Import notifyApiError; wire into useIOCs + useFeeds .catch() |
-| apps/frontend/src/hooks/use-phase4-data.ts | Import notifyApiError; wire into useDRPAlerts + useCorrelations .catch() |
-| apps/frontend/src/pages/SearchPage.tsx | useDebouncedValue(query, 300) → pass debouncedQuery to useIOCSearch |
-| apps/frontend/src/pages/FeedListPage.tsx | Debounce client-side search filter + TableSkeleton on isLoading |
-| apps/frontend/src/pages/IocListPage.tsx | Debounce API query params + TableSkeleton on isLoading |
-| apps/frontend/src/pages/ThreatActorListPage.tsx | TableSkeleton on isLoading |
+| apps/billing-service/src/services/usage-store.ts | Added UsageRepo constructor param, async trackUsage/getUsage/resetMonthly/getAllUsage with try/catch fallback |
+| apps/billing-service/src/services/invoice-store.ts | Added InvoiceRepo constructor param, async all 7 public methods with try/catch fallback |
+| apps/billing-service/src/services/coupon-store.ts | Added CouponRepo constructor param, async all 5 public methods with try/catch fallback |
+| apps/billing-service/src/services/upgrade-flow.ts | await createInvoice() call |
+| apps/billing-service/src/index.ts | Wire UsageRepo, InvoiceRepo, CouponRepo into stores |
+| apps/billing-service/src/routes/usage.ts | await getUsage, trackUsage |
+| apps/billing-service/src/routes/invoices.ts | await all invoiceStore calls |
+| apps/billing-service/src/routes/admin.ts | await getRevenueMetrics |
+| apps/billing-service/src/routes/webhooks.ts | await listInvoices, updateInvoiceStatus, findByOrderId |
+| apps/billing-service/src/routes/p0-features.ts | await getUsage, validateCoupon, applyCoupon |
+| apps/admin-service/src/routes/queue-monitor.ts | Module-level cachedResponse + cacheTime, 10s TTL, error responses not cached |
+| apps/billing-service/tests/usage-store.test.ts | All tests updated with await for async methods |
+| apps/billing-service/tests/invoice-store.test.ts | All tests updated with await for async methods |
+| apps/billing-service/tests/coupon-store.test.ts | All tests updated with await for async methods |
+| apps/billing-service/tests/admin-routes.test.ts | await createInvoice + updateInvoiceStatus |
 
 ## 🔧 Decisions & Rationale
-No new DECISION entries. Used existing Toast system (no new deps). useDebouncedValue uses native setTimeout (no lodash/use-debounce).
+No new DECISION entries. Used existing dual-mode pattern from PlanStore (DECISION-027, session 74). Queue cache uses simple module-level variables (no Redis/external dep needed).
 
 ## 🧪 E2E / Deploy Verification Results
-- Frontend tests: 770 passed, 2 skipped, 0 failures (27 test files)
-- TypeScript: 0 new errors in session 82 files (pre-existing errors in other test files)
-- CI triggered on push to master (commits 68a6adb, 6fcdc85)
+- Billing-service: 190 tests passing (16 files)
+- Admin-service: 195 tests passing (17 files)
+- Full monorepo: all tests passing
+- CI run 23619637311 triggered on push
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. Verify CI/CD deploy succeeded (check GitHub Actions)
-2. Wire notifyApiError into remaining ~48 hooks (currently 4 as proof-of-concept)
-3. Add useDebouncedValue to ThreatActorListPage search (currently only 3 pages)
+1. Verify CI/CD deploy succeeded for S83 (billing + admin containers rebuilt)
+2. Verify billing data persists across container restart on VPS
 
 ### Deferred
-- Persist FeedQuotaStore to Postgres (plan assignments reset on restart)
-- Wire remaining billing stores to Prisma
+- Persist FeedQuotaStore to Postgres (customization-service)
 - Persistence migration B2: alerting-service → Postgres
-- Fix pre-existing TS errors in VulnerabilityListPage, phase5-pages.test, reporting-page.test
+- Persistence migration B3: correlation-service Redis stores → Postgres
+- Wire notifyApiError into remaining 48 frontend hooks
 
 ## 🔁 How to Resume
 ```
-Working on: Frontend UX hardening (error visibility, search perf, loading states)
-Module target: frontend
-Do not modify: any backend service, shared-* packages
+Working on: Persistence migration (billing DONE, next: FeedQuotaStore or alerting)
+Module target: customization-service OR alerting-service
+Do not modify: frontend, ingestion, shared-* packages
 
 Steps:
-1. Wire notifyApiError into all remaining data hooks (use-phase5-data, use-enrichment-data, etc.)
-2. Add useDebouncedValue to remaining pages with search (ThreatActorListPage, MalwarePage, etc.)
-3. Add TableSkeleton to remaining 21 pages (currently 3 wired)
-4. Verify CI/CD deploy for S82 commits (68a6adb, 6fcdc85)
+1. Check CI/CD run 23619637311 status
+2. Verify billing persistence on VPS (restart container, check data)
+3. Pick next persistence target: FeedQuotaStore (customization) or alerting-service
 
 Module → Skill Map:
-  frontend → skills/20-UI-UX.md
+  billing-service → skills/19-billing.md
+  admin-service → skills/22-admin-ops.md
+  customization → skills/17-customization.md
 ```

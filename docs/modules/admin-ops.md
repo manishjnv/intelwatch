@@ -1,6 +1,6 @@
 # Admin Ops Service — Module 22
 
-**Status:** ✅ Feature-Complete (5 core + 5 P0 + queue monitor) | **Tests:** 158 | **Port:** 3022 | **Session:** 60
+**Status:** ✅ Feature-Complete (5 core + 5 P0 + queue monitor + queue cache) | **Tests:** 195 | **Port:** 3022 | **Session:** 83
 
 Platform administration service for ETIP. System health monitoring, maintenance windows, backup/restore, tenant administration, audit dashboard, and operational intelligence.
 
@@ -21,6 +21,7 @@ Platform administration service for ETIP. System health monitoring, maintenance 
 | P0 #9: Tenant Analytics | `services/tenant-analytics-store.ts`, `routes/p0-features.ts` | Per-tenant usage analytics (7d/30d/90d); registerTenant() lazy-init; simulated daily trend |
 | P0 #10: Admin Activity Log | `services/admin-activity-store.ts`, `routes/p0-features.ts` | Max 5,000 entries; filter by adminId; pagination; POST /activity to log actions |
 | Queue Monitor | `routes/queue-monitor.ts` | Live BullMQ queue depths via ioredis LLEN+ZCARD; 14 canonical queues (etip-*); injectable RedisQueueClient interface for testing; never 500s on Redis errors |
+| Queue Cache (S83) | `routes/queue-monitor.ts` | 10s module-level response cache on GET /queues. Reduces Redis ops from 250+/s to 1/10s. Error responses not cached (allows recovery). |
 
 ---
 
