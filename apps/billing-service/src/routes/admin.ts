@@ -24,7 +24,7 @@ export function adminRoutes(deps: AdminRouteDeps) {
      * Returns: totalRevenue, MRR estimate, activeSubscriptions, planDistribution, churnIndicators.
      */
     app.get('/dashboard', async (_req: FastifyRequest, reply: FastifyReply) => {
-      const revenue = invoiceStore.getRevenueMetrics();
+      const revenue = await invoiceStore.getRevenueMetrics();
       const allTenants = await planStore.getAllTenantPlans();
 
       // Plan distribution

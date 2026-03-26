@@ -44,7 +44,7 @@ export function p0Routes(deps: P0RouteDeps) {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const state = await planStore.getTenantPlan(tenantId);
       const planDef = PLAN_DEFINITIONS[state.planId];
-      const usage = usageStore.getUsage(tenantId);
+      const usage = await usageStore.getUsage(tenantId);
       const prompts: { feature: string; message: string; targetPlan: string }[] = [];
 
       // Check if >80% of any limit is hit
@@ -112,7 +112,7 @@ export function p0Routes(deps: P0RouteDeps) {
 
     /** GET /coupons/:code — validate a coupon code without applying it. */
     app.get('/coupons/:code', async (req: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) => {
-      const result = couponStore.validateCoupon(req.params.code.toUpperCase());
+      const result = await couponStore.validateCoupon(req.params.code.toUpperCase());
       if (!result.valid) {
         throw new AppError(400, result.reason ?? 'Invalid coupon', 'INVALID_COUPON');
       }
@@ -125,7 +125,7 @@ export function p0Routes(deps: P0RouteDeps) {
       const input = validate(ApplyCouponSchema, req.body);
       const body = req.body as Record<string, unknown>;
       const originalAmount = typeof body['originalAmountInr'] === 'number' ? body['originalAmountInr'] : 0;
-      const result = couponStore.applyCoupon(input.code.toUpperCase(), tenantId, originalAmount);
+      const result = await couponStore.applyCoupon(input.code.toUpperCase(), tenantId, originalAmount);
       return reply.send({ data: result });
     });
   };

@@ -116,7 +116,7 @@ export class UpgradeFlow {
     let amountInr = this.calculateProration(targetPlan.priceInr, now, this.monthEnd(now));
     if (opts.couponDiscount) amountInr = Math.max(0, amountInr - opts.couponDiscount);
 
-    const invoice = this.invoiceStore.createInvoice({
+    const invoice = await this.invoiceStore.createInvoice({
       tenantId,
       planId: targetPlanId,
       amountInr,

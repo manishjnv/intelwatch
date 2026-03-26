@@ -1,4 +1,5 @@
 import type { UsageMetric } from '../schemas/billing.js';
+import type { UsageRepo } from '../repository.js';
 
 /** Aggregated usage counters for a tenant. */
 export interface TenantUsage {
@@ -40,10 +41,29 @@ const METRIC_FIELD_MAP: Record<UsageMetric, keyof TenantUsage> = {
   storage_kb: 'storage_kb',
 };
 
-/** In-memory usage metering store. Tracks API calls, IOC ingestion, enrichments, storage per tenant. */
+/** Map UsageMetric to Prisma column names for incrementUsage. */
+const METRIC_PRISMA_FIELD_MAP: Record<UsageMetric, 'apiCalls' | 'iocsIngested' | 'enrichments' | 'storageKb'> = {
+  api_call: 'apiCalls',
+  ioc_ingested: 'iocsIngested',
+  enrichment: 'enrichments',
+  storage_kb: 'storageKb',
+};
+
+/** Current period string in YYYY-MM format. */
+function currentPeriod(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Dual-mode usage metering store. Prisma-backed when repo provided, in-memory fallback. */
 export class UsageStore {
   private readonly usageMap = new Map<string, TenantUsage>();
   private readonly historyMap = new Map<string, UsageSnapshot[]>();
+  private readonly repo?: UsageRepo;
+
+  constructor(repo?: UsageRepo) {
+    this.repo = repo;
+  }
 
   private getOrCreate(tenantId: string): TenantUsage {
     if (!this.usageMap.has(tenantId)) {
@@ -61,7 +81,13 @@ export class UsageStore {
   }
 
   /** Increment a usage metric by the given count for a tenant. */
-  trackUsage(tenantId: string, metric: UsageMetric, count: number): TenantUsage {
+  async trackUsage(tenantId: string, metric: UsageMetric, count: number): Promise<TenantUsage> {
+    if (this.repo) {
+      try {
+        const prismaField = METRIC_PRISMA_FIELD_MAP[metric];
+        return await this.repo.incrementUsage(tenantId, currentPeriod(), prismaField, count);
+      } catch { /* fall through to in-memory */ }
+    }
     const usage = this.getOrCreate(tenantId);
     const field = METRIC_FIELD_MAP[metric];
     const usageRec = usage as unknown as Record<string, number>;
@@ -71,7 +97,13 @@ export class UsageStore {
   }
 
   /** Get the current usage snapshot for a tenant. */
-  getUsage(tenantId: string): TenantUsage {
+  async getUsage(tenantId: string): Promise<TenantUsage> {
+    if (this.repo) {
+      try {
+        const row = await this.repo.getUsage(tenantId, currentPeriod());
+        if (row) return row;
+      } catch { /* fall through */ }
+    }
     return this.getOrCreate(tenantId);
   }
 
@@ -141,7 +173,14 @@ export class UsageStore {
    * Reset per-period counters (api_calls, iocs_ingested, enrichments).
    * storage_kb is cumulative and not reset.
    */
-  resetMonthly(tenantId: string): TenantUsage {
+  async resetMonthly(tenantId: string): Promise<TenantUsage> {
+    if (this.repo) {
+      try {
+        await this.repo.resetMonthly(tenantId, currentPeriod());
+        const row = await this.repo.getUsage(tenantId, currentPeriod());
+        if (row) return row;
+      } catch { /* fall through */ }
+    }
     const usage = this.getOrCreate(tenantId);
     usage.api_calls = 0;
     usage.iocs_ingested = 0;
@@ -152,7 +191,10 @@ export class UsageStore {
   }
 
   /** Get all tenant usage data (for admin dashboard). */
-  getAllUsage(): TenantUsage[] {
+  async getAllUsage(): Promise<TenantUsage[]> {
+    if (this.repo) {
+      try { return await this.repo.getAllUsage(); } catch { /* fall through */ }
+    }
     return Array.from(this.usageMap.values());
   }
 }

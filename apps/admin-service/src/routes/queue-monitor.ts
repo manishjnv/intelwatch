@@ -82,6 +82,11 @@ export function queueMonitorRoutes(deps: QueueMonitorDeps) {
     return _evaluator;
   }
 
+  // ── 10s response cache to reduce Redis ops ──────────────────────────
+  let cachedResponse: { queues: QueueDepthEntry[]; updatedAt: string } | null = null;
+  let cacheTime = 0;
+  const CACHE_TTL_MS = 10_000;
+
   return async function (app: FastifyInstance): Promise<void> {
     app.addHook('onClose', async () => {
       if (_redis && !deps.redisClient) {
@@ -93,6 +98,10 @@ export function queueMonitorRoutes(deps: QueueMonitorDeps) {
     });
 
     app.get('/queues', async (_req: FastifyRequest, reply: FastifyReply) => {
+      // Return cached response if within TTL
+      if (cachedResponse && Date.now() - cacheTime < CACHE_TTL_MS) {
+        return reply.send({ data: cachedResponse });
+      }
       try {
         const r = getRedis();
         const queues = await Promise.all(
@@ -102,7 +111,9 @@ export function queueMonitorRoutes(deps: QueueMonitorDeps) {
         evaluator.evaluate(queues).catch((err) => {
           app.log.warn({ err }, 'queue-monitor: alert evaluation failed (best-effort)');
         });
-        return reply.send({ data: { queues, updatedAt: new Date().toISOString() } });
+        cachedResponse = { queues, updatedAt: new Date().toISOString() };
+        cacheTime = Date.now();
+        return reply.send({ data: cachedResponse });
       } catch (err) {
         app.log.warn({ err }, 'queue-monitor: Redis unreachable, returning zeros');
         return reply.send({

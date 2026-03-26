@@ -27,7 +27,7 @@ export function invoiceRoutes(deps: InvoiceRouteDeps) {
     app.get('/', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const query = validate(InvoiceListQuerySchema, req.query);
-      const result = invoiceStore.listInvoices(tenantId, {
+      const result = await invoiceStore.listInvoices(tenantId, {
         status: query.status,
         page: query.page,
         limit: query.limit,
@@ -38,7 +38,7 @@ export function invoiceRoutes(deps: InvoiceRouteDeps) {
     /** GET /invoices/:id — get a specific invoice. */
     app.get('/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const invoice = invoiceStore.getInvoiceById(req.params.id);
+      const invoice = await invoiceStore.getInvoiceById(req.params.id);
       // Tenant isolation: ensure invoice belongs to this tenant
       if (invoice.tenantId !== tenantId) {
         throw new AppError(404, 'Invoice not found', 'NOT_FOUND');
@@ -49,11 +49,11 @@ export function invoiceRoutes(deps: InvoiceRouteDeps) {
     /** GET /invoices/:id/receipt — GST receipt for a paid invoice. */
     app.get('/:id/receipt', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const invoice = invoiceStore.getInvoiceById(req.params.id);
+      const invoice = await invoiceStore.getInvoiceById(req.params.id);
       if (invoice.tenantId !== tenantId) {
         throw new AppError(404, 'Invoice not found', 'NOT_FOUND');
       }
-      const receipt = invoiceStore.generateReceipt(req.params.id);
+      const receipt = await invoiceStore.generateReceipt(req.params.id);
       return reply.send({ data: receipt });
     });
 
@@ -63,7 +63,7 @@ export function invoiceRoutes(deps: InvoiceRouteDeps) {
      */
     app.post('/:id/resend', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const invoice = invoiceStore.getInvoiceById(req.params.id);
+      const invoice = await invoiceStore.getInvoiceById(req.params.id);
       if (invoice.tenantId !== tenantId) {
         throw new AppError(404, 'Invoice not found', 'NOT_FOUND');
       }

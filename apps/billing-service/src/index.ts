@@ -9,7 +9,7 @@ import { InvoiceStore } from './services/invoice-store.js';
 import { UpgradeFlow } from './services/upgrade-flow.js';
 import { CouponStore } from './services/coupon-store.js';
 import { prisma, disconnectPrisma } from './prisma.js';
-import { SubscriptionRepo } from './repository.js';
+import { SubscriptionRepo, UsageRepo, InvoiceRepo, CouponRepo } from './repository.js';
 
 async function main(): Promise<void> {
   // 1. Config + Logger
@@ -22,12 +22,15 @@ async function main(): Promise<void> {
   loadJwtConfig(env);
   loadServiceJwtSecret(env);
 
-  // 3. Core services — PlanStore Prisma-backed; others in-memory (DECISION-013)
+  // 3. Core services — all stores Prisma-backed with in-memory fallback
   const subscriptionRepo = new SubscriptionRepo(prisma);
+  const usageRepo = new UsageRepo(prisma);
+  const invoiceRepo = new InvoiceRepo(prisma);
+  const couponRepo = new CouponRepo(prisma);
   const planStore = new PlanStore(subscriptionRepo);
-  const usageStore = new UsageStore();
-  const invoiceStore = new InvoiceStore();
-  const couponStore = new CouponStore();
+  const usageStore = new UsageStore(usageRepo);
+  const invoiceStore = new InvoiceStore(invoiceRepo);
+  const couponStore = new CouponStore(couponRepo);
 
   // 4. Razorpay client
   const razorpayClient = new RazorpayClient({

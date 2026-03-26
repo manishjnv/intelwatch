@@ -51,8 +51,8 @@ describe('Admin Routes', () => {
       const planStore = new PlanStore();
       const invoiceStore = new InvoiceStore();
       const usageStore = new UsageStore();
-      const inv = invoiceStore.createInvoice({ tenantId: 'tx', planId: 'starter', amountInr: 4999, periodStart: new Date(), periodEnd: new Date() });
-      invoiceStore.updateInvoiceStatus(inv.id, 'paid');
+      const inv = await invoiceStore.createInvoice({ tenantId: 'tx', planId: 'starter', amountInr: 4999, periodStart: new Date(), periodEnd: new Date() });
+      await invoiceStore.updateInvoiceStatus(inv.id, 'paid');
       const razorpayClient = new RazorpayClient({ keyId: 'k', keySecret: 's'.repeat(32), webhookSecret: 'w'.repeat(32) });
       const upgradeFlow = new UpgradeFlow(planStore, invoiceStore);
       const couponStore = new CouponStore();

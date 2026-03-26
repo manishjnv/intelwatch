@@ -29,7 +29,7 @@ export function usageRoutes(deps: UsageRouteDeps) {
     /** GET /usage — current usage counters for the tenant. */
     app.get('/', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const usage = usageStore.getUsage(tenantId);
+      const usage = await usageStore.getUsage(tenantId);
       return reply.send({ data: usage });
     });
 
@@ -37,7 +37,7 @@ export function usageRoutes(deps: UsageRouteDeps) {
     app.post('/track', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const { metric, count } = validate(TrackUsageSchema, req.body);
-      const usage = usageStore.trackUsage(tenantId, metric, count);
+      const usage = await usageStore.trackUsage(tenantId, metric, count);
       return reply.status(201).send({ data: usage });
     });
 
@@ -46,7 +46,7 @@ export function usageRoutes(deps: UsageRouteDeps) {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const state = await planStore.getTenantPlan(tenantId);
       const planDef = PLAN_DEFINITIONS[state.planId];
-      const usage = usageStore.getUsage(tenantId);
+      const usage = await usageStore.getUsage(tenantId);
 
       const limits = planDef.limits;
       const metrics = {

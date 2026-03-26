@@ -48,9 +48,9 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
             const allTenants = await planStore.getAllTenantPlans();
             const tenant = allTenants.find((t) => t.razorpaySubscriptionId === event.subscriptionId);
             if (tenant) {
-              const invoices = invoiceStore.listInvoices(tenant.tenantId, { status: 'pending' });
+              const invoices = await invoiceStore.listInvoices(tenant.tenantId, { status: 'pending' });
               for (const inv of invoices.data) {
-                invoiceStore.updateInvoiceStatus(inv.id, 'paid', {
+                await invoiceStore.updateInvoiceStatus(inv.id, 'paid', {
                   razorpayPaymentId: event.paymentId,
                 });
               }
@@ -73,9 +73,9 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
         case 'payment.captured': {
           // Try to reconcile with an order-based invoice
           if (event.orderId) {
-            const invoice = invoiceStore.findByOrderId(event.orderId);
+            const invoice = await invoiceStore.findByOrderId(event.orderId);
             if (invoice) {
-              invoiceStore.updateInvoiceStatus(invoice.id, 'paid', {
+              await invoiceStore.updateInvoiceStatus(invoice.id, 'paid', {
                 razorpayPaymentId: event.paymentId,
                 razorpayOrderId: event.orderId,
               });
@@ -86,9 +86,9 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
 
         case 'payment.failed': {
           if (event.orderId) {
-            const invoice = invoiceStore.findByOrderId(event.orderId);
+            const invoice = await invoiceStore.findByOrderId(event.orderId);
             if (invoice) {
-              invoiceStore.updateInvoiceStatus(invoice.id, 'failed');
+              await invoiceStore.updateInvoiceStatus(invoice.id, 'failed');
             }
           }
           break;
