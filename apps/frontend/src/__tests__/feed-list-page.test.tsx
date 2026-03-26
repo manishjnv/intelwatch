@@ -148,9 +148,9 @@ describe('FeedListPage', () => {
     expect(screen.getByText('OTX feed')).toBeInTheDocument()
   })
 
-  it('shows total feeds stat', () => {
+  it('shows feeds quota stat', () => {
     render(<FeedListPage />)
-    expect(screen.getByTestId('stat-Total Feeds')).toHaveTextContent('3')
+    expect(screen.getByTestId('stat-Feeds')).toHaveTextContent('3/3 (Free)')
   })
 
   it('shows active count stat', () => {
