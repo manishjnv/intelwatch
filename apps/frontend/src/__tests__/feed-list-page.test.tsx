@@ -15,6 +15,7 @@ import { render, screen, fireEvent } from '@/test/test-utils'
 const mockRetryMutate = vi.fn()
 
 vi.mock('@/hooks/use-intel-data', () => ({
+  useFeedQuota: vi.fn(() => ({ data: { planId: 'free', displayName: 'Free', maxFeeds: 3, minFetchInterval: '0 */4 * * *', retentionDays: 7, nextPlan: 'starter', nextPlanMaxFeeds: 10 } })),
   useRetryFeed: vi.fn(() => ({ mutate: mockRetryMutate, isPending: false })),
   useFeeds: vi.fn(() => ({
     data: {
