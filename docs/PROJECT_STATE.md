@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-26 (update at end of EVERY session via /session-end)
-**Session counter:** 72
+**Session counter:** 73
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -41,7 +41,7 @@
 |--------|-------|--------|-------------|----------|
 | api-gateway | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-types | 1 | ✅ Deployed | 2026-03-24 | None. Queue JSDoc comments updated (colon→dash). |
-| shared-utils | 1 | ✅ Deployed | 2026-03-26 | QUEUES: 18 constants (4 feed lanes added). EVENTS: 20 constants (+QUEUE_ALERT, +QUEUE_ALERT_RESOLVED). |
+| shared-utils | 1 | ✅ Deployed | 2026-03-26 | QUEUES: 18 constants (4 feed lanes added). EVENTS: 20 constants (+QUEUE_ALERT, +QUEUE_ALERT_RESOLVED). **registerMetrics()**: prom-client Prometheus plugin (HTTP counter, duration histogram, process metrics, GET /metrics). 91 tests. |
 | shared-auth | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-cache | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-audit | 1 | ✅ Deployed | 2026-03-15 | None |
@@ -142,10 +142,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. P3-4/P3-7 COMPLETE. P3-6 MISP COMPLETE. P2-4 Grafana dashboards COMPLETE. 33 containers, 5,773 tests.
-- **Last session outcome:** Session 72 (2026-03-26). P3-6 MISP feed connector — full implementation with 15 accuracy/reliability improvements. Commit: 1754609. 486 ingestion tests (81 new MISP). All 5 connectors functional. Deploy.yml RCA #41 orphan cleanup fix. CI green, 33 containers healthy on VPS.
-- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. WIP files renamed to .wip: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip, queue-alert-evaluator.test.ts.wip. Deploy.yml 15min timeout insufficient for fresh backend build on VPS. Grafana panels are placeholders — services don't export Prometheus /metrics yet.
-- **Next tasks:** Wire prom-client + fastify-metrics to services for Grafana data. IOC search pagination. Production hardening.
+- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. P3-4/P3-7 COMPLETE. P3-6 MISP COMPLETE. Prometheus metrics WIRED. 33 containers, 5,785 tests.
+- **Last session outcome:** Session 73 (2026-03-26). Prometheus metrics wiring — prom-client added to shared-utils, registerMetrics() wired into all 23 backend services, prometheus.yml updated with 23 scrape targets. Also fixed deploy.yml orphan cleanup (pre-cleanup + post-cleanup). Commit: 050eb58. 12 new tests (91 shared-utils). 5,785 total. CI green, 33 containers healthy.
+- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. WIP files renamed to .wip: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip, queue-alert-evaluator.test.ts.wip. Deploy.yml 15min timeout insufficient for fresh backend build on VPS. Grafana pipeline-queues dashboard still empty (needs BullMQ custom counters).
+- **Next tasks:** BullMQ custom Prometheus counters for pipeline-queues dashboard (session 74). IOC search pagination. Production hardening.
 
 ## Deployment Log
 
@@ -214,6 +214,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 70 | 2026-03-26 | etip_ingestion + shared-utils updated, all 32 containers recreated | ✅ All 32 healthy | 8c201b9→79ec3bf (6 commits) | P3-4: 4 per-feed-type queue lanes (RSS c=5, NVD c=2, STIX c=2, REST c=3). P3-7: per-tenant BullMQ fairness (Redis counter + DelayedError + Lua safe DECR). Review fixes: C1 feedType select, C2 close() cleanup, C3 DelayedError, W1 atomic pipeline, W2 safe DECR. 405 ingestion tests. Grafana dashboards also deployed (aed6e73). Manual VPS deploy after CI SSH timeout. |
 | 71 | 2026-03-26 | etip_admin + etip_frontend + shared-utils updated | ✅ CI green (23561851508) | aa8400f | P2-1 queue alerting: QueueAlertEvaluator (Redis debounce, QUEUE_ALERT/RESOLVED), GET /queues/alerts, AdminOpsPage red banner. 190 admin tests, 739 frontend tests, 5,692 total. |
 | 72 | 2026-03-26 | etip_ingestion updated (MISP connector + deploy.yml) | ✅ CI green (23565670507) | 1754609 | P3-6 MISP connector: 15 improvements, 81 tests, 486 ingestion total. All 5 connectors functional. Deploy.yml RCA #41 orphan cleanup fix. 33 containers healthy. |
+| 73 | 2026-03-26 | All 23 backend services updated (Prometheus metrics) | ✅ CI green (23574054284) | 050eb58 | prom-client wired to all 23 services via shared-utils registerMetrics(). Prometheus scrape config: 23 targets. Deploy.yml orphan cleanup improved. 12 new tests, 5,785 total. |
 
 ## E2E Verification Results (Session 13)
 

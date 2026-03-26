@@ -1,62 +1,65 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-26
-**Session:** 72
-**Session Summary:** P3-6 MISP feed connector — full implementation with 15 accuracy/reliability improvements, 81 tests. All 5 ingestion connectors now functional.
+**Session:** 73
+**Session Summary:** Prometheus metrics — prom-client wired to all 23 backend services, prometheus.yml scrape config, deploy.yml orphan cleanup fix. 12 new tests, 5,785 total.
 
 ## ✅ Changes Made
 | Commit | Files | Description |
 |--------|-------|-------------|
-| 1754609 | 5 | feat: P3-6 MISP feed connector — 15 improvements, 81 tests |
+| 050eb58 | 29 | feat: Prometheus metrics — prom-client wired to all 23 backend services |
 
 ## 📁 Files / Documents Affected
 
 ### New Files
 | File | Purpose |
 |------|---------|
-| apps/ingestion/src/connectors/misp.ts | MISP connector — REST API + flat file feed, 858 lines |
-| apps/ingestion/tests/misp-connector.test.ts | 81 MISP tests (22 core + 59 improvement tests), 1401 lines |
+| packages/shared-utils/src/metrics.ts | registerMetrics() — Fastify plugin: prom-client Registry, HTTP counter + histogram, default Node.js metrics, GET /metrics endpoint |
+| packages/shared-utils/tests/metrics.test.ts | 12 tests: route registration, rate-limit exempt, Prometheus text format, counter increment, histogram, route-pattern labeling, registry isolation |
 
 ### Modified Files
 | File | Changes |
 |------|---------|
-| apps/ingestion/src/queue.ts | MISP routes to REST queue lane (+1 line) |
-| apps/ingestion/src/workers/feed-fetch.ts | Wire MISPConnector, remove 501 stub, incremental cursor, flat feed routing (+41 lines) |
-| .github/workflows/deploy.yml | RCA #41: orphan cleanup runs before compose up (+15/-9) |
+| packages/shared-utils/package.json | +prom-client ^15.1.0 dependency |
+| packages/shared-utils/src/index.ts | +export registerMetrics, MetricsCompatibleApp |
+| docker/prometheus/prometheus.yml | Replaced: 1 self-scrape → 1 self-scrape + 23 service targets in `etip-services` job |
+| .github/workflows/deploy.yml | Orphan cleanup moved before compose up (pre-cleanup) + post-cleanup safety net |
+| 23x apps/*/src/app.ts | +import registerMetrics + await registerMetrics(app, 'service-name') after sensible |
+| pnpm-lock.yaml | +prom-client resolution |
 
 ## 🔧 Decisions & Rationale
-- MISP shares REST queue lane (no new queue in shared-utils) — MISP uses HTTP REST under the hood, same throughput profile
-- Flat file feed detected via parseConfig.format='misp_feed' — no schema change, just convention on existing JSON field
-- IPv6 detection via `:` presence in value — simple, correct for all MISP IP formats
+- prom-client in shared-utils (not new shared-metrics package) — additive Tier 1 change, avoids 6-step New Package Checklist
+- Raw prom-client (not fastify-metrics npm package) — exact control over metric names matching existing Grafana dashboards
+- Plain async function (not Fastify plugin with fastify-plugin) — avoids fp() dependency, hooks register on root app scope
+- Per-service Registry (not global default) — prevents test pollution between services
+- Single `etip-services` Prometheus job (not 23 separate jobs) — cleaner config, `instance` label auto-distinguishes
 
 ## 🧪 E2E / Deploy Verification Results
-- CI run 23565670507: ✅ SUCCESS
-- 33 containers healthy on VPS (all etip_* + infra)
-- etip_ingestion: Up (healthy), port 3004
-- 486 ingestion tests, 5,773 monorepo total (estimate from test run)
-- 0 TS errors, 0 lint errors
+- CI run 23574054284: ✅ SUCCESS (test + deploy jobs)
+- 33 containers healthy on VPS
+- All 23 services now expose GET /metrics in Prometheus text format
+- Prometheus configured to scrape all 23 targets every 15s
+- Grafana service-health + api-gateway dashboards populating
+- 5,785 tests passing (12 new shared-utils metrics tests)
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-- Wire prom-client + fastify-metrics to services for real Grafana data
+- BullMQ custom Prometheus counters for pipeline-queues dashboard (session 74)
+  - admin-service: bullmq_waiting/active/failed/completed gauges per queue
+  - ingestion: etip_articles_ingested_total counter
+  - normalization: etip_iocs_extracted_total counter
+  - ai-enrichment: etip_ai_tokens_total + etip_ai_cost_usd_total counters
 - IOC search pagination on SearchPage
 - Production hardening (rate limits, input validation audit)
 
 ### Deferred
-- P2-11 TLP enforcement (policy layer, not connector)
-- P2-12 Taxonomy extraction (low ROI beyond galaxies)
-- P2-15 Attribute decay scoring (overlaps normalization TTL)
+- Grafana pipeline-queues dashboard panels stay empty until session 74 custom counters
+- Pre-existing TS errors in VulnerabilityListPage.tsx
+- .wip files: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip
 
 ## 🔁 How to Resume
 ```
 /session-start
-Working on: [next module]. Do not modify: ingestion (P3-6 complete).
+Working on: BullMQ custom Prometheus counters (session 74). Do not modify: shared-utils metrics.ts (deployed).
 ```
-
-### MISP Connector Feature Map (for reference)
-- Core: REST API POST /events/restSearch, Zod validation, pagination, 14 attribute types
-- P0: Objects, sightings, warning lists, galaxies, to_ids filter
-- P1: Incremental cursor, 429 backoff, size guard, dedup, flat file feed
-- P2: UUID passthrough
-- Bonus: IPv6, first_seen/last_seen, composite context

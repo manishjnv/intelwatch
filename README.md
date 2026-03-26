@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-7%20started-00ff88)
-![Tests](https://img.shields.io/badge/tests-5773%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-5785%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
@@ -14,7 +14,7 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| Shared packages (types, utils, cache, auth, audit, normalization, enrichment) | ✅ Deployed | 343 |
+| Shared packages (types, utils, cache, auth, audit, normalization, enrichment) | ✅ Deployed | 355 |
 | API Gateway (Fastify, middleware) | ✅ Live on VPS | 45 |
 | User Service (register, login, refresh) | ✅ Live on VPS | 21 |
 | Ingestion Service (RSS + NVD + STIX/TAXII + REST_API, 11 pipeline modules) | ✅ Live on VPS | 392 |

@@ -533,7 +533,7 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | 38 | cost-tracker.ts TS2532 — Object possibly undefined | Session 23 | ✅ Extract to local var with non-null assertion | FIXED |
 | 39 | Frontend unused imports blocking CI lint | Session 23 | ✅ Removed 4 unused imports | FIXED |
 | 40 | Dockerfile COPY missing for billing + admin (razorpay not found) | Session 43 | ✅ COPY lines added, CI green | FIXED |
-| 41 | Docker --force-recreate blocked by hash-prefix orphaned containers | Session 48 | ✅ Pre-cleanup + --remove-orphans | FIXED |
+| 41 | Docker --force-recreate blocked by hash-prefix orphaned containers | Session 48/73 | ✅ Pre-cleanup + post-cleanup + --remove-orphans | FIXED |
 
 **Session 13 deploys:** No new RCA issues. All 14 containers healthy. E2E pipeline verified with 301 real IOCs.
 | Session 42 | 2026-03-24 | No new issues. etip_frontend redeployed. CI green. Feed page demo fallback + UX improvements live. |
@@ -653,3 +653,4 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 70 | 2026-03-26 | Deploy SSH timeout during Vite frontend build (rendering chunks phase). Manual deploy succeeded. 32 containers healthy. P3-4 queue lanes + P3-7 tenant fairness deployed. 405 ingestion tests. CI run for 79ec3bf: tests passed, deploy timed out. |
 | Session 71 | 2026-03-26 | No new issues. P2-1 queue alerting deployed. CI run 23561851508 green. 32 containers healthy. 5,692 tests. |
 | Session 72 | 2026-03-26 | No new issues. P3-6 MISP connector deployed. Deploy.yml RCA #41 orphan cleanup ordering improved (pre-cleanup before compose up). CI run 23565670507 green. 33 containers healthy. 486 ingestion tests, ~5,773 total. |
+| Session 73 | 2026-03-26 | No new issues. Prometheus metrics wired to all 23 services. Deploy.yml orphan cleanup further improved (pre+post). CI run 23574054284 green. 33 containers healthy. 5,785 tests. |
