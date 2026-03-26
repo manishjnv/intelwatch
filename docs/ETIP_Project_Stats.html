@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 84 &middot; 2026-03-27 &middot; Scheduler retry backoff + feed health indicators. 33 containers, ~5,953 tests</span>
+  <span class="version">Session 85 &middot; 2026-03-27 &middot; Tiered rate limiting + error alerting + response compression. 33 containers, ~5,965 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~5,953</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~5,965</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~580</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">84</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">85</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">20</div><div class="stat-label">Frontend Pages</div></div>
@@ -143,9 +143,9 @@ li strong { color: var(--text-primary); }
   <table>
     <thead><tr><th>Module</th><th>Port</th><th>Phase</th><th>Status</th><th>Endpoints</th><th>Tests</th></tr></thead>
     <tbody>
-      <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy</td><td>45</td></tr>
+      <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + tiered rate limit + error alerting + compression</td><td>59</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth</td><td>21</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (20 pages) + error toasts + debounce + skeletons + feed health</td><td>784</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (20 pages) + error toasts + debounce + skeletons + feed health + request dedup</td><td>786</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + AC-2 + 5 Connectors + Feed Quota + Scheduler Retry</td><td>502</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline</td><td>154</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>

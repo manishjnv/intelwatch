@@ -671,3 +671,4 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 82 | 2026-03-27 | No new issues. Frontend-only: error toasts, search debounce, loading skeletons. 770 frontend tests. Pushed to master, CI triggered. |
 | Session 83 | 2026-03-27 | No new issues. Billing dual-mode persistence (3 stores → Prisma) + admin queue 10s cache. 190 billing + 195 admin tests. CI triggered. |
 | Session 84 | 2026-03-27 | No new issues. Scheduler retry backoff + feed health indicators. 19 new tests, 5,953 total. CI triggered. |
+| Session 85 | 2026-03-27 | No new issues. API Gateway: tiered rate limits + error alerting + @fastify/compress. Frontend: GET request dedup. 12 new tests, ~5,965 total. CI triggered. |

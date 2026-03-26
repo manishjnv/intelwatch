@@ -1,42 +1,43 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-27
-**Session:** 84
-**Session Summary:** Scheduler retry with exponential backoff + circuit breaker. Feed health indicators (HealthDot, FailureSparkline, overdue detection) in FeedListPage.
+**Session:** 85
+**Session Summary:** Tiered rate limiting + error alerting + response compression in api-gateway. Frontend GET request deduplication.
 
 ## ✅ Changes Made
-- `d2ff728` — feat: scheduler retry backoff + feed health indicators — session 84 (5 files, 684 insertions, 32 deletions)
-- `a97b8ff` — fix: remove unused vars in feed-health tests (lint) (1 file, 3 insertions, 3 deletions)
+- `1420c77` — feat: tiered rate limiting + error alerting + response compression — session 85 (7 files, 702 insertions, 4 deletions)
 
 ## 📁 Files / Documents Affected
 
 ### New Files
 | File | Purpose |
 |------|---------|
-| apps/ingestion/tests/scheduler-retry.test.ts | 5 tests: backoff math, reset on success, backoff window skip, per-feed isolation, circuit breaker |
-| apps/frontend/src/__tests__/feed-health.test.tsx | 14 tests: health score (5), HealthDot (3), FailureSparkline (4), page integration (2) |
+| apps/api-gateway/src/plugins/error-alerting.ts | ErrorAggregator class (5-min sliding window), QUEUE_ALERT via Redis pub/sub, GET /error-stats route |
+| apps/api-gateway/tests/gateway-features.test.ts | 10 tests: tiered rate limiting (4), error alerting (4), response compression (2) |
+| apps/frontend/src/lib/api-dedup.test.ts | 2 tests: same-URL dedup, different-URL separate fetch |
 
 ### Modified Files
 | File | Change |
 |------|--------|
-| apps/ingestion/src/workers/scheduler.ts | Per-feed retry Map, exponential backoff (30s→5min), circuit breaker (3 failures/5min → skip 5min), quota fetch logging |
-| apps/frontend/src/components/feed/FeedCard.tsx | computeFeedHealth(), healthLevel(), HealthDot, FailureSparkline components. Health dot in card view. |
-| apps/frontend/src/pages/FeedListPage.tsx | Health column (sortable), sparkline in Errors column, isScheduleOverdue() overdue detection, sort-by-health |
+| apps/api-gateway/package.json | Added @fastify/compress ^7.0.0, ioredis ^5.4.0 |
+| apps/api-gateway/src/app.ts | resolveRateLimit() function (search 10/write 30/read 120), @fastify/compress plugin, registerErrorAlerting(), gateway-stats route |
+| apps/frontend/src/lib/api.ts | inflightRequests Map + getInflightOrSet() dedup (100ms window), extracted doFetch() |
+| pnpm-lock.yaml | Updated with new deps |
 
 ## 🔧 Decisions & Rationale
-No new DECISION entries. Backoff formula (30s * 2^failCount, 5min cap) follows standard exponential backoff pattern. Circuit breaker threshold (3 failures in 5min window) matches customization-client's existing 5min cache TTL.
+No new DECISION entries. Rate limit tiers follow standard patterns (expensive ops get tighter limits). Error alerting reuses existing EVENTS.QUEUE_ALERT + admin-service infrastructure. Compression uses @fastify/compress (standard Fastify plugin).
 
 ## 🧪 E2E / Deploy Verification Results
-- Ingestion tests: 502 passing (30 files, including 5 new scheduler-retry tests)
-- Frontend tests: 784 passing (28 files, including 14 new feed-health tests)
-- Full monorepo: 5,953 tests passing, 0 failures
-- CI triggered on push (commits d2ff728 + a97b8ff)
+- API Gateway tests: 59 passing (4 files, including 10 new gateway-features tests)
+- Frontend tests: 786 passing (29 files, including 2 new api-dedup tests)
+- CI triggered on push (commit 1420c77), deploy pending
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. Verify CI/CD deploy succeeded for S84 (ingestion + frontend containers rebuilt)
-2. Check feed health dots render correctly on ti.intelwatch.in FeedListPage
+1. Verify CI/CD deploy succeeded for S85 (api-gateway + frontend containers rebuilt)
+2. Test: hit search endpoint 11 times fast → 429 on 11th
+3. Cause 6 500s → verify QUEUE_ALERT event emitted in logs
 
 ### Deferred
 - Persist FeedQuotaStore to Postgres (customization-service)
@@ -48,16 +49,18 @@ No new DECISION entries. Backoff formula (30s * 2^failCount, 5min cap) follows s
 ```
 Working on: Production hardening / persistence migrations
 Module target: customization-service OR alerting-service
-Do not modify: ingestion scheduler (S84 complete), frontend feed indicators (S84 complete)
+Do not modify: api-gateway (S85 complete), frontend api.ts dedup (S85 complete)
 
 Steps:
-1. Check CI/CD deploy status for S84
-2. Verify feed health UI on VPS
+1. Check CI/CD deploy status for S85
+2. Verify rate limiting works on VPS (curl -v, check 429)
 3. Pick next target: FeedQuotaStore persistence (customization) or alerting-service persistence
 
-Key facts from S84:
-- Scheduler retry constants: BACKOFF_BASE_MS=30000, BACKOFF_CAP_MS=300000, CB_THRESHOLD=3, CB_WINDOW_MS/CB_OPEN_MS=300000
-- Health score weights: failures 40%, reliability 30%, recency 30%
-- Health thresholds: green >80, amber 50-80, red <50
-- Overdue = lastFetchAt > 2x schedule interval (minute-field cron only)
+Key facts from S85:
+- Rate limit tiers: search 10/min, write 30/min, read 120/min, health exempt
+- Error alerting: 5-min window, threshold >5 errors, QUEUE_ALERT via Redis pub/sub
+- Compression: gzip for >1KB, excludes image/* and application/octet-stream
+- Frontend dedup: inflightRequests Map, 100ms window, GET only
+- New endpoint: GET /api/v1/gateway/error-stats
+- New deps: @fastify/compress ^7.0.0, ioredis ^5.4.0
 ```
