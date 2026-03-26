@@ -23,19 +23,26 @@ fi
 
 # Run the seeder inside the container using Node.js
 docker exec "$CONTAINER" node -e '
-const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
 const SECRET = process.env.TI_JWT_SECRET;
 const TENANT = "demo-tenant";
 const PORT = process.env.TI_INGESTION_PORT || 3004;
 const API = `http://localhost:${PORT}`;
 
-// Generate a valid admin JWT
-const token = jwt.sign(
-  { sub: "seed-script", tenantId: TENANT, role: "super_admin", email: "system@etip.local" },
-  SECRET,
-  { expiresIn: "5m", issuer: process.env.TI_JWT_ISSUER || "intelwatch-etip" }
-);
+// Generate a minimal JWT without jsonwebtoken library
+function base64url(obj) {
+  return Buffer.from(JSON.stringify(obj)).toString("base64url");
+}
+const header = base64url({ alg: "HS256", typ: "JWT" });
+const now = Math.floor(Date.now() / 1000);
+const payload = base64url({
+  sub: "seed-script", tenantId: TENANT, role: "super_admin",
+  email: "system@etip.local", iat: now, exp: now + 300,
+  iss: process.env.TI_JWT_ISSUER || "intelwatch-etip"
+});
+const sig = crypto.createHmac("sha256", SECRET).update(header + "." + payload).digest("base64url");
+const token = header + "." + payload + "." + sig;
 
 const FEEDS = [
   { name:"AlienVault OTX", url:"https://otx.alienvault.com/api/v1/pulses/subscribed", feedType:"rest_api", schedule:"0 */2 * * *",
