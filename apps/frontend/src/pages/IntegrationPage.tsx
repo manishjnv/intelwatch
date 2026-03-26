@@ -179,7 +179,7 @@ export function IntegrationPage() {
   const current = tabContent[activeTab]
 
   const sortedData = useMemo(() => {
-    const items = [...current.data] as Record<string, unknown>[]
+    const items = [...current.data] as unknown as Record<string, unknown>[]
     return items.sort((a, b) => {
       const av = a[sortBy] ?? ''
       const bv = b[sortBy] ?? ''

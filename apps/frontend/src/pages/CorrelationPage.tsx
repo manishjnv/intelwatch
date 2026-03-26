@@ -297,7 +297,7 @@ function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondN
             <div className="relative">
               <button onClick={() => {
                 const hunts = activeHunts ?? []
-                if (hunts.length === 1) { onAddToHunt?.(corr, hunts[0].id) }
+                if (hunts.length === 1) { onAddToHunt?.(corr, hunts[0]!.id) }
                 else if (hunts.length > 1) { setShowHuntSelector(s => !s) }
                 else { toast('No active hunts — create one first', 'info') }
               }} disabled={huntPending}
@@ -474,8 +474,8 @@ export function CorrelationPage() {
     if (filters.severity) items = items.filter(c => c.severity === filters.severity)
     if (killChainFilter) items = items.filter(c => c.killChainPhase === killChainFilter)
     return [...items].sort((a, b) => {
-      const av = (a as Record<string, unknown>)[sortBy] ?? ''
-      const bv = (b as Record<string, unknown>)[sortBy] ?? ''
+      const av = (a as unknown as Record<string, unknown>)[sortBy] ?? ''
+      const bv = (b as unknown as Record<string, unknown>)[sortBy] ?? ''
       const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
       return sortOrder === 'asc' ? cmp : -cmp
     })

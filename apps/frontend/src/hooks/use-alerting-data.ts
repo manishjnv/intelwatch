@@ -67,7 +67,7 @@ export function useAlertStats() {
     staleTime: 30_000,
   })
   return withDemoFallback(result, DEMO_STATS,
-    d => typeof (d as Record<string, unknown>)?.total === 'number' && typeof (d as Record<string, unknown>)?.bySeverity === 'object')
+    d => typeof (d as unknown as Record<string, unknown>)?.total === 'number' && typeof (d as unknown as Record<string, unknown>)?.bySeverity === 'object')
 }
 
 /** Fetch alert history timeline. */

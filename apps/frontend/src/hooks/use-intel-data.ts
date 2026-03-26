@@ -7,7 +7,6 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { useAuthStore } from '@/stores/auth-store'
 import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS, DEMO_FEEDS_RESPONSE, DEMO_ACTORS_RESPONSE, DEMO_MALWARE_RESPONSE, DEMO_VULNS_RESPONSE } from './demo-data'
 import type { EnrichmentStats } from './use-enrichment-data'
 
@@ -130,16 +129,7 @@ export function useFeeds(params: QueryParams = {}) {
   const empty = { data: [] as FeedRecord[], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['feeds', params],
-    queryFn: async () => {
-      try {
-        const res = await fetch(`/api/v1/feeds${query}`, {
-          headers: { 'Content-Type': 'application/json', ...(useAuthStore.getState().accessToken ? { Authorization: `Bearer ${useAuthStore.getState().accessToken}` } : {}) },
-        })
-        if (!res.ok) return empty
-        const json = await res.json()
-        return json ?? empty
-      } catch { return empty }
-    },
+    queryFn: () => api<ListResponse<FeedRecord>>(`/feeds${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_FEEDS_RESPONSE, d => (d?.data?.length ?? 0) > 0)

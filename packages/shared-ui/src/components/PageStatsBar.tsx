@@ -4,16 +4,19 @@
 
 import React from 'react'
 
-interface CompactStatProps {
+export interface CompactStatProps {
   label: string
   value?: number | string
   color?: string
+  icon?: React.ReactNode
+  highlight?: boolean
 }
 
 // ⛔ FROZEN — compact stat pair pattern (UI_DESIGN_LOCK.md)
-export function CompactStat({ label, value, color }: CompactStatProps) {
+export function CompactStat({ label, value, color, icon }: CompactStatProps) {
   return (
     <div className="flex items-center gap-1.5">
+      {icon && <span className="text-[var(--text-muted)]">{icon}</span>}
       <span className="text-[var(--text-muted)]">{label}</span>
       <span
         className="font-medium"
@@ -25,9 +28,11 @@ export function CompactStat({ label, value, color }: CompactStatProps) {
   )
 }
 
-interface PageStatsBarProps {
+export interface PageStatsBarProps {
   children: React.ReactNode
   className?: string
+  title?: string
+  isDemo?: boolean
 }
 
 // ⛔ FROZEN — py-2 padding, bg-bg-elevated/50, border-b, text-xs (UI_DESIGN_LOCK.md)

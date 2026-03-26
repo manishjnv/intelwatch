@@ -118,7 +118,7 @@ export function useUsageMeters() {
   })
   // Validate shape: API returns flat {api_calls,iocs_ingested,...} not nested UsageMeters
   return withDemoFallback(result, DEMO_USAGE_METERS,
-    d => d != null && typeof (d as Record<string, unknown>)?.apiCalls === 'object')
+    d => d != null && typeof (d as unknown as Record<string, unknown>)?.apiCalls === 'object')
 }
 
 export function useCurrentSubscription() {
@@ -128,7 +128,7 @@ export function useCurrentSubscription() {
     staleTime: 120_000,
   })
   return withDemoFallback(result, DEMO_CURRENT_SUBSCRIPTION,
-    d => d != null && typeof (d as Record<string, unknown>)?.planId === 'string')
+    d => d != null && typeof (d as unknown as Record<string, unknown>)?.planId === 'string')
 }
 
 export function usePaymentHistory(page = 1) {
@@ -152,7 +152,7 @@ export function useBillingStats() {
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_BILLING_STATS,
-    d => d != null && typeof (d as Record<string, unknown>)?.currentPlan === 'string')
+    d => d != null && typeof (d as unknown as Record<string, unknown>)?.currentPlan === 'string')
 }
 
 export function useApplyCoupon() {
@@ -204,7 +204,7 @@ export function useSystemHealth() {
   return withDemoFallback(
     result,
     { services: DEMO_SERVICE_HEALTH, summary: DEMO_SYSTEM_HEALTH_SUMMARY },
-    d => d != null && Array.isArray((d as Record<string, unknown>)?.services),
+    d => d != null && Array.isArray((d as unknown as Record<string, unknown>)?.services),
   )
 }
 
@@ -308,7 +308,7 @@ export function useAdminStats() {
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_ADMIN_STATS,
-    d => d != null && typeof (d as Record<string, unknown>)?.totalTenants === 'number')
+    d => d != null && typeof (d as unknown as Record<string, unknown>)?.totalTenants === 'number')
 }
 
 // ─── DLQ types ────────────────────────────────────────────────────
@@ -350,7 +350,7 @@ export function useDlqStatus() {
   return withDemoFallback(
     result,
     DEMO_DLQ_STATUS,
-    d => d != null && Array.isArray((d as Record<string, unknown>)?.queues),
+    d => d != null && Array.isArray((d as unknown as Record<string, unknown>)?.queues),
   )
 }
 
@@ -401,7 +401,7 @@ export function useQueueHealth() {
   return withDemoFallback(
     result,
     DEMO_QUEUE_HEALTH,
-    d => d != null && Array.isArray((d as Record<string, unknown>)?.queues),
+    d => d != null && Array.isArray((d as unknown as Record<string, unknown>)?.queues),
   )
 }
 

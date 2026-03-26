@@ -8,6 +8,8 @@ import { RazorpayClient } from './services/razorpay-client.js';
 import { InvoiceStore } from './services/invoice-store.js';
 import { UpgradeFlow } from './services/upgrade-flow.js';
 import { CouponStore } from './services/coupon-store.js';
+import { prisma, disconnectPrisma } from './prisma.js';
+import { SubscriptionRepo } from './repository.js';
 
 async function main(): Promise<void> {
   // 1. Config + Logger
@@ -20,8 +22,9 @@ async function main(): Promise<void> {
   loadJwtConfig(env);
   loadServiceJwtSecret(env);
 
-  // 3. Core services (in-memory — DECISION-013)
-  const planStore = new PlanStore();
+  // 3. Core services — PlanStore Prisma-backed; others in-memory (DECISION-013)
+  const subscriptionRepo = new SubscriptionRepo(prisma);
+  const planStore = new PlanStore(subscriptionRepo);
   const usageStore = new UsageStore();
   const invoiceStore = new InvoiceStore();
   const couponStore = new CouponStore();
@@ -53,6 +56,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down billing-service...');
     await app.close();
+    await disconnectPrisma();
     process.exit(0);
   };
   process.on('SIGINT', () => { void shutdown('SIGINT'); });

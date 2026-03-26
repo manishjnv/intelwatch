@@ -110,8 +110,8 @@ export function DRPDashboardPage() {
     if (filters.severity) items = items.filter(a => a.severity === filters.severity)
     if (filters.status) items = items.filter(a => a.status === filters.status)
     return [...items].sort((a, b) => {
-      const av = (a as Record<string, unknown>)[sortBy] ?? ''
-      const bv = (b as Record<string, unknown>)[sortBy] ?? ''
+      const av = (a as unknown as Record<string, unknown>)[sortBy] ?? ''
+      const bv = (b as unknown as Record<string, unknown>)[sortBy] ?? ''
       const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
       return sortOrder === 'asc' ? cmp : -cmp
     })

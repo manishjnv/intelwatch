@@ -280,7 +280,7 @@ export function ReportingPage() {
 
   const handleCompare = () => {
     const completed = reportList.filter(r => r.status === 'completed' && selected.has(r.id))
-    if (completed.length === 2) setCompareIds([completed[0].id, completed[1].id])
+    if (completed.length === 2) setCompareIds([completed[0]!.id, completed[1]!.id])
   }
 
   const handleDownload = (id: string) => {

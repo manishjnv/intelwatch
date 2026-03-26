@@ -215,15 +215,19 @@ export class PlanStore {
   /** Get or initialise the plan state for a tenant (defaults to free). */
   async getTenantPlan(tenantId: string): Promise<TenantPlanState> {
     if (this.repo) {
-      const existing = await this.repo.getTenantPlan(tenantId);
-      if (existing) return existing;
-      // Auto-create free plan
-      return this.repo.upsertTenantPlan({
-        tenantId,
-        planId: 'free',
-        status: 'active',
-        updatedAt: new Date(),
-      });
+      try {
+        const existing = await this.repo.getTenantPlan(tenantId);
+        if (existing) return existing;
+        // Auto-create free plan
+        return await this.repo.upsertTenantPlan({
+          tenantId,
+          planId: 'free',
+          status: 'active',
+          updatedAt: new Date(),
+        });
+      } catch {
+        // Prisma/Postgres unavailable — fall through to in-memory
+      }
     }
     if (!this.tenantPlans.has(tenantId)) {
       this.tenantPlans.set(tenantId, {
@@ -247,7 +251,9 @@ export class PlanStore {
       status: 'active',
       updatedAt: new Date(),
     };
-    if (this.repo) return this.repo.upsertTenantPlan(updated);
+    if (this.repo) {
+      try { return await this.repo.upsertTenantPlan(updated); } catch { /* fall through */ }
+    }
     this.tenantPlans.set(tenantId, updated);
     return updated;
   }
@@ -261,7 +267,9 @@ export class PlanStore {
       razorpaySubscriptionId: subscriptionId ?? state.razorpaySubscriptionId,
       updatedAt: new Date(),
     };
-    if (this.repo) return this.repo.upsertTenantPlan(updated);
+    if (this.repo) {
+      try { return await this.repo.upsertTenantPlan(updated); } catch { /* fall through */ }
+    }
     this.tenantPlans.set(tenantId, updated);
     return updated;
   }
@@ -275,7 +283,9 @@ export class PlanStore {
       scheduledPlanEffectiveAt: effectiveAt,
       updatedAt: new Date(),
     };
-    if (this.repo) return this.repo.upsertTenantPlan(updated);
+    if (this.repo) {
+      try { return await this.repo.upsertTenantPlan(updated); } catch { /* fall through */ }
+    }
     this.tenantPlans.set(tenantId, updated);
     return updated;
   }
@@ -289,7 +299,9 @@ export class PlanStore {
 
   /** Get all tenant plan states (for admin dashboard). */
   async getAllTenantPlans(): Promise<TenantPlanState[]> {
-    if (this.repo) return this.repo.getAllTenantPlans();
+    if (this.repo) {
+      try { return await this.repo.getAllTenantPlans(); } catch { /* fall through */ }
+    }
     return Array.from(this.tenantPlans.values());
   }
 

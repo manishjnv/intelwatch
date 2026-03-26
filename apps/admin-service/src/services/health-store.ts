@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { QUEUES } from '@etip/shared-utils';
+import { ALL_QUEUE_NAMES } from '@etip/shared-utils';
 
 export type ServiceStatus = 'healthy' | 'degraded' | 'critical' | 'unknown';
 
@@ -60,14 +60,8 @@ const KNOWN_SERVICES: Array<{ name: string; port: number }> = [
   { name: 'admin-service', port: 3022 },
 ];
 
-/** Known BullMQ queue names for depth reporting. */
-const KNOWN_QUEUES = [
-  QUEUES.FEED_FETCH,
-  QUEUES.NORMALIZE,
-  QUEUES.ENRICH_REALTIME,
-  QUEUES.GRAPH_SYNC,
-  QUEUES.CORRELATE,
-];
+/** Known BullMQ queue names for depth reporting — mirrors shared-utils canonical list. */
+const KNOWN_QUEUES = ALL_QUEUE_NAMES;
 
 /** In-memory service health registry (DECISION-013: no DB for Phase 6). */
 export class HealthStore {

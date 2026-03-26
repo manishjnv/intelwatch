@@ -37,7 +37,7 @@ export function useAnalyticsWidgets() {
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_DASHBOARD,
-    d => typeof (d as Record<string, unknown>)?.widgets === 'object' && Object.keys((d as DashboardData)?.widgets ?? {}).length > 0)
+    d => typeof (d as unknown as Record<string, unknown>)?.widgets === 'object' && Object.keys((d as DashboardData)?.widgets ?? {}).length > 0)
 }
 
 // ─── Trends ─────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ export function useExecutiveSummary() {
     staleTime: 5 * 60_000,
   })
   return withDemoFallback(result, DEMO_EXECUTIVE,
-    d => typeof (d as Record<string, unknown>)?.riskScore === 'number' && typeof (d as Record<string, unknown>)?.riskPosture === 'string')
+    d => typeof (d as unknown as Record<string, unknown>)?.riskScore === 'number' && typeof (d as unknown as Record<string, unknown>)?.riskPosture === 'string')
 }
 
 // ─── Service Health ─────────────────────────────────────────────

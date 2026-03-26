@@ -531,7 +531,7 @@ export function AdminOpsPage() {
 
             {/* Service grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {services.map(svc => (
+              {services.map((svc: ServiceHealth) => (
                 <ServiceCard key={svc.name} svc={svc} />
               ))}
             </div>

@@ -23,7 +23,7 @@ function daysFromNow(n: number): string {
 
 export interface BillingPlan {
   id: string
-  name: 'Free' | 'Starter' | 'Pro' | 'Enterprise'
+  name: 'Free' | 'Starter' | 'Teams' | 'Pro' | 'Enterprise'
   price: number         // monthly INR
   priceAnnual: number   // annual INR (per month)
   seats: number         // -1 = unlimited

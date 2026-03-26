@@ -61,7 +61,7 @@ export function useReportStats() {
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_REPORT_STATS,
-    d => d != null && typeof (d as Record<string, unknown>)?.total === 'number')
+    d => d != null && typeof (d as unknown as Record<string, unknown>)?.total === 'number')
 }
 
 export function useReportTemplates() {
@@ -96,7 +96,7 @@ export function useReportComparison(idA?: string, idB?: string) {
     staleTime: 120_000,
   })
   return withDemoFallback(result, DEMO_COMPARISON,
-    d => d != null && Array.isArray((d as Record<string, unknown>)?.changes))
+    d => d != null && Array.isArray((d as unknown as Record<string, unknown>)?.changes))
 }
 
 // ─── Mutations ──────────────────────────────────────────────────

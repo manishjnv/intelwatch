@@ -91,7 +91,6 @@ function ResultRow({ result, onClick }: { result: SearchResult; onClick: () => v
             <EntityChip
               type={result.iocType as Parameters<typeof EntityChip>[0]['type']}
               value={result.normalizedValue}
-              className="shrink-0"
             />
             <SeverityBadge severity={result.severity as Parameters<typeof SeverityBadge>[0]['severity']} />
             <span className={cn(
