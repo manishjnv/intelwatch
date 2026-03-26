@@ -1,6 +1,6 @@
 # ETIP Project State
-**Last updated:** 2026-03-26 (update at end of EVERY session via /session-end)
-**Session counter:** 79 — Planning/review session: gap analysis audit, phase prompts, platform activation verified
+**Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
+**Session counter:** 81 — VPS feed activation, x-tenant-id header fix, billing plan rename pro→teams
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-26 | **20 data pages**. 755 tests (757 total, 2 skipped). **Session 78:** Feed quota UI (useFeedQuota hook, FeedListPage quota bar, BillingPage plan limits, AdminOpsPage Feeds column + Teams plan). |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 755 tests (757 total, 2 skipped). **Session 81:** api.ts injects x-tenant-id/x-user-id/x-user-role headers on every auth request (fixes MISSING_TENANT 400). BillingPage PlanBadge: Pro→Teams. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-26 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 78:** Feed quota enforcement (createFeed maxFeeds check, schedule frequency validation, scheduler clamping). 497 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
@@ -66,7 +66,7 @@
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
 | customization | 5 | ✅ Complete | 2026-03-26 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK + Feed Quotas COMPLETE**. 50 endpoints, 273 tests. **Session 78:** FeedQuotaStore (4 tiers), 6 feed-quota endpoints, tenant plan assignments. |
 | onboarding | 6 | ✅ Deployed | 2026-03-26 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 241 tests. **Session 78:** DemoSeeder seeds 3 free-tier feeds by default (was 10). seedUpgradeFeeds() for Starter+ upgrades. freeTier flag on DEFAULT_FEEDS. |
-| billing | 6 | ✅ Complete | 2026-03-26 | Port 3019. 28 endpoints, 5 P0 improvements, 174 tests. Plan management (Free/Starter/Pro/Enterprise), usage metering (80/90/100% alerts), Razorpay subscriptions/webhooks, GST invoices (18%), upgrade/downgrade with 72hr grace, coupon codes. **Session 74: Prisma persistence** — 5 new models, BillingRepository (5 repo classes), dual-mode PlanStore, Plan enum `starter` added. FEATURE-COMPLETE + PERSISTENCE-READY. |
+| billing | 6 | ✅ Complete | 2026-03-27 | Port 3019. 28 endpoints, 5 P0 improvements, 174 tests. Plan management (Free/Starter/Teams/Enterprise per DECISION-024), usage metering (80/90/100% alerts), Razorpay subscriptions/webhooks, GST invoices (18%), upgrade/downgrade with 72hr grace, coupon codes. **Session 81: Renamed pro→teams, prices aligned** (Starter ₹9,999, Teams ₹18,999, Enterprise ₹49,999). FEATURE-COMPLETE + PERSISTENCE-READY. |
 | admin-ops | 6 | ✅ Complete | 2026-03-26 | Port 3022. **Core + 5 P0 + queue monitor + DLQ + P2-1 queue alerting COMPLETE**. 35 endpoints, 190 tests. **Session 78:** GET /feed-usage/summary. FEATURE-COMPLETE. **Phase 6 COMPLETE (3/3).** |
 | reporting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3021. **Core + 10 P0 improvements COMPLETE**. 25 endpoints, 217 tests. 5 report types (daily/weekly/monthly/custom/executive). 4 formats (JSON/HTML/CSV/PDF). BullMQ worker (etip-report-generate). Cron scheduling (node-cron). Template engine. In-memory stores (DECISION-013). P0 batch 1: data aggregation, template engine, schedule persistence, report versioning, export validation. P0 batch 2: retention cron, CSV export, report cloning, bulk ops, period comparison. FEATURE-COMPLETE. |
 | alerting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3023. Module 23. **Core + P0 + P1 COMPLETE**. 35 endpoints, 306 tests. Alert rules (threshold/pattern/anomaly/absence/composite). Alert lifecycle (open/ack/resolve/suppress/escalate). Notification channels (email/slack/webhook). Escalation policies (multi-step, auto-escalate). Grouping (fingerprint dedup), retry logic, maintenance windows, search, templates. BullMQ worker (etip-alert-evaluate). FEATURE-COMPLETE. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Platform Activation + Persistence Migration. All 7 build phases complete. 33 containers, ~5,891+ tests.
-- **Last session outcome:** Session 80 (2026-03-26). **Cleanup & stabilization.** Fixed 5 known issues: (1) admin KNOWN_QUEUES expanded to all 18 queues via ALL_QUEUE_NAMES, (2) useFeeds() switched from raw fetch() to api() for consistent unwrapping, (3) billing PlanStore wired to Prisma SubscriptionRepo, (4) IocListPage split into IocListPage (271 lines) + IocDetailPanel (298 lines), (5) confirmed registerMetrics already in all 23 services (stale issue removed). 58 tests verified (13 health-store + 23 plan-store + 14 integration + 31 detail/pivot/timeline). No new TS errors.
-- **Known issues:** Deploy.yml at 25min timeout. Grafana pipeline-queues dashboard still empty (needs BullMQ custom counters). Billing UsageStore/InvoiceStore/CouponStore still in-memory (PlanStore wired to Prisma). FeedSource table has corrupted non-UUID tenant_id rows from previous seeder runs — must TRUNCATE before seeding. Seed script needs manual VPS run (`bash /opt/intelwatch/scripts/seed-feeds.sh`). **Platform shows demo data — real feeds not yet activated on VPS.** Pre-existing TS errors in VulnerabilityListPage (prop mismatches) and billing repository.ts (Prisma models need `prisma generate`).
-- **Next tasks:** (1) Run seed-feeds.sh on VPS to activate real OSINT feeds. (2) Verify pipeline health with `npx tsx scripts/check-pipeline-health.ts`. (3) Run `prisma generate` for billing models + wire remaining stores (UsageStore/InvoiceStore/CouponStore). (4) Persistence migration B2: alerting-service → Postgres. (5) Fix VulnerabilityListPage pre-existing TS errors.
+- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,891+ tests.
+- **Last session outcome:** Session 81 (2026-03-27). **VPS feed activation + 2 bug fixes.** (1) Verified pipeline live: 20 feeds (2 tenants), 17,280 articles, 1,587 IOCs, 22/23 services healthy. (2) Assigned Enterprise plan to both tenants. (3) Fixed MISSING_TENANT 400 — frontend api.ts now injects x-tenant-id/x-user-id/x-user-role headers from auth store. (4) Renamed billing plan 'pro'→'teams' with DECISION-024 prices (Starter ₹9,999, Teams ₹18,999, Enterprise ₹49,999). 174 billing tests pass. Commits: b4d3832, 29a0ad1.
+- **Known issues:** Customization FeedQuotaStore is in-memory — Enterprise plan assignment lost on container restart. Cache-invalidate queue had 18,922 backlog (caching service auto-restarted, draining). CISA KEV feed has intermittent 30s timeouts. Docker service ports not published to host (only reachable via nginx/Docker network). Billing UsageStore/InvoiceStore/CouponStore still in-memory. Pre-existing TS errors in VulnerabilityListPage.
+- **Next tasks:** (1) Verify frontend shows real feeds after CI/CD deploy (x-tenant-id fix). (2) Persist FeedQuotaStore to Postgres (prevents plan reset on restart). (3) Wire remaining billing stores to Prisma. (4) Persistence migration B2: alerting-service → Postgres. (5) Fix VulnerabilityListPage TS errors.
 
 ## Deployment Log
 
@@ -219,6 +219,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 76 | 2026-03-26 | No deploy (frontend-only, code session) | — | 75b5657 | Frontend interactivity: VulnDetailPanel, SearchPage drill-down, IOC enrichment/relations wiring, sort on 4 pages. 16 new tests, 755 frontend. |
 | 77 | 2026-03-26 | All 33 containers redeployed (backend image rebuild) | ✅ All 33 healthy | 75c733b→cd194ad (5 commits) | Live feed activation: DemoSeeder 3-bug fix (type/feedType/parseConfig), 10 OSINT feeds, seed-feeds.sh script, billing unused import fix, deploy timeout 25m. 12 new tests. Neo4j transient health delay (recovered). Seed script blocked by SSH timeout. |
 | 78 | 2026-03-26 | etip_api, etip_alerting, etip_correlation rebuilt | ✅ 31 healthy | 2425673 | INTEGRATION_PUSH payload shape fix (alerting+correlation→integration). Pipeline health check script. 19 wiring tests. Deploy via nohup (CI SSH broken pipe). Caddy restarted. |
+| 81 | 2026-03-27 | etip_frontend + etip_billing rebuilt | ✅ CI triggered | b4d3832, 29a0ad1 | VPS feed activation: 20 feeds live (2 tenants), 17K+ articles, 1.5K+ IOCs. Enterprise plan assigned. Fix: api.ts x-tenant-id header injection (MISSING_TENANT 400). Billing: pro→teams rename + DECISION-024 price alignment. |
 
 ## E2E Verification Results (Session 13)
 

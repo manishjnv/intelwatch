@@ -1,66 +1,82 @@
 # SESSION HANDOFF DOCUMENT
 
-**Date:** 2026-03-26
-**Session:** 79
-**Session Summary:** Planning/review session — audited all 27 E2E gap items (confirmed all closed), audited 3 activation phases (confirmed all complete), created implementation prompts, identified real feeds not yet activated on VPS.
+**Date:** 2026-03-27
+**Session:** 81
+**Session Summary:** VPS feed activation verified (20 feeds, 17K articles, 1.5K IOCs). Fixed MISSING_TENANT 400 in frontend api.ts. Renamed billing plan pro→teams per DECISION-024.
 
 ## ✅ Changes Made
-No code changes. This was a planning-only session.
-
-- Audited 27-item E2E gap analysis plan — 27/27 items confirmed closed via git log
-- Audited 3 platform activation phases — Phase 1 (live feeds, session 77), Phase 2 (UI drill-downs, session 76), Phase 3 (downstream pipeline, session 78) all confirmed done
-- Created detailed session prompts for: P1-1 through P1-7, AC-2, Section B/C/D/E, P2-4, P3-6, Phase 1/2/3
-- Identified gap: platform shows demo data on VPS because seed-feeds.sh hasn't been run yet
+- `b4d3832` — fix: inject x-tenant-id/x-user-id/x-user-role headers in frontend API client (2 files)
+- `29a0ad1` — fix: rename billing plan 'pro' → 'teams' and align prices to DECISION-024 (14 files)
 
 ## 📁 Files / Documents Affected
+
+### New Files
+| File | Purpose |
+|------|---------|
+| scripts/session81-vps-activate.sh | VPS activation script (6-step: cleanup, seed, plan, health, wait, verify) |
+
+### Modified Files
 | File | Change |
 |------|--------|
-| docs/PROJECT_STATE.md | Session counter 78→79, WIP section updated |
-| docs/SESSION_HANDOFF.md | Overwritten with session 79 handoff |
-| docs/ETIP_Project_Stats.html | Session number updated |
+| apps/frontend/src/lib/api.ts | Inject x-tenant-id, x-user-id, x-user-role from auth store |
+| apps/frontend/src/pages/BillingPage.tsx | PlanBadge: Pro → Teams |
+| apps/frontend/src/hooks/phase6-demo-data.ts | Remove 'Pro' from type unions |
+| apps/billing-service/src/schemas/billing.ts | PlanIdSchema: 'pro' → 'teams' |
+| apps/billing-service/src/services/plan-store.ts | Rename plan, fix prices per DECISION-024 |
+| apps/billing-service/src/services/upgrade-flow.ts | PLAN_TIER: pro → teams |
+| apps/billing-service/src/routes/*.ts (4 files) | All pro → teams references |
+| apps/billing-service/tests/*.ts (5 files) | All test references: pro → teams |
 
 ## 🔧 Decisions & Rationale
-No new decisions.
+No new DECISION entries. Enforced existing DECISION-024 (pricing tiers) which backend hadn't implemented.
 
 ## 🧪 E2E / Deploy Verification Results
-No deploy or tests run. Verification was via git log audit:
-- 27/27 gap items: confirmed via commit history (sessions 64–78)
-- 3/3 activation phases: confirmed via commits 75c733b (Phase 1), 75b5657 (Phase 2), 2425673 (Phase 3)
+
+### VPS Pipeline Status (Session 81)
+```
+Services: 22/23 healthy (ingestion not published to host, healthy inside Docker)
+Feeds: 20 total (10 per tenant: IntelWatch HQ + home pvt ltd)
+Articles: 17,280
+IOCs: 1,587
+Queues: 18 total, cache-invalidate had 18,922 backlog (caching service restarted)
+Elasticsearch: connected
+Plan: Enterprise assigned to IntelWatch HQ + home pvt ltd
+User: manishjnvk@gmail.com → IntelWatch HQ tenant, role=super_admin
+```
+
+### Key Finding
+Frontend showed demo fallback because customization `/tenants/me` returned 400 MISSING_TENANT.
+Root cause: nginx doesn't set x-tenant-id, frontend api() only sent Authorization header.
+Fix: api.ts now injects x-tenant-id/x-user-id/x-user-role from Zustand auth store.
 
 ## ⚠️ Open Items / Next Steps
 
-### Immediate (VPS activation)
-1. SSH to VPS, run `bash /opt/intelwatch/scripts/seed-feeds.sh` to activate 10 OSINT feeds
-2. Wait 30 min for pipeline to process initial articles
-3. Run `npx tsx scripts/check-pipeline-health.ts` to verify end-to-end data flow
-4. Verify demo fallbacks auto-disable on frontend as real data appears
-
-### Expected timeline after feeds activate
-- Within 30 min: articles and IOCs in PostgreSQL
-- Within 1 hour: IOCs indexed in Elasticsearch (search works with real data)
-- Within 1 hour: graph nodes appear in Neo4j
-- Within 2-4 hours: correlation patterns start detecting matches
-- Within 4-8 hours: first real alerts fire
+### Immediate
+1. Verify frontend fix after CI/CD deploy — ti.intelwatch.in/feeds should show 10 real feeds
+2. Persist FeedQuotaStore to Postgres (plan assignments reset on container restart)
 
 ### Deferred
-- Wire billing-service Prisma in index.ts (persistence migration B2)
+- Wire billing UsageStore/InvoiceStore/CouponStore to Prisma
 - Persistence migration B2: alerting-service → Postgres
-- Fix registerMetrics TS errors (3 services — session 73 known issue)
-- Expand admin-service KNOWN_QUEUES to monitor all 15 active queues
-- Grafana pipeline-queues dashboard (needs BullMQ custom counters)
+- Fix VulnerabilityListPage TS errors
+- Grafana pipeline-queues dashboard
+- registerMetrics TS errors (3 services)
 
 ## 🔁 How to Resume
 ```
-Working on: VPS feed activation + pipeline health verification
-Module target: cross-service (verification only)
-Do not modify: any production source code
+Working on: Post-activation verification + persistence hardening
+Module target: frontend (verify), customization (persist FeedQuotaStore)
+Do not modify: ingestion, normalization, ai-enrichment, shared-* packages
 
 Steps:
-1. SSH to VPS via Cloudflare Tunnel
-2. Run: bash /opt/intelwatch/scripts/seed-feeds.sh
-3. Wait 30 min
-4. Run: npx tsx scripts/check-pipeline-health.ts
-5. Verify: GET /api/v1/search?q=cve returns real ES results
-6. Verify: GET /api/v1/graph/stats shows non-zero nodes
-7. Check frontend pages — demo banners should disappear as real data flows
+1. Check CI/CD deploy for commits b4d3832, 29a0ad1
+2. Hard refresh ti.intelwatch.in/feeds — verify 10 real feeds, Enterprise badge
+3. If still demo: check DevTools Network for /api/v1/feeds response
+4. Start FeedQuotaStore persistence (customization Prisma migration)
+5. Wire billing remaining stores
+
+Module → Skill Map:
+  frontend      → skills/20-UI-UX.md
+  customization → skills/17-CUSTOMIZATION.md
+  billing       → skills/19-FREE-TO-PAID.md
 ```
