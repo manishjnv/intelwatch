@@ -20,8 +20,23 @@ import { cn } from '@/lib/utils'
 import {
   FeedTypeIcon, StatusDot, ReliabilityBar,
   formatTime, getNextFireLabel, FeedFavicon, FeedCard,
+  computeFeedHealth, HealthDot, FailureSparkline,
 } from '@/components/feed/FeedCard'
 import { FeedScheduleTimeline } from '@/components/feed/FeedScheduleTimeline'
+
+/** Check if a feed fetch is overdue (last fetch > 2x schedule interval) */
+function isScheduleOverdue(lastFetchAt: string | null, schedule: string | null): boolean {
+  if (!lastFetchAt || !schedule) return false;
+  // Parse simple cron patterns: */N in minute field = every N minutes
+  const parts = schedule.trim().split(/\s+/);
+  if (parts.length < 5) return false;
+  const minField = parts[0] ?? '';
+  const everyN = minField.match(/^\*\/(\d+)$/);
+  if (!everyN) return false;
+  const intervalMs = parseInt(everyN[1]!, 10) * 60_000;
+  const elapsed = Date.now() - new Date(lastFetchAt).getTime();
+  return elapsed > intervalMs * 2;
+}
 
 const FEED_FILTERS: FilterOption[] = [
   { key: 'feedType', label: 'Type', options: [
@@ -103,6 +118,10 @@ export function FeedListPage() {
     if (filters.status)   result = result.filter(f => f.status   === filters.status)
 
     return [...result].sort((a, b) => {
+      if (sortBy === 'health') {
+        const ah = computeFeedHealth(a), bh = computeFeedHealth(b);
+        return sortOrder === 'asc' ? ah - bh : bh - ah;
+      }
       const av = a[sortBy as keyof FeedRecord] ?? ''
       const bv = b[sortBy as keyof FeedRecord] ?? ''
       const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
@@ -168,11 +187,19 @@ export function FeedListPage() {
       ),
     },
     {
-      key: 'status', label: 'Status', sortable: true, width: '10%',
+      key: 'status', label: 'Status', sortable: true, width: '8%',
       render: (row) => <StatusDot status={row.status} />,
     },
     {
-      key: 'feedReliability', label: 'Reliability', sortable: true, width: '12%',
+      key: 'health', label: 'Health', sortable: true, width: '7%',
+      render: (row) => (
+        <span className={isDimmed(row) ? 'opacity-50' : undefined}>
+          <HealthDot score={computeFeedHealth(row)} />
+        </span>
+      ),
+    },
+    {
+      key: 'feedReliability', label: 'Reliability', sortable: true, width: '10%',
       render: (row) => (
         <span className={isDimmed(row) ? 'opacity-50' : undefined}>
           <ReliabilityBar value={row.feedReliability} />
@@ -181,14 +208,25 @@ export function FeedListPage() {
     },
     {
       key: 'schedule', label: 'Next Fetch', width: '9%',
-      render: (row) => (
-        <span
-          className={cn('text-[10px] tabular-nums', isDimmed(row) ? 'text-text-muted opacity-40' : 'text-text-secondary')}
-          title={row.schedule ?? undefined}
-        >
-          {isDimmed(row) ? '—' : getNextFireLabel(row.schedule)}
-        </span>
-      ),
+      render: (row) => {
+        const label = isDimmed(row) ? '—' : getNextFireLabel(row.schedule);
+        // Overdue detection: if lastFetchAt is older than 2x the schedule interval
+        const isOverdue = !isDimmed(row) && row.lastFetchAt && row.schedule
+          && isScheduleOverdue(row.lastFetchAt, row.schedule);
+        return (
+          <span
+            className={cn(
+              'text-[10px] tabular-nums',
+              isDimmed(row) ? 'text-text-muted opacity-40'
+                : isOverdue ? 'text-sev-critical font-medium'
+                : 'text-text-secondary',
+            )}
+            title={isOverdue ? `Overdue — last fetch ${formatTime(row.lastFetchAt)}` : (row.schedule ?? undefined)}
+          >
+            {isOverdue ? 'Overdue' : label}
+          </span>
+        );
+      },
     },
     {
       key: 'totalItemsIngested', label: 'Ingested', sortable: true, width: '9%',
@@ -210,11 +248,11 @@ export function FeedListPage() {
       ),
     },
     {
-      key: 'consecutiveFailures', label: 'Errors', width: '7%',
-      render: (row) => row.consecutiveFailures > 0
-        ? (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="text-sev-critical font-medium tabular-nums">{row.consecutiveFailures}</span>
+      key: 'consecutiveFailures', label: 'Errors', width: '9%',
+      render: (row) => (
+        <span className="inline-flex items-center gap-1.5">
+          <FailureSparkline consecutiveFailures={row.consecutiveFailures} />
+          {row.consecutiveFailures > 0 && (
             <button
               className="text-text-muted hover:text-accent transition-colors"
               title="Retry feed fetch"
@@ -229,9 +267,9 @@ export function FeedListPage() {
             >
               <RefreshCw className={cn('w-3 h-3', retryFeed.isPending && 'animate-spin')} />
             </button>
-          </span>
-        )
-        : <span className="text-text-muted tabular-nums">0</span>,
+          )}
+        </span>
+      ),
     },
   ]
 

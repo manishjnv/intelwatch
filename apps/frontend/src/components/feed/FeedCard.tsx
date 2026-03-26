@@ -84,6 +84,85 @@ export function ReliabilityBar({ value }: { value: number }) {
   )
 }
 
+// ─── Health score (0-100) ─────────────────────────────────────
+// Weights: consecutiveFailures 40%, feedReliability 30%, time since last success 30%
+
+export function computeFeedHealth(feed: {
+  consecutiveFailures: number;
+  feedReliability: number;
+  lastFetchAt: string | null;
+  status: string;
+}): number {
+  // Failure score: 0 failures = 100, 1 = 80, 2 = 50, 3+ = 0
+  const failScore = feed.consecutiveFailures === 0 ? 100
+    : feed.consecutiveFailures === 1 ? 80
+    : feed.consecutiveFailures === 2 ? 50
+    : 0;
+
+  // Reliability score: already 0-100
+  const reliabilityScore = Math.max(0, Math.min(100, feed.feedReliability));
+
+  // Recency score: <1h = 100, 1-6h = 80, 6-24h = 50, >24h = 20, never = 0
+  let recencyScore = 0;
+  if (feed.lastFetchAt) {
+    const hoursAgo = (Date.now() - new Date(feed.lastFetchAt).getTime()) / 3_600_000;
+    recencyScore = hoursAgo < 1 ? 100 : hoursAgo < 6 ? 80 : hoursAgo < 24 ? 50 : 20;
+  }
+
+  return Math.round(failScore * 0.4 + reliabilityScore * 0.3 + recencyScore * 0.3);
+}
+
+export type HealthLevel = 'green' | 'amber' | 'red';
+
+export function healthLevel(score: number): HealthLevel {
+  if (score > 80) return 'green';
+  if (score >= 50) return 'amber';
+  return 'red';
+}
+
+const HEALTH_COLORS: Record<HealthLevel, { dot: string; text: string }> = {
+  green: { dot: 'bg-sev-low',      text: 'text-sev-low' },
+  amber: { dot: 'bg-sev-medium',   text: 'text-sev-medium' },
+  red:   { dot: 'bg-sev-critical', text: 'text-sev-critical' },
+};
+
+export function HealthDot({ score }: { score: number }) {
+  const level = healthLevel(score);
+  const c = HEALTH_COLORS[level];
+  return (
+    <span className="inline-flex items-center gap-1" title={`Health: ${score}/100`} data-testid="health-dot">
+      <span className={cn('inline-block w-2 h-2 rounded-full', c.dot)} />
+      <span className={cn('text-[10px] font-medium tabular-nums', c.text)}>{score}</span>
+    </span>
+  );
+}
+
+// ─── Failure sparkline (last 7 attempts) ─────────────────────
+// Infers recent history from consecutiveFailures + totalItemsIngested
+
+export function FailureSparkline({ consecutiveFailures }: { consecutiveFailures: number }) {
+  // Build a 7-bar pattern: most recent failures on the right
+  const bars: boolean[] = []; // true = success, false = failure
+  const failBars = Math.min(7, consecutiveFailures);
+  const successBars = 7 - failBars;
+  for (let i = 0; i < successBars; i++) bars.push(true);
+  for (let i = 0; i < failBars; i++) bars.push(false);
+
+  return (
+    <span className="inline-flex items-end gap-px" title={`${consecutiveFailures} consecutive failures`} data-testid="failure-sparkline">
+      {bars.map((ok, i) => (
+        <span
+          key={i}
+          className={cn(
+            'inline-block w-1 rounded-sm',
+            ok ? 'bg-sev-low h-3' : 'bg-sev-critical h-2',
+          )}
+        />
+      ))}
+    </span>
+  );
+}
+
 // ─── Time helper ──────────────────────────────────────────────
 
 export function formatTime(dateStr: string | null): string {
@@ -201,9 +280,12 @@ export function FeedCard({ feed }: FeedCardProps) {
         </div>
       </div>
 
-      {/* Status + reliability gauge */}
+      {/* Status + health + reliability gauge */}
       <div className="flex items-center justify-between mb-2">
-        <StatusDot status={feed.status} />
+        <div className="flex items-center gap-2">
+          <StatusDot status={feed.status} />
+          <HealthDot score={computeFeedHealth(feed)} />
+        </div>
         <ReliabilityBar value={feed.feedReliability} />
       </div>
 
