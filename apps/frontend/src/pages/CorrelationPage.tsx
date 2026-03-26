@@ -380,6 +380,8 @@ export function CorrelationPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState('confidence')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -471,8 +473,18 @@ export function CorrelationPage() {
     if (filters.type) items = items.filter(c => c.correlationType === filters.type)
     if (filters.severity) items = items.filter(c => c.severity === filters.severity)
     if (killChainFilter) items = items.filter(c => c.killChainPhase === killChainFilter)
-    return items
-  }, [corrData, isDemo, search, filters, killChainFilter])
+    return [...items].sort((a, b) => {
+      const av = (a as Record<string, unknown>)[sortBy] ?? ''
+      const bv = (b as Record<string, unknown>)[sortBy] ?? ''
+      const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
+      return sortOrder === 'asc' ? cmp : -cmp
+    })
+  }, [corrData, isDemo, search, filters, killChainFilter, sortBy, sortOrder])
+
+  const handleSort = useCallback((key: string) => {
+    if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(key); setSortOrder('desc') }
+  }, [sortBy])
 
   const selectedCorrelation = useMemo(
     () => correlations.find(c => c.id === selectedId) ?? null,
@@ -613,6 +625,9 @@ export function CorrelationPage() {
               columns={columns}
               data={correlations}
               loading={isLoading}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleSort}
               rowKey={(r) => r.id}
               density={density}
               severityField={(r) => r.severity}

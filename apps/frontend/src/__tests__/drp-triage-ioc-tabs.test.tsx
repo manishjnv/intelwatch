@@ -21,6 +21,13 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useAssignAlert: () => ({ mutate: mockAssignMutate, isPending: false }),
   useAlertFeedback: () => ({ mutate: mockFeedbackMutate, isPending: false, isSuccess: false }),
   useTriageAlert: () => ({ mutate: mockTriageMutate, isPending: false, isSuccess: false }),
+  useNodeNeighbors: () => ({ data: null, isLoading: false }),
+}))
+
+vi.mock('@/hooks/use-enrichment-data', () => ({
+  useIOCEnrichment: () => ({ data: null }),
+  useIOCCost: () => ({ data: null }),
+  useTriggerEnrichment: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@etip/shared-ui/components/SeverityBadge', () => ({

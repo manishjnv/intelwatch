@@ -77,6 +77,13 @@ export function UserManagementPage() {
   const [auditPage, setAuditPage] = useState(1)
   const [auditFilters, setAuditFilters] = useState<Record<string, string>>({})
   const [auditSearch, setAuditSearch] = useState('')
+  const [sortBy, setSortBy] = useState('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(key); setSortOrder('asc') }
+  }
 
   const { data: stats, isDemo } = useUserManagementStats()
   const { data: userData } = useUsers()
@@ -245,14 +252,17 @@ export function UserManagementPage() {
         {/* Data Tables */}
         {activeTab === 'users' && (
           <DataTable columns={userColumns} data={userData?.data ?? []} loading={false} rowKey={(r) => r.id}
+            sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
             density="compact" onRowClick={(r) => setSelectedUser(r)} emptyMessage="No users found." />
         )}
         {activeTab === 'teams' && (
           <DataTable columns={teamColumns} data={teamData?.data ?? []} loading={false} rowKey={(r) => r.id}
+            sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
             density="compact" emptyMessage="No teams created yet." />
         )}
         {activeTab === 'roles' && (
           <DataTable columns={roleColumns} data={roleData?.data ?? []} loading={false} rowKey={(r) => r.id}
+            sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
             density="compact" emptyMessage="No roles configured." />
         )}
         {activeTab === 'sessions' && (

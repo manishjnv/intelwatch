@@ -73,6 +73,13 @@ export function IntegrationPage() {
   const [activeTab, setActiveTab] = useState<IntegrationTab>('siem')
   const [showModal, setShowModal] = useState<IntegrationTab | null>(null)
   const [selectedItem, setSelectedItem] = useState<{ tab: IntegrationTab; item: any } | null>(null)
+  const [sortBy, setSortBy] = useState('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(key); setSortOrder('asc') }
+  }
 
   const { data: stats, isDemo } = useIntegrationStats()
   const { data: siemData } = useSIEMIntegrations()
@@ -171,6 +178,16 @@ export function IntegrationPage() {
 
   const current = tabContent[activeTab]
 
+  const sortedData = useMemo(() => {
+    const items = [...current.data] as Record<string, unknown>[]
+    return items.sort((a, b) => {
+      const av = a[sortBy] ?? ''
+      const bv = b[sortBy] ?? ''
+      const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
+      return sortOrder === 'asc' ? cmp : -cmp
+    })
+  }, [current.data, sortBy, sortOrder])
+
   return (
     <div className="flex flex-col h-full">
       {isDemo && (
@@ -228,8 +245,11 @@ export function IntegrationPage() {
         {/* Data Table */}
         <DataTable
           columns={current.columns as any}
-          data={current.data}
+          data={sortedData}
           loading={false}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
           rowKey={current.rowKey as any}
           density="compact"
           onRowClick={(r: any) => setSelectedItem({ tab: activeTab, item: r })}

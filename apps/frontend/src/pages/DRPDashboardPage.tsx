@@ -70,6 +70,8 @@ const ASSET_TYPE_ICONS: Record<string, React.FC<{ className?: string }>> = {
 export function DRPDashboardPage() {
   const [alertPage, setAlertPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState('riskScore')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<'alerts' | 'assets'>('alerts')
@@ -107,8 +109,18 @@ export function DRPDashboardPage() {
     if (filters.type) items = items.filter(a => a.type === filters.type)
     if (filters.severity) items = items.filter(a => a.severity === filters.severity)
     if (filters.status) items = items.filter(a => a.status === filters.status)
-    return items
-  }, [alertData, isDemo, search, filters])
+    return [...items].sort((a, b) => {
+      const av = (a as Record<string, unknown>)[sortBy] ?? ''
+      const bv = (b as Record<string, unknown>)[sortBy] ?? ''
+      const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
+      return sortOrder === 'asc' ? cmp : -cmp
+    })
+  }, [alertData, isDemo, search, filters, sortBy, sortOrder])
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(key); setSortOrder('desc') }
+  }
 
   const selectedAlert = useMemo(
     () => alerts.find(a => a.id === selectedAlertId) ?? null,
@@ -312,6 +324,7 @@ export function DRPDashboardPage() {
               searchPlaceholder="Search alerts by title, detected value…" filters={ALERT_FILTERS}
               filterValues={filters} onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setAlertPage(1) }} />
             <DataTable columns={alertColumns} data={alerts} loading={alertsLoading} rowKey={(r) => r.id}
+              sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
               density={density} severityField={(r) => r.severity} selectedId={selectedAlertId}
               onRowClick={(r) => setSelectedAlertId(r.id === selectedAlertId ? null : r.id)}
               emptyMessage="No DRP alerts. Your digital perimeter is clear." />

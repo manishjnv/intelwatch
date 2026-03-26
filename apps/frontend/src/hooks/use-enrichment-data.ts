@@ -240,6 +240,16 @@ export function useBatchStatus(batchId: string | null) {
   })
 }
 
+/** Fetch enrichment result for a single IOC by ID */
+export function useIOCEnrichment(iocId: string | null) {
+  return useQuery({
+    queryKey: ['enrichment-ioc', iocId],
+    queryFn: () => api<EnrichmentResult>(`/enrichment/ioc/${iocId}`).catch(() => null),
+    enabled: !!iocId,
+    staleTime: 60_000,
+  })
+}
+
 /** Aggregate cost stats */
 export function useCostStats() {
   const result = useQuery({

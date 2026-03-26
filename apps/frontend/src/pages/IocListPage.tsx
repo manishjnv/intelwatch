@@ -6,6 +6,7 @@
  */
 import { useState, useMemo, lazy, Suspense } from 'react'
 import { useIOCs, useIOCStats, useIOCPivot, useIOCTimeline, useUpdateIOCLifecycle, type IOCRecord, type IOCPivotResult, type IOCTimelineEvent } from '@/hooks/use-intel-data'
+import { useNodeNeighbors } from '@/hooks/use-phase4-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
@@ -46,6 +47,7 @@ function generateStubRelations(record: { id: string; normalizedValue: string; io
   })
   return { nodes, edges }
 }
+import { useIOCEnrichment } from '@/hooks/use-enrichment-data'
 import { EnrichmentDetailPanel } from '@/components/viz/EnrichmentDetailPanel'
 import { ConfidenceBreakdown } from '@/components/viz/ConfidenceBreakdown'
 
@@ -145,6 +147,8 @@ export function IocListPage() {
   const { data: stats } = useIOCStats()
   const { data: pivotData, isLoading: pivotLoading } = useIOCPivot(selectedId)
   const { data: timelineData, isLoading: timelineLoading } = useIOCTimeline(selectedId)
+  const { data: enrichmentData } = useIOCEnrichment(selectedId)
+  const { data: graphData, isLoading: graphLoading } = useNodeNeighbors(selectedId)
   const updateLifecycleMutation = useUpdateIOCLifecycle()
 
   // Client-side filter + sort for demo data (API doesn't apply to static fallback)
@@ -170,7 +174,30 @@ export function IocListPage() {
   }, [data, isDemo, sortBy, sortOrder, search, filters])
 
   const selectedRecord = useMemo(() => rows.find(r => r.id === selectedId) ?? null, [rows, selectedId])
-  const stubRelations = useMemo(() => selectedRecord ? generateStubRelations(selectedRecord) : null, [selectedRecord])
+
+  /** Transform graph-service data → RelationshipGraph props, fall back to stub if empty */
+  const relationData = useMemo(() => {
+    if (!selectedRecord) return null
+    const gNodes = graphData?.nodes ?? []
+    const gEdges = graphData?.edges ?? []
+    if (gNodes.length > 0) {
+      return {
+        nodes: gNodes.map(n => ({
+          id: n.id,
+          type: (n as Record<string, unknown>).entityType as string ?? n.type ?? 'unknown',
+          label: n.label,
+          primary: n.id === selectedRecord.id,
+        })),
+        edges: gEdges.map(e => ({
+          source: (e as Record<string, unknown>).sourceId as string ?? e.source,
+          target: (e as Record<string, unknown>).targetId as string ?? e.target,
+          label: (e as Record<string, unknown>).relationshipType as string ?? e.label,
+        })),
+      }
+    }
+    // Fall back to stub data when graph service has no data for this IOC
+    return isDemo ? generateStubRelations(selectedRecord) : null
+  }, [selectedRecord, graphData, isDemo])
 
   const handleSort = (key: string) => {
     if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
@@ -376,7 +403,7 @@ export function IocListPage() {
                 <EnrichmentDetailPanel
                   iocId={selectedRecord.id}
                   iocType={selectedRecord.iocType}
-                  enrichment={null}
+                  enrichment={enrichmentData ?? null}
                   className="p-3"
                 />
               )}
@@ -386,14 +413,26 @@ export function IocListPage() {
                   onFlipBack={() => setDetailTab('enrichment')}
                 />
               )}
-              {detailTab === 'relations' && stubRelations && (
+              {detailTab === 'relations' && (
                 <div className="p-2">
-                  <Suspense fallback={<div className="rounded-lg border border-border bg-bg-secondary/30" style={{ width: 280, height: 200 }} />}>
-                    <LazyRelationshipGraph
-                      nodes={stubRelations.nodes}
-                      edges={stubRelations.edges}
-                    />
-                  </Suspense>
+                  {graphLoading && (
+                    <div className="rounded-lg border border-border bg-bg-secondary/30 animate-pulse" style={{ width: 280, height: 200 }} />
+                  )}
+                  {!graphLoading && relationData && relationData.nodes.length > 0 && (
+                    <Suspense fallback={<div className="rounded-lg border border-border bg-bg-secondary/30" style={{ width: 280, height: 200 }} />}>
+                      <LazyRelationshipGraph
+                        nodes={relationData.nodes}
+                        edges={relationData.edges}
+                      />
+                    </Suspense>
+                  )}
+                  {!graphLoading && (!relationData || relationData.nodes.length === 0) && (
+                    <div className="text-center py-6 text-text-muted" data-testid="relations-empty">
+                      <GitBranch className="w-6 h-6 mx-auto mb-1.5 opacity-40" />
+                      <p className="text-xs">No relationships discovered yet</p>
+                      <p className="text-[10px] mt-0.5">Relationships appear as this IOC is correlated and graphed</p>
+                    </div>
+                  )}
                 </div>
               )}
 

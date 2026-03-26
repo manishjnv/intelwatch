@@ -5,12 +5,13 @@
  * Demo fallback: 5 hardcoded results when API unavailable or query < 2 chars.
  */
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useIOCSearch, type SearchResult, type SearchFilters } from '@/hooks/use-search-data'
 import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { cn } from '@/lib/utils'
-import { Search, X, Clock, Shield, Zap } from 'lucide-react'
+import { Search, X, Clock, Shield, Zap, ArrowRight } from 'lucide-react'
 
 // ─── Constants ───────────────────────────────────────────────────
 
@@ -69,14 +70,20 @@ function FilterSelect({
 
 // ─── Result row ───────────────────────────────────────────────────
 
-function ResultRow({ result }: { result: SearchResult }) {
+function ResultRow({ result, onClick }: { result: SearchResult; onClick: () => void }) {
   const borderColor = SEVERITY_COLORS[result.severity] ?? 'border-l-border-strong'
 
   return (
-    <div className={cn(
-      'bg-bg-elevated border border-border-subtle rounded-lg p-3 border-l-[3px] transition-all hover:border-border-strong',
-      borderColor,
-    )}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full text-left bg-bg-elevated border border-border-subtle rounded-lg p-3 border-l-[3px] transition-all',
+        'hover:border-accent/50 hover:bg-bg-hover cursor-pointer group',
+        borderColor,
+      )}
+      data-testid="search-result-row"
+    >
       <div className="flex items-start gap-3 flex-wrap sm:flex-nowrap">
         {/* Entity chip + value */}
         <div className="flex-1 min-w-0">
@@ -102,7 +109,7 @@ function ResultRow({ result }: { result: SearchResult }) {
           </div>
         </div>
 
-        {/* Meta: confidence + dates */}
+        {/* Meta: confidence + dates + drill-down arrow */}
         <div className="flex items-center gap-4 text-[11px] text-text-muted shrink-0 ml-auto">
           {result.score !== undefined && (
             <span className="flex items-center gap-1" title="Elasticsearch relevance score">
@@ -125,9 +132,10 @@ function ResultRow({ result }: { result: SearchResult }) {
             <Clock className="w-3 h-3" />
             {new Date(result.firstSeen).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
           </span>
+          <ArrowRight className="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -167,7 +175,14 @@ function EmptyState({ query }: { query: string }) {
 
 // ─── Main component ───────────────────────────────────────────────
 
+/** Map IOC type to the target navigation route */
+function entityRoute(result: SearchResult): string {
+  if (result.iocType === 'cve') return '/vulnerabilities'
+  return '/iocs'
+}
+
 export function SearchPage() {
+  const navigate = useNavigate()
   const [query, setQuery]       = useState('')
   const [filters, setFilters]   = useState<SearchFilters>({})
 
@@ -276,7 +291,7 @@ export function SearchPage() {
               </p>
             )}
             {results.map(r => (
-              <ResultRow key={r.id} result={r} />
+              <ResultRow key={r.id} result={r} onClick={() => navigate(entityRoute(r))} />
             ))}
           </div>
         ) : (
