@@ -79,9 +79,9 @@ jobs:
       - name: Docker build validation (Frontend)
         run: docker build -f Dockerfile.frontend -t etip-frontend-ci:test .
 
-  # ─── Deploy (on master push or workflow_dispatch) ──────────
-  deploy:
-    name: Deploy to VPS
+  # ─── Build Docker images in CI (not on VPS) ────────────────
+  build-images:
+    name: Build & Push Docker Images
     needs: [test]
     runs-on: ubuntu-latest
     if: |
@@ -89,6 +89,39 @@ jobs:
       (needs.test.result == 'success' || needs.test.result == 'skipped') &&
       ((github.event_name == 'push' && github.ref == 'refs/heads/master') ||
        github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ghcr.io/${{ github.repository_owner }}/etip-backend:latest -f Dockerfile .
+          docker push ghcr.io/${{ github.repository_owner }}/etip-backend:latest
+
+      - name: Build and push frontend image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ghcr.io/${{ github.repository_owner }}/etip-frontend:latest -f Dockerfile.frontend .
+          docker push ghcr.io/${{ github.repository_owner }}/etip-frontend:latest
+
+  # ─── Deploy (VPS pulls pre-built images — no build on VPS) ──
+  deploy:
+    name: Deploy to VPS
+    needs: [build-images]
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      needs.build-images.result == 'success'
     steps:
       - name: Install cloudflared
         run: |
@@ -110,7 +143,7 @@ jobs:
           EOF
 
       - name: Deploy via SSH
-        timeout-minutes: 25
+        timeout-minutes: 10
         run: |
           ssh vps << 'DEPLOY_SCRIPT'
             set -e
@@ -135,14 +168,15 @@ jobs:
               sed -i 's|^TI_AI_ENABLED=.*|TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}|' .env || \
               echo 'TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}' >> .env
 
-            # ── Build images (2 builds instead of 20) ──────────────────
-            # All 20 backend services share the same Dockerfile → build once, reuse via image: tag.
-            # docker-compose.etip.yml has `image: etip-backend:latest` on all backend services.
-            echo "Building backend image (shared by all 20 services)..."
-            DOCKER_BUILDKIT=1 docker build -t etip-backend:latest -f Dockerfile .
+            # ── Pull pre-built images from GHCR (built in CI, not on VPS) ──
+            echo "Pulling pre-built images from GHCR..."
+            echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            docker pull ghcr.io/${{ github.repository_owner }}/etip-backend:latest
+            docker pull ghcr.io/${{ github.repository_owner }}/etip-frontend:latest
 
-            echo "Building frontend image..."
-            DOCKER_BUILDKIT=1 docker build -t etip-frontend:latest -f Dockerfile.frontend .
+            # Tag as local names for docker-compose compatibility
+            docker tag ghcr.io/${{ github.repository_owner }}/etip-backend:latest etip-backend:latest
+            docker tag ghcr.io/${{ github.repository_owner }}/etip-frontend:latest etip-frontend:latest
 
             # ── Pre-cleanup: remove ALL orphaned/hash-prefixed containers (RCA #41) ──
             # Must run BEFORE compose up — otherwise compose creates hash-prefixed
