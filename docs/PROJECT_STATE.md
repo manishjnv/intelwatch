@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 81 — VPS feed activation, x-tenant-id header fix, billing plan rename pro→teams
+**Session counter:** 82 — Frontend UX: error toasts, search debounce, loading skeletons
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.10.0 | 2026-03-26 | Dashboard + 20 data pages. **Session 78:** useFeedQuota hook, FeedListPage quota bar ("Feeds: 3/3 (Free)" with color), BillingPage Max Feeds/Fetch Interval/Retention rows, AdminOpsPage Feeds column + Teams plan. 755 tests (757 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.11.0 | 2026-03-27 | Dashboard + 20 data pages. **Session 82:** Error toast on API failures, search debounce (300ms), loading skeletons on 3 pages. 770 tests (772 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 755 tests (757 total, 2 skipped). **Session 81:** api.ts injects x-tenant-id/x-user-id/x-user-role headers on every auth request (fixes MISSING_TENANT 400). BillingPage PlanBadge: Pro→Teams. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 770 tests (772 total, 2 skipped). **Session 82:** useApiError (toast on API failure), useDebouncedValue (300ms search debounce), TableSkeleton (loading states). Wired into SearchPage, FeedListPage, IocListPage, ThreatActorListPage. 15 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-26 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 78:** Feed quota enforcement (createFeed maxFeeds check, schedule frequency validation, scheduler clamping). 497 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,891+ tests.
-- **Last session outcome:** Session 81 (2026-03-27). **VPS feed activation + 2 bug fixes.** (1) Verified pipeline live: 20 feeds (2 tenants), 17,280 articles, 1,587 IOCs, 22/23 services healthy. (2) Assigned Enterprise plan to both tenants. (3) Fixed MISSING_TENANT 400 — frontend api.ts now injects x-tenant-id/x-user-id/x-user-role headers from auth store. (4) Renamed billing plan 'pro'→'teams' with DECISION-024 prices (Starter ₹9,999, Teams ₹18,999, Enterprise ₹49,999). 174 billing tests pass. Commits: b4d3832, 29a0ad1.
-- **Known issues:** Customization FeedQuotaStore is in-memory — Enterprise plan assignment lost on container restart. Cache-invalidate queue had 18,922 backlog (caching service auto-restarted, draining). CISA KEV feed has intermittent 30s timeouts. Docker service ports not published to host (only reachable via nginx/Docker network). Billing UsageStore/InvoiceStore/CouponStore still in-memory. Pre-existing TS errors in VulnerabilityListPage.
-- **Next tasks:** (1) Verify frontend shows real feeds after CI/CD deploy (x-tenant-id fix). (2) Persist FeedQuotaStore to Postgres (prevents plan reset on restart). (3) Wire remaining billing stores to Prisma. (4) Persistence migration B2: alerting-service → Postgres. (5) Fix VulnerabilityListPage TS errors.
+- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,906+ tests.
+- **Last session outcome:** Session 82 (2026-03-27). **Frontend UX: error visibility + search debounce + loading skeletons.** Created 3 reusable hooks/components: (1) `useApiError` — notifyApiError() shows toast on API failure, classifies 401/500/network, 10s debounce. (2) `useDebouncedValue` — generic 300ms setTimeout+cleanup. (3) `TableSkeleton` — animate-pulse rows matching DataTable. Wired error toast into useIOCs, useFeeds, useDRPAlerts, useCorrelations. Debounce into SearchPage, FeedListPage, IocListPage. Skeleton into IocListPage, FeedListPage, ThreatActorListPage. 15 new tests, 770 frontend total. Commits: 68a6adb, 6fcdc85.
+- **Known issues:** Customization FeedQuotaStore is in-memory — plan assignment lost on restart. Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Billing UsageStore/InvoiceStore/CouponStore still in-memory. Pre-existing TS errors in VulnerabilityListPage, phase5-pages, reporting-page test files.
+- **Next tasks:** (1) Verify frontend shows real feeds after CI/CD deploy (x-tenant-id fix from S81). (2) Wire notifyApiError into remaining 48 hooks (currently 4 wired as proof-of-concept). (3) Persist FeedQuotaStore to Postgres. (4) Wire remaining billing stores to Prisma. (5) Persistence migration B2: alerting-service → Postgres.
 
 ## Deployment Log
 
@@ -220,6 +220,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 77 | 2026-03-26 | All 33 containers redeployed (backend image rebuild) | ✅ All 33 healthy | 75c733b→cd194ad (5 commits) | Live feed activation: DemoSeeder 3-bug fix (type/feedType/parseConfig), 10 OSINT feeds, seed-feeds.sh script, billing unused import fix, deploy timeout 25m. 12 new tests. Neo4j transient health delay (recovered). Seed script blocked by SSH timeout. |
 | 78 | 2026-03-26 | etip_api, etip_alerting, etip_correlation rebuilt | ✅ 31 healthy | 2425673 | INTEGRATION_PUSH payload shape fix (alerting+correlation→integration). Pipeline health check script. 19 wiring tests. Deploy via nohup (CI SSH broken pipe). Caddy restarted. |
 | 81 | 2026-03-27 | etip_frontend + etip_billing rebuilt | ✅ CI triggered | b4d3832, 29a0ad1 | VPS feed activation: 20 feeds live (2 tenants), 17K+ articles, 1.5K+ IOCs. Enterprise plan assigned. Fix: api.ts x-tenant-id header injection (MISSING_TENANT 400). Billing: pro→teams rename + DECISION-024 price alignment. |
+| 82 | 2026-03-27 | etip_frontend updated | ✅ CI triggered | 68a6adb, 6fcdc85 | Frontend UX: error toasts (useApiError), search debounce (useDebouncedValue 300ms), loading skeletons (TableSkeleton on 3 pages). 15 new tests, 770 frontend total. |
 
 ## E2E Verification Results (Session 13)
 

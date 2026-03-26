@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 81 &middot; 2026-03-27 &middot; VPS feeds live (20 feeds, 17K articles, 1.5K IOCs). x-tenant-id fix. Billing pro→teams. 33 containers, ~5,891+ tests</span>
+  <span class="version">Session 82 &middot; 2026-03-27 &middot; Frontend UX: error toasts, search debounce, loading skeletons. 33 containers, ~5,906+ tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~5,891+</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~5,906+</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~580</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">81</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">82</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">20</div><div class="stat-label">Frontend Pages</div></div>
@@ -144,7 +144,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy</td><td>45</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth</td><td>21</td></tr>
-      <tr><td>frontend</td><td>80</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (20 pages) + feed quota UI</td><td>755</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (20 pages) + error toasts + debounce + skeletons</td><td>770</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + AC-2 + 5 Connectors + Feed Quota Enforcement</td><td>497</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline</td><td>154</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
@@ -511,22 +511,23 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 80 COMPLETE ✅</span> 10 bug fixes, TS cleanup, Prisma wiring, IocListPage split</div>
+    <div class="card-title"><span class="badge badge-green">Session 82 COMPLETE ✅</span> Frontend UX: error toasts, search debounce, loading skeletons</div>
     <div class="card-body">
-      <strong>Session 80:</strong> Cleanup &amp; stabilization. Fixed 10 known issues across 22 files:<br>
-      &bull; <strong>useFeeds() bug fix</strong> — was using raw fetch() causing feeds to always show demo data; now uses api() like all other hooks<br>
-      &bull; <strong>Admin KNOWN_QUEUES 5→18</strong> — full pipeline queue visibility via ALL_QUEUE_NAMES<br>
-      &bull; <strong>Billing PlanStore → Prisma</strong> — SubscriptionRepo wired with graceful fallback (try/catch on all 5 Prisma calls)<br>
-      &bull; <strong>IocListPage split</strong> — 569→271+298 lines (IocDetailPanel extracted)<br>
-      &bull; <strong>shared-ui PageStatsBar</strong> — added icon/highlight/title/isDemo props used by 7+ pages<br>
-      &bull; <strong>Frontend TS errors 60→14</strong> — VulnerabilityListPage, Record casts, phase6 Teams type, nullability fixes<br><br>
+      <strong>Session 82:</strong> Frontend error visibility + search performance + loading UX:<br>
+      &bull; <strong>useApiError</strong> — notifyApiError() shows toast on API failure (401/500/network classified, 10s debounce)<br>
+      &bull; <strong>useDebouncedValue</strong> — generic 300ms debounce hook (setTimeout + cleanup, no new deps)<br>
+      &bull; <strong>TableSkeleton</strong> — animate-pulse rows matching DataTable layout for loading states<br>
+      &bull; <strong>Error toast wired</strong> — useIOCs, useFeeds, useDRPAlerts, useCorrelations (proof-of-concept, 4 of ~50 hooks)<br>
+      &bull; <strong>Debounce wired</strong> — SearchPage, FeedListPage, IocListPage (3 pages)<br>
+      &bull; <strong>Skeleton wired</strong> — IocListPage, FeedListPage, ThreatActorListPage (3 pages)<br>
+      &bull; <strong>15 new tests</strong> — 770 frontend total (772 with 2 skipped)<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Activate real feeds on VPS</strong> — run seed-feeds.sh to configure 10 OSINT feeds<br>
-      2. <strong>Verify pipeline health</strong> — run check-pipeline-health.ts after feeds activate<br>
-      3. <strong>Wire remaining billing stores</strong> — UsageStore/InvoiceStore/CouponStore dual-mode (prisma generate first)<br>
-      4. <strong>Persistence migration B2</strong> — alerting-service → Postgres<br>
-      5. <strong>Production hardening</strong> — Rate limiting, error alerting, log aggregation<br><br>
-      <strong>Resolved this session:</strong> registerMetrics (confirmed all 23 services OK), api() unwrap (useFeeds fixed), admin KNOWN_QUEUES (5→18), billing Prisma (PlanStore wired), IocListPage split (under 400 lines), VulnerabilityListPage TS errors (all fixed).<br>
+      1. <strong>Wire notifyApiError into remaining ~48 hooks</strong> — extend proof-of-concept to full coverage<br>
+      2. <strong>Verify CI/CD deploy</strong> — check S81+S82 commits deployed to VPS<br>
+      3. <strong>Persist FeedQuotaStore to Postgres</strong> — plan assignments lost on restart<br>
+      4. <strong>Wire remaining billing stores</strong> — UsageStore/InvoiceStore/CouponStore to Prisma<br>
+      5. <strong>Persistence migration B2</strong> — alerting-service → Postgres<br><br>
+      <strong>Resolved this session:</strong> Silent API errors (now toast + console.warn), search API spam (debounced), blank loading states (skeleton UI).<br>
       <strong>Remaining known issues:</strong> Deploy timeout 25min, Grafana dashboard empty, 3 billing stores still in-memory, 1 D3 lib TS error, 13 test-file TS errors, FeedSource corrupted rows, VPS seed script pending.
     </div>
   </div>
