@@ -12,6 +12,7 @@ import { healthRoutes } from './routes/health.js';
 import { dashboardRoutes, type DashboardRouteDeps } from './routes/dashboard.js';
 import { trendRoutes, type TrendRouteDeps } from './routes/trends.js';
 import { executiveRoutes, type ExecutiveRouteDeps } from './routes/executive.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { AnalyticsConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -52,6 +53,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'analytics-service');
   await app.register(errorHandlerPlugin);
 
   // Request lifecycle hooks

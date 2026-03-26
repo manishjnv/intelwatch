@@ -12,6 +12,7 @@ import { dashboardRoutes, type DashboardRouteDeps } from './routes/dashboard.js'
 import { notificationRoutes, type NotificationRouteDeps } from './routes/notifications.js';
 import { configRoutes, type ConfigRouteDeps } from './routes/config.js';
 import { apiKeyRoutes, type ApiKeyRouteDeps } from './routes/api-keys.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { CustomizationConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -55,6 +56,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'customization-service');
   await app.register(errorHandlerPlugin);
 
   // ─── Request logging ──────────────────────────────────────

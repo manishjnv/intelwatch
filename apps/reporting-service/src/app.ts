@@ -9,6 +9,7 @@ import { reportRoutes, type ReportRouteDeps } from './routes/reports.js';
 import { scheduleRoutes, type ScheduleRouteDeps } from './routes/schedules.js';
 import { templateRoutes, type TemplateRouteDeps } from './routes/templates.js';
 import { statsRoutes, type StatsRouteDeps } from './routes/stats.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { ReportingConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -49,6 +50,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'reporting-service');
   await app.register(errorHandlerPlugin);
 
   // Request lifecycle hooks

@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
+import { registerMetrics } from '@etip/shared-utils';
 import type { AppConfig } from './config.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
@@ -49,6 +50,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
 
   await app.register(sensible);
+  await registerMetrics(app, 'correlation-engine');
   registerErrorHandler(app);
 
   app.addHook('onRequest', async (req) => {

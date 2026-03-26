@@ -10,6 +10,7 @@ import { alertRoutes, type AlertRouteDeps } from './routes/alerts.js';
 import { detectionRoutes, type DetectionRouteDeps } from './routes/detection.js';
 import { p1Routes, type P1RouteDeps } from './routes/p1.js';
 import { p2Routes, type P2RouteDeps } from './routes/p2.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { DRPConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -54,6 +55,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'drp-service');
   await app.register(errorHandlerPlugin);
 
   app.addHook('onRequest', async (req) => {

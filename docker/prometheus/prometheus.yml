@@ -7,8 +7,33 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Uncomment when api-gateway is deployed
-  # - job_name: 'etip-api-gateway'
-  #   static_configs:
-  #     - targets: ['etip_api_gateway:3001']
-  #   metrics_path: /metrics
+  - job_name: 'etip-services'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'etip_api:3001'
+          - 'etip_ingestion:3004'
+          - 'etip_normalization:3005'
+          - 'etip_enrichment:3006'
+          - 'etip_ioc_intelligence:3007'
+          - 'etip_threat_actor_intel:3008'
+          - 'etip_malware_intel:3009'
+          - 'etip_vulnerability_intel:3010'
+          - 'etip_drp:3011'
+          - 'etip_threat_graph:3012'
+          - 'etip_correlation:3013'
+          - 'etip_hunting:3014'
+          - 'etip_integration:3015'
+          - 'etip_user_management:3016'
+          - 'etip_customization:3017'
+          - 'etip_onboarding:3018'
+          - 'etip_billing:3019'
+          - 'etip_es_indexing:3020'
+          - 'etip_reporting:3021'
+          - 'etip_admin:3022'
+          - 'etip_alerting:3023'
+          - 'etip_analytics:3024'
+          - 'etip_caching:3025'
+        labels:
+          env: 'production'

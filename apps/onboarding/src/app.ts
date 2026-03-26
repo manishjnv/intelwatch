@@ -10,6 +10,7 @@ import { connectorRoutes, type ConnectorRouteDeps } from './routes/connectors.js
 import { pipelineRoutes, type PipelineRouteDeps } from './routes/pipeline.js';
 import { moduleRoutes, type ModuleRouteDeps } from './routes/modules.js';
 import { welcomeRoutes, type WelcomeRouteDeps } from './routes/welcome.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { OnboardingConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -51,6 +52,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'onboarding-service');
   await app.register(errorHandlerPlugin);
 
   // ─── Request logging ──────────────────────────────────────

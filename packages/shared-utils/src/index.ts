@@ -45,3 +45,6 @@ export { generateStixId, isValidStixId, extractStixType } from './stix-id.js';
 
 // ── Async utilities ────────────────────────────────────────────────
 export { sleep, retryWithBackoff } from './sleep.js';
+
+// ── Prometheus metrics ────────────────────────────────────────────
+export { registerMetrics, type MetricsCompatibleApp } from './metrics.js';

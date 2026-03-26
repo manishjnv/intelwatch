@@ -11,6 +11,7 @@ import { errorHandlerPlugin } from './plugins/error-handler.js';
 import { healthRoutes, type HealthRouteDeps } from './routes/health.js';
 import { cacheRoutes, type CacheRouteDeps } from './routes/cache.js';
 import { archiveRoutes, type ArchiveRouteDeps } from './routes/archive.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { CachingConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -51,6 +52,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'caching-service');
   await app.register(errorHandlerPlugin);
 
   // Request lifecycle hooks

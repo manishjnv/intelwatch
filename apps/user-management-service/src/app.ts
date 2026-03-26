@@ -11,6 +11,7 @@ import { ssoRoutes, type SsoRouteDeps } from './routes/sso.js';
 import { mfaRoutes, type MfaRouteDeps } from './routes/mfa.js';
 import { breakGlassRoutes, type BreakGlassRouteDeps } from './routes/break-glass.js';
 import { sessionRoutes, type SessionRouteDeps } from './routes/sessions.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { UserManagementConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -54,6 +55,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'user-management-service');
   await app.register(errorHandlerPlugin);
 
   // ─── Request logging ──────────────────────────────────────

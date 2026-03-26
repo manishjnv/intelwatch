@@ -8,6 +8,7 @@ import { healthRoutes } from './routes/health.js';
 import { huntRoutes, type HuntRouteDeps } from './routes/hunts.js';
 import { advancedRoutes, type AdvancedRouteDeps } from './routes/advanced.js';
 import { p2Routes, type P2RouteDeps } from './routes/p2.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { HuntingConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -48,6 +49,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'hunting-service');
   await app.register(errorHandlerPlugin);
 
   // ─── Request logging ──────────────────────────────────────

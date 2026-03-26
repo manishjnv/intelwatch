@@ -13,6 +13,7 @@ import { auditRoutes, type AuditRouteDeps } from './routes/audit.js';
 import { p0Routes, type P0RouteDeps } from './routes/p0-features.js';
 import { queueMonitorRoutes, type QueueMonitorDeps } from './routes/queue-monitor.js';
 import { dlqProcessorRoutes, type DlqProcessorDeps } from './routes/dlq-processor.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { AdminConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -58,6 +59,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'admin-service');
   await app.register(errorHandlerPlugin);
 
   // ─── Request lifecycle hooks ───────────────────────────────────

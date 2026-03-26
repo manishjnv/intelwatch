@@ -13,6 +13,7 @@ import { statsRoutes, type StatsRouteDeps } from './routes/stats.js';
 import { templateRoutes, type TemplateRouteDeps } from './routes/templates.js';
 import { groupRoutes, type GroupRouteDeps } from './routes/groups.js';
 import { maintenanceRoutes, type MaintenanceRouteDeps } from './routes/maintenance.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { AlertingConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -57,6 +58,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'alerting-service');
   await app.register(errorHandlerPlugin);
 
   // Request lifecycle hooks

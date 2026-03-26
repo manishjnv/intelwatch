@@ -13,6 +13,7 @@ import { upgradeRoutes, type UpgradeRouteDeps } from './routes/upgrade.js';
 import { p0Routes, type P0RouteDeps } from './routes/p0-features.js';
 import { webhookRoutes, type WebhookRouteDeps } from './routes/webhooks.js';
 import { adminRoutes, type AdminRouteDeps } from './routes/admin.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { BillingConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -58,6 +59,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'billing-service');
   await app.register(errorHandlerPlugin);
 
   // ─── Request lifecycle hooks ───────────────────────────────────

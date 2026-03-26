@@ -5,6 +5,7 @@ import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
 import { type AppConfig } from './config.js';
 import { createLogger } from './logger.js';
+import { registerMetrics } from '@etip/shared-utils';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { feedRoutes } from './routes/feeds.js';
@@ -57,6 +58,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
 
   await app.register(sensible);
+  await registerMetrics(app, 'ingestion-service');
   registerErrorHandler(app);
 
   app.addHook('onRequest', async (req) => { (req as unknown as Record<string, unknown>)._startTime = Date.now(); });

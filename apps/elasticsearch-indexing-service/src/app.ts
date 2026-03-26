@@ -11,6 +11,7 @@ import { EsIndexClient } from './es-client.js';
 import { IocIndexer } from './ioc-indexer.js';
 import { IocSearchService } from './search-service.js';
 import { IocIndexWorker } from './worker.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { EsIndexingConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -63,6 +64,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     timeWindow: config.TI_RATE_LIMIT_WINDOW_MS,
   });
   await app.register(sensible);
+  await registerMetrics(app, 'es-indexing-service');
   await app.register(errorHandlerPlugin);
 
   // ── Request lifecycle hooks ──────────────────────────────────────────────────

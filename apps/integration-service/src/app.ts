@@ -10,6 +10,7 @@ import { webhookRoutes, type WebhookRouteDeps } from './routes/webhooks.js';
 import { exportRoutes, type ExportRouteDeps } from './routes/export.js';
 import { advancedRoutes, type AdvancedRouteDeps } from './routes/advanced.js';
 import { p2Routes, type P2RouteDeps } from './routes/p2-routes.js';
+import { registerMetrics } from '@etip/shared-utils';
 import type { IntegrationConfig } from './config.js';
 
 export interface BuildAppOptions {
@@ -52,6 +53,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     },
   });
   await app.register(sensible);
+  await registerMetrics(app, 'integration-service');
   await app.register(errorHandlerPlugin);
 
   // ─── Request logging ──────────────────────────────────────
