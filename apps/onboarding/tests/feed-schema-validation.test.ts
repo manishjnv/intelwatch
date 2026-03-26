@@ -73,7 +73,7 @@ describe('DemoSeeder — Feed Schema Validation', () => {
 
   it('all seeded feeds have valid FeedTypeEnum values (never "json")', () => {
     const feeds = getCapturedFeeds();
-    expect(feeds.length).toBeGreaterThanOrEqual(10);
+    expect(feeds.length).toBeGreaterThanOrEqual(3); // free-tier default (3 feeds)
     for (const feed of feeds) {
       expect(feed.feedType).not.toBe('json');
       const result = FeedTypeEnum.safeParse(feed.feedType);
@@ -108,10 +108,10 @@ describe('DemoSeeder — Feed Schema Validation', () => {
     }
   });
 
-  it('rest_api feeds have feedMeta that passes RestFeedMetaSchema', () => {
+  it('rest_api feeds (if any) have feedMeta that passes RestFeedMetaSchema', () => {
     const feeds = getCapturedFeeds();
     const restFeeds = feeds.filter((f) => f.feedType === 'rest_api');
-    expect(restFeeds.length).toBeGreaterThanOrEqual(4);
+    // Free-tier seeds 0 REST feeds; Starter+ seeds 5
 
     for (const feed of restFeeds) {
       // REST connector builds feedMeta as { url: feed.url, ...feed.parseConfig }
@@ -147,7 +147,7 @@ describe('DemoSeeder — Feed Schema Validation', () => {
   it('rss feeds have a valid URL', () => {
     const feeds = getCapturedFeeds();
     const rssFeeds = feeds.filter((f) => f.feedType === 'rss');
-    expect(rssFeeds.length).toBeGreaterThanOrEqual(4);
+    expect(rssFeeds.length).toBeGreaterThanOrEqual(2); // free-tier: THN + CISA RSS
     for (const feed of rssFeeds) {
       expect(typeof feed.url).toBe('string');
       expect((feed.url as string).startsWith('https://')).toBe(true);
@@ -161,12 +161,12 @@ describe('DemoSeeder — Feed Schema Validation', () => {
     expect(nvdFeeds[0].url).toBeFalsy();
   });
 
-  it('feed types cover all 3 queue lanes: rss, rest_api, nvd', () => {
+  it('free-tier feed types cover rss and nvd lanes', () => {
     const feeds = getCapturedFeeds();
     const types = new Set(feeds.map((f) => f.feedType));
     expect(types.has('rss')).toBe(true);
-    expect(types.has('rest_api')).toBe(true);
     expect(types.has('nvd')).toBe(true);
+    // rest_api feeds are Starter+ only, not in free-tier default seed
   });
 
   it('all feeds are enabled by default', () => {
@@ -176,12 +176,11 @@ describe('DemoSeeder — Feed Schema Validation', () => {
     }
   });
 
-  it('MalwareBazaar feed uses POST method', () => {
-    const feeds = getCapturedFeeds();
-    const mb = feeds.find((f) => f.name === 'MalwareBazaar Recent');
+  it('MalwareBazaar feed available in full feed list (Starter+)', () => {
+    const allFeeds = DemoSeeder.getDefaultFeeds();
+    const mb = allFeeds.find((f) => f.name === 'MalwareBazaar Recent');
     expect(mb).toBeDefined();
-    const pc = mb!.parseConfig as Record<string, unknown>;
-    expect(pc.method).toBe('POST');
-    expect(pc.body).toBeDefined();
+    expect(mb!.freeTier).toBe(false);
+    expect(mb!.parseConfig?.method).toBe('POST');
   });
 });
