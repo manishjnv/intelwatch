@@ -7,6 +7,28 @@ import { useAuthStore } from '@/stores/auth-store';
 
 const API_BASE = '/api/v1';
 
+/**
+ * In-flight GET request deduplication.
+ * Same GET URL within 100ms returns the same Promise instead of a new fetch.
+ * Prevents duplicate API calls from component re-renders.
+ */
+const inflightRequests = new Map<string, { promise: Promise<unknown>; ts: number }>();
+const DEDUP_WINDOW_MS = 100;
+
+function getInflightOrSet<T>(key: string, factory: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const existing = inflightRequests.get(key);
+  if (existing && now - existing.ts < DEDUP_WINDOW_MS) {
+    return existing.promise as Promise<T>;
+  }
+  const promise = factory().finally(() => {
+    // Clean up after settling (with small delay to allow same-tick dedup)
+    setTimeout(() => inflightRequests.delete(key), DEDUP_WINDOW_MS);
+  });
+  inflightRequests.set(key, { promise, ts: now });
+  return promise;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -49,7 +71,20 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
     }
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  // Deduplicate identical GET requests within 100ms window
+  const fullUrl = `${API_BASE}${path}`;
+  if (method === 'GET') {
+    return getInflightOrSet<T>(fullUrl, () => doFetch<T>(fullUrl, method, finalHeaders, body, auth));
+  }
+  return doFetch<T>(fullUrl, method, finalHeaders, body, auth);
+}
+
+/** Internal fetch + response handling */
+async function doFetch<T>(
+  fullUrl: string, method: string, finalHeaders: Record<string, string>,
+  body: unknown, auth: boolean,
+): Promise<T> {
+  const res = await fetch(fullUrl, {
     method,
     headers: finalHeaders,
     body: body ? JSON.stringify(body) : undefined,
@@ -62,7 +97,7 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
       // Retry original request with new token
       const newToken = useAuthStore.getState().accessToken;
       finalHeaders['Authorization'] = `Bearer ${newToken}`;
-      const retryRes = await fetch(`${API_BASE}${path}`, {
+      const retryRes = await fetch(fullUrl, {
         method,
         headers: finalHeaders,
         body: body ? JSON.stringify(body) : undefined,

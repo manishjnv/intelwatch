@@ -1,14 +1,31 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
+import compress from '@fastify/compress';
 import { type AppConfig } from './config.js';
 import { createLogger } from './logger.js';
 import { registerMetrics } from '@etip/shared-utils';
 import { registerErrorHandler } from './plugins/error-handler.js';
+import { registerErrorAlerting, errorAlertingRoutes } from './plugins/error-alerting.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
+
+/** Determine per-request rate limit tier based on URL + method */
+function resolveRateLimit(req: FastifyRequest): number {
+  const url = req.url;
+  // Search tier — ES-backed, expensive
+  if (url.startsWith('/api/v1/search') || (url.startsWith('/api/v1/iocs') && url.includes('q='))) {
+    return 10;
+  }
+  // Write tier — mutations
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return 30;
+  }
+  // Read tier — default for all GETs
+  return 120;
+}
 
 export interface BuildAppOptions { config: AppConfig; }
 
@@ -38,9 +55,18 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Service-Token'],
   });
 
+  // Response compression — gzip for payloads >1KB, skip binaries
+  await app.register(compress, {
+    threshold: 1024,
+    encodings: ['gzip', 'deflate', 'identity'],
+    removeContentLengthHeader: false,
+    customTypes: /^(?!image\/|application\/octet-stream)/,
+  });
+
+  // Tiered rate limiting — per-tenant, URL-aware
   await app.register(rateLimit, {
     global: true,
-    max: config.TI_RATE_LIMIT_MAX_REQUESTS,
+    max: resolveRateLimit,
     timeWindow: config.TI_RATE_LIMIT_WINDOW_MS,
     keyGenerator: (req) =>
       (req.headers['x-tenant-id'] as string) ?? req.ip,
@@ -58,6 +84,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await registerMetrics(app, 'api-gateway');
   registerErrorHandler(app);
 
+  // Error alerting — aggregate 5xx errors, emit QUEUE_ALERT above threshold
+  registerErrorAlerting(app, config.TI_REDIS_URL);
+
   app.addHook('onRequest', async (req) => { (req as unknown as Record<string, unknown>)._startTime = Date.now(); });
   app.addHook('onResponse', async (req, reply) => {
     const startTime = (req as unknown as Record<string, unknown>)._startTime as number | undefined;
@@ -68,6 +97,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(errorAlertingRoutes, { prefix: '/api/v1/gateway' });
 
   logger.info('API Gateway configured successfully');
   return app;
