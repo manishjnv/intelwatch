@@ -54,7 +54,7 @@ describe('InvoiceStore', () => {
   describe('listInvoices', () => {
     it('returns only invoices for the given tenant', () => {
       store.createInvoice({ tenantId: 't1', planId: 'starter', amountInr: 4999, periodStart: new Date(), periodEnd: new Date() });
-      store.createInvoice({ tenantId: 't2', planId: 'pro', amountInr: 14999, periodStart: new Date(), periodEnd: new Date() });
+      store.createInvoice({ tenantId: 't2', planId: 'teams', amountInr: 14999, periodStart: new Date(), periodEnd: new Date() });
       const t1Invoices = store.listInvoices('t1', {});
       expect(t1Invoices.data.every((i) => i.tenantId === 't1')).toBe(true);
     });
@@ -121,7 +121,7 @@ describe('InvoiceStore', () => {
   describe('getRevenueMetrics', () => {
     it('calculates total revenue from paid invoices', () => {
       const i1 = store.createInvoice({ tenantId: 't1', planId: 'starter', amountInr: 4999, periodStart: new Date(), periodEnd: new Date() });
-      const i2 = store.createInvoice({ tenantId: 't2', planId: 'pro', amountInr: 14999, periodStart: new Date(), periodEnd: new Date() });
+      const i2 = store.createInvoice({ tenantId: 't2', planId: 'teams', amountInr: 14999, periodStart: new Date(), periodEnd: new Date() });
       store.updateInvoiceStatus(i1.id, 'paid');
       store.updateInvoiceStatus(i2.id, 'paid');
       const metrics = store.getRevenueMetrics();
@@ -130,7 +130,7 @@ describe('InvoiceStore', () => {
 
     it('excludes pending and cancelled invoices from revenue', () => {
       const i1 = store.createInvoice({ tenantId: 't1', planId: 'starter', amountInr: 4999, periodStart: new Date(), periodEnd: new Date() });
-      store.createInvoice({ tenantId: 't2', planId: 'pro', amountInr: 14999, periodStart: new Date(), periodEnd: new Date() });
+      store.createInvoice({ tenantId: 't2', planId: 'teams', amountInr: 14999, periodStart: new Date(), periodEnd: new Date() });
       store.updateInvoiceStatus(i1.id, 'paid');
       const metrics = store.getRevenueMetrics();
       expect(metrics.totalRevenueInr).toBe(4999);

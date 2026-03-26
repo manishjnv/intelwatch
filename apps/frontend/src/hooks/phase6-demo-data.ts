@@ -23,7 +23,7 @@ function daysFromNow(n: number): string {
 
 export interface BillingPlan {
   id: string
-  name: 'Free' | 'Starter' | 'Teams' | 'Pro' | 'Enterprise'
+  name: 'Free' | 'Starter' | 'Teams' | 'Enterprise'
   price: number         // monthly INR
   priceAnnual: number   // annual INR (per month)
   seats: number         // -1 = unlimited
@@ -111,7 +111,7 @@ export interface TenantRecord {
   id: string
   name: string
   domain: string
-  plan: 'Free' | 'Starter' | 'Pro' | 'Teams' | 'Enterprise'
+  plan: 'Free' | 'Starter' | 'Teams' | 'Enterprise'
   status: 'active' | 'suspended' | 'trial'
   seats: number
   usedSeats: number
@@ -369,7 +369,7 @@ export const DEMO_TENANTS: TenantRecord[] = [
 
 export const DEMO_ADMIN_AUDIT: AdminAuditEntry[] = [
   { id: 'adm-1', timestamp: hoursAgo(0.2), adminName: 'Manish Kumar', action: 'maintenance.activate', targetType: 'maintenance_window', targetId: 'mw-1', details: 'Activated Neo4j Index Rebuild window', ip: '72.61.227.64' },
-  { id: 'adm-2', timestamp: hoursAgo(1), adminName: 'Manish Kumar', action: 'tenant.update_plan', targetType: 'tenant', targetId: 'tenant-3', details: 'Plan changed: Starter → Pro', ip: '72.61.227.64' },
+  { id: 'adm-2', timestamp: hoursAgo(1), adminName: 'Manish Kumar', action: 'tenant.update_plan', targetType: 'tenant', targetId: 'tenant-3', details: 'Plan changed: Starter → Teams', ip: '72.61.227.64' },
   { id: 'adm-3', timestamp: hoursAgo(3), adminName: 'Manish Kumar', action: 'backup.trigger', targetType: 'backup', targetId: 'bk-009', details: 'Manual backup triggered — full', ip: '72.61.227.64' },
   { id: 'adm-4', timestamp: hoursAgo(6), adminName: 'GitHub Actions', action: 'maintenance.complete', targetType: 'maintenance_window', targetId: 'mw-4', details: 'Nginx Config Reload completed in 42s', ip: '127.0.0.1' },
   { id: 'adm-5', timestamp: daysAgo(1), adminName: 'Manish Kumar', action: 'tenant.suspend', targetType: 'tenant', targetId: 'tenant-5', details: 'Suspended: payment failure after grace period', ip: '72.61.227.64' },

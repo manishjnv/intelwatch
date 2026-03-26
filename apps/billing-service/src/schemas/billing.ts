@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // ── Plan IDs ───────────────────────────────────────────────────────
-export const PlanIdSchema = z.enum(['free', 'starter', 'pro', 'enterprise']);
+export const PlanIdSchema = z.enum(['free', 'starter', 'teams', 'enterprise']);
 export type PlanId = z.infer<typeof PlanIdSchema>;
 
 // ── Usage metric names ────────────────────────────────────────────

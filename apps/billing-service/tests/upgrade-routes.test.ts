@@ -83,9 +83,9 @@ describe('Upgrade/Downgrade Routes', () => {
   });
 
   describe('POST /api/v1/billing/downgrade', () => {
-    it('200 — schedules downgrade from pro to starter', async () => {
+    it('200 — schedules downgrade from teams to starter', async () => {
       const planStore = new PlanStore();
-      planStore.setTenantPlan('t_down', 'pro');
+      planStore.setTenantPlan('t_down', 'teams');
       const downApp = await buildTestApp(planStore);
       const res = await downApp.inject({
         method: 'POST',

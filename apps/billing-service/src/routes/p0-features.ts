@@ -50,7 +50,7 @@ export function p0Routes(deps: P0RouteDeps) {
       // Check if >80% of any limit is hit
       const apiPct = usageStore.getUsagePercent(tenantId, 'api_calls', planDef.limits.iocQueriesPerDay);
       if (apiPct >= 80 && state.planId !== 'enterprise') {
-        const nextPlan = state.planId === 'free' ? 'starter' : state.planId === 'starter' ? 'pro' : 'enterprise';
+        const nextPlan = state.planId === 'free' ? 'starter' : state.planId === 'starter' ? 'teams' : 'enterprise';
         prompts.push({
           feature: 'api_queries',
           message: `You've used ${apiPct}% of your daily API queries. Upgrade to ${nextPlan} for ${apiPct >= 100 ? 'uninterrupted access' : 'more headroom'}.`,
@@ -60,7 +60,7 @@ export function p0Routes(deps: P0RouteDeps) {
 
       const storagePct = usageStore.getUsagePercent(tenantId, 'iocs_ingested', planDef.limits.iocStorageK * 1000);
       if (storagePct >= 80 && state.planId !== 'enterprise') {
-        const nextPlan = state.planId === 'free' ? 'starter' : state.planId === 'starter' ? 'pro' : 'enterprise';
+        const nextPlan = state.planId === 'free' ? 'starter' : state.planId === 'starter' ? 'teams' : 'enterprise';
         prompts.push({
           feature: 'ioc_storage',
           message: `IOC storage is at ${storagePct}%. Upgrade to ${nextPlan} for ${storagePct >= 100 ? 'continued ingestion' : 'more capacity'}.`,
@@ -72,16 +72,16 @@ export function p0Routes(deps: P0RouteDeps) {
       if (!planDef.features.graph_visualization) {
         prompts.push({
           feature: 'graph_visualization',
-          message: 'Threat Graph is a Pro feature. Upgrade to visualise entity relationships.',
-          targetPlan: 'pro',
+          message: 'Threat Graph is a Teams feature. Upgrade to visualise entity relationships.',
+          targetPlan: 'teams',
         });
       }
 
       if (!planDef.features.dark_web_monitoring) {
         prompts.push({
           feature: 'dark_web_monitoring',
-          message: 'Dark Web Monitoring is a Pro feature. Upgrade to detect credential leaks.',
-          targetPlan: 'pro',
+          message: 'Dark Web Monitoring is a Teams feature. Upgrade to detect credential leaks.',
+          targetPlan: 'teams',
         });
       }
 

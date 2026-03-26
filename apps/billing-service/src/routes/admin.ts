@@ -28,7 +28,7 @@ export function adminRoutes(deps: AdminRouteDeps) {
       const allTenants = await planStore.getAllTenantPlans();
 
       // Plan distribution
-      const planDistribution: Record<string, number> = { free: 0, starter: 0, pro: 0, enterprise: 0 };
+      const planDistribution: Record<string, number> = { free: 0, starter: 0, teams: 0, enterprise: 0 };
       let activeSubscriptions = 0;
       let cancelledSubscriptions = 0;
 

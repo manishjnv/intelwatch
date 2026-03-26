@@ -25,21 +25,21 @@ describe('UpgradeFlow', () => {
       expect(preview.effectiveDate).toBeDefined();
     });
 
-    it('calculates proration for starter → pro upgrade', async () => {
+    it('calculates proration for starter → teams upgrade', async () => {
       await planStore.setTenantPlan('t1', 'starter');
-      const preview = await flow.previewUpgrade('t1', 'pro', new Date('2026-03-01'));
+      const preview = await flow.previewUpgrade('t1', 'teams', new Date('2026-03-01'));
       expect(preview.fromPlan).toBe('starter');
-      expect(preview.toPlan).toBe('pro');
+      expect(preview.toPlan).toBe('teams');
       expect(preview.proratedAmountInr).toBeGreaterThan(0);
     });
 
     it('throws SAME_PLAN when upgrading to same plan', async () => {
-      await planStore.setTenantPlan('t1', 'pro');
-      await expect(flow.previewUpgrade('t1', 'pro', new Date())).rejects.toThrow('Already on this plan');
+      await planStore.setTenantPlan('t1', 'teams');
+      await expect(flow.previewUpgrade('t1', 'teams', new Date())).rejects.toThrow('Already on this plan');
     });
 
     it('throws DOWNGRADE_NOT_ALLOWED via previewUpgrade', async () => {
-      await planStore.setTenantPlan('t1', 'pro');
+      await planStore.setTenantPlan('t1', 'teams');
       await expect(flow.previewUpgrade('t1', 'starter', new Date())).rejects.toThrow();
     });
   });
@@ -66,7 +66,7 @@ describe('UpgradeFlow', () => {
     });
 
     it('throws DOWNGRADE_USE_DOWNGRADE when trying to go to lower tier', async () => {
-      await planStore.setTenantPlan('t1', 'pro');
+      await planStore.setTenantPlan('t1', 'teams');
       await expect(flow.upgradePlan('t1', 'starter', {})).rejects.toThrow();
     });
   });
@@ -74,17 +74,17 @@ describe('UpgradeFlow', () => {
   // ── Downgrade execution ─────────────────────────────────────────
   describe('downgradePlan', () => {
     it('schedules a downgrade to take effect at period end', async () => {
-      await planStore.setTenantPlan('t1', 'pro');
+      await planStore.setTenantPlan('t1', 'teams');
       const result = await flow.downgradePlan('t1', 'starter');
       expect(result.scheduledPlanId).toBe('starter');
       expect(result.effectiveAt).toBeDefined();
-      // Current plan remains pro until end of billing period
-      expect((await planStore.getTenantPlan('t1')).planId).toBe('pro');
+      // Current plan remains teams until end of billing period
+      expect((await planStore.getTenantPlan('t1')).planId).toBe('teams');
     });
 
     it('throws UPGRADE_USE_UPGRADE when trying to go to higher tier', async () => {
       await planStore.setTenantPlan('t1', 'starter');
-      await expect(flow.downgradePlan('t1', 'pro')).rejects.toThrow();
+      await expect(flow.downgradePlan('t1', 'teams')).rejects.toThrow();
     });
   });
 

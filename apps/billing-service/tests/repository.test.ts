@@ -96,8 +96,8 @@ describe('SubscriptionRepo', () => {
         tenantId: 't2',
         plan: 'enterprise',
         status: 'active',
-        previousPlan: 'pro',
-        scheduledPlan: 'pro',
+        previousPlan: 'teams',
+        scheduledPlan: 'teams',
         scheduledPlanAt: scheduledAt,
         razorpayCustomerId: null,
         razorpaySubId: null,
@@ -107,7 +107,7 @@ describe('SubscriptionRepo', () => {
         updatedAt: new Date(),
       });
       const state = await repo.getTenantPlan('t2');
-      expect(state!.scheduledPlanId).toBe('pro');
+      expect(state!.scheduledPlanId).toBe('teams');
       expect(state!.scheduledPlanEffectiveAt).toEqual(scheduledAt);
     });
   });
@@ -143,12 +143,12 @@ describe('SubscriptionRepo', () => {
   describe('getAllTenantPlans', () => {
     it('returns sorted list of all subscriptions', async () => {
       db.tenantSubscription.findMany.mockResolvedValue([
-        { tenantId: 't1', plan: 'pro', status: 'active', previousPlan: null, scheduledPlan: null, scheduledPlanAt: null, razorpayCustomerId: null, razorpaySubId: null, trialEndsAt: null, currentPeriodStart: null, currentPeriodEnd: null, updatedAt: new Date() },
+        { tenantId: 't1', plan: 'teams', status: 'active', previousPlan: null, scheduledPlan: null, scheduledPlanAt: null, razorpayCustomerId: null, razorpaySubId: null, trialEndsAt: null, currentPeriodStart: null, currentPeriodEnd: null, updatedAt: new Date() },
         { tenantId: 't2', plan: 'free', status: 'active', previousPlan: null, scheduledPlan: null, scheduledPlanAt: null, razorpayCustomerId: null, razorpaySubId: null, trialEndsAt: null, currentPeriodStart: null, currentPeriodEnd: null, updatedAt: new Date() },
       ]);
       const plans = await repo.getAllTenantPlans();
       expect(plans).toHaveLength(2);
-      expect(plans[0].planId).toBe('pro');
+      expect(plans[0].planId).toBe('teams');
       expect(plans[1].planId).toBe('free');
     });
 
@@ -412,12 +412,12 @@ describe('CouponRepo', () => {
         discountValue: 1000,
         maxUses: 50,
         usageCount: 5,
-        applicablePlans: ['pro', 'enterprise'],
+        applicablePlans: ['teams', 'enterprise'],
         expiresAt: new Date('2026-12-31'),
         createdAt: new Date(),
       });
       const coupon = await repo.getCoupon('PROONLY');
-      expect(coupon!.applicablePlans).toEqual(['pro', 'enterprise']);
+      expect(coupon!.applicablePlans).toEqual(['teams', 'enterprise']);
     });
   });
 

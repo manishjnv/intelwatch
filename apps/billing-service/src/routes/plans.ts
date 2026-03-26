@@ -42,7 +42,7 @@ export function planRoutes(deps: PlanRouteDeps) {
     app.get('/:planId', async (req: FastifyRequest<{ Params: { planId: string } }>, reply: FastifyReply) => {
       // validate planId is a known enum value
       const { planId } = req.params;
-      const validIds = ['free', 'starter', 'pro', 'enterprise'];
+      const validIds = ['free', 'starter', 'teams', 'enterprise'];
       if (!validIds.includes(planId)) {
         throw new AppError(404, `Plan not found: ${planId}`, 'NOT_FOUND');
       }

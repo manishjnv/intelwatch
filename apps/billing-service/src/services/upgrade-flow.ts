@@ -3,7 +3,7 @@ import type { PlanStore } from './plan-store.js';
 import type { InvoiceStore, Invoice } from './invoice-store.js';
 import type { PlanId } from '../schemas/billing.js';
 
-const PLAN_TIER: Record<PlanId, number> = { free: 0, starter: 1, pro: 2, enterprise: 3 };
+const PLAN_TIER: Record<PlanId, number> = { free: 0, starter: 1, teams: 2, enterprise: 3 };
 
 /** Grace period configuration: 72 hours of overage tolerance before hard cutoff. */
 const GRACE_PERIOD_MS = 72 * 60 * 60 * 1000;

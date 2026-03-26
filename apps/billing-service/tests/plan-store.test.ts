@@ -28,9 +28,9 @@ describe('PlanStore', () => {
       expect(plan.limits.iocQueriesPerDay).toBeGreaterThan(100);
     });
 
-    it('returns pro plan definition', () => {
-      const plan = store.getPlanById('pro');
-      expect(plan.id).toBe('pro');
+    it('returns teams plan definition', () => {
+      const plan = store.getPlanById('teams');
+      expect(plan.id).toBe('teams');
       expect(plan.limits.maxUsers).toBeGreaterThan(10);
     });
 
@@ -49,7 +49,7 @@ describe('PlanStore', () => {
     it('returns all 4 plans in tier order', () => {
       const plans = store.listPlans();
       expect(plans).toHaveLength(4);
-      expect(plans.map((p) => p.id)).toEqual(['free', 'starter', 'pro', 'enterprise']);
+      expect(plans.map((p) => p.id)).toEqual(['free', 'starter', 'teams', 'enterprise']);
     });
   });
 
@@ -63,13 +63,13 @@ describe('PlanStore', () => {
 
     it('starter plan has correct limits', () => {
       const starter = PLAN_DEFINITIONS.starter;
-      expect(starter.limits.maxFeeds).toBe(20);
+      expect(starter.limits.maxFeeds).toBe(10);
       expect(starter.limits.maxUsers).toBe(10);
     });
 
-    it('pro plan has unlimited feeds', () => {
-      const pro = PLAN_DEFINITIONS.pro;
-      expect(pro.limits.maxFeeds).toBe(-1);
+    it('teams plan has 25 max feeds', () => {
+      const teams = PLAN_DEFINITIONS.teams;
+      expect(teams.limits.maxFeeds).toBe(25);
     });
 
     it('enterprise plan has unlimited everything', () => {
@@ -94,17 +94,17 @@ describe('PlanStore', () => {
     });
 
     it('isolates tenant plans', async () => {
-      await store.setTenantPlan('t1', 'pro');
+      await store.setTenantPlan('t1', 'teams');
       await store.setTenantPlan('t2', 'starter');
-      expect((await store.getTenantPlan('t1')).planId).toBe('pro');
+      expect((await store.getTenantPlan('t1')).planId).toBe('teams');
       expect((await store.getTenantPlan('t2')).planId).toBe('starter');
     });
   });
 
   describe('setTenantPlan', () => {
     it('sets a valid plan', async () => {
-      const state = await store.setTenantPlan('t1', 'pro');
-      expect(state.planId).toBe('pro');
+      const state = await store.setTenantPlan('t1', 'teams');
+      expect(state.planId).toBe('teams');
       expect(state.updatedAt).toBeDefined();
     });
 
@@ -114,7 +114,7 @@ describe('PlanStore', () => {
 
     it('records previous plan id on upgrade', async () => {
       await store.setTenantPlan('t1', 'starter');
-      const state = await store.setTenantPlan('t1', 'pro');
+      const state = await store.setTenantPlan('t1', 'teams');
       expect(state.previousPlanId).toBe('starter');
     });
   });
@@ -126,8 +126,8 @@ describe('PlanStore', () => {
       expect(await store.isFeatureAllowed('t1', 'graph_visualization')).toBe(false);
     });
 
-    it('pro plan: graph_visualization allowed', async () => {
-      await store.setTenantPlan('t1', 'pro');
+    it('teams plan: graph_visualization allowed', async () => {
+      await store.setTenantPlan('t1', 'teams');
       expect(await store.isFeatureAllowed('t1', 'graph_visualization')).toBe(true);
     });
 
@@ -162,7 +162,7 @@ describe('PlanStore', () => {
       const graphFeature = comparison.features.find((f) => f.key === 'graph_visualization');
       expect(graphFeature).toBeDefined();
       expect(graphFeature!.availability.free).toBe(false);
-      expect(graphFeature!.availability.pro).toBe(true);
+      expect(graphFeature!.availability.teams).toBe(true);
     });
   });
 });

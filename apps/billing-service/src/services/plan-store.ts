@@ -100,8 +100,8 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    priceInr: 4999,
-    priceUsd: 59,
+    priceInr: 9999,
+    priceUsd: 119,
     razorpayPlanId: process.env['TI_RAZORPAY_PLAN_STARTER'] ?? 'plan_starter',
     trialDays: 14,
     description: 'For small security teams (up to 10 users).',
@@ -109,7 +109,7 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
     limits: {
       iocQueriesPerDay: 5000,
       iocStorageK: 500,
-      maxFeeds: 20,
+      maxFeeds: 10,
       maxUsers: 10,
       maxIntegrations: 3,
       enrichmentsPerDay: 500,
@@ -127,19 +127,19 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
       custom_ai_keys: false,
     },
   },
-  pro: {
-    id: 'pro',
-    name: 'Professional',
-    priceInr: 14999,
-    priceUsd: 179,
-    razorpayPlanId: process.env['TI_RAZORPAY_PLAN_PRO'] ?? 'plan_pro',
+  teams: {
+    id: 'teams',
+    name: 'Teams',
+    priceInr: 18999,
+    priceUsd: 229,
+    razorpayPlanId: process.env['TI_RAZORPAY_PLAN_TEAMS'] ?? 'plan_teams',
     trialDays: 14,
     description: 'For professional SOC teams (up to 50 users).',
     popular: true,
     limits: {
       iocQueriesPerDay: 50000,
       iocStorageK: 5000,
-      maxFeeds: -1,
+      maxFeeds: 25,
       maxUsers: 50,
       maxIntegrations: -1,
       enrichmentsPerDay: 5000,
@@ -160,8 +160,8 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    priceInr: 0, // custom pricing
-    priceUsd: 0,
+    priceInr: 49999,
+    priceUsd: 599,
     razorpayPlanId: process.env['TI_RAZORPAY_PLAN_ENTERPRISE'] ?? 'plan_enterprise',
     trialDays: 30,
     description: 'Unlimited everything with custom pricing and SLA.',
@@ -209,7 +209,7 @@ export class PlanStore {
 
   /** List all 4 plan definitions in tier order. */
   listPlans(): PlanDefinition[] {
-    return (['free', 'starter', 'pro', 'enterprise'] as PlanId[]).map((id) => PLAN_DEFINITIONS[id]);
+    return (['free', 'starter', 'teams', 'enterprise'] as PlanId[]).map((id) => PLAN_DEFINITIONS[id]);
   }
 
   /** Get or initialise the plan state for a tenant (defaults to free). */
@@ -327,7 +327,7 @@ export class PlanStore {
       availability: {
         free: PLAN_DEFINITIONS.free.features[key],
         starter: PLAN_DEFINITIONS.starter.features[key],
-        pro: PLAN_DEFINITIONS.pro.features[key],
+        teams: PLAN_DEFINITIONS.teams.features[key],
         enterprise: PLAN_DEFINITIONS.enterprise.features[key],
       },
     }));

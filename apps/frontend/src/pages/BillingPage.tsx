@@ -73,7 +73,7 @@ function PlanBadge({ plan }: { plan: string }) {
   const colors: Record<string, string> = {
     Free: 'text-text-muted bg-bg-elevated',
     Starter: 'text-sev-low bg-sev-low/10',
-    Pro: 'text-accent bg-accent/10',
+    Teams: 'text-accent bg-accent/10',
     Enterprise: 'text-violet-400 bg-violet-400/10',
   }
   return (

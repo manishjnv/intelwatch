@@ -24,7 +24,7 @@ export function upgradeRoutes(deps: UpgradeRouteDeps) {
   const { upgradeFlow } = deps;
 
   return async function (app: FastifyInstance): Promise<void> {
-    /** GET /upgrade/preview?targetPlan=pro — preview upgrade cost and proration. */
+    /** GET /upgrade/preview?targetPlan=teams — preview upgrade cost and proration. */
     app.get('/upgrade/preview', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const query = validate(UpgradePreviewQuerySchema, req.query);
