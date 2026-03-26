@@ -172,14 +172,14 @@ describe('computeFeedHealth', () => {
    ================================================================ */
 describe('HealthDot', () => {
   it('renders green dot for score > 80', () => {
-    const { container } = render(<HealthDot score={95} />)
+    render(<HealthDot score={95} />)
     const dot = screen.getByTestId('health-dot')
     expect(dot).toBeDefined()
     expect(dot.textContent).toContain('95')
   })
 
   it('renders red dot for score < 50', () => {
-    const { container } = render(<HealthDot score={30} />)
+    render(<HealthDot score={30} />)
     const dot = screen.getByTestId('health-dot')
     expect(dot.textContent).toContain('30')
   })
@@ -202,7 +202,7 @@ describe('FailureSparkline', () => {
   })
 
   it('renders all green bars for 0 failures', () => {
-    const { container } = render(<FailureSparkline consecutiveFailures={0} />)
+    render(<FailureSparkline consecutiveFailures={0} />)
     const sparkline = screen.getByTestId('failure-sparkline')
     const bars = Array.from(sparkline.children)
     // All bars should be success (green, taller)
