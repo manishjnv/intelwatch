@@ -33,8 +33,8 @@ fi
 
 # Step 1: Get all tenant IDs from the database
 echo "Querying tenants from database..."
-TENANTS=$(docker exec etip_postgres psql -U etip -d etip -t -A -c \
-  "SELECT DISTINCT \"tenantId\" FROM \"FeedSource\" UNION SELECT DISTINCT \"tenantId\" FROM \"Article\";" 2>/dev/null || echo "")
+TENANTS=$(docker exec etip_postgres psql -U etip_user -d etip -t -A -c \
+  "SELECT DISTINCT tenant_id FROM feed_sources UNION SELECT DISTINCT tenant_id FROM articles;" 2>/dev/null || echo "")
 
 if [ -z "$TENANTS" ]; then
   echo "No tenants found in database (or table doesn't exist yet). Nothing to seed."
@@ -59,8 +59,8 @@ echo "$TENANTS" | while read -r TENANT_ID; do
   fi
 
   # Check current feed count
-  FEED_COUNT=$(docker exec etip_postgres psql -U etip -d etip -t -A -c \
-    "SELECT COUNT(*) FROM \"FeedSource\" WHERE \"tenantId\"='$TENANT_ID' AND enabled=true;" 2>/dev/null || echo "0")
+  FEED_COUNT=$(docker exec etip_postgres psql -U etip_user -d etip -t -A -c \
+    "SELECT COUNT(*) FROM feed_sources WHERE tenant_id='$TENANT_ID' AND enabled=true;" 2>/dev/null || echo "0")
   FEED_COUNT=$(echo "$FEED_COUNT" | tr -d '[:space:]')
 
   if [ "$FEED_COUNT" -gt 0 ] 2>/dev/null; then
