@@ -97,7 +97,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script_stop: true
-          command_timeout: 15m
+          command_timeout: 25m
           script: |
             set -e
 
