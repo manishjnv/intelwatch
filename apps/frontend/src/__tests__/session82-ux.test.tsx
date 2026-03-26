@@ -75,13 +75,13 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useUpdateIOCLifecycle: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
-const mockUseIOCSearch = vi.fn(() => ({
+const mockUseIOCSearch = vi.fn((_query?: unknown, _filters?: unknown) => ({
   data: { data: [], total: 0, took: 0, page: 1, limit: 50 },
   isLoading: false, isDemo: true,
 }))
 
 vi.mock('@/hooks/use-search-data', () => ({
-  useIOCSearch: (...args: any[]) => mockUseIOCSearch(...args),
+  useIOCSearch: (...args: unknown[]) => mockUseIOCSearch(args[0], args[1]),
   DEMO_SEARCH_RESULTS: [],
 }))
 
@@ -246,13 +246,15 @@ describe('SearchPage debounce', () => {
 
     fireEvent.change(input, { target: { value: '192.168' } })
     // The debounced value hasn't fired yet — still ''
-    const lastCall = mockUseIOCSearch.mock.calls[mockUseIOCSearch.mock.calls.length - 1]
-    expect(lastCall[0]).toBe('')
+    const calls = mockUseIOCSearch.mock.calls
+    const lastCall = calls[calls.length - 1] as unknown[] | undefined
+    expect(lastCall?.[0]).toBe('')
 
     // Advance past debounce
     act(() => { vi.advanceTimersByTime(350) })
-    const afterDebounce = mockUseIOCSearch.mock.calls[mockUseIOCSearch.mock.calls.length - 1]
-    expect(afterDebounce[0]).toBe('192.168')
+    const calls2 = mockUseIOCSearch.mock.calls
+    const afterDebounce = calls2[calls2.length - 1] as unknown[] | undefined
+    expect(afterDebounce?.[0]).toBe('192.168')
     vi.useRealTimers()
   })
 
