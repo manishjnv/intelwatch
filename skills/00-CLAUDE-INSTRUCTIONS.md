@@ -238,7 +238,7 @@ When asked to deploy/push, use:
 VPS CRITICAL: Two sites exist on the same VPS.
 intelwatch.in = existing live site — NEVER modify it or its containers, nginx config, or files.
 ti.intelwatch.in = ETIP project — all work goes here only.
-VPS SSH: Port 22 is filtered by hosting provider for most IPs. Use GitHub Actions `vps-cmd.yml` workflow for remote commands. Cloudflare Tunnel SSH pending DNS setup.
+VPS SSH: Uses Cloudflare Tunnel (`ssh.intelwatch.in`). Both `deploy.yml` and `vps-cmd.yml` install `cloudflared` and use `ProxyCommand cloudflared access ssh --hostname %h`. NEVER use direct IP:22 (port filtered by hosting provider). Tunnel ID: `6e263591-9abd-446b-a980-aab7a84a0b44`. Health recovery cron runs every 5min to auto-restart stopped containers.
 
 ## PRE-PUSH CHECKLIST (every git push to master)
 ```bash
