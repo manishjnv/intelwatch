@@ -7,7 +7,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { PlanId } from './schemas/billing.js';
 import type { TenantPlanState } from './services/plan-store.js';
-import type { TenantUsage, UsageSnapshot } from './services/usage-store.js';
+import type { TenantUsage } from './services/usage-store.js';
 import type { Invoice, InvoiceStatus, InvoiceListResult } from './services/invoice-store.js';
 import type { Coupon, DiscountType } from './services/coupon-store.js';
 import type { GracePeriodState } from './services/upgrade-flow.js';
