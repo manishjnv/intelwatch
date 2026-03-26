@@ -1,59 +1,65 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-26
-**Session:** 76
-**Session Summary:** Frontend interactivity audit — detail panels, drill-downs, enrichment/relations wiring, sort audit across 10 files. 16 new tests, 755 frontend tests total.
+**Session:** 77
+**Session Summary:** Live OSINT feed activation — fix 3 DemoSeeder bugs (type/feedType/parseConfig), 10 real feeds configured, seed-feeds.sh script, deploy fixes.
 
 ## Changes Made
-- Commit 75b5657: 10 files changed, +653/-35 lines
+- `75c733b` feat: activate live OSINT feeds — fix seeder types + 10 real feeds configured (7 files)
+- `d4799c0` fix: seed-feeds.sh uses docker exec + Node.js (VPS has no npx) (1 file)
+- `e6a71a7` fix: remove unused UsageSnapshot import — unblocks Docker tsc build (1 file)
+- `69e8bd1` fix: increase deploy SSH timeout 15m → 25m (1 file)
+- `cd194ad` fix: seed-feeds.sh uses crypto.createHmac for JWT (no jsonwebtoken dep) (1 file)
 
 ## New Files
 | File | Purpose |
 |------|---------|
-| `apps/frontend/src/__tests__/session76-detail-drilldown.test.tsx` | 16 tests for all 4 fixes + filter/sort |
+| `apps/onboarding/tests/feed-schema-validation.test.ts` | 12 Zod validation tests for seeded feeds |
+| `scripts/seed-feeds.ts` | Node.js feed seeder for local dev (npx tsx) |
+| `scripts/seed-feeds.sh` | Bash seed script for VPS (docker exec + crypto JWT) |
+| `tests/e2e/live-feed-smoke.test.ts` | Live pipeline smoke test (skipped in CI) |
 
 ## Modified Files
 | File | Change |
 |------|--------|
-| `apps/frontend/src/pages/VulnerabilityListPage.tsx` | SplitPane + VulnDetailPanel (CVE header, CVSS, EPSS, description, vendors, KEV, NVD links) |
-| `apps/frontend/src/pages/SearchPage.tsx` | ResultRow → clickable button, useNavigate to /iocs or /vulnerabilities, ArrowRight hover |
-| `apps/frontend/src/pages/IocListPage.tsx` | useIOCEnrichment + useNodeNeighbors wiring, real graph data → RelationshipGraph, empty state |
-| `apps/frontend/src/hooks/use-enrichment-data.ts` | Added useIOCEnrichment(iocId) hook — GET /enrichment/ioc/:id |
-| `apps/frontend/src/pages/CorrelationPage.tsx` | sortBy/sortOrder state + handleSort + DataTable wiring |
-| `apps/frontend/src/pages/DRPDashboardPage.tsx` | sortBy/sortOrder state + handleSort + DataTable wiring |
-| `apps/frontend/src/pages/IntegrationPage.tsx` | sortBy/sortOrder state + handleSort + sortedData memo + DataTable wiring |
-| `apps/frontend/src/pages/UserManagementPage.tsx` | sortBy/sortOrder state + handleSort + DataTable wiring (users/teams/roles tabs) |
-| `apps/frontend/src/__tests__/drp-triage-ioc-tabs.test.tsx` | Added useNodeNeighbors + useIOCEnrichment mocks |
+| `apps/onboarding/src/services/demo-seeder.ts` | 3-bug fix: type→feedType, json→rest_api/rss/nvd, add parseConfig. 6 new feeds (total 10). |
+| `apps/onboarding/tests/demo-seeder.test.ts` | Updated feed count 4→10 |
+| `apps/onboarding/tests/demo-seeder-real.test.ts` | Updated feed count 4→10 |
+| `apps/onboarding/tests/feed-seeding.test.ts` | Updated counts + payload assertions (feedType, parseConfig) |
+| `apps/billing-service/src/repository.ts` | Removed unused UsageSnapshot import (unblocked Docker tsc) |
+| `.github/workflows/deploy.yml` | SSH timeout 15m→25m |
 
 ## Decisions & Rationale
-- No new architectural decisions (ADDITIVE frontend-only changes)
+- No new DECISION-NNN entries. Deploy timeout increase is operational fix, not architectural.
 
 ## E2E / Deploy Verification Results
-- No deployment this session (frontend-only, code changes)
-- All 755 frontend tests passing (757 total, 2 skipped), 26 test files
+- Deploy: All 33 containers healthy (verified via vps-cmd.yml docker ps)
+- Neo4j had transient unhealthy status during compose up (recovered within 2 min)
+- Seed script: Blocked by VPS SSH timeout on final run. DB has corrupted non-UUID tenant_id rows from previous seeder runs.
+- Feeds NOT yet active — need manual VPS run of seed-feeds.sh
 
 ## Open Items / Next Steps
 ### Immediate
-1. UI Polish: clickable element audit (non-functional buttons/links across 20 pages)
-2. Mobile responsiveness testing for VulnDetailPanel at 375px
-3. IocListPage.tsx refactoring (569 lines, over 400 limit)
+1. Run seed-feeds.sh on VPS: `cd /opt/intelwatch && git pull && bash scripts/seed-feeds.sh`
+2. Before seeding: TRUNCATE FeedSource table (non-UUID tenant_id corruption)
+3. Verify feeds fetching: check ingestion logs for "Feed fetch + pipeline completed"
 
 ### Deferred
+- Wire billing-service Prisma in index.ts (session B2)
 - Persistence migration B2: alerting-service → Postgres
-- Wire billing-service index.ts Prisma repos
-- BullMQ custom Prometheus counters
+- registerMetrics TS errors (3 services — session 73 pre-existing)
 
 ## How to Resume
 ```
-Working on: Frontend UI Polish — clickable element audit
-Module target: apps/frontend only
-Do not modify: any backend service
+Working on: Live Feed Verification
+Module target: ingestion (verify), onboarding (verify)
+Do not modify: frontend, shared packages, any other service
 
-Last session (76): VulnDetailPanel, SearchPage drill-down, IOC enrichment/relations,
-sort on 4 pages. Commit 75b5657. 755 frontend tests.
-
-Remaining from session 76 audit:
-- HuntingWorkbenchPage: kanban (no table filter/sort needed)
-- Non-functional buttons/links audit not started
-- Mobile responsiveness for new panels not verified
+Steps:
+1. SSH to VPS or use vps-cmd.yml
+2. TRUNCATE "FeedSource" CASCADE (corrupted rows)
+3. Run: bash /opt/intelwatch/scripts/seed-feeds.sh
+4. Wait 5 min for scheduler sync
+5. Check: docker logs etip_ingestion --since=10m | grep "pipeline completed"
+6. Verify articles: curl http://localhost:3004/api/v1/articles?limit=5
 ```
