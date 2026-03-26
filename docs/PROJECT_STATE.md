@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-26 (update at end of EVERY session via /session-end)
-**Session counter:** 77
+**Session counter:** 78
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Persistence Migration Phase 1 + UI Polish + Live Feed Activation. All pipeline phases complete. 33 containers, ~5,849+ tests (755 frontend).
-- **Last session outcome:** Session 77 (2026-03-26). **Live OSINT feed activation.** Fixed 3 critical bugs in DemoSeeder: (1) `type: 'json'` → valid FeedTypeEnum, (2) field name `type` → `feedType`, (3) missing `parseConfig` with `responseArrayPath`/`fieldMap`. Added 6 new feeds (total 10: 5 REST API + 4 RSS + 1 NVD). Created `scripts/seed-feeds.sh` (docker exec + crypto JWT). Fixed billing-service unused import (unblocked Docker tsc). Deploy timeout 15m→25m. 12 new validation tests. Deployed: all 33 containers healthy. Seed script blocked by VPS SSH timeout — needs manual run. Commits: 75c733b→cd194ad (5 commits).
-- **Known issues:** Pre-existing TS errors: `registerMetrics` import (session 73, 3 services). IocListPage.tsx at 569 lines (over 400 limit, pre-existing). Deploy.yml at 25min timeout. Grafana pipeline-queues dashboard still empty. Billing stores not yet wired to Prisma in index.ts. FeedSource table has corrupted non-UUID tenant_id rows from previous seeder runs — must TRUNCATE before seeding. Seed script needs manual VPS run (`bash /opt/intelwatch/scripts/seed-feeds.sh`).
-- **Next tasks:** (1) Run seed-feeds.sh on VPS manually (SSH or console). (2) Verify feeds are fetching articles (check /api/v1/feeds/stats). (3) Wire billing-service Prisma in index.ts. (4) Persistence migration B2: alerting-service → Postgres.
+- **Current phase:** Pipeline Activation + Persistence Migration. All pipeline phases complete. 33 containers, ~5,868+ tests (755 frontend, 19 new wiring tests).
+- **Last session outcome:** Session 78 (2026-03-26). **Downstream pipeline verification.** Audited all 8 pipeline event chains across 23 services. Fixed 2 broken INTEGRATION_PUSH payload chains (alerting + correlation → integration service). Created pipeline health check script (`scripts/check-pipeline-health.ts`). 19 new wiring alignment tests. All queue/event names use canonical constants — no hardcoded strings. 3 unused queues documented (DEDUPLICATE, ENRICH_BATCH, ARCHIVE — future use).
+- **Known issues:** Pre-existing TS errors: `registerMetrics` import (session 73, 3 services). IocListPage.tsx at 569 lines (over 400 limit, pre-existing). Deploy.yml at 25min timeout. Grafana pipeline-queues dashboard still empty. Billing stores not yet wired to Prisma in index.ts. FeedSource table has corrupted non-UUID tenant_id rows from previous seeder runs — must TRUNCATE before seeding. Seed script needs manual VPS run (`bash /opt/intelwatch/scripts/seed-feeds.sh`). Admin-service KNOWN_QUEUES only monitors 5 of 15 active queues.
+- **Next tasks:** (1) Deploy session 78 fixes. (2) Run seed-feeds.sh on VPS manually. (3) Verify pipeline health with `npx tsx scripts/check-pipeline-health.ts`. (4) Wire billing-service Prisma in index.ts. (5) Persistence migration B2: alerting-service → Postgres.
 
 ## Deployment Log
 

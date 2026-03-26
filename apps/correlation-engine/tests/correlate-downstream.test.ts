@@ -115,13 +115,13 @@ describe('Correlation Worker — Downstream Enqueue', () => {
 
     await processor({ id: 'job-1', data: VALID_PAYLOAD });
 
-    // Integration always fires
+    // Integration always fires — shape: { tenantId, event, payload }
     expect((downstream.integrationPush as unknown as { add: ReturnType<typeof vi.fn> }).add).toHaveBeenCalledWith(
       'integration-push',
       expect.objectContaining({
         tenantId: VALID_PAYLOAD.tenantId,
-        eventType: 'correlation.match',
-        matchCount: 0,
+        event: 'correlation.match',
+        payload: expect.objectContaining({ matchCount: 0 }),
       }),
     );
 
@@ -202,7 +202,10 @@ describe('Correlation Worker — Downstream Enqueue', () => {
     expect((downstream.alertEvaluate as unknown as { add: ReturnType<typeof vi.fn> }).add).not.toHaveBeenCalled();
     expect((downstream.integrationPush as unknown as { add: ReturnType<typeof vi.fn> }).add).toHaveBeenCalledWith(
       'integration-push',
-      expect.objectContaining({ matchCount: 0 }),
+      expect.objectContaining({
+        event: 'correlation.match',
+        payload: expect.objectContaining({ matchCount: 0 }),
+      }),
     );
   });
 

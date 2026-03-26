@@ -183,14 +183,17 @@ async function enqueueDownstream(
   }
 
   // Always push to integration (let integration worker filter by tenant config)
+  // Shape must match IntegrationPushJob: { tenantId, event, payload }
   if (downstream.integrationPush) {
     downstream.integrationPush.add('integration-push', {
       tenantId,
-      eventType: 'correlation.match',
-      entityType,
-      entityId,
-      matchCount,
-      triggerEvent: 'correlation_complete',
+      event: 'correlation.match',
+      payload: {
+        entityType,
+        entityId,
+        matchCount,
+        triggerEvent: 'correlation_complete',
+      },
     }).catch((err) => logger.warn({ err: (err as Error).message, entityId }, 'Failed to enqueue INTEGRATION_PUSH'));
   }
 }

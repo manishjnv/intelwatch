@@ -10,8 +10,15 @@
  *   export E2E_ADMIN_PASSWORD=your-password
  */
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@etip/shared-utils': path.resolve(__dirname, '../../packages/shared-utils/src/index.ts'),
+      '@etip/shared-types': path.resolve(__dirname, '../../packages/shared-types/src/index.ts'),
+    },
+  },
   test: {
     /**
      * Each test can take up to 3 minutes (external enrichment is slow).

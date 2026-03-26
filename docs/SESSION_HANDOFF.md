@@ -1,65 +1,95 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-26
-**Session:** 77
-**Session Summary:** Live OSINT feed activation — fix 3 DemoSeeder bugs (type/feedType/parseConfig), 10 real feeds configured, seed-feeds.sh script, deploy fixes.
+**Session:** 78
+**Session Summary:** Downstream pipeline verification — audited all event/queue wiring across 8 services, fixed 2 broken INTEGRATION_PUSH payload chains (alerting + correlation), created pipeline health check script, 19 wiring alignment tests.
 
 ## Changes Made
-- `75c733b` feat: activate live OSINT feeds — fix seeder types + 10 real feeds configured (7 files)
-- `d4799c0` fix: seed-feeds.sh uses docker exec + Node.js (VPS has no npx) (1 file)
-- `e6a71a7` fix: remove unused UsageSnapshot import — unblocks Docker tsc build (1 file)
-- `69e8bd1` fix: increase deploy SSH timeout 15m → 25m (1 file)
-- `cd194ad` fix: seed-feeds.sh uses crypto.createHmac for JWT (no jsonwebtoken dep) (1 file)
+- Fixed alerting-service INTEGRATION_PUSH payload: `eventType` → `event`, flat fields → `payload` wrapper
+- Fixed correlation-engine INTEGRATION_PUSH payload: same shape mismatch
+- Updated alerting + correlation test assertions to match corrected payload shape
+- Created `scripts/check-pipeline-health.ts` — checks all 23 services, queues, data stores
+- Created `tests/e2e/pipeline-wiring.test.ts` — 19 alignment tests (queue names, event types, chain integrity)
+- Updated `tests/e2e/vitest.config.ts` — added @etip/shared-utils alias for wiring tests
+- Updated `docs/QA_CHECKLIST.md` — added Pipeline E2E Data Flow section
 
 ## New Files
 | File | Purpose |
 |------|---------|
-| `apps/onboarding/tests/feed-schema-validation.test.ts` | 12 Zod validation tests for seeded feeds |
-| `scripts/seed-feeds.ts` | Node.js feed seeder for local dev (npx tsx) |
-| `scripts/seed-feeds.sh` | Bash seed script for VPS (docker exec + crypto JWT) |
-| `tests/e2e/live-feed-smoke.test.ts` | Live pipeline smoke test (skipped in CI) |
+| `scripts/check-pipeline-health.ts` | Pipeline health check — service endpoints, queue depths, data store counts |
+| `tests/e2e/pipeline-wiring.test.ts` | 19 unit tests verifying queue/event constant alignment across pipeline |
 
 ## Modified Files
 | File | Change |
 |------|--------|
-| `apps/onboarding/src/services/demo-seeder.ts` | 3-bug fix: type→feedType, json→rest_api/rss/nvd, add parseConfig. 6 new feeds (total 10). |
-| `apps/onboarding/tests/demo-seeder.test.ts` | Updated feed count 4→10 |
-| `apps/onboarding/tests/demo-seeder-real.test.ts` | Updated feed count 4→10 |
-| `apps/onboarding/tests/feed-seeding.test.ts` | Updated counts + payload assertions (feedType, parseConfig) |
-| `apps/billing-service/src/repository.ts` | Removed unused UsageSnapshot import (unblocked Docker tsc) |
-| `.github/workflows/deploy.yml` | SSH timeout 15m→25m |
+| `apps/alerting-service/src/workers/alert-worker.ts` | Line 205-215: INTEGRATION_PUSH payload → `{tenantId, event, payload}` shape |
+| `apps/alerting-service/tests/alert-integration-push.test.ts` | Updated assertion to match new payload shape |
+| `apps/correlation-engine/src/workers/correlate.ts` | Line 187-195: INTEGRATION_PUSH payload → `{tenantId, event, payload}` shape |
+| `apps/correlation-engine/tests/correlate-downstream.test.ts` | Updated 2 assertions to match new payload shape |
+| `tests/e2e/vitest.config.ts` | Added @etip/shared-utils + @etip/shared-types resolve aliases |
+| `docs/QA_CHECKLIST.md` | Added Pipeline E2E Data Flow section (10 verified chains) |
+
+## Pipeline Wiring Audit Results
+
+### Verified CONNECTED (no fix needed)
+1. Ingestion → Normalization (NORMALIZE queue)
+2. Normalization → Enrichment (ENRICH_REALTIME queue)
+3. Enrichment → ES Indexing (IOC_INDEX queue)
+4. Enrichment → Threat Graph (GRAPH_SYNC queue)
+5. Enrichment → Correlation (CORRELATE queue)
+6. Correlation → Alerting (ALERT_EVALUATE queue)
+7. Enrichment → Caching (CACHE_INVALIDATE queue)
+
+### Fixed (was BROKEN)
+8. Alerting → Integration (INTEGRATION_PUSH) — payload shape mismatch
+9. Correlation → Integration (INTEGRATION_PUSH) — same payload shape mismatch
+
+Both emitters were sending `{tenantId, eventType, ...flatFields}` but integration service's EventRouter expects `{tenantId, event: TriggerEvent, payload: Record<string, unknown>}`. Field name `eventType` → `event`, and all entity fields wrapped in `payload` object.
+
+### Unused queues (by design, not broken)
+- DEDUPLICATE — placeholder, no producer/consumer exists
+- ENRICH_BATCH — placeholder, batch enrichment not yet implemented
+- ARCHIVE — caching service uses cron-based archival, not queue-based
 
 ## Decisions & Rationale
-- No new DECISION-NNN entries. Deploy timeout increase is operational fix, not architectural.
+- No new DECISION-NNN entries. The INTEGRATION_PUSH fix is a bug fix, not an architectural decision.
 
 ## E2E / Deploy Verification Results
-- Deploy: All 33 containers healthy (verified via vps-cmd.yml docker ps)
-- Neo4j had transient unhealthy status during compose up (recovered within 2 min)
-- Seed script: Blocked by VPS SSH timeout on final run. DB has corrupted non-UUID tenant_id rows from previous seeder runs.
-- Feeds NOT yet active — need manual VPS run of seed-feeds.sh
+- Tests: 19/19 pipeline wiring tests pass, 4/4 alerting integration push tests pass, 7/7 correlation downstream tests pass
+- Pre-existing: 7 alerting route test files fail (registerMetrics not a function — session 73 known issue, unrelated)
+- Not yet deployed — commit pending
 
 ## Open Items / Next Steps
 ### Immediate
-1. Run seed-feeds.sh on VPS: `cd /opt/intelwatch && git pull && bash scripts/seed-feeds.sh`
-2. Before seeding: TRUNCATE FeedSource table (non-UUID tenant_id corruption)
-3. Verify feeds fetching: check ingestion logs for "Feed fetch + pipeline completed"
+1. Run seed-feeds.sh on VPS (from session 77 — feeds not yet active)
+2. Deploy this session's fixes (INTEGRATION_PUSH payload shape)
+3. After feeds active + data flowing, run `npx tsx scripts/check-pipeline-health.ts` to verify end-to-end
+
+### Expected timeline after feeds activate
+- Within 30 min: articles and IOCs in PostgreSQL
+- Within 1 hour: IOCs indexed in Elasticsearch (search works with real data)
+- Within 1 hour: graph nodes appear in Neo4j
+- Within 2-4 hours: correlation patterns start detecting matches
+- Within 4-8 hours: first real alerts fire, integration push delivers to configured webhooks
 
 ### Deferred
 - Wire billing-service Prisma in index.ts (session B2)
 - Persistence migration B2: alerting-service → Postgres
-- registerMetrics TS errors (3 services — session 73 pre-existing)
+- Fix registerMetrics TS errors (3 services — session 73 pre-existing)
+- Expand admin-service KNOWN_QUEUES to monitor all 15 active queues (currently only 5)
 
 ## How to Resume
 ```
-Working on: Live Feed Verification
-Module target: ingestion (verify), onboarding (verify)
-Do not modify: frontend, shared packages, any other service
+Working on: Post-pipeline deployment verification
+Module target: cross-service (read-only verification)
+Do not modify: frontend, shared packages
 
 Steps:
-1. SSH to VPS or use vps-cmd.yml
-2. TRUNCATE "FeedSource" CASCADE (corrupted rows)
-3. Run: bash /opt/intelwatch/scripts/seed-feeds.sh
-4. Wait 5 min for scheduler sync
-5. Check: docker logs etip_ingestion --since=10m | grep "pipeline completed"
-6. Verify articles: curl http://localhost:3004/api/v1/articles?limit=5
+1. Deploy session 78 commit (INTEGRATION_PUSH fix)
+2. SSH to VPS, run seed-feeds.sh (session 77)
+3. Wait 30 min for pipeline to process
+4. Run: npx tsx scripts/check-pipeline-health.ts
+5. Verify: GET /api/v1/search?q=cve returns real ES results
+6. Verify: GET /api/v1/graph/stats shows non-zero nodes
+7. Verify: GET /api/v1/alerts shows alerts (may take hours)
 ```

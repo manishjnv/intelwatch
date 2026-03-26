@@ -1,6 +1,6 @@
 # QA Checklist — Backend Features → UI Visibility
 
-**Last updated:** 2026-03-25 (Session 65)
+**Last updated:** 2026-03-26 (Session 78)
 **Rule:** Update this file after every implementation session via /session-end.
 **Rule:** A feature is "DONE" only when it is visible and functional in the browser, not just coded.
 
@@ -259,6 +259,28 @@
 - MITRE ATT&CK mapping on actor detail → done Session 48 ✓
 - IOC linkage on actors + malware → done Session 48 ✓
 - IOC lifecycle management UI → done G3 ✓
+
+---
+
+## Pipeline E2E Data Flow (Session 78)
+
+| # | Chain | Status | Queue/Event | Notes |
+|---|-------|--------|-------------|-------|
+| 1 | Feed → Ingestion → Normalization | [B] Verified | NORMALIZE queue | Connected. Ingestion enqueues articles for normalization. |
+| 2 | Normalization → Enrichment | [B] Verified | ENRICH_REALTIME queue | Connected. IOCs sent to enrichment after upsert. |
+| 3 | Enrichment → ES Indexing | [B] Verified | IOC_INDEX queue | Connected. Enriched IOCs indexed in Elasticsearch. |
+| 4 | Enrichment → Threat Graph | [B] Verified | GRAPH_SYNC queue | Connected. Enriched IOCs create graph nodes. |
+| 5 | Enrichment → Correlation | [B] Verified | CORRELATE queue | Connected. Enriched IOCs trigger correlation analysis. |
+| 6 | Correlation → Alerting | [B] Verified | ALERT_EVALUATE queue | Connected. Match events trigger alert rules. |
+| 7 | Alerting → Integration | [B] Fixed S78 | INTEGRATION_PUSH queue | **Was broken**: payload shape mismatch (`eventType` vs `event`, flat vs wrapped). Fixed. |
+| 8 | Correlation → Integration | [B] Fixed S78 | INTEGRATION_PUSH queue | **Was broken**: same payload shape mismatch. Fixed. |
+| 9 | All queue names use QUEUES constant | [B] Verified | 18 queues audited | No hardcoded strings found. 3 queues unused (DEDUPLICATE, ENRICH_BATCH, ARCHIVE). |
+| 10 | All event types use EVENTS constant | [B] Verified | 18 event types | Dot-notation naming. All unique. |
+
+### Pipeline Health Check
+- Script: `scripts/check-pipeline-health.ts` — checks all 23 services, Redis queues, PostgreSQL, ES, Neo4j
+- Run: `npx tsx scripts/check-pipeline-health.ts`
+- Tests: `tests/e2e/pipeline-wiring.test.ts` — 19 alignment tests
 
 ---
 

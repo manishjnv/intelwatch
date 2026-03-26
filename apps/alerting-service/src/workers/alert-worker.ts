@@ -201,16 +201,19 @@ export class AlertWorker {
         }
 
         // 8. Push to integration service (fire-and-forget)
+        // Shape must match IntegrationPushJob: { tenantId, event, payload }
         if (this.integrationQueue) {
           this.integrationQueue.add('integration-push', {
             tenantId: alert.tenantId,
-            eventType: 'alert.created',
-            entityType: 'alert',
-            entityId: alert.id,
-            severity: alert.severity,
-            title: alert.title,
-            ruleId: rule.id,
-            triggerEvent: 'alert_created',
+            event: 'alert.created',
+            payload: {
+              entityType: 'alert',
+              entityId: alert.id,
+              severity: alert.severity,
+              title: alert.title,
+              ruleId: rule.id,
+              triggerEvent: 'alert_created',
+            },
           }).catch((err) => logger.warn({ err: (err as Error).message, alertId: alert.id }, 'Failed to enqueue INTEGRATION_PUSH'));
         }
       } catch (err) {

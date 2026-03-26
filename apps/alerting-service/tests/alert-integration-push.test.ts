@@ -93,11 +93,13 @@ describe('AlertWorker — Integration Push (A3)', () => {
       'integration-push',
       expect.objectContaining({
         tenantId: 'tenant-1',
-        eventType: 'alert.created',
-        entityType: 'alert',
-        entityId: 'alert-1',
-        severity: 'high',
-        triggerEvent: 'alert_created',
+        event: 'alert.created',
+        payload: expect.objectContaining({
+          entityType: 'alert',
+          entityId: 'alert-1',
+          severity: 'high',
+          triggerEvent: 'alert_created',
+        }),
       }),
     );
   });
