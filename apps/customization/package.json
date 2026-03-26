@@ -15,6 +15,7 @@
     "lint": "eslint src/ --no-error-on-unmatched-pattern"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
     "@etip/shared-auth": "workspace:*",
     "@etip/shared-types": "workspace:*",
     "@etip/shared-utils": "workspace:*",

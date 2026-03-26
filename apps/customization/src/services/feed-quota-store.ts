@@ -4,9 +4,13 @@
  * Manages per-plan feed quotas and per-tenant plan assignments.
  * Plans: free (default), starter, teams, enterprise.
  * No DB entry = Free tier. Enterprise maxFeeds=-1 (unlimited).
+ *
+ * Dual-mode: if a FeedQuotaRepo is injected, persists to Postgres.
+ * Falls back to in-memory Map on any DB failure.
  */
 
 import { AppError } from '@etip/shared-utils';
+import type { FeedQuotaRepo } from '../repository.js';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -114,6 +118,11 @@ const NEXT_PLAN: Record<BillingPlanId, BillingPlanId | null> = {
 export class FeedQuotaStore {
   /** tenantId → plan assignment (no entry = Free) */
   private readonly assignments = new Map<string, TenantPlanAssignment>();
+  private readonly repo?: FeedQuotaRepo;
+
+  constructor(repo?: FeedQuotaRepo) {
+    this.repo = repo;
+  }
 
   // ── Plan quota CRUD ──────────────────────────────────────
 
@@ -147,41 +156,53 @@ export class FeedQuotaStore {
   // ── Tenant plan assignment ──────────────────────────────
 
   /** Get a tenant's plan assignment. Returns Free if no assignment. */
-  getTenantPlan(tenantId: string): TenantPlanAssignment {
+  async getTenantPlan(tenantId: string): Promise<TenantPlanAssignment> {
+    if (this.repo) {
+      try {
+        const existing = await this.repo.getTenantPlan(tenantId);
+        if (existing) return existing;
+      } catch { /* fall through to in-memory */ }
+    }
     const existing = this.assignments.get(tenantId);
     if (existing) return existing;
     return { tenantId, planId: 'free', assignedBy: 'system', assignedAt: new Date() };
   }
 
   /** Get the effective feed quota for a tenant (based on their plan). */
-  getTenantFeedQuota(tenantId: string): FeedQuota & { planId: BillingPlanId; displayName: string } {
-    const assignment = this.getTenantPlan(tenantId);
+  async getTenantFeedQuota(tenantId: string): Promise<FeedQuota & { planId: BillingPlanId; displayName: string }> {
+    const assignment = await this.getTenantPlan(tenantId);
     const def = PLAN_QUOTAS[assignment.planId];
     return { ...def.feedQuota, planId: assignment.planId, displayName: def.displayName };
   }
 
   /** Assign a plan to a tenant. Returns previous plan for side-effect handling. */
-  assignPlan(
+  async assignPlan(
     tenantId: string,
     planId: BillingPlanId,
     assignedBy: string,
-  ): { assignment: TenantPlanAssignment; previousPlanId: BillingPlanId } {
+  ): Promise<{ assignment: TenantPlanAssignment; previousPlanId: BillingPlanId }> {
     if (!VALID_PLAN_IDS.includes(planId)) {
       throw new AppError(400, `Invalid plan: ${planId}`, 'INVALID_PLAN');
     }
-    const previous = this.getTenantPlan(tenantId);
+    const previous = await this.getTenantPlan(tenantId);
     const assignment: TenantPlanAssignment = {
       tenantId,
       planId,
       assignedBy,
       assignedAt: new Date(),
     };
+    if (this.repo) {
+      try { await this.repo.upsertTenantPlan(assignment); } catch { /* fall through */ }
+    }
     this.assignments.set(tenantId, assignment);
     return { assignment, previousPlanId: previous.planId };
   }
 
   /** List all tenant plan assignments (for admin). */
-  listAllAssignments(): TenantPlanAssignment[] {
+  async listAllAssignments(): Promise<TenantPlanAssignment[]> {
+    if (this.repo) {
+      try { return await this.repo.getAllAssignments(); } catch { /* fall through */ }
+    }
     return Array.from(this.assignments.values());
   }
 

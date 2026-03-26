@@ -94,7 +94,7 @@ export function feedQuotaRoutes(deps: FeedQuotaRouteDeps) {
       if (!tenantId) {
         throw new AppError(400, 'Missing x-tenant-id header', 'MISSING_TENANT');
       }
-      const quota = feedQuotaStore.getTenantFeedQuota(tenantId);
+      const quota = await feedQuotaStore.getTenantFeedQuota(tenantId);
       const nextPlan = feedQuotaStore.getNextPlan(quota.planId);
       const nextPlanQuota = nextPlan ? feedQuotaStore.getPlanQuota(nextPlan) : null;
       return reply.send({
@@ -111,8 +111,8 @@ export function feedQuotaRoutes(deps: FeedQuotaRouteDeps) {
       '/tenants/:tenantId/plan',
       async (req: FastifyRequest<{ Params: { tenantId: string } }>, reply: FastifyReply) => {
         const { tenantId } = TenantIdParam.parse(req.params);
-        const assignment = feedQuotaStore.getTenantPlan(tenantId);
-        const quota = feedQuotaStore.getTenantFeedQuota(tenantId);
+        const assignment = await feedQuotaStore.getTenantPlan(tenantId);
+        const quota = await feedQuotaStore.getTenantFeedQuota(tenantId);
         return reply.send({ data: { ...assignment, feedQuota: quota } });
       },
     );
@@ -125,13 +125,13 @@ export function feedQuotaRoutes(deps: FeedQuotaRouteDeps) {
         const { tenantId } = TenantIdParam.parse(req.params);
         const { userId } = getRequestContext(req);
         const body = AssignPlanBody.parse(req.body);
-        const { assignment, previousPlanId } = feedQuotaStore.assignPlan(
+        const { assignment, previousPlanId } = await feedQuotaStore.assignPlan(
           tenantId,
           body.planId,
           userId,
         );
         const isUpgrade = feedQuotaStore.isUpgrade(previousPlanId, body.planId);
-        const quota = feedQuotaStore.getTenantFeedQuota(tenantId);
+        const quota = await feedQuotaStore.getTenantFeedQuota(tenantId);
         return reply.send({
           data: {
             ...assignment,

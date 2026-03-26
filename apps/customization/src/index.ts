@@ -14,6 +14,8 @@ import { RiskWeightStore } from './services/risk-weight-store.js';
 import { DashboardStore } from './services/dashboard-store.js';
 import { NotificationStore } from './services/notification-store.js';
 import { FeedQuotaStore } from './services/feed-quota-store.js';
+import { prisma, disconnectPrisma } from './prisma.js';
+import { FeedQuotaRepo } from './repository.js';
 
 async function main(): Promise<void> {
   // 1. Config + Logger
@@ -40,7 +42,10 @@ async function main(): Promise<void> {
   const riskWeightStore = new RiskWeightStore(validationEngine, auditTrail, configVersioning);
   const dashboardStore = new DashboardStore(configInheritance, auditTrail, configVersioning);
   const notificationStore = new NotificationStore(configInheritance, auditTrail, configVersioning);
-  const feedQuotaStore = new FeedQuotaStore();
+  const feedQuotaRepo = process.env['TI_DATABASE_URL']
+    ? new FeedQuotaRepo(prisma)
+    : undefined;
+  const feedQuotaStore = new FeedQuotaStore(feedQuotaRepo);
 
   // 5. Register stores with config portability
   configPortability.registerStore('modules', {
@@ -81,6 +86,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down...');
     await app.close();
+    await disconnectPrisma();
     process.exit(0);
   };
   process.on('SIGINT', () => shutdown('SIGINT'));

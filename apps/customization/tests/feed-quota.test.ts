@@ -98,50 +98,51 @@ describe('FeedQuotaStore', () => {
   // ── Tenant plan assignment ──────────────────────────────────
 
   describe('getTenantPlan', () => {
-    it('defaults to Free for unassigned tenant', () => {
-      const plan = store.getTenantPlan(TENANT_A);
+    it('defaults to Free for unassigned tenant', async () => {
+      const plan = await store.getTenantPlan(TENANT_A);
       expect(plan.planId).toBe('free');
       expect(plan.assignedBy).toBe('system');
     });
   });
 
   describe('getTenantFeedQuota', () => {
-    it('returns Free quota for unassigned tenant', () => {
-      const quota = store.getTenantFeedQuota(TENANT_A);
+    it('returns Free quota for unassigned tenant', async () => {
+      const quota = await store.getTenantFeedQuota(TENANT_A);
       expect(quota.planId).toBe('free');
       expect(quota.maxFeeds).toBe(3);
     });
 
-    it('returns correct quota after plan assignment', () => {
-      store.assignPlan(TENANT_A, 'enterprise', ADMIN);
-      const quota = store.getTenantFeedQuota(TENANT_A);
+    it('returns correct quota after plan assignment', async () => {
+      await store.assignPlan(TENANT_A, 'enterprise', ADMIN);
+      const quota = await store.getTenantFeedQuota(TENANT_A);
       expect(quota.planId).toBe('enterprise');
       expect(quota.maxFeeds).toBe(-1);
     });
   });
 
   describe('assignPlan', () => {
-    it('assigns a plan and returns assignment + previous', () => {
-      const result = store.assignPlan(TENANT_A, 'starter', ADMIN);
+    it('assigns a plan and returns assignment + previous', async () => {
+      const result = await store.assignPlan(TENANT_A, 'starter', ADMIN);
       expect(result.assignment.planId).toBe('starter');
       expect(result.previousPlanId).toBe('free');
     });
 
-    it('can re-assign a different plan', () => {
-      store.assignPlan(TENANT_A, 'starter', ADMIN);
-      const result = store.assignPlan(TENANT_A, 'teams', ADMIN);
+    it('can re-assign a different plan', async () => {
+      await store.assignPlan(TENANT_A, 'starter', ADMIN);
+      const result = await store.assignPlan(TENANT_A, 'teams', ADMIN);
       expect(result.previousPlanId).toBe('starter');
       expect(result.assignment.planId).toBe('teams');
     });
 
-    it('throws for invalid plan ID', () => {
-      expect(() => store.assignPlan(TENANT_A, 'invalid' as BillingPlanId, ADMIN))
-        .toThrow('Invalid plan');
+    it('throws for invalid plan ID', async () => {
+      await expect(store.assignPlan(TENANT_A, 'invalid' as BillingPlanId, ADMIN))
+        .rejects.toThrow('Invalid plan');
     });
 
-    it('tenant isolation — assigning A does not affect B', () => {
-      store.assignPlan(TENANT_A, 'enterprise', ADMIN);
-      expect(store.getTenantPlan(TENANT_B).planId).toBe('free');
+    it('tenant isolation — assigning A does not affect B', async () => {
+      await store.assignPlan(TENANT_A, 'enterprise', ADMIN);
+      const plan = await store.getTenantPlan(TENANT_B);
+      expect(plan.planId).toBe('free');
     });
   });
 
@@ -178,14 +179,16 @@ describe('FeedQuotaStore', () => {
   });
 
   describe('listAllAssignments', () => {
-    it('empty when no assignments', () => {
-      expect(store.listAllAssignments()).toHaveLength(0);
+    it('empty when no assignments', async () => {
+      const list = await store.listAllAssignments();
+      expect(list).toHaveLength(0);
     });
 
-    it('lists assigned tenants', () => {
-      store.assignPlan(TENANT_A, 'starter', ADMIN);
-      store.assignPlan(TENANT_B, 'teams', ADMIN);
-      expect(store.listAllAssignments()).toHaveLength(2);
+    it('lists assigned tenants', async () => {
+      await store.assignPlan(TENANT_A, 'starter', ADMIN);
+      await store.assignPlan(TENANT_B, 'teams', ADMIN);
+      const list = await store.listAllAssignments();
+      expect(list).toHaveLength(2);
     });
   });
 
