@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-26 (update at end of EVERY session via /session-end)
-**Session counter:** 74
+**Session counter:** 76
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-26 | **20 data pages** + P2-1 queue alert banner on AdminOpsPage. 739 tests (741 total, 2 skipped). useQueueAlerts hook polls GET /admin/queues/alerts every 30s. Red banner with queue names when alerts active. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-26 | **20 data pages** + P2-1 queue alert banner on AdminOpsPage. 755 tests (757 total, 2 skipped). **Session 76:** VulnDetailPanel (SplitPane), SearchPage drill-down navigation, IOC enrichment tab wired to useIOCEnrichment, IOC relations tab wired to useNodeNeighbors (graph service), sort handlers added to CorrelationPage/DRPDashboardPage/IntegrationPage/UserManagementPage. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-26 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness + **P3-6 MISP connector (15 improvements)**. 486 tests. MISP routes to REST queue. 501 stub removed. Flat file feed via parseConfig.format='misp_feed'. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Persistence Migration Phase 1. All pipeline phases complete. 33 containers, 5,825 tests.
-- **Last session outcome:** Session 74 (2026-03-26). Persistence migration foundation: `packages/shared-persistence` (RedisJsonStore utility, 15 tests). Billing-service Prisma migration: 5 new models (TenantSubscription, BillingUsageRecord, BillingInvoice, BillingCoupon, BillingGracePeriod), Plan enum `starter` added, BillingRepository (5 repo classes), dual-mode PlanStore (Prisma or in-memory), all store methods async. 40 new tests (174 billing, 5,825 total). DECISION-027 documented. **Not yet deployed** — stores not wired to Prisma in index.ts yet.
-- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. WIP files renamed to .wip: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip, queue-alert-evaluator.test.ts.wip. Deploy.yml 15min timeout insufficient for fresh backend build on VPS. Grafana pipeline-queues dashboard still empty (needs BullMQ custom counters). Billing stores not yet wired to Prisma in production (index.ts still instantiates without repo).
-- **Next tasks:** Wire billing-service index.ts to pass SubscriptionRepo to PlanStore in production mode. Then session B2: alerting-service → Postgres migration. Also pending: BullMQ custom Prometheus counters, IOC search pagination.
+- **Current phase:** Persistence Migration Phase 1 + UI Polish. All pipeline phases complete. 33 containers, ~5,837+ tests (755 frontend).
+- **Last session outcome:** Session 76 (2026-03-26). Frontend interactivity audit: VulnerabilityListPage detail panel (SplitPane), SearchPage drill-down navigation (react-router), IOC enrichment tab wired to useIOCEnrichment hook, IOC relations tab wired to useNodeNeighbors (graph service), sort handlers added to 4 pages (CorrelationPage, DRPDashboardPage, IntegrationPage, UserManagementPage). 10 files changed, 16 new tests, 755 frontend tests passing. Commit 75b5657.
+- **Known issues:** Pre-existing TS errors in test files (alerting-page, phase4-pages, phase5-pages). IocListPage.tsx at 569 lines (over 400 limit, pre-existing). Deploy.yml 25min timeout. Grafana pipeline-queues dashboard still empty. Billing stores not yet wired to Prisma in index.ts. Clickable element audit not yet done (non-functional buttons/links). Mobile responsiveness for new detail panels not verified.
+- **Next tasks:** (1) Continue UI polish: clickable element audit (non-functional buttons), mobile responsiveness for VulnDetailPanel. (2) Wire billing-service Prisma in index.ts. (3) Persistence migration B2: alerting-service → Postgres.
 
 ## Deployment Log
 
@@ -216,6 +216,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 71 | 2026-03-26 | etip_admin + etip_frontend + shared-utils updated | ✅ CI green (23561851508) | aa8400f | P2-1 queue alerting: QueueAlertEvaluator (Redis debounce, QUEUE_ALERT/RESOLVED), GET /queues/alerts, AdminOpsPage red banner. 190 admin tests, 739 frontend tests, 5,692 total. |
 | 72 | 2026-03-26 | etip_ingestion updated (MISP connector + deploy.yml) | ✅ CI green (23565670507) | 1754609 | P3-6 MISP connector: 15 improvements, 81 tests, 486 ingestion total. All 5 connectors functional. Deploy.yml RCA #41 orphan cleanup fix. 33 containers healthy. |
 | 73 | 2026-03-26 | All 23 backend services updated (Prometheus metrics) | ✅ CI green (23574054284) | 050eb58 | prom-client wired to all 23 services via shared-utils registerMetrics(). Prometheus scrape config: 23 targets. Deploy.yml orphan cleanup improved. 12 new tests, 5,785 total. |
+| 76 | 2026-03-26 | No deploy (frontend-only, code session) | — | 75b5657 | Frontend interactivity: VulnDetailPanel, SearchPage drill-down, IOC enrichment/relations wiring, sort on 4 pages. 16 new tests, 755 frontend. |
 
 ## E2E Verification Results (Session 13)
 

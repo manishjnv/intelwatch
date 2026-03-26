@@ -1,59 +1,59 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-26
-**Session:** 74
-**Session Summary:** Persistence migration foundation — new shared-persistence package + billing-service Prisma migration (5 models, dual-mode stores, 40 new tests). DECISION-027.
+**Session:** 76
+**Session Summary:** Frontend interactivity audit — detail panels, drill-downs, enrichment/relations wiring, sort audit across 10 files. 16 new tests, 755 frontend tests total.
 
 ## Changes Made
-- Session-end commit pending
-- 8 new files created, 15 files modified
+- Commit 75b5657: 10 files changed, +653/-35 lines
 
 ## New Files
 | File | Purpose |
 |------|---------|
-| `packages/shared-persistence/package.json` | Package config (ioredis) |
-| `packages/shared-persistence/tsconfig.json` | Composite TS config |
-| `packages/shared-persistence/src/index.ts` | Public exports |
-| `packages/shared-persistence/src/redis-json-store.ts` | `RedisJsonStore<T>` — debounced save/restore, TTL, graceful degradation |
-| `packages/shared-persistence/tests/redis-json-store.test.ts` | 15 unit tests (mocked ioredis) |
-| `apps/billing-service/src/prisma.ts` | PrismaClient singleton |
-| `apps/billing-service/src/repository.ts` | 5 repo classes: SubscriptionRepo, UsageRepo, InvoiceRepo, CouponRepo, GracePeriodRepo |
-| `apps/billing-service/tests/repository.test.ts` | 25 repository unit tests (mocked Prisma) |
+| `apps/frontend/src/__tests__/session76-detail-drilldown.test.tsx` | 16 tests for all 4 fixes + filter/sort |
 
 ## Modified Files
 | File | Change |
 |------|--------|
-| `tsconfig.build.json` | Added `shared-persistence` to references |
-| `prisma/schema.prisma` | Added `starter` to Plan enum, 5 billing models, Tenant relations |
-| `apps/billing-service/package.json` | Added `@prisma/client` dependency |
-| `apps/billing-service/src/config.ts` | Added `TI_DATABASE_URL` env var |
-| `apps/billing-service/src/services/plan-store.ts` | Made async, accepts optional SubscriptionRepo |
-| `apps/billing-service/src/services/upgrade-flow.ts` | Made previewUpgrade async |
-| `apps/billing-service/src/routes/*.ts` (7 files) | Added await to async store calls |
-| `apps/billing-service/tests/plan-store.test.ts` | Updated to async/await |
-| `apps/billing-service/tests/upgrade-flow.test.ts` | Updated to async/await |
+| `apps/frontend/src/pages/VulnerabilityListPage.tsx` | SplitPane + VulnDetailPanel (CVE header, CVSS, EPSS, description, vendors, KEV, NVD links) |
+| `apps/frontend/src/pages/SearchPage.tsx` | ResultRow → clickable button, useNavigate to /iocs or /vulnerabilities, ArrowRight hover |
+| `apps/frontend/src/pages/IocListPage.tsx` | useIOCEnrichment + useNodeNeighbors wiring, real graph data → RelationshipGraph, empty state |
+| `apps/frontend/src/hooks/use-enrichment-data.ts` | Added useIOCEnrichment(iocId) hook — GET /enrichment/ioc/:id |
+| `apps/frontend/src/pages/CorrelationPage.tsx` | sortBy/sortOrder state + handleSort + DataTable wiring |
+| `apps/frontend/src/pages/DRPDashboardPage.tsx` | sortBy/sortOrder state + handleSort + DataTable wiring |
+| `apps/frontend/src/pages/IntegrationPage.tsx` | sortBy/sortOrder state + handleSort + sortedData memo + DataTable wiring |
+| `apps/frontend/src/pages/UserManagementPage.tsx` | sortBy/sortOrder state + handleSort + DataTable wiring (users/teams/roles tabs) |
+| `apps/frontend/src/__tests__/drp-triage-ioc-tabs.test.tsx` | Added useNodeNeighbors + useIOCEnrichment mocks |
 
 ## Decisions & Rationale
-- **DECISION-027:** Hybrid persistence — Postgres for business entities, Redis JSON for config
+- No new architectural decisions (ADDITIVE frontend-only changes)
 
 ## E2E / Deploy Verification Results
-- No deployment this session (code-only)
-- All 5,825 tests passing (0 failures)
+- No deployment this session (frontend-only, code changes)
+- All 755 frontend tests passing (757 total, 2 skipped), 26 test files
 
 ## Open Items / Next Steps
 ### Immediate
-1. Wire billing-service index.ts to pass repos to stores
-2. Session B2: alerting-service → Postgres migration
+1. UI Polish: clickable element audit (non-functional buttons/links across 20 pages)
+2. Mobile responsiveness testing for VulnDetailPanel at 375px
+3. IocListPage.tsx refactoring (569 lines, over 400 limit)
 
 ### Deferred
-- B3-B4, C1-C3, D1-D3, E1 (11 remaining persistence migration sessions)
+- Persistence migration B2: alerting-service → Postgres
+- Wire billing-service index.ts Prisma repos
+- BullMQ custom Prometheus counters
 
 ## How to Resume
 ```
-Working on: Persistence Migration — Session B2 (alerting-service → Postgres)
-Module target: alerting-service
-Do not modify: billing-service, shared-persistence, frontend
+Working on: Frontend UI Polish — clickable element audit
+Module target: apps/frontend only
+Do not modify: any backend service
 
-Reference: apps/billing-service/src/repository.ts (Prisma pattern)
-Plan: A1 DONE → B1 DONE → B2 next
+Last session (76): VulnDetailPanel, SearchPage drill-down, IOC enrichment/relations,
+sort on 4 pages. Commit 75b5657. 755 frontend tests.
+
+Remaining from session 76 audit:
+- HuntingWorkbenchPage: kanban (no table filter/sort needed)
+- Non-functional buttons/links audit not started
+- Mobile responsiveness for new panels not verified
 ```
