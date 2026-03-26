@@ -7,6 +7,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { notifyApiError } from './useApiError'
 import { DEMO_ENRICHMENT_STATS, DEMO_COST_STATS, DEMO_BUDGET } from './demo-data'
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -184,7 +185,7 @@ function withFallback<T>(data: T | undefined, isLoading: boolean, fallback: T, h
 export function useEnrichmentStats() {
   const result = useQuery({
     queryKey: ['enrichment-stats'],
-    queryFn: () => api<EnrichmentStats>('/enrichment/stats').catch(() => null),
+    queryFn: () => api<EnrichmentStats>('/enrichment/stats').catch(err => notifyApiError(err, 'enrichment stats', null)),
     staleTime: 30_000,
   })
   const fallback = withFallback(result.data, result.isLoading, DEMO_ENRICHMENT_STATS, d => d != null)
@@ -254,7 +255,7 @@ export function useIOCEnrichment(iocId: string | null) {
 export function useCostStats() {
   const result = useQuery({
     queryKey: ['enrichment-cost-stats'],
-    queryFn: () => api<CostStats>('/enrichment/cost/stats').catch(() => null),
+    queryFn: () => api<CostStats>('/enrichment/cost/stats').catch(err => notifyApiError(err, 'cost stats', null)),
     staleTime: 60_000,
   })
   const fallback = withFallback(result.data, result.isLoading, DEMO_COST_STATS, d => d != null)
@@ -275,7 +276,7 @@ export function useIOCCost(iocId: string | null) {
 export function useBudgetStatus() {
   const result = useQuery({
     queryKey: ['enrichment-budget'],
-    queryFn: () => api<BudgetStatus>('/enrichment/cost/budget').catch(() => null),
+    queryFn: () => api<BudgetStatus>('/enrichment/cost/budget').catch(err => notifyApiError(err, 'budget status', null)),
     staleTime: 30_000,
   })
   const fallback = withFallback(result.data, result.isLoading, DEMO_BUDGET, d => d != null)

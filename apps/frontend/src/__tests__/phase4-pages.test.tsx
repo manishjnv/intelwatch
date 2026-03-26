@@ -874,7 +874,7 @@ describe('CorrelationPage — Interactivity', () => {
     // Find all C2 buttons in the kill chain bar (detail panel has it)
     const c2Buttons = screen.getAllByText('C2')
     // Click the kill chain phase (it's the last "C2" in the bar)
-    fireEvent.click(c2Buttons[c2Buttons.length - 1])
+    fireEvent.click(c2Buttons[c2Buttons.length - 1]!)
     // Kill chain filter badge should appear
     expect(screen.getByText(/Kill Chain: command and control/)).toBeTruthy()
   })
@@ -939,7 +939,7 @@ describe('HuntingWorkbenchPage — Interactivity', () => {
     render(<HuntingWorkbenchPage />)
     fireEvent.click(screen.getByText('APT28 Hunt'))
     // Click on the score gauge (SVG with score value)
-    const scoreValue = screen.getAllByText('78')[0]
+    const scoreValue = screen.getAllByText('78')[0]!
     const svg = scoreValue.closest('svg')
     if (svg) fireEvent.click(svg)
     // Breakdown popover should appear

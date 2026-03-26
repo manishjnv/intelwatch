@@ -6,6 +6,7 @@
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { notifyApiError } from './useApiError'
 import {
   DEMO_DASHBOARD, DEMO_TRENDS, DEMO_EXECUTIVE, DEMO_SERVICE_HEALTH,
   type DashboardData, type TrendsResponse, type TrendSeries,
@@ -33,7 +34,7 @@ export function useAnalyticsWidgets() {
   const empty: DashboardData = { widgets: {}, generatedAt: '', cacheHit: false }
   const result = useQuery({
     queryKey: ['analytics-dashboard'],
-    queryFn: () => api<DashboardData>('/analytics').catch(() => empty),
+    queryFn: () => api<DashboardData>('/analytics').catch(err => notifyApiError(err, 'analytics', empty)),
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_DASHBOARD,
@@ -48,7 +49,7 @@ export function useAnalyticsTrends(period: '7d' | '30d' | '90d' = '7d') {
     queryKey: ['analytics-trends', period],
     queryFn: () => api<TrendSeries[] | TrendsResponse>(`/analytics/trends?period=${period}`)
       .then(raw => Array.isArray(raw) ? { data: raw, period, metrics: raw.map(s => s.metric) } : raw)
-      .catch(() => empty),
+      .catch(err => notifyApiError(err, 'analytics trends', empty)),
     staleTime: 60_000,
   })
   return withDemoFallback(result, { ...DEMO_TRENDS, period },
@@ -72,7 +73,7 @@ export function useExecutiveSummary() {
 export function useServiceHealth() {
   const result = useQuery({
     queryKey: ['analytics-service-health'],
-    queryFn: () => api<ServiceHealthEntry[]>('/analytics/service-health').catch(() => [] as ServiceHealthEntry[]),
+    queryFn: () => api<ServiceHealthEntry[]>('/analytics/service-health').catch(err => notifyApiError(err, 'service health', [] as ServiceHealthEntry[])),
     staleTime: 30_000,
   })
   return withDemoFallback(result, DEMO_SERVICE_HEALTH,

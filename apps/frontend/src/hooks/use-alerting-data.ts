@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { notifyApiError } from './useApiError'
 import {
   DEMO_RULES, DEMO_ALERTS, DEMO_CHANNELS, DEMO_ESCALATIONS,
   DEMO_STATS, DEMO_TEMPLATES, DEMO_HISTORY,
@@ -49,7 +50,7 @@ export function useAlerts(page = 1, severity?: AlertSeverity, status?: AlertStat
     queryKey: ['alerts', page, severity, status],
     queryFn: () => api<Alert[] | ListResponse<Alert>>(`/alerts?${params}`)
       .then(raw => Array.isArray(raw) ? { data: raw, total: raw.length, page, limit: 50 } : raw)
-      .catch(() => empty),
+      .catch(err => notifyApiError(err, 'alerts', empty)),
     staleTime: 15_000,
   })
   return withDemoFallback(
@@ -63,7 +64,7 @@ export function useAlerts(page = 1, severity?: AlertSeverity, status?: AlertStat
 export function useAlertStats() {
   const result = useQuery({
     queryKey: ['alert-stats'],
-    queryFn: () => api<AlertStats>('/alerts/stats').catch(() => null as unknown as AlertStats),
+    queryFn: () => api<AlertStats>('/alerts/stats').catch(err => notifyApiError(err, 'alert stats', null as unknown as AlertStats)),
     staleTime: 30_000,
   })
   return withDemoFallback(result, DEMO_STATS,
@@ -106,7 +107,7 @@ export function useAlertSearch(query: string) {
 export function useAlertRules() {
   const result = useQuery({
     queryKey: ['alert-rules'],
-    queryFn: () => api<AlertRule[]>('/alerts/rules').catch(() => [] as AlertRule[]),
+    queryFn: () => api<AlertRule[]>('/alerts/rules').catch(err => notifyApiError(err, 'alert rules', [] as AlertRule[])),
     staleTime: 30_000,
   })
   return withDemoFallback(result, DEMO_RULES,
@@ -130,7 +131,7 @@ export function useAlertTemplates() {
 export function useNotificationChannels() {
   const result = useQuery({
     queryKey: ['notification-channels'],
-    queryFn: () => api<NotificationChannel[]>('/alerts/channels').catch(() => [] as NotificationChannel[]),
+    queryFn: () => api<NotificationChannel[]>('/alerts/channels').catch(err => notifyApiError(err, 'notification channels', [] as NotificationChannel[])),
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_CHANNELS,

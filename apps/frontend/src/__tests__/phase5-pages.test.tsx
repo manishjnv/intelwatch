@@ -336,7 +336,7 @@ describe('IntegrationPage', () => {
   it('opens detail panel on row click', () => {
     render(<IntegrationPage />)
     // Click the first instance (summary card or table row)
-    fireEvent.click(screen.getAllByText('Production Splunk')[0])
+    fireEvent.click(screen.getAllByText('Production Splunk')[0]!)
     expect(screen.getByText('Configuration')).toBeTruthy()
     expect(screen.getByText('Metrics')).toBeTruthy()
     expect(screen.getByText('Test Connection')).toBeTruthy()
@@ -381,7 +381,7 @@ describe('IntegrationPage', () => {
 
   it('closes detail panel on backdrop click', () => {
     render(<IntegrationPage />)
-    fireEvent.click(screen.getAllByText('Production Splunk')[0])
+    fireEvent.click(screen.getAllByText('Production Splunk')[0]!)
     expect(screen.getByText('Configuration')).toBeTruthy()
     // Click backdrop
     const backdrop = document.querySelector('.fixed.inset-0.bg-black\\/30')

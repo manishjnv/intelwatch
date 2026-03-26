@@ -85,7 +85,7 @@ export function RelationshipGraph({
       .enter()
       .append('circle')
       .attr('r', (d: any) => (d.primary ? 10 : 6))
-      .attr('fill', (d: any) => NODE_COLOR[d.type] ?? NODE_COLOR.default)
+      .attr('fill', (d: any) => NODE_COLOR[d.type] ?? NODE_COLOR.default ?? '#94a3b8')
       .attr('stroke', (d: any) => (d.primary ? '#fff' : 'none'))
       .attr('stroke-width', (d: any) => (d.primary ? 2 : 0))
       .attr('cursor', 'pointer')

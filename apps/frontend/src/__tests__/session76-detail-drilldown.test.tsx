@@ -3,7 +3,7 @@
  * and sort handler wiring across audited pages.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@/test/test-utils'
+import { render, screen, fireEvent, act } from '@/test/test-utils'
 
 /* ================================================================ */
 /* Mocks                                                              */
@@ -352,10 +352,13 @@ describe('VulnerabilityListPage filter and sort', () => {
   })
 
   it('searches by CVE ID', () => {
+    vi.useFakeTimers()
     render(<VulnerabilityListPage />)
     const searchInput = screen.getByPlaceholderText(/Search CVEs/i)
     fireEvent.change(searchInput, { target: { value: '3400' } })
+    act(() => { vi.advanceTimersByTime(300) }) // wait for debounce
     expect(screen.getByText('CVE-2024-3400')).toBeTruthy()
     expect(screen.queryByText('CVE-2024-0001')).toBeNull()
+    vi.useRealTimers()
   })
 })

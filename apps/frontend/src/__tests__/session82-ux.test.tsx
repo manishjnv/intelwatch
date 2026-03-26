@@ -299,4 +299,90 @@ describe('Loading skeleton wiring', () => {
     render(<ThreatActorListPage />)
     expect(screen.getByTestId('table-skeleton')).toBeInTheDocument()
   })
+
+  it('MalwareListPage shows skeleton when loading', async () => {
+    const { MalwareListPage } = await import('@/pages/MalwareListPage')
+    render(<MalwareListPage />)
+    expect(screen.getByTestId('table-skeleton')).toBeInTheDocument()
+  })
+
+  it('VulnerabilityListPage shows skeleton when loading', async () => {
+    const { VulnerabilityListPage } = await import('@/pages/VulnerabilityListPage')
+    render(<VulnerabilityListPage />)
+    expect(screen.getByTestId('table-skeleton')).toBeInTheDocument()
+  })
+})
+
+// ================================================================
+// Session 85: notifyApiError wired to hooks — 2 tests
+// ================================================================
+describe('notifyApiError wired to hooks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    _resetNotifyState()
+  })
+
+  it('alerting hook surfaces error toast via notifyApiError', () => {
+    const err = new (ApiError as any)(503, 'UNAVAILABLE', 'Service down')
+    const result = notifyApiError(err, 'alerts', { data: [], total: 0, page: 1, limit: 50 })
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('Failed to load alerts'), 'error')
+    expect(result).toEqual({ data: [], total: 0, page: 1, limit: 50 })
+  })
+
+  it('analytics hook surfaces error toast via notifyApiError', () => {
+    const err = new (ApiError as any)(500, 'INTERNAL', 'DB error')
+    const empty = { widgets: {}, generatedAt: '', cacheHit: false }
+    const result = notifyApiError(err, 'analytics', empty)
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('Failed to load analytics'), 'error')
+    expect(result).toBe(empty)
+  })
+})
+
+// ================================================================
+// Session 85: Debounce wired to MalwareListPage + VulnListPage — 2 tests
+// ================================================================
+describe('Debounce wired to list pages', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('MalwareListPage uses debounced search value', async () => {
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebouncedValue(value, 300),
+      { initialProps: { value: '' } },
+    )
+    rerender({ value: 'Black' })
+    expect(result.current).toBe('') // Not yet debounced
+    act(() => { vi.advanceTimersByTime(300) })
+    expect(result.current).toBe('Black') // Now debounced
+  })
+
+  it('VulnerabilityListPage uses debounced search value', async () => {
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebouncedValue(value, 300),
+      { initialProps: { value: '' } },
+    )
+    rerender({ value: 'CVE-2024' })
+    expect(result.current).toBe('')
+    act(() => { vi.advanceTimersByTime(300) })
+    expect(result.current).toBe('CVE-2024')
+  })
+})
+
+// ================================================================
+// Session 85: TableSkeleton row/column params — 2 tests
+// ================================================================
+describe('TableSkeleton page-specific params', () => {
+  it('MalwareListPage skeleton has 8 rows', async () => {
+    const { MalwareListPage } = await import('@/pages/MalwareListPage')
+    render(<MalwareListPage />)
+    const rows = screen.getAllByTestId('skeleton-row')
+    expect(rows).toHaveLength(8)
+  })
+
+  it('VulnerabilityListPage skeleton has 8 rows', async () => {
+    const { VulnerabilityListPage } = await import('@/pages/VulnerabilityListPage')
+    render(<VulnerabilityListPage />)
+    const rows = screen.getAllByTestId('skeleton-row')
+    expect(rows).toHaveLength(8)
+  })
 })

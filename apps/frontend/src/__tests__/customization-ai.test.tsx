@@ -198,7 +198,7 @@ describe('CustomizationPage — AI Config tab', () => {
     it('clicking a plan card calls useCostEstimate with that plan', () => {
       renderAITab()
       // Click the first occurrence of "Starter" (the plan card button)
-      fireEvent.click(screen.getAllByText('Starter')[0])
+      fireEvent.click(screen.getAllByText('Starter')[0]!)
       // After clicking Starter, cost estimate should be re-queried
       expect(mockCostEstimate).toHaveBeenCalled()
     })

@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { notifyApiError } from './useApiError'
 import {
   DEMO_BILLING_PLANS, DEMO_USAGE_METERS, DEMO_CURRENT_SUBSCRIPTION,
   DEMO_PAYMENT_HISTORY, DEMO_BILLING_STATS,
@@ -100,7 +101,7 @@ function withDemoFallback<T>(
 export function useBillingPlans() {
   const result = useQuery({
     queryKey: ['billing-plans'],
-    queryFn: () => api<BillingPlan[]>('/billing/plans').catch(() => [] as BillingPlan[]),
+    queryFn: () => api<BillingPlan[]>('/billing/plans').catch(err => notifyApiError(err, 'billing plans', [] as BillingPlan[])),
     staleTime: 300_000,
   })
   return withDemoFallback(
@@ -197,7 +198,7 @@ export function useCancelSubscription() {
 export function useSystemHealth() {
   const result = useQuery({
     queryKey: ['admin-system-health'],
-    queryFn: () => api<{ services: ServiceHealth[]; summary: SystemHealthSummary }>('/admin/system/health').catch(() => null as any),
+    queryFn: () => api<{ services: ServiceHealth[]; summary: SystemHealthSummary }>('/admin/system/health').catch(err => notifyApiError(err, 'system health', null as any)),
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
@@ -304,7 +305,7 @@ export function useAdminAuditLog(page = 1) {
 export function useAdminStats() {
   const result = useQuery({
     queryKey: ['admin-stats'],
-    queryFn: () => api<AdminStats>('/admin/stats').catch(() => null as unknown as AdminStats),
+    queryFn: () => api<AdminStats>('/admin/stats').catch(err => notifyApiError(err, 'admin stats', null as unknown as AdminStats)),
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_ADMIN_STATS,

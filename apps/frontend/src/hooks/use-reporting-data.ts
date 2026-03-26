@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { notifyApiError } from './useApiError'
 import {
   DEMO_REPORTS, DEMO_SCHEDULES, DEMO_TEMPLATES, DEMO_REPORT_STATS, DEMO_COMPARISON,
   type Report, type ReportSchedule, type ReportTemplate, type ReportStats,
@@ -44,7 +45,7 @@ export function useReports(page = 1, type?: ReportType, status?: string) {
   const empty: ListResponse<Report> = { data: [], total: 0, page, limit: 50 }
   const result = useQuery({
     queryKey: ['reports', page, type, status],
-    queryFn: () => api<ListResponse<Report>>(`/reports?${params}`).catch(() => empty),
+    queryFn: () => api<ListResponse<Report>>(`/reports?${params}`).catch(err => notifyApiError(err, 'reports', empty)),
     staleTime: 30_000,
   })
   return withDemoFallback(
@@ -57,7 +58,7 @@ export function useReports(page = 1, type?: ReportType, status?: string) {
 export function useReportStats() {
   const result = useQuery({
     queryKey: ['report-stats'],
-    queryFn: () => api<ReportStats>('/reports/stats').catch(() => null as unknown as ReportStats),
+    queryFn: () => api<ReportStats>('/reports/stats').catch(err => notifyApiError(err, 'report stats', null as unknown as ReportStats)),
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_REPORT_STATS,
@@ -79,7 +80,7 @@ export function useReportTemplates() {
 export function useReportSchedules() {
   const result = useQuery({
     queryKey: ['report-schedules'],
-    queryFn: () => api<ReportSchedule[]>('/reports/schedule').catch(() => [] as ReportSchedule[]),
+    queryFn: () => api<ReportSchedule[]>('/reports/schedule').catch(err => notifyApiError(err, 'report schedules', [] as ReportSchedule[])),
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_SCHEDULES,

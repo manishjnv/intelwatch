@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { notifyApiError } from './useApiError'
 import {
   DEMO_SIEM_INTEGRATIONS, DEMO_WEBHOOKS, DEMO_TICKETING,
   DEMO_STIX_COLLECTIONS, DEMO_BULK_EXPORTS, DEMO_INTEGRATION_STATS,
@@ -67,7 +68,7 @@ export function useSIEMIntegrations() {
   const empty: ListResponse<SIEMIntegration> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['siem-integrations'],
-    queryFn: () => api<ListResponse<SIEMIntegration>>('/integrations/siem').catch(() => empty),
+    queryFn: () => api<ListResponse<SIEMIntegration>>('/integrations/siem').catch(err => notifyApiError(err, 'SIEM integrations', empty)),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -196,7 +197,7 @@ export function useUsers(params: QueryParams = {}) {
   const empty: ListResponse<UserRecord> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['users', params],
-    queryFn: () => api<ListResponse<UserRecord>>(`/users${query}`).catch(() => empty),
+    queryFn: () => api<ListResponse<UserRecord>>(`/users${query}`).catch(err => notifyApiError(err, 'users', empty)),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -366,7 +367,7 @@ export function useCustomizationStats() {
   const empty: CustomizationStats = { modulesEnabled: 0, customRules: 0, aiBudgetUsed: 0, theme: 'dark' }
   const result = useQuery({
     queryKey: ['customization-stats'],
-    queryFn: () => api<CustomizationStats>('/customization/stats').catch(() => empty),
+    queryFn: () => api<CustomizationStats>('/customization/stats').catch(err => notifyApiError(err, 'customization stats', empty)),
     staleTime: 60_000,
   })
   return withDemoFallback(result, DEMO_CUSTOMIZATION_STATS, d => (d?.modulesEnabled ?? 0) > 0)

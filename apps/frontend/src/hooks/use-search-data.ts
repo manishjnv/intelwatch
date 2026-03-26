@@ -6,6 +6,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { notifyApiError } from './useApiError'
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -103,6 +104,7 @@ export function useIOCSearch(query: string, filters: SearchFilters = {}) {
       if (filters.page)      params.set('page', String(filters.page))
       if (filters.limit)     params.set('limit', String(filters.limit ?? 50))
       return api<SearchResponse>(`/search/iocs?${params.toString()}`)
+        .catch(err => notifyApiError(err, 'IOC search', { data: [], total: 0, took: 0, page: 1, limit: 50 }))
     },
     enabled,
     staleTime: 60_000,

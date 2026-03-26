@@ -223,7 +223,7 @@ describe('AlertingPage', () => {
     it('calls deleteRule on delete click', async () => {
       await renderPage()
       const deleteButtons = screen.getAllByTitle('Delete rule')
-      fireEvent.click(deleteButtons[0])
+      fireEvent.click(deleteButtons[0]!)
       expect(mutateFn).toHaveBeenCalledWith('r-1')
     })
   })
@@ -313,7 +313,7 @@ describe('AlertingPage', () => {
       await renderPage()
       fireEvent.click(screen.getByText('Alerts'))
       const checkboxes = screen.getAllByRole('checkbox')
-      fireEvent.click(checkboxes[0]) // select all
+      fireEvent.click(checkboxes[0]!) // select all
       // Bulk action buttons should appear
       expect(screen.getByText(/Ack \(3\)/)).toBeInTheDocument()
       expect(screen.getByText(/Resolve \(3\)/)).toBeInTheDocument()
@@ -323,7 +323,7 @@ describe('AlertingPage', () => {
       await renderPage()
       fireEvent.click(screen.getByText('Alerts'))
       const checkboxes = screen.getAllByRole('checkbox')
-      fireEvent.click(checkboxes[1]) // select first alert
+      fireEvent.click(checkboxes[1]!) // select first alert
       expect(screen.getByText(/Ack \(1\)/)).toBeInTheDocument()
     })
 
@@ -331,7 +331,7 @@ describe('AlertingPage', () => {
       await renderPage()
       fireEvent.click(screen.getByText('Alerts'))
       const histButtons = screen.getAllByTitle('View history')
-      fireEvent.click(histButtons[0])
+      fireEvent.click(histButtons[0]!)
       expect(screen.getByText('Alert History')).toBeInTheDocument()
     })
   })

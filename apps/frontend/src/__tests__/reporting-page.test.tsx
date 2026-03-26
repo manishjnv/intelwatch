@@ -225,15 +225,15 @@ describe('ReportingPage — Reports Tab', () => {
     render(<ReportingPage />)
     // Select first checkbox (not header)
     const checkboxes = screen.getAllByRole('checkbox')
-    fireEvent.click(checkboxes[1]) // first report row
+    fireEvent.click(checkboxes[1]!) // first report row
     expect(screen.getByText(/Delete \(1\)/)).toBeInTheDocument()
   })
 
   it('shows compare button when exactly 2 items selected', () => {
     render(<ReportingPage />)
     const checkboxes = screen.getAllByRole('checkbox')
-    fireEvent.click(checkboxes[1]) // rpt-1 (completed)
-    fireEvent.click(checkboxes[4]) // rpt-4 (completed)
+    fireEvent.click(checkboxes[1]!) // rpt-1 (completed)
+    fireEvent.click(checkboxes[4]!) // rpt-4 (completed)
     expect(screen.getByText('Compare')).toBeInTheDocument()
   })
 
@@ -328,7 +328,7 @@ describe('ReportingPage — Schedules Tab', () => {
     render(<ReportingPage />)
     fireEvent.click(screen.getByText('Schedules'))
     const checkboxes = screen.getAllByRole('checkbox')
-    fireEvent.click(checkboxes[1]) // first schedule
+    fireEvent.click(checkboxes[1]!) // first schedule
     expect(screen.getByText(/Enable \(1\)/)).toBeInTheDocument()
     expect(screen.getByText(/Disable \(1\)/)).toBeInTheDocument()
   })

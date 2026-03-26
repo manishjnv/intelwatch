@@ -5,6 +5,7 @@
  * Row click opens detail panel: MITRE ATT&CK badges + linked IOCs.
  */
 import { useState, useMemo } from 'react'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useActors, useActorDetail, useActorLinkedIOCs, type ActorRecord, type LinkedIOC } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { TableSkeleton } from '@/components/data/TableSkeleton'
@@ -159,20 +160,21 @@ export function ThreatActorListPage() {
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null)
+  const debouncedSearch = useDebouncedValue(search, 300)
 
   const queryParams = useMemo(() => ({
     page, limit: 50, sortBy, sortOrder,
-    ...(search ? { q: search } : {}),
+    ...(debouncedSearch ? { q: debouncedSearch } : {}),
     ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
-  }), [page, search, sortBy, sortOrder, filters])
+  }), [page, debouncedSearch, sortBy, sortOrder, filters])
 
   const { data, isLoading, isDemo } = useActors(queryParams)
 
   const rows = useMemo(() => {
     let items = data?.data ?? []
     if (!isDemo || items.length === 0) return items
-    if (search) {
-      const q = search.toLowerCase()
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase()
       items = items.filter(r =>
         r.name.toLowerCase().includes(q) ||
         r.aliases.some(a => a.toLowerCase().includes(q)) ||
@@ -188,7 +190,7 @@ export function ThreatActorListPage() {
       const cmp = av < bv ? -1 : av > bv ? 1 : 0
       return sortOrder === 'asc' ? cmp : -cmp
     })
-  }, [data, isDemo, sortBy, sortOrder, search, filters])
+  }, [data, isDemo, sortBy, sortOrder, debouncedSearch, filters])
 
   const selectedActor = useMemo(
     () => rows.find(r => r.id === selectedActorId) ?? null,
