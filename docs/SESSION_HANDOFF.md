@@ -1,53 +1,42 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-27
-**Session:** 83
-**Session Summary:** Billing dual-mode persistence (UsageStore, InvoiceStore, CouponStore → Prisma) + admin queue monitor 10s cache. 21 new tests.
+**Session:** 84
+**Session Summary:** Scheduler retry with exponential backoff + circuit breaker. Feed health indicators (HealthDot, FailureSparkline, overdue detection) in FeedListPage.
 
 ## ✅ Changes Made
-- `bc6f392` — feat: billing dual-mode persistence + admin queue cache — session 83 (17 files, 660 insertions, 194 deletions)
+- `d2ff728` — feat: scheduler retry backoff + feed health indicators — session 84 (5 files, 684 insertions, 32 deletions)
+- `a97b8ff` — fix: remove unused vars in feed-health tests (lint) (1 file, 3 insertions, 3 deletions)
 
 ## 📁 Files / Documents Affected
 
 ### New Files
 | File | Purpose |
 |------|---------|
-| apps/billing-service/tests/dual-mode-stores.test.ts | 16 tests for UsageStore/InvoiceStore/CouponStore dual-mode (repo delegation + error fallback) |
-| apps/admin-service/tests/queue-cache.test.ts | 5 tests for GET /queues 10s cache (fresh, cached, expiry, sequential, error) |
+| apps/ingestion/tests/scheduler-retry.test.ts | 5 tests: backoff math, reset on success, backoff window skip, per-feed isolation, circuit breaker |
+| apps/frontend/src/__tests__/feed-health.test.tsx | 14 tests: health score (5), HealthDot (3), FailureSparkline (4), page integration (2) |
 
 ### Modified Files
 | File | Change |
 |------|--------|
-| apps/billing-service/src/services/usage-store.ts | Added UsageRepo constructor param, async trackUsage/getUsage/resetMonthly/getAllUsage with try/catch fallback |
-| apps/billing-service/src/services/invoice-store.ts | Added InvoiceRepo constructor param, async all 7 public methods with try/catch fallback |
-| apps/billing-service/src/services/coupon-store.ts | Added CouponRepo constructor param, async all 5 public methods with try/catch fallback |
-| apps/billing-service/src/services/upgrade-flow.ts | await createInvoice() call |
-| apps/billing-service/src/index.ts | Wire UsageRepo, InvoiceRepo, CouponRepo into stores |
-| apps/billing-service/src/routes/usage.ts | await getUsage, trackUsage |
-| apps/billing-service/src/routes/invoices.ts | await all invoiceStore calls |
-| apps/billing-service/src/routes/admin.ts | await getRevenueMetrics |
-| apps/billing-service/src/routes/webhooks.ts | await listInvoices, updateInvoiceStatus, findByOrderId |
-| apps/billing-service/src/routes/p0-features.ts | await getUsage, validateCoupon, applyCoupon |
-| apps/admin-service/src/routes/queue-monitor.ts | Module-level cachedResponse + cacheTime, 10s TTL, error responses not cached |
-| apps/billing-service/tests/usage-store.test.ts | All tests updated with await for async methods |
-| apps/billing-service/tests/invoice-store.test.ts | All tests updated with await for async methods |
-| apps/billing-service/tests/coupon-store.test.ts | All tests updated with await for async methods |
-| apps/billing-service/tests/admin-routes.test.ts | await createInvoice + updateInvoiceStatus |
+| apps/ingestion/src/workers/scheduler.ts | Per-feed retry Map, exponential backoff (30s→5min), circuit breaker (3 failures/5min → skip 5min), quota fetch logging |
+| apps/frontend/src/components/feed/FeedCard.tsx | computeFeedHealth(), healthLevel(), HealthDot, FailureSparkline components. Health dot in card view. |
+| apps/frontend/src/pages/FeedListPage.tsx | Health column (sortable), sparkline in Errors column, isScheduleOverdue() overdue detection, sort-by-health |
 
 ## 🔧 Decisions & Rationale
-No new DECISION entries. Used existing dual-mode pattern from PlanStore (DECISION-027, session 74). Queue cache uses simple module-level variables (no Redis/external dep needed).
+No new DECISION entries. Backoff formula (30s * 2^failCount, 5min cap) follows standard exponential backoff pattern. Circuit breaker threshold (3 failures in 5min window) matches customization-client's existing 5min cache TTL.
 
 ## 🧪 E2E / Deploy Verification Results
-- Billing-service: 190 tests passing (16 files)
-- Admin-service: 195 tests passing (17 files)
-- Full monorepo: all tests passing
-- CI run 23619637311 triggered on push
+- Ingestion tests: 502 passing (30 files, including 5 new scheduler-retry tests)
+- Frontend tests: 784 passing (28 files, including 14 new feed-health tests)
+- Full monorepo: 5,953 tests passing, 0 failures
+- CI triggered on push (commits d2ff728 + a97b8ff)
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. Verify CI/CD deploy succeeded for S83 (billing + admin containers rebuilt)
-2. Verify billing data persists across container restart on VPS
+1. Verify CI/CD deploy succeeded for S84 (ingestion + frontend containers rebuilt)
+2. Check feed health dots render correctly on ti.intelwatch.in FeedListPage
 
 ### Deferred
 - Persist FeedQuotaStore to Postgres (customization-service)
@@ -57,17 +46,18 @@ No new DECISION entries. Used existing dual-mode pattern from PlanStore (DECISIO
 
 ## 🔁 How to Resume
 ```
-Working on: Persistence migration (billing DONE, next: FeedQuotaStore or alerting)
+Working on: Production hardening / persistence migrations
 Module target: customization-service OR alerting-service
-Do not modify: frontend, ingestion, shared-* packages
+Do not modify: ingestion scheduler (S84 complete), frontend feed indicators (S84 complete)
 
 Steps:
-1. Check CI/CD run 23619637311 status
-2. Verify billing persistence on VPS (restart container, check data)
-3. Pick next persistence target: FeedQuotaStore (customization) or alerting-service
+1. Check CI/CD deploy status for S84
+2. Verify feed health UI on VPS
+3. Pick next target: FeedQuotaStore persistence (customization) or alerting-service persistence
 
-Module → Skill Map:
-  billing-service → skills/19-billing.md
-  admin-service → skills/22-admin-ops.md
-  customization → skills/17-customization.md
+Key facts from S84:
+- Scheduler retry constants: BACKOFF_BASE_MS=30000, BACKOFF_CAP_MS=300000, CB_THRESHOLD=3, CB_WINDOW_MS/CB_OPEN_MS=300000
+- Health score weights: failures 40%, reliability 30%, recency 30%
+- Health thresholds: green >80, amber 50-80, red <50
+- Overdue = lastFetchAt > 2x schedule interval (minute-field cron only)
 ```

@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-7%20started-00ff88)
-![Tests](https://img.shields.io/badge/tests-5906%2B%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-5953%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
@@ -17,14 +17,14 @@
 | Shared packages (types, utils, cache, auth, audit, normalization, enrichment) | ✅ Deployed | 355 |
 | API Gateway (Fastify, middleware) | ✅ Live on VPS | 45 |
 | User Service (register, login, refresh) | ✅ Live on VPS | 21 |
-| Ingestion Service (RSS + NVD + STIX/TAXII + REST_API, 11 pipeline modules) | ✅ Live on VPS | 392 |
+| Ingestion Service (RSS + NVD + STIX/TAXII + REST_API, 11 pipeline modules, scheduler retry) | ✅ Live on VPS | 502 |
 | Normalization Service (18 accuracy improvements) | ✅ Live on VPS | 139 |
 | AI Enrichment Service (VT + AbuseIPDB + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 253 |
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
-| Frontend (React 18 + Vite, 20 data pages, 21 viz components, demo fallbacks all 5 entity types + reporting + alerting + analytics, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons) | ✅ Live on VPS | 770 |
+| Frontend (React 18 + Vite, 20 data pages, 21 viz components, demo fallbacks all 5 entity types + reporting + alerting + analytics, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons, feed health indicators) | ✅ Live on VPS | 784 |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |

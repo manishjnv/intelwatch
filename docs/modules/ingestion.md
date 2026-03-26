@@ -1,6 +1,6 @@
 # Ingestion Service
 
-**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 486
+**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 502
 
 ## What It Does
 
@@ -31,7 +31,7 @@ Feed Source (RSS/NVD/STIX/REST/MISP) → Scheduler (cron 5min sync)
 | STIX/TAXII Connector | connectors/taxii.ts | TAXII 2.1 — collection discovery, basic auth, STIX indicator mapping |
 | REST API Connector | connectors/rest-api.ts | Generic JSON REST — configurable fieldMap + responseArrayPath |
 | MISP Connector | connectors/misp.ts | MISP REST API + flat file feed — 15 improvements: Object support, sighting confidence, warning list filtering, galaxy enrichment, to_ids filter, incremental fetch, exponential backoff, response size guard, attribute dedup, flat file feed, UUID passthrough, IPv6 detection, first_seen/last_seen, composite context |
-| Scheduler | workers/scheduler.ts | node-cron feed sync every 5 min |
+| Scheduler | workers/scheduler.ts | node-cron feed sync every 5 min, per-feed exponential backoff (30s→5min), circuit breaker for customization-client |
 | Feed Fetch Worker | workers/feed-fetch.ts | BullMQ worker: fetch → pipeline → persist |
 | Pipeline | workers/pipeline.ts | 5-stage article processing |
 | IOC Patterns | workers/ioc-patterns.ts | 20+ IOC regex detection |

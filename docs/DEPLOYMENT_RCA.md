@@ -670,3 +670,4 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 81 | 2026-03-27 | VPS activation: 20 feeds live, 17K articles, 1.5K IOCs. Fixed frontend MISSING_TENANT 400 (api.ts x-tenant-id injection). Billing pro→teams rename. 33 containers healthy. No new RCA issues. |
 | Session 82 | 2026-03-27 | No new issues. Frontend-only: error toasts, search debounce, loading skeletons. 770 frontend tests. Pushed to master, CI triggered. |
 | Session 83 | 2026-03-27 | No new issues. Billing dual-mode persistence (3 stores → Prisma) + admin queue 10s cache. 190 billing + 195 admin tests. CI triggered. |
+| Session 84 | 2026-03-27 | No new issues. Scheduler retry backoff + feed health indicators. 19 new tests, 5,953 total. CI triggered. |

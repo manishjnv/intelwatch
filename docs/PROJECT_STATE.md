@@ -1,17 +1,17 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 83 — Billing dual-mode persistence + admin queue cache
+**Session counter:** 84 — Scheduler retry backoff + feed health indicators
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.0 | 2026-03-21 | Health check passing |
-| etip_frontend | ✅ Running | 0.11.0 | 2026-03-27 | Dashboard + 20 data pages. **Session 82:** Error toast on API failures, search debounce (300ms), loading skeletons on 3 pages. 770 tests (772 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.12.0 | 2026-03-27 | Dashboard + 20 data pages. **Session 84:** Feed health indicators (HealthDot, FailureSparkline, overdue detection, sort-by-health). 784 tests (786 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
-| etip_ingestion | ✅ Running | 0.6.0 | 2026-03-26 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + **Session 78: feed quota enforcement** — createFeed() checks plan maxFeeds via CustomizationClient (403 FEED_QUOTA_EXCEEDED), schedule frequency validation, scheduler clamping to plan minFetchInterval. 497 tests. |
+| etip_ingestion | ✅ Running | 0.6.1 | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + **Session 78: feed quota enforcement** + **Session 84: scheduler retry (exponential backoff 30s→5min, circuit breaker for customization-client)**. 502 tests. |
 | etip_normalization | ✅ Running | 0.1.0 | 2026-03-25 | IOC upsert + 18 accuracy improvements + G2/G4b gap fixes. 157 tests. Feed reliability TTL cache (5min); weighted velocity scoring; configureClassifier(); unknownTypeCount stats in GET /stats (P2-1). |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
@@ -49,9 +49,9 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 770 tests (772 total, 2 skipped). **Session 82:** useApiError (toast on API failure), useDebouncedValue (300ms search debounce), TableSkeleton (loading states). Wired into SearchPage, FeedListPage, IocListPage, ThreatActorListPage. 15 new tests. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 784 tests (786 total, 2 skipped). **Session 84:** Feed health indicators (HealthDot, FailureSparkline, overdue detection, sort-by-health). 14 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-26 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 78:** Feed quota enforcement (createFeed maxFeeds check, schedule frequency validation, scheduler clamping). 497 tests. |
+| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 84:** Scheduler retry (exponential backoff + circuit breaker for customization-client). 502 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,906+ tests.
-- **Last session outcome:** Session 83 (2026-03-27). **Billing dual-mode persistence + admin queue cache.** Wired UsageStore, InvoiceStore, CouponStore to Prisma repos (same pattern as PlanStore from S74). All 4 billing stores now Prisma-backed with in-memory fallback. Added 10s response cache to admin GET /queues (reduces Redis ops from 250+/s to 1/10s). Updated all route callers + existing tests for async. 21 new tests (16 dual-mode + 5 queue cache). 190 billing tests, 195 admin tests. Commit: bc6f392.
-- **Known issues:** Customization FeedQuotaStore is in-memory — plan assignment lost on restart. Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in VulnerabilityListPage, phase5-pages, reporting-page test files.
-- **Next tasks:** (1) Verify CI/CD deploy succeeded for S83 (billing + admin containers). (2) Persist FeedQuotaStore to Postgres. (3) Persistence migration B2: alerting-service → Postgres. (4) Wire notifyApiError into remaining 48 hooks (currently 4 wired as proof-of-concept). (5) Persistence migration B3: correlation-service Redis → Postgres.
+- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,953 tests.
+- **Last session outcome:** Session 84 (2026-03-27). **Scheduler retry backoff + feed health indicators.** (1) Scheduler: per-feed exponential backoff (30s→5min cap), reset on success, circuit breaker for customization-client (3 failures in 5min → skip for 5min), quota fetch logging. (2) Frontend: computeFeedHealth() weighted score (failures 40%, reliability 30%, recency 30%), HealthDot (green/amber/red), FailureSparkline (7-bar), overdue detection (>2x schedule interval), sort-by-health column. 19 new tests (5 scheduler + 14 frontend). Commits: d2ff728, a97b8ff.
+- **Known issues:** Customization FeedQuotaStore is in-memory — plan assignment lost on restart. Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in billing-service Prisma models (29 errors, needs `prisma generate`).
+- **Next tasks:** (1) Verify CI/CD deploy succeeded for S84. (2) Persist FeedQuotaStore to Postgres. (3) Persistence migration B2: alerting-service → Postgres. (4) Wire notifyApiError into remaining 48 hooks. (5) Persistence migration B3: correlation-service Redis → Postgres.
 
 ## Deployment Log
 
@@ -222,6 +222,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 81 | 2026-03-27 | etip_frontend + etip_billing rebuilt | ✅ CI triggered | b4d3832, 29a0ad1 | VPS feed activation: 20 feeds live (2 tenants), 17K+ articles, 1.5K+ IOCs. Enterprise plan assigned. Fix: api.ts x-tenant-id header injection (MISSING_TENANT 400). Billing: pro→teams rename + DECISION-024 price alignment. |
 | 82 | 2026-03-27 | etip_frontend updated | ✅ CI triggered | 68a6adb, 6fcdc85 | Frontend UX: error toasts (useApiError), search debounce (useDebouncedValue 300ms), loading skeletons (TableSkeleton on 3 pages). 15 new tests, 770 frontend total. |
 | 83 | 2026-03-27 | etip_billing + etip_admin updated | ⏳ CI triggered | bc6f392 | Billing: all 4 stores Prisma-backed (Usage, Invoice, Coupon + PlanStore from S74). Admin: 10s queue cache. 21 new tests. 190 billing + 195 admin tests. |
+| 84 | 2026-03-27 | etip_ingestion + etip_frontend updated | ⏳ CI triggered | d2ff728, a97b8ff | Scheduler: exponential backoff + circuit breaker. Frontend: feed health indicators (HealthDot, FailureSparkline, overdue). 19 new tests. 5,953 total. |
 
 ## E2E Verification Results (Session 13)
 
