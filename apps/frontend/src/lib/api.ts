@@ -38,9 +38,14 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   };
 
   if (auth) {
-    const token = useAuthStore.getState().accessToken;
-    if (token) {
-      finalHeaders['Authorization'] = `Bearer ${token}`;
+    const { accessToken, user } = useAuthStore.getState();
+    if (accessToken) {
+      finalHeaders['Authorization'] = `Bearer ${accessToken}`;
+    }
+    if (user?.tenantId) {
+      finalHeaders['x-tenant-id'] = user.tenantId;
+      finalHeaders['x-user-id'] = user.id;
+      finalHeaders['x-user-role'] = user.role;
     }
   }
 
