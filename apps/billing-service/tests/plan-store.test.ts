@@ -81,71 +81,71 @@ describe('PlanStore', () => {
 
   // ── Tenant plan state ───────────────────────────────────────────
   describe('getTenantPlan', () => {
-    it('defaults to free for new tenant', () => {
-      const state = store.getTenantPlan('t1');
+    it('defaults to free for new tenant', async () => {
+      const state = await store.getTenantPlan('t1');
       expect(state.planId).toBe('free');
       expect(state.status).toBe('active');
     });
 
-    it('returns the set plan for existing tenant', () => {
-      store.setTenantPlan('t1', 'starter');
-      const state = store.getTenantPlan('t1');
+    it('returns the set plan for existing tenant', async () => {
+      await store.setTenantPlan('t1', 'starter');
+      const state = await store.getTenantPlan('t1');
       expect(state.planId).toBe('starter');
     });
 
-    it('isolates tenant plans', () => {
-      store.setTenantPlan('t1', 'pro');
-      store.setTenantPlan('t2', 'starter');
-      expect(store.getTenantPlan('t1').planId).toBe('pro');
-      expect(store.getTenantPlan('t2').planId).toBe('starter');
+    it('isolates tenant plans', async () => {
+      await store.setTenantPlan('t1', 'pro');
+      await store.setTenantPlan('t2', 'starter');
+      expect((await store.getTenantPlan('t1')).planId).toBe('pro');
+      expect((await store.getTenantPlan('t2')).planId).toBe('starter');
     });
   });
 
   describe('setTenantPlan', () => {
-    it('sets a valid plan', () => {
-      const state = store.setTenantPlan('t1', 'pro');
+    it('sets a valid plan', async () => {
+      const state = await store.setTenantPlan('t1', 'pro');
       expect(state.planId).toBe('pro');
       expect(state.updatedAt).toBeDefined();
     });
 
-    it('throws INVALID_PLAN for unknown plan id', () => {
-      expect(() => store.setTenantPlan('t1', 'gold' as PlanId)).toThrow('Plan not found');
+    it('throws INVALID_PLAN for unknown plan id', async () => {
+      await expect(store.setTenantPlan('t1', 'gold' as PlanId)).rejects.toThrow('Plan not found');
     });
 
-    it('records previous plan id on upgrade', () => {
-      store.setTenantPlan('t1', 'starter');
-      const state = store.setTenantPlan('t1', 'pro');
+    it('records previous plan id on upgrade', async () => {
+      await store.setTenantPlan('t1', 'starter');
+      const state = await store.setTenantPlan('t1', 'pro');
       expect(state.previousPlanId).toBe('starter');
     });
   });
 
   // ── Feature checks ──────────────────────────────────────────────
   describe('isFeatureAllowed', () => {
-    it('free plan: graph_visualization not allowed', () => {
-      store.setTenantPlan('t1', 'free');
-      expect(store.isFeatureAllowed('t1', 'graph_visualization')).toBe(false);
+    it('free plan: graph_visualization not allowed', async () => {
+      await store.setTenantPlan('t1', 'free');
+      expect(await store.isFeatureAllowed('t1', 'graph_visualization')).toBe(false);
     });
 
-    it('pro plan: graph_visualization allowed', () => {
-      store.setTenantPlan('t1', 'pro');
-      expect(store.isFeatureAllowed('t1', 'graph_visualization')).toBe(true);
+    it('pro plan: graph_visualization allowed', async () => {
+      await store.setTenantPlan('t1', 'pro');
+      expect(await store.isFeatureAllowed('t1', 'graph_visualization')).toBe(true);
     });
 
-    it('free plan: dark_web_monitoring not allowed', () => {
-      store.setTenantPlan('t1', 'free');
-      expect(store.isFeatureAllowed('t1', 'dark_web_monitoring')).toBe(false);
+    it('free plan: dark_web_monitoring not allowed', async () => {
+      await store.setTenantPlan('t1', 'free');
+      expect(await store.isFeatureAllowed('t1', 'dark_web_monitoring')).toBe(false);
     });
 
-    it('enterprise plan: all features allowed', () => {
-      store.setTenantPlan('t1', 'enterprise');
-      expect(store.isFeatureAllowed('t1', 'graph_visualization')).toBe(true);
-      expect(store.isFeatureAllowed('t1', 'dark_web_monitoring')).toBe(true);
-      expect(store.isFeatureAllowed('t1', 'api_access')).toBe(true);
+    it('enterprise plan: all features allowed', async () => {
+      await store.setTenantPlan('t1', 'enterprise');
+      expect(await store.isFeatureAllowed('t1', 'graph_visualization')).toBe(true);
+      expect(await store.isFeatureAllowed('t1', 'dark_web_monitoring')).toBe(true);
+      expect(await store.isFeatureAllowed('t1', 'api_access')).toBe(true);
     });
 
-    it('starter plan: api_access allowed', () => {
-      store.setTenantPlan('t1', 'starter');
-      expect(store.isFeatureAllowed('t1', 'api_access')).toBe(true);
+    it('starter plan: api_access allowed', async () => {
+      await store.setTenantPlan('t1', 'starter');
+      expect(await store.isFeatureAllowed('t1', 'api_access')).toBe(true);
     });
   });
 

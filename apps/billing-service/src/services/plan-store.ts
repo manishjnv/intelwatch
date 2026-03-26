@@ -1,5 +1,6 @@
 import { AppError } from '@etip/shared-utils';
 import type { PlanId } from '../schemas/billing.js';
+import type { SubscriptionRepo } from '../repository.js';
 
 export type { PlanId };
 
@@ -188,9 +189,16 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
   },
 };
 
-/** In-memory store for plan definitions and per-tenant plan state. */
+/** Store for plan definitions and per-tenant plan state.
+ *  Supports dual-mode: Prisma-backed (production) or in-memory (tests/fallback).
+ */
 export class PlanStore {
   private readonly tenantPlans = new Map<string, TenantPlanState>();
+  private readonly repo?: SubscriptionRepo;
+
+  constructor(repo?: SubscriptionRepo) {
+    this.repo = repo;
+  }
 
   /** Get the definition for a plan by id. Throws NOT_FOUND for unknown ids. */
   getPlanById(planId: PlanId): PlanDefinition {
@@ -205,7 +213,18 @@ export class PlanStore {
   }
 
   /** Get or initialise the plan state for a tenant (defaults to free). */
-  getTenantPlan(tenantId: string): TenantPlanState {
+  async getTenantPlan(tenantId: string): Promise<TenantPlanState> {
+    if (this.repo) {
+      const existing = await this.repo.getTenantPlan(tenantId);
+      if (existing) return existing;
+      // Auto-create free plan
+      return this.repo.upsertTenantPlan({
+        tenantId,
+        planId: 'free',
+        status: 'active',
+        updatedAt: new Date(),
+      });
+    }
     if (!this.tenantPlans.has(tenantId)) {
       this.tenantPlans.set(tenantId, {
         tenantId,
@@ -218,9 +237,9 @@ export class PlanStore {
   }
 
   /** Assign a plan to a tenant. Throws NOT_FOUND for invalid plan ids. */
-  setTenantPlan(tenantId: string, planId: PlanId): TenantPlanState {
+  async setTenantPlan(tenantId: string, planId: PlanId): Promise<TenantPlanState> {
     this.getPlanById(planId); // validates
-    const existing = this.getTenantPlan(tenantId);
+    const existing = await this.getTenantPlan(tenantId);
     const updated: TenantPlanState = {
       ...existing,
       previousPlanId: existing.planId,
@@ -228,45 +247,49 @@ export class PlanStore {
       status: 'active',
       updatedAt: new Date(),
     };
+    if (this.repo) return this.repo.upsertTenantPlan(updated);
     this.tenantPlans.set(tenantId, updated);
     return updated;
   }
 
   /** Update Razorpay subscription metadata for a tenant. */
-  setRazorpayIds(tenantId: string, customerId: string, subscriptionId?: string): TenantPlanState {
-    const state = this.getTenantPlan(tenantId);
+  async setRazorpayIds(tenantId: string, customerId: string, subscriptionId?: string): Promise<TenantPlanState> {
+    const state = await this.getTenantPlan(tenantId);
     const updated: TenantPlanState = {
       ...state,
       razorpayCustomerId: customerId,
       razorpaySubscriptionId: subscriptionId ?? state.razorpaySubscriptionId,
       updatedAt: new Date(),
     };
+    if (this.repo) return this.repo.upsertTenantPlan(updated);
     this.tenantPlans.set(tenantId, updated);
     return updated;
   }
 
   /** Schedule a downgrade to take effect at period end. */
-  scheduleDowngrade(tenantId: string, planId: PlanId, effectiveAt: Date): TenantPlanState {
-    const state = this.getTenantPlan(tenantId);
+  async scheduleDowngrade(tenantId: string, planId: PlanId, effectiveAt: Date): Promise<TenantPlanState> {
+    const state = await this.getTenantPlan(tenantId);
     const updated: TenantPlanState = {
       ...state,
       scheduledPlanId: planId,
       scheduledPlanEffectiveAt: effectiveAt,
       updatedAt: new Date(),
     };
+    if (this.repo) return this.repo.upsertTenantPlan(updated);
     this.tenantPlans.set(tenantId, updated);
     return updated;
   }
 
   /** Check if a feature is allowed for a tenant's current plan. */
-  isFeatureAllowed(tenantId: string, feature: keyof PlanFeatures): boolean {
-    const state = this.getTenantPlan(tenantId);
+  async isFeatureAllowed(tenantId: string, feature: keyof PlanFeatures): Promise<boolean> {
+    const state = await this.getTenantPlan(tenantId);
     const plan = PLAN_DEFINITIONS[state.planId];
     return plan?.features[feature] ?? false;
   }
 
   /** Get all tenant plan states (for admin dashboard). */
-  getAllTenantPlans(): TenantPlanState[] {
+  async getAllTenantPlans(): Promise<TenantPlanState[]> {
+    if (this.repo) return this.repo.getAllTenantPlans();
     return Array.from(this.tenantPlans.values());
   }
 

@@ -16,38 +16,38 @@ describe('UpgradeFlow', () => {
 
   // ── Upgrade preview ─────────────────────────────────────────────
   describe('previewUpgrade', () => {
-    it('calculates proration for free → starter upgrade', () => {
-      planStore.setTenantPlan('t1', 'free');
-      const preview = flow.previewUpgrade('t1', 'starter', new Date('2026-03-15'));
+    it('calculates proration for free → starter upgrade', async () => {
+      await planStore.setTenantPlan('t1', 'free');
+      const preview = await flow.previewUpgrade('t1', 'starter', new Date('2026-03-15'));
       expect(preview.fromPlan).toBe('free');
       expect(preview.toPlan).toBe('starter');
       expect(preview.proratedAmountInr).toBeGreaterThanOrEqual(0);
       expect(preview.effectiveDate).toBeDefined();
     });
 
-    it('calculates proration for starter → pro upgrade', () => {
-      planStore.setTenantPlan('t1', 'starter');
-      const preview = flow.previewUpgrade('t1', 'pro', new Date('2026-03-01'));
+    it('calculates proration for starter → pro upgrade', async () => {
+      await planStore.setTenantPlan('t1', 'starter');
+      const preview = await flow.previewUpgrade('t1', 'pro', new Date('2026-03-01'));
       expect(preview.fromPlan).toBe('starter');
       expect(preview.toPlan).toBe('pro');
       expect(preview.proratedAmountInr).toBeGreaterThan(0);
     });
 
-    it('throws SAME_PLAN when upgrading to same plan', () => {
-      planStore.setTenantPlan('t1', 'pro');
-      expect(() => flow.previewUpgrade('t1', 'pro', new Date())).toThrow('Already on this plan');
+    it('throws SAME_PLAN when upgrading to same plan', async () => {
+      await planStore.setTenantPlan('t1', 'pro');
+      await expect(flow.previewUpgrade('t1', 'pro', new Date())).rejects.toThrow('Already on this plan');
     });
 
-    it('throws DOWNGRADE_NOT_ALLOWED via previewUpgrade', () => {
-      planStore.setTenantPlan('t1', 'pro');
-      expect(() => flow.previewUpgrade('t1', 'starter', new Date())).toThrow();
+    it('throws DOWNGRADE_NOT_ALLOWED via previewUpgrade', async () => {
+      await planStore.setTenantPlan('t1', 'pro');
+      await expect(flow.previewUpgrade('t1', 'starter', new Date())).rejects.toThrow();
     });
   });
 
   // ── Upgrade execution ───────────────────────────────────────────
   describe('upgradePlan', () => {
     it('upgrades free → starter successfully', async () => {
-      planStore.setTenantPlan('t1', 'free');
+      await planStore.setTenantPlan('t1', 'free');
       const result = await flow.upgradePlan('t1', 'starter', { razorpaySubscriptionId: 'sub_123' });
       expect(result.newPlanId).toBe('starter');
       expect(result.previousPlanId).toBe('free');
@@ -55,18 +55,18 @@ describe('UpgradeFlow', () => {
     });
 
     it('creates an invoice on successful upgrade', async () => {
-      planStore.setTenantPlan('t1', 'free');
+      await planStore.setTenantPlan('t1', 'free');
       const result = await flow.upgradePlan('t1', 'starter', { razorpaySubscriptionId: 'sub_123' });
       expect(result.invoice.planId).toBe('starter');
     });
 
     it('throws SAME_PLAN when on the same plan', async () => {
-      planStore.setTenantPlan('t1', 'starter');
+      await planStore.setTenantPlan('t1', 'starter');
       await expect(flow.upgradePlan('t1', 'starter', {})).rejects.toThrow('Already on this plan');
     });
 
     it('throws DOWNGRADE_USE_DOWNGRADE when trying to go to lower tier', async () => {
-      planStore.setTenantPlan('t1', 'pro');
+      await planStore.setTenantPlan('t1', 'pro');
       await expect(flow.upgradePlan('t1', 'starter', {})).rejects.toThrow();
     });
   });
@@ -74,24 +74,24 @@ describe('UpgradeFlow', () => {
   // ── Downgrade execution ─────────────────────────────────────────
   describe('downgradePlan', () => {
     it('schedules a downgrade to take effect at period end', async () => {
-      planStore.setTenantPlan('t1', 'pro');
+      await planStore.setTenantPlan('t1', 'pro');
       const result = await flow.downgradePlan('t1', 'starter');
       expect(result.scheduledPlanId).toBe('starter');
       expect(result.effectiveAt).toBeDefined();
       // Current plan remains pro until end of billing period
-      expect(planStore.getTenantPlan('t1').planId).toBe('pro');
+      expect((await planStore.getTenantPlan('t1')).planId).toBe('pro');
     });
 
     it('throws UPGRADE_USE_UPGRADE when trying to go to higher tier', async () => {
-      planStore.setTenantPlan('t1', 'starter');
+      await planStore.setTenantPlan('t1', 'starter');
       await expect(flow.downgradePlan('t1', 'pro')).rejects.toThrow();
     });
   });
 
   // ── Grace period ────────────────────────────────────────────────
   describe('grace period', () => {
-    it('activates grace period when plan limit is exceeded', () => {
-      planStore.setTenantPlan('t1', 'free');
+    it('activates grace period when plan limit is exceeded', async () => {
+      await planStore.setTenantPlan('t1', 'free');
       flow.activateGracePeriod('t1', 'api_calls');
       const grace = flow.getGracePeriod('t1');
       expect(grace.active).toBe(true);

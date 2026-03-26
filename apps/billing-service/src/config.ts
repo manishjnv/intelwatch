@@ -3,6 +3,7 @@ import { AppError } from '@etip/shared-utils';
 
 const ConfigSchema = z.object({
   TI_NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  TI_DATABASE_URL: z.string().min(1).default('postgresql://localhost:5432/etip'),
   TI_BILLING_PORT: z.coerce.number().int().min(1).max(65535).default(3019),
   TI_BILLING_HOST: z.string().default('0.0.0.0'),
   TI_REDIS_URL: z.string().min(1).default('redis://localhost:6379/0'),

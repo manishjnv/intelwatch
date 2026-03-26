@@ -1,65 +1,59 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-26
-**Session:** 73
-**Session Summary:** Prometheus metrics — prom-client wired to all 23 backend services, prometheus.yml scrape config, deploy.yml orphan cleanup fix. 12 new tests, 5,785 total.
+**Session:** 74
+**Session Summary:** Persistence migration foundation — new shared-persistence package + billing-service Prisma migration (5 models, dual-mode stores, 40 new tests). DECISION-027.
 
-## ✅ Changes Made
-| Commit | Files | Description |
-|--------|-------|-------------|
-| 050eb58 | 29 | feat: Prometheus metrics — prom-client wired to all 23 backend services |
+## Changes Made
+- Session-end commit pending
+- 8 new files created, 15 files modified
 
-## 📁 Files / Documents Affected
-
-### New Files
+## New Files
 | File | Purpose |
 |------|---------|
-| packages/shared-utils/src/metrics.ts | registerMetrics() — Fastify plugin: prom-client Registry, HTTP counter + histogram, default Node.js metrics, GET /metrics endpoint |
-| packages/shared-utils/tests/metrics.test.ts | 12 tests: route registration, rate-limit exempt, Prometheus text format, counter increment, histogram, route-pattern labeling, registry isolation |
+| `packages/shared-persistence/package.json` | Package config (ioredis) |
+| `packages/shared-persistence/tsconfig.json` | Composite TS config |
+| `packages/shared-persistence/src/index.ts` | Public exports |
+| `packages/shared-persistence/src/redis-json-store.ts` | `RedisJsonStore<T>` — debounced save/restore, TTL, graceful degradation |
+| `packages/shared-persistence/tests/redis-json-store.test.ts` | 15 unit tests (mocked ioredis) |
+| `apps/billing-service/src/prisma.ts` | PrismaClient singleton |
+| `apps/billing-service/src/repository.ts` | 5 repo classes: SubscriptionRepo, UsageRepo, InvoiceRepo, CouponRepo, GracePeriodRepo |
+| `apps/billing-service/tests/repository.test.ts` | 25 repository unit tests (mocked Prisma) |
 
-### Modified Files
-| File | Changes |
-|------|---------|
-| packages/shared-utils/package.json | +prom-client ^15.1.0 dependency |
-| packages/shared-utils/src/index.ts | +export registerMetrics, MetricsCompatibleApp |
-| docker/prometheus/prometheus.yml | Replaced: 1 self-scrape → 1 self-scrape + 23 service targets in `etip-services` job |
-| .github/workflows/deploy.yml | Orphan cleanup moved before compose up (pre-cleanup) + post-cleanup safety net |
-| 23x apps/*/src/app.ts | +import registerMetrics + await registerMetrics(app, 'service-name') after sensible |
-| pnpm-lock.yaml | +prom-client resolution |
+## Modified Files
+| File | Change |
+|------|--------|
+| `tsconfig.build.json` | Added `shared-persistence` to references |
+| `prisma/schema.prisma` | Added `starter` to Plan enum, 5 billing models, Tenant relations |
+| `apps/billing-service/package.json` | Added `@prisma/client` dependency |
+| `apps/billing-service/src/config.ts` | Added `TI_DATABASE_URL` env var |
+| `apps/billing-service/src/services/plan-store.ts` | Made async, accepts optional SubscriptionRepo |
+| `apps/billing-service/src/services/upgrade-flow.ts` | Made previewUpgrade async |
+| `apps/billing-service/src/routes/*.ts` (7 files) | Added await to async store calls |
+| `apps/billing-service/tests/plan-store.test.ts` | Updated to async/await |
+| `apps/billing-service/tests/upgrade-flow.test.ts` | Updated to async/await |
 
-## 🔧 Decisions & Rationale
-- prom-client in shared-utils (not new shared-metrics package) — additive Tier 1 change, avoids 6-step New Package Checklist
-- Raw prom-client (not fastify-metrics npm package) — exact control over metric names matching existing Grafana dashboards
-- Plain async function (not Fastify plugin with fastify-plugin) — avoids fp() dependency, hooks register on root app scope
-- Per-service Registry (not global default) — prevents test pollution between services
-- Single `etip-services` Prometheus job (not 23 separate jobs) — cleaner config, `instance` label auto-distinguishes
+## Decisions & Rationale
+- **DECISION-027:** Hybrid persistence — Postgres for business entities, Redis JSON for config
 
-## 🧪 E2E / Deploy Verification Results
-- CI run 23574054284: ✅ SUCCESS (test + deploy jobs)
-- 33 containers healthy on VPS
-- All 23 services now expose GET /metrics in Prometheus text format
-- Prometheus configured to scrape all 23 targets every 15s
-- Grafana service-health + api-gateway dashboards populating
-- 5,785 tests passing (12 new shared-utils metrics tests)
+## E2E / Deploy Verification Results
+- No deployment this session (code-only)
+- All 5,825 tests passing (0 failures)
 
-## ⚠️ Open Items / Next Steps
-
+## Open Items / Next Steps
 ### Immediate
-- BullMQ custom Prometheus counters for pipeline-queues dashboard (session 74)
-  - admin-service: bullmq_waiting/active/failed/completed gauges per queue
-  - ingestion: etip_articles_ingested_total counter
-  - normalization: etip_iocs_extracted_total counter
-  - ai-enrichment: etip_ai_tokens_total + etip_ai_cost_usd_total counters
-- IOC search pagination on SearchPage
-- Production hardening (rate limits, input validation audit)
+1. Wire billing-service index.ts to pass repos to stores
+2. Session B2: alerting-service → Postgres migration
 
 ### Deferred
-- Grafana pipeline-queues dashboard panels stay empty until session 74 custom counters
-- Pre-existing TS errors in VulnerabilityListPage.tsx
-- .wip files: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip
+- B3-B4, C1-C3, D1-D3, E1 (11 remaining persistence migration sessions)
 
-## 🔁 How to Resume
+## How to Resume
 ```
-/session-start
-Working on: BullMQ custom Prometheus counters (session 74). Do not modify: shared-utils metrics.ts (deployed).
+Working on: Persistence Migration — Session B2 (alerting-service → Postgres)
+Module target: alerting-service
+Do not modify: billing-service, shared-persistence, frontend
+
+Reference: apps/billing-service/src/repository.ts (Prisma pattern)
+Plan: A1 DONE → B1 DONE → B2 next
 ```

@@ -189,3 +189,10 @@
 **Decision:** Build one `etip-backend:latest` image via `docker build -t etip-backend:latest .`, add `image: etip-backend:latest` to all backend services in docker-compose.etip.yml. Frontend gets `image: etip-frontend:latest`. Health checks run in parallel (background bash jobs + wait). deploy.yml: 456 → 252 lines.
 **Alternatives:** BuildKit parallel build (still runs Dockerfile N times), multi-target Dockerfile per service (over-engineering — services differ only in CMD), registry push/pull (adds complexity, no benefit for single VPS)
 **Consequences:** 2 builds instead of 20. Health checks: 60s wall-clock max instead of 20×60s sequential. Rule: when adding a new backend service, add `image: etip-backend:latest` to its docker-compose entry. `build:` section kept for local dev (`docker compose build`).
+
+### DECISION-027: Hybrid persistence — Postgres for business entities, Redis JSON for config
+**Date:** 2026-03-26 | **Status:** Accepted
+**Context:** 16 ETIP services store ALL state in JavaScript Maps (DECISION-013). Every container restart wipes billing, alerting, RBAC, integration, and BYOK data. Correlation-engine (P1-1) proved Redis checkpoint pattern works. Need a systematic migration.
+**Decision:** Hybrid approach: Postgres (via shared Prisma schema) for business entities needing queries/reporting (billing, alerting, reporting, integration, DRP). Redis JSON (via new @etip/shared-persistence package) for config-like data needing restart-survival but not SQL (customization, user-management, hunting). Keep in-memory for TTL caches and rate limiters. Dual-mode stores: constructor takes optional repo/checkpoint — if not provided, falls back to in-memory Maps (backward compatible for tests).
+**Alternatives:** All Postgres (80+ models in one schema, impractical), all Redis (no SQL queries for reporting), per-service databases (overkill for single VPS)
+**Consequences:** 12-session migration plan (A1 foundation → E1 verification). Billing-service is first migration (session 74). Existing tests run unchanged in in-memory mode. Production uses DB mode via TI_DATABASE_URL env var. Rollback: git tag + feature flag per service.

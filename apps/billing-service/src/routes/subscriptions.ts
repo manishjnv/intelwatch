@@ -51,7 +51,7 @@ export function subscriptionRoutes(deps: SubscriptionRouteDeps) {
       });
 
       // Store IDs
-      planStore.setRazorpayIds(tenantId, customer.id, sub.id);
+      await planStore.setRazorpayIds(tenantId, customer.id, sub.id);
 
       return reply.status(201).send({
         data: {
@@ -66,7 +66,7 @@ export function subscriptionRoutes(deps: SubscriptionRouteDeps) {
     /** GET /subscriptions — get current subscription for the tenant. */
     app.get('/subscriptions', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const state = planStore.getTenantPlan(tenantId);
+      const state = await planStore.getTenantPlan(tenantId);
 
       if (!state.razorpaySubscriptionId) {
         return reply.send({ data: null });
@@ -81,7 +81,7 @@ export function subscriptionRoutes(deps: SubscriptionRouteDeps) {
     app.post('/subscriptions/cancel', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const input = validate(CancelSubscriptionSchema, req.body ?? {});
-      const state = planStore.getTenantPlan(tenantId);
+      const state = await planStore.getTenantPlan(tenantId);
 
       if (!state.razorpaySubscriptionId) {
         throw new AppError(404, 'No active subscription found', 'SUBSCRIPTION_NOT_FOUND');
@@ -91,7 +91,7 @@ export function subscriptionRoutes(deps: SubscriptionRouteDeps) {
 
       if (!input.cancelAtPeriodEnd) {
         // Immediate downgrade to free
-        planStore.setTenantPlan(tenantId, 'free');
+        await planStore.setTenantPlan(tenantId, 'free');
       }
 
       return reply.send({ data: { status: result.status, cancelAtPeriodEnd: input.cancelAtPeriodEnd } });

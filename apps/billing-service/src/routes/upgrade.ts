@@ -28,7 +28,7 @@ export function upgradeRoutes(deps: UpgradeRouteDeps) {
     app.get('/upgrade/preview', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const query = validate(UpgradePreviewQuerySchema, req.query);
-      const preview = upgradeFlow.previewUpgrade(tenantId, query.targetPlan);
+      const preview = await upgradeFlow.previewUpgrade(tenantId, query.targetPlan);
       return reply.send({ data: preview });
     });
 

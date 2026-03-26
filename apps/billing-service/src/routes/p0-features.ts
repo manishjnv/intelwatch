@@ -42,7 +42,7 @@ export function p0Routes(deps: P0RouteDeps) {
      */
     app.get('/upgrade-prompts', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const state = planStore.getTenantPlan(tenantId);
+      const state = await planStore.getTenantPlan(tenantId);
       const planDef = PLAN_DEFINITIONS[state.planId];
       const usage = usageStore.getUsage(tenantId);
       const prompts: { feature: string; message: string; targetPlan: string }[] = [];
@@ -97,7 +97,7 @@ export function p0Routes(deps: P0RouteDeps) {
      */
     app.get('/alerts', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const state = planStore.getTenantPlan(tenantId);
+      const state = await planStore.getTenantPlan(tenantId);
       const planDef = PLAN_DEFINITIONS[state.planId];
       const alerts = usageStore.getAlertThresholds(tenantId, {
         api_calls: planDef.limits.iocQueriesPerDay,

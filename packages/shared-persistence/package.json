@@ -1,0 +1,26 @@
+{
+  "name": "@etip/shared-persistence",
+  "version": "1.0.0",
+  "description": "Shared persistence utilities — RedisJsonStore for Map-to-Redis migration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ --no-error-on-unmatched-pattern",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.16",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5",
+    "rimraf": "^6.0.0"
+  },
+  "files": ["dist"],
+  "license": "UNLICENSED"
+}

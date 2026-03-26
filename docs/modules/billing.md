@@ -1,6 +1,6 @@
 # Billing Service (Module 19)
 
-**Port:** 3019 | **Phase:** 6 | **Status:** ✅ Complete | **Tests:** 149
+**Port:** 3019 | **Phase:** 6 | **Status:** ✅ Complete + Persistence-Ready | **Tests:** 174
 
 Handles plan management, usage metering, Razorpay billing, invoice generation, and free-to-paid conversion for ETIP.
 
@@ -20,6 +20,8 @@ Handles plan management, usage metering, Razorpay billing, invoice generation, a
 | Usage Alerts (P0 #7) | `routes/p0-features.ts` + `services/usage-store.ts` | Threshold alerts, highest crossing returned |
 | Grace Period (P0 #8) | `services/upgrade-flow.ts` | 72-hour tolerance after limit hit before hard cutoff |
 | Billing Dashboard (P0 #9) | `routes/admin.ts` | Revenue, MRR, churn rate, plan distribution |
+| Prisma Repository (S74) | `repository.ts` | 5 repo classes: SubscriptionRepo, UsageRepo, InvoiceRepo, CouponRepo, GracePeriodRepo |
+| Dual-mode Stores (S74) | `services/plan-store.ts` | Accepts optional repo — Prisma or in-memory fallback |
 
 ---
 
@@ -82,6 +84,7 @@ Handles plan management, usage metering, Razorpay billing, invoice generation, a
 | TI_RAZORPAY_PLAN_STARTER | plan_starter | Razorpay plan id for Starter |
 | TI_RAZORPAY_PLAN_PRO | plan_pro | Razorpay plan id for Pro |
 | TI_RAZORPAY_PLAN_ENTERPRISE | plan_enterprise | Razorpay plan id for Enterprise |
+| TI_DATABASE_URL | postgresql://localhost:5432/etip | Postgres connection for Prisma (S74) |
 | TI_JWT_SECRET | dev-only | JWT verification secret |
 | TI_SERVICE_JWT_SECRET | dev-only | Service-to-service JWT secret |
 
@@ -89,7 +92,7 @@ Handles plan management, usage metering, Razorpay billing, invoice generation, a
 
 ## Data Notes
 
-- **Storage:** In-memory (DECISION-013). Migrate to Prisma for production horizontal scaling.
+- **Storage:** Dual-mode (DECISION-027, session 74). PlanStore accepts optional SubscriptionRepo — Prisma in production, in-memory for tests. 5 Prisma models: TenantSubscription, BillingUsageRecord, BillingInvoice, BillingCoupon, BillingGracePeriod. Plan enum updated with `starter`. Not yet wired in index.ts (next step: pass repos when TI_DATABASE_URL is set).
 - **Currency:** INR primary, USD displayed for reference.
 - **GST:** 18% automatically added to all invoices (Indian compliance).
 - **Grace period:** 72 hours after plan limit exceeded before hard cutoff.

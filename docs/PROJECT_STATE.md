@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-26 (update at end of EVERY session via /session-end)
-**Session counter:** 73
+**Session counter:** 74
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -26,7 +26,7 @@
 | etip_user_management | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. |
 | etip_customization | ✅ Deployed | 0.2.0 | 2026-03-25 | Port 3017. 44 endpoints, 241 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. F2: 12 CTI subtasks + plan tiers. F3: cost estimator. G1b: PUT /ai/subtasks/:subtask. BYOK: GET/PUT/DELETE /api-keys/anthropic (in-memory Map, masked key display). |
 | etip_onboarding | ✅ Deployed | 0.2.0 | 2026-03-24 | Port 3018. 32 endpoints, 230 tests. Setup wizard (Redis-backed), demo seeder (real API calls + 4 OSINT feeds), data source connectors, pipeline health, module readiness, progress tracker. |
-| etip_billing | ✅ Deployed | 0.1.0 | 2026-03-23 | Port 3019. 28 endpoints, 149 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. Added to deploy.yml + docker-compose. |
+| etip_billing | ✅ Deployed | 0.2.0 | 2026-03-26 | Port 3019. 28 endpoints, 174 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. **Session 74: Prisma-backed persistence** — 5 models (TenantSubscription, BillingUsageRecord, BillingInvoice, BillingCoupon, BillingGracePeriod). Dual-mode stores (in-memory fallback). DECISION-027. |
 | etip_admin | ✅ Deployed | 0.3.0 | 2026-03-26 | Port 3022. 34 endpoints, 190 tests. Queue monitor + DLQ processor + **P2-1 queue alerting**: QueueAlertEvaluator (in-memory state + Redis debounce), GET /admin/queues/alerts, fires QUEUE_ALERT/QUEUE_ALERT_RESOLVED to alerting service. |
 | etip_reporting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3021. Module 21. 20 endpoints, 199 tests. 5 report types (daily/weekly/monthly/custom/executive), BullMQ worker (etip-report-generate), cron scheduling, template engine (JSON/HTML/PDF). |
 | etip_alerting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3023. Module 23. 35 endpoints, 306 tests. Alert rules (5 condition types), alert lifecycle (open/ack/resolve/suppress/escalate), notification channels (email/slack/webhook), escalation policies, grouping, maintenance windows, templates. |
@@ -66,7 +66,7 @@
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
 | customization | 5 | ✅ Complete | 2026-03-25 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK COMPLETE**. 44 endpoints, 241 tests. Module toggles, AI model selection, risk weights, dashboard customization, notification preferences. F2: 12 CTI pipeline subtasks, plan tiers. F3: CostEstimator (TI_COST_STAGE2_FACTOR DI — P2-2). BYOK: GET/PUT/DELETE /api-keys/anthropic (in-memory Map, maskKey first10+last4, sk-ant- prefix validation). **Phase 5 COMPLETE. Phase F COMPLETE.** |
 | onboarding | 6 | ✅ Deployed | 2026-03-24 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 230 tests. 8-step wizard (Redis-backed, etip:{tenantId}:wizard key, 7-day TTL). Demo seeder makes real API calls to 5 downstream services + seeds 4 OSINT feeds via ingestion service. ioredis dependency added. Phase 6: 1/3. |
-| billing | 6 | ✅ Complete | 2026-03-23 | Port 3019. 28 endpoints, 5 P0 improvements, 149 tests. Plan management (Free/Starter/Pro/Enterprise), usage metering (80/90/100% alerts), Razorpay subscriptions/webhooks, GST invoices (18%), upgrade/downgrade with 72hr grace, coupon codes. FEATURE-COMPLETE. |
+| billing | 6 | ✅ Complete | 2026-03-26 | Port 3019. 28 endpoints, 5 P0 improvements, 174 tests. Plan management (Free/Starter/Pro/Enterprise), usage metering (80/90/100% alerts), Razorpay subscriptions/webhooks, GST invoices (18%), upgrade/downgrade with 72hr grace, coupon codes. **Session 74: Prisma persistence** — 5 new models, BillingRepository (5 repo classes), dual-mode PlanStore, Plan enum `starter` added. FEATURE-COMPLETE + PERSISTENCE-READY. |
 | admin-ops | 6 | ✅ Complete | 2026-03-26 | Port 3022. **Core + 5 P0 + queue monitor + DLQ + P2-1 queue alerting COMPLETE**. 34 endpoints, 190 tests. Queue alerting: QueueAlertEvaluator piggybacks on GET /queues poll, fires QUEUE_ALERT/QUEUE_ALERT_RESOLVED to alerting service, Redis debounce (10-min TTL). GET /admin/queues/alerts returns active alerts. FEATURE-COMPLETE. **Phase 6 COMPLETE (3/3).** |
 | reporting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3021. **Core + 10 P0 improvements COMPLETE**. 25 endpoints, 217 tests. 5 report types (daily/weekly/monthly/custom/executive). 4 formats (JSON/HTML/CSV/PDF). BullMQ worker (etip-report-generate). Cron scheduling (node-cron). Template engine. In-memory stores (DECISION-013). P0 batch 1: data aggregation, template engine, schedule persistence, report versioning, export validation. P0 batch 2: retention cron, CSV export, report cloning, bulk ops, period comparison. FEATURE-COMPLETE. |
 | alerting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3023. Module 23. **Core + P0 + P1 COMPLETE**. 35 endpoints, 306 tests. Alert rules (threshold/pattern/anomaly/absence/composite). Alert lifecycle (open/ack/resolve/suppress/escalate). Notification channels (email/slack/webhook). Escalation policies (multi-step, auto-escalate). Grouping (fingerprint dedup), retry logic, maintenance windows, search, templates. BullMQ worker (etip-alert-evaluate). FEATURE-COMPLETE. |
@@ -83,6 +83,7 @@ shared-auth           → shared-types, shared-utils
 shared-audit          → shared-utils
 shared-normalization  → shared-utils
 shared-enrichment     → shared-utils
+shared-persistence    → ioredis (NEW — session 74)
 user-service          → shared-types, shared-utils, shared-auth
 api-gateway           → shared-types, shared-utils, shared-auth, user-service
 ingestion             → shared-types, shared-utils, shared-auth, shared-cache, shared-audit, shared-enrichment, shared-normalization (Phase 2)
@@ -100,7 +101,7 @@ integration-service   → shared-types, shared-utils, shared-auth, bullmq (Phase
 user-management       → shared-types, shared-utils, shared-auth (Phase 5)
 customization         → shared-types, shared-utils, shared-auth (Phase 5)
 onboarding            → shared-types, shared-utils, shared-auth, ioredis (Phase 6)
-billing-service       → shared-types, shared-utils, shared-auth, razorpay (Phase 6)
+billing-service       → shared-types, shared-utils, shared-auth, razorpay, @prisma/client (Phase 6)
 admin-service         → shared-types, shared-utils, shared-auth, ioredis (Phase 6)
 frontend              → shared-types, shared-ui, d3 (Phase 1+)
 elasticsearch-indexing-service → shared-types, shared-utils, shared-auth, @elastic/elasticsearch, bullmq (Phase 7)
@@ -142,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 7 + E2E COMPLETE. Phase F COMPLETE. Gap Analysis G1-G5 COMPLETE. AC-2 COMPLETE. P3-4/P3-7 COMPLETE. P3-6 MISP COMPLETE. Prometheus metrics WIRED. 33 containers, 5,785 tests.
-- **Last session outcome:** Session 73 (2026-03-26). Prometheus metrics wiring — prom-client added to shared-utils, registerMetrics() wired into all 23 backend services, prometheus.yml updated with 23 scrape targets. Also fixed deploy.yml orphan cleanup (pre-cleanup + post-cleanup). Commit: 050eb58. 12 new tests (91 shared-utils). 5,785 total. CI green, 33 containers healthy.
-- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. WIP files renamed to .wip: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip, queue-alert-evaluator.test.ts.wip. Deploy.yml 15min timeout insufficient for fresh backend build on VPS. Grafana pipeline-queues dashboard still empty (needs BullMQ custom counters).
-- **Next tasks:** BullMQ custom Prometheus counters for pipeline-queues dashboard (session 74). IOC search pagination. Production hardening.
+- **Current phase:** Persistence Migration Phase 1. All pipeline phases complete. 33 containers, 5,825 tests.
+- **Last session outcome:** Session 74 (2026-03-26). Persistence migration foundation: `packages/shared-persistence` (RedisJsonStore utility, 15 tests). Billing-service Prisma migration: 5 new models (TenantSubscription, BillingUsageRecord, BillingInvoice, BillingCoupon, BillingGracePeriod), Plan enum `starter` added, BillingRepository (5 repo classes), dual-mode PlanStore (Prisma or in-memory), all store methods async. 40 new tests (174 billing, 5,825 total). DECISION-027 documented. **Not yet deployed** — stores not wired to Prisma in index.ts yet.
+- **Known issues:** Pre-existing TS errors in VulnerabilityListPage.tsx. WIP files renamed to .wip: queue-alert-evaluator.ts.wip, admin-queue-alerts.test.tsx.wip, queue-alert-evaluator.test.ts.wip. Deploy.yml 15min timeout insufficient for fresh backend build on VPS. Grafana pipeline-queues dashboard still empty (needs BullMQ custom counters). Billing stores not yet wired to Prisma in production (index.ts still instantiates without repo).
+- **Next tasks:** Wire billing-service index.ts to pass SubscriptionRepo to PlanStore in production mode. Then session B2: alerting-service → Postgres migration. Also pending: BullMQ custom Prometheus counters, IOC search pagination.
 
 ## Deployment Log
 

@@ -61,8 +61,8 @@ export class UpgradeFlow {
    * Throws SAME_PLAN if already on this plan.
    * Throws DOWNGRADE_NOT_ALLOWED if target tier is lower.
    */
-  previewUpgrade(tenantId: string, targetPlanId: PlanId, now: Date = new Date()): UpgradePreview {
-    const state = this.planStore.getTenantPlan(tenantId);
+  async previewUpgrade(tenantId: string, targetPlanId: PlanId, now: Date = new Date()): Promise<UpgradePreview> {
+    const state = await this.planStore.getTenantPlan(tenantId);
     const fromTier = PLAN_TIER[state.planId];
     const toTier = PLAN_TIER[targetPlanId];
 
@@ -100,7 +100,7 @@ export class UpgradeFlow {
     targetPlanId: PlanId,
     opts: { razorpaySubscriptionId?: string; couponDiscount?: number } = {},
   ): Promise<UpgradeResult> {
-    const state = this.planStore.getTenantPlan(tenantId);
+    const state = await this.planStore.getTenantPlan(tenantId);
     const fromTier = PLAN_TIER[state.planId];
     const toTier = PLAN_TIER[targetPlanId];
 
@@ -124,9 +124,9 @@ export class UpgradeFlow {
       periodEnd: this.monthEnd(now),
     });
 
-    const newState = this.planStore.setTenantPlan(tenantId, targetPlanId);
+    const newState = await this.planStore.setTenantPlan(tenantId, targetPlanId);
     if (opts.razorpaySubscriptionId) {
-      this.planStore.setRazorpayIds(tenantId, newState.razorpayCustomerId ?? '', opts.razorpaySubscriptionId);
+      await this.planStore.setRazorpayIds(tenantId, newState.razorpayCustomerId ?? '', opts.razorpaySubscriptionId);
     }
 
     return {
@@ -144,7 +144,7 @@ export class UpgradeFlow {
    * The tenant stays on the current plan until then.
    */
   async downgradePlan(tenantId: string, targetPlanId: PlanId): Promise<DowngradeResult> {
-    const state = this.planStore.getTenantPlan(tenantId);
+    const state = await this.planStore.getTenantPlan(tenantId);
     const fromTier = PLAN_TIER[state.planId];
     const toTier = PLAN_TIER[targetPlanId];
 
@@ -156,7 +156,7 @@ export class UpgradeFlow {
     }
 
     const effectiveAt = this.monthEnd(new Date());
-    this.planStore.scheduleDowngrade(tenantId, targetPlanId, effectiveAt);
+    await this.planStore.scheduleDowngrade(tenantId, targetPlanId, effectiveAt);
 
     return { currentPlanId: state.planId, scheduledPlanId: targetPlanId, effectiveAt };
   }

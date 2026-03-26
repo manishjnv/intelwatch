@@ -44,7 +44,7 @@ export function usageRoutes(deps: UsageRouteDeps) {
     /** GET /usage/limits — plan limits vs current usage with % utilisation. */
     app.get('/limits', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const state = planStore.getTenantPlan(tenantId);
+      const state = await planStore.getTenantPlan(tenantId);
       const planDef = PLAN_DEFINITIONS[state.planId];
       const usage = usageStore.getUsage(tenantId);
 

@@ -9,6 +9,7 @@
     { "path": "packages/shared-audit" },
     { "path": "packages/shared-normalization" },
     { "path": "packages/shared-enrichment" },
+    { "path": "packages/shared-persistence" },
     { "path": "apps/user-service" },
     { "path": "apps/api-gateway" },
     { "path": "apps/ingestion" },

@@ -45,7 +45,7 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
         case 'subscription.charged': {
           // Mark any pending invoice for this subscription as paid
           if (event.paymentId) {
-            const allTenants = planStore.getAllTenantPlans();
+            const allTenants = await planStore.getAllTenantPlans();
             const tenant = allTenants.find((t) => t.razorpaySubscriptionId === event.subscriptionId);
             if (tenant) {
               const invoices = invoiceStore.listInvoices(tenant.tenantId, { status: 'pending' });
@@ -61,10 +61,10 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
 
         case 'subscription.cancelled': {
           // Find the tenant with this subscription and downgrade to free
-          const allTenants = planStore.getAllTenantPlans();
+          const allTenants = await planStore.getAllTenantPlans();
           const tenant = allTenants.find((t) => t.razorpaySubscriptionId === event.subscriptionId);
           if (tenant) {
-            planStore.setTenantPlan(tenant.tenantId, 'free');
+            await planStore.setTenantPlan(tenant.tenantId, 'free');
             req.log.info({ tenantId: tenant.tenantId }, 'Tenant downgraded to free on subscription cancellation');
           }
           break;

@@ -25,7 +25,7 @@ export function adminRoutes(deps: AdminRouteDeps) {
      */
     app.get('/dashboard', async (_req: FastifyRequest, reply: FastifyReply) => {
       const revenue = invoiceStore.getRevenueMetrics();
-      const allTenants = planStore.getAllTenantPlans();
+      const allTenants = await planStore.getAllTenantPlans();
 
       // Plan distribution
       const planDistribution: Record<string, number> = { free: 0, starter: 0, pro: 0, enterprise: 0 };

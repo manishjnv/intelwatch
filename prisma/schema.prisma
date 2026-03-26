@@ -35,11 +35,16 @@ model Tenant {
   threatActorProfiles  ThreatActorProfile[]
   malwareProfiles      MalwareProfile[]
   vulnerabilityProfiles VulnerabilityProfile[]
+  subscriptions         TenantSubscription[]
+  invoices              BillingInvoice[]
+  usageRecords          BillingUsageRecord[]
+  gracePeriods          BillingGracePeriod[]
   @@map("tenants")
 }
 
 enum Plan {
   free
+  starter
   pro
   enterprise
   @@map("plan_enum")
@@ -518,4 +523,97 @@ model VulnerabilityProfile {
   @@index([tenantId, cisaKev])
   @@index([tenantId, priorityScore])
   @@map("vulnerability_profiles")
+}
+
+// ─── Billing (Module 19 — billing-service persistence) ───────────────────
+
+model TenantSubscription {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  plan               Plan      @default(free)
+  status             String    @default("active") @db.VarChar(20)  // active, trialing, past_due, cancelled
+  previousPlan       Plan?     @map("previous_plan")
+  scheduledPlan      Plan?     @map("scheduled_plan")
+  scheduledPlanAt    DateTime? @map("scheduled_plan_at")
+  razorpayCustomerId String?   @map("razorpay_customer_id") @db.VarChar(255)
+  razorpaySubId      String?   @map("razorpay_sub_id") @db.VarChar(255)
+  trialEndsAt        DateTime? @map("trial_ends_at")
+  currentPeriodStart DateTime? @map("current_period_start")
+  currentPeriodEnd   DateTime? @map("current_period_end")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@unique([tenantId])
+  @@index([status])
+  @@map("tenant_subscriptions")
+}
+
+model BillingUsageRecord {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  period       String   @db.VarChar(7)  // "2026-03"
+  apiCalls     Int      @default(0) @map("api_calls")
+  iocsIngested Int      @default(0) @map("iocs_ingested")
+  enrichments  Int      @default(0)
+  storageKb    Int      @default(0) @map("storage_kb")
+  alertAt80    Boolean  @default(false) @map("alert_at_80")
+  alertAt90    Boolean  @default(false) @map("alert_at_90")
+  alertAt100   Boolean  @default(false) @map("alert_at_100")
+  periodStart  DateTime @default(now()) @map("period_start")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, period])
+  @@index([tenantId])
+  @@map("billing_usage_records")
+}
+
+model BillingInvoice {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  planId           String    @map("plan_id") @db.VarChar(20)
+  status           String    @default("pending") @db.VarChar(20)  // pending, paid, cancelled, failed
+  amountInr        Int       @map("amount_inr")
+  gstAmountInr     Int       @default(0) @map("gst_amount_inr")
+  totalAmountInr   Int       @map("total_amount_inr")
+  gstNumber        String?   @map("gst_number") @db.VarChar(20)
+  razorpayPayId    String?   @map("razorpay_pay_id") @db.VarChar(255)
+  razorpayOrderId  String?   @map("razorpay_order_id") @db.VarChar(255)
+  periodStart      DateTime  @map("period_start")
+  periodEnd        DateTime  @map("period_end")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  paidAt           DateTime? @map("paid_at")
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("billing_invoices")
+}
+
+model BillingCoupon {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code          String    @unique @db.VarChar(50)
+  discountType  String    @map("discount_type") @db.VarChar(20)  // percentage, flat
+  discountValue Int       @map("discount_value")
+  maxUses       Int       @map("max_uses")
+  usageCount    Int       @default(0) @map("usage_count")
+  applicablePlans String[] @default([]) @map("applicable_plans")
+  expiresAt     DateTime  @map("expires_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  @@map("billing_coupons")
+}
+
+model BillingGracePeriod {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  metric      String   @db.VarChar(50)
+  activatedAt DateTime @map("activated_at")
+  expiresAt   DateTime @map("expires_at")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@map("billing_grace_periods")
 }

@@ -55,7 +55,7 @@ export function planRoutes(deps: PlanRouteDeps) {
     /** GET /tenant/plan — get the current plan for this tenant. */
     app.get('/tenant/plan', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const state = planStore.getTenantPlan(tenantId);
+      const state = await planStore.getTenantPlan(tenantId);
       const planDef = planStore.getPlanById(state.planId);
       return reply.send({ data: { ...state, plan: planDef } });
     });
@@ -64,7 +64,7 @@ export function planRoutes(deps: PlanRouteDeps) {
     app.post('/tenant/plan', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const { planId } = validate(SetTenantPlanSchema, req.body);
-      const state = planStore.setTenantPlan(tenantId, planId);
+      const state = await planStore.setTenantPlan(tenantId, planId);
       return reply.status(201).send({ data: state });
     });
   };
