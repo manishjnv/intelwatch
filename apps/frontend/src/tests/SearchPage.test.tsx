@@ -58,10 +58,10 @@ describe('SearchPage', () => {
     mockUseEsSearch.mockReturnValue(DEFAULT_HOOK)
   })
 
-  it('renders SearchBar, sidebar, and stats bar', () => {
+  it('renders SearchBar, sidebar, and toolbar', () => {
     render(<SearchPage />)
     expect(screen.getByTestId('search-input')).toBeInTheDocument()
-    expect(screen.getByTestId('page-stats-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('search-toolbar')).toBeInTheDocument()
   })
 
   it('shows initial state when no query and no results', () => {
@@ -99,7 +99,7 @@ describe('SearchPage', () => {
   it('shows demo banner when isDemo', () => {
     mockUseEsSearch.mockReturnValue({ ...DEFAULT_HOOK, isDemo: true, results: DEMO_ES_RESULTS, totalCount: 20 })
     render(<SearchPage />)
-    expect(screen.getByText(/demo results/)).toBeInTheDocument()
+    expect(screen.getByText(/ES unavailable/)).toBeInTheDocument()
   })
 
   it('renders results table when results exist', () => {
