@@ -7,14 +7,13 @@
 
 import { Worker, Queue, type Job } from 'bullmq';
 import { createHash } from 'node:crypto';
-import { QUEUES, EVENTS } from '@etip/shared-utils';
+import { QUEUES } from '@etip/shared-utils';
 import {
   detectIOCType,
   normalizeIOCValue,
   WarninglistMatcher,
   calculateBayesianConfidence,
   stixConfidenceTier,
-  calculateAttackSeverity,
 } from '@etip/shared-normalization';
 import type { PrismaClient } from '@prisma/client';
 import type pino from 'pino';
@@ -177,7 +176,7 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
             lifecycle: 'new',
             sightingSources: [globalFeedId],
             crossFeedCorroboration: 1,
-            enrichmentData,
+            enrichmentData: enrichmentData as any,
           },
         });
         newCount++;

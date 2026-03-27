@@ -55,7 +55,7 @@ export const RECOMMENDED_MODELS: Record<string, ModelRecommendation> = {
 const VALID_MODELS: AiModelName[] = ['haiku', 'sonnet', 'opus'];
 
 function parseKey(key: string): { category: string; subtask: string } {
-  const [category, subtask] = key.split('.');
+  const [category = '', subtask = ''] = key.split('.');
   return { category, subtask };
 }
 
@@ -66,7 +66,7 @@ export class GlobalAiStore {
   private cacheExpiry = 0;
   private readonly cacheTtlMs = 5 * 60 * 1000; // 5 min
 
-  constructor(private readonly prisma?: unknown) {}
+  constructor(_prisma?: unknown) {}
 
   /** Get all global AI config rows. Seeds defaults if empty. */
   async getConfig(): Promise<GlobalAiConfigRow[]> {
@@ -183,7 +183,7 @@ export class GlobalAiStore {
     const rows: GlobalAiConfigRow[] = [];
     for (const [key, rec] of Object.entries(RECOMMENDED_MODELS)) {
       const { category, subtask } = parseKey(key);
-      const model = tier === 'teams' ? rec.model : modelMap[tier];
+      const model = tier === 'teams' ? rec.model : modelMap[tier]!;
       const row = await this.setModel(category, subtask, model, updatedBy);
       rows.push(row);
     }

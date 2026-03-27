@@ -6,7 +6,7 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AppError } from '@etip/shared-utils';
-import { GlobalAiStore, RECOMMENDED_MODELS, type AiModelName, type ConfidenceModelType } from '../services/global-ai-store.js';
+import { GlobalAiStore, type AiModelName } from '../services/global-ai-store.js';
 import { CostPredictor, type SubtaskCostConfig } from '../services/cost-predictor.js';
 
 export interface GlobalAiRouteDeps {

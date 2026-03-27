@@ -160,7 +160,7 @@ export function createGlobalEnrichWorker(deps: GlobalEnrichDeps): Worker {
     await prisma.globalIoc.update({
       where: { dedupeHash: globalIocId },
       data: {
-        enrichmentData,
+        enrichmentData: enrichmentData as any,
         enrichedAt: new Date(),
         confidence: newConfidence.score,
         stixConfidenceTier: newTier,
