@@ -7,7 +7,14 @@ import { IOCRepository } from './repository.js';
 import { createNormalizeQueue, createEnrichQueue, closeNormalizeQueue } from './queue.js';
 import { createNormalizeWorker } from './workers/normalize-worker.js';
 import { createLifecycleWorker } from './workers/lifecycle-worker.js';
+import { createGlobalNormalizeWorker } from './workers/global-normalize-worker.js';
+import { createGlobalEnrichWorker } from './workers/global-enrich-worker.js';
+import { ShodanClient } from './enrichment/shodan-client.js';
+import { GreyNoiseClient } from './enrichment/greynoise-client.js';
 import { configureClassifier } from './service.js';
+import { QUEUES } from '@etip/shared-utils';
+import { Queue } from 'bullmq';
+import { EventEmitter } from 'node:events';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -39,9 +46,54 @@ async function main(): Promise<void> {
   // Start lifecycle cron worker (ACTIVE→AGING→EXPIRED→ARCHIVED)
   const lifecycleTask = createLifecycleWorker(repo, logger);
 
+  // ── Global Feed Processing Workers (DECISION-029 Phase B2+C) ─────
+  const globalWorkerCleanup: (() => Promise<void>)[] = [];
+  const globalEnabled = process.env.TI_GLOBAL_PROCESSING_ENABLED === 'true';
+
+  if (globalEnabled) {
+    const redisUrl = new URL(config.TI_REDIS_URL);
+    const redisPwd = decodeURIComponent(redisUrl.password || '');
+    const redisOpts = {
+      host: redisUrl.hostname, port: Number(redisUrl.port) || 6379,
+      password: redisPwd || undefined, maxRetriesPerRequest: null as null,
+      enableReadyCheck: false, lazyConnect: true,
+    };
+
+    // Queues for downstream pipeline
+    const enrichGlobalQueue = new Queue(QUEUES.ENRICH_GLOBAL, { connection: { ...redisOpts } });
+    const alertEvaluateQueue = new Queue(QUEUES.ALERT_EVALUATE, { connection: { ...redisOpts } });
+
+    // Global normalize worker: extracts IOCs from articles → upserts → enqueues for enrichment
+    const globalNormalizeWorker = createGlobalNormalizeWorker({
+      prisma, logger, enrichGlobalQueue,
+    });
+
+    // Global enrich worker: Shodan/GreyNoise enrichment → confidence recalc → alert delivery
+    const globalEventBus = new EventEmitter();
+    const globalEnrichWorker = createGlobalEnrichWorker({
+      prisma, logger,
+      shodanClient: new ShodanClient(process.env.TI_SHODAN_API_KEY),
+      greynoiseClient: new GreyNoiseClient(process.env.TI_GREYNOISE_API_KEY),
+      eventEmitter: globalEventBus,
+      alertEvaluateQueue,
+    });
+
+    globalWorkerCleanup.push(
+      () => globalNormalizeWorker.close(),
+      () => globalEnrichWorker.close(),
+      () => enrichGlobalQueue.close(),
+      () => alertEvaluateQueue.close(),
+    );
+
+    logger.info('Global processing workers: ENABLED — normalize + enrich workers started');
+  } else {
+    logger.info('Global processing workers: DISABLED');
+  }
+
   app.addHook('onClose', async () => {
     lifecycleTask.stop();
     await worker.close();
+    await Promise.all(globalWorkerCleanup.map(fn => fn()));
     await closeNormalizeQueue();
     await disconnectPrisma();
   });

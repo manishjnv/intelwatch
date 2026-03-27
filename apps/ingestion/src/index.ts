@@ -14,6 +14,7 @@ import { createGlobalSTIXWorker } from './workers/global-stix-worker.js';
 import { createGlobalRESTWorker } from './workers/global-rest-worker.js';
 import { createGlobalMISPWorker } from './workers/global-misp-worker.js';
 import { GlobalFeedScheduler } from './schedulers/global-feed-scheduler.js';
+import { GlobalPipelineOrchestrator } from './services/global-pipeline-orchestrator.js';
 import { QUEUES } from '@etip/shared-utils';
 import { Queue } from 'bullmq';
 
@@ -33,8 +34,6 @@ async function main(): Promise<void> {
   const queues = createFeedFetchQueues();
   const policyStore = new FeedPolicyStore();
 
-  const app = await buildApp({ config, repo, queue: queues.values().next().value!, policyStore });
-
   // Start 4 per-feed-type BullMQ workers (P3-4) with per-tenant fairness (P3-7)
   const workerResult = createFeedFetchWorkers({ repo, logger, db: prisma, policyStore });
 
@@ -45,12 +44,26 @@ async function main(): Promise<void> {
   // Daily reset of per-feed article counters — fires at midnight UTC
   const midnightResetInterval = scheduleMidnightReset(policyStore, logger);
 
-  // ── Global Feed Processing (DECISION-029 Phase B1) ─────────────────
+  // ── Global Feed Processing (DECISION-029 Phase B1+C) ───────────────
   const globalWorkers: { close(): Promise<void> }[] = [];
   const globalEnabled = process.env.TI_GLOBAL_PROCESSING_ENABLED === 'true';
+  let pipelineOrchestrator: GlobalPipelineOrchestrator | undefined;
 
   if (globalEnabled) {
-    const globalDeps = { db: prisma, logger, redisUrl: config.TI_REDIS_URL };
+    const globalUrl = new URL(config.TI_REDIS_URL);
+    const globalPwd = decodeURIComponent(globalUrl.password || '');
+    const globalRedisOpts = {
+      host: globalUrl.hostname, port: Number(globalUrl.port) || 6379,
+      password: globalPwd || undefined, maxRetriesPerRequest: null as null,
+      enableReadyCheck: false, lazyConnect: true,
+    };
+
+    // Create normalize + enrich queues (downstream pipeline)
+    const normalizeGlobalQueue = new Queue(QUEUES.NORMALIZE_GLOBAL, { connection: { ...globalRedisOpts } });
+    const enrichGlobalQueue = new Queue(QUEUES.ENRICH_GLOBAL, { connection: { ...globalRedisOpts } });
+
+    // Pass normalizeGlobalQueue to fetch workers so they enqueue articles for normalization
+    const globalDeps = { db: prisma, logger, redisUrl: config.TI_REDIS_URL, normalizeGlobalQueue };
     globalWorkers.push(
       createGlobalRSSWorker(globalDeps),
       createGlobalNVDWorker(globalDeps),
@@ -59,26 +72,29 @@ async function main(): Promise<void> {
       createGlobalMISPWorker(globalDeps),
     );
 
-    const globalUrl = new URL(config.TI_REDIS_URL);
-    const globalPwd = decodeURIComponent(globalUrl.password || '');
-    const globalRedisOpts = {
-      host: globalUrl.hostname, port: Number(globalUrl.port) || 6379,
-      password: globalPwd || undefined, maxRetriesPerRequest: null as null,
-      enableReadyCheck: false, lazyConnect: true,
-    };
+    // Create all 6 global queues for orchestrator health monitoring
     const globalQueues: Record<string, Queue> = {
       [QUEUES.FEED_FETCH_GLOBAL_RSS]: new Queue(QUEUES.FEED_FETCH_GLOBAL_RSS, { connection: { ...globalRedisOpts } }),
       [QUEUES.FEED_FETCH_GLOBAL_NVD]: new Queue(QUEUES.FEED_FETCH_GLOBAL_NVD, { connection: { ...globalRedisOpts } }),
       [QUEUES.FEED_FETCH_GLOBAL_STIX]: new Queue(QUEUES.FEED_FETCH_GLOBAL_STIX, { connection: { ...globalRedisOpts } }),
       [QUEUES.FEED_FETCH_GLOBAL_REST]: new Queue(QUEUES.FEED_FETCH_GLOBAL_REST, { connection: { ...globalRedisOpts } }),
+      [QUEUES.NORMALIZE_GLOBAL]: normalizeGlobalQueue,
+      [QUEUES.ENRICH_GLOBAL]: enrichGlobalQueue,
     };
+
+    // Pipeline orchestrator — health, retrigger, pause/resume
+    pipelineOrchestrator = new GlobalPipelineOrchestrator(globalQueues, prisma);
+
     const globalScheduler = new GlobalFeedScheduler({ db: prisma, queues: globalQueues, logger });
     globalScheduler.start();
 
-    logger.info(`Global feed processing: ENABLED — ${globalWorkers.length} workers registered`);
+    logger.info(`Global feed processing: ENABLED — ${globalWorkers.length} workers, 6 queues, orchestrator active`);
   } else {
     logger.info('Global feed processing: DISABLED');
   }
+
+  // Build Fastify app (after global setup so orchestrator is available for pipeline routes)
+  const app = await buildApp({ config, repo, queue: queues.values().next().value!, policyStore, pipelineOrchestrator });
 
   app.addHook('onClose', async () => {
     clearInterval(midnightResetInterval);

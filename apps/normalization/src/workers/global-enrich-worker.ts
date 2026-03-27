@@ -5,7 +5,7 @@
  * GLOBAL_IOC_CRITICAL for high-severity IOCs. DECISION-029 Phase B2.
  */
 
-import { Worker, type Job } from 'bullmq';
+import { Worker, Queue, type Job } from 'bullmq';
 import { QUEUES, EVENTS } from '@etip/shared-utils';
 import {
   calculateBayesianConfidence,
@@ -33,6 +33,8 @@ export interface GlobalEnrichDeps {
   shodanClient?: ShodanClient;
   greynoiseClient?: GreyNoiseClient;
   eventEmitter?: { emit: (event: string, data: unknown) => void };
+  /** Optional: cross-service alert delivery via ALERT_EVALUATE BullMQ queue */
+  alertEvaluateQueue?: Queue;
 }
 
 /** Determine enrichment sources by IOC type. */
@@ -177,6 +179,25 @@ export function createGlobalEnrichWorker(deps: GlobalEnrichDeps): Worker {
         confidence: newConfidence.score,
         severity: ioc.severity,
       });
+
+      // Cross-service: push to alerting service via ALERT_EVALUATE queue
+      if (deps.alertEvaluateQueue) {
+        await deps.alertEvaluateQueue.add('evaluate', {
+          tenantId: '__global__',
+          eventType: EVENTS.GLOBAL_IOC_CRITICAL,
+          source: {
+            globalIocId: ioc.id,
+            iocType: ioc.iocType,
+            value: ioc.normalizedValue,
+            confidence: newConfidence.score,
+            severity: ioc.severity,
+            stixConfidenceTier: newTier,
+            crossFeedCorroboration: ioc.crossFeedCorroboration,
+            enrichmentQuality,
+            origin: 'global_pipeline',
+          },
+        }, { removeOnComplete: 100, removeOnFail: 50 });
+      }
     }
 
     // 10. Log

@@ -14,6 +14,8 @@ import { EscalationDispatcher } from './services/escalation-dispatcher.js';
 import { AlertGroupStore } from './services/alert-group-store.js';
 import { MaintenanceStore } from './services/maintenance-store.js';
 import { AlertWorker } from './workers/alert-worker.js';
+import { EventEmitter } from 'node:events';
+import { GlobalIocAlertHandler, type SubscriptionRepository, type TenantSubscription } from './handlers/global-ioc-alert-handler.js';
 
 async function main(): Promise<void> {
   // 1. Config + Logger
@@ -65,7 +67,41 @@ async function main(): Promise<void> {
   });
   alertWorker.start();
 
-  // 6. Periodic maintenance: unsuppress expired + purge dedup cache
+  // 6. Global IOC Alert Handler (DECISION-029 Phase C)
+  const globalEventBus = new EventEmitter();
+  const globalAlertEnabled = process.env.TI_GLOBAL_PROCESSING_ENABLED === 'true';
+
+  if (globalAlertEnabled) {
+    // In-memory subscription registry — tenants register via global catalog subscribe
+    // For MVP: all known tenants receive global alerts (no filtering)
+    // TODO: Wire HTTP adapter to query ingestion catalog /subscriptions API
+    const tenantRegistry = new Set<string>();
+
+    // Register tenants as they create alert rules (proxy for "active tenants")
+    const inMemorySubRepo: SubscriptionRepository = {
+      async getSubscriptionsForFeed(globalFeedId: string): Promise<TenantSubscription[]> {
+        return Array.from(tenantRegistry).map(tenantId => ({
+          tenantId,
+          globalFeedId,
+          alertConfig: {}, // No filters — all tenants get all global alerts for MVP
+        }));
+      },
+      async getAllSubscriptions(): Promise<TenantSubscription[]> {
+        return this.getSubscriptionsForFeed('*');
+      },
+    };
+
+    // Simple: register the default tenant for now
+    tenantRegistry.add(process.env.TI_DEFAULT_TENANT_ID ?? 'default-tenant');
+
+    const globalAlertHandler = new GlobalIocAlertHandler(alertStore, inMemorySubRepo, logger);
+    globalAlertHandler.registerEventListeners(globalEventBus);
+    logger.info('Global IOC alert handler: ENABLED — listening for GLOBAL_IOC_CRITICAL/UPDATED events');
+  } else {
+    logger.info('Global IOC alert handler: DISABLED');
+  }
+
+  // 7. Periodic maintenance: unsuppress expired + purge dedup cache
   const maintenanceInterval = setInterval(() => {
     const unsuppressed = alertStore.unsuppressExpired();
     if (unsuppressed > 0) logger.info({ count: unsuppressed }, 'Unsuppressed expired alerts');
