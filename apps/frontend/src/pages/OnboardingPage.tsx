@@ -11,6 +11,7 @@ import {
   useModuleReadiness, useReadinessCheck, useCompleteStep, useSkipStep, useSeedDemo,
   type OnboardingWizard, type PipelineHealth, type ModuleStatus,
 } from '@/hooks/use-phase6-data'
+import { FeedSelectionStep } from '@/components/FeedSelectionStep'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { CheckCircle2, Circle, Clock, SkipForward, Play, Rocket } from 'lucide-react'
 
@@ -57,6 +58,7 @@ function WizardTab({ wizard }: { wizard: OnboardingWizard }) {
   const completeStep = useCompleteStep()
   const skipStep = useSkipStep()
   const currentStep = wizard.currentStep
+  const showFeedStep = currentStep === 'feed_activation'
 
   return (
     <div className="space-y-4">
@@ -98,26 +100,36 @@ function WizardTab({ wizard }: { wizard: OnboardingWizard }) {
         })}
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => completeStep.mutate({ step: currentStep })}
-          disabled={completeStep.isPending}
-          className="px-4 py-2 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center gap-1.5"
-        >
-          <Play className="w-3 h-3" />
-          {completeStep.isPending ? 'Completing…' : 'Complete Step'}
-        </button>
-        <button
-          onClick={() => skipStep.mutate({ step: currentStep })}
-          disabled={skipStep.isPending}
-          className="px-4 py-2 text-xs font-medium border border-border-subtle text-text-muted rounded-lg hover:border-accent/50 hover:text-accent disabled:opacity-50 transition-colors"
-        >
-          {skipStep.isPending ? 'Skipping…' : 'Skip Step'}
-        </button>
-        <span className="text-xs text-text-muted ml-auto">
-          Current: <strong className="text-text-secondary">{STEP_LABELS[currentStep] ?? currentStep}</strong>
-        </span>
-      </div>
+      {showFeedStep && (
+        <FeedSelectionStep
+          planTier="free"
+          onContinue={() => completeStep.mutate({ step: 'feed_activation' })}
+          onSkip={() => skipStep.mutate({ step: 'feed_activation' })}
+        />
+      )}
+
+      {!showFeedStep && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => completeStep.mutate({ step: currentStep })}
+            disabled={completeStep.isPending}
+            className="px-4 py-2 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+          >
+            <Play className="w-3 h-3" />
+            {completeStep.isPending ? 'Completing…' : 'Complete Step'}
+          </button>
+          <button
+            onClick={() => skipStep.mutate({ step: currentStep })}
+            disabled={skipStep.isPending}
+            className="px-4 py-2 text-xs font-medium border border-border-subtle text-text-muted rounded-lg hover:border-accent/50 hover:text-accent disabled:opacity-50 transition-colors"
+          >
+            {skipStep.isPending ? 'Skipping…' : 'Skip Step'}
+          </button>
+          <span className="text-xs text-text-muted ml-auto">
+            Current: <strong className="text-text-secondary">{STEP_LABELS[currentStep] ?? currentStep}</strong>
+          </span>
+        </div>
+      )}
     </div>
   )
 }

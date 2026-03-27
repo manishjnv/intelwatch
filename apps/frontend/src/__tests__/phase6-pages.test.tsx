@@ -71,6 +71,11 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useSeedDemo:             () => mockUseSeedDemo(),
 }))
 
+// Mock FeedSelectionStep component (Session 100 — extracted to own file)
+vi.mock('@/components/FeedSelectionStep', () => ({
+  FeedSelectionStep: () => <div data-testid="feed-selection-step">Feed Selection Mock</div>,
+}))
+
 // Mock shared-ui components
 vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
   PageStatsBar: ({ children, title }: { children: React.ReactNode; title: string }) => (
@@ -806,13 +811,22 @@ describe('OnboardingPage', () => {
     expect(completedBadges.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('shows Complete Step button', async () => {
+  it('shows Complete Step button (non-feed step)', async () => {
+    // Use integration_setup step — feed_activation now shows FeedSelectionStep instead of generic buttons
+    mockUseOnboardingWizard.mockReturnValue(mockQuery({
+      ...WIZARD_STATE, currentStep: 'integration_setup',
+      steps: { ...WIZARD_STATE.steps, feed_activation: 'completed', integration_setup: 'in_progress' },
+    }, true))
     const { OnboardingPage } = await import('@/pages/OnboardingPage')
     render(<OnboardingPage />)
     expect(screen.getByRole('button', { name: /Complete Step/ })).toBeInTheDocument()
   })
 
-  it('shows Skip Step button', async () => {
+  it('shows Skip Step button (non-feed step)', async () => {
+    mockUseOnboardingWizard.mockReturnValue(mockQuery({
+      ...WIZARD_STATE, currentStep: 'integration_setup',
+      steps: { ...WIZARD_STATE.steps, feed_activation: 'completed', integration_setup: 'in_progress' },
+    }, true))
     const { OnboardingPage } = await import('@/pages/OnboardingPage')
     render(<OnboardingPage />)
     expect(screen.getByRole('button', { name: /Skip Step/ })).toBeInTheDocument()
@@ -821,19 +835,27 @@ describe('OnboardingPage', () => {
   it('Complete Step button calls mutation', async () => {
     const mutate = vi.fn()
     mockUseCompleteStep.mockReturnValue({ mutate, isPending: false })
+    mockUseOnboardingWizard.mockReturnValue(mockQuery({
+      ...WIZARD_STATE, currentStep: 'integration_setup',
+      steps: { ...WIZARD_STATE.steps, feed_activation: 'completed', integration_setup: 'in_progress' },
+    }, true))
     const { OnboardingPage } = await import('@/pages/OnboardingPage')
     render(<OnboardingPage />)
     fireEvent.click(screen.getByRole('button', { name: /Complete Step/ }))
-    expect(mutate).toHaveBeenCalledWith({ step: 'feed_activation' })
+    expect(mutate).toHaveBeenCalledWith({ step: 'integration_setup' })
   })
 
   it('Skip Step button calls mutation', async () => {
     const mutate = vi.fn()
     mockUseSkipStep.mockReturnValue({ mutate, isPending: false })
+    mockUseOnboardingWizard.mockReturnValue(mockQuery({
+      ...WIZARD_STATE, currentStep: 'integration_setup',
+      steps: { ...WIZARD_STATE.steps, feed_activation: 'completed', integration_setup: 'in_progress' },
+    }, true))
     const { OnboardingPage } = await import('@/pages/OnboardingPage')
     render(<OnboardingPage />)
     fireEvent.click(screen.getByRole('button', { name: /Skip Step/ }))
-    expect(mutate).toHaveBeenCalledWith({ step: 'feed_activation' })
+    expect(mutate).toHaveBeenCalledWith({ step: 'integration_setup' })
   })
 
   it('switches to Pipeline Health tab', async () => {

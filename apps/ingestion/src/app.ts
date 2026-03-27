@@ -15,6 +15,7 @@ import { FeedRepository } from './repository.js';
 import { FeedService } from './service.js';
 import { FeedPolicyStore } from './services/feed-policy-store.js';
 import { globalPipelineRoutes } from './routes/global-pipeline.js';
+import { feedValidationRoutes } from './routes/feed-validation.js';
 import type { GlobalPipelineOrchestrator } from './services/global-pipeline-orchestrator.js';
 import type { Queue } from 'bullmq';
 
@@ -75,6 +76,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   const service = new FeedService(repo, queue as never, logger);
 
   await app.register(healthRoutes);
+  await app.register(feedValidationRoutes(), { prefix: '/api/v1/feeds' });
   await app.register(feedRoutes(service), { prefix: '/api/v1/feeds' });
   await app.register(feedPolicyRoutes(policyStore, repo), { prefix: '/api/v1/feeds' });
   await app.register(articleRoutes(repo), { prefix: '/api/v1/articles' });

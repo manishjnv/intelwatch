@@ -4,7 +4,9 @@ import { AppError } from '@etip/shared-utils';
 import { SeedDemoSchema } from '../schemas/onboarding.js';
 import type { WelcomeDashboardService } from '../services/welcome-dashboard.js';
 import type { DemoSeeder } from '../services/demo-seeder.js';
+import type { RealSeeder } from '../services/real-seeder.js';
 import type { ChecklistPersistence } from '../services/checklist-persistence.js';
+import { getLogger } from '../logger.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function validate<S extends ZodType<any, any, any>>(schema: S, data: unknown): ReturnType<S['parse']> {
@@ -19,11 +21,12 @@ function validate<S extends ZodType<any, any, any>>(schema: S, data: unknown): R
 export interface WelcomeRouteDeps {
   welcomeDashboard: WelcomeDashboardService;
   demoSeeder: DemoSeeder;
+  realSeeder?: RealSeeder;
   checklistPersistence: ChecklistPersistence;
 }
 
 export function welcomeRoutes(deps: WelcomeRouteDeps) {
-  const { welcomeDashboard, demoSeeder, checklistPersistence } = deps;
+  const { welcomeDashboard, demoSeeder, realSeeder, checklistPersistence } = deps;
 
   return async function (app: FastifyInstance): Promise<void> {
     /** GET /welcome — Get personalized welcome dashboard. */
@@ -40,12 +43,34 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
       return reply.send({ data: tips, total: tips.length });
     });
 
-    /** POST /welcome/seed-demo — Seed demo data for first-time users. */
+    /** POST /welcome/seed-demo — Seed data for first-time users.
+     * Tries RealSeeder (global catalog subscriptions + pipeline flow) first.
+     * Falls back to DemoSeeder on failure. Feature flag: TI_REAL_SEEDER_ENABLED. */
     app.post('/seed-demo', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const input = validate(SeedDemoSchema, req.body ?? {});
+      const planTier = ((req.body as Record<string, unknown>)?.planTier as string) || 'free';
+      const logger = getLogger();
+
+      const realEnabled = process.env.TI_REAL_SEEDER_ENABLED !== 'false';
+
+      // Try RealSeeder first (if available and enabled)
+      if (realEnabled && realSeeder) {
+        try {
+          const realResult = await realSeeder.seedTenant(tenantId, planTier);
+          // Also seed demo entities if RealSeeder didn't create enough
+          if (!input.categories) {
+            await demoSeeder.seed(tenantId, ['vulnerabilities']);
+          }
+          return reply.status(201).send({ data: { ...realResult, seederUsed: 'real' as const } });
+        } catch (err) {
+          logger.warn({ tenantId, err: (err as Error).message }, 'RealSeeder failed, falling back to DemoSeeder');
+        }
+      }
+
+      // Fallback to DemoSeeder
       const result = await demoSeeder.seed(tenantId, input.categories);
-      return reply.status(201).send({ data: result });
+      return reply.status(201).send({ data: { ...result, seederUsed: 'demo' as const } });
     });
 
     /** GET /welcome/demo-status — Check if demo data has been seeded. */

@@ -27,8 +27,41 @@ export class ServiceClient {
     this.timeoutMs = opts.timeoutMs ?? 10_000;
   }
 
+  /** GET from a service endpoint. Returns parsed response body or null on failure. */
+  async get<T = unknown>(path: string, headers?: Record<string, string>): Promise<T | null> {
+    const logger = getLogger();
+    const url = `${this.baseUrl}${path}`;
+    const token = signServiceToken('onboarding', this.targetService);
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          ...headers,
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timer);
+
+      if (!res.ok) {
+        logger.warn({ url, status: res.status }, 'Service GET call failed');
+        return null;
+      }
+
+      return await res.json() as T;
+    } catch (err) {
+      logger.warn({ url, err: (err as Error).message }, 'Service GET call error');
+      return null;
+    }
+  }
+
   /** POST JSON to a service endpoint. Returns parsed response body or null on failure. */
-  async post<T = unknown>(path: string, body: unknown): Promise<T | null> {
+  async post<T = unknown>(path: string, body: unknown, headers?: Record<string, string>): Promise<T | null> {
     const logger = getLogger();
     const url = `${this.baseUrl}${path}`;
     const token = signServiceToken('onboarding', this.targetService);
@@ -42,6 +75,7 @@ export class ServiceClient {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          ...headers,
         },
         body: JSON.stringify(body),
         signal: controller.signal,

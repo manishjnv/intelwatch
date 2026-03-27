@@ -9,6 +9,7 @@ import { ModuleReadinessChecker } from './services/module-readiness.js';
 import { ProgressTracker } from './services/progress-tracker.js';
 import { PrerequisiteValidator } from './services/prerequisite-validator.js';
 import { DemoSeeder } from './services/demo-seeder.js';
+import { RealSeeder } from './services/real-seeder.js';
 import { ServiceClient } from './services/service-client.js';
 import { IntegrationTester } from './services/integration-tester.js';
 import { ChecklistPersistence } from './services/checklist-persistence.js';
@@ -55,6 +56,13 @@ async function main(): Promise<void> {
     vulnClient: new ServiceClient({ baseUrl: config.TI_VULN_SERVICE_URL, targetService: 'vulnerability-intel' }),
     ingestionClient: new ServiceClient({ baseUrl: config.TI_INGESTION_SERVICE_URL, targetService: 'ingestion' }),
   });
+  const realSeeder = new RealSeeder();
+  realSeeder.setClients({
+    ingestionClient: new ServiceClient({ baseUrl: config.TI_INGESTION_SERVICE_URL, targetService: 'ingestion' }),
+    iocClient: new ServiceClient({ baseUrl: config.TI_IOC_SERVICE_URL, targetService: 'ioc-intelligence' }),
+    actorClient: new ServiceClient({ baseUrl: config.TI_ACTOR_SERVICE_URL, targetService: 'threat-actor-intel' }),
+    malwareClient: new ServiceClient({ baseUrl: config.TI_MALWARE_SERVICE_URL, targetService: 'malware-intel' }),
+  });
   const checklistPersistence = new ChecklistPersistence(wizardStore);
   const welcomeDashboard = new WelcomeDashboardService(wizardStore, progressTracker, demoSeeder);
 
@@ -65,7 +73,7 @@ async function main(): Promise<void> {
     connectorDeps: { connectorValidator, integrationTester },
     pipelineDeps: { healthChecker, progressTracker },
     moduleDeps: { moduleReadiness, prerequisiteValidator },
-    welcomeDeps: { welcomeDashboard, demoSeeder, checklistPersistence },
+    welcomeDeps: { welcomeDashboard, demoSeeder, realSeeder, checklistPersistence },
   });
 
   // 7. Graceful shutdown
