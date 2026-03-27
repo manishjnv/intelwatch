@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 88 — DECISION-029 v2: Global Processing + 15 Standards-Based Improvements
+**Session counter:** 90 — DECISION-029 Phase A2: Bayesian Confidence, STIX Tiers, EPSS, Global AI Config
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -17,14 +17,14 @@
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
 | etip_malware_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements |
-| etip_vulnerability_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements |
+| etip_vulnerability_intel | ✅ Running | 0.1.1 | 2026-03-27 | Port 3010. 28 endpoints, 15 accuracy improvements. **Session 90:** EPSS client + refresh cron. 131 tests. |
 | etip_threat_graph | ✅ Deployed | 2.0.0 | 2026-03-24 | Port 3012. Neo4j knowledge graph. 32 endpoints, 20 improvements (#1-20), 294 tests. |
 | etip_correlation | ✅ Deployed | 0.1.1 | 2026-03-25 | Port 3013. 20 endpoints, 15/15 improvements + P1-1 Redis persistence, 179 tests. store-checkpoint.ts: 6 store Maps persisted to Redis (5s debounce, 7-day TTL), restored on startup. Deployed session 67. |
 | etip_hunting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3014. 47 endpoints, 15/15 improvements, 222 tests. |
 | etip_drp | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3011. 36 endpoints, 310 tests. |
 | etip_integration | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. |
 | etip_user_management | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. |
-| etip_customization | ✅ Deployed | 0.3.0 | 2026-03-26 | Port 3017. 50 endpoints, 273 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. F2: 12 CTI subtasks + plan tiers. F3: cost estimator. G1b: PUT /ai/subtasks/:subtask. BYOK. **Session 78: FeedQuotaStore** — 4 billing plan tiers (Free/Starter/Teams/Enterprise), 6 feed-quota endpoints, tenant plan assignments. |
+| etip_customization | ✅ Deployed | 0.4.0 | 2026-03-27 | Port 3017. 58 endpoints, 319 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. F2 + F3 + BYOK + Feed Quotas. **Session 90:** Global AI Config (6 routes) + Plan Limits (2 routes) + CostPredictor. |
 | etip_onboarding | ✅ Deployed | 0.3.0 | 2026-03-26 | Port 3018. 32 endpoints, 241 tests. Setup wizard (Redis-backed), demo seeder. **Session 78: Free-tier default** — seeds 3 feeds (THN, CISA RSS, NVD) instead of 10. seedUpgradeFeeds() for plan upgrades. freeTier flag on all 10 DEFAULT_FEEDS. |
 | etip_billing | ✅ Deployed | 0.3.0 | 2026-03-27 | Port 3019. 28 endpoints, 190 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. **Session 83: All 3 remaining stores (Usage, Invoice, Coupon) wired to Prisma** — dual-mode with in-memory fallback. 21 new tests. |
 | etip_admin | ✅ Deployed | 0.5.0 | 2026-03-27 | Port 3022. 35 endpoints, 195 tests. Queue monitor + DLQ processor + P2-1 queue alerting. **Session 83: 10s response cache on GET /queues** — reduces Redis ops from 250+/s to 1/10s. 5 new cache tests. |
@@ -40,31 +40,31 @@
 | Module | Phase | Status | Last Worked | Blockers |
 |--------|-------|--------|-------------|----------|
 | api-gateway | 1 | ✅ Deployed | 2026-03-27 | **Session 85:** Tiered rate limits + error alerting + @fastify/compress. 59 tests. |
-| shared-types | 1 | ✅ Deployed | 2026-03-24 | None. Queue JSDoc comments updated (colon→dash). |
-| shared-utils | 1 | ✅ Deployed | 2026-03-26 | QUEUES: 18 constants (4 feed lanes added). EVENTS: 20 constants (+QUEUE_ALERT, +QUEUE_ALERT_RESOLVED). **registerMetrics()**: prom-client Prometheus plugin (HTTP counter, duration histogram, process metrics, GET /metrics). 91 tests. |
+| shared-types | 1 | ✅ Deployed | 2026-03-27 | StixSightingSchema added. Queue JSDoc comments updated (colon→dash). |
+| shared-utils | 1 | ✅ Deployed | 2026-03-27 | QUEUES: 24 constants (6 global queues added). EVENTS: 22 constants (+GLOBAL_FEED_PROCESSED, +GLOBAL_IOC_CREATED). **registerMetrics()**: prom-client Prometheus plugin. 91 tests. |
 | shared-auth | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-cache | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-audit | 1 | ✅ Deployed | 2026-03-15 | None |
-| shared-normalization | 1 | ✅ Deployed | 2026-03-15 | None |
+| shared-normalization | 1 | ✅ Deployed | 2026-03-27 | **Session 90:** Bayesian log-odds confidence model, STIX 2.1 §4.14 confidence tiers + colors. 121 tests. |
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 794 tests (796 total, 2 skipped). **Session 86:** Fix 14 TS errors, notifyApiError wired to 7 hooks (20 catches), useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 8 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 84:** Scheduler retry (exponential backoff + circuit breaker for customization-client). 502 tests. |
+| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 89:** Global Feed Catalog API (7 routes) + GlobalFeedRepo + SubscriptionRepo. 502+ tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
 | malware-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3009. 27 endpoints, 15 accuracy improvements, 149 tests. |
-| vulnerability-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3010. 28 endpoints, 15 accuracy improvements, 119 tests. Phase 3 complete. |
+| vulnerability-intel | 3 | ✅ Deployed | 2026-03-27 | Port 3010. 28 endpoints, 15 accuracy improvements, 131 tests. **Session 90:** EPSS live API client + daily refresh cron. |
 | digital-risk-protection | 4 | 🔨 WIP | 2026-03-23 | Port 3011. **15/15 improvements COMPLETE + typosquat accuracy**. 36 endpoints, 310 tests. 4 detection engines (typosquat 12-algo, dark web, credential leak, attack surface). Typosquat accuracy: 7 new methods (combosquatting, bitsquatting, keyboard proximity, vowel-swap, repetition, hyphenation, subdomain), composite scoring (Jaro-Winkler + soundex + TLD risk + phonetic), CertStream real-time monitor, domain enricher. P0-P2 all COMPLETE. FEATURE-COMPLETE. |
 | threat-graph | 4 | 🔨 WIP | 2026-03-23 | Port 3012. 20 improvements complete (#1-20). 32 endpoints, 294 tests. Neo4j graph, risk propagation, STIX export, cluster detection, batch import, decay cron, merge/split, trending. Ready for deploy. |
 | correlation-engine | 4 | ✅ Complete | 2026-03-25 | Port 3013. **15/15 improvements + P1-1 Redis persistence COMPLETE**. 20 endpoints, 179 tests. store-checkpoint.ts: all 6 store Maps persisted to Redis on write (5s debounce, etip-correlation-{store} keys, 7-day TTL), restored on startup. ioredis dep added. TI_REDIS_URL env var wired. |
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
-| customization | 5 | ✅ Complete | 2026-03-27 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK + Feed Quotas COMPLETE**. 50 endpoints, 281 tests. **Session 87:** FeedQuotaStore persisted to Postgres (dual-mode: Prisma repo + in-memory fallback). FeedQuotaPlanAssignment model. 8 new dual-mode tests. |
+| customization | 5 | ✅ Complete | 2026-03-27 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK + Feed Quotas + Global AI Config COMPLETE**. 58 endpoints, 319 tests. **Session 90:** GlobalAiStore (15 subtasks), CostPredictor, 6 global-ai routes, 2 plan-limits routes. |
 | onboarding | 6 | ✅ Deployed | 2026-03-26 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 241 tests. **Session 78:** DemoSeeder seeds 3 free-tier feeds by default (was 10). seedUpgradeFeeds() for Starter+ upgrades. freeTier flag on DEFAULT_FEEDS. |
 | billing | 6 | ✅ Complete | 2026-03-27 | Port 3019. 28 endpoints, 5 P0 improvements, 190 tests. **Session 83: All 4 stores Prisma-backed** — UsageStore, InvoiceStore, CouponStore wired to repos (PlanStore was S74). Every method try/catch → in-memory fallback. 21 new tests. FEATURE-COMPLETE + FULLY PERSISTENT. |
 | admin-ops | 6 | ✅ Complete | 2026-03-27 | Port 3022. **Core + 5 P0 + queue monitor + DLQ + P2-1 queue alerting COMPLETE**. 35 endpoints, 195 tests. **Session 83:** 10s response cache on GET /queues (module-level cache, error responses not cached). 5 new tests. FEATURE-COMPLETE. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Planning complete, implementation starts Session 89 (Phase A1).
-- **Last session outcome:** Session 88 (2026-03-27). **Docs/planning only — no code changes, no deploy.** Reviewed current per-tenant architecture. Compared with Recorded Future/Anomali/CrowdStrike/OpenCTI models. Designed DECISION-029 v2: global OSINT processing (process once) + tenant overlay (custom scores/tags/lifecycle) + 15 standards-based improvements (NATO Admiralty Code, Bayesian confidence, MISP Warninglists, EPSS live API, CPE 2.3, ATT&CK tactic weighting, Shodan/GreyNoise, STIX Sightings/tiers, fuzzy dedup, CWE chains, AI graph extraction, confidence explainability, STIX import/export wizard, ATT&CK Navigator heatmap). Total: 27 improvements across 5 phases (sessions 89-93). Plan saved: docs/architecture/DECISION-029-Global-Processing-Plan.md. Commits: 8d3e078, b66affd, f1238bf.
-- **Known issues:** Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in billing-service Prisma models (29 errors, needs `prisma generate`) + 3 new in customization repo (same pattern — `prisma generate` needed). VPS needs `prisma db push` to create `feed_quota_plan_assignments` table.
-- **Next tasks:** (1) Session 89: DECISION-029 Phase A1 — 7 Prisma models + Feed Catalog API + Admiralty Code + CPE parser + STIX Sightings (~14 files, ~30 tests). (2) Deploy S87 to VPS + run `prisma db push` for new table. (3) Session 90: Phase A2 — Bayesian confidence + EPSS live + AI config. (4) Sessions 91-93: Phases B/C/D per plan.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phase A1+A2 COMPLETE, pushed.
+- **Last session outcome:** Session 90 (2026-03-27). **Phase A2 COMPLETE.** Bayesian log-odds confidence model (shared-normalization). STIX 2.1 §4.14 confidence tiers + colors. EPSS live API client (FIRST.org, batch/retry/backoff) + daily refresh cron (vulnerability-intel). GlobalAiStore (15 subtasks, recommended models, plan presets) + CostPredictor + 6 global-ai routes + 2 plan-limits routes (customization). 102 new tests across 3 packages (121 shared-normalization, 131 vulnerability-intel, 319 customization). All additive, feature-gated. Commit: af55748. Pushed to master, CI triggered.
+- **Known issues:** Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in billing-service Prisma models (needs `prisma generate`). VPS needs `prisma db push` for 7 new global processing tables + feed_quota_plan_assignments table. No deploy this session — code only.
+- **Next tasks:** (1) Session 91: DECISION-029 Phase B — Global pipeline worker, dedup engine, FP signal, MISP warninglists. (2) Deploy to VPS + run `prisma db push` for new tables. (3) Sessions 92-93: Phases C/D per plan.
 
 ## Deployment Log
 
@@ -226,6 +226,9 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 85 | 2026-03-27 | etip_api + etip_frontend updated | ⏳ CI triggered | 1420c77 | API Gateway: tiered rate limits (search/write/read), error alerting (5-min window, QUEUE_ALERT), @fastify/compress (gzip >1KB), GET /gateway/error-stats. Frontend: GET request dedup (100ms). 12 new tests. ~5,965 total. |
 | 86 | 2026-03-27 | etip_frontend updated | ⏳ CI triggered | 426794d | Fix 14 TS errors, notifyApiError wired to 7 hooks (20 catches), useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 8 new tests. 794 frontend tests. ~5,973 total. |
 | 88 | 2026-03-27 | No deploy (planning session) | — | 8d3e078, b66affd, f1238bf | DECISION-029 v2: Global processing + 27 improvements (12 orig + 15 standards). NATO Admiralty Code, Bayesian confidence, MISP Warninglists, EPSS, CPE 2.3, ATT&CK weighting, Shodan/GreyNoise. Docs only. |
+| 89 | 2026-03-27 | No deploy (code pushed to master) | ⏳ CI triggered | 8f12b7e, cc79a43, 2ced273, 30147db | DECISION-029 Phase A1: 7 Prisma models, Feed Catalog API (7 routes), Admiralty Code, CPE 2.3, STIX Sighting, 6 queue constants, 2 events. 95 new tests. 3 CI fixes. |
+| 90 | 2026-03-27 | No deploy (code pushed to master) | ⏳ CI triggered | af55748 | DECISION-029 Phase A2: Bayesian confidence, STIX 2.1 tiers, EPSS client+cron, GlobalAiStore (15 subtasks), CostPredictor, 8 new routes. 102 new tests. ~6,083 total. |
+| 89 | 2026-03-27 | All 33 containers redeployed (shared-utils queue changes) | ✅ All 33 healthy | 8f12b7e, cc79a43, 2ced273, 30147db | DECISION-029 Phase A1: 7 Prisma models, NATO Admiralty Code, CPE 2.3 parser, STIX Sighting, 6 global queues, 2 events, Catalog API (7 routes). 95 new tests. 3 CI fixes. |
 
 ## E2E Verification Results (Session 13)
 

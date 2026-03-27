@@ -1,6 +1,6 @@
 # Ingestion Service
 
-**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 502
+**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 502+
 
 ## What It Does
 
@@ -48,6 +48,9 @@ Feed Source (RSS/NVD/STIX/REST/MISP) → Scheduler (cron 5min sync)
 | Cost Tracker | services/cost-tracker.ts | Per-stage AI spend (tokens + USD) |
 | Reliability | services/reliability.ts | Feed reliability scoring |
 | AI Gate | services/ai-gate.ts | Master switch + per-tenant + budget |
+| Global Feed Catalog | repositories/global-feed-repo.ts | GlobalFeedCatalog CRUD (Prisma) — DECISION-029 |
+| Tenant Subscription | repositories/subscription-repo.ts | TenantFeedSubscription CRUD (Prisma) — DECISION-029 |
+| Catalog Schemas | schemas/catalog.ts | Zod validation for catalog API |
 
 ## API
 
@@ -59,6 +62,13 @@ Feed Source (RSS/NVD/STIX/REST/MISP) → Scheduler (cron 5min sync)
 | PUT | /api/v1/feeds/:id | JWT | Update feed |
 | DELETE | /api/v1/feeds/:id | JWT | Delete feed |
 | GET | /api/v1/articles | JWT | List articles (paginated) |
+| GET | /api/v1/catalog | JWT | List global feed catalog (paginated, filterable) |
+| GET | /api/v1/catalog/:id | JWT | Get catalog entry by ID |
+| POST | /api/v1/catalog | JWT (admin) | Create catalog entry |
+| PUT | /api/v1/catalog/:id | JWT (admin) | Update catalog entry |
+| DELETE | /api/v1/catalog/:id | JWT (admin) | Delete catalog entry |
+| POST | /api/v1/catalog/:id/subscribe | JWT | Subscribe tenant to global feed |
+| DELETE | /api/v1/catalog/:id/unsubscribe | JWT | Unsubscribe tenant from global feed |
 
 ## Config
 
@@ -73,3 +83,4 @@ Feed Source (RSS/NVD/STIX/REST/MISP) → Scheduler (cron 5min sync)
 | TI_TAXII_URL | (optional) | STIX/TAXII 2.1 server discovery URL |
 | TI_TAXII_USER | (optional) | TAXII basic auth username |
 | TI_TAXII_PASSWORD | (optional) | TAXII basic auth password |
+| TI_GLOBAL_PROCESSING_ENABLED | false | Enable global feed processing (DECISION-029) |

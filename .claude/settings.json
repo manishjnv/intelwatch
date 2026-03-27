@@ -32,6 +32,9 @@
       "Bash(git push -f:*)",
       "Bash(ssh:*)",
       "Bash(scp:*)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\manis\\.ssh"
     ]
   },
   "model": "claude-opus-4-6",

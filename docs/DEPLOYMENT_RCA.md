@@ -675,3 +675,4 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 86 | 2026-03-27 | No new issues. Frontend-only: fix 14 TS errors, notifyApiError wired to 7 hooks, debounce on 3 pages, TableSkeleton on 2 pages. 8 new tests, 794 frontend tests, ~5,973 total. CI triggered. |
 | Session 87 | 2026-03-27 | No new issues. Customization FeedQuotaStore → Postgres dual-mode persistence. 8 new tests, 281 customization tests, ~5,981 total. CI triggered. VPS needs `prisma db push`. |
 | Session 88 | 2026-03-27 | No deploy. Planning session: DECISION-029 v2 (global processing + 15 standards improvements). Docs only. |
+| Session 89 | 2026-03-27 | No new issues. DECISION-029 Phase A1: 7 Prisma models, Admiralty Code, CPE 2.3, STIX Sighting, 6 global queues, Catalog API. 3 CI fixes (TS strict, queue count 18→24, lint no-control-regex). 33 containers healthy. CI run 23626796137 green. |
