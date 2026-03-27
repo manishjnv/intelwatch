@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-9%20global%20processing-00ff88)
-![Tests](https://img.shields.io/badge/tests-6076%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-6083%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
@@ -23,7 +23,7 @@
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
-| Vulnerability Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 119 |
+| Vulnerability Intel Service (CRUD, 15 accuracy improvements, EPSS live API) | ✅ Live on VPS | 131 |
 | Frontend (React 18 + Vite, 20 data pages, 21 viz components, demo fallbacks all 5 entity types + reporting + alerting + analytics, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons, feed health indicators, request dedup) | ✅ Live on VPS | 794 |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
@@ -31,7 +31,7 @@
 | DRP Service (4 detection engines, 12 typosquat algos, CertStream, 36 endpoints) | 🔨 Feature-complete (15/15 + accuracy) | 310 |
 | Enterprise Integration Service (SIEM, webhooks, ticketing, STIX/TAXII, 58 endpoints) | 🔨 Feature-complete (15/15) | 335 |
 | User Management Service (RBAC, teams, SSO, MFA, break-glass, 32 endpoints) | 🔨 Feature-complete (5 P0) | 185 |
-| Customization Service (module toggles, AI config, risk weights, Prisma persistence, 50 endpoints) | ✅ Complete | 281 |
+| Customization Service (module toggles, AI config, risk weights, Prisma persistence, global AI config, 58 endpoints) | ✅ Complete | 319 |
 | Onboarding Service (8-step wizard, connectors, health checks, 32 endpoints) | ✅ Deployed | 190 |
 | Billing Service (plan management, Razorpay, usage metering, GST invoices, Prisma persistence, 28 endpoints) | ✅ Built | 190 |
 | Admin Ops Service (system health, maintenance, backup/restore, tenant admin, audit, 28 endpoints) | ✅ Built | 147 |
@@ -40,7 +40,7 @@
 | Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | ✅ Deployed | 57 |
 | Reporting Service (5 report types, BullMQ worker, cron scheduling, template engine, 25 endpoints) | ✅ Deployed | 217 |
 | Infrastructure (30 Docker containers) | ✅ All healthy | — |
-| **Phase 7 — ES Indexing + Reporting + Reporting UI deployed** | **30/30 modules** | **4659** |
+| **Phase 9 — Global Processing (DECISION-029)** | **30/30 modules** | **~6,083** |
 
 ## Live API Endpoints
 

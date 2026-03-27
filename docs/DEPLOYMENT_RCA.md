@@ -676,3 +676,4 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 87 | 2026-03-27 | No new issues. Customization FeedQuotaStore → Postgres dual-mode persistence. 8 new tests, 281 customization tests, ~5,981 total. CI triggered. VPS needs `prisma db push`. |
 | Session 88 | 2026-03-27 | No deploy. Planning session: DECISION-029 v2 (global processing + 15 standards improvements). Docs only. |
 | Session 89 | 2026-03-27 | No new issues. DECISION-029 Phase A1: 7 Prisma models, Admiralty Code, CPE 2.3, STIX Sighting, 6 global queues, Catalog API. 3 CI fixes (TS strict, queue count 18→24, lint no-control-regex). 33 containers healthy. CI run 23626796137 green. |
+| Session 90 | 2026-03-27 | No new issues. DECISION-029 Phase A2: Bayesian confidence, STIX tiers, EPSS client, global AI config, plan limits. 102 new tests. Code pushed, CI triggered. No deploy. ~6,083 total tests. |
