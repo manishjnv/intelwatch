@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1+A2+B1+B2+C+D COMPLETE + ACTIVATED. Pipeline LIVE on VPS.
-- **Last session outcome:** Session 94 (2026-03-27). **Phase D COMPLETE.** GlobalAiConfigPage (4 sections: model assignment table 15 subtasks × 3 categories, preset cards, Bayesian/Linear confidence toggle, cost dashboard). PlanLimitsPage (4 plan cards × 6 editable fields + comparison table). 2 TanStack Query hooks with demo fallbacks. 2 custom SVG icons. 15 E2E pipeline smoke tests + 5 delivery endpoint tests + 3 seed tests. seed-global-feeds.ts (10 OSINT feeds, idempotent). Commits: 45b46d4, 6b5cbbc, 59a4017. CI run 23632374415 green. 33 containers deployed + healthy.
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry (not wired to ingestion catalog subscriptions API yet). enrichmentQuality=0 for all IOCs (no external API keys). seed-global-feeds.ts not yet run on VPS.
-- **Next tasks:** (1) Run `npx tsx scripts/seed-global-feeds.ts` on VPS to populate catalog. (2) Set Shodan/GreyNoise API keys on VPS for real enrichment. (3) Wire HTTP subscription adapter in alerting (query ingestion catalog API for real tenant subscriptions). (4) Phase E: stale enrichment re-processing cron, community FP signal, AI relationship extraction.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1-E COMPLETE + ACTIVATED. Pipeline LIVE on VPS.
+- **Last session outcome:** Session 95 (2026-03-27). **Phase E COMPLETE.** GlobalAiConfigPage (4 sections: model assignment table 15 subtasks × 3 categories, preset cards, Bayesian/Linear confidence toggle, cost dashboard). PlanLimitsPage (4 plan cards × 6 editable fields + comparison table). 2 TanStack Query hooks with demo fallbacks. 2 custom SVG icons. 15 E2E pipeline smoke tests + 5 delivery endpoint tests + 3 seed tests. seed-global-feeds.ts (10 OSINT feeds, idempotent). Commits: 45b46d4, 6b5cbbc, 59a4017. CI run 23632374415 green. 33 containers deployed + healthy.
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry (not wired to ingestion catalog subscriptions API yet). VPS: `tsx` not in production image (seed script can't run via docker exec). Frontend container not yet rebuilt with S95 code.
+- **Next tasks:** (1) Rebuild frontend on VPS: `docker compose -f docker-compose.etip.yml up -d --no-deps --build etip_frontend`. (2) Set Shodan/GreyNoise API keys on VPS. (3) Wire HTTP subscription adapter in alerting. (4) Verify /global-monitoring renders live data. (5) Grafana dashboards for Prometheus metrics.
 
 ## Deployment Log
 
@@ -234,6 +234,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 93 | 2026-03-27 | All 33 containers redeployed | ✅ All 33 healthy | 028be85, 9196a55, 26b2f85 | DECISION-029 Phase C: Pipeline E2E wiring + alert fan-out + Global Catalog UI. 57 new tests. 10 TS error fixes. CI run 23629284908 green. ~6,292 total. |
 | 94 | 2026-03-27 | etip_ingestion + etip_normalization + etip_alerting force-recreated | ✅ All 33 healthy | 805a2b9, b572259 | Phase C Activation: wired orchestrator/workers/handler in index.ts. TI_GLOBAL_PROCESSING_ENABLED=true on VPS. E2E: 50 articles fetched, 30 normalized, IOCs extracted + enriched. Global pipeline LIVE. |
 | 94d | 2026-03-27 | etip_frontend redeployed (CI auto-deploy) | ✅ All 33 healthy | 45b46d4, 6b5cbbc, 59a4017 | Phase D: GlobalAiConfigPage + PlanLimitsPage + 2 hooks + 2 icons + sidebar entries. E2E pipeline smoke tests (15) + delivery tests (5) + seed script (10 OSINT feeds). CI run 23632374415 green. |
+| 95 | 2026-03-27 | Code pushed, VPS git pull + activation script run | ⏳ Frontend rebuild pending | 377c7b1 | Phase E: GlobalMonitoringPage, AdmiraltyBadge, StixConfidenceBadge, GlobalFeedRecovery, GlobalFeedMetrics, DashboardPage widget, IOC Source column. 56 new tests (882 frontend, 612 ingestion). Activation script: Prisma in sync, feeds already seeded from S94. |
 
 ## E2E Verification Results (Session 13)
 

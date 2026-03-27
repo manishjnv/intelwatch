@@ -1,78 +1,95 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-27
-**Session:** 94 (Phase D)
-**Session Summary:** DECISION-029 Phase D — Global AI Config UI, Plan Limits UI, E2E pipeline smoke tests, seed script. All phases A1-D complete.
+**Session:** 95 (Phase E)
+**Session Summary:** DECISION-029 Phase E — Global Pipeline Monitoring Dashboard, recovery cron, badge components, VPS activation script. 56 new tests.
 
 ## Changes Made
 
 | Commit | Files | Description |
 |--------|-------|-------------|
-| 45b46d4 | 15 | feat: DECISION-029 Phase D — GlobalAiConfigPage, PlanLimitsPage, hooks, icons, E2E tests, seed script |
-| 6b5cbbc | 1 | fix: remove unused `defaults` destructure in PlanLimitsPage (lint) |
-| 59a4017 | 2 | fix: remove 3 unused imports caught by CI lint (PLAN_PRESETS, DollarSign, useAuthStore) |
+| 377c7b1 | 27 | feat: DECISION-029 Phase E — GlobalMonitoringPage, badges, recovery, metrics, activation script, dashboard widget, IOC source column |
 
 ## Files / Documents Affected
 
-### New Files (11)
+### New Files (12)
+
 | File | Purpose |
 |------|---------|
-| apps/frontend/src/pages/GlobalAiConfigPage.tsx | Super admin AI model config (4 sections) |
-| apps/frontend/src/pages/PlanLimitsPage.tsx | Super admin plan tier limits (4 cards + comparison) |
-| apps/frontend/src/hooks/use-global-ai-config.ts | TanStack Query hook + demo fallback |
-| apps/frontend/src/hooks/use-plan-limits.ts | TanStack Query hook + demo fallback |
-| apps/frontend/src/__tests__/global-ai-config-page.test.tsx | 18 tests |
-| apps/frontend/src/__tests__/plan-limits-page.test.tsx | 10 tests |
-| tests/e2e/global-pipeline-smoke.test.ts | 15 E2E pipeline tests (cred-gated) |
-| tests/e2e/delivery-smoke.test.ts | +5 global endpoint tests (cred-gated) |
-| tests/e2e/seed-global-feeds.test.ts | 3 seed validation tests |
-| scripts/seed-global-feeds.ts | Idempotent seed: 10 OSINT feeds with Admiralty scoring |
+| apps/frontend/src/components/AdmiraltyBadge.tsx | NATO 6x6 color-coded badge (A1=green → F6=red) |
+| apps/frontend/src/components/StixConfidenceBadge.tsx | STIX 2.1 confidence tier badge (High/Med/Low/None) |
+| apps/frontend/src/pages/GlobalMonitoringPage.tsx | 6-section admin monitoring dashboard |
+| apps/frontend/src/hooks/use-global-monitoring.ts | Composite hook: pipeline health, IOC stats, leaders |
+| apps/frontend/src/__tests__/admiralty-badge.test.tsx | 6 tests |
+| apps/frontend/src/__tests__/stix-confidence-badge.test.tsx | 6 tests |
+| apps/frontend/src/__tests__/global-monitoring-page.test.tsx | 15 tests |
+| apps/frontend/src/__tests__/ioc-source-column.test.tsx | 4 tests |
+| apps/frontend/src/__tests__/dashboard-global-widget.test.tsx | 4 tests |
+| apps/ingestion/src/services/global-feed-recovery.ts | Stale/stuck/unenriched recovery (6h cron) |
+| apps/ingestion/src/services/global-feed-metrics.ts | Rolling 10-record fetch metrics per feed |
+| apps/ingestion/tests/global-feed-recovery.test.ts | 6 tests |
+| apps/ingestion/tests/global-feed-metrics.test.ts | 4 tests |
+| scripts/activate-global-processing.sh | Idempotent 6-step VPS activation |
+| scripts/check-global-pipeline.ts | Health check (healthy/degraded/critical) |
+| scripts/tests/check-global-pipeline.test.ts | 5 tests |
 
-### Modified Files (6)
+### Modified Files (11)
+
 | File | Change |
 |------|--------|
-| apps/frontend/src/App.tsx | +2 routes (/global-ai-config, /plan-limits) |
-| apps/frontend/src/config/modules.ts | +2 sidebar entries (AI Config, Plan Limits) |
-| apps/frontend/src/components/brand/ModuleIcons.tsx | +2 SVG icons (IconAiConfig, IconPlanLimits) |
-| docs/PROJECT_STATE.md | Session 94d deployment log, WIP section |
-| docs/DECISIONS_LOG.md | DECISION-029 status → IMPLEMENTED |
+| apps/frontend/src/App.tsx | +1 route (/global-monitoring) |
+| apps/frontend/src/config/modules.ts | +1 sidebar entry (Pipeline Monitor) |
+| apps/frontend/src/components/brand/ModuleIcons.tsx | +1 SVG icon (IconPipelineMonitor) |
+| apps/frontend/src/pages/DashboardPage.tsx | +GlobalPipelineWidget (articles/IOCs/latency) |
+| apps/frontend/src/pages/IocListPage.tsx | +Source column (Global/Private badges) + filter |
+| docs/PROJECT_STATE.md | Session 95 deployment log, WIP section |
+| docs/QA_CHECKLIST.md | +Global Processing section (18 items) |
+| docs/ETIP_Project_Stats.html | Session 95 stats, next action card |
+| README.md | Test count badge |
+| docs/DEPLOYMENT_RCA.md | Session 95 entry |
+| docs/SESSION_HANDOFF.md | This file (overwritten) |
 
 ## Decisions & Rationale
-- DECISION-029: Status changed from "Approved" to "IMPLEMENTED (S89-S94)". All 6 phases (A1, A2, B1, B2, C, D) complete. Pipeline LIVE and feature-flagged.
+
+- No new DECISION entries. Session implements DECISION-029 Phase E (monitoring + recovery).
 
 ## E2E / Deploy Verification Results
-- CI run 23632374415: All green (test + build + deploy)
-- 33 containers healthy on VPS
-- Frontend deployed with 2 new pages + sidebar entries
-- E2E tests: 15 pipeline + 5 delivery + 3 seed = 23 new (all cred-gated, pass locally)
+
+- VPS: `git pull origin master` succeeded (377c7b1)
+- Activation script: Prisma schema already in sync, `tsx` not in container (seed skipped, feeds already in DB from S94)
+- Frontend container: NOT yet rebuilt — needs `docker compose up -d --no-deps --build etip_frontend`
+- Tests: 882 frontend (38 files), 612 ingestion (46 files), 5 pipeline check — all passing
 
 ## Open Items / Next Steps
 
-### Immediate (Session 95)
-1. Run `npx tsx scripts/seed-global-feeds.ts` on VPS to populate GlobalFeedCatalog
-2. Set Shodan/GreyNoise API keys on VPS (TI_SHODAN_API_KEY, TI_GREYNOISE_API_KEY)
-3. Wire HTTP subscription adapter in alerting (query ingestion catalog API for real tenant subscriptions)
+### Immediate (Session 96)
+
+1. Rebuild frontend container: `docker compose -f docker-compose.etip.yml up -d --no-deps --build etip_frontend`
+2. Verify /global-monitoring page renders live data on VPS
+3. Set Shodan/GreyNoise API keys on VPS (TI_SHODAN_API_KEY, TI_GREYNOISE_API_KEY)
+4. Wire HTTP subscription adapter in alerting (query ingestion catalog API)
 
 ### Deferred
-4. Phase E: stale enrichment re-processing cron, community FP signal, AI relationship extraction
-5. STIX import/export wizard, ATT&CK Navigator heatmap (remaining DECISION-029 improvements)
+
+5. Grafana dashboards for Prometheus metrics
+6. Install `tsx` in production image or use compiled JS for seed script
+7. STIX import/export wizard, ATT&CK Navigator heatmap
 
 ## How to Resume
 
 ```
-Session 95: DECISION-029 Phase E — Stale Enrichment + Community FP + AI Relationship Extraction
+Session 96: Deploy S95 Frontend + Live Verification
 
-Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md, docs/DECISIONS_LOG.md
+Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
 
-Module target: normalization, ingestion
-Do NOT modify: ai-enrichment, billing, onboarding, shared-types, frontend (except new pages)
+Module target: frontend (deploy), VPS operations
+Do NOT modify: any backend code
 
-Phase D is COMPLETE. Pipeline is LIVE on VPS. 33 containers healthy.
-GlobalAiConfigPage and PlanLimitsPage deployed.
+Phase E code is COMPLETE and pushed. VPS has the code (git pulled).
+Frontend container needs rebuild to pick up new pages.
 
-Task 1: Run seed-global-feeds.ts on VPS (10 feeds)
-Task 2: Set Shodan/GreyNoise API keys
-Task 3: Stale enrichment re-processing cron (normalization)
-Task 4: Community FP signal endpoint
-Task 5: AI relationship extraction from article content
+Task 1: SSH to VPS, rebuild frontend container
+Task 2: Verify /global-monitoring shows live pipeline data
+Task 3: Set Shodan/GreyNoise API keys for real enrichment
+Task 4: Wire alerting HTTP subscription adapter
 ```
