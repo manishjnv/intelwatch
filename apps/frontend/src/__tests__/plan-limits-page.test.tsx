@@ -60,7 +60,6 @@ vi.mock('@/hooks/use-intel-data', () => ({
 
 import { PlanLimitsPage } from '@/pages/PlanLimitsPage'
 import { usePlanLimits } from '@/hooks/use-plan-limits'
-import { useAuthStore } from '@/stores/auth-store'
 
 beforeEach(() => {
   vi.clearAllMocks()

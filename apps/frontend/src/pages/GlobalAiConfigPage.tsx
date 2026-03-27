@@ -7,11 +7,11 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import {
-  useGlobalAiConfig, PLAN_PRESETS,
+  useGlobalAiConfig,
   type AiModel, type AiSubtaskConfig, type ConfidenceModel,
 } from '@/hooks/use-global-ai-config'
 import { cn } from '@/lib/utils'
-import { Brain, DollarSign, Zap, Shield, RotateCcw, Save, Check } from 'lucide-react'
+import { Brain, Zap, Shield, RotateCcw, Save, Check } from 'lucide-react'
 
 const MODEL_OPTIONS: AiModel[] = ['haiku', 'sonnet', 'opus']
 
