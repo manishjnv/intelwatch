@@ -2,7 +2,7 @@
  * @module GlobalFeedRepository
  * @description Prisma-backed repository for the global feed catalog (DECISION-029).
  */
-import type { PrismaClient, GlobalFeedCatalog } from '@prisma/client';
+import type { PrismaClient, GlobalFeedCatalog, Prisma } from '@prisma/client';
 import { admiraltyToScore, type SourceReliability, type InfoCredibility } from '@etip/shared-normalization';
 
 export interface CreateCatalogInput {
@@ -63,9 +63,9 @@ export class GlobalFeedRepository {
         infoCred: cred,
         feedReliability,
         industries: data.industries ?? [],
-        headers: data.headers ?? {},
-        authConfig: data.authConfig ?? {},
-        parseConfig: data.parseConfig ?? {},
+        headers: (data.headers ?? {}) as Prisma.InputJsonValue,
+        authConfig: (data.authConfig ?? {}) as Prisma.InputJsonValue,
+        parseConfig: (data.parseConfig ?? {}) as Prisma.InputJsonValue,
       },
     });
   }

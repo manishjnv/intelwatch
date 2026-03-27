@@ -39,21 +39,21 @@ export function parseCPE(uri: string): CPEComponents | null {
   const parts = splitCPE(uri);
   if (parts.length !== CPE_FIELD_COUNT) return null;
 
-  const part = parts[2];
+  const part = parts[2]!;
   if (!VALID_PARTS.has(part)) return null;
 
   return {
     part: part as CPEComponents['part'],
-    vendor: parts[3],
-    product: parts[4],
-    version: parts[5],
-    update: parts[6],
-    edition: parts[7],
-    language: parts[8],
-    swEdition: parts[9],
-    targetSw: parts[10],
-    targetHw: parts[11],
-    other: parts[12],
+    vendor: parts[3]!,
+    product: parts[4]!,
+    version: parts[5]!,
+    update: parts[6]!,
+    edition: parts[7]!,
+    language: parts[8]!,
+    swEdition: parts[9]!,
+    targetSw: parts[10]!,
+    targetHw: parts[11]!,
+    other: parts[12]!,
   };
 }
 

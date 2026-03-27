@@ -81,7 +81,7 @@ export function catalogRoutes(deps: CatalogRouteDeps) {
       if (!feed) throw new AppError(404, 'Catalog entry not found', 'NOT_FOUND');
 
       // Plan tier check
-      const tenantPlan = user.tenantPlan ?? 'free';
+      const tenantPlan = (user as Record<string, unknown>).tenantPlan as string ?? 'free';
       if (tierIndex(tenantPlan) < tierIndex(feed.minPlanTier)) {
         throw new AppError(403, `Plan ${tenantPlan} does not meet minimum tier ${feed.minPlanTier}`, 'PLAN_INSUFFICIENT');
       }
