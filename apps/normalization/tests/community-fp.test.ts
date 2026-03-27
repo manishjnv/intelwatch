@@ -94,6 +94,10 @@ describe('CommunityFpService', () => {
   });
 
   it('reportFalsePositive: fpRate > 75% → marks lifecycle false_positive', async () => {
+    // Use 3 tenants: 2 already reported + 1 new = 3/3 = 100% → > 75%
+    prisma.tenantFeedSubscription.groupBy.mockResolvedValue([
+      { tenantId: 't1' }, { tenantId: 't2' }, { tenantId: 't3' },
+    ]);
     prisma.globalIoc.findUnique.mockResolvedValue(makeIoc([
       { tenantId: 't1', reason: 'test_data', reportedBy: 'u1', reportedAt: new Date().toISOString() },
       { tenantId: 't2', reason: 'test_data', reportedBy: 'u2', reportedAt: new Date().toISOString() },
@@ -101,7 +105,7 @@ describe('CommunityFpService', () => {
     const result = await service.reportFalsePositive('ioc-1', {
       tenantId: 't3', reason: 'test_data', reportedBy: 'u3',
     });
-    expect(result.fpRate).toBe(75);
+    expect(result.fpRate).toBe(100); // 3/3
     expect(prisma.globalIoc.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ lifecycle: 'false_positive' }),

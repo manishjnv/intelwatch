@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommunityFpService } from '../src/services/community-fp.js';
 import { SeverityVotingService } from '../src/services/severity-voting.js';
+import { calculateCorroborationScore } from '../../../packages/shared-normalization/src/corroboration.js';
 
 // We test at the service layer with route-like patterns (schema validation, auth checks)
 // since Fastify route testing requires full app bootstrap which is out of scope for unit tests.
@@ -143,8 +144,7 @@ describe('Severity Votes + Corroboration Routes (service-level)', () => {
     expect(result.confidence).toBeGreaterThan(0);
   });
 
-  it('GET /corroboration: calculateCorroborationScore returns score + narrative', async () => {
-    const { calculateCorroborationScore } = await import('@etip/shared-normalization');
+  it('GET /corroboration: calculateCorroborationScore returns score + narrative', () => {
     const result = calculateCorroborationScore([{
       feedId: 'f1', feedName: 'Feed 1', admiraltySource: 'B', admiraltyCred: 2,
       feedReliability: 85, firstSeenByFeed: new Date(), lastSeenByFeed: new Date(),

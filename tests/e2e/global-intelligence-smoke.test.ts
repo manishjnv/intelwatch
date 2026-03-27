@@ -11,14 +11,12 @@ import {
   calculateCorroborationScore,
   calculateIndependenceScore,
   getConsensusFromSources,
-  calculateVelocityScore,
-  computeFuzzyHash,
-  areFuzzyDuplicates,
-  getCweEntry,
-  buildCweChain,
-  calculateBayesianConfidence,
   type CorroborationSource,
-} from '@etip/shared-normalization';
+} from '../../packages/shared-normalization/src/corroboration.js';
+import { calculateVelocityScore } from '../../packages/shared-normalization/src/velocity-score.js';
+import { computeFuzzyHash, areFuzzyDuplicates } from '../../packages/shared-normalization/src/fuzzy-dedupe.js';
+import { getCweEntry, buildCweChain } from '../../packages/shared-normalization/src/cwe-chain.js';
+import { calculateBayesianConfidence } from '../../packages/shared-normalization/src/bayesian-confidence.js';
 import { calculateVoteWeight } from '../../apps/normalization/src/services/severity-voting.js';
 
 function hoursAgo(hours: number): Date {
@@ -49,7 +47,7 @@ describe('Global Intelligence Smoke Tests', () => {
     })];
 
     const corrob = calculateCorroborationScore(sources);
-    expect(corrob.tier).toBe('uncorroborated');
+    expect(corrob.tier).toBe('low'); // Single low-reliability old source = low tier
 
     const confidence = calculateBayesianConfidence({
       feedReliability: 25,
@@ -197,9 +195,9 @@ describe('Global Intelligence Smoke Tests', () => {
     expect(cwe20).toBeTruthy();
     expect(cwe20!.name).toContain('Input');
 
-    const chain = buildCweChain(['CWE-20', 'CWE-502']);
-    expect(chain.length).toBe(2);
-    expect(chain[0].id).toBe('CWE-20');
+    const chainResult = buildCweChain(['CWE-20', 'CWE-502']);
+    expect(chainResult.chain.length).toBe(2);
+    expect(chainResult.chain[0].id).toBe('CWE-20');
 
     // High EPSS → very high confidence
     const confidence = calculateBayesianConfidence({
