@@ -146,6 +146,8 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 export function GlobalMonitoringPage() {
   const [refreshInterval, setRefreshInterval] = useState(30_000)
   const [showPauseModal, setShowPauseModal] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [selectedIocId, setSelectedIocId] = useState<string | null>(null)
   const user = useAuthStore(s => s.user)
   const monitoring = useGlobalMonitoring(refreshInterval)
   const { pipelineHealth, feedHealth, iocStats, corroborationLeaders, subscriptionStats, isDemo } = monitoring
