@@ -63,10 +63,7 @@ vi.mock('@/components/viz/SplitPane', () => ({
   ),
 }))
 
-// Mock IocDetailPanel to avoid hook dependency chain from SearchPage
-vi.mock('@/pages/IocDetailPanel', () => ({
-  IocDetailPanel: ({ record }: any) => <div data-testid="ioc-detail-panel">{record?.normalizedValue}</div>,
-}))
+// IocDetailPanel rendered real — all hooks mocked above
 
 vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
   PageStatsBar: ({ children }: any) => <div data-testid="page-stats-bar">{children}</div>,
@@ -237,6 +234,12 @@ describe('SearchPage drill-down', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Provide defaults for hooks used by IocDetailPanel (cleared by clearAllMocks)
+    mockUseIOCPivot.mockReturnValue({ data: null, isLoading: false })
+    mockUseIOCTimeline.mockReturnValue({ data: [], isLoading: false })
+    mockUseUpdateIOCLifecycle.mockReturnValue({ mutate: vi.fn(), isPending: false })
+    mockUseIOCEnrichment.mockReturnValue({ data: null, isLoading: false })
+    mockUseNodeNeighbors.mockReturnValue({ data: null })
     mockUseEsSearch.mockReturnValue({
       query: 'test', setQuery: vi.fn(), filters: {}, setFilters: vi.fn(),
       sortBy: 'relevance', setSortBy: vi.fn(), page: 1, setPage: vi.fn(),
