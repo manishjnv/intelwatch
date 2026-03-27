@@ -16,7 +16,7 @@ import { ExecutiveSummary } from '@/components/analytics/ExecutiveSummary'
 import { TrendCharts } from '@/components/analytics/TrendCharts'
 import { IntelligenceBreakdown } from '@/components/analytics/IntelligenceBreakdown'
 import {
-  Download, RefreshCw, Clock, AlertTriangle,
+  Download, AlertTriangle,
 } from 'lucide-react'
 import React from 'react'
 
@@ -52,32 +52,8 @@ class SectionErrorBoundary extends React.Component<
   }
 }
 
-// ─── Staleness Indicator ────────────────────────────────────────
-
-function StalenessIndicator({ dataUpdatedAt, onRefresh, isRefreshing }: {
-  dataUpdatedAt?: number; onRefresh: () => void; isRefreshing: boolean
-}) {
-  const timestamp = dataUpdatedAt ?? Date.now()
-  const ageMs = Date.now() - timestamp
-  const ageHours = ageMs / 3_600_000
-  const label = new Date(timestamp).toLocaleString()
-  const isAmber = ageHours >= 1 && ageHours < 24
-  const isRed = ageHours >= 24
-  const colorClass = isRed ? 'text-red-400' : isAmber ? 'text-amber-400' : 'text-text-muted'
-
-  return (
-    <div className="px-4 py-1 flex items-center gap-2 text-[10px]" data-testid="staleness-indicator">
-      {isRed && <span className="text-red-400 font-medium">⚠ Stale data</span>}
-      {(isAmber || isRed) && <Clock className={cn('w-3 h-3', colorClass)} />}
-      <span className={colorClass}>Data as of {label}</span>
-      <button onClick={onRefresh} disabled={isRefreshing}
-        className="ml-1 p-0.5 rounded hover:bg-bg-hover transition-colors text-text-muted hover:text-accent disabled:opacity-50"
-        data-testid="staleness-refresh" aria-label="Refresh analytics data">
-        <RefreshCw className={cn('w-3 h-3', isRefreshing && 'animate-spin')} />
-      </button>
-    </div>
-  )
-}
+// StalenessIndicator imported from reusable component
+import { StalenessIndicator } from '@/components/StalenessIndicator'
 
 // ─── CSV Export ──────────────────────────────────────────────────
 
@@ -168,7 +144,8 @@ export function AnalyticsPage() {
       {/* Toolbar */}
       <div className="px-4 py-2 border-b border-border flex items-center gap-2 flex-wrap">
         <StalenessIndicator
-          dataUpdatedAt={dashboard.dataUpdatedAt}
+          lastUpdated={dashboard.dataUpdatedAt}
+          thresholds={{ amber: 60, red: 1440 }}
           onRefresh={() => dashboard.refetch()}
           isRefreshing={dashboard.isFetching}
         />

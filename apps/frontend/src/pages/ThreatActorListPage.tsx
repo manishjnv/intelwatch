@@ -6,14 +6,16 @@
  */
 import { useState, useMemo } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { useActors, useActorDetail, useActorLinkedIOCs, type ActorRecord, type LinkedIOC } from '@/hooks/use-intel-data'
+import { useActors, useActorDetail, type ActorRecord } from '@/hooks/use-intel-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { TableSkeleton } from '@/components/data/TableSkeleton'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { SplitPane } from '@/components/viz/SplitPane'
-import { Users, Globe, Target, Shield, ExternalLink } from 'lucide-react'
+import { Users, Globe, Target, Shield } from 'lucide-react'
+import { AttackTechniqueMatrix } from '@/components/attack/AttackTechniqueMatrix'
+import { LinkedIocsSection } from '@/components/LinkedIocsSection'
 
 const ACTOR_FILTERS: FilterOption[] = [
   { key: 'actorType', label: 'Type', options: [
@@ -44,20 +46,7 @@ const SOPH_COLORS: Record<string, string> = {
   minimal: 'text-sev-low', none: 'text-text-muted',
 }
 
-const SEV_COLORS: Record<string, string> = {
-  critical: 'text-sev-critical bg-sev-critical/10',
-  high: 'text-sev-high bg-sev-high/10',
-  medium: 'text-sev-medium bg-sev-medium/10',
-  low: 'text-sev-low bg-sev-low/10',
-  info: 'text-text-muted bg-bg-elevated',
-}
-
 const DEMO_MITRE = ['T1059', 'T1078', 'T1190']
-const DEMO_ACTOR_IOCS: LinkedIOC[] = [
-  { id: 'al1', iocType: 'ip', normalizedValue: '185.220.101.1', severity: 'critical' },
-  { id: 'al2', iocType: 'domain', normalizedValue: 'evil-c2.net', severity: 'high' },
-  { id: 'al3', iocType: 'hash_sha256', normalizedValue: 'a1b2c3d4e5f6...', severity: 'high' },
-]
 
 function ConfidenceBar({ value }: { value: number }) {
   const color = value >= 70 ? 'bg-sev-low' : value >= 40 ? 'bg-sev-medium' : 'bg-sev-critical'
@@ -73,10 +62,8 @@ function ConfidenceBar({ value }: { value: number }) {
 
 function ActorDetailPanel({ actor }: { actor: ActorRecord }) {
   const { data: detail } = useActorDetail(actor.id)
-  const { data: iocs = [] } = useActorLinkedIOCs(actor.id)
 
   const mitre = (detail?.mitreTechniques?.length ?? 0) > 0 ? detail!.mitreTechniques! : DEMO_MITRE
-  const linkedIOCs: LinkedIOC[] = iocs.length > 0 ? iocs : DEMO_ACTOR_IOCS
 
   const tlpColors: Record<string, string> = {
     red: 'text-sev-critical', amber: 'text-sev-medium',
@@ -104,37 +91,18 @@ function ActorDetailPanel({ actor }: { actor: ActorRecord }) {
         )}
       </div>
 
-      {/* MITRE ATT&CK */}
+      {/* MITRE ATT&CK — Enhanced matrix */}
       <div className="p-3 border-b border-border space-y-1.5" data-testid="mitre-section">
-        <div className="text-[10px] font-medium text-text-muted uppercase tracking-wide">MITRE ATT&amp;CK</div>
-        <div className="flex flex-wrap gap-1">
-          {mitre.map(t => (
-            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium bg-accent/10 text-accent" data-testid="mitre-badge">
-              {t}
-            </span>
-          ))}
+        <div className="text-[10px] font-medium text-text-muted uppercase tracking-wide flex items-center gap-1.5">
+          MITRE ATT&amp;CK
+          <span className="px-1.5 py-0.5 rounded-full bg-accent/10 text-accent font-medium tabular-nums">{mitre.length}</span>
         </div>
+        <AttackTechniqueMatrix techniques={mitre} entityName={actor.name} entityType="actor" />
       </div>
 
-      {/* Linked IOCs */}
-      <div className="p-3 border-b border-border space-y-1.5" data-testid="actor-ioc-section">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-medium text-text-muted uppercase tracking-wide">Linked IOCs</div>
-          <a href="/iocs" className="text-[10px] text-accent hover:underline flex items-center gap-0.5">
-            View all <ExternalLink className="w-2.5 h-2.5" />
-          </a>
-        </div>
-        <div className="space-y-1">
-          {linkedIOCs.slice(0, 10).map(ioc => (
-            <div key={ioc.id} className="flex items-center gap-2 py-0.5" data-testid="linked-ioc-row">
-              <span className="text-[10px] uppercase font-mono text-text-muted w-16 shrink-0">{ioc.iocType}</span>
-              <span className="text-[10px] text-text-secondary truncate flex-1 font-mono">{ioc.normalizedValue}</span>
-              <span className={`text-[10px] px-1 py-0.5 rounded-full shrink-0 ${SEV_COLORS[ioc.severity] ?? ''}`}>
-                {ioc.severity}
-              </span>
-            </div>
-          ))}
-        </div>
+      {/* Linked IOCs — Enhanced filterable section */}
+      <div className="border-b border-border" data-testid="actor-ioc-section">
+        <LinkedIocsSection entityId={actor.id} entityType="actor" entityName={actor.name} />
       </div>
 
       {/* Tags */}

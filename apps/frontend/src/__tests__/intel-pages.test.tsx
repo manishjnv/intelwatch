@@ -15,16 +15,17 @@ import { render, screen, fireEvent } from '@/test/test-utils'
 
 const mockUseActors = vi.fn()
 const mockUseActorDetail = vi.fn()
-const mockUseActorLinkedIOCs = vi.fn()
 const mockUseMalware = vi.fn()
-const mockUseMalwareLinkedIOCs = vi.fn()
+const mockUseLinkedIocs = vi.fn()
 
 vi.mock('@/hooks/use-intel-data', () => ({
   useActors: (...args: any[]) => mockUseActors(...args),
   useActorDetail: (...args: any[]) => mockUseActorDetail(...args),
-  useActorLinkedIOCs: (...args: any[]) => mockUseActorLinkedIOCs(...args),
   useMalware: (...args: any[]) => mockUseMalware(...args),
-  useMalwareLinkedIOCs: (...args: any[]) => mockUseMalwareLinkedIOCs(...args),
+}))
+
+vi.mock('@/hooks/use-linked-iocs', () => ({
+  useLinkedIocs: (...args: any[]) => mockUseLinkedIocs(...args),
 }))
 
 // Simplified SplitPane — avoids double-render from responsive layout in jsdom
@@ -59,10 +60,6 @@ const MOCK_ACTOR = {
 
 const MOCK_ACTOR_LIST = { data: [MOCK_ACTOR], total: 1, page: 1, limit: 50 }
 
-const MOCK_LINKED_IOCS = [
-  { id: 'l1', iocType: 'ip', normalizedValue: '185.220.101.1', severity: 'critical' },
-  { id: 'l2', iocType: 'domain', normalizedValue: 'evil-c2.net', severity: 'high' },
-]
 
 const MOCK_MALWARE = {
   id: 'm1', name: 'BlackCat', aliases: ['ALPHV'],
@@ -74,19 +71,27 @@ const MOCK_MALWARE = {
 
 const MOCK_MALWARE_LIST = { data: [MOCK_MALWARE], total: 1, page: 1, limit: 50 }
 
-const MOCK_MALWARE_IOCS = [
-  { id: 'ml1', iocType: 'hash_sha256', normalizedValue: 'deadbeef1234', severity: 'critical' },
-  { id: 'ml2', iocType: 'ip', normalizedValue: '91.108.4.1', severity: 'high' },
-]
 
 /* ================================================================ */
 /* ThreatActorListPage                                                */
 /* ================================================================ */
+// Default linked IOCs return value for useLinkedIocs mock
+const DEFAULT_LINKED_IOCS_RETURN = {
+  iocs: [
+    { id: 'li-1', iocType: 'ip', normalizedValue: '185.220.101.1', severity: 'critical', confidence: 88, relationship: 'attributed' },
+    { id: 'li-2', iocType: 'domain', normalizedValue: 'evil-c2.net', severity: 'high', confidence: 75, relationship: 'used_by' },
+  ],
+  totalCount: 2, filteredCount: 2, isLoading: false, isDemo: true,
+  typeFilter: 'all', setTypeFilter: vi.fn(), sevFilter: 'all', setSevFilter: vi.fn(),
+  sortKey: 'confidence' as const, setSortKey: vi.fn(), hasMore: false, loadMore: vi.fn(),
+  typeBreakdown: { ip: 1, domain: 1 }, sevBreakdown: { critical: 1, high: 1 },
+}
+
 describe('ThreatActorListPage', () => {
   beforeEach(() => {
     mockUseActors.mockReturnValue({ data: MOCK_ACTOR_LIST, isLoading: false })
     mockUseActorDetail.mockReturnValue({ data: null, isLoading: false })
-    mockUseActorLinkedIOCs.mockReturnValue({ data: [], isLoading: false })
+    mockUseLinkedIocs.mockReturnValue(DEFAULT_LINKED_IOCS_RETURN)
   })
 
   it('renders the page with actor list', () => {
@@ -139,8 +144,8 @@ describe('ThreatActorListPage', () => {
     render(<ThreatActorListPage />)
     fireEvent.click(screen.getByText('APT-1'))
     expect(screen.getByTestId('mitre-section')).toBeInTheDocument()
-    const badges = screen.getAllByTestId('mitre-badge')
-    expect(badges.length).toBeGreaterThan(0)
+    const cells = screen.getAllByTestId('technique-cell')
+    expect(cells.length).toBeGreaterThan(0)
   })
 
   it('shows demo MITRE technique T1059', () => {
@@ -175,12 +180,16 @@ describe('ThreatActorListPage', () => {
     render(<ThreatActorListPage />)
     fireEvent.click(screen.getByText('APT-1'))
     expect(screen.getByTestId('actor-ioc-section')).toBeInTheDocument()
+    expect(screen.getByTestId('linked-iocs-section')).toBeInTheDocument()
     const rows = screen.getAllByTestId('linked-ioc-row')
     expect(rows.length).toBeGreaterThan(0)
   })
 
   it('shows linked IOC values from API when available', () => {
-    mockUseActorLinkedIOCs.mockReturnValue({ data: MOCK_LINKED_IOCS, isLoading: false })
+    mockUseLinkedIocs.mockReturnValue({
+      ...DEFAULT_LINKED_IOCS_RETURN,
+      isDemo: false,
+    })
     render(<ThreatActorListPage />)
     fireEvent.click(screen.getByText('APT-1'))
     expect(screen.getByText('185.220.101.1')).toBeInTheDocument()
@@ -216,7 +225,14 @@ describe('ThreatActorListPage', () => {
 describe('MalwareListPage', () => {
   beforeEach(() => {
     mockUseMalware.mockReturnValue({ data: MOCK_MALWARE_LIST, isLoading: false })
-    mockUseMalwareLinkedIOCs.mockReturnValue({ data: [], isLoading: false })
+    mockUseLinkedIocs.mockReturnValue({
+      ...DEFAULT_LINKED_IOCS_RETURN,
+      iocs: [
+        { id: 'ml1', iocType: 'hash_sha256', normalizedValue: 'deadbeef1234', severity: 'critical', confidence: 90, relationship: 'drops' },
+        { id: 'ml2', iocType: 'ip', normalizedValue: '91.108.4.1', severity: 'high', confidence: 75, relationship: 'contacts' },
+      ],
+      typeBreakdown: { hash_sha256: 1, ip: 1 }, sevBreakdown: { critical: 1, high: 1 },
+    })
   })
 
   it('renders the page with malware list', () => {
@@ -270,12 +286,12 @@ describe('MalwareListPage', () => {
     render(<MalwareListPage />)
     fireEvent.click(screen.getByText('BlackCat'))
     expect(screen.getByTestId('malware-ioc-section')).toBeInTheDocument()
+    expect(screen.getByTestId('linked-iocs-section')).toBeInTheDocument()
     const rows = screen.getAllByTestId('linked-ioc-row')
     expect(rows.length).toBeGreaterThan(0)
   })
 
   it('shows linked IOC values from API when available', () => {
-    mockUseMalwareLinkedIOCs.mockReturnValue({ data: MOCK_MALWARE_IOCS, isLoading: false })
     render(<MalwareListPage />)
     fireEvent.click(screen.getByText('BlackCat'))
     expect(screen.getByText('deadbeef1234')).toBeInTheDocument()

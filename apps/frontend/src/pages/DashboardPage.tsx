@@ -17,6 +17,7 @@ import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import { useDashboardStats } from '@/hooks/use-intel-data'
 import { useCostStats, useEnrichmentStats, useEnrichmentQuality } from '@/hooks/use-enrichment-data'
 import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain, Globe } from 'lucide-react'
+import { StalenessIndicator } from '@/components/StalenessIndicator'
 import { useGlobalPipelineHealth } from '@/hooks/use-global-catalog'
 
 // Dashboard widgets (S103)
@@ -97,7 +98,7 @@ interface EnrichmentQualityWidgetProps {
   } | null | undefined
 }
 
-function EnrichmentQualityWidget({ data }: EnrichmentQualityWidgetProps) {
+function EnrichmentQualityWidget({ data, dataUpdatedAt }: EnrichmentQualityWidgetProps & { dataUpdatedAt?: number }) {
   if (!data) return null
   const bars = [
     { label: 'High', pct: data.highPct, count: data.highConfidence, color: 'bg-sev-low' },
@@ -107,7 +108,10 @@ function EnrichmentQualityWidget({ data }: EnrichmentQualityWidgetProps) {
   return (
     <div data-testid="enrichment-quality-widget" className="p-3 bg-bg-secondary rounded-lg border border-border mb-6">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium text-text-primary">Enrichment Quality</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-text-primary">Enrichment Quality</span>
+          {dataUpdatedAt && <StalenessIndicator lastUpdated={dataUpdatedAt} compact />}
+        </div>
         <span className="text-[10px] text-text-muted tabular-nums">
           {data.pendingEnrichment.toLocaleString()} pending
         </span>
@@ -309,7 +313,7 @@ export function DashboardPage() {
         )}
 
         {/* Enrichment quality confidence tier breakdown */}
-        <EnrichmentQualityWidget data={enrichQuality} />
+        <EnrichmentQualityWidget data={enrichQuality} dataUpdatedAt={Date.now()} />
 
         {/* S103: Source breakdown + AI cost widgets side-by-side on desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

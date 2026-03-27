@@ -21,6 +21,8 @@ import { QuickActionToolbar } from '@/components/viz/QuickActionToolbar'
 import { SparklineCell, generateStubTrend } from '@/components/viz/SparklineCell'
 import { Download } from 'lucide-react'
 import { IocDetailPanel } from './IocDetailPanel'
+import { useCampaigns, type Campaign } from '@/hooks/use-campaigns'
+import { CampaignPanel } from '@/components/campaigns/CampaignPanel'
 
 const IOC_FILTERS: FilterOption[] = [
   { key: 'iocType', label: 'Type', options: [
@@ -97,6 +99,7 @@ export function IocListPage() {
   const [density, setDensity] = useState<Density>('compact')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null)
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -108,6 +111,12 @@ export function IocListPage() {
 
   const { data, isLoading, isDemo } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
+  const { data: campaignData } = useCampaigns({ limit: 50 })
+  const campaignMap = useMemo(() => {
+    const map = new Map<string, Campaign>()
+    ;(campaignData?.data ?? []).forEach(c => map.set(c.id, c))
+    return map
+  }, [campaignData])
 
   // Client-side filter + sort for demo data
   const rows = useMemo(() => {
@@ -247,9 +256,21 @@ export function IocListPage() {
     },
     {
       key: 'campaignId', label: 'Campaign', width: '8%',
-      render: (row) => row.campaignId
-        ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-400/10 text-purple-400 font-medium truncate max-w-[80px] block" title={row.campaignId}>{row.campaignId}</span>
-        : null,
+      render: (row) => {
+        if (!row.campaignId) return null
+        const camp = campaignMap.get(row.campaignId)
+        const label = camp?.name ?? row.campaignId
+        return (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpandedCampaignId(row.campaignId === expandedCampaignId ? null : row.campaignId!) }}
+            className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-400/10 text-purple-400 font-medium truncate max-w-[80px] block hover:bg-purple-400/20 transition-colors"
+            title={label}
+            data-testid="campaign-badge"
+          >
+            {label.length > 12 ? label.slice(0, 12) + '…' : label}
+          </button>
+        )
+      },
     },
   ]
 
@@ -325,6 +346,17 @@ export function IocListPage() {
         density={density}
         onDensityChange={setDensity}
       />
+
+      {/* Campaign detail overlay */}
+      {expandedCampaignId && campaignMap.has(expandedCampaignId) && (
+        <div className="fixed inset-y-0 right-0 w-80 sm:w-96 bg-bg-primary border-l border-border shadow-xl z-30 overflow-y-auto" data-testid="campaign-overlay">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <span className="text-xs font-medium text-text-primary">Campaign Detail</span>
+            <button onClick={() => setExpandedCampaignId(null)} className="text-text-muted hover:text-text-primary text-xs">&times;</button>
+          </div>
+          <CampaignPanel campaign={campaignMap.get(expandedCampaignId)!} />
+        </div>
+      )}
 
       <QuickActionToolbar
         selectedCount={selectedId ? 1 : 0}
