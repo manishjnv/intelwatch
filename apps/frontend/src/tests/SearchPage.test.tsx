@@ -23,6 +23,16 @@ vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
   CompactStat: ({ label, value }: { label: string; value: string }) => <span data-testid={`stat-${label.toLowerCase()}`}>{value}</span>,
 }))
 
+// Mock the detail panel and SplitPane to avoid hook dependency chains
+vi.mock('@/pages/IocDetailPanel', () => ({
+  IocDetailPanel: ({ record }: { record: { normalizedValue: string } }) => <div data-testid="ioc-detail-panel">{record.normalizedValue}</div>,
+}))
+vi.mock('@/components/viz/SplitPane', () => ({
+  SplitPane: ({ left, right, showRight }: { left: React.ReactNode; right: React.ReactNode; showRight: boolean }) => (
+    <div data-testid="split-pane">{left}{showRight && right}</div>
+  ),
+}))
+
 import { SearchPage } from '@/pages/SearchPage'
 import { DEMO_ES_RESULTS } from '@/hooks/use-es-search'
 
