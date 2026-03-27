@@ -61,3 +61,20 @@ export {
   isValidCPE,
   type CPEComponents,
 } from './cpe.js';
+
+// ── MISP Warninglist Matcher ────────────────────────────────────
+export {
+  WarninglistMatcher,
+  isIpInCidr,
+  type WarninglistEntry,
+  type WarninglistMatch,
+} from './warninglist.js';
+
+// ── ATT&CK Technique Weighting ─────────────────────────────────
+export {
+  getAttackWeight,
+  calculateAttackSeverity,
+  getAttackTacticSeverity,
+  listAttackTechniques,
+  type AttackTechniqueWeight,
+} from './attack-weighting.js';

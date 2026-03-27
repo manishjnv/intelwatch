@@ -8,6 +8,14 @@ import { createFeedFetchQueues, closeFeedFetchQueues } from './queue.js';
 import { createFeedFetchWorkers } from './workers/feed-fetch.js';
 import { FeedScheduler } from './workers/scheduler.js';
 import { FeedPolicyStore } from './services/feed-policy-store.js';
+import { createGlobalRSSWorker } from './workers/global-rss-worker.js';
+import { createGlobalNVDWorker } from './workers/global-nvd-worker.js';
+import { createGlobalSTIXWorker } from './workers/global-stix-worker.js';
+import { createGlobalRESTWorker } from './workers/global-rest-worker.js';
+import { createGlobalMISPWorker } from './workers/global-misp-worker.js';
+import { GlobalFeedScheduler } from './schedulers/global-feed-scheduler.js';
+import { QUEUES } from '@etip/shared-utils';
+import { Queue } from 'bullmq';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -37,10 +45,46 @@ async function main(): Promise<void> {
   // Daily reset of per-feed article counters — fires at midnight UTC
   const midnightResetInterval = scheduleMidnightReset(policyStore, logger);
 
+  // ── Global Feed Processing (DECISION-029 Phase B1) ─────────────────
+  const globalWorkers: { close(): Promise<void> }[] = [];
+  const globalEnabled = process.env.TI_GLOBAL_PROCESSING_ENABLED === 'true';
+
+  if (globalEnabled) {
+    const globalDeps = { db: prisma, logger, redisUrl: config.TI_REDIS_URL };
+    globalWorkers.push(
+      createGlobalRSSWorker(globalDeps),
+      createGlobalNVDWorker(globalDeps),
+      createGlobalSTIXWorker(globalDeps),
+      createGlobalRESTWorker(globalDeps),
+      createGlobalMISPWorker(globalDeps),
+    );
+
+    const globalUrl = new URL(config.TI_REDIS_URL);
+    const globalPwd = decodeURIComponent(globalUrl.password || '');
+    const globalRedisOpts = {
+      host: globalUrl.hostname, port: Number(globalUrl.port) || 6379,
+      password: globalPwd || undefined, maxRetriesPerRequest: null as null,
+      enableReadyCheck: false, lazyConnect: true,
+    };
+    const globalQueues: Record<string, Queue> = {
+      [QUEUES.FEED_FETCH_GLOBAL_RSS]: new Queue(QUEUES.FEED_FETCH_GLOBAL_RSS, { connection: { ...globalRedisOpts } }),
+      [QUEUES.FEED_FETCH_GLOBAL_NVD]: new Queue(QUEUES.FEED_FETCH_GLOBAL_NVD, { connection: { ...globalRedisOpts } }),
+      [QUEUES.FEED_FETCH_GLOBAL_STIX]: new Queue(QUEUES.FEED_FETCH_GLOBAL_STIX, { connection: { ...globalRedisOpts } }),
+      [QUEUES.FEED_FETCH_GLOBAL_REST]: new Queue(QUEUES.FEED_FETCH_GLOBAL_REST, { connection: { ...globalRedisOpts } }),
+    };
+    const globalScheduler = new GlobalFeedScheduler({ db: prisma, queues: globalQueues, logger });
+    globalScheduler.start();
+
+    logger.info(`Global feed processing: ENABLED — ${globalWorkers.length} workers registered`);
+  } else {
+    logger.info('Global feed processing: DISABLED');
+  }
+
   app.addHook('onClose', async () => {
     clearInterval(midnightResetInterval);
     await scheduler.stop();
     await workerResult.close(); // Closes workers + fairnessRedis + normalizeQueue
+    await Promise.all(globalWorkers.map((w) => w.close()));
     await closeFeedFetchQueues();
     await disconnectPrisma();
   });
