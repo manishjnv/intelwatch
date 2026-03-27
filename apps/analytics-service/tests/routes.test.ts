@@ -223,6 +223,92 @@ describe('Analytics API Routes', () => {
     });
   });
 
+  // ── Distributions ──
+  describe('GET /api/v1/analytics/distributions', () => {
+    it('returns 200 with distribution data', async () => {
+      const res = await app.inject({ method: 'GET', url: '/api/v1/analytics/distributions' });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.data).toBeDefined();
+      expect(body.data).toHaveProperty('byType');
+      expect(body.data).toHaveProperty('bySeverity');
+      expect(body.data).toHaveProperty('byConfidenceTier');
+      expect(body.data).toHaveProperty('byLifecycle');
+    });
+
+    it('returns empty objects when ioc service unavailable', async () => {
+      mockFetch.mockResolvedValue({ ok: false, json: async () => ({}) });
+      const res = await app.inject({ method: 'GET', url: '/api/v1/analytics/distributions' });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.data.byType).toEqual({});
+    });
+  });
+
+  // ── Cost Tracking ──
+  describe('GET /api/v1/analytics/cost-tracking', () => {
+    it('returns 200 with cost data', async () => {
+      const res = await app.inject({ method: 'GET', url: '/api/v1/analytics/cost-tracking' });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.data).toBeDefined();
+      expect(typeof body.data.totalCostUsd).toBe('number');
+      expect(typeof body.data.costPerArticle).toBe('number');
+      expect(typeof body.data.costPerIoc).toBe('number');
+      expect(body.data).toHaveProperty('byModel');
+      expect(body.data).toHaveProperty('trend');
+    });
+
+    it('returns zeros when enrichment service unavailable', async () => {
+      mockFetch.mockResolvedValue({ ok: false, json: async () => ({}) });
+      const res = await app.inject({ method: 'GET', url: '/api/v1/analytics/cost-tracking' });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.data.totalCostUsd).toBe(0);
+    });
+
+    it('returns trend array', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: {
+            totalCostUsd: 15.5, costPerArticle: 0.002, costPerIoc: 0.01,
+            byModel: { haiku: 5.0, sonnet: 10.5 },
+            trend: [{ date: '2026-03-20', cost: 2.0 }, { date: '2026-03-21', cost: 1.5 }],
+          },
+        }),
+      });
+      const res = await app.inject({ method: 'GET', url: '/api/v1/analytics/cost-tracking' });
+      const body = JSON.parse(res.payload);
+      expect(Array.isArray(body.data.trend)).toBe(true);
+    });
+
+    it('caches repeated requests', async () => {
+      const res1 = await app.inject({ method: 'GET', url: '/api/v1/analytics/cost-tracking' });
+      expect(res1.statusCode).toBe(200);
+      const callsAfterFirst = mockFetch.mock.calls.length;
+
+      const res2 = await app.inject({ method: 'GET', url: '/api/v1/analytics/cost-tracking' });
+      expect(res2.statusCode).toBe(200);
+      // Second call should use cache — no additional fetch calls for this endpoint
+      // (aggregator caches for 1800s)
+      expect(mockFetch.mock.calls.length).toBe(callsAfterFirst);
+    });
+  });
+
+  // ── Enrichment Quality ──
+  describe('GET /api/v1/analytics/enrichment-quality', () => {
+    it('returns enrichment quality breakdown', async () => {
+      const res = await app.inject({ method: 'GET', url: '/api/v1/analytics/enrichment-quality' });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.data).toHaveProperty('total');
+      expect(body.data).toHaveProperty('highConfidence');
+      expect(body.data).toHaveProperty('mediumConfidence');
+      expect(body.data).toHaveProperty('lowConfidence');
+    });
+  });
+
   // ── Error handling ──
   describe('Error handling', () => {
     it('returns 404 for unknown route', async () => {

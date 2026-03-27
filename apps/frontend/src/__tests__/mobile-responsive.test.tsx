@@ -35,9 +35,22 @@ const MOCK_HEALTH = [
 vi.mock('@/hooks/use-analytics-data', () => ({
   useAnalyticsWidgets: () => ({ data: { widgets: MOCK_WIDGETS, isDemo: true }, isDemo: true }),
   useAnalyticsTrends: () => ({ data: [] }),
-  useExecutiveSummary: () => ({ data: { summary: '', keyMetrics: [], riskLevel: 'low' } }),
+  useExecutiveSummary: () => ({ data: { summary: '', keyMetrics: [], riskLevel: 'low', riskScore: 42, riskPosture: 'medium', topThreats: [], recommendations: [], generatedAt: '' } }),
   useServiceHealth: () => ({ data: MOCK_HEALTH }),
 }))
+
+vi.mock('@/hooks/use-analytics-dashboard', async () => {
+  const actual = await vi.importActual('@/hooks/use-analytics-dashboard') as Record<string, unknown>
+  return {
+    ...actual,
+    useAnalyticsDashboard: () => ({
+      ...(actual as any).DEMO_ANALYTICS,
+      isLoading: false, isDemo: true, error: null, isFetching: false,
+      dateRange: { preset: '7d', from: '2026-03-20', to: '2026-03-27' },
+      setPreset: vi.fn(), setCustomRange: vi.fn(), refetch: vi.fn(), dataUpdatedAt: Date.now(),
+    }),
+  }
+})
 
 // ── HuntingWorkbenchPage mocks ────────────────────────────────────
 
@@ -92,31 +105,25 @@ import { HuntingWorkbenchPage } from '@/pages/HuntingWorkbenchPage'
 // ── Tests ─────────────────────────────────────────────────────────
 
 describe('Mobile responsive audit — grid-cols-1 base classes', () => {
-  it('AnalyticsPage: widget grid has grid-cols-1 for mobile collapse', () => {
+  it('AnalyticsPage: KPI grid has grid-cols-2 base for mobile', () => {
     render(<AnalyticsPage />)
-    const widgetGrid = screen.getByTestId('widget-grid')
-    expect(widgetGrid.className).toContain('grid-cols-1')
+    const summary = screen.getByTestId('executive-summary')
+    const grid = summary.querySelector('.grid')
+    expect(grid?.className).toContain('grid-cols-2')
   })
 
-  it('AnalyticsPage: health grid has grid-cols-1 for mobile collapse', () => {
+  it('AnalyticsPage: trend charts grid has grid-cols-1 for mobile', () => {
     render(<AnalyticsPage />)
-    // Switch to pipeline health tab
-    const tabs = screen.getAllByRole('button')
-    const healthTab = tabs.find(b => b.textContent?.includes('Pipeline'))
-      ?? tabs.find(b => b.querySelector('svg')) // fallback: icon-only on mobile
-    if (healthTab) {
-      healthTab.click()
-      const healthGrid = screen.queryByTestId('health-grid')
-      if (healthGrid) {
-        expect(healthGrid.className).toContain('grid-cols-1')
-      }
-    }
+    const trends = screen.getByTestId('trend-charts')
+    const grid = trends.querySelector('.grid')
+    expect(grid?.className).toContain('grid-cols-1')
   })
 
-  it('AnalyticsPage: tab labels are hidden on mobile (hidden sm:inline)', () => {
-    const { container } = render(<AnalyticsPage />)
-    const tabSpans = container.querySelectorAll('span.hidden.sm\\:inline')
-    expect(tabSpans.length).toBeGreaterThan(0)
+  it('AnalyticsPage: intelligence breakdown grid has grid-cols-1 for mobile', () => {
+    render(<AnalyticsPage />)
+    const breakdown = screen.getByTestId('intelligence-breakdown')
+    const grid = breakdown.querySelector('.grid')
+    expect(grid?.className).toContain('grid-cols-1')
   })
 
   it('HuntingWorkbenchPage: renders without errors on mobile viewport', () => {

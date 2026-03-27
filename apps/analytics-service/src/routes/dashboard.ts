@@ -88,6 +88,20 @@ export function dashboardRoutes(deps: DashboardRouteDeps) {
       const data = await aggregator.getEnrichmentQuality(tenantId);
       return reply.send({ data });
     });
+
+    /** GET /api/v1/analytics/distributions — IOC type/severity/confidence/lifecycle */
+    app.get('/distributions', async (req: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = extractTenantId(req);
+      const data = await aggregator.getDistributions(tenantId);
+      return reply.send({ data });
+    });
+
+    /** GET /api/v1/analytics/cost-tracking — AI cost summary + trend */
+    app.get('/cost-tracking', async (req: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = extractTenantId(req);
+      const data = await aggregator.getCostTracking(tenantId);
+      return reply.send({ data });
+    });
   };
 }
 

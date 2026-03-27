@@ -65,6 +65,21 @@ export interface EnrichmentQuality {
   lowPct: number;
 }
 
+export interface DistributionData {
+  byType: Record<string, number>;
+  bySeverity: Record<string, number>;
+  byConfidenceTier: Record<string, number>;
+  byLifecycle: Record<string, number>;
+}
+
+export interface CostTrackingData {
+  totalCostUsd: number;
+  costPerArticle: number;
+  costPerIoc: number;
+  byModel: Record<string, number>;
+  trend: { date: string; cost: number }[];
+}
+
 /** Default endpoints for Docker network. */
 export function defaultEndpoints(): ServiceEndpoints {
   return {
@@ -305,6 +320,41 @@ export class Aggregator {
     const cacheKey = `alert-summary:${tenantId}`;
     return this.store.getOrSet(cacheKey, 300, async () => {
       return this.fetchService(`${this.endpoints.alert}/api/v1/alerts/stats`) ?? {};
+    });
+  }
+
+  /** IOC distributions — type, severity, confidence tier, lifecycle. Cached 15 min. */
+  async getDistributions(tenantId: string): Promise<DistributionData> {
+    const cacheKey = `distributions:${tenantId}`;
+    return this.store.getOrSet(cacheKey, 900, async () => {
+      const stats = await this.fetchService<Record<string, unknown>>(
+        `${this.endpoints.ioc}/api/v1/ioc/stats`,
+      );
+
+      return {
+        byType: (stats?.byType as Record<string, number>) ?? {},
+        bySeverity: (stats?.bySeverity as Record<string, number>) ?? {},
+        byConfidenceTier: (stats?.byConfidenceTier as Record<string, number>) ?? {},
+        byLifecycle: (stats?.byLifecycle as Record<string, number>) ?? {},
+      };
+    });
+  }
+
+  /** AI cost tracking summary. Cached 30 min. */
+  async getCostTracking(tenantId: string): Promise<CostTrackingData> {
+    const cacheKey = `cost-tracking:${tenantId}`;
+    return this.store.getOrSet(cacheKey, 1800, async () => {
+      const stats = await this.fetchService<Record<string, unknown>>(
+        `${this.endpoints.enrichment}/api/v1/enrichment/cost-stats`,
+      );
+
+      return {
+        totalCostUsd: Number(stats?.totalCostUsd ?? 0),
+        costPerArticle: Number(stats?.costPerArticle ?? 0),
+        costPerIoc: Number(stats?.costPerIoc ?? 0),
+        byModel: (stats?.byModel as Record<string, number>) ?? {},
+        trend: (stats?.trend as { date: string; cost: number }[]) ?? [],
+      };
     });
   }
 
