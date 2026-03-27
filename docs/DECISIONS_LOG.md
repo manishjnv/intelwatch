@@ -203,3 +203,12 @@
 **Decision:** Build etip-backend + etip-frontend images in GitHub Actions CI runner (7GB RAM), push to GHCR (ghcr.io). VPS only pulls pre-built images + restarts containers. Deploy pipeline: test → build-images → deploy (pull + compose up).
 **Alternatives:** Upgrade VPS to 16GB (solves but costs more), stop containers during build (30s downtime), per-service images (premature optimization)
 **Consequences:** Deploy time: 25min → 2m41s. No more VPS OOM during deploy. CI runner handles all compilation. VPS needs GHCR authentication (via GITHUB_TOKEN passed in deploy script). Future: per-service images when independent deploys needed.
+
+---
+
+### DECISION-029: Global Feed Processing + Tenant Overlay Architecture
+**Date:** 2026-03-27 | **Status:** Approved (implementation pending)
+**Context:** Per-tenant feed processing scales linearly: N tenants = N fetches, N normalizations, N AI enrichment calls for same OSINT feed. At 100 tenants = 100x cost ($20/day vs $0.30/day). Industry standard (Recorded Future, Anomali, CrowdStrike) uses global processing + tenant overlay.
+**Decision:** Two-layer architecture: (1) Global layer — OSINT feeds in GlobalFeedCatalog, processed once into GlobalArticle/GlobalIoc tables, dedup hash without tenantId, enriched once. (2) Tenant layer — TenantFeedSubscription (which global feeds to see), TenantIocOverlay (custom severity/tags/lifecycle), private feeds remain tenant-isolated. Super admin controls AI model per subtask across 3 categories (news_feed, ioc_enrichment, reporting) with system recommendations and live cost prediction. Plan limits (maxFeeds, retention, etc.) editable by super admin per tier. All new users default to Free plan with auto-subscription to 3 OSINT feeds.
+**Alternatives:** (1) Keep per-tenant (doesn't scale), (2) Shared DB with RLS (too complex, Prisma doesn't support RLS natively), (3) Event-driven fan-out (still duplicates storage)
+**Consequences:** 6 new Prisma models, 4 implementation phases (A1: schema+catalog, A2: AI config+plan limits, B: global pipeline, C: enrichment+overlay, D: frontend+migration). Feature-flagged rollout. Full plan: docs/architecture/DECISION-029-Global-Processing-Plan.md
