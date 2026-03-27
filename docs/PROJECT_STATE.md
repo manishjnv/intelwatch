@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 86 — Fix 14 TS errors + notifyApiError wiring + debounce + TableSkeleton
+**Session counter:** 87 — Persist FeedQuotaStore to Postgres (dual-mode)
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -64,7 +64,7 @@
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
-| customization | 5 | ✅ Complete | 2026-03-26 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK + Feed Quotas COMPLETE**. 50 endpoints, 273 tests. **Session 78:** FeedQuotaStore (4 tiers), 6 feed-quota endpoints, tenant plan assignments. |
+| customization | 5 | ✅ Complete | 2026-03-27 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK + Feed Quotas COMPLETE**. 50 endpoints, 281 tests. **Session 87:** FeedQuotaStore persisted to Postgres (dual-mode: Prisma repo + in-memory fallback). FeedQuotaPlanAssignment model. 8 new dual-mode tests. |
 | onboarding | 6 | ✅ Deployed | 2026-03-26 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 241 tests. **Session 78:** DemoSeeder seeds 3 free-tier feeds by default (was 10). seedUpgradeFeeds() for Starter+ upgrades. freeTier flag on DEFAULT_FEEDS. |
 | billing | 6 | ✅ Complete | 2026-03-27 | Port 3019. 28 endpoints, 5 P0 improvements, 190 tests. **Session 83: All 4 stores Prisma-backed** — UsageStore, InvoiceStore, CouponStore wired to repos (PlanStore was S74). Every method try/catch → in-memory fallback. 21 new tests. FEATURE-COMPLETE + FULLY PERSISTENT. |
 | admin-ops | 6 | ✅ Complete | 2026-03-27 | Port 3022. **Core + 5 P0 + queue monitor + DLQ + P2-1 queue alerting COMPLETE**. 35 endpoints, 195 tests. **Session 83:** 10s response cache on GET /queues (module-level cache, error responses not cached). 5 new tests. FEATURE-COMPLETE. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,973 tests.
-- **Last session outcome:** Session 86 (2026-03-27). **Fix 14 TS errors + UX wiring.** (1) Fixed 14 frontend TS errors (non-null assertions on array access in 5 test files + D3 `.attr('fill')` fallback). (2) Wired `notifyApiError` into 7 data hooks (20 catches: alerting, analytics, enrichment, phase5, phase6, reporting, search). (3) Added `useDebouncedValue(300ms)` to ThreatActorListPage, MalwareListPage, VulnerabilityListPage. (4) Added `TableSkeleton` to MalwareListPage + VulnerabilityListPage. 8 new tests. Commit: 426794d.
-- **Known issues:** Customization FeedQuotaStore is in-memory — plan assignment lost on restart. Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in billing-service Prisma models (29 errors, needs `prisma generate`).
-- **Next tasks:** (1) Verify CI/CD deploy succeeded for S86. (2) Persist FeedQuotaStore to Postgres. (3) Persistence migration B2: alerting-service → Postgres. (4) Wire notifyApiError into remaining ~28 hooks (20 done in S86). (5) Persistence migration B3: correlation-service Redis → Postgres.
+- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,981 tests.
+- **Last session outcome:** Session 87 (2026-03-27). **FeedQuotaStore Postgres persistence.** Dual-mode pattern: Prisma repo (FeedQuotaPlanAssignment model) with in-memory fallback. FeedQuotaRepo (get/upsert/getAll), async store methods (getTenantPlan, getTenantFeedQuota, assignPlan, listAllAssignments), routes updated with await. 8 new dual-mode tests, 281 customization tests total. Commits: fe7c4d8, cad4969.
+- **Known issues:** Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in billing-service Prisma models (29 errors, needs `prisma generate`) + 3 new in customization repo (same pattern — `prisma generate` needed). VPS needs `prisma db push` to create `feed_quota_plan_assignments` table.
+- **Next tasks:** (1) Deploy S87 to VPS + run `prisma db push` for new table. (2) Persistence migration B2: alerting-service → Postgres. (3) Wire notifyApiError into remaining ~28 hooks. (4) Persistence migration B3: correlation-service Redis → Postgres. (5) Persistence migration B4: user-management → Redis JSON.
 
 ## Deployment Log
 

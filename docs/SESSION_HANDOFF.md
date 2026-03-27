@@ -1,74 +1,73 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-27
-**Session:** 86
-**Session Summary:** Fix 14 frontend TypeScript errors, wire notifyApiError into 7 data hooks, add useDebouncedValue to 3 pages, add TableSkeleton to 2 pages.
+**Session:** 87
+**Session Summary:** Persist FeedQuotaStore to Postgres using dual-mode pattern (Prisma repo + in-memory fallback). Tenant plan assignments now survive container restarts.
 
 ## ✅ Changes Made
-- `426794d` — feat: fix 14 TS errors + notifyApiError wiring + debounce + TableSkeleton — session 85 (18 files, 164 insertions, 55 deletions)
+- `fe7c4d8` — feat: persist FeedQuotaStore to Postgres — dual-mode with in-memory fallback (9 files, 288 insertions, 37 deletions)
+- `cad4969` — chore: update lockfile for customization @prisma/client dep (2 files)
 
 ## 📁 Files / Documents Affected
+
+### New Files
+| File | Purpose |
+|------|---------|
+| `apps/customization/src/prisma.ts` | PrismaClient singleton (TI_DATABASE_URL, globalThis caching) |
+| `apps/customization/src/repository.ts` | FeedQuotaRepo — getTenantPlan, upsertTenantPlan, getAllAssignments |
+| `apps/customization/tests/feed-quota-repo.test.ts` | 8 dual-mode tests (mock repo success/failure/fallback) |
 
 ### Modified Files
 | File | Change |
 |------|--------|
-| `__tests__/alerting-page.test.tsx` | 4 non-null assertions on array-indexed element access |
-| `__tests__/customization-ai.test.tsx` | 1 non-null assertion |
-| `__tests__/phase4-pages.test.tsx` | 2 non-null assertions (c2Buttons, scoreValue) |
-| `__tests__/phase5-pages.test.tsx` | 2 non-null assertions |
-| `__tests__/reporting-page.test.tsx` | 4 non-null assertions |
-| `__tests__/session76-detail-drilldown.test.tsx` | Added vi.useFakeTimers/advanceTimersByTime for debounced VulnListPage search test |
-| `__tests__/session82-ux.test.tsx` | 8 new tests: 2 skeleton (Malware+Vuln), 2 notifyApiError (alerting+analytics), 2 debounce (Malware+Vuln), 2 skeleton row count |
-| `components/viz/RelationshipGraph.tsx` | Added `?? '#94a3b8'` fallback to D3 `.attr('fill')` — fixes string-or-undefined TS error |
-| `hooks/use-alerting-data.ts` | Import notifyApiError + 4 catches replaced (alerts, stats, rules, channels) |
-| `hooks/use-analytics-data.ts` | Import notifyApiError + 3 catches replaced (widgets, trends, service health) |
-| `hooks/use-enrichment-data.ts` | Import notifyApiError + 3 catches replaced (enrichment stats, cost stats, budget) |
-| `hooks/use-phase5-data.ts` | Import notifyApiError + 3 catches replaced (SIEM, users, customization stats) |
-| `hooks/use-phase6-data.ts` | Import notifyApiError + 3 catches replaced (billing plans, system health, admin stats) |
-| `hooks/use-reporting-data.ts` | Import notifyApiError + 3 catches replaced (reports, report stats, schedules) |
-| `hooks/use-search-data.ts` | Import notifyApiError + 1 catch added to useIOCSearch queryFn |
-| `pages/ThreatActorListPage.tsx` | Added useDebouncedValue(search, 300) — search queries debounced |
-| `pages/MalwareListPage.tsx` | Added useDebouncedValue + TableSkeleton (rows=8) |
-| `pages/VulnerabilityListPage.tsx` | Added useDebouncedValue + TableSkeleton (rows=8) |
+| `prisma/schema.prisma` | Added FeedQuotaPlanAssignment model (String planId, unique tenantId, snake_case table) |
+| `apps/customization/package.json` | Added @prisma/client ^5.22.0 |
+| `apps/customization/src/services/feed-quota-store.ts` | Optional repo constructor, 4 methods now async with try/catch fallback |
+| `apps/customization/src/routes/feed-quota.ts` | Added await to 5 store method calls |
+| `apps/customization/src/index.ts` | Wire FeedQuotaRepo (conditional on TI_DATABASE_URL), disconnectPrisma on shutdown |
+| `apps/customization/tests/feed-quota.test.ts` | Added await to ~10 assertions for async methods |
+| `pnpm-lock.yaml` | Updated for @prisma/client in customization |
 
 ## 🔧 Decisions & Rationale
-No new DECISION entries. All changes follow established patterns from session 82 (useApiError, useDebouncedValue, TableSkeleton).
+No new DECISION entries. Follows DECISION-027 (hybrid persistence) — customization uses Postgres for business entity (tenant plan assignments), not Redis JSON. Plan quota definitions remain hardcoded constants (no persistence needed). Used String field for planId (not Prisma Plan enum) due to `teams` vs `pro` mismatch.
 
 ## 🧪 E2E / Deploy Verification Results
-- `pnpm --filter frontend exec tsc --noEmit` → 0 errors (was 14)
-- `pnpm --filter frontend test` → 794 passed, 2 skipped, 0 failures (29 test files)
-- CI triggered on push (commit 426794d), deploy pending
+- Customization tests: 281/281 passed (18 test files, 0 failures)
+- TypeScript: 3 new errors (same pre-existing Prisma pattern — `feedQuotaPlanAssignment` not on PrismaClient until `prisma generate`)
+- Lint: 0 errors
+- Secrets scan: clean
+- CI triggered on push (commits fe7c4d8, cad4969)
+- VPS needs: `prisma db push` to create `feed_quota_plan_assignments` table
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. Verify CI/CD deploy succeeded for S86 (frontend container rebuild)
-2. Wire notifyApiError into remaining ~28 hooks (minor catches in secondary queries)
+1. Deploy S87 to VPS — run `prisma db push` for new table
+2. Verify customization service reads/writes to Postgres
 
 ### Deferred
-- Persist FeedQuotaStore to Postgres (customization-service)
 - Persistence migration B2: alerting-service → Postgres
-- Persistence migration B3: correlation-service Redis stores → Postgres
-- Grafana metrics verification (Task 5 from S86 — VPS check only)
+- Wire notifyApiError into remaining ~28 hooks
+- Persistence migration B3: correlation-service Redis → Postgres
+- Persistence migration B4: user-management → Redis JSON
 
 ## 🔁 How to Resume
 ```
-Working on: Production hardening / persistence migrations
-Module target: customization-service OR alerting-service
-Do not modify: frontend (S86 complete), api-gateway (S85 complete)
+Working on: Persistence migrations (DECISION-027)
+Module target: alerting-service (B2) OR remaining notifyApiError hooks
+Do not modify: customization (S87 complete), frontend (S86 complete), api-gateway (S85 complete)
 
 Steps:
-1. Check CI/CD deploy status for S86
-2. Verify Grafana: curl localhost:3001/metrics, check Prometheus targets, check dashboards
-3. Pick next target: FeedQuotaStore persistence (customization) or alerting-service persistence
+1. Verify CI/CD deploy for S87
+2. SSH to VPS: npx prisma db push (creates feed_quota_plan_assignments table)
+3. Verify: PUT /api/v1/customization/feed-quota/tenants/{id}/plan → restart container → GET still returns assignment
+4. Pick next: alerting-service persistence (B2) or notifyApiError remaining hooks
 
-Key facts from S86:
-- 14 TS errors fixed (non-null assertions + D3 attr fallback)
-- notifyApiError wired to 7 hooks (20 catches): alerting, analytics, enrichment, phase5, phase6, reporting, search
-- useDebouncedValue(300ms) on: ThreatActorListPage, MalwareListPage, VulnerabilityListPage
-- TableSkeleton(rows=8) on: MalwareListPage, VulnerabilityListPage
-- 794 frontend tests (up from 786)
-- use-auth.ts skipped (mutations only, no queryFn)
-- ReportingPage skipped for debounce (no client-side search input)
-- DRPPage doesn't exist as a standalone file
+Key facts from S87:
+- FeedQuotaPlanAssignment model uses String planId (not Plan enum — teams/pro mismatch)
+- Dual-mode: TI_DATABASE_URL present → Postgres, absent → in-memory
+- Pattern: constructor(repo?) → if repo try/catch → fallback to Map
+- 4 async methods: getTenantPlan, getTenantFeedQuota, assignPlan, listAllAssignments
+- Plan quota defs (free/starter/teams/enterprise) are hardcoded constants, NOT persisted
+- Safe point tag: safe-point-2026-03-27-feed-quota-persist
 ```

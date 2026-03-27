@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-7%20started-00ff88)
-![Tests](https://img.shields.io/badge/tests-5973%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-5981%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
@@ -31,7 +31,7 @@
 | DRP Service (4 detection engines, 12 typosquat algos, CertStream, 36 endpoints) | 🔨 Feature-complete (15/15 + accuracy) | 310 |
 | Enterprise Integration Service (SIEM, webhooks, ticketing, STIX/TAXII, 58 endpoints) | 🔨 Feature-complete (15/15) | 335 |
 | User Management Service (RBAC, teams, SSO, MFA, break-glass, 32 endpoints) | 🔨 Feature-complete (5 P0) | 185 |
-| Customization Service (module toggles, AI config, risk weights, 35 endpoints) | 🔨 Feature-complete (5 P0) | 159 |
+| Customization Service (module toggles, AI config, risk weights, Prisma persistence, 50 endpoints) | ✅ Complete | 281 |
 | Onboarding Service (8-step wizard, connectors, health checks, 32 endpoints) | ✅ Deployed | 190 |
 | Billing Service (plan management, Razorpay, usage metering, GST invoices, Prisma persistence, 28 endpoints) | ✅ Built | 190 |
 | Admin Ops Service (system health, maintenance, backup/restore, tenant admin, audit, 28 endpoints) | ✅ Built | 147 |
