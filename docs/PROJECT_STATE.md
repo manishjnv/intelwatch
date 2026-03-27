@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 93 — DECISION-029 Phase C: Pipeline E2E Wiring, Alert Fan-Out, Global Catalog UI
+**Session counter:** 94 — DECISION-029 Phase C Activation: Pipeline Wiring in index.ts, VPS Global Processing LIVE, E2E Verified
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1+A2+B1+B2+C COMPLETE, deployed.
-- **Last session outcome:** Session 93 (2026-03-27). **Phase C COMPLETE.** Pipeline E2E wiring (fetch→normalize enqueue in global-fetch-base). GlobalPipelineOrchestrator (queue health, retrigger, pause/resume). 4 pipeline admin API routes. GlobalIocStatsService (aggregated stats, top IOCs, corroboration leaders). GlobalIocAlertHandler (fan-out to subscribed tenants on GLOBAL_IOC_CRITICAL/UPDATED with per-tenant filters). Frontend: GlobalCatalogPage (3 tabs: Catalog, Subscriptions, Pipeline Health), GlobalIocOverlayPanel (slide-out: global data, enrichment details, tenant overlay form), 2 hooks with demo fallback. Sidebar + route /global-catalog. Also fixed 10 pre-existing TS errors from S90-92 + 1 lint error. 57 new tests. Commits: 028be85, 9196a55, 26b2f85. CI green (23629284908). Deployed to VPS. 33 containers healthy.
-- **Known issues:** VPS needs `prisma db push` for 7 new global processing tables. Global workers are OFF by default (TI_GLOBAL_PROCESSING_ENABLED=false). Shodan/GreyNoise API keys not set on VPS yet. Orchestrator + alert handler not yet wired in index.ts (need actual BullMQ queue instances + event bus).
-- **Next tasks:** (1) Session 94: Wire orchestrator into ingestion index.ts + alert handler into alerting-service index.ts. (2) Run `prisma db push` on VPS for global tables. (3) Set TI_GLOBAL_PROCESSING_ENABLED=true + API keys on VPS. (4) E2E smoke test: trigger fetch → verify IOC reaches alerting.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1+A2+B1+B2+C COMPLETE + ACTIVATED. Pipeline LIVE on VPS.
+- **Last session outcome:** Session 94 (2026-03-27). **Phase C ACTIVATED.** Wired GlobalPipelineOrchestrator into ingestion index.ts (6 BullMQ queues, normalizeGlobalQueue passed to fetch workers). Wired GlobalNormalizeWorker + GlobalEnrichWorker into normalization index.ts (Shodan/GreyNoise clients, alertEvaluateQueue for cross-service delivery). Wired GlobalIocAlertHandler into alerting-service index.ts (EventEmitter, in-memory tenant registry). Added TI_GLOBAL_PROCESSING_ENABLED + TI_SHODAN_API_KEY + TI_GREYNOISE_API_KEY to docker-compose. VPS: feature flag set true, services force-recreated. **E2E VERIFIED**: THN Global RSS feed → 50 articles fetched → 30 normalized → IOCs extracted (CVEs + domains) → enrichment running. Commits: 805a2b9, b572259. CI runs 23630684225 + 23631054444 green. 33 containers healthy.
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry (not wired to ingestion catalog subscriptions API yet). enrichmentQuality=0 for all IOCs (no external API keys). 20/50 articles still pending normalization (processing in progress).
+- **Next tasks:** (1) Session 95: DECISION-029 Phase D — stale enrichment re-processing cron, community FP signal, AI relationship extraction. (2) Set Shodan/GreyNoise API keys on VPS for real enrichment. (3) Wire HTTP subscription adapter in alerting (query ingestion catalog API for real tenant subscriptions). (4) Add more global feeds to catalog.
 
 ## Deployment Log
 
@@ -232,6 +232,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 91 | 2026-03-27 | Code pushed to master | ⏳ CI triggered | 283d7d8 | DECISION-029 Phase B1: 5 global fetch workers, GlobalFeedScheduler, MISP warninglists, ATT&CK weighting. 77 new tests. ~6,160 total. Feature-gated (TI_GLOBAL_PROCESSING_ENABLED=false). |
 | 92 | 2026-03-27 | Code pushed to master | ⏳ CI triggered | 1f8d368 | DECISION-029 Phase B2: Global normalize/enrich workers, Shodan/GreyNoise clients, tenant overlay (6 routes). 75 new tests, 232 normalization total. ~6,235 total. Feature-gated. |
 | 93 | 2026-03-27 | All 33 containers redeployed | ✅ All 33 healthy | 028be85, 9196a55, 26b2f85 | DECISION-029 Phase C: Pipeline E2E wiring + alert fan-out + Global Catalog UI. 57 new tests. 10 TS error fixes. CI run 23629284908 green. ~6,292 total. |
+| 94 | 2026-03-27 | etip_ingestion + etip_normalization + etip_alerting force-recreated | ✅ All 33 healthy | 805a2b9, b572259 | Phase C Activation: wired orchestrator/workers/handler in index.ts. TI_GLOBAL_PROCESSING_ENABLED=true on VPS. E2E: 50 articles fetched, 30 normalized, IOCs extracted + enriched. Global pipeline LIVE. |
 
 ## E2E Verification Results (Session 13)
 
