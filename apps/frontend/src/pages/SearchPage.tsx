@@ -13,7 +13,7 @@ import { SplitPane } from '@/components/viz/SplitPane'
 import { IocDetailPanel } from '@/pages/IocDetailPanel'
 import type { IOCRecord } from '@/hooks/use-intel-data'
 import { Search, Download, ChevronDown, Database, Zap, X } from 'lucide-react'
-import type { EsSearchFilters, EsSearchResult } from '@/hooks/use-es-search'
+import type { EsSearchFilters } from '@/hooks/use-es-search'
 
 // ─── Constants ───────────────────────────────────────────────
 
