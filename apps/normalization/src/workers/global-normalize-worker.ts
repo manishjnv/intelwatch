@@ -42,6 +42,7 @@ export function extractIocsFromText(text: string): { rawValue: string; rawType: 
   const seen = new Set<string>();
 
   // Split text into tokens and check each
+  // eslint-disable-next-line no-useless-escape
   const tokens = text.split(/[\s,;|<>"'()\[\]{}]+/).filter(Boolean);
   for (const token of tokens) {
     const cleaned = token.trim();
