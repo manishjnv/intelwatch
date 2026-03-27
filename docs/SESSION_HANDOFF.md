@@ -1,95 +1,102 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-27
-**Session:** 92
-**Session Summary:** DECISION-029 Phase B2 — Global normalize/enrich workers, Shodan/GreyNoise enrichment clients, tenant IOC overlay service + routes. 75 new tests. All feature-gated.
+**Session:** 93
+**Session Summary:** DECISION-029 Phase C — Pipeline E2E wiring (fetch→normalize), alert fan-out to subscribed tenants, GlobalCatalogPage (3 tabs), GlobalIocOverlayPanel, 10 pre-existing TS error fixes. 57 new tests. Deployed.
 
 ## ✅ Changes Made
 
 | Commit | Description |
 |--------|-------------|
-| 1f8d368 | feat: DECISION-029 Phase B2 — global normalize/enrich workers, Shodan/GreyNoise clients, tenant overlay (14 files, 2148 insertions) |
+| 028be85 | feat: DECISION-029 Phase C — pipeline E2E wiring, alert fan-out, Global Catalog UI (19 files, 2418 insertions) |
+| 9196a55 | fix: resolve 10 pre-existing TS errors blocking CI (S90-92 leftovers) (4 files) |
+| 26b2f85 | fix: suppress no-useless-escape lint error in global-normalize-worker regex (1 file) |
 
 ## 📁 Files / Documents Affected
 
-**New files (12):**
+**New files (14):**
 | File | Purpose |
 |------|---------|
-| apps/normalization/src/enrichment/shodan-client.ts | Shodan IP enrichment (risk scoring, graceful degradation) |
-| apps/normalization/src/enrichment/greynoise-client.ts | GreyNoise Community API (threat assessment, confidence adjustment) |
-| apps/normalization/src/workers/global-normalize-worker.ts | NORMALIZE_GLOBAL consumer: IOC extraction, warninglist, Bayesian confidence, STIX tiers, upsert |
-| apps/normalization/src/workers/global-enrich-worker.ts | ENRICH_GLOBAL consumer: external enrichment, confidence recalc, quality scoring, critical emission |
-| apps/normalization/src/services/tenant-overlay-service.ts | Multi-tenant IOC overlay: merged view, CRUD, bulk ops, stats |
-| apps/normalization/src/routes/tenant-overlay.ts | 6 REST routes for global IOC overlay (gated by TI_GLOBAL_PROCESSING_ENABLED) |
-| apps/normalization/tests/shodan-client.test.ts | 9 tests |
-| apps/normalization/tests/greynoise-client.test.ts | 9 tests |
-| apps/normalization/tests/global-normalize-worker.test.ts | 18 tests |
-| apps/normalization/tests/global-enrich-worker.test.ts | 15 tests |
-| apps/normalization/tests/tenant-overlay-service.test.ts | 14 tests |
-| apps/normalization/tests/tenant-overlay-routes.test.ts | 10 tests |
+| apps/ingestion/src/services/global-pipeline-orchestrator.ts | Queue health, retrigger failed, pause/resume all 6 global queues |
+| apps/ingestion/src/routes/global-pipeline.ts | 4 admin routes (health, retrigger, pause, resume) — feature-flag gated |
+| apps/normalization/src/services/global-ioc-stats.ts | Aggregated global IOC stats, top IOCs, corroboration leaders |
+| apps/alerting-service/src/handlers/global-ioc-alert-handler.ts | Alert fan-out on GLOBAL_IOC_CRITICAL/UPDATED with tenant filter matching |
+| apps/frontend/src/pages/GlobalCatalogPage.tsx | 3-tab page: Catalog, My Subscriptions, Pipeline Health (admin) |
+| apps/frontend/src/hooks/use-global-catalog.ts | Hooks for catalog, subscriptions, pipeline health + demo fallback |
+| apps/frontend/src/hooks/use-global-iocs.ts | Hooks for global IOCs, detail, overlay CRUD + demo fallback |
+| apps/frontend/src/components/GlobalIocOverlayPanel.tsx | Slide-out panel: global data, enrichment details, tenant overlay form |
+| apps/ingestion/tests/global-pipeline-orchestrator.test.ts | 8 tests |
+| apps/ingestion/tests/global-pipeline-routes.test.ts | 7 tests |
+| apps/normalization/tests/global-ioc-stats.test.ts | 5 tests |
+| apps/alerting-service/tests/global-ioc-alert-handler.test.ts | 12 tests |
+| apps/frontend/src/__tests__/global-catalog-page.test.tsx | 14 tests |
+| apps/frontend/src/__tests__/global-ioc-overlay-panel.test.tsx | 11 tests |
 
-**Modified files (2):**
+**Modified files (9):**
 | File | Change |
 |------|--------|
-| apps/normalization/src/app.ts | Added tenant overlay routes registration + TenantOverlayService + prisma option |
-| docs/PROJECT_STATE.md | Session 91→92 updates |
+| apps/ingestion/src/workers/global-fetch-base.ts | Added normalizeGlobalQueue dep + enqueue to NORMALIZE_GLOBAL after article insertion |
+| apps/ingestion/src/app.ts | Added pipeline routes registration + pipelineOrchestrator option |
+| apps/frontend/src/App.tsx | Added /global-catalog route |
+| apps/frontend/src/config/modules.ts | Added Global Catalog module entry + IconGlobalCatalog import |
+| apps/frontend/src/components/brand/ModuleIcons.tsx | Added IconGlobalCatalog SVG + MODULE_ICONS entry |
+| apps/normalization/src/workers/global-normalize-worker.ts | Removed unused imports + eslint-disable for regex + cast enrichmentData |
+| apps/normalization/src/workers/global-enrich-worker.ts | Cast enrichmentData as any for Prisma Json compat |
+| apps/customization/src/routes/global-ai.ts | Removed unused imports |
+| apps/customization/src/services/global-ai-store.ts | Fixed string|undefined assignments |
 
 ## 🔧 Decisions & Rationale
 
-No new DECISION entries. All work follows DECISION-029 v2 Phase B2 plan.
+No new DECISION entries. All work follows DECISION-029 v2 Phase C plan.
 
 Key design choices:
-- Shodan/GreyNoise clients degrade gracefully (return null) when API keys not set
-- Shodan risk score: base 20 + ports*5 (cap 30) + vulns*10 (cap 40) + tor(+15) - cloud(-5)
-- GreyNoise confidence adjustment: riot=-20, benign_scanner=-10, malicious=+20, unknown=0
-- Tenant overlay: overlay values WIN over global defaults, tags merged with dedup (Set)
-- Enrichment quality: (sources_with_data/total)*50 + freshness*30 + coverage*20
-- Global normalize worker uses buildGlobalDedupeHash(type, normalizedValue) — no tenantId
-- Route tests require registerErrorHandler() for Zod→400 mapping
+- Pipeline orchestrator operates on 6 global queues (4 fetch + normalize + enrich)
+- Alert fan-out uses per-tenant alertConfig filters: minSeverity, minConfidence, iocTypes
+- Confidence jump >= 20 or lifecycle new→active triggers updated IOC alerts
+- Frontend demo data includes 5 catalog feeds + 5 global IOCs with enrichment
+- GlobalCatalogPage: 3 tabs (Catalog, Subscriptions, Pipeline Health — admin only)
 
 ## 🧪 E2E / Deploy Verification Results
 
-No deploy this session (code pushed to master, CI triggered). Test results:
-- normalization-service: 232 passed (75 new across 6 test files)
-- shared-normalization: 160 passed (0 new, regression check)
-- Full monorepo: all pass, 0 failures
+CI run 23629284908 — all 3 jobs green:
+- Test, Type-check, Lint & Audit: ✅ passed
+- Build & Push Docker Images: ✅ passed
+- Deploy to VPS: ✅ passed (2m37s, E2E smoke tests passed)
+
+Test counts:
+- ingestion: 602 passed (44 files)
+- normalization: 237 passed (14 files)
+- alerting-service: 322 passed (24 files)
+- frontend: 819 passed + 2 skipped (31 files)
+- Full monorepo: ~6,292 total, 0 failures
 
 ## ⚠️ Open Items / Next Steps
 
-**Immediate (Session 93):**
-- Phase C: Global feed subscription UI + dashboard widgets
-- Or Phase C/D per DECISION-029 plan
+**Immediate (Session 94):**
+- Wire GlobalPipelineOrchestrator into ingestion index.ts (connect actual BullMQ queue instances)
+- Wire GlobalIocAlertHandler into alerting-service index.ts (connect event bus)
+- Run `prisma db push` on VPS for 7 new global processing tables
+- Set TI_GLOBAL_PROCESSING_ENABLED=true on VPS
+- E2E smoke test: trigger fetch → verify IOC flows through normalize → enrich → alert
 
 **Deferred:**
-- VPS `prisma db push` for 7 new global processing tables (required before enabling global workers)
-- Set TI_GLOBAL_PROCESSING_ENABLED=true on VPS
-- Set TI_SHODAN_API_KEY + TI_GREYNOISE_API_KEY on VPS
-- Pre-existing TS errors in customization-service global-ai-store.ts (6 errors)
+- Set Shodan/GreyNoise API keys on VPS (enrichment will degrade gracefully without them)
+- DECISION-029 Phase D: remaining improvements (stale re-processing, community FP, AI relationship extraction)
 
 ## 🔁 How to Resume
 
 ```
-Session 93: DECISION-029 Phase C — Global Feed Subscription + Dashboard
+Session 94: DECISION-029 Phase C Activation + E2E Verification
 
-SCOPE: frontend, customization (subscription management), normalization (overlay UI integration)
-Do not modify: ai-enrichment, vulnerability-intel, billing, onboarding, api-gateway
+Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
 
-Read docs/architecture/DECISION-029-Global-Processing-Plan.md (Phase C section)
+Last session: Phase C code complete + deployed. Pipeline wiring, alert fan-out,
+Global Catalog UI all built and tested. CI green, VPS deployed.
 
-Key interfaces from Phase B2:
-- TenantOverlayService in normalization/services/tenant-overlay-service.ts
-- 6 overlay routes: GET/PUT/DELETE /api/v1/normalization/global-iocs[/:id/overlay]
-- ShodanClient in normalization/enrichment/shodan-client.ts
-- GreyNoiseClient in normalization/enrichment/greynoise-client.ts
-- Global normalize worker: NORMALIZE_GLOBAL queue → global_iocs upsert
-- Global enrich worker: ENRICH_GLOBAL queue → enrichment + confidence recalc
-- All gated by TI_GLOBAL_PROCESSING_ENABLED=false
-
-STEPS:
-1. git tag safe-point-2026-03-27-pre-phase-c
-2. Build global feed subscription management (tenant → catalog)
-3. Build dashboard widgets for global IOC stats
-4. Wire overlay UI to tenant-overlay routes
-5. Write tests
-6. pnpm -r test → all pass
+This session:
+1. Wire orchestrator into ingestion/src/index.ts (pass actual BullMQ queues)
+2. Wire alert handler into alerting-service/src/index.ts (event bus subscription)
+3. VPS: prisma db push + set TI_GLOBAL_PROCESSING_ENABLED=true
+4. E2E: trigger global feed fetch → verify normalize → enrich → alert fan-out
+5. If time: start Phase D improvements
 ```

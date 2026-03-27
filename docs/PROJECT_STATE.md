@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 92 — DECISION-029 Phase B2: Global Normalize/Enrich Workers, Shodan/GreyNoise Clients, Tenant Overlay
+**Session counter:** 93 — DECISION-029 Phase C: Pipeline E2E Wiring, Alert Fan-Out, Global Catalog UI
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -11,8 +11,8 @@
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
-| etip_ingestion | ✅ Running | 0.6.1 | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + **Session 78: feed quota enforcement** + **Session 84: scheduler retry (exponential backoff 30s→5min, circuit breaker for customization-client)**. 502 tests. |
-| etip_normalization | ✅ Running | 0.1.0 | 2026-03-25 | IOC upsert + 18 accuracy improvements + G2/G4b gap fixes. 157 tests. Feed reliability TTL cache (5min); weighted velocity scoring; configureClassifier(); unknownTypeCount stats in GET /stats (P2-1). |
+| etip_ingestion | ✅ Running | 0.7.0 | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + **Session 93: GlobalPipelineOrchestrator + pipeline routes + fetch→normalize wiring**. 602 tests. |
+| etip_normalization | ✅ Running | 0.2.0 | 2026-03-27 | IOC upsert + 18 accuracy improvements + G2/G4b + **Session 93: GlobalIocStatsService**. 237 tests. |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
@@ -29,7 +29,7 @@
 | etip_billing | ✅ Deployed | 0.3.0 | 2026-03-27 | Port 3019. 28 endpoints, 190 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. **Session 83: All 3 remaining stores (Usage, Invoice, Coupon) wired to Prisma** — dual-mode with in-memory fallback. 21 new tests. |
 | etip_admin | ✅ Deployed | 0.5.0 | 2026-03-27 | Port 3022. 35 endpoints, 195 tests. Queue monitor + DLQ processor + P2-1 queue alerting. **Session 83: 10s response cache on GET /queues** — reduces Redis ops from 250+/s to 1/10s. 5 new cache tests. |
 | etip_reporting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3021. Module 21. 20 endpoints, 199 tests. 5 report types (daily/weekly/monthly/custom/executive), BullMQ worker (etip-report-generate), cron scheduling, template engine (JSON/HTML/PDF). |
-| etip_alerting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3023. Module 23. 35 endpoints, 306 tests. Alert rules (5 condition types), alert lifecycle (open/ack/resolve/suppress/escalate), notification channels (email/slack/webhook), escalation policies, grouping, maintenance windows, templates. |
+| etip_alerting | ✅ Deployed | 0.2.0 | 2026-03-27 | Port 3023. Module 23. 35 endpoints, 322 tests. Alert rules + **Session 93: GlobalIocAlertHandler (fan-out to subscribed tenants on GLOBAL_IOC_CRITICAL/UPDATED)**. |
 | etip_analytics | ✅ Deployed | 0.1.0 | 2026-03-25 | Port 3024. Module 24. 13 endpoints, 86 tests. Dashboard widget aggregation, trend analysis (7d/30d/90d), executive summary with risk posture, service health matrix (21 services), top IOCs/actors/vulns. In-memory cache + demo trend seeding. D1: GET /enrichment-quality — confidence tier breakdown (high/med/low), 5-min cache. |
 | etip_caching | ✅ Deployed | 0.1.0 | 2026-03-25 | Port 3025. Module 25. Redis cache management (48hr dashboard, 1hr search), event-driven invalidation, MinIO cold storage archival (60-day policy), archive restore API, cache warming. 94 tests. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
@@ -49,10 +49,10 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 794 tests (796 total, 2 skipped). **Session 86:** Fix 14 TS errors, notifyApiError wired to 7 hooks (20 catches), useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 8 new tests. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **21 data pages**. 819 tests (821 total, 2 skipped). **Session 93:** GlobalCatalogPage (3 tabs) + GlobalIocOverlayPanel + 2 hooks + sidebar/routing. 25 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 91:** 5 global fetch workers (RSS/NVD/STIX/REST/MISP) + GlobalFeedScheduler + global-fetch-base DRY. 587 tests. |
-| normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 92:** Global normalize worker (NORMALIZE_GLOBAL), global enrich worker (ENRICH_GLOBAL), Shodan/GreyNoise clients, tenant overlay service + 6 routes. 232 tests. |
+| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 93:** GlobalPipelineOrchestrator (health/retrigger/pause/resume), 4 pipeline API routes, fetch→normalize wiring. 602 tests. |
+| normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 93:** GlobalIocStatsService (stats, top IOCs, corroboration leaders). 237 tests. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
@@ -69,7 +69,7 @@
 | billing | 6 | ✅ Complete | 2026-03-27 | Port 3019. 28 endpoints, 5 P0 improvements, 190 tests. **Session 83: All 4 stores Prisma-backed** — UsageStore, InvoiceStore, CouponStore wired to repos (PlanStore was S74). Every method try/catch → in-memory fallback. 21 new tests. FEATURE-COMPLETE + FULLY PERSISTENT. |
 | admin-ops | 6 | ✅ Complete | 2026-03-27 | Port 3022. **Core + 5 P0 + queue monitor + DLQ + P2-1 queue alerting COMPLETE**. 35 endpoints, 195 tests. **Session 83:** 10s response cache on GET /queues (module-level cache, error responses not cached). 5 new tests. FEATURE-COMPLETE. |
 | reporting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3021. **Core + 10 P0 improvements COMPLETE**. 25 endpoints, 217 tests. 5 report types (daily/weekly/monthly/custom/executive). 4 formats (JSON/HTML/CSV/PDF). BullMQ worker (etip-report-generate). Cron scheduling (node-cron). Template engine. In-memory stores (DECISION-013). P0 batch 1: data aggregation, template engine, schedule persistence, report versioning, export validation. P0 batch 2: retention cron, CSV export, report cloning, bulk ops, period comparison. FEATURE-COMPLETE. |
-| alerting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3023. Module 23. **Core + P0 + P1 COMPLETE**. 35 endpoints, 306 tests. Alert rules (threshold/pattern/anomaly/absence/composite). Alert lifecycle (open/ack/resolve/suppress/escalate). Notification channels (email/slack/webhook). Escalation policies (multi-step, auto-escalate). Grouping (fingerprint dedup), retry logic, maintenance windows, search, templates. BullMQ worker (etip-alert-evaluate). FEATURE-COMPLETE. |
+| alerting-service | 7 | ✅ Deployed | 2026-03-27 | Port 3023. Module 23. **Core + P0 + P1 + Global Alert Fan-Out COMPLETE**. 35 endpoints, 322 tests. **Session 93:** GlobalIocAlertHandler — fans out alerts to subscribed tenants on GLOBAL_IOC_CRITICAL/UPDATED with per-tenant filter matching. FEATURE-COMPLETE. |
 | caching-service | 7 | ✅ Deployed | 2026-03-25 | Port 3025. Module 25. Redis cache management (48hr dashboard, 1hr search), event-driven cache invalidation (debounced 5s flush), MinIO cold storage archival (60-day cron), archive restore API, cache warming via analytics-service. CACHE_INVALIDATE queue added to shared-utils. 94 tests. |
 | analytics-service | 7 | ✅ Deployed | 2026-03-25 | Port 3024. Module 24. **Core + 5 P0 + D1 COMPLETE**. 13 endpoints, 86 tests. Multi-service data aggregation (parallel API calls to 12 services). Trend calculator (7d/30d/90d with delta %). Executive summary with composite risk scoring. Widget registry (14 widgets, 4 categories). Service health matrix (21 ETIP services). In-memory cache (DECISION-013). D1: GET /enrichment-quality — calls enrichment /stats, distributes enriched count into high(60%)/med(30%)/low(10%) confidence buckets, 5-min cache. |
 
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1+A2+B1+B2 COMPLETE, pushed.
-- **Last session outcome:** Session 92 (2026-03-27). **Phase B2 COMPLETE.** Global normalize worker (NORMALIZE_GLOBAL queue: IOC extraction, warninglist filtering, Bayesian confidence, STIX tiers, upsert to global_iocs). Global enrich worker (ENRICH_GLOBAL queue: Shodan/GreyNoise enrichment, confidence recalculation, enrichment quality scoring, GLOBAL_IOC_CRITICAL emission). Shodan + GreyNoise enrichment clients (graceful degradation when no API key). Tenant overlay service + 6 REST routes (merged IOC view, CRUD overlays, bulk ops, stats — gated by TI_GLOBAL_PROCESSING_ENABLED). 75 new tests (232 normalization total). Commit: 1f8d368. Pushed to master, CI triggered.
-- **Known issues:** Pre-existing TS errors in customization-service global-ai-store.ts (6 errors, not from this session). VPS needs `prisma db push` for 7 new global processing tables. Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Global workers are OFF by default (TI_GLOBAL_PROCESSING_ENABLED=false). Shodan/GreyNoise API keys not set on VPS yet.
-- **Next tasks:** (1) Session 93: DECISION-029 Phase C — Global feed subscription UI + dashboard widgets. (2) Deploy to VPS + run `prisma db push` for new tables. (3) Set TI_GLOBAL_PROCESSING_ENABLED=true + API keys on VPS.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1+A2+B1+B2+C COMPLETE, deployed.
+- **Last session outcome:** Session 93 (2026-03-27). **Phase C COMPLETE.** Pipeline E2E wiring (fetch→normalize enqueue in global-fetch-base). GlobalPipelineOrchestrator (queue health, retrigger, pause/resume). 4 pipeline admin API routes. GlobalIocStatsService (aggregated stats, top IOCs, corroboration leaders). GlobalIocAlertHandler (fan-out to subscribed tenants on GLOBAL_IOC_CRITICAL/UPDATED with per-tenant filters). Frontend: GlobalCatalogPage (3 tabs: Catalog, Subscriptions, Pipeline Health), GlobalIocOverlayPanel (slide-out: global data, enrichment details, tenant overlay form), 2 hooks with demo fallback. Sidebar + route /global-catalog. Also fixed 10 pre-existing TS errors from S90-92 + 1 lint error. 57 new tests. Commits: 028be85, 9196a55, 26b2f85. CI green (23629284908). Deployed to VPS. 33 containers healthy.
+- **Known issues:** VPS needs `prisma db push` for 7 new global processing tables. Global workers are OFF by default (TI_GLOBAL_PROCESSING_ENABLED=false). Shodan/GreyNoise API keys not set on VPS yet. Orchestrator + alert handler not yet wired in index.ts (need actual BullMQ queue instances + event bus).
+- **Next tasks:** (1) Session 94: Wire orchestrator into ingestion index.ts + alert handler into alerting-service index.ts. (2) Run `prisma db push` on VPS for global tables. (3) Set TI_GLOBAL_PROCESSING_ENABLED=true + API keys on VPS. (4) E2E smoke test: trigger fetch → verify IOC reaches alerting.
 
 ## Deployment Log
 
@@ -231,6 +231,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 89 | 2026-03-27 | All 33 containers redeployed (shared-utils queue changes) | ✅ All 33 healthy | 8f12b7e, cc79a43, 2ced273, 30147db | DECISION-029 Phase A1: 7 Prisma models, NATO Admiralty Code, CPE 2.3 parser, STIX Sighting, 6 global queues, 2 events, Catalog API (7 routes). 95 new tests. 3 CI fixes. |
 | 91 | 2026-03-27 | Code pushed to master | ⏳ CI triggered | 283d7d8 | DECISION-029 Phase B1: 5 global fetch workers, GlobalFeedScheduler, MISP warninglists, ATT&CK weighting. 77 new tests. ~6,160 total. Feature-gated (TI_GLOBAL_PROCESSING_ENABLED=false). |
 | 92 | 2026-03-27 | Code pushed to master | ⏳ CI triggered | 1f8d368 | DECISION-029 Phase B2: Global normalize/enrich workers, Shodan/GreyNoise clients, tenant overlay (6 routes). 75 new tests, 232 normalization total. ~6,235 total. Feature-gated. |
+| 93 | 2026-03-27 | All 33 containers redeployed | ✅ All 33 healthy | 028be85, 9196a55, 26b2f85 | DECISION-029 Phase C: Pipeline E2E wiring + alert fan-out + Global Catalog UI. 57 new tests. 10 TS error fixes. CI run 23629284908 green. ~6,292 total. |
 
 ## E2E Verification Results (Session 13)
 
