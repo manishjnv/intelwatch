@@ -300,6 +300,8 @@ services:
       TI_AI_EXTRACTION_MODEL: ${TI_AI_EXTRACTION_MODEL:-claude-sonnet-4-20250514}
       # External feed API keys
       TI_OTX_API_KEY: ${TI_OTX_API_KEY:-}
+      # Global feed processing (DECISION-029)
+      TI_GLOBAL_PROCESSING_ENABLED: ${TI_GLOBAL_PROCESSING_ENABLED:-false}
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -344,6 +346,10 @@ services:
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
       TI_NORMALIZATION_BATCH_SIZE: ${TI_NORMALIZATION_BATCH_SIZE:-500}
       TI_NORMALIZATION_CONCURRENCY: ${TI_NORMALIZATION_CONCURRENCY:-3}
+      # Global feed processing (DECISION-029)
+      TI_GLOBAL_PROCESSING_ENABLED: ${TI_GLOBAL_PROCESSING_ENABLED:-false}
+      TI_SHODAN_API_KEY: ${TI_SHODAN_API_KEY:-}
+      TI_GREYNOISE_API_KEY: ${TI_GREYNOISE_API_KEY:-}
     ports:
       - "3005:3005"
     depends_on:
@@ -1125,6 +1131,9 @@ services:
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
+      # Global feed processing (DECISION-029)
+      TI_GLOBAL_PROCESSING_ENABLED: ${TI_GLOBAL_PROCESSING_ENABLED:-false}
+      TI_DEFAULT_TENANT_ID: ${TI_DEFAULT_TENANT_ID:-default-tenant}
     ports:
       - "3023:3023"
     depends_on:
