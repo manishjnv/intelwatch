@@ -11,7 +11,7 @@ import {
   useRequestTakedown,
   type DRPAlert,
 } from '@/hooks/use-phase4-data'
-import { toast, ToastContainer } from '@/components/ui/Toast'
+import { toast } from '@/components/ui/Toast'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import {
   X, Plus, Shield, Globe, User, Smartphone,

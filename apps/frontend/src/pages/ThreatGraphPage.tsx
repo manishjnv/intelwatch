@@ -15,7 +15,7 @@ import {
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   GitBranch, Search, ZoomIn, ZoomOut, Maximize2, Minimize2,
-  Plus, Route, Download, Pin,
+  Plus, Route, Download,
 } from 'lucide-react'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import {

@@ -7,7 +7,6 @@
 import { useState } from 'react'
 import {
   useCorroborationDetail, useSeverityVotes, useFpSummary, useFpActions,
-  type CorroborationDetail, type SeverityVoteDetail, type FpSummaryDetail,
 } from '@/hooks/use-global-iocs'
 import { cn } from '@/lib/utils'
 import { Eye, Vote, Flag } from 'lucide-react'

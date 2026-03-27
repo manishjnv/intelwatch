@@ -5,7 +5,7 @@
  * - Demo fallback includes source field
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@/test/test-utils'
+import { render, screen } from '@/test/test-utils'
 
 const mockUseIOCs = vi.fn()
 const mockUseIOCStats = vi.fn()

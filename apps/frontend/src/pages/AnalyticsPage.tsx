@@ -4,11 +4,11 @@
  * KPI cards, trend charts, intelligence breakdown.
  * Date range picker, CSV export, auto-refresh, section-level error boundaries.
  */
-import { useState, useCallback, useMemo, type ErrorInfo, type ReactNode } from 'react'
+import { useState, useCallback, type ErrorInfo, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { useAnalyticsDashboard, type DateRangePreset } from '@/hooks/use-analytics-dashboard'
+import { useAnalyticsDashboard } from '@/hooks/use-analytics-dashboard'
 import {
-  useAnalyticsWidgets, useExecutiveSummary, useServiceHealth,
+  useExecutiveSummary, useServiceHealth,
   type ServiceHealthEntry,
 } from '@/hooks/use-analytics-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
@@ -127,7 +127,6 @@ type RefreshInterval = 'off' | '5m' | '15m'
 
 export function AnalyticsPage() {
   const dashboard = useAnalyticsDashboard('7d')
-  const { data: legacyDashboard } = useAnalyticsWidgets()
   const { data: exec } = useExecutiveSummary()
   const { data: services } = useServiceHealth()
   const [autoRefresh, setAutoRefresh] = useState<RefreshInterval>('off')

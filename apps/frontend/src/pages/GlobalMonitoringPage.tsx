@@ -5,15 +5,15 @@
  * DECISION-029 Phase E.
  */
 import { useState } from 'react'
-import { useGlobalMonitoring, type CorroborationLeader } from '@/hooks/use-global-monitoring'
+import { useGlobalMonitoring } from '@/hooks/use-global-monitoring'
 import type { QueueHealthEntry } from '@/hooks/use-global-catalog'
 import { AdmiraltyBadge } from '@/components/AdmiraltyBadge'
 import { StixConfidenceBadge } from '@/components/StixConfidenceBadge'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import {
-  Activity, AlertTriangle, ArrowRight, Globe, Pause, Play,
-  RefreshCw, RotateCcw, Shield, Zap,
+  Activity, ArrowRight, Globe, Pause, Play,
+  RefreshCw, RotateCcw, Shield,
 } from 'lucide-react'
 
 const REFRESH_OPTIONS = [
@@ -70,7 +70,7 @@ function PipelineFlow({ queues }: { queues: QueueHealthEntry[] }) {
         <Globe className="w-4 h-4 mx-auto text-teal-400 mb-1" />
         <span className="text-[10px] font-medium text-text-primary">Feeds</span>
       </div>
-      {stages.map((stage, i) => {
+      {stages.map((stage, _i) => {
         const total = stage.queues.reduce((s, q) => s + q.waiting + q.active, 0)
         const failed = stage.queues.reduce((s, q) => s + q.failed, 0)
         const color = failed > 10 ? 'border-sev-critical' : total > 20 ? 'border-amber-400' : 'border-sev-low'
@@ -146,11 +146,9 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 export function GlobalMonitoringPage() {
   const [refreshInterval, setRefreshInterval] = useState(30_000)
   const [showPauseModal, setShowPauseModal] = useState(false)
-  const [selectedIocId, setSelectedIocId] = useState<string | null>(null)
-
   const user = useAuthStore(s => s.user)
   const monitoring = useGlobalMonitoring(refreshInterval)
-  const { pipelineHealth, feedHealth, iocStats, corroborationLeaders, subscriptionStats, isLoading, isDemo } = monitoring
+  const { pipelineHealth, feedHealth, iocStats, corroborationLeaders, subscriptionStats, isDemo } = monitoring
   const status = getOverallStatus(monitoring)
 
   if (user?.role !== 'super_admin' && user?.role !== 'admin') {

@@ -4,7 +4,7 @@
  * alert activity, feed contribution, AI cost trend.
  * Uses SVG-based charts (no external chart library).
  */
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
 import type { AnalyticsDashboardData, TrendPoint, DateRangePreset } from '@/hooks/use-analytics-dashboard'
@@ -13,9 +13,6 @@ import type { AnalyticsDashboardData, TrendPoint, DateRangePreset } from '@/hook
 
 const SEV_COLORS: Record<string, string> = {
   critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#3b82f6', info: '#6b7280',
-}
-const IOC_COLORS: Record<string, string> = {
-  ip: '#3b82f6', domain: '#8b5cf6', hash: '#06b6d4', url: '#10b981', cve: '#f97316', email: '#ec4899',
 }
 const FEED_COLORS: Record<string, string> = {
   RSS: '#3b82f6', NVD: '#10b981', STIX: '#8b5cf6', REST: '#f97316', MISP: '#ef4444',
