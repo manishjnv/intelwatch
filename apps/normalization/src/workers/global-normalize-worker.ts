@@ -15,7 +15,11 @@ import {
   calculateBayesianConfidence,
   stixConfidenceTier,
   computeFuzzyHash,
+  calculateCorroborationScore,
+  calculateVelocityScore,
+  type CorroborationSource,
 } from '@etip/shared-normalization';
+import { SeverityVotingService } from '../services/severity-voting.js';
 import type { PrismaClient } from '@prisma/client';
 import type pino from 'pino';
 
@@ -66,21 +70,39 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
   const matcher = deps.warninglistMatcher ?? new WarninglistMatcher();
   if (!deps.warninglistMatcher) matcher.loadDefaults();
 
-  // Cache feed reliability lookups (5-min TTL)
-  const reliabilityCache = new Map<string, { value: number; expiresAt: number }>();
+  // Cache feed catalog lookups (5-min TTL)
+  interface FeedCatalogEntry {
+    feedReliability: number;
+    admiraltySource: string;
+    admiraltyCred: number;
+    feedName: string;
+  }
+  const feedCatalogCache = new Map<string, { value: FeedCatalogEntry; expiresAt: number }>();
 
-  async function getFeedReliability(globalFeedId: string): Promise<number> {
-    const cached = reliabilityCache.get(globalFeedId);
+  async function getFeedCatalog(globalFeedId: string): Promise<FeedCatalogEntry> {
+    const cached = feedCatalogCache.get(globalFeedId);
     if (cached && cached.expiresAt > Date.now()) return cached.value;
 
     const feed = await prisma.globalFeedCatalog.findUnique({
       where: { id: globalFeedId },
-      select: { feedReliability: true },
+      select: { feedReliability: true, admiraltySource: true, admiraltyCred: true, name: true },
     });
-    const value = feed?.feedReliability ?? 50;
-    reliabilityCache.set(globalFeedId, { value, expiresAt: Date.now() + 5 * 60_000 });
+    const value: FeedCatalogEntry = {
+      feedReliability: feed?.feedReliability ?? 50,
+      admiraltySource: (feed as any)?.admiraltySource ?? 'D',
+      admiraltyCred: (feed as any)?.admiraltyCred ?? 4,
+      feedName: (feed as any)?.name ?? globalFeedId,
+    };
+    feedCatalogCache.set(globalFeedId, { value, expiresAt: Date.now() + 5 * 60_000 });
     return value;
   }
+
+  async function getFeedReliability(globalFeedId: string): Promise<number> {
+    const catalog = await getFeedCatalog(globalFeedId);
+    return catalog.feedReliability;
+  }
+
+  const votingService = new SeverityVotingService(prisma);
 
   async function processJob(job: Job<GlobalNormalizeJobData>): Promise<void> {
     const { globalArticleId, globalFeedId } = job.data;
@@ -151,12 +173,67 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
         const sources = (existing.sightingSources as string[]) ?? [];
         const newSources = sources.includes(globalFeedId) ? sources : [...sources, globalFeedId];
 
+        // 4a-4b. Build corroboration sources and score
+        const corrobSources: CorroborationSource[] = [];
+        for (const srcId of newSources) {
+          const catalog = await getFeedCatalog(srcId);
+          corrobSources.push({
+            feedId: srcId,
+            feedName: catalog.feedName,
+            admiraltySource: catalog.admiraltySource,
+            admiraltyCred: catalog.admiraltyCred,
+            feedReliability: catalog.feedReliability,
+            firstSeenByFeed: existing.firstSeen ?? new Date(),
+            lastSeenByFeed: new Date(),
+          });
+        }
+        const corrobResult = calculateCorroborationScore(corrobSources);
+
+        // 4d. Cast severity vote with this feed's Admiralty Code
+        const feedCatalog = await getFeedCatalog(globalFeedId);
+        const iocSeverity = (existing.severity as string) ?? 'medium';
+        try {
+          await votingService.castVote(existing.id, {
+            feedId: globalFeedId,
+            severity: iocSeverity,
+            admiraltySource: feedCatalog.admiraltySource,
+            admiraltyCred: feedCatalog.admiraltyCred,
+          });
+        } catch { /* vote failure non-fatal */ }
+
+        // 5a. Feed corroboration into Bayesian confidence
+        const updatedConfidence = calculateBayesianConfidence({
+          feedReliability: feedCatalog.feedReliability,
+          corroboration: corrobResult.score,
+          aiScore: 50,
+          daysSinceLastSeen: 0,
+          iocType: existing.iocType,
+        });
+
+        // 5b. Velocity score
+        let velocityData: Record<string, unknown> = {};
+        try {
+          const timestamps = [new Date(), ...(existing.lastSeen ? [existing.lastSeen] : [])];
+          const velocityResult = calculateVelocityScore({
+            timestamps: timestamps as Date[],
+            feedSources: newSources,
+            windowHours: 24,
+          });
+          velocityData = {
+            velocityScore: velocityResult.velocityScore,
+            velocityUpdatedAt: new Date(),
+          };
+        } catch { /* velocity failure non-fatal */ }
+
         await prisma.globalIoc.update({
           where: { id: existing.id },
           data: {
             lastSeen: new Date(),
-            crossFeedCorroboration: newSources.length,
+            crossFeedCorroboration: corrobResult.score,
             sightingSources: newSources,
+            confidence: updatedConfidence.score,
+            stixConfidenceTier: stixConfidenceTier(updatedConfidence.score),
+            ...velocityData,
           },
         });
         updatedCount++;

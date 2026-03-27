@@ -98,6 +98,15 @@ export {
   type VelocityResult,
 } from './velocity-score.js';
 
+// ── Cross-Feed Corroboration ────────────────────────────────────
+export {
+  calculateCorroborationScore,
+  calculateIndependenceScore,
+  getConsensusFromSources,
+  type CorroborationSource,
+  type CorroborationResult,
+} from './corroboration.js';
+
 // ── CWE Chain Mapper ─────────────────────────────────────────────
 export {
   getCweEntry,

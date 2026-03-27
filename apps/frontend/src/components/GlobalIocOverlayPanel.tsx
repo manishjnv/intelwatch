@@ -6,6 +6,7 @@
  */
 import { useState } from 'react'
 import { useGlobalIocDetail, useIocOverlay, type GlobalIocRecord, type OverlayInput } from '@/hooks/use-global-iocs'
+import { CorroborationSection, SeverityVotesSection, CommunityFpSection } from './IocIntelligenceSections'
 import { cn } from '@/lib/utils'
 import { X, Shield, Globe, AlertTriangle, Save, RotateCcw } from 'lucide-react'
 
@@ -221,6 +222,11 @@ export function GlobalIocOverlayPanel({ iocId, onClose }: GlobalIocOverlayPanelP
             <p className="text-xs text-text-muted italic">No enrichment data available yet</p>
           )}
         </section>
+
+        {/* Intelligence Sections (Phase G) */}
+        <CorroborationSection iocId={iocId} />
+        <SeverityVotesSection iocId={iocId} />
+        <CommunityFpSection iocId={iocId} />
 
         {/* Section 3: Tenant Overlay (editable) */}
         <section>

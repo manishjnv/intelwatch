@@ -136,6 +136,99 @@ export function useGlobalIocDetail(iocId: string | null) {
   })
 }
 
+// ─── Corroboration / Voting / FP Hooks ─────────────────────
+
+export interface CorroborationDetail {
+  score: number
+  sourceCount: number
+  weightedSourceCount: number
+  independenceScore: number
+  consensusSeverity: string
+  tier: 'uncorroborated' | 'low' | 'medium' | 'high' | 'confirmed'
+  narrative: string
+  sources: Array<{ feedId: string; feedName: string; admiraltySource: string; firstSeenByFeed: string; lastSeenByFeed: string }>
+}
+
+export interface SeverityVoteDetail {
+  currentSeverity: string
+  totalVotes: number
+  voteBreakdown: Record<string, { weight: number; voterCount: number }>
+  confidence: number
+  margin: number
+}
+
+export interface FpSummaryDetail {
+  fpCount: number
+  fpRate: number
+  totalTenants: number
+  reports: Array<{ tenantId: string; reason: string; reportedAt: string }>
+  autoAction: 'downgraded' | 'marked_fp' | null
+}
+
+export function useCorroborationDetail(iocId: string | null) {
+  return useQuery({
+    queryKey: ['global-ioc-corroboration', iocId],
+    queryFn: () =>
+      api<{ data: CorroborationDetail }>(`/normalization/global-iocs/${iocId}/corroboration`)
+        .then(r => r?.data ?? null)
+        .catch(() => null),
+    enabled: !!iocId,
+    staleTime: 60_000,
+  })
+}
+
+export function useSeverityVotes(iocId: string | null) {
+  return useQuery({
+    queryKey: ['global-ioc-severity-votes', iocId],
+    queryFn: () =>
+      api<{ data: SeverityVoteDetail }>(`/normalization/global-iocs/${iocId}/severity-votes`)
+        .then(r => r?.data ?? null)
+        .catch(() => null),
+    enabled: !!iocId,
+    staleTime: 60_000,
+  })
+}
+
+export function useFpSummary(iocId: string | null) {
+  return useQuery({
+    queryKey: ['global-ioc-fp-summary', iocId],
+    queryFn: () =>
+      api<{ data: FpSummaryDetail }>(`/normalization/global-iocs/${iocId}/fp-summary`)
+        .then(r => r?.data ?? null)
+        .catch(() => null),
+    enabled: !!iocId,
+    staleTime: 60_000,
+  })
+}
+
+export function useFpActions(iocId: string | null) {
+  const qc = useQueryClient()
+
+  const reportFp = useMutation({
+    mutationFn: (data: { reason: string; notes?: string }) =>
+      api(`/normalization/global-iocs/${iocId}/report-fp`, { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['global-ioc-fp-summary', iocId] })
+      void qc.invalidateQueries({ queryKey: ['global-ioc-detail', iocId] })
+    },
+  })
+
+  const withdrawFp = useMutation({
+    mutationFn: () => api(`/normalization/global-iocs/${iocId}/report-fp`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['global-ioc-fp-summary', iocId] })
+      void qc.invalidateQueries({ queryKey: ['global-ioc-detail', iocId] })
+    },
+  })
+
+  return {
+    reportFp: reportFp.mutate,
+    withdrawFp: withdrawFp.mutate,
+    isReporting: reportFp.isPending,
+    isWithdrawing: withdrawFp.isPending,
+  }
+}
+
 export function useIocOverlay(iocId: string | null) {
   const qc = useQueryClient()
 

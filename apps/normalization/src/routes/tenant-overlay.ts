@@ -9,6 +9,9 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { AppError } from '@etip/shared-utils';
 import { TenantOverlayService } from '../services/tenant-overlay-service.js';
+import { SeverityVotingService } from '../services/severity-voting.js';
+import { CommunityFpService } from '../services/community-fp.js';
+import { calculateCorroborationScore, type CorroborationSource } from '@etip/shared-normalization';
 import { authenticate, getUser, rbac } from '../plugins/auth.js';
 
 const ListQuerySchema = z.object({
@@ -45,7 +48,16 @@ function requireGlobalEnabled(): void {
   }
 }
 
-export function tenantOverlayRoutes(service: TenantOverlayService) {
+const FpReportBodySchema = z.object({
+  reason: z.enum(['benign_service', 'internal_infra', 'test_data', 'other']),
+  notes: z.string().optional(),
+});
+
+const FpCandidatesQuerySchema = z.object({
+  limit: z.coerce.number().min(1).max(100).default(20),
+});
+
+export function tenantOverlayRoutes(service: TenantOverlayService, prisma?: any) {
   return async function (app: FastifyInstance): Promise<void> {
 
     /** GET /global-iocs — Tenant's merged IOC view */
@@ -113,6 +125,102 @@ export function tenantOverlayRoutes(service: TenantOverlayService) {
         overriddenBy: user.sub,
       });
       return reply.send({ data: { count } });
+    });
+
+    // ── Community FP + Corroboration Routes (Phase G) ──────────
+
+    const fpService = prisma ? new CommunityFpService(prisma) : null;
+    const votingService = prisma ? new SeverityVotingService(prisma) : null;
+
+    /** POST /global-iocs/:iocId/report-fp — Report false positive */
+    app.post('/:iocId/report-fp', {
+      preHandler: [authenticate, rbac('ioc:write')],
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      requireGlobalEnabled();
+      if (!fpService) throw new AppError(503, 'FP service unavailable', 'SERVICE_UNAVAILABLE');
+      const user = getUser(req);
+      const { iocId } = IocIdParamsSchema.parse(req.params);
+      const body = FpReportBodySchema.parse(req.body);
+      try {
+        const result = await fpService.reportFalsePositive(iocId, {
+          tenantId: user.tenantId,
+          reason: body.reason,
+          notes: body.notes,
+          reportedBy: user.sub,
+        });
+        return reply.status(201).send({ data: result });
+      } catch (err: any) {
+        if (err.statusCode === 409) throw new AppError(409, err.message, 'DUPLICATE_FP_REPORT');
+        throw err;
+      }
+    });
+
+    /** DELETE /global-iocs/:iocId/report-fp — Withdraw FP report */
+    app.delete('/:iocId/report-fp', {
+      preHandler: [authenticate, rbac('ioc:write')],
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      requireGlobalEnabled();
+      if (!fpService) throw new AppError(503, 'FP service unavailable', 'SERVICE_UNAVAILABLE');
+      const user = getUser(req);
+      const { iocId } = IocIdParamsSchema.parse(req.params);
+      await fpService.withdrawFpReport(iocId, user.tenantId);
+      return reply.status(204).send();
+    });
+
+    /** GET /global-iocs/:iocId/fp-summary — FP summary */
+    app.get('/:iocId/fp-summary', {
+      preHandler: [authenticate],
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      requireGlobalEnabled();
+      if (!fpService) throw new AppError(503, 'FP service unavailable', 'SERVICE_UNAVAILABLE');
+      const { iocId } = IocIdParamsSchema.parse(req.params);
+      const data = await fpService.getFpSummary(iocId);
+      return reply.send({ data });
+    });
+
+    /** GET /global-iocs/:iocId/corroboration — Corroboration detail */
+    app.get('/:iocId/corroboration', {
+      preHandler: [authenticate],
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      requireGlobalEnabled();
+      const { iocId } = IocIdParamsSchema.parse(req.params);
+      const ioc = await service.getIocDetail(getUser(req).tenantId, iocId);
+      if (!ioc) throw new AppError(404, `IOC not found: ${iocId}`, 'NOT_FOUND');
+
+      const sightingSources: string[] = (ioc as any).sightingSources ?? [];
+      const sources: CorroborationSource[] = sightingSources.map((feedId: string) => ({
+        feedId,
+        feedName: feedId,
+        admiraltySource: 'C',
+        admiraltyCred: 3,
+        feedReliability: 70,
+        firstSeenByFeed: new Date((ioc as any).firstSeen),
+        lastSeenByFeed: new Date((ioc as any).lastSeen),
+      }));
+      const result = calculateCorroborationScore(sources);
+      return reply.send({ data: { ...result, sources } });
+    });
+
+    /** GET /global-iocs/:iocId/severity-votes — Vote breakdown */
+    app.get('/:iocId/severity-votes', {
+      preHandler: [authenticate],
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      requireGlobalEnabled();
+      if (!votingService) throw new AppError(503, 'Voting service unavailable', 'SERVICE_UNAVAILABLE');
+      const { iocId } = IocIdParamsSchema.parse(req.params);
+      const data = await votingService.getVoteSummary(iocId);
+      return reply.send({ data });
+    });
+
+    /** GET /global-iocs/fp-candidates — Admin: top FP candidates */
+    app.get('/fp-candidates', {
+      preHandler: [authenticate, rbac('admin:read')],
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      requireGlobalEnabled();
+      if (!fpService) throw new AppError(503, 'FP service unavailable', 'SERVICE_UNAVAILABLE');
+      const { limit } = FpCandidatesQuerySchema.parse(req.query);
+      const data = await fpService.getTopFpCandidates(limit);
+      return reply.send({ data });
     });
   };
 }
