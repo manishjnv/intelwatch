@@ -34,7 +34,7 @@ function displayValue(val: number): string {
 export function PlanLimitsPage() {
   const user = useAuthStore(s => s.user)
   const isAdmin = user?.role === 'super_admin'
-  const { plans, isLoading, isDemo, updatePlan, isUpdating, resetPlan, defaults } = usePlanLimits()
+  const { plans, isLoading, isDemo, updatePlan, isUpdating, resetPlan } = usePlanLimits()
 
   const [edits, setEdits] = useState<Record<string, Partial<PlanTierConfig>>>({})
 
