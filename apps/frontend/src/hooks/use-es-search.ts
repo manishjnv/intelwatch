@@ -324,14 +324,35 @@ export function useEsSearch() {
     else exportJson(data)
   }, [results, isDemo])
 
+  // Parse search syntax: type:ip, severity:critical, tag:malware, "exact phrase"
+  const parsedQuery = useMemo(() => {
+    let q = debouncedQuery.trim()
+    const syntaxTypes: string[] = []
+    const syntaxSeverities: string[] = []
+    const syntaxTags: string[] = []
+
+    // Extract type:xxx
+    q = q.replace(/\btype:(\w+)/gi, (_, val) => { syntaxTypes.push(val.toLowerCase()); return '' })
+    // Extract severity:xxx
+    q = q.replace(/\bseverity:(\w+)/gi, (_, val) => { syntaxSeverities.push(val.toLowerCase()); return '' })
+    // Extract tag:xxx
+    q = q.replace(/\btag:([\w-]+)/gi, (_, val) => { syntaxTags.push(val.toLowerCase()); return '' })
+    // Extract "exact phrase"
+    const exactPhrases: string[] = []
+    q = q.replace(/"([^"]+)"/g, (_, phrase) => { exactPhrases.push(phrase.toLowerCase()); return '' })
+
+    return { text: q.trim(), syntaxTypes, syntaxSeverities, syntaxTags, exactPhrases }
+  }, [debouncedQuery])
+
   // Apply client-side filtering to demo data
   const demoFiltered = useMemo(() => {
     if (!isDemo) return DEMO_ES_RESULTS
     let data = [...DEMO_ES_RESULTS]
+    const { text, syntaxTypes, syntaxSeverities, syntaxTags, exactPhrases } = parsedQuery
 
-    // Text search
-    const q = debouncedQuery.trim().toLowerCase()
-    if (q) {
+    // Text search (remaining text after syntax extraction)
+    if (text) {
+      const q = text.toLowerCase()
       data = data.filter(r =>
         r.value.toLowerCase().includes(q) ||
         r.tags.some(t => t.toLowerCase().includes(q)) ||
@@ -339,28 +360,35 @@ export function useEsSearch() {
       )
     }
 
-    // Type filter
-    if (filters.type?.length) {
-      const mapped = filters.type.map(t => t === 'hash_sha256' ? 'hash_sha256' : t === 'hash_md5' ? 'hash_md5' : t)
-      data = data.filter(r => mapped.includes(r.iocType))
+    // Exact phrase matching
+    for (const phrase of exactPhrases) {
+      data = data.filter(r =>
+        r.value.toLowerCase().includes(phrase) ||
+        r.tags.some(t => t.toLowerCase().includes(phrase))
+      )
     }
 
-    // Severity filter
-    if (filters.severity?.length) {
-      data = data.filter(r => filters.severity!.includes(r.severity))
+    // Search syntax filters (merged with sidebar filters)
+    const allTypes = [...(filters.type ?? []), ...syntaxTypes]
+    const allSeverities = [...(filters.severity ?? []), ...syntaxSeverities]
+
+    if (allTypes.length) {
+      data = data.filter(r => allTypes.includes(r.iocType))
+    }
+    if (allSeverities.length) {
+      data = data.filter(r => allSeverities.includes(r.severity))
+    }
+    if (syntaxTags.length) {
+      data = data.filter(r => syntaxTags.some(tag => r.tags.some(t => t.toLowerCase().includes(tag))))
     }
 
-    // TLP filter
+    // Sidebar-only filters (TLP, enriched, confidence)
     if (filters.tlp?.length) {
       data = data.filter(r => filters.tlp!.includes(r.tlp))
     }
-
-    // Enriched filter
     if (filters.enriched != null) {
       data = data.filter(r => r.enriched === filters.enriched)
     }
-
-    // Confidence filter
     if (filters.confidenceMin != null) {
       data = data.filter(r => r.confidence >= filters.confidenceMin!)
     }
@@ -375,7 +403,7 @@ export function useEsSearch() {
     else if (sortBy === 'firstSeen_asc') data.sort((a, b) => new Date(a.firstSeen).getTime() - new Date(b.firstSeen).getTime())
 
     return data
-  }, [isDemo, debouncedQuery, filters, sortBy])
+  }, [isDemo, parsedQuery, filters, sortBy])
 
   // Recompute facets from filtered demo data
   const demoFacets: EsSearchFacets = useMemo(() => {
