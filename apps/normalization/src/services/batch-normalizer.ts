@@ -83,7 +83,7 @@ export class BatchNormalizer {
     const allIocs: ExtractedIoc[] = [];
     for (const article of articles) {
       const text = [article.title, article.content ?? ''].join(' ');
-      const tokens = text.split(/[\s,;|<>"'()\[\]{}]+/).filter(Boolean);
+      const tokens = text.split(/[\s,;|<>"'()[\]{}]+/).filter(Boolean);
       for (const token of tokens) {
         const cleaned = token.trim();
         if (cleaned.length < 3 || cleaned.length > 500) continue;
