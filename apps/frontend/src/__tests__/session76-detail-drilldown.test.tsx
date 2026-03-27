@@ -63,6 +63,11 @@ vi.mock('@/components/viz/SplitPane', () => ({
   ),
 }))
 
+// Mock IocDetailPanel to avoid hook dependency chain from SearchPage
+vi.mock('@/pages/IocDetailPanel', () => ({
+  IocDetailPanel: ({ record }: any) => <div data-testid="ioc-detail-panel">{record?.normalizedValue}</div>,
+}))
+
 vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
   PageStatsBar: ({ children }: any) => <div data-testid="page-stats-bar">{children}</div>,
   CompactStat: ({ label, value }: any) => <span data-testid={`stat-${label}`}>{value}</span>,
