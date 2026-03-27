@@ -5,6 +5,7 @@
  * saved searches, export, keyboard shortcuts, and demo fallback.
  */
 import { useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useEsSearch } from '@/hooks/use-es-search'
 import { SearchBar } from '@/components/search/SearchBar'
 import { FacetedSidebar, MobileFilterTrigger } from '@/components/search/FacetedSidebar'
@@ -35,10 +36,17 @@ export function SearchPage() {
     clearAll, exportResults,
   } = useEsSearch()
 
+  const navigate = useNavigate()
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedIocId, setSelectedIocId] = useState<string | null>(null)
+
+  const handleRowClick = useCallback((id: string) => {
+    // Find the clicked result to get its value for the IOC page
+    const result = results.find(r => r.id === id)
+    if (result) {
+      navigate(`/iocs?search=${encodeURIComponent(result.value)}`)
+    }
+  }, [results, navigate])
 
   const activeFilterCount = (filters.type?.length ?? 0)
     + (filters.severity?.length ?? 0)
@@ -185,7 +193,7 @@ export function SearchPage() {
               sortBy={sortBy}
               onSort={setSortBy}
               onPageChange={setPage}
-              onRowClick={setSelectedIocId}
+              onRowClick={handleRowClick}
               searchTimeMs={searchTimeMs}
               isLoading={isLoading}
             />
