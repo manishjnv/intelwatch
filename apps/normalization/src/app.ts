@@ -8,11 +8,14 @@ import { registerMetrics } from '@etip/shared-utils';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { iocRoutes } from './routes/iocs.js';
+import { tenantOverlayRoutes } from './routes/tenant-overlay.js';
+import { TenantOverlayService } from './services/tenant-overlay-service.js';
 import type { IOCRepository } from './repository.js';
 
 export interface BuildAppOptions {
   config: AppConfig;
   repo: IOCRepository;
+  prisma?: import('@prisma/client').PrismaClient;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -62,6 +65,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(iocRoutes(repo), { prefix: '/api/v1/iocs' });
+
+  // Global IOC overlay routes (DECISION-029 Phase B2 — gated by TI_GLOBAL_PROCESSING_ENABLED)
+  const overlayService = new TenantOverlayService(opts.prisma ?? (await import('./prisma.js')).prisma);
+  await app.register(tenantOverlayRoutes(overlayService), { prefix: '/api/v1/normalization/global-iocs' });
 
   return app;
 }

@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 90 — DECISION-029 Phase A2: Bayesian Confidence, STIX Tiers, EPSS, Global AI Config
+**Session counter:** 91 — DECISION-029 Phase B1: Global Fetch Workers, MISP Warninglists, ATT&CK Weighting
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -45,13 +45,13 @@
 | shared-auth | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-cache | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-audit | 1 | ✅ Deployed | 2026-03-15 | None |
-| shared-normalization | 1 | ✅ Deployed | 2026-03-27 | **Session 90:** Bayesian log-odds confidence model, STIX 2.1 §4.14 confidence tiers + colors. 121 tests. |
+| shared-normalization | 1 | ✅ Deployed | 2026-03-27 | **Session 91:** + MISP Warninglist matcher (5 built-in lists) + ATT&CK technique weighting (30 techniques). 160 tests. |
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **20 data pages**. 794 tests (796 total, 2 skipped). **Session 86:** Fix 14 TS errors, notifyApiError wired to 7 hooks (20 catches), useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 8 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 89:** Global Feed Catalog API (7 routes) + GlobalFeedRepo + SubscriptionRepo. 502+ tests. |
+| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 91:** 5 global fetch workers (RSS/NVD/STIX/REST/MISP) + GlobalFeedScheduler + global-fetch-base DRY. 587 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-25 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. 157 tests. Feed reliability TTL cache (5min, Map-based). Weighted velocity scoring. configureClassifier(). P2-1: unknownTypeCount + lastUnknownType exposed in GET /stats (stats-counter.ts singleton). |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phase A1+A2 COMPLETE, pushed.
-- **Last session outcome:** Session 90 (2026-03-27). **Phase A2 COMPLETE.** Bayesian log-odds confidence model (shared-normalization). STIX 2.1 §4.14 confidence tiers + colors. EPSS live API client (FIRST.org, batch/retry/backoff) + daily refresh cron (vulnerability-intel). GlobalAiStore (15 subtasks, recommended models, plan presets) + CostPredictor + 6 global-ai routes + 2 plan-limits routes (customization). 102 new tests across 3 packages (121 shared-normalization, 131 vulnerability-intel, 319 customization). All additive, feature-gated. Commit: af55748. Pushed to master, CI triggered.
-- **Known issues:** Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in billing-service Prisma models (needs `prisma generate`). VPS needs `prisma db push` for 7 new global processing tables + feed_quota_plan_assignments table. No deploy this session — code only.
-- **Next tasks:** (1) Session 91: DECISION-029 Phase B — Global pipeline worker, dedup engine, FP signal, MISP warninglists. (2) Deploy to VPS + run `prisma db push` for new tables. (3) Sessions 92-93: Phases C/D per plan.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1+A2+B1 COMPLETE, pushed.
+- **Last session outcome:** Session 91 (2026-03-27). **Phase B1 COMPLETE.** 5 global fetch workers (RSS/NVD/STIX/REST/MISP) with DRY base (global-fetch-base.ts: catalog lookup, rate limiting, dedupe, consecutive failure tracking). GlobalFeedScheduler (5-min cron tick, isDue(), per-type queue routing). MISP Warninglist matcher (5 built-in lists: DNS resolvers, CDN domains, safe domains, safe CIDRs, RFC1918). ATT&CK technique weighting (30 curated techniques, composite severity: max*0.6+avg*0.4). Worker registration in index.ts behind TI_GLOBAL_PROCESSING_ENABLED feature flag. 77 new tests (587 ingestion, 160 shared-normalization). Commit: 283d7d8. Pushed to master, CI triggered.
+- **Known issues:** Pre-existing TS errors in customization-service global-ai-store.ts (6 errors, not from this session). VPS needs `prisma db push` for 7 new global processing tables. Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Global workers are OFF by default (TI_GLOBAL_PROCESSING_ENABLED=false).
+- **Next tasks:** (1) Session 92: DECISION-029 Phase B2 — Global Normalize Worker + Enrich Worker + Tenant Distribution pipeline. (2) Deploy to VPS + run `prisma db push` for new tables. (3) Sessions 93: Phases C/D per plan.
 
 ## Deployment Log
 
@@ -229,6 +229,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 89 | 2026-03-27 | No deploy (code pushed to master) | ⏳ CI triggered | 8f12b7e, cc79a43, 2ced273, 30147db | DECISION-029 Phase A1: 7 Prisma models, Feed Catalog API (7 routes), Admiralty Code, CPE 2.3, STIX Sighting, 6 queue constants, 2 events. 95 new tests. 3 CI fixes. |
 | 90 | 2026-03-27 | No deploy (code pushed to master) | ⏳ CI triggered | af55748 | DECISION-029 Phase A2: Bayesian confidence, STIX 2.1 tiers, EPSS client+cron, GlobalAiStore (15 subtasks), CostPredictor, 8 new routes. 102 new tests. ~6,083 total. |
 | 89 | 2026-03-27 | All 33 containers redeployed (shared-utils queue changes) | ✅ All 33 healthy | 8f12b7e, cc79a43, 2ced273, 30147db | DECISION-029 Phase A1: 7 Prisma models, NATO Admiralty Code, CPE 2.3 parser, STIX Sighting, 6 global queues, 2 events, Catalog API (7 routes). 95 new tests. 3 CI fixes. |
+| 91 | 2026-03-27 | Code pushed to master | ⏳ CI triggered | 283d7d8 | DECISION-029 Phase B1: 5 global fetch workers, GlobalFeedScheduler, MISP warninglists, ATT&CK weighting. 77 new tests. ~6,160 total. Feature-gated (TI_GLOBAL_PROCESSING_ENABLED=false). |
 
 ## E2E Verification Results (Session 13)
 
