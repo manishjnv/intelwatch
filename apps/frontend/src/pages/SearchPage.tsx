@@ -5,14 +5,14 @@
  * saved searches, export, keyboard shortcuts, and demo fallback.
  */
 import { useState, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useEsSearch } from '@/hooks/use-es-search'
 import { SearchBar } from '@/components/search/SearchBar'
 import { FacetedSidebar, MobileFilterTrigger } from '@/components/search/FacetedSidebar'
 import { SearchResultsTable } from '@/components/search/SearchResultsTable'
-// PageStatsBar replaced with inline compact toolbar
-import { Search, Download, ChevronDown, Database, Zap, X, ExternalLink, Copy, Check, Shield } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { SplitPane } from '@/components/viz/SplitPane'
+import { IocDetailPanel } from '@/pages/IocDetailPanel'
+import type { IOCRecord } from '@/hooks/use-intel-data'
+import { Search, Download, ChevronDown, Database, Zap, X } from 'lucide-react'
 import type { EsSearchFilters, EsSearchResult } from '@/hooks/use-es-search'
 
 // ─── Constants ───────────────────────────────────────────────
@@ -37,15 +37,38 @@ export function SearchPage() {
     clearAll, exportResults,
   } = useEsSearch()
 
-  const navigate = useNavigate()
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
-  const [selectedResult, setSelectedResult] = useState<EsSearchResult | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const handleRowClick = useCallback((id: string) => {
-    const result = results.find(r => r.id === id)
-    if (result) setSelectedResult(prev => prev?.id === id ? null : result)
-  }, [results])
+    setSelectedId(prev => prev === id ? null : id)
+  }, [])
+
+  // Map EsSearchResult → IOCRecord for the detail panel
+  const selectedRecord: IOCRecord | null = useMemo(() => {
+    if (!selectedId) return null
+    const r = results.find(res => res.id === selectedId)
+    if (!r) return null
+    return {
+      id: r.id,
+      iocType: r.iocType,
+      normalizedValue: r.value,
+      severity: r.severity,
+      confidence: r.confidence,
+      lifecycle: 'active',
+      tlp: r.tlp,
+      tags: r.tags,
+      threatActors: [],
+      malwareFamilies: [],
+      firstSeen: r.firstSeen,
+      lastSeen: r.lastSeen,
+      feedReliability: 70,
+      corroborationCount: 1,
+      aiConfidence: r.confidence,
+      campaignId: null,
+    }
+  }, [selectedId, results])
 
   const activeFilterCount = (filters.type?.length ?? 0)
     + (filters.severity?.length ?? 0)
@@ -185,150 +208,34 @@ export function SearchPage() {
           </div>
         )}
 
-        {/* Results */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
-          {!hasQuery && !isDemo && results.length === 0 ? (
-            <InitialState />
-          ) : (
-            <SearchResultsTable
-              results={results}
-              totalCount={totalCount}
-              page={page}
-              pageSize={pageSize}
-              sortBy={sortBy}
-              onSort={setSortBy}
-              onPageChange={setPage}
-              onRowClick={handleRowClick}
-              searchTimeMs={searchTimeMs}
-              isLoading={isLoading}
-            />
-          )}
-        </div>
-
-        {/* Detail panel */}
-        {selectedResult && (
-          <IocDetailPanel result={selectedResult} onClose={() => setSelectedResult(null)} onNavigate={navigate} />
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── IOC Detail Panel ────────────────────────────────────────
-
-const SEV_STYLES: Record<string, string> = {
-  critical: 'bg-sev-critical/15 text-sev-critical border-sev-critical/30',
-  high: 'bg-sev-high/15 text-sev-high border-sev-high/30',
-  medium: 'bg-sev-medium/15 text-sev-medium border-sev-medium/30',
-  low: 'bg-sev-low/15 text-sev-low border-sev-low/30',
-}
-
-function IocDetailPanel({ result, onClose, onNavigate }: {
-  result: EsSearchResult; onClose: () => void; onNavigate: (path: string) => void
-}) {
-  const [copied, setCopied] = useState(false)
-  const handleCopy = () => {
-    navigator.clipboard.writeText(result.value)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  const relTime = (iso: string) => {
-    const diff = Date.now() - new Date(iso).getTime()
-    const days = Math.floor(diff / 86_400_000)
-    if (days === 0) return 'Today'
-    if (days === 1) return 'Yesterday'
-    return `${days}d ago`
-  }
-
-  return (
-    <div className="w-[320px] shrink-0 border-l border-border bg-bg-secondary overflow-y-auto hidden lg:block" data-testid="ioc-detail-panel">
-      {/* Header */}
-      <div className="p-3 border-b border-border flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-text-primary">IOC Detail</h3>
-        <button onClick={onClose} className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-bg-hover">
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Value */}
-      <div className="p-3 border-b border-border">
-        <div className="text-[10px] text-text-muted uppercase mb-1">Value</div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm text-text-primary font-mono break-all">{result.value}</span>
-          <button onClick={handleCopy} className="p-1 text-text-muted hover:text-accent shrink-0" title="Copy">
-            {copied ? <Check className="w-3 h-3 text-sev-low" /> : <Copy className="w-3 h-3" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Properties grid */}
-      <div className="p-3 space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-[10px] text-text-muted uppercase mb-0.5">Type</div>
-            <div className="text-xs text-text-primary capitalize">{result.iocType.replace('hash_', '')}</div>
-          </div>
-          <div>
-            <div className="text-[10px] text-text-muted uppercase mb-0.5">Severity</div>
-            <span className={cn('text-[10px] px-2 py-0.5 rounded-full border capitalize font-medium', SEV_STYLES[result.severity] ?? 'text-text-muted')}>
-              {result.severity}
-            </span>
-          </div>
-          <div>
-            <div className="text-[10px] text-text-muted uppercase mb-0.5">Confidence</div>
-            <div className={cn('text-xs font-medium tabular-nums', result.confidence >= 70 ? 'text-sev-low' : result.confidence >= 30 ? 'text-sev-medium' : 'text-sev-high')}>
-              {result.confidence}%
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] text-text-muted uppercase mb-0.5">TLP</div>
-            <div className="text-xs text-text-muted">TLP:{result.tlp}</div>
-          </div>
-          <div>
-            <div className="text-[10px] text-text-muted uppercase mb-0.5">First Seen</div>
-            <div className="text-xs text-text-muted">{relTime(result.firstSeen)}</div>
-          </div>
-          <div>
-            <div className="text-[10px] text-text-muted uppercase mb-0.5">Last Seen</div>
-            <div className="text-xs text-text-muted">{relTime(result.lastSeen)}</div>
-          </div>
-          <div>
-            <div className="text-[10px] text-text-muted uppercase mb-0.5">Enriched</div>
-            <div className={cn('text-xs', result.enriched ? 'text-sev-low' : 'text-text-muted')}>
-              {result.enriched ? 'Yes' : 'No'}
-            </div>
-          </div>
-        </div>
-
-        {/* Tags */}
-        {result.tags.length > 0 && (
-          <div>
-            <div className="text-[10px] text-text-muted uppercase mb-1.5">Tags</div>
-            <div className="flex flex-wrap gap-1">
-              {result.tags.map(t => (
-                <span key={t} className="text-[10px] bg-bg-elevated border border-border rounded px-1.5 py-0.5 text-text-muted">{t}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="pt-2 space-y-1.5">
-          <button
-            onClick={() => onNavigate(`/iocs?search=${encodeURIComponent(result.value)}`)}
-            className="w-full flex items-center justify-center gap-1.5 text-xs bg-accent/10 text-accent border border-accent/20 rounded-md px-3 py-2 hover:bg-accent/20 transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            View in IOC Intelligence
-          </button>
-          <button
-            onClick={() => onNavigate(`/threat-graph?search=${encodeURIComponent(result.value)}`)}
-            className="w-full flex items-center justify-center gap-1.5 text-xs bg-bg-elevated text-text-secondary border border-border rounded-md px-3 py-2 hover:border-accent/30 hover:text-text-primary transition-colors"
-          >
-            <Shield className="w-3.5 h-3.5" />
-            View in Threat Graph
-          </button>
+        {/* Results + detail panel via SplitPane */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <SplitPane
+            onCloseRight={() => setSelectedId(null)}
+            defaultSplit={55}
+            left={
+              <div className="overflow-y-auto h-full px-4 pb-4">
+                {!hasQuery && !isDemo && results.length === 0 ? (
+                  <InitialState />
+                ) : (
+                  <SearchResultsTable
+                    results={results}
+                    totalCount={totalCount}
+                    page={page}
+                    pageSize={pageSize}
+                    sortBy={sortBy}
+                    onSort={setSortBy}
+                    onPageChange={setPage}
+                    onRowClick={handleRowClick}
+                    searchTimeMs={searchTimeMs}
+                    isLoading={isLoading}
+                  />
+                )}
+              </div>
+            }
+            right={selectedRecord ? <IocDetailPanel record={selectedRecord} isDemo={isDemo} /> : null}
+            showRight={!!selectedRecord}
+          />
         </div>
       </div>
     </div>
