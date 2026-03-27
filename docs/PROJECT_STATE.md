@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 97 — DECISION-029 Phase G: Corroboration Engine, Severity Voting, Community FP, IOC Intelligence UI. DECISION-029 COMPLETE.
+**Session counter:** 101 — AnalyticsPage executive dashboard: KPI cards, trend charts, intelligence breakdown. 55 new tests.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.1 | 2026-03-27 | Health check passing. **Session 85:** Tiered rate limiting (search 10/write 30/read 120), error alerting (5-min window, QUEUE_ALERT), @fastify/compress (gzip >1KB), GET /api/v1/gateway/error-stats. 59 tests. |
-| etip_frontend | ✅ Running | 0.12.2 | 2026-03-27 | Dashboard + 20 data pages. **Session 86:** Fix 14 TS errors, notifyApiError wired to 7 hooks, useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 794 tests (796 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.13.0 | 2026-03-27 | Dashboard + 20 data pages. **Session 101:** AnalyticsPage rewrite (3-section executive dashboard, 8 KPI cards, 5 SVG charts, 6 intelligence panels). 977 tests (979 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -30,7 +30,7 @@
 | etip_admin | ✅ Deployed | 0.5.0 | 2026-03-27 | Port 3022. 35 endpoints, 195 tests. Queue monitor + DLQ processor + P2-1 queue alerting. **Session 83: 10s response cache on GET /queues** — reduces Redis ops from 250+/s to 1/10s. 5 new cache tests. |
 | etip_reporting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3021. Module 21. 20 endpoints, 199 tests. 5 report types (daily/weekly/monthly/custom/executive), BullMQ worker (etip-report-generate), cron scheduling, template engine (JSON/HTML/PDF). |
 | etip_alerting | ✅ Deployed | 0.2.0 | 2026-03-27 | Port 3023. Module 23. 35 endpoints, 322 tests. Alert rules + **Session 93: GlobalIocAlertHandler (fan-out to subscribed tenants on GLOBAL_IOC_CRITICAL/UPDATED)**. |
-| etip_analytics | ✅ Deployed | 0.1.0 | 2026-03-25 | Port 3024. Module 24. 13 endpoints, 86 tests. Dashboard widget aggregation, trend analysis (7d/30d/90d), executive summary with risk posture, service health matrix (21 services), top IOCs/actors/vulns. In-memory cache + demo trend seeding. D1: GET /enrichment-quality — confidence tier breakdown (high/med/low), 5-min cache. |
+| etip_analytics | ✅ Deployed | 0.2.0 | 2026-03-27 | Port 3024. Module 24. 15 endpoints, 93 tests. **Session 101:** +GET /distributions (IOC type/severity/confidence/lifecycle) +GET /cost-tracking (AI cost summary+trend). Dashboard widget aggregation, trend analysis (7d/30d/90d), executive summary with risk posture, service health matrix (21 services), top IOCs/actors/vulns. |
 | etip_caching | ✅ Deployed | 0.1.0 | 2026-03-25 | Port 3025. Module 25. Redis cache management (48hr dashboard, 1hr search), event-driven invalidation, MinIO cold storage archival (60-day policy), archive restore API, cache warming. 94 tests. |
 | etip_prometheus | ✅ Running | - | 2026-03-15 | Metrics on port 9190 |
 | etip_grafana | ✅ Running | - | 2026-03-15 | Dashboards on port 3101 |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **24 data pages**. ~882 tests. **Session 95:** GlobalMonitoringPage (6 sections: pipeline flow, feed health, IOC stats, corroboration, subscriptions, actions). AdmiraltyBadge + StixConfidenceBadge components. DashboardPage global widget. IOC Source column. 63 new tests. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **24 data pages**. 977 tests. **Session 101:** AnalyticsPage rewrite — ExecutiveSummary (8 KPI cards), TrendCharts (5 SVG charts), IntelligenceBreakdown (6 panels). use-analytics-dashboard hook. CSV/PDF export, auto-refresh. 47 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 96:** Fuzzy dedupe in global worker, batch normalizer. 256 tests. |
@@ -71,7 +71,7 @@
 | reporting-service | 7 | ✅ Deployed | 2026-03-24 | Port 3021. **Core + 10 P0 improvements COMPLETE**. 25 endpoints, 217 tests. 5 report types (daily/weekly/monthly/custom/executive). 4 formats (JSON/HTML/CSV/PDF). BullMQ worker (etip-report-generate). Cron scheduling (node-cron). Template engine. In-memory stores (DECISION-013). P0 batch 1: data aggregation, template engine, schedule persistence, report versioning, export validation. P0 batch 2: retention cron, CSV export, report cloning, bulk ops, period comparison. FEATURE-COMPLETE. |
 | alerting-service | 7 | ✅ Deployed | 2026-03-27 | Port 3023. Module 23. **Core + P0 + P1 + Global Alert Fan-Out COMPLETE**. 35 endpoints, 322 tests. **Session 93:** GlobalIocAlertHandler — fans out alerts to subscribed tenants on GLOBAL_IOC_CRITICAL/UPDATED with per-tenant filter matching. FEATURE-COMPLETE. |
 | caching-service | 7 | ✅ Deployed | 2026-03-25 | Port 3025. Module 25. Redis cache management (48hr dashboard, 1hr search), event-driven cache invalidation (debounced 5s flush), MinIO cold storage archival (60-day cron), archive restore API, cache warming via analytics-service. CACHE_INVALIDATE queue added to shared-utils. 94 tests. |
-| analytics-service | 7 | ✅ Deployed | 2026-03-25 | Port 3024. Module 24. **Core + 5 P0 + D1 COMPLETE**. 13 endpoints, 86 tests. Multi-service data aggregation (parallel API calls to 12 services). Trend calculator (7d/30d/90d with delta %). Executive summary with composite risk scoring. Widget registry (14 widgets, 4 categories). Service health matrix (21 ETIP services). In-memory cache (DECISION-013). D1: GET /enrichment-quality — calls enrichment /stats, distributes enriched count into high(60%)/med(30%)/low(10%) confidence buckets, 5-min cache. |
+| analytics-service | 7 | ✅ Deployed | 2026-03-27 | Port 3024. Module 24. **Core + 5 P0 + D1 + S101 COMPLETE**. 15 endpoints, 93 tests. **Session 101:** +GET /distributions (IOC type/severity/confidence/lifecycle breakdown), +GET /cost-tracking (AI cost trend). Multi-service aggregation, trend calculator, executive summary, widget registry, service health matrix. |
 
 ## Module Dependency Map
 ```
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1-G COMPLETE + ACTIVATED. Pipeline LIVE on VPS. **DECISION-029 CLOSED (S89-S97, 9 sessions).**
-- **Last session outcome:** Session 97 (2026-03-27). **Phase G COMPLETE — DECISION-029 CLOSED.** Cross-feed corroboration scoring engine (weighted: rawCount+reliability+independence+recency, 5 tiers). Severity voting system (Admiralty-weighted, idempotent per-feed). Community false-positive reporting (per-tenant dedupe, auto-actions >50%/>75%). Worker integration (corroboration+voting+velocity in global-normalize-worker). 6 new API routes (report-fp, withdraw-fp, fp-summary, corroboration, severity-votes, fp-candidates). Frontend: 3 intelligence sections (CorroborationSection, SeverityVotesSection, CommunityFpSection) + 4 hooks. 8 E2E intelligence smoke tests. Commits: 57685b3, 03f2f0c, 401da2c. 78 new tests (18 shared-normalization + 40 normalization + 12 frontend + 8 E2E).
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. VPS: `tsx` not in production image. Frontend container not yet rebuilt with S95-S97 code. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching — not caused by S97.
-- **Next tasks:** (1) Deploy S97 code to VPS + rebuild frontend. (2) Set Shodan/GreyNoise API keys on VPS. (3) Wire fuzzy dedupe hash column in Prisma schema. (4) Wire batch normalizer into global-normalize-worker. (5) Fix vitest alias caching for @etip/shared-normalization in normalization tests. (6) Grafana dashboards for Prometheus metrics. (7) Begin next major initiative (DECISION-030 or feature work).
+- **Current phase:** Phase 10 — UI Polish + E2E Integration. DECISION-029 CLOSED (S89-S97). Sessions 98-101: pipeline wiring, UI actions, onboarding, analytics dashboard.
+- **Last session outcome:** Session 101 (2026-03-27). **AnalyticsPage executive dashboard.** Rewrite from 4-tab layout to vertical 3-section layout: ExecutiveSummary (8 KPI cards with sparklines/deltas/progress rings), TrendCharts (5 SVG charts: IOC area, severity bars, alert line, feed contribution, AI cost with budget line), IntelligenceBreakdown (6 panels: donut chart, confidence histogram, lifecycle bar, top IOCs table, top CVEs/EPSS, enrichment matrix). Backend: +2 analytics endpoints (GET /distributions, GET /cost-tracking). Frontend: use-analytics-dashboard hook (parallel fetch 10 endpoints, 5-min cache, demo fallback), CSV/PDF export, auto-refresh toggle, section-level error boundaries. Commit: d841199. 55 new tests (47 frontend + 8 backend). 6,733 total tests passing.
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. VPS: `tsx` not in production image. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching.
+- **Next tasks:** (1) Deploy S101 to VPS. (2) Set Shodan/GreyNoise API keys on VPS. (3) Wire fuzzy dedupe hash column in Prisma schema. (4) Wire batch normalizer into global-normalize-worker. (5) Fix vitest alias caching. (6) Grafana dashboards for Prometheus metrics. (7) Begin next major initiative.
 
 ## Deployment Log
 
@@ -236,6 +236,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 94 | 2026-03-27 | etip_ingestion + etip_normalization + etip_alerting force-recreated | ✅ All 33 healthy | 805a2b9, b572259 | Phase C Activation: wired orchestrator/workers/handler in index.ts. TI_GLOBAL_PROCESSING_ENABLED=true on VPS. E2E: 50 articles fetched, 30 normalized, IOCs extracted + enriched. Global pipeline LIVE. |
 | 94d | 2026-03-27 | etip_frontend redeployed (CI auto-deploy) | ✅ All 33 healthy | 45b46d4, 6b5cbbc, 59a4017 | Phase D: GlobalAiConfigPage + PlanLimitsPage + 2 hooks + 2 icons + sidebar entries. E2E pipeline smoke tests (15) + delivery tests (5) + seed script (10 OSINT feeds). CI run 23632374415 green. |
 | 95 | 2026-03-27 | Code pushed, VPS git pull + activation script run | ⏳ Frontend rebuild pending | 377c7b1 | Phase E: GlobalMonitoringPage, AdmiraltyBadge, StixConfidenceBadge, GlobalFeedRecovery, GlobalFeedMetrics, DashboardPage widget, IOC Source column. 56 new tests (882 frontend, 612 ingestion). Activation script: Prisma in sync, feeds already seeded from S94. |
+| 101 | 2026-03-27 | No deploy (code-only session) | — | d841199 | AnalyticsPage executive dashboard: 3 sections (KPI cards, trend charts, intelligence breakdown). +2 analytics endpoints (distributions, cost-tracking). 55 new tests (977 frontend, 93 analytics). 6,733 total. |
 
 ## E2E Verification Results (Session 13)
 

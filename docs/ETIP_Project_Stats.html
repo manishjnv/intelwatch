@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 97 &middot; 2026-03-27 &middot; DECISION-029 COMPLETE (Phase G: Corroboration + Severity Voting + Community FP). 33 containers, ~6,516 tests</span>
+  <span class="version">Session 101 &middot; 2026-03-27 &middot; AnalyticsPage Executive Dashboard (KPI cards + trend charts + intelligence breakdown). 33 containers, ~6,733 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~6,516</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~6,733</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~591</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">97</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">101</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + tiered rate limit + error alerting + compression</td><td>59</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth</td><td>21</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Global Catalog + AI Config + Plan Limits + error toasts + debounce + skeletons</td><td>819</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Global Catalog + AI Config + Plan Limits + Analytics Dashboard + error toasts + debounce + skeletons</td><td>977</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats</td><td>237</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
@@ -166,7 +166,7 @@ li strong { color: var(--text-primary); }
       <tr><td>elasticsearch-indexing</td><td>3020</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>3</td><td>57</td></tr>
       <tr><td>reporting</td><td>3021</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>25</td><td>217</td></tr>
       <tr><td><strong>alerting</strong></td><td>3023</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>35 + Global IOC Alert Handler</td><td>322</td></tr>
-      <tr><td><strong>analytics</strong></td><td>3024</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>13 (+D1)</td><td>86</td></tr>
+      <tr><td><strong>analytics</strong></td><td>3024</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>15 (+D1+S101)</td><td>93</td></tr>
       <tr><td><strong>caching</strong></td><td>3025</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>15</td><td>94</td></tr>
     </tbody>
   </table>
@@ -532,7 +532,7 @@ li strong { color: var(--text-primary); }
       &bull; <strong>6 New API Routes</strong> — report-fp, withdraw-fp, fp-summary, corroboration, severity-votes, fp-candidates<br>
       &bull; <strong>Frontend Intelligence Sections</strong> — CorroborationSection, SeverityVotesSection, CommunityFpSection + 4 hooks<br>
       &bull; <strong>Worker Integration</strong> — Corroboration+voting+velocity wired into global-normalize-worker on every IOC upsert<br>
-      &bull; <strong>~6,516 tests</strong> — 78 new (18 shared-normalization + 40 normalization + 12 frontend + 8 E2E)<br>
+      &bull; <strong>~6,733 tests</strong> — 78 new (18 shared-normalization + 40 normalization + 12 frontend + 8 E2E)<br>
       &bull; <strong>DECISION-029 CLOSED</strong> — 9 sessions (S89-S97), ~590 tests, 27 improvements, pipeline LIVE<br><br>
       <strong>Next session priorities:</strong><br>
       1. <strong>Deploy S95-S97 to VPS</strong> — git pull + rebuild frontend + backend containers<br>
