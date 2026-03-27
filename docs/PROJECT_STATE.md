@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 94 — DECISION-029 Phase C Activation: Pipeline Wiring in index.ts, VPS Global Processing LIVE, E2E Verified
+**Session counter:** 94 — DECISION-029 Phase D: Global AI Config UI, Plan Limits UI, E2E Pipeline Smoke Tests, Seed Script
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **21 data pages**. 819 tests (821 total, 2 skipped). **Session 93:** GlobalCatalogPage (3 tabs) + GlobalIocOverlayPanel + 2 hooks + sidebar/routing. 25 new tests. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **23 data pages**. ~847 tests. **Session 94:** GlobalAiConfigPage (4 sections: model table, presets, confidence toggle, cost dashboard) + PlanLimitsPage (4 plan cards + comparison table) + 2 hooks + 2 icons + sidebar entries. 28 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 93:** GlobalPipelineOrchestrator (health/retrigger/pause/resume), 4 pipeline API routes, fetch→normalize wiring. 602 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 93:** GlobalIocStatsService (stats, top IOCs, corroboration leaders). 237 tests. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1+A2+B1+B2+C COMPLETE + ACTIVATED. Pipeline LIVE on VPS.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1+A2+B1+B2+C+D COMPLETE + ACTIVATED. Pipeline LIVE on VPS.
 - **Last session outcome:** Session 94 (2026-03-27). **Phase C ACTIVATED.** Wired GlobalPipelineOrchestrator into ingestion index.ts (6 BullMQ queues, normalizeGlobalQueue passed to fetch workers). Wired GlobalNormalizeWorker + GlobalEnrichWorker into normalization index.ts (Shodan/GreyNoise clients, alertEvaluateQueue for cross-service delivery). Wired GlobalIocAlertHandler into alerting-service index.ts (EventEmitter, in-memory tenant registry). Added TI_GLOBAL_PROCESSING_ENABLED + TI_SHODAN_API_KEY + TI_GREYNOISE_API_KEY to docker-compose. VPS: feature flag set true, services force-recreated. **E2E VERIFIED**: THN Global RSS feed → 50 articles fetched → 30 normalized → IOCs extracted (CVEs + domains) → enrichment running. Commits: 805a2b9, b572259. CI runs 23630684225 + 23631054444 green. 33 containers healthy.
 - **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry (not wired to ingestion catalog subscriptions API yet). enrichmentQuality=0 for all IOCs (no external API keys). 20/50 articles still pending normalization (processing in progress).
-- **Next tasks:** (1) Session 95: DECISION-029 Phase D — stale enrichment re-processing cron, community FP signal, AI relationship extraction. (2) Set Shodan/GreyNoise API keys on VPS for real enrichment. (3) Wire HTTP subscription adapter in alerting (query ingestion catalog API for real tenant subscriptions). (4) Add more global feeds to catalog.
+- **Next tasks:** (1) Session 95: DECISION-029 Phase E — stale enrichment re-processing cron, community FP signal, AI relationship extraction. (2) Set Shodan/GreyNoise API keys on VPS for real enrichment. (3) Wire HTTP subscription adapter in alerting (query ingestion catalog API for real tenant subscriptions). (4) Run seed-global-feeds.ts on VPS to populate catalog. (5) Deploy S94 frontend + run Prisma migration on VPS.
 
 ## Deployment Log
 

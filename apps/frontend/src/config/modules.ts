@@ -8,7 +8,7 @@ import {
   IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
   IconCustomization, IconBilling, IconAdmin, IconOnboarding, IconReporting,
-  IconAlerting, IconAnalytics, IconGlobalCatalog,
+  IconAlerting, IconAnalytics, IconGlobalCatalog, IconAiConfig, IconPlanLimits,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -227,6 +227,26 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-blue-400',
     phase: 7,
     route: '/analytics',
+  },
+  {
+    id: 'global-ai-config',
+    title: 'AI Config',
+    description: 'Global AI model assignments, confidence model, cost dashboard, and plan presets.',
+    helpText: 'Control which AI models power each pipeline subtask across all tenants.',
+    icon: IconAiConfig,
+    color: 'text-purple-400',
+    phase: 2,
+    route: '/global-ai-config',
+  },
+  {
+    id: 'plan-limits',
+    title: 'Plan Limits',
+    description: 'Configure resource limits for Free, Starter, Teams, and Enterprise tiers.',
+    helpText: 'Set feed limits, fetch intervals, retention, AI budgets, and global subscription caps per plan.',
+    icon: IconPlanLimits,
+    color: 'text-amber-400',
+    phase: 6,
+    route: '/plan-limits',
   },
 ]
 

@@ -394,6 +394,31 @@ export function IconGlobalCatalog({ size = defaults.size, className }: IconProps
   )
 }
 
+/** Global AI Config — brain with gear */
+export function IconAiConfig({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      <circle cx="12" cy="10" r="6" stroke="currentColor" strokeWidth="1.5" opacity="0.6"/>
+      <path d="M8 8 Q12 4 16 8" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+      <path d="M8 12 Q12 8 16 12" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+      <circle cx="17" cy="17" r="4" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M17 15v4M15 17h4" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  )
+}
+
+/** Plan Limits — tier layers */
+export function IconPlanLimits({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      <path d="M4 18l8 3 8-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.4"/>
+      <path d="M4 14l8 3 8-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
+      <path d="M4 10l8 3 8-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.8"/>
+      <path d="M4 6l8 3 8-3L12 3 4 6z" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.15"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
@@ -417,4 +442,6 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'alerting': IconAlerting,
   'analytics': IconAnalytics,
   'global-catalog': IconGlobalCatalog,
+  'global-ai-config': IconAiConfig,
+  'plan-limits': IconPlanLimits,
 }
