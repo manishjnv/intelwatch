@@ -17,6 +17,7 @@ import { GlobalFeedScheduler } from './schedulers/global-feed-scheduler.js';
 import { GlobalPipelineOrchestrator } from './services/global-pipeline-orchestrator.js';
 import { QUEUES } from '@etip/shared-utils';
 import { Queue } from 'bullmq';
+import { seedGlobalCatalogIfEmpty } from './services/global-catalog-seeder.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -87,6 +88,9 @@ async function main(): Promise<void> {
 
     const globalScheduler = new GlobalFeedScheduler({ db: prisma, queues: globalQueues, logger });
     globalScheduler.start();
+
+    // Auto-seed default OSINT feeds if catalog is empty (idempotent)
+    await seedGlobalCatalogIfEmpty(prisma, logger);
 
     logger.info(`Global feed processing: ENABLED — ${globalWorkers.length} workers, 6 queues, orchestrator active`);
   } else {
