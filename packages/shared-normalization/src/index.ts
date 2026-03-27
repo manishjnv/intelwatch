@@ -23,3 +23,22 @@ export {
   type CompositeConfidence,
   calculateCompositeConfidence,
 } from './confidence.js';
+
+// ── NATO Admiralty Code ──────────────────────────────────────────
+export {
+  admiraltyToScore,
+  scoreToAdmiralty,
+  formatAdmiraltyCode,
+  ADMIRALTY_LABELS,
+  type SourceReliability,
+  type InfoCredibility,
+} from './admiralty.js';
+
+// ── CPE 2.3 Parser ──────────────────────────────────────────────
+export {
+  parseCPE,
+  formatCPE,
+  matchCPE,
+  isValidCPE,
+  type CPEComponents,
+} from './cpe.js';

@@ -96,6 +96,52 @@ export const StixBundleSchema = z.object({
 });
 export type StixBundle = z.infer<typeof StixBundleSchema>;
 
+// ── STIX 2.1 Sighting (DECISION-029) ─────────────────────────────
+
+/** STIX 2.1 Sighting Object schema */
+export const StixSightingSchema = z.object({
+  type: z.literal('sighting'),
+  spec_version: z.literal('2.1'),
+  id: z.string().regex(/^sighting--[0-9a-f-]{36}$/),
+  created: z.string().datetime(),
+  modified: z.string().datetime(),
+  sighting_of_ref: z.string().min(1),
+  first_seen: z.string().datetime().optional(),
+  last_seen: z.string().datetime().optional(),
+  count: z.number().int().min(1).optional(),
+  observed_data_refs: z.array(z.string()).optional(),
+  where_sighted_refs: z.array(z.string()).optional(),
+  summary: z.boolean().optional(),
+  confidence: z.number().int().min(0).max(100).optional(),
+});
+export type StixSighting = z.infer<typeof StixSightingSchema>;
+
+/** Build a valid STIX 2.1 Sighting object. */
+export function buildStixSighting(params: {
+  sightingOfRef: string;
+  firstSeen?: string;
+  lastSeen?: string;
+  count?: number;
+  whereSightedRefs?: string[];
+  confidence?: number;
+}): StixSighting {
+  const now = new Date().toISOString();
+  const id = `sighting--${crypto.randomUUID()}`;
+  return {
+    type: 'sighting',
+    spec_version: '2.1',
+    id,
+    created: now,
+    modified: now,
+    sighting_of_ref: params.sightingOfRef,
+    ...(params.firstSeen && { first_seen: params.firstSeen }),
+    ...(params.lastSeen && { last_seen: params.lastSeen }),
+    ...(params.count !== undefined && { count: params.count }),
+    ...(params.whereSightedRefs && { where_sighted_refs: params.whereSightedRefs }),
+    ...(params.confidence !== undefined && { confidence: params.confidence }),
+  };
+}
+
 /** STIX base object common properties */
 export const StixBaseObjectSchema = z.object({
   type: z.string(),

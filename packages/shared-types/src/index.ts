@@ -148,6 +148,9 @@ export {
   type StixBundle,
   StixBaseObjectSchema,
   type StixBaseObject,
+  StixSightingSchema,
+  type StixSighting,
+  buildStixSighting,
 } from './stix.js';
 
 // ── Config & constants ─────────────────────────────────────────────

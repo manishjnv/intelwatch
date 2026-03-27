@@ -632,3 +632,160 @@ model FeedQuotaPlanAssignment {
   @@index([planId])
   @@map("feed_quota_plan_assignments")
 }
+
+// ─── Global Feed Processing (DECISION-029) ──────────────────────────────────
+
+enum FeedVisibility {
+  global
+  private
+  @@map("feed_visibility_enum")
+}
+
+model GlobalFeedCatalog {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String    @unique @db.VarChar(255)
+  description          String?   @db.Text
+  feedType             String    @map("feed_type") @db.VarChar(20)
+  url                  String    @db.Text
+  schedule             String    @default("*/30 * * * *") @db.VarChar(100)
+  headers              Json      @default("{}")
+  authConfig           Json      @default("{}") @map("auth_config")
+  parseConfig          Json      @default("{}") @map("parse_config")
+  status               String    @default("active") @db.VarChar(20)
+  enabled              Boolean   @default(true)
+  minPlanTier          String    @default("free") @map("min_plan_tier") @db.VarChar(20)
+  lastFetchAt          DateTime? @map("last_fetch_at")
+  consecutiveFailures  Int       @default(0) @map("consecutive_failures")
+  totalItemsIngested   Int       @default(0) @map("total_items_ingested")
+  feedReliability      Int       @default(70) @map("feed_reliability")
+  sourceReliability    String    @default("C") @map("source_reliability") @db.VarChar(1)
+  infoCred             Int       @default(3) @map("info_cred")
+  articlesPerDay       Int       @default(0) @map("articles_per_day")
+  iocsPerDay           Int       @default(0) @map("iocs_per_day")
+  avgSeverity          Json      @default("{}") @map("avg_severity")
+  industries           String[]  @default([])
+  subscriberCount      Int       @default(0) @map("subscriber_count")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  subscriptions        TenantFeedSubscription[]
+  articles             GlobalArticle[]
+  @@map("global_feed_catalog")
+}
+
+model TenantFeedSubscription {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  globalFeedId String   @map("global_feed_id") @db.Uuid
+  enabled      Boolean  @default(true)
+  alertConfig  Json     @default("{}") @map("alert_config")
+  subscribedAt DateTime @default(now()) @map("subscribed_at")
+  globalFeed   GlobalFeedCatalog @relation(fields: [globalFeedId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, globalFeedId])
+  @@index([tenantId])
+  @@map("tenant_feed_subscriptions")
+}
+
+model GlobalArticle {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  globalFeedId    String    @map("global_feed_id") @db.Uuid
+  title           String    @db.VarChar(1000)
+  content         String?   @db.Text
+  url             String    @db.Text
+  publishedAt     DateTime? @map("published_at")
+  pipelineStatus  String    @default("pending") @map("pipeline_status") @db.VarChar(20)
+  isCtiRelevant   Boolean?  @map("is_cti_relevant")
+  triageResult    Json?     @map("triage_result")
+  extractionResult Json?    @map("extraction_result")
+  totalCostUsd    Float     @default(0) @map("total_cost_usd")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  globalFeed      GlobalFeedCatalog @relation(fields: [globalFeedId], references: [id], onDelete: Cascade)
+  @@index([globalFeedId])
+  @@index([pipelineStatus])
+  @@map("global_articles")
+}
+
+model GlobalIoc {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  globalFeedId           String    @map("global_feed_id") @db.Uuid
+  iocType                String    @map("ioc_type") @db.VarChar(30)
+  value                  String    @db.Text
+  normalizedValue        String    @map("normalized_value") @db.Text
+  dedupeHash             String    @unique @map("dedupe_hash") @db.VarChar(64)
+  fuzzyDedupeHash        String?   @map("fuzzy_dedupe_hash") @db.VarChar(64)
+  severity               String    @default("medium") @db.VarChar(20)
+  tlp                    String    @default("AMBER") @db.VarChar(10)
+  confidence             Int       @default(50)
+  lifecycle              String    @default("new") @db.VarChar(20)
+  tags                   String[]  @default([])
+  enrichmentData         Json?     @map("enrichment_data")
+  enrichedAt             DateTime? @map("enriched_at")
+  firstSeen              DateTime  @default(now()) @map("first_seen")
+  lastSeen               DateTime  @default(now()) @map("last_seen")
+  sightingSources        String[]  @default([]) @map("sighting_sources")
+  crossFeedCorroboration Int       @default(0) @map("cross_feed_corroboration")
+  severityVotes          Json      @default("{}") @map("severity_votes")
+  communityFpRate        Float     @default(0) @map("community_fp_rate")
+  communityFpCount       Int       @default(0) @map("community_fp_count")
+  enrichmentQuality      Int       @default(0) @map("enrichment_quality")
+  velocityScore          Float     @default(0) @map("velocity_score")
+  velocityUpdatedAt      DateTime? @map("velocity_updated_at")
+  stixConfidenceTier     String    @default("Med") @map("stix_confidence_tier") @db.VarChar(10)
+  confidenceModel        String    @default("bayesian") @map("confidence_model") @db.VarChar(20)
+  affectedCPEs           String[]  @default([]) @map("affected_cpes")
+  warninglistMatch       String?   @map("warninglist_match") @db.VarChar(255)
+  cweChain               String[]  @default([]) @map("cwe_chain")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  overlays               TenantIocOverlay[]
+  @@index([globalFeedId])
+  @@index([iocType])
+  @@index([normalizedValue])
+  @@index([lifecycle])
+  @@index([firstSeen])
+  @@index([lastSeen])
+  @@map("global_iocs")
+}
+
+model TenantIocOverlay {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  globalIocId      String    @map("global_ioc_id") @db.Uuid
+  customSeverity   String?   @map("custom_severity") @db.VarChar(20)
+  customConfidence Int?      @map("custom_confidence")
+  customLifecycle  String?   @map("custom_lifecycle") @db.VarChar(20)
+  customTags       String[]  @default([]) @map("custom_tags")
+  customNotes      String?   @map("custom_notes") @db.Text
+  overriddenBy     String?   @map("overridden_by") @db.VarChar(255)
+  overriddenAt     DateTime? @map("overridden_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  globalIoc        GlobalIoc @relation(fields: [globalIocId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, globalIocId])
+  @@index([tenantId])
+  @@map("tenant_ioc_overlays")
+}
+
+model GlobalAiConfig {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category      String   @db.VarChar(50)
+  subtask       String   @db.VarChar(100)
+  model         String   @default("haiku") @db.VarChar(50)
+  fallbackModel String   @default("haiku") @map("fallback_model") @db.VarChar(50)
+  updatedBy     String?  @map("updated_by") @db.VarChar(255)
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  @@unique([category, subtask])
+  @@map("global_ai_config")
+}
+
+model PlanTierConfig {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId                 String   @unique @map("plan_id") @db.VarChar(20)
+  maxPrivateFeeds        Int      @default(3) @map("max_private_feeds")
+  maxGlobalSubscriptions Int      @default(5) @map("max_global_subscriptions")
+  minFetchInterval       String   @default("4h") @map("min_fetch_interval") @db.VarChar(10)
+  retentionDays          Int      @default(7) @map("retention_days")
+  aiEnabled              Boolean  @default(false) @map("ai_enabled")
+  dailyTokenBudget       Int      @default(0) @map("daily_token_budget")
+  updatedBy              String?  @map("updated_by") @db.VarChar(255)
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  @@map("plan_tier_config")
+}

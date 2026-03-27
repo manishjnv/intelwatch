@@ -27,6 +27,13 @@ export const QUEUES = {
   REPORT_GENERATE:    'etip-report-generate',
   IOC_INDEX:          'etip-ioc-indexed',
   CACHE_INVALIDATE:   'etip-cache-invalidate',
+  // Global feed processing (DECISION-029)
+  FEED_FETCH_GLOBAL_RSS:  'etip-feed-fetch-global-rss',
+  FEED_FETCH_GLOBAL_NVD:  'etip-feed-fetch-global-nvd',
+  FEED_FETCH_GLOBAL_STIX: 'etip-feed-fetch-global-stix',
+  FEED_FETCH_GLOBAL_REST: 'etip-feed-fetch-global-rest',
+  NORMALIZE_GLOBAL:       'etip-normalize-global',
+  ENRICH_GLOBAL:          'etip-enrich-global',
 } as const;
 
 /** Union type of all queue name string literals */

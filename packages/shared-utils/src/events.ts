@@ -34,6 +34,9 @@ export const EVENTS = {
   // Admin / Infrastructure (22)
   QUEUE_ALERT:               'queue.alert',
   QUEUE_ALERT_RESOLVED:      'queue.alert.resolved',
+  // Global feed processing (DECISION-029)
+  GLOBAL_IOC_UPDATED:        'global.ioc.updated',
+  GLOBAL_IOC_CRITICAL:       'global.ioc.critical',
 } as const;
 
 /** Union type of all event type string literals */
