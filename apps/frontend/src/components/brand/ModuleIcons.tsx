@@ -378,6 +378,22 @@ export function IconAnalytics({ size = defaults.size, className }: IconProps) {
   )
 }
 
+/** Global Feed Catalog — globe with feed signal */
+export function IconGlobalCatalog({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      {/* Globe circle */}
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" opacity="0.6"/>
+      {/* Globe meridians */}
+      <ellipse cx="12" cy="12" rx="4" ry="9" stroke="currentColor" strokeWidth="1.2" opacity="0.4"/>
+      <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="1.2" opacity="0.4"/>
+      {/* Feed signal dot */}
+      <circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.7"/>
+      <circle cx="18" cy="6" r="1.2" fill="currentColor"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
@@ -400,4 +416,5 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'reporting': IconReporting,
   'alerting': IconAlerting,
   'analytics': IconAnalytics,
+  'global-catalog': IconGlobalCatalog,
 }

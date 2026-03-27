@@ -8,7 +8,7 @@ import {
   IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
   IconCustomization, IconBilling, IconAdmin, IconOnboarding, IconReporting,
-  IconAlerting, IconAnalytics,
+  IconAlerting, IconAnalytics, IconGlobalCatalog,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -47,6 +47,16 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-sev-low',
     phase: 2,
     route: '/feeds',
+  },
+  {
+    id: 'global-catalog',
+    title: 'Global Catalog',
+    description: 'Browse and subscribe to curated global threat intelligence feeds.',
+    helpText: 'Global feed catalog with pipeline health, subscriptions, and IOC overlay management.',
+    icon: IconGlobalCatalog,
+    color: 'text-teal-400',
+    phase: 2,
+    route: '/global-catalog',
   },
   {
     id: 'ai-enrichment',

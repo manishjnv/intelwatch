@@ -14,6 +14,8 @@ import { articleRoutes } from './routes/articles.js';
 import { FeedRepository } from './repository.js';
 import { FeedService } from './service.js';
 import { FeedPolicyStore } from './services/feed-policy-store.js';
+import { globalPipelineRoutes } from './routes/global-pipeline.js';
+import type { GlobalPipelineOrchestrator } from './services/global-pipeline-orchestrator.js';
 import type { Queue } from 'bullmq';
 
 export interface BuildAppOptions {
@@ -21,6 +23,7 @@ export interface BuildAppOptions {
   repo: FeedRepository;
   queue: Queue;
   policyStore?: FeedPolicyStore;
+  pipelineOrchestrator?: GlobalPipelineOrchestrator;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -75,6 +78,11 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(feedRoutes(service), { prefix: '/api/v1/feeds' });
   await app.register(feedPolicyRoutes(policyStore, repo), { prefix: '/api/v1/feeds' });
   await app.register(articleRoutes(repo), { prefix: '/api/v1/articles' });
+
+  // Global pipeline routes (DECISION-029 Phase C)
+  if (opts.pipelineOrchestrator) {
+    await app.register(globalPipelineRoutes(opts.pipelineOrchestrator), { prefix: '/api/v1/ingestion/global-pipeline' });
+  }
 
   logger.info('Ingestion service configured successfully');
   return app;

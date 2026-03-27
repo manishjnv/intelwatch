@@ -10,7 +10,7 @@
  *  - Rate-limit per feed via Redis
  *  - Gated by TI_GLOBAL_PROCESSING_ENABLED feature flag
  */
-import { Worker, type Job } from 'bullmq';
+import { Worker, Queue, type Job } from 'bullmq';
 import Redis from 'ioredis';
 import { EVENTS, AppError } from '@etip/shared-utils';
 import type pino from 'pino';
@@ -47,6 +47,7 @@ export interface GlobalFetchWorkerDeps {
   db: PrismaClient;
   logger: pino.Logger;
   redisUrl: string;
+  normalizeGlobalQueue?: Queue;
 }
 
 const MAX_CONSECUTIVE_FAILURES = 5;
@@ -128,6 +129,7 @@ export function createGlobalFetchWorker(
       // 4. Dedupe + insert
       let inserted = 0;
       let skipped = 0;
+      const insertedArticleIds: string[] = [];
 
       for (const article of fetchResult.articles) {
         if (!article.url) { skipped++; continue; }
@@ -142,7 +144,7 @@ export function createGlobalFetchWorker(
           continue;
         }
 
-        await db.globalArticle.create({
+        const created = await db.globalArticle.create({
           data: {
             globalFeedId,
             title: article.title.slice(0, 1000),
@@ -153,6 +155,7 @@ export function createGlobalFetchWorker(
             triageResult: article.rawMeta ? (article.rawMeta as object) : undefined,
           },
         });
+        insertedArticleIds.push(created.id);
         inserted++;
       }
 
@@ -166,7 +169,18 @@ export function createGlobalFetchWorker(
         },
       });
 
-      // 6. Set rate limit key
+      // 6. Enqueue new articles for global normalization
+      if (deps.normalizeGlobalQueue && insertedArticleIds.length > 0) {
+        for (const articleId of insertedArticleIds) {
+          await deps.normalizeGlobalQueue.add('normalize-global', {
+            globalArticleId: articleId,
+            globalFeedId,
+          }, { attempts: 3, backoff: { type: 'exponential', delay: 5000 } });
+        }
+        log.info({ count: insertedArticleIds.length }, `Enqueued ${insertedArticleIds.length} articles for global normalization`);
+      }
+
+      // 7. Set rate limit key
       await rateLimitRedis.set(rateLimitKey, String(Date.now()), 'EX', config.rateLimitSeconds);
 
       log.info({ inserted, skipped, total: fetchResult.articles.length }, 'Global feed fetch completed');
