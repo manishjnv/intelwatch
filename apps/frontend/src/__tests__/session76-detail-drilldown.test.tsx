@@ -43,11 +43,6 @@ vi.mock('@/hooks/use-search-data', () => ({
   useIOCSearch: (...args: any[]) => mockUseIOCSearch(...args),
 }))
 
-const mockUseEsSearch = vi.fn()
-vi.mock('@/hooks/use-es-search', () => ({
-  useEsSearch: () => mockUseEsSearch(),
-}))
-
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return { ...actual, useNavigate: () => mockNavigate }
@@ -145,9 +140,7 @@ const MOCK_IOC = {
 
 const MOCK_IOC_LIST = { data: [MOCK_IOC], total: 1, page: 1, limit: 50 }
 
-// MOCK_SEARCH_RESULT reserved for SearchPage detail panel tests
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _MOCK_SEARCH_RESULT = {
+const MOCK_SEARCH_RESULT = {
   id: 'sr1', iocType: 'ip', normalizedValue: '10.0.0.1',
   severity: 'high', confidence: 80, lifecycle: 'active',
   tlp: 'amber', score: 8.5, firstSeen: '2024-01-01',
@@ -230,38 +223,31 @@ describe('VulnerabilityListPage detail panel', () => {
 /* ================================================================ */
 
 describe('SearchPage drill-down', () => {
-  const MOCK_ES_RESULT = {
-    id: 'sr1', iocType: 'ip', value: '10.0.0.1', severity: 'high',
-    confidence: 80, tags: ['c2'], firstSeen: '2024-01-01T00:00:00Z',
-    lastSeen: '2026-03-26T00:00:00Z', enriched: true, tlp: 'AMBER',
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseEsSearch.mockReturnValue({
-      query: 'test', setQuery: vi.fn(), filters: {}, setFilters: vi.fn(),
-      sortBy: 'relevance', setSortBy: vi.fn(), page: 1, setPage: vi.fn(),
-      pageSize: 50, setPageSize: vi.fn(),
-      results: [MOCK_ES_RESULT], totalCount: 1,
-      facets: { byType: [], bySeverity: [], byTlp: [] },
-      isLoading: false, isDemo: false, error: null, searchTimeMs: 5,
-      clearAll: vi.fn(), exportResults: vi.fn(),
+    mockUseIOCSearch.mockReturnValue({
+      data: { data: [MOCK_SEARCH_RESULT], total: 1, took: 5 },
+      isLoading: false, isDemo: false,
     })
   })
 
   it('renders search results as clickable buttons', () => {
     render(<SearchPage />)
+    // Type a query to trigger results display
+    const input = screen.getByPlaceholderText(/Search IOCs/i)
+    fireEvent.change(input, { target: { value: '10.0.0.1' } })
     const rows = screen.queryAllByTestId('search-result-row')
     expect(rows.length).toBeGreaterThan(0)
   })
 
-  it('row click selects IOC for detail', () => {
+  it('navigates to /iocs on result click', () => {
     render(<SearchPage />)
+    const input = screen.getByPlaceholderText(/Search IOCs/i)
+    fireEvent.change(input, { target: { value: '10.0.0.1' } })
     const rows = screen.queryAllByTestId('search-result-row')
     expect(rows.length).toBeGreaterThan(0)
     fireEvent.click(rows[0]!)
-    // New SearchPage sets selectedIocId on row click (no navigate)
-    expect(rows[0]).toBeInTheDocument()
+    expect(mockNavigate).toHaveBeenCalledWith('/iocs')
   })
 })
 
