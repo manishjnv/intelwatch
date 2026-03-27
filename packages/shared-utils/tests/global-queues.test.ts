@@ -41,3 +41,43 @@ describe('Global event constants (DECISION-029)', () => {
     expect(typeof EVENTS.GLOBAL_IOC_CRITICAL).toBe('string');
   });
 });
+
+describe('Downstream pipeline lifecycle events', () => {
+  it('ENRICHMENT_COMPLETE event exists and uses dot notation', () => {
+    expect(EVENTS.ENRICHMENT_COMPLETE).toBe('enrichment.complete');
+  });
+
+  it('ALERT_FIRED event exists and uses dot notation', () => {
+    expect(EVENTS.ALERT_FIRED).toBe('alert.fired');
+  });
+
+  it('INTEGRATION_PUSHED event exists and uses dot notation', () => {
+    expect(EVENTS.INTEGRATION_PUSHED).toBe('integration.pushed');
+  });
+
+  it('all downstream queue constants have etip- prefix', () => {
+    const downstreamQueues = [
+      QUEUES.GRAPH_SYNC,
+      QUEUES.IOC_INDEX,
+      QUEUES.CORRELATE,
+      QUEUES.ALERT_EVALUATE,
+      QUEUES.INTEGRATION_PUSH,
+    ];
+    for (const q of downstreamQueues) {
+      expect(q).toMatch(/^etip-/);
+    }
+  });
+
+  it('downstream queues have no colons (RCA #42)', () => {
+    const downstreamQueues = [
+      QUEUES.GRAPH_SYNC,
+      QUEUES.IOC_INDEX,
+      QUEUES.CORRELATE,
+      QUEUES.ALERT_EVALUATE,
+      QUEUES.INTEGRATION_PUSH,
+    ];
+    for (const q of downstreamQueues) {
+      expect(q).not.toContain(':');
+    }
+  });
+});

@@ -49,8 +49,8 @@ describe('QUEUES', () => {
 // ── EVENTS Tests ───────────────────────────────────────────────────
 
 describe('EVENTS', () => {
-  it('has exactly 22 event types', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(22);
+  it('has exactly 25 event types', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(25);
   });
 
   it('all event types use dot-notation', () => {

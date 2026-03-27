@@ -28,8 +28,8 @@ describe('Queue constant integrity', () => {
     }
   });
 
-  it('QUEUES object has exactly 18 queue definitions', () => {
-    expect(ALL_QUEUE_NAMES.length).toBe(18);
+  it('QUEUES object has exactly 24 queue definitions', () => {
+    expect(ALL_QUEUE_NAMES.length).toBe(24);
   });
 
   it('all queue names are unique', () => {
@@ -53,6 +53,12 @@ describe('Event constant integrity', () => {
     expect(EVENTS.CORRELATION_MATCH).toBe('correlation.match');
     expect(EVENTS.DRP_ALERT_CREATED).toBe('drp.alert.created');
     expect(EVENTS.GRAPH_NODE_CREATED).toBe('graph.node.created');
+  });
+
+  it('EVENTS object has downstream lifecycle events', () => {
+    expect(EVENTS.ENRICHMENT_COMPLETE).toBe('enrichment.complete');
+    expect(EVENTS.ALERT_FIRED).toBe('alert.fired');
+    expect(EVENTS.INTEGRATION_PUSHED).toBe('integration.pushed');
   });
 
   it('all event types are unique', () => {
@@ -110,14 +116,17 @@ describe('Event types used in pipeline payloads', () => {
     expect(EVENTS.HUNT_COMPLETED).toBe('hunt.completed');
   });
 
-  it('pipeline event chain is complete: feed → normalize → enrich → store → correlate → alert', () => {
+  it('pipeline event chain is complete: feed → normalize → enrich → correlate → alert → integrate', () => {
     // Verify the full chain of events exists
     const pipelineEvents = [
-      EVENTS.FEED_FETCHED,      // ingestion → feed parsed
-      EVENTS.FEED_PARSED,       // ingestion → normalize
-      EVENTS.IOC_NORMALIZED,    // normalization → enrichment
-      EVENTS.IOC_ENRICHED,      // enrichment → downstream (graph, ES, correlation)
-      EVENTS.CORRELATION_MATCH, // correlation → alerting
+      EVENTS.FEED_FETCHED,         // ingestion → feed parsed
+      EVENTS.FEED_PARSED,          // ingestion → normalize
+      EVENTS.IOC_NORMALIZED,       // normalization → enrichment
+      EVENTS.IOC_ENRICHED,         // enrichment → downstream (graph, ES, correlation)
+      EVENTS.ENRICHMENT_COMPLETE,  // enrichment lifecycle marker
+      EVENTS.CORRELATION_MATCH,    // correlation → alerting
+      EVENTS.ALERT_FIRED,          // alerting lifecycle marker
+      EVENTS.INTEGRATION_PUSHED,   // integration lifecycle marker
     ];
 
     for (const event of pipelineEvents) {
