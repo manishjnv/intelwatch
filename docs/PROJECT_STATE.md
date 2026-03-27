@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 94 — DECISION-029 Phase D: Global AI Config UI, Plan Limits UI, E2E Pipeline Smoke Tests, Seed Script
+**Session counter:** 96 — DECISION-029 Phase F: Fuzzy Dedupe, Velocity Scoring, Batch Normalization, CWE Chains, Redis Caching
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -45,14 +45,14 @@
 | shared-auth | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-cache | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-audit | 1 | ✅ Deployed | 2026-03-15 | None |
-| shared-normalization | 1 | ✅ Deployed | 2026-03-27 | **Session 91:** + MISP Warninglist matcher (5 built-in lists) + ATT&CK technique weighting (30 techniques). 160 tests. |
+| shared-normalization | 1 | ✅ Deployed | 2026-03-27 | **Session 96:** + Fuzzy dedupe, velocity scoring, CWE chain mapper. 204 tests. |
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **24 data pages**. ~882 tests. **Session 95:** GlobalMonitoringPage (6 sections: pipeline flow, feed health, IOC stats, corroboration, subscriptions, actions). AdmiraltyBadge + StixConfidenceBadge components. DashboardPage global widget. IOC Source column. 63 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 95:** GlobalFeedRecovery (stale/stuck/unenriched), GlobalFeedMetrics (rolling window). 612 tests. |
-| normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 93:** GlobalIocStatsService (stats, top IOCs, corroboration leaders). 237 tests. |
+| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
+| normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 96:** Fuzzy dedupe in global worker, batch normalizer. 256 tests. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1-E COMPLETE + ACTIVATED. Pipeline LIVE on VPS.
-- **Last session outcome:** Session 95 (2026-03-27). **Phase E COMPLETE.** GlobalAiConfigPage (4 sections: model assignment table 15 subtasks × 3 categories, preset cards, Bayesian/Linear confidence toggle, cost dashboard). PlanLimitsPage (4 plan cards × 6 editable fields + comparison table). 2 TanStack Query hooks with demo fallbacks. 2 custom SVG icons. 15 E2E pipeline smoke tests + 5 delivery endpoint tests + 3 seed tests. seed-global-feeds.ts (10 OSINT feeds, idempotent). Commits: 45b46d4, 6b5cbbc, 59a4017. CI run 23632374415 green. 33 containers deployed + healthy.
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry (not wired to ingestion catalog subscriptions API yet). VPS: `tsx` not in production image (seed script can't run via docker exec). Frontend container not yet rebuilt with S95 code.
-- **Next tasks:** (1) Rebuild frontend on VPS: `docker compose -f docker-compose.etip.yml up -d --no-deps --build etip_frontend`. (2) Set Shodan/GreyNoise API keys on VPS. (3) Wire HTTP subscription adapter in alerting. (4) Verify /global-monitoring renders live data. (5) Grafana dashboards for Prometheus metrics.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1-F COMPLETE + ACTIVATED. Pipeline LIVE on VPS.
+- **Last session outcome:** Session 96 (2026-03-27). **Phase F COMPLETE.** Fuzzy deduplication (type-specific normalization: defang, port strip, leading zeros, plus-addressing, CVE separator). Velocity score calculator (0-100, trend detection, spike alerts, 6h half-life decay). CWE chain mapper (40 CWEs, root cause analysis, attack narrative). Redis caching layer (catalog 10m, known-IOC sets 24h, warninglists 1h, stats counters). Batch normalizer (adaptive 1-50, intra-batch dedup, cache-first). Global normalize worker fuzzy dedupe integration. 10 E2E smoke tests. Operational runbook. Commit: f322163. 90 new tests (204+629+256+10 = 1099 across 3 modules + e2e).
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. VPS: `tsx` not in production image. Frontend container not yet rebuilt with S95/S96 code.
+- **Next tasks:** (1) Deploy S96 code to VPS. (2) Rebuild frontend container. (3) Set Shodan/GreyNoise API keys on VPS. (4) Wire fuzzy dedupe hash column in Prisma schema (`fuzzyDedupeHash` field on GlobalIoc). (5) Wire batch normalizer into global-normalize-worker (currently separate class). (6) Grafana dashboards for Prometheus metrics.
 
 ## Deployment Log
 
@@ -197,6 +197,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 51 | 2026-03-24 | All 29 containers redeployed (BullMQ queue name migration + deploy optimization) | ✅ All 29 healthy | 1d00e99, 066101e, 3714b5a | BullMQ colon→dash migration (19 files). Deploy pipeline: 2 builds instead of 20, parallel health checks. Deploy time: 13min→1.5min. DECISION-026. |
 | 52 | 2026-03-24 | etip_reporting added (port 3021) | ✅ All 30 healthy | edfbd07 | Reporting Service (Module 21): 20 endpoints, 199 tests, 5 report types, BullMQ worker, cron scheduling, template engine. 4597 monorepo tests. |
 | 53 | 2026-03-24 | No deploy (code-only session) | — | cff770d | Reporting P0 batch 2: retention cron, CSV export, clone, bulk ops, comparison. 25 endpoints, 217 tests. 4615 monorepo tests. |
+| 96 | 2026-03-27 | No deploy (code-only session) | — | f322163 | DECISION-029 Phase F: fuzzy dedupe, velocity scoring, batch normalization, CWE chains, Redis caching. 90 new tests. |
 | 54 | 2026-03-24 | etip_frontend updated | ✅ CI green | 673dd72 | ReportingPage frontend: 3 tabs (Reports/Schedules/Templates), modals, bulk ops, compare, demo fallback. 44 new tests (574 frontend total). Route /reporting + module config + IconReporting. 4659 monorepo tests. |
 | 55 | 2026-03-24 | etip_frontend updated (AlertingPage) | ✅ CI green | 371b71c, 7d340d4 | AlertingPage frontend: 4 tabs (Rules/Alerts/Channels/Escalations), search, filters, bulk ack/resolve, history drawer, channel modal. 50 new tests (624 frontend). Route /alerting + IconAlerting. 18 data pages. |
 | 55 | 2026-03-24 | etip_analytics added (port 3024) | ✅ All 32 healthy | 14b7420, daa24ef | Analytics Service (Module 24): 12 endpoints, 83 tests, 5 P0 improvements. Dashboard aggregation, trends, executive summary, service health. 32 containers. ~5098 monorepo tests. |

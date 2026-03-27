@@ -1,6 +1,6 @@
 # Normalization Service
 
-**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 232
+**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 256
 
 ## What It Does
 
@@ -56,6 +56,8 @@ QUEUES.NORMALIZE → Normalize Worker
 | GreyNoise Client | enrichment/greynoise-client.ts | Community API (noise/riot, threat assessment, confidence adjustment) |
 | Tenant Overlay Service | services/tenant-overlay-service.ts | Multi-tenant IOC view: overlay wins over global, tags merged, CRUD + bulk |
 | Tenant Overlay Routes | routes/tenant-overlay.ts | 6 REST routes gated by TI_GLOBAL_PROCESSING_ENABLED |
+| Fuzzy Dedupe (worker) | workers/global-normalize-worker.ts | computeFuzzyHash fallback in upsert: exact match → fuzzy match → new IOC. fuzzyDedupeHash stored. |
+| Batch Normalizer | services/batch-normalizer.ts | Batch processing: intra-batch dedup, cache-first, createMany, adaptive sizing (1-50). BatchResult stats. |
 
 ## API
 

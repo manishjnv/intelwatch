@@ -1,6 +1,6 @@
 # Ingestion Service
 
-**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 502+
+**Port:** 3004 | **Queue:** etip-feed-fetch | **Status:** ✅ Deployed | **Tests:** 629
 
 ## What It Does
 
@@ -51,6 +51,7 @@ Feed Source (RSS/NVD/STIX/REST/MISP) → Scheduler (cron 5min sync)
 | Global Feed Catalog | repositories/global-feed-repo.ts | GlobalFeedCatalog CRUD (Prisma) — DECISION-029 |
 | Tenant Subscription | repositories/subscription-repo.ts | TenantFeedSubscription CRUD (Prisma) — DECISION-029 |
 | Catalog Schemas | schemas/catalog.ts | Zod validation for catalog API |
+| Global Cache | services/global-cache.ts | Redis caching: catalog (10m TTL), known-IOC sets (24h), warninglists (1h), stats counters (24h auto-reset) |
 
 ## API
 

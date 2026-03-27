@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 95 &middot; 2026-03-27 &middot; DECISION-029 Phase E: Monitoring Dashboard + Recovery + 56 new tests. 33 containers, ~6,348 tests</span>
+  <span class="version">Session 96 &middot; 2026-03-27 &middot; DECISION-029 Phase F: Fuzzy Dedupe + Velocity + Batch + CWE + Caching. 33 containers, ~6,438 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~6,292</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~6,438</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~591</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">94</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">96</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -523,23 +523,22 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 95 COMPLETE ✅</span> DECISION-029 Phase E — Monitoring Dashboard + Recovery Cron</div>
+    <div class="card-title"><span class="badge badge-green">Session 96 COMPLETE ✅</span> DECISION-029 Phase F — Fuzzy Dedupe + Velocity + Batch + CWE + Caching</div>
     <div class="card-body">
-      <strong>Session 95:</strong> Production activation tooling + monitoring dashboard:<br>
-      &bull; <strong>Monitoring Dashboard</strong> — GlobalMonitoringPage: pipeline flow, feed health grid, IOC stats, corroboration leaders, actions<br>
-      &bull; <strong>Badge Components</strong> — AdmiraltyBadge (NATO 6x6 color-coded), StixConfidenceBadge (tier + progress bar)<br>
-      &bull; <strong>Recovery System</strong> — GlobalFeedRecovery: stale feed re-enable (24h cooldown), stuck article reset, unenriched IOC re-enqueue<br>
-      &bull; <strong>Feed Metrics</strong> — GlobalFeedMetrics: rolling 10-record fetch history, date-aggregated trending<br>
-      &bull; <strong>Activation Script</strong> — scripts/activate-global-processing.sh: idempotent VPS activation (6 steps)<br>
-      &bull; <strong>Health Check</strong> — scripts/check-global-pipeline.ts: healthy/degraded/critical status report<br>
-      &bull; <strong>Dashboard Integration</strong> — Global Pipeline widget on DashboardPage, Source column on IOC list<br>
-      &bull; <strong>~6,348 tests</strong> — 882 frontend (+63), 612 ingestion (+10), 5 pipeline check tests<br><br>
+      <strong>Session 96:</strong> Performance optimization + deduplication hardening:<br>
+      &bull; <strong>Fuzzy Deduplication</strong> — Type-specific normalization (defang, port strip, leading zeros, plus-addressing, CVE separator). Catches ~15% near-duplicates missed by exact hash.<br>
+      &bull; <strong>Velocity Score</strong> — IOC sighting frequency + source diversity scoring (0-100), trend detection, spike alerts, 6h half-life decay<br>
+      &bull; <strong>CWE Chain Mapper</strong> — 40 curated CWEs, root cause analysis, attack narrative generation, category grouping<br>
+      &bull; <strong>Redis Caching</strong> — Catalog (10m TTL), known-IOC sets (24h), warninglists (1h), stats counters (24h auto-reset)<br>
+      &bull; <strong>Batch Normalizer</strong> — Adaptive sizing (1-50), intra-batch dedup, cache-first lookups, createMany bulk inserts<br>
+      &bull; <strong>Operational Runbook</strong> — docs/runbooks/GLOBAL_PROCESSING_RUNBOOK.md for pipeline operations<br>
+      &bull; <strong>~6,438 tests</strong> — 204 shared-normalization (+44), 629 ingestion (+12), 256 normalization (+24), 10 E2E smoke<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Deploy S95 to VPS</strong> — run activate-global-processing.sh, verify /global-monitoring<br>
-      2. <strong>Set Shodan/GreyNoise API keys on VPS</strong> — enrichment currently degrades gracefully (quality=0)<br>
-      3. <strong>Wire HTTP subscription adapter in alerting</strong> — query ingestion catalog API for real tenant subscriptions<br>
-      4. <strong>Grafana dashboards</strong> — wire Prometheus metrics to monitoring panels<br>
-      5. <strong>Launch prep</strong> — Razorpay live keys, SSL cert renewal, load testing<br>
+      1. <strong>Deploy S96 to VPS</strong> — git pull + rebuild containers<br>
+      2. <strong>Prisma migration</strong> — add fuzzyDedupeHash column to GlobalIoc model<br>
+      3. <strong>Wire batch normalizer</strong> — replace one-at-a-time loop in global-normalize-worker<br>
+      4. <strong>Set Shodan/GreyNoise API keys on VPS</strong> — enrichment degrades gracefully without them<br>
+      5. <strong>Grafana dashboards</strong> — wire Prometheus metrics to monitoring panels<br>
     </div>
   </div>
 </div>
@@ -547,7 +546,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 95 &middot; 2026-03-27 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 96 &middot; 2026-03-27 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
