@@ -145,11 +145,7 @@ const MOCK_IOC = {
 
 const MOCK_IOC_LIST = { data: [MOCK_IOC], total: 1, page: 1, limit: 50 }
 
-const MOCK_SEARCH_RESULT = {
-  id: 'sr1', iocType: 'ip', normalizedValue: '10.0.0.1',
-  severity: 'high', confidence: 80, lifecycle: 'active',
-  tlp: 'amber', score: 8.5, firstSeen: '2024-01-01',
-}
+// MOCK_SEARCH_RESULT removed — SearchPage now uses useEsSearch with inline mock data
 
 /* ================================================================ */
 /* FIX #1: VulnerabilityListPage detail panel                        */
