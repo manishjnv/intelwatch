@@ -13,6 +13,8 @@ import { notificationRoutes, type NotificationRouteDeps } from './routes/notific
 import { configRoutes, type ConfigRouteDeps } from './routes/config.js';
 import { apiKeyRoutes, type ApiKeyRouteDeps } from './routes/api-keys.js';
 import { feedQuotaRoutes, type FeedQuotaRouteDeps } from './routes/feed-quota.js';
+import { globalAiRoutes, type GlobalAiRouteDeps } from './routes/global-ai.js';
+import { planLimitsRoutes, type PlanLimitsRouteDeps } from './routes/plan-limits.js';
 import { registerMetrics } from '@etip/shared-utils';
 import type { CustomizationConfig } from './config.js';
 
@@ -26,6 +28,8 @@ export interface BuildAppOptions {
   notificationDeps?: NotificationRouteDeps;
   configDeps?: ConfigRouteDeps;
   feedQuotaDeps?: FeedQuotaRouteDeps;
+  globalAiDeps?: GlobalAiRouteDeps;
+  planLimitsDeps?: PlanLimitsRouteDeps;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -100,6 +104,12 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   }
   if (opts.feedQuotaDeps) {
     await app.register(feedQuotaRoutes(opts.feedQuotaDeps), { prefix: '/api/v1/customization/feed-quota' });
+  }
+  if (opts.globalAiDeps) {
+    await app.register(globalAiRoutes(opts.globalAiDeps), { prefix: '/api/v1/customization/ai/global' });
+  }
+  if (opts.planLimitsDeps) {
+    await app.register(planLimitsRoutes(opts.planLimitsDeps), { prefix: '/api/v1/customization/plans' });
   }
 
   return app;

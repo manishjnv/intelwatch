@@ -34,6 +34,25 @@ export {
   type InfoCredibility,
 } from './admiralty.js';
 
+// ── Bayesian Confidence Model ────────────────────────────────────
+export {
+  toLogOdds,
+  fromLogOdds,
+  calculateBayesianConfidence,
+  selectConfidenceModel,
+  BAYESIAN_WEIGHTS,
+  type BayesianConfidenceInput,
+  type ConfidenceCalculator,
+} from './bayesian-confidence.js';
+
+// ── STIX 2.1 Confidence Tiers ───────────────────────────────────
+export {
+  stixConfidenceTier,
+  stixConfidenceColor,
+  formatConfidenceWithTier,
+  type StixConfidenceTier,
+} from './stix-confidence.js';
+
 // ── CPE 2.3 Parser ──────────────────────────────────────────────
 export {
   parseCPE,
