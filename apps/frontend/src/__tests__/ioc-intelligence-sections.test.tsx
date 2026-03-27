@@ -68,8 +68,6 @@ describe('CorroborationSection', () => {
   })
 
   it('source list shows feed names', () => {
-    const { useCorroborationDetail } = require('@/hooks/use-global-iocs')
-    useCorroborationDetail.mockReturnValue({ data: mockCorroboration })
     render(<CorroborationSection iocId="ioc-1" />)
     expect(screen.getByText('AlienVault OTX')).toBeTruthy()
     expect(screen.getByText('Abuse.ch')).toBeTruthy()
@@ -85,23 +83,21 @@ describe('CorroborationSection', () => {
 
 describe('SeverityVotesSection', () => {
   it('stacked bar renders', () => {
-    const { useSeverityVotes } = require('@/hooks/use-global-iocs')
-    useSeverityVotes.mockReturnValue({ data: mockVotes })
     render(<SeverityVotesSection iocId="ioc-1" />)
     expect(screen.getByTestId('vote-bar')).toBeTruthy()
   })
 
-  it('Contested shown when margin low', () => {
-    const { useSeverityVotes } = require('@/hooks/use-global-iocs')
-    useSeverityVotes.mockReturnValue({ data: { ...mockVotes, margin: 2 } })
+  it('Contested shown when margin low', async () => {
+    const mod = await import('@/hooks/use-global-iocs') as any
+    mod.useSeverityVotes.mockReturnValue({ data: { ...mockVotes, margin: 2 } })
     render(<SeverityVotesSection iocId="ioc-1" />)
     const label = screen.getByTestId('consensus-label')
     expect(label.textContent).toBe('Contested')
   })
 
-  it('Clear consensus shown when margin high', () => {
-    const { useSeverityVotes } = require('@/hooks/use-global-iocs')
-    useSeverityVotes.mockReturnValue({ data: { ...mockVotes, margin: 15 } })
+  it('Clear consensus shown when margin high', async () => {
+    const mod = await import('@/hooks/use-global-iocs') as any
+    mod.useSeverityVotes.mockReturnValue({ data: { ...mockVotes, margin: 15 } })
     render(<SeverityVotesSection iocId="ioc-1" />)
     const label = screen.getByTestId('consensus-label')
     expect(label.textContent).toBe('Clear consensus')
@@ -110,8 +106,6 @@ describe('SeverityVotesSection', () => {
 
 describe('CommunityFpSection', () => {
   it('renders FP rate and count', () => {
-    const { useFpSummary } = require('@/hooks/use-global-iocs')
-    useFpSummary.mockReturnValue({ data: mockFpSummary })
     render(<CommunityFpSection iocId="ioc-1" />)
     expect(screen.getByText('50%')).toBeTruthy()
     expect(screen.getByText('2')).toBeTruthy()
