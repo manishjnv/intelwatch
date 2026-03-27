@@ -93,11 +93,13 @@ const SAMPLE_MALWARE = [
 
 // ─── Default Alert Config ───────────────────────────────────────
 
-const DEFAULT_ALERT_CONFIG = {
+// Alert config reserved for future use when alerting service is wired
+const _DEFAULT_ALERT_CONFIG = {
   minSeverity: 'high',
   minConfidence: 60,
   iocTypes: [] as string[],
 };
+void _DEFAULT_ALERT_CONFIG;
 
 // ─── RealSeeder Class ───────────────────────────────────────────
 
@@ -197,7 +199,7 @@ export class RealSeeder {
   // ─── Step 2: Private Starter Feeds ──────────────────────────
 
   private async createPrivateFeeds(
-    tenantId: string,
+    _tenantId: string,
     headers: Record<string, string>, errors: string[],
   ): Promise<string[]> {
     const feedIds: string[] = [];
@@ -221,7 +223,7 @@ export class RealSeeder {
   // ─── Step 3: Trigger Initial Fetches ────────────────────────
 
   private async triggerFetches(
-    tenantId: string, feedIds: string[],
+    _tenantId: string, feedIds: string[],
     headers: Record<string, string>, errors: string[],
   ): Promise<number> {
     let count = 0;
@@ -271,7 +273,7 @@ export class RealSeeder {
   // ─── Step 5: Sample Actors ─────────────────────────────────
 
   async seedSampleActors(
-    tenantId: string,
+    _tenantId: string,
     headers: Record<string, string>, errors: string[],
   ): Promise<number> {
     if (!this.clients) return 0;
@@ -287,7 +289,7 @@ export class RealSeeder {
   // ─── Step 6: Sample Malware ────────────────────────────────
 
   async seedSampleMalware(
-    tenantId: string,
+    _tenantId: string,
     headers: Record<string, string>, errors: string[],
   ): Promise<number> {
     if (!this.clients) return 0;
