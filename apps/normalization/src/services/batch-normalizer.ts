@@ -18,7 +18,15 @@ import {
   type IOCType,
 } from '@etip/shared-normalization';
 import type { PrismaClient } from '@prisma/client';
-import type { GlobalCache } from '../../src/services/global-cache.js';
+/** Cache interface (mirrors ingestion GlobalCache). */
+interface GlobalCache {
+  get(key: string): string | null;
+  set(key: string, value: string, ttlSeconds?: number): void;
+  isKnownIoc?(compositeKey: string): boolean;
+  isKnownFuzzyHash?(hash: string): boolean;
+  addKnownIoc?(compositeKey: string): void;
+  addKnownFuzzyHash?(hash: string): void;
+}
 
 export interface BatchArticle {
   id: string;
@@ -126,14 +134,14 @@ export class BatchNormalizer {
     for (const ioc of passedIocs) {
       // Check cache first
       if (this.cache) {
-        const known = await this.cache.isKnownIoc(ioc.dedupeHash);
+        const known = await this.cache.isKnownIoc?.(ioc.dedupeHash);
         if (known) {
           cacheHits++;
           existingIocs.push(ioc);
           continue;
         }
         // Check fuzzy cache
-        const fuzzyKnown = await this.cache.isKnownFuzzyHash(ioc.fuzzyHash);
+        const fuzzyKnown = await this.cache.isKnownFuzzyHash?.(ioc.fuzzyHash);
         if (fuzzyKnown) {
           cacheHits++;
           iocsFuzzyDeduped++;
@@ -201,8 +209,8 @@ export class BatchNormalizer {
     // 7. Update cache with new hashes
     if (this.cache) {
       for (const ioc of newIocs) {
-        await this.cache.addKnownIoc(ioc.dedupeHash);
-        await this.cache.addKnownFuzzyHash(ioc.fuzzyHash);
+        await this.cache.addKnownIoc?.(ioc.dedupeHash);
+        await this.cache.addKnownFuzzyHash?.(ioc.fuzzyHash);
       }
     }
 

@@ -91,12 +91,12 @@ export function getConsensusFromSources(
 
   const buckets: Record<string, number> = {};
   for (let i = 0; i < sources.length; i++) {
-    const sev = severities[i];
-    const w = voteWeight(sources[i].admiraltySource);
+    const sev = severities[i] ?? 'medium';
+    const w = voteWeight(sources[i]?.admiraltySource ?? 'D');
     buckets[sev] = (buckets[sev] ?? 0) + w;
   }
 
-  let winner = severities[0];
+  let winner: string = severities[0] ?? 'medium';
   let maxWeight = -1;
   for (const [sev, w] of Object.entries(buckets)) {
     if (w > maxWeight) {

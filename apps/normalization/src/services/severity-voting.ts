@@ -98,7 +98,7 @@ export class SeverityVotingService {
     const ioc = await this.prisma.globalIoc.findUnique({ where: { id: globalIocId } });
     if (!ioc) throw new Error(`GlobalIoc not found: ${globalIocId}`);
 
-    const votes: SeverityVotes = (ioc.severityVotes as SeverityVotes) ?? {};
+    const votes: SeverityVotes = (ioc.severityVotes as unknown as SeverityVotes) ?? {};
     const weight = calculateVoteWeight(vote.admiraltySource, vote.admiraltyCred);
 
     // Ensure bucket exists
@@ -106,7 +106,7 @@ export class SeverityVotingService {
       votes[vote.severity] = { weight: 0, voters: [] };
     }
 
-    const bucket = votes[vote.severity];
+    const bucket = votes[vote.severity]!;
 
     // Idempotent: if feed already voted for this severity, no change
     if (bucket.voters.includes(vote.feedId)) {
@@ -145,7 +145,7 @@ export class SeverityVotingService {
     const ioc = await this.prisma.globalIoc.findUnique({ where: { id: globalIocId } });
     if (!ioc) throw new Error(`GlobalIoc not found: ${globalIocId}`);
 
-    const votes: SeverityVotes = (ioc.severityVotes as SeverityVotes) ?? {};
+    const votes: SeverityVotes = (ioc.severityVotes as unknown as SeverityVotes) ?? {};
     return buildResult(votes);
   }
 

@@ -85,7 +85,7 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
 
     const feed = await prisma.globalFeedCatalog.findUnique({
       where: { id: globalFeedId },
-      select: { feedReliability: true, admiraltySource: true, admiraltyCred: true, name: true },
+      select: { feedReliability: true, name: true },
     });
     const value: FeedCatalogEntry = {
       feedReliability: feed?.feedReliability ?? 50,
