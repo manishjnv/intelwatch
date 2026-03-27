@@ -1,6 +1,6 @@
 # Normalization Service
 
-**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 154
+**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 232
 
 ## What It Does
 
@@ -46,6 +46,17 @@ QUEUES.NORMALIZE → Normalize Worker
 | 17 | URL dedup | Strip 30+ tracking params, sort query params |
 | 18 | Lifecycle cron | ACTIVE→AGING(30d)→EXPIRED(60d)→ARCHIVED(90d) every 6h |
 
+## Global Processing (DECISION-029 Phase B2)
+
+| Feature | File | Description |
+|---------|------|-------------|
+| Global Normalize Worker | workers/global-normalize-worker.ts | NORMALIZE_GLOBAL queue: extract IOCs, warninglist filter, Bayesian confidence, STIX tiers, upsert global_iocs |
+| Global Enrich Worker | workers/global-enrich-worker.ts | ENRICH_GLOBAL queue: Shodan/GreyNoise enrichment, confidence recalc, quality scoring, GLOBAL_IOC_CRITICAL |
+| Shodan Client | enrichment/shodan-client.ts | IP enrichment (ports, vulns, tags, risk scoring). Graceful degradation. |
+| GreyNoise Client | enrichment/greynoise-client.ts | Community API (noise/riot, threat assessment, confidence adjustment) |
+| Tenant Overlay Service | services/tenant-overlay-service.ts | Multi-tenant IOC view: overlay wins over global, tags merged, CRUD + bulk |
+| Tenant Overlay Routes | routes/tenant-overlay.ts | 6 REST routes gated by TI_GLOBAL_PROCESSING_ENABLED |
+
 ## API
 
 | Method | Path | Auth | Description |
@@ -54,6 +65,12 @@ QUEUES.NORMALIZE → Normalize Worker
 | GET | /api/v1/iocs | JWT | List IOCs (type, severity, lifecycle, TLP, search, minConfidence, sort) |
 | GET | /api/v1/iocs/:id | JWT | Single IOC by ID |
 | GET | /api/v1/iocs/stats | JWT | Counts by type, lifecycle, severity |
+| GET | /api/v1/normalization/global-iocs | JWT | Tenant's merged global IOC view (with overlay) |
+| GET | /api/v1/normalization/global-iocs/:iocId | JWT | Single global IOC detail + enrichmentData |
+| PUT | /api/v1/normalization/global-iocs/:iocId/overlay | JWT+RBAC | Set/update tenant overlay |
+| DELETE | /api/v1/normalization/global-iocs/:iocId/overlay | JWT+RBAC | Remove tenant overlay (revert to global) |
+| POST | /api/v1/normalization/global-iocs/bulk-overlay | JWT+RBAC | Bulk set overlay (max 100) |
+| GET | /api/v1/normalization/global-iocs/stats | JWT | Overlay stats for tenant |
 
 ## Config
 
@@ -62,3 +79,6 @@ QUEUES.NORMALIZE → Normalize Worker
 | TI_NORMALIZATION_PORT | 3005 | Service port |
 | TI_NORMALIZATION_BATCH_SIZE | 500 | Max IOCs per job |
 | TI_NORMALIZATION_CONCURRENCY | 3 | Worker concurrency |
+| TI_GLOBAL_PROCESSING_ENABLED | false | Gate for global normalize/enrich workers + overlay routes |
+| TI_SHODAN_API_KEY | - | Shodan API key (optional, enrichment degrades gracefully) |
+| TI_GREYNOISE_API_KEY | - | GreyNoise API key (optional, enrichment degrades gracefully) |

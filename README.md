@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-9%20global%20processing-00ff88)
-![Tests](https://img.shields.io/badge/tests-6160%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-6235%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
@@ -18,7 +18,7 @@
 | API Gateway (Fastify, tiered rate limiting, error alerting, gzip compression) | ✅ Live on VPS | 59 |
 | User Service (register, login, refresh) | ✅ Live on VPS | 21 |
 | Ingestion Service (RSS + NVD + STIX/TAXII + REST_API, 11 pipeline modules, scheduler retry, global fetch workers) | ✅ Live on VPS | 587 |
-| Normalization Service (18 accuracy improvements) | ✅ Live on VPS | 139 |
+| Normalization Service (18 accuracy improvements, global normalize/enrich, tenant overlay) | ✅ Live on VPS | 232 |
 | AI Enrichment Service (VT + AbuseIPDB + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 253 |
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
@@ -40,7 +40,7 @@
 | Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | ✅ Deployed | 57 |
 | Reporting Service (5 report types, BullMQ worker, cron scheduling, template engine, 25 endpoints) | ✅ Deployed | 217 |
 | Infrastructure (30 Docker containers) | ✅ All healthy | — |
-| **Phase 9 — Global Processing (DECISION-029)** | **30/30 modules** | **~6,083** |
+| **Phase 9 — Global Processing (DECISION-029)** | **30/30 modules** | **~6,235** |
 
 ## Live API Endpoints
 
