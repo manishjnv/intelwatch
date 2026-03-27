@@ -674,3 +674,4 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 85 | 2026-03-27 | No new issues. API Gateway: tiered rate limits + error alerting + @fastify/compress. Frontend: GET request dedup. 12 new tests, ~5,965 total. CI triggered. |
 | Session 86 | 2026-03-27 | No new issues. Frontend-only: fix 14 TS errors, notifyApiError wired to 7 hooks, debounce on 3 pages, TableSkeleton on 2 pages. 8 new tests, 794 frontend tests, ~5,973 total. CI triggered. |
 | Session 87 | 2026-03-27 | No new issues. Customization FeedQuotaStore → Postgres dual-mode persistence. 8 new tests, 281 customization tests, ~5,981 total. CI triggered. VPS needs `prisma db push`. |
+| Session 88 | 2026-03-27 | No deploy. Planning session: DECISION-029 v2 (global processing + 15 standards improvements). Docs only. |

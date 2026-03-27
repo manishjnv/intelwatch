@@ -1,73 +1,70 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-27
-**Session:** 87
-**Session Summary:** Persist FeedQuotaStore to Postgres using dual-mode pattern (Prisma repo + in-memory fallback). Tenant plan assignments now survive container restarts.
+**Session:** 88
+**Session Summary:** DECISION-029 v2 — designed global feed processing + tenant overlay architecture with 27 improvements (12 original + 15 standards-based). Docs/planning only, no code changes.
 
-## ✅ Changes Made
-- `fe7c4d8` — feat: persist FeedQuotaStore to Postgres — dual-mode with in-memory fallback (9 files, 288 insertions, 37 deletions)
-- `cad4969` — chore: update lockfile for customization @prisma/client dep (2 files)
+## Changes Made
 
-## 📁 Files / Documents Affected
+| Commit | Description |
+|--------|-------------|
+| 8d3e078 | docs: update DECISION-029 plan with 12 accuracy/CX improvements |
+| b66affd | docs: DECISION-029 — Global Feed Processing + Tenant Overlay plan |
+| f1238bf | docs: update DECISION-029 plan with 15 standards-based improvements (v2) |
 
-### New Files
-| File | Purpose |
-|------|---------|
-| `apps/customization/src/prisma.ts` | PrismaClient singleton (TI_DATABASE_URL, globalThis caching) |
-| `apps/customization/src/repository.ts` | FeedQuotaRepo — getTenantPlan, upsertTenantPlan, getAllAssignments |
-| `apps/customization/tests/feed-quota-repo.test.ts` | 8 dual-mode tests (mock repo success/failure/fallback) |
+## Files / Documents Affected
 
-### Modified Files
+**Modified:**
 | File | Change |
 |------|--------|
-| `prisma/schema.prisma` | Added FeedQuotaPlanAssignment model (String planId, unique tenantId, snake_case table) |
-| `apps/customization/package.json` | Added @prisma/client ^5.22.0 |
-| `apps/customization/src/services/feed-quota-store.ts` | Optional repo constructor, 4 methods now async with try/catch fallback |
-| `apps/customization/src/routes/feed-quota.ts` | Added await to 5 store method calls |
-| `apps/customization/src/index.ts` | Wire FeedQuotaRepo (conditional on TI_DATABASE_URL), disconnectPrisma on shutdown |
-| `apps/customization/tests/feed-quota.test.ts` | Added await to ~10 assertions for async methods |
-| `pnpm-lock.yaml` | Updated for @prisma/client in customization |
+| docs/architecture/DECISION-029-Global-Processing-Plan.md | Complete rewrite: 27 improvements, 5 phases, all schemas/APIs/standards |
+| docs/DECISIONS_LOG.md | DECISION-029 entry updated with v2 consequences |
 
-## 🔧 Decisions & Rationale
-No new DECISION entries. Follows DECISION-027 (hybrid persistence) — customization uses Postgres for business entity (tenant plan assignments), not Redis JSON. Plan quota definitions remain hardcoded constants (no persistence needed). Used String field for planId (not Prisma Plan enum) due to `teams` vs `pro` mismatch.
+## Decisions & Rationale
 
-## 🧪 E2E / Deploy Verification Results
-- Customization tests: 281/281 passed (18 test files, 0 failures)
-- TypeScript: 3 new errors (same pre-existing Prisma pattern — `feedQuotaPlanAssignment` not on PrismaClient until `prisma generate`)
-- Lint: 0 errors
-- Secrets scan: clean
-- CI triggered on push (commits fe7c4d8, cad4969)
-- VPS needs: `prisma db push` to create `feed_quota_plan_assignments` table
+**DECISION-029 v2 (updated):** Global Feed Processing + Standards-Based Intelligence Leadership
+- 27 total improvements: 12 original (corroboration, consensus, FP signal, etc.) + 15 new standards
+- Standards added: NATO Admiralty Code, Bayesian confidence, MISP Warninglists, FIRST.org EPSS live, CPE 2.3, STIX Sightings, STIX confidence tiers, fuzzy dedup (RFC 3986), CWE hierarchy, Shodan + GreyNoise providers, MITRE ATT&CK tactic weighting (201 vs 5 techniques), AI graph extraction, confidence explainability, STIX import/export wizard, ATT&CK Navigator heatmap
+- 5 phases: A1 (schema+catalog), A2 (AI config+Bayesian+EPSS), B (pipeline+dedup+FP), C (enrichment+overlay+graph), D (frontend+migration)
 
-## ⚠️ Open Items / Next Steps
+## E2E / Deploy Verification Results
 
-### Immediate
-1. Deploy S87 to VPS — run `prisma db push` for new table
-2. Verify customization service reads/writes to Postgres
+No deploy this session (planning only).
 
-### Deferred
-- Persistence migration B2: alerting-service → Postgres
-- Wire notifyApiError into remaining ~28 hooks
-- Persistence migration B3: correlation-service Redis → Postgres
-- Persistence migration B4: user-management → Redis JSON
+## Open Items / Next Steps
 
-## 🔁 How to Resume
+**Immediate (Session 89):**
+- Phase A1: 7 Prisma models + Feed Catalog API + Admiralty Code + CPE parser + STIX Sightings
+- Scope: prisma + ingestion + shared-normalization + shared-types (~14 files, ~30 tests)
+- Feature flag: TI_GLOBAL_PROCESSING_ENABLED=false
+
+**Deferred:**
+- Deploy S87 to VPS + `prisma db push` for feed_quota_plan_assignments table
+- Persistence migration B2-B4 (alerting, correlation, user-management)
+
+## How to Resume
+
 ```
-Working on: Persistence migrations (DECISION-027)
-Module target: alerting-service (B2) OR remaining notifyApiError hooks
-Do not modify: customization (S87 complete), frontend (S86 complete), api-gateway (S85 complete)
+Session 89: Phase A1 — Schema + Catalog + Standards Foundation
 
-Steps:
-1. Verify CI/CD deploy for S87
-2. SSH to VPS: npx prisma db push (creates feed_quota_plan_assignments table)
-3. Verify: PUT /api/v1/customization/feed-quota/tenants/{id}/plan → restart container → GET still returns assignment
-4. Pick next: alerting-service persistence (B2) or notifyApiError remaining hooks
+SCOPE: prisma + ingestion + shared-normalization + shared-types (~14 files, ~30 tests)
+Do not modify: frontend, ai-enrichment, customization
 
-Key facts from S87:
-- FeedQuotaPlanAssignment model uses String planId (not Plan enum — teams/pro mismatch)
-- Dual-mode: TI_DATABASE_URL present → Postgres, absent → in-memory
-- Pattern: constructor(repo?) → if repo try/catch → fallback to Map
-- 4 async methods: getTenantPlan, getTenantFeedQuota, assignPlan, listAllAssignments
-- Plan quota defs (free/starter/teams/enterprise) are hardcoded constants, NOT persisted
-- Safe point tag: safe-point-2026-03-27-feed-quota-persist
+Read docs/architecture/DECISION-029-Global-Processing-Plan.md (Phase A1 section)
+
+STEPS:
+1. git tag safe-point-2026-03-27-pre-global-processing
+2. Add 7 Prisma models + FeedVisibility enum to prisma/schema.prisma
+3. Create packages/shared-normalization/src/admiralty.ts — Admiralty Code (NATO 6x6)
+4. Create packages/shared-normalization/src/cpe.ts — CPE 2.3 parser
+5. Update packages/shared-types/src/stix.ts — add StixSightingSchema
+6. Create apps/ingestion/src/repositories/global-feed-repo.ts — catalog CRUD
+7. Create apps/ingestion/src/repositories/subscription-repo.ts — subscription CRUD
+8. Create apps/ingestion/src/routes/catalog.ts — 7 API routes
+9. Create apps/ingestion/src/schemas/catalog.ts — Zod validation
+10. Add 6 queue constants to packages/shared-utils/src/queues.ts
+11. Add 2 events to packages/shared-utils/src/events.ts
+12. Feature flag: TI_GLOBAL_PROCESSING_ENABLED=false
+13. Write ~30 tests
+14. pnpm -r test → all pass
 ```

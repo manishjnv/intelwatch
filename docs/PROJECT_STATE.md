@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 87 — Persist FeedQuotaStore to Postgres (dual-mode)
+**Session counter:** 88 — DECISION-029 v2: Global Processing + 15 Standards-Based Improvements
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 8 — E2E Verification + Production Hardening. All 7 build phases complete. 33 containers, ~5,981 tests.
-- **Last session outcome:** Session 87 (2026-03-27). **FeedQuotaStore Postgres persistence.** Dual-mode pattern: Prisma repo (FeedQuotaPlanAssignment model) with in-memory fallback. FeedQuotaRepo (get/upsert/getAll), async store methods (getTenantPlan, getTenantFeedQuota, assignPlan, listAllAssignments), routes updated with await. 8 new dual-mode tests, 281 customization tests total. Commits: fe7c4d8, cad4969.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Planning complete, implementation starts Session 89 (Phase A1).
+- **Last session outcome:** Session 88 (2026-03-27). **Docs/planning only — no code changes, no deploy.** Reviewed current per-tenant architecture. Compared with Recorded Future/Anomali/CrowdStrike/OpenCTI models. Designed DECISION-029 v2: global OSINT processing (process once) + tenant overlay (custom scores/tags/lifecycle) + 15 standards-based improvements (NATO Admiralty Code, Bayesian confidence, MISP Warninglists, EPSS live API, CPE 2.3, ATT&CK tactic weighting, Shodan/GreyNoise, STIX Sightings/tiers, fuzzy dedup, CWE chains, AI graph extraction, confidence explainability, STIX import/export wizard, ATT&CK Navigator heatmap). Total: 27 improvements across 5 phases (sessions 89-93). Plan saved: docs/architecture/DECISION-029-Global-Processing-Plan.md. Commits: 8d3e078, b66affd, f1238bf.
 - **Known issues:** Cache-invalidate queue had 18,922 backlog. CISA KEV intermittent timeouts. Docker service ports not published to host. Pre-existing TS errors in billing-service Prisma models (29 errors, needs `prisma generate`) + 3 new in customization repo (same pattern — `prisma generate` needed). VPS needs `prisma db push` to create `feed_quota_plan_assignments` table.
-- **Next tasks:** (1) Deploy S87 to VPS + run `prisma db push` for new table. (2) Persistence migration B2: alerting-service → Postgres. (3) Wire notifyApiError into remaining ~28 hooks. (4) Persistence migration B3: correlation-service Redis → Postgres. (5) Persistence migration B4: user-management → Redis JSON.
+- **Next tasks:** (1) Session 89: DECISION-029 Phase A1 — 7 Prisma models + Feed Catalog API + Admiralty Code + CPE parser + STIX Sightings (~14 files, ~30 tests). (2) Deploy S87 to VPS + run `prisma db push` for new table. (3) Session 90: Phase A2 — Bayesian confidence + EPSS live + AI config. (4) Sessions 91-93: Phases B/C/D per plan.
 
 ## Deployment Log
 
@@ -225,6 +225,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 84 | 2026-03-27 | etip_ingestion + etip_frontend updated | ⏳ CI triggered | d2ff728, a97b8ff | Scheduler: exponential backoff + circuit breaker. Frontend: feed health indicators (HealthDot, FailureSparkline, overdue). 19 new tests. 5,953 total. |
 | 85 | 2026-03-27 | etip_api + etip_frontend updated | ⏳ CI triggered | 1420c77 | API Gateway: tiered rate limits (search/write/read), error alerting (5-min window, QUEUE_ALERT), @fastify/compress (gzip >1KB), GET /gateway/error-stats. Frontend: GET request dedup (100ms). 12 new tests. ~5,965 total. |
 | 86 | 2026-03-27 | etip_frontend updated | ⏳ CI triggered | 426794d | Fix 14 TS errors, notifyApiError wired to 7 hooks (20 catches), useDebouncedValue on 3 pages, TableSkeleton on 2 pages. 8 new tests. 794 frontend tests. ~5,973 total. |
+| 88 | 2026-03-27 | No deploy (planning session) | — | 8d3e078, b66affd, f1238bf | DECISION-029 v2: Global processing + 27 improvements (12 orig + 15 standards). NATO Admiralty Code, Bayesian confidence, MISP Warninglists, EPSS, CPE 2.3, ATT&CK weighting, Shodan/GreyNoise. Docs only. |
 
 ## E2E Verification Results (Session 13)
 
