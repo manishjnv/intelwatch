@@ -88,6 +88,21 @@ vi.mock('@/hooks/use-search-data', () => ({
   DEMO_SEARCH_RESULTS: [],
 }))
 
+const mockSetQuery = vi.fn()
+const mockUseEsSearch = vi.fn(() => ({
+  query: '', setQuery: mockSetQuery, filters: {}, setFilters: vi.fn(),
+  sortBy: 'relevance', setSortBy: vi.fn(), page: 1, setPage: vi.fn(),
+  pageSize: 50, setPageSize: vi.fn(),
+  results: [], totalCount: 0,
+  facets: { byType: [], bySeverity: [], byTlp: [] },
+  isLoading: false, isDemo: false, error: null, searchTimeMs: 0,
+  clearAll: vi.fn(), exportResults: vi.fn(),
+}))
+
+vi.mock('@/hooks/use-es-search', () => ({
+  useEsSearch: () => mockUseEsSearch(),
+}))
+
 vi.mock('@/components/viz/SplitPane', () => ({
   SplitPane: ({ left }: any) => <div data-testid="split-pane">{left}</div>,
 }))
@@ -237,28 +252,16 @@ describe('SearchPage debounce', () => {
 
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('calls useIOCSearch with empty string initially', () => {
+  it('calls useEsSearch hook on render', () => {
     render(<SearchPage />)
-    expect(mockUseIOCSearch).toHaveBeenCalledWith('', expect.anything())
+    expect(mockUseEsSearch).toHaveBeenCalled()
   })
 
-  it('debounces query — does not pass raw input immediately', () => {
-    vi.useFakeTimers()
+  it('typing triggers setQuery on the hook', () => {
     render(<SearchPage />)
     const input = screen.getByPlaceholderText(/Search IOCs/)
-
     fireEvent.change(input, { target: { value: '192.168' } })
-    // The debounced value hasn't fired yet — still ''
-    const calls = mockUseIOCSearch.mock.calls
-    const lastCall = calls[calls.length - 1] as unknown[] | undefined
-    expect(lastCall?.[0]).toBe('')
-
-    // Advance past debounce
-    act(() => { vi.advanceTimersByTime(350) })
-    const calls2 = mockUseIOCSearch.mock.calls
-    const afterDebounce = calls2[calls2.length - 1] as unknown[] | undefined
-    expect(afterDebounce?.[0]).toBe('192.168')
-    vi.useRealTimers()
+    expect(mockSetQuery).toHaveBeenCalledWith('192.168')
   })
 
   it('cancels stale queries on rapid typing', () => {

@@ -86,7 +86,7 @@ describe('Search Routes', () => {
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(Array.isArray(body.data)).toBe(true);
+      expect(Array.isArray(body.data.data)).toBe(true);
     });
 
     it('returns total, page, limit in response', async () => {
@@ -95,9 +95,9 @@ describe('Search Routes', () => {
         url: '/api/v1/search/iocs?tenantId=tenant-abc',
       });
       const body = JSON.parse(res.body);
-      expect(typeof body.total).toBe('number');
-      expect(typeof body.page).toBe('number');
-      expect(typeof body.limit).toBe('number');
+      expect(typeof body.data.total).toBe('number');
+      expect(typeof body.data.page).toBe('number');
+      expect(typeof body.data.limit).toBe('number');
     });
 
     it('returns aggregations in response', async () => {
@@ -106,8 +106,8 @@ describe('Search Routes', () => {
         url: '/api/v1/search/iocs?tenantId=tenant-abc',
       });
       const body = JSON.parse(res.body);
-      expect(body.aggregations).toBeDefined();
-      expect(Array.isArray(body.aggregations.by_type)).toBe(true);
+      expect(body.data.aggregations).toBeDefined();
+      expect(Array.isArray(body.data.aggregations.by_type)).toBe(true);
     });
 
     it('passes q param to search service', async () => {

@@ -29,7 +29,7 @@ export function searchRoutes(deps: SearchRouteDeps) {
 
       const { tenantId, ...searchParams } = parsed.data;
       const result = await searchService.search(tenantId, searchParams);
-      return reply.send(result);
+      return reply.send({ data: result });
     });
 
     /**
