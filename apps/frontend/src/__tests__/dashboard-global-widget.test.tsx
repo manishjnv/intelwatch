@@ -40,6 +40,8 @@ vi.mock('@/hooks/use-enrichment-data', () => ({
   useCostStats: vi.fn(() => ({ data: { headline: '$0.42 today' } })),
   useEnrichmentStats: vi.fn(() => ({ data: { avgQualityScore: 75, pending: 10 } })),
   useEnrichmentQuality: vi.fn(() => ({ data: null })),
+  useEnrichmentSourceBreakdown: vi.fn(() => ({ data: null, isDemo: false })),
+  useAiCostSummary: vi.fn(() => ({ data: null, isDemo: false })),
 }))
 
 vi.mock('@/hooks/use-global-catalog', () => ({

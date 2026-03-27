@@ -103,3 +103,37 @@ DECISION-029 Phase F | Last updated: 2026-03-27
 - Top 40 CWEs from MITRE/OWASP curated database
 - Attack chain analysis: root causes, severity, narrative generation
 - Category grouping: injection, memory, auth, crypto, config, info-disclosure
+
+## Grafana Dashboards
+
+Access: <https://ti.intelwatch.in/grafana/> (proxied via nginx `/grafana/` location)
+Default login: admin / (from `TI_GRAFANA_PASSWORD` env, default `etip-admin`)
+Datasource: Prometheus (auto-provisioned, `etip-prometheus` UID)
+
+### Available Dashboards
+
+| Dashboard        | UID                    | Description                                                                  |
+| ---------------- | ---------------------- | ---------------------------------------------------------------------------- |
+| Service Health   | `etip-service-health`  | Targets UP/DOWN, health %, scrape table, HTTP latency                        |
+| Pipeline & Queues | `etip-pipeline-queues` | BullMQ throughput, queue depths, AI cost (placeholder metrics)               |
+| API Gateway      | `etip-api-gateway`     | Gateway request rate, latency, error breakdown                               |
+| Pipeline Overview | `etip-pipeline-overview` | HTTP traffic by service, error rates, p50/p95/p99 latency, memory, event loop |
+| AI Cost Tracking | `etip-ai-cost`         | AI spend, tokens, budget gauge, enrichment service latency                   |
+| Feed Health      | `etip-feed-health`     | Ingestion/normalization/enrichment request rates, errors, latency, memory    |
+
+### Metrics Available
+
+All services export via `prom-client` (`registerMetrics()` in shared-utils):
+
+- `http_requests_total{method, route, status_code, service}` — Counter
+- `http_request_duration_seconds{method, route, status_code, service}` — Histogram
+- Default Node.js process metrics (`process_resident_memory_bytes`, `nodejs_eventloop_lag_seconds`, etc.)
+
+### Adding Custom Metrics
+
+To add pipeline-specific counters (e.g., `etip_articles_ingested_total`):
+
+1. Import `{ Registry }` from the service's metrics instance
+2. Create a new Counter/Gauge/Histogram
+3. Increment in the relevant worker/handler
+4. Prometheus auto-scrapes via existing `/metrics` endpoint

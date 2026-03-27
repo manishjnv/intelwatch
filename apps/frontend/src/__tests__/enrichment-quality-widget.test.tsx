@@ -10,9 +10,11 @@ import { DashboardPage } from '@/pages/DashboardPage'
 const mockUseEnrichmentQuality = vi.fn()
 
 vi.mock('@/hooks/use-enrichment-data', () => ({
-  useCostStats:          () => ({ data: null }),
-  useEnrichmentStats:    () => ({ data: null }),
-  useEnrichmentQuality:  () => mockUseEnrichmentQuality(),
+  useCostStats:                 () => ({ data: null }),
+  useEnrichmentStats:           () => ({ data: null }),
+  useEnrichmentQuality:         () => mockUseEnrichmentQuality(),
+  useEnrichmentSourceBreakdown: () => ({ data: null, isDemo: false }),
+  useAiCostSummary:             () => ({ data: null, isDemo: false }),
 }))
 
 vi.mock('@/hooks/use-intel-data', () => ({

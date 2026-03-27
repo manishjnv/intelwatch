@@ -283,6 +283,83 @@ export function useBudgetStatus() {
   return { ...result, ...fallback }
 }
 
+// ─── Enrichment Source Breakdown ─────────────────────────────────
+
+export interface SourceBreakdown {
+  success: number
+  total: number
+  rate: number
+}
+
+export interface EnrichmentSourceData {
+  avgQuality: number
+  enrichedCount: number
+  unenrichedCount: number
+  enrichedPercent: number
+  bySource: Record<string, SourceBreakdown>
+}
+
+const DEMO_ENRICHMENT_SOURCES: EnrichmentSourceData = {
+  avgQuality: 72,
+  enrichedCount: 840,
+  unenrichedCount: 160,
+  enrichedPercent: 84,
+  bySource: {
+    Shodan: { success: 620, total: 840, rate: 74 },
+    GreyNoise: { success: 510, total: 840, rate: 61 },
+    EPSS: { success: 380, total: 420, rate: 90 },
+    Warninglist: { success: 780, total: 840, rate: 93 },
+  },
+}
+
+/** Enrichment source breakdown for dashboard widget */
+export function useEnrichmentSourceBreakdown() {
+  const result = useQuery({
+    queryKey: ['enrichment-source-breakdown'],
+    queryFn: () => api<{ data: EnrichmentSourceData }>('/analytics/enrichment-quality').catch(() => null),
+    staleTime: 300_000,
+  })
+  const data = result.data?.data
+  const isDemo = !result.isLoading && data == null
+  return { ...result, data: isDemo ? DEMO_ENRICHMENT_SOURCES : data, isDemo }
+}
+
+// ─── AI Cost Summary ─────────────────────────────────────────────
+
+export interface AiCostSummary {
+  totalCost30d: number
+  previousCost30d: number
+  deltaPercent: number
+  budgetMonthly: number
+  budgetUtilization: number
+  byModel: Record<string, number>
+  costPerArticle: number
+  costPerIoc: number
+}
+
+const DEMO_AI_COST_SUMMARY: AiCostSummary = {
+  totalCost30d: 12.50,
+  previousCost30d: 14.20,
+  deltaPercent: -12,
+  budgetMonthly: 50.00,
+  budgetUtilization: 25,
+  byModel: { Haiku: 3.20, Sonnet: 9.30 },
+  costPerArticle: 0.02,
+  costPerIoc: 0.04,
+}
+
+/** 30-day AI cost summary for dashboard widget */
+export function useAiCostSummary() {
+  const result = useQuery({
+    queryKey: ['ai-cost-summary'],
+    queryFn: () => api<{ data: AiCostSummary }>('/analytics/cost-tracking').catch(() => null),
+    staleTime: 300_000,
+  })
+  const data = result.data?.data
+  const isDemo = !result.isLoading && data == null
+  return { ...result, data: isDemo ? DEMO_AI_COST_SUMMARY : data, isDemo }
+}
+
 // ─── Enrichment Quality (from analytics service) ────────────────
 
 export interface EnrichmentQuality {

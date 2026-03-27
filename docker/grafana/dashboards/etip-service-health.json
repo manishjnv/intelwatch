@@ -376,10 +376,28 @@
   },
   "links": [
     {
+      "title": "Pipeline Overview",
+      "url": "/d/etip-pipeline-overview/etip-pipeline-overview",
+      "type": "link",
+      "icon": "graph-bar"
+    },
+    {
       "title": "Pipeline & Queues",
       "url": "/d/etip-pipeline-queues/etip-pipeline-queues",
       "type": "link",
       "icon": "bolt"
+    },
+    {
+      "title": "AI Cost Tracking",
+      "url": "/d/etip-ai-cost/etip-ai-cost-tracking",
+      "type": "link",
+      "icon": "dollar-sign"
+    },
+    {
+      "title": "Feed Health",
+      "url": "/d/etip-feed-health/etip-feed-health",
+      "type": "link",
+      "icon": "rss"
     },
     {
       "title": "API Gateway",

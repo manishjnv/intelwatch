@@ -251,8 +251,9 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 33 containers), 96GB disk (16% used, daily Docker cleanup cron active)
+- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 34 containers), 96GB disk (16% used, daily Docker cleanup cron active)
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
 - API keys configured: TI_VIRUSTOTAL_API_KEY (free, 4/min), TI_ABUSEIPDB_API_KEY (free, 1000/day), TI_AI_ENABLED=true
+- Grafana: <https://ti.intelwatch.in/grafana/> (default: admin / TI_GRAFANA_PASSWORD env). 6 dashboards auto-provisioned (service-health, pipeline-queues, api-gateway, pipeline-overview, ai-cost-tracking, feed-health)

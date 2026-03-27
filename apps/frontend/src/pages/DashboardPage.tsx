@@ -19,6 +19,10 @@ import { useCostStats, useEnrichmentStats, useEnrichmentQuality } from '@/hooks/
 import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain, Globe } from 'lucide-react'
 import { useGlobalPipelineHealth } from '@/hooks/use-global-catalog'
 
+// Dashboard widgets (S103)
+import { EnrichmentSourceWidget } from '@/components/widgets/EnrichmentSourceWidget'
+import { AiCostWidget } from '@/components/widgets/AiCostWidget'
+
 // UI improvements (#2, #13, #14, #15)
 import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'
 import { ParallaxCard } from '@/components/viz/ParallaxCard'
@@ -306,6 +310,12 @@ export function DashboardPage() {
 
         {/* Enrichment quality confidence tier breakdown */}
         <EnrichmentQualityWidget data={enrichQuality} />
+
+        {/* S103: Source breakdown + AI cost widgets side-by-side on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <EnrichmentSourceWidget />
+          <AiCostWidget />
+        </div>
 
         {/* Global Pipeline widget (DECISION-029) */}
         <GlobalPipelineWidget />

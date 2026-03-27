@@ -1,0 +1,407 @@
+{
+  "uid": "etip-feed-health",
+  "title": "ETIP Feed Health",
+  "description": "Feed ingestion health: fetch rates, reliability, connector performance, and normalization throughput.",
+  "tags": ["etip", "monitoring", "feeds"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Feed Ingestion",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "title": "Ingestion Service Request Rate",
+      "description": "HTTP traffic to ingestion service — proxy for feed fetch activity.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 5 },
+              { "color": "#ef4444", "value": 20 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{service=\"ingestion-service\"}[5m]))",
+          "legendFormat": "req/s",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Ingestion Error Rate",
+      "description": "5xx errors from ingestion service — indicates feed fetch failures.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 0.1 },
+              { "color": "#ef4444", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{service=\"ingestion-service\", status_code=~\"5..\"}[5m]))",
+          "legendFormat": "5xx/s",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Normalization Throughput",
+      "description": "HTTP request rate to normalization service — proxy for IOC processing throughput.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 5 },
+              { "color": "#ef4444", "value": 20 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{service=\"normalization-service\"}[5m]))",
+          "legendFormat": "req/s",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Ingestion Latency p95",
+      "description": "95th percentile response time for ingestion service endpoints.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 1 },
+              { "color": "#ef4444", "value": 5 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"ingestion-service\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Pipeline Services",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "title": "Pipeline Service Request Rates",
+      "description": "HTTP traffic for pipeline services: ingestion, normalization, enrichment.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{service=\"ingestion-service\"}[5m]))",
+          "legendFormat": "Ingestion"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(http_requests_total{service=\"normalization-service\"}[5m]))",
+          "legendFormat": "Normalization"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(http_requests_total{service=\"enrichment-service\"}[5m]))",
+          "legendFormat": "Enrichment"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Pipeline Error Rates",
+      "description": "5xx errors across pipeline services. Non-zero indicates feed processing issues.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{service=\"ingestion-service\", status_code=~\"5..\"}[5m]))",
+          "legendFormat": "Ingestion 5xx"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(http_requests_total{service=\"normalization-service\", status_code=~\"5..\"}[5m]))",
+          "legendFormat": "Normalization 5xx"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(http_requests_total{service=\"enrichment-service\", status_code=~\"5..\"}[5m]))",
+          "legendFormat": "Enrichment 5xx"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Latency & Resources",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "collapsed": false
+    },
+    {
+      "id": 10,
+      "title": "Pipeline Response Times p50/p95",
+      "description": "Response time percentiles for ingestion, normalization, and enrichment services.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 1 },
+              { "color": "#ef4444", "value": 5 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"ingestion-service\"}[5m])) by (le))",
+          "legendFormat": "Ingestion p95"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"normalization-service\"}[5m])) by (le))",
+          "legendFormat": "Normalization p95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"enrichment-service\"}[5m])) by (le))",
+          "legendFormat": "Enrichment p95"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Pipeline Memory Usage",
+      "description": "Resident memory for pipeline services. High RSS on normalization may indicate large batch processing.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "process_resident_memory_bytes{service=\"ingestion-service\"}",
+          "legendFormat": "Ingestion"
+        },
+        {
+          "refId": "B",
+          "expr": "process_resident_memory_bytes{service=\"normalization-service\"}",
+          "legendFormat": "Normalization"
+        },
+        {
+          "refId": "C",
+          "expr": "process_resident_memory_bytes{service=\"enrichment-service\"}",
+          "legendFormat": "Enrichment"
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Pipeline Overview",
+      "url": "/d/etip-pipeline-overview/etip-pipeline-overview",
+      "type": "link",
+      "icon": "graph-bar"
+    },
+    {
+      "title": "AI Cost Tracking",
+      "url": "/d/etip-ai-cost/etip-ai-cost-tracking",
+      "type": "link",
+      "icon": "dollar-sign"
+    }
+  ]
+}

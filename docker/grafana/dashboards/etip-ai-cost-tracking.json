@@ -1,0 +1,338 @@
+{
+  "uid": "etip-ai-cost",
+  "title": "ETIP AI Cost Tracking",
+  "description": "AI enrichment cost monitoring: spend by model, token usage, triage/extraction call rates, and budget utilization.",
+  "tags": ["etip", "monitoring", "ai", "cost"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Cost Overview",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "title": "Total AI Cost (24h)",
+      "description": "Requires etip_ai_cost_usd counter in ai-enrichment service. Currently tracked via REST API (/enrichment/cost/stats).",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 5 },
+              { "color": "#ef4444", "value": 25 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(etip_ai_cost_usd[24h]))",
+          "legendFormat": "Cost",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Tokens Used (24h)",
+      "description": "Total input+output tokens consumed by AI models.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 500000 },
+              { "color": "#ef4444", "value": 2000000 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(etip_ai_tokens_total[24h]))",
+          "legendFormat": "Tokens",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Budget Utilization",
+      "description": "Percentage of daily AI budget consumed. Based on TI_AI_DAILY_BUDGET_USD.",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 70 },
+              { "color": "#ef4444", "value": 90 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(increase(etip_ai_cost_usd[24h])) / etip_ai_budget_daily_usd) * 100",
+          "legendFormat": "Budget %",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Enrichment Service HTTP Rate",
+      "description": "HTTP request rate to the AI enrichment service (proxy for AI call volume).",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 10 },
+              { "color": "#ef4444", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{service=\"enrichment-service\"}[5m]))",
+          "legendFormat": "req/s",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Usage Trends",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "title": "Cost Trend (hourly)",
+      "description": "AI cost accumulated per hour. Uses etip_ai_cost_usd counter if exported, otherwise panel stays empty.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "gradientMode": "scheme",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "never"
+          },
+          "color": { "fixedColor": "#6366f1", "mode": "fixed" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(etip_ai_cost_usd[1h])",
+          "legendFormat": "Cost / hr"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Token Usage by Model",
+      "description": "Token consumption broken down by AI model (haiku vs sonnet).",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "mode": "normal" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(etip_ai_tokens_total[5m])) by (model)",
+          "legendFormat": "{{ model }}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Enrichment Service Latency",
+      "description": "AI enrichment service HTTP response times. Higher latency correlates with AI API call duration.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "etip-prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#22c55e", "value": null },
+              { "color": "#f59e0b", "value": 2 },
+              { "color": "#ef4444", "value": 5 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{service=\"enrichment-service\"}[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"enrichment-service\"}[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{service=\"enrichment-service\"}[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Pipeline Overview",
+      "url": "/d/etip-pipeline-overview/etip-pipeline-overview",
+      "type": "link",
+      "icon": "graph-bar"
+    },
+    {
+      "title": "Service Health",
+      "url": "/d/etip-service-health/etip-service-health",
+      "type": "link",
+      "icon": "heart"
+    }
+  ]
+}
