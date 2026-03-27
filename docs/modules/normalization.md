@@ -1,6 +1,6 @@
 # Normalization Service
 
-**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 256
+**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 315
 
 ## What It Does
 
@@ -58,6 +58,10 @@ QUEUES.NORMALIZE → Normalize Worker
 | Tenant Overlay Routes | routes/tenant-overlay.ts | 6 REST routes gated by TI_GLOBAL_PROCESSING_ENABLED |
 | Fuzzy Dedupe (worker) | workers/global-normalize-worker.ts | computeFuzzyHash fallback in upsert: exact match → fuzzy match → new IOC. fuzzyDedupeHash stored. |
 | Batch Normalizer | services/batch-normalizer.ts | Batch processing: intra-batch dedup, cache-first, createMany, adaptive sizing (1-50). BatchResult stats. |
+| Corroboration Engine | shared-normalization/corroboration.ts | Cross-feed corroboration scoring: rawCount+reliability+independence+recency, 5 tiers (uncorroborated→confirmed) |
+| Severity Voting | services/severity-voting.ts | Admiralty-weighted voting (A1=15, F6=0), idempotent per-feed, bulk cast |
+| Community FP | services/community-fp.ts | Per-tenant FP reporting, auto-downgrade >50%, mark FP >75%, confidence reduction |
+| Worker Integration | workers/global-normalize-worker.ts | Corroboration scoring + severity voting + velocity on every IOC upsert |
 
 ## API
 
@@ -73,6 +77,12 @@ QUEUES.NORMALIZE → Normalize Worker
 | DELETE | /api/v1/normalization/global-iocs/:iocId/overlay | JWT+RBAC | Remove tenant overlay (revert to global) |
 | POST | /api/v1/normalization/global-iocs/bulk-overlay | JWT+RBAC | Bulk set overlay (max 100) |
 | GET | /api/v1/normalization/global-iocs/stats | JWT | Overlay stats for tenant |
+| POST | /api/v1/normalization/global-iocs/:iocId/report-fp | JWT+RBAC | Report IOC as false positive |
+| DELETE | /api/v1/normalization/global-iocs/:iocId/report-fp | JWT+RBAC | Withdraw FP report |
+| GET | /api/v1/normalization/global-iocs/:iocId/fp-summary | JWT | FP summary (count, rate, reports) |
+| GET | /api/v1/normalization/global-iocs/:iocId/corroboration | JWT | Corroboration detail (score, sources, tier, narrative) |
+| GET | /api/v1/normalization/global-iocs/:iocId/severity-votes | JWT | Severity vote breakdown + confidence |
+| GET | /api/v1/normalization/global-iocs/fp-candidates | JWT+admin | Top IOCs by community FP rate |
 
 ## Config
 

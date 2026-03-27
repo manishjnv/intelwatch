@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 96 — DECISION-029 Phase F: Fuzzy Dedupe, Velocity Scoring, Batch Normalization, CWE Chains, Redis Caching
+**Session counter:** 97 — DECISION-029 Phase G: Corroboration Engine, Severity Voting, Community FP, IOC Intelligence UI. DECISION-029 COMPLETE.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -12,7 +12,7 @@
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
 | etip_ingestion | ✅ Running | 0.7.0 | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + **Session 93: GlobalPipelineOrchestrator + pipeline routes + fetch→normalize wiring**. 602 tests. |
-| etip_normalization | ✅ Running | 0.2.0 | 2026-03-27 | IOC upsert + 18 accuracy improvements + G2/G4b + **Session 93: GlobalIocStatsService**. 237 tests. |
+| etip_normalization | ✅ Running | 0.3.0 | 2026-03-27 | IOC upsert + 18 accuracy improvements + G2/G4b + **Session 93: GlobalIocStatsService** + **Session 97: corroboration engine, severity voting, community FP, 6 new routes**. 315 tests. |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1-F COMPLETE + ACTIVATED. Pipeline LIVE on VPS.
-- **Last session outcome:** Session 96 (2026-03-27). **Phase F COMPLETE.** Fuzzy deduplication (type-specific normalization: defang, port strip, leading zeros, plus-addressing, CVE separator). Velocity score calculator (0-100, trend detection, spike alerts, 6h half-life decay). CWE chain mapper (40 CWEs, root cause analysis, attack narrative). Redis caching layer (catalog 10m, known-IOC sets 24h, warninglists 1h, stats counters). Batch normalizer (adaptive 1-50, intra-batch dedup, cache-first). Global normalize worker fuzzy dedupe integration. 10 E2E smoke tests. Operational runbook. Commit: f322163. 90 new tests (204+629+256+10 = 1099 across 3 modules + e2e).
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. VPS: `tsx` not in production image. Frontend container not yet rebuilt with S95/S96 code.
-- **Next tasks:** (1) Deploy S96 code to VPS. (2) Rebuild frontend container. (3) Set Shodan/GreyNoise API keys on VPS. (4) Wire fuzzy dedupe hash column in Prisma schema (`fuzzyDedupeHash` field on GlobalIoc). (5) Wire batch normalizer into global-normalize-worker (currently separate class). (6) Grafana dashboards for Prometheus metrics.
+- **Current phase:** Phase 9 — DECISION-029: Global Feed Processing + Standards-Based Intelligence. Phases A1-G COMPLETE + ACTIVATED. Pipeline LIVE on VPS. **DECISION-029 CLOSED (S89-S97, 9 sessions).**
+- **Last session outcome:** Session 97 (2026-03-27). **Phase G COMPLETE — DECISION-029 CLOSED.** Cross-feed corroboration scoring engine (weighted: rawCount+reliability+independence+recency, 5 tiers). Severity voting system (Admiralty-weighted, idempotent per-feed). Community false-positive reporting (per-tenant dedupe, auto-actions >50%/>75%). Worker integration (corroboration+voting+velocity in global-normalize-worker). 6 new API routes (report-fp, withdraw-fp, fp-summary, corroboration, severity-votes, fp-candidates). Frontend: 3 intelligence sections (CorroborationSection, SeverityVotesSection, CommunityFpSection) + 4 hooks. 8 E2E intelligence smoke tests. Commits: 57685b3, 03f2f0c, 401da2c. 78 new tests (18 shared-normalization + 40 normalization + 12 frontend + 8 E2E).
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. VPS: `tsx` not in production image. Frontend container not yet rebuilt with S95-S97 code. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching — not caused by S97.
+- **Next tasks:** (1) Deploy S97 code to VPS + rebuild frontend. (2) Set Shodan/GreyNoise API keys on VPS. (3) Wire fuzzy dedupe hash column in Prisma schema. (4) Wire batch normalizer into global-normalize-worker. (5) Fix vitest alias caching for @etip/shared-normalization in normalization tests. (6) Grafana dashboards for Prometheus metrics. (7) Begin next major initiative (DECISION-030 or feature work).
 
 ## Deployment Log
 
