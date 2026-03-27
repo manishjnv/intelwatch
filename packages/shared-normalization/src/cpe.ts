@@ -27,9 +27,10 @@ const VALID_PARTS = new Set(['a', 'h', 'o']);
  * Replaces \: with a placeholder, splits on :, then restores.
  */
 function splitCPE(uri: string): string[] {
-  const placeholder = '\x00ESCAPED_COLON\x00';
+  const placeholder = '<<ESCAPED_COLON>>';
   const escaped = uri.replace(/\\:/g, placeholder);
-  return escaped.split(':').map((s) => s.replace(new RegExp(placeholder.replace(/\x00/g, '\\x00'), 'g'), '\\:'));
+  // eslint-disable-next-line no-useless-escape
+  return escaped.split(':').map((s) => s.replaceAll(placeholder, '\\:'));
 }
 
 /** Parse a CPE 2.3 URI into components. Returns null for invalid URIs. */
