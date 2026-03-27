@@ -178,6 +178,49 @@ export function useRetryFeed() {
   })
 }
 
+export function useToggleFeed() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ feedId, enabled }: { feedId: string; enabled: boolean }) =>
+      api<FeedRecord>(`/feeds/${feedId}`, { method: 'PUT', body: { enabled } }),
+    onMutate: async ({ feedId, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: ['feeds'] })
+      const prev = queryClient.getQueriesData<ListResponse<FeedRecord>>({ queryKey: ['feeds'] })
+      queryClient.setQueriesData<ListResponse<FeedRecord>>({ queryKey: ['feeds'] }, (old) => {
+        if (!old) return old
+        return { ...old, data: old.data.map(f => f.id === feedId ? { ...f, enabled } : f) }
+      })
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.prev?.forEach(([key, data]) => queryClient.setQueryData(key, data))
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['feeds'] }),
+  })
+}
+
+export function useDeleteFeed() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (feedId: string) =>
+      api<void>(`/feeds/${feedId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feeds'] })
+    },
+  })
+}
+
+export function useForceFetch() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (feedId: string) =>
+      api<{ feedId: string; status: string }>(`/feeds/${feedId}/trigger`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feeds'] })
+    },
+  })
+}
+
 // ─── Threat Actor types ─────────────────────────────────────────
 
 export interface ActorRecord {

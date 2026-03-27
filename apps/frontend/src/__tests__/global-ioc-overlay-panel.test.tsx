@@ -35,6 +35,10 @@ vi.mock('@/hooks/use-global-iocs', () => ({
     isSaving: false,
     isRemoving: false,
   })),
+  useCorroborationDetail: vi.fn(() => ({ data: null, isLoading: false })),
+  useSeverityVotes: vi.fn(() => ({ data: null, isLoading: false })),
+  useFpSummary: vi.fn(() => ({ data: null, isLoading: false })),
+  useFpActions: vi.fn(() => ({ submitFp: vi.fn(), isPending: false })),
 }))
 
 vi.mock('@/stores/auth-store', () => ({

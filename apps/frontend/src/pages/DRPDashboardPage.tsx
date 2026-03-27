@@ -10,7 +10,7 @@ import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useDRPAssets, useDRPAlerts, useDRPAlertStats, useDRPAssetStats,
-  useCertStreamStatus, useDeleteAsset, useScanAsset,
+  useCertStreamStatus, useDeleteAsset, useScanAsset, useBulkTriageAlerts,
   type DRPAlert, type DRPAsset,
 } from '@/hooks/use-phase4-data'
 import { generateAlertHeatmap } from '@/hooks/phase4-demo-data'
@@ -22,8 +22,9 @@ import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
 import {
   Shield, AlertTriangle, Globe, User, Server,
-  Plus, Play, Trash2,
+  Plus, Play, Trash2, CheckSquare,
 } from 'lucide-react'
+import { toast, ToastContainer } from '@/components/ui/Toast'
 import {
   ExecutiveRiskGauge, RiskHeatmap, CertStreamIndicator,
   SLABadge, TyposquatScanner,
@@ -77,6 +78,7 @@ export function DRPDashboardPage() {
   const [activeTab, setActiveTab] = useState<'alerts' | 'assets'>('alerts')
   const [showCreateAsset, setShowCreateAsset] = useState(false)
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null)
+  const [checkedAlertIds, setCheckedAlertIds] = useState<Set<string>>(new Set())
 
   const { data: alertData, isLoading: alertsLoading, isDemo } = useDRPAlerts({ page: alertPage, ...filters })
   const { data: alertStats } = useDRPAlertStats()
@@ -85,6 +87,7 @@ export function DRPDashboardPage() {
   const { data: certStatus } = useCertStreamStatus()
   const deleteAssetMutation = useDeleteAsset()
   const scanAssetMutation = useScanAsset()
+  const bulkTriageMutation = useBulkTriageAlerts()
   const heatmapData = useMemo(() => generateAlertHeatmap(), [])
 
   const execRiskScore = useMemo(() => {
@@ -127,8 +130,22 @@ export function DRPDashboardPage() {
     [alerts, selectedAlertId],
   )
 
+  const handleBulkTriage = (verdict: string) => {
+    const ids = Array.from(checkedAlertIds)
+    if (ids.length === 0) return
+    bulkTriageMutation.mutate({ ids, verdict }, {
+      onSuccess: () => { toast(`${ids.length} alerts triaged as ${verdict.replace('_', ' ')}`, 'success'); setCheckedAlertIds(new Set()) },
+      onError: () => toast('Bulk triage failed', 'error'),
+    })
+  }
+
   const alertColumns: Column<DRPAlert>[] = [
-    { key: 'severity', label: 'Sev', width: '6%',
+    { key: 'check', label: '', width: '4%', render: (row) => (
+      <input type="checkbox" checked={checkedAlertIds.has(row.id)} data-testid={`check-alert-${row.id}`}
+        onChange={e => { e.stopPropagation(); setCheckedAlertIds(prev => { const s = new Set(prev); if (s.has(row.id)) s.delete(row.id); else s.add(row.id); return s }) }}
+        className="w-3.5 h-3.5 accent-accent" />
+    )},
+    { key: 'severity', label: 'Sev', width: '5%',
       render: (row) => <SeverityBadge severity={row.severity.toUpperCase() as any} showDot /> },
     { key: 'title', label: 'Alert', sortable: true, width: '30%',
       render: (row) => (
@@ -320,6 +337,17 @@ export function DRPDashboardPage() {
         {/* Alert Feed */}
         {activeTab === 'alerts' && (
           <>
+            {checkedAlertIds.size > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-accent/5 border border-accent/20 rounded-md" data-testid="bulk-triage-bar">
+                <CheckSquare className="w-3.5 h-3.5 text-accent" />
+                <span className="text-xs text-accent font-medium">{checkedAlertIds.size} selected</span>
+                <button onClick={() => handleBulkTriage('false_positive')} disabled={bulkTriageMutation.isPending}
+                  className="text-[10px] px-2 py-1 rounded bg-sev-low/10 text-sev-low hover:bg-sev-low/20 border border-sev-low/20">Dismiss as FP</button>
+                <button onClick={() => handleBulkTriage('true_positive')} disabled={bulkTriageMutation.isPending}
+                  className="text-[10px] px-2 py-1 rounded bg-sev-critical/10 text-sev-critical hover:bg-sev-critical/20 border border-sev-critical/20">Escalate</button>
+                <button onClick={() => setCheckedAlertIds(new Set())} className="text-[10px] text-text-muted hover:text-text-primary ml-auto">Clear</button>
+              </div>
+            )}
             <FilterBar searchValue={search} onSearchChange={(v) => { setSearch(v); setAlertPage(1) }}
               searchPlaceholder="Search alerts by title, detected value…" filters={ALERT_FILTERS}
               filterValues={filters} onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setAlertPage(1) }} />
@@ -350,6 +378,7 @@ export function DRPDashboardPage() {
           <AlertDetailPanel alert={selectedAlert} onClose={() => setSelectedAlertId(null)} isDemo={isDemo} />
         </>
       )}
+      <ToastContainer />
     </div>
   )
 }

@@ -15,7 +15,7 @@ import {
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   GitBranch, Search, ZoomIn, ZoomOut, Maximize2, Minimize2,
-  Plus, Route,
+  Plus, Route, Download, Pin,
 } from 'lucide-react'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import {
@@ -48,6 +48,7 @@ export function ThreatGraphPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null)
   const [removedNodeIds, setRemovedNodeIds] = useState<Set<string>>(new Set())
+  const [pinnedNodeIds, setPinnedNodeIds] = useState<Set<string>>(new Set())
   const [edgeTooltip, setEdgeTooltip] = useState<{ x: number; y: number; type: string; confidence: number } | null>(null)
   const [expandNodeId, setExpandNodeId] = useState<string | null>(null)
   const [mergedNodes, setMergedNodes] = useState<GraphNode[]>([])
@@ -187,6 +188,7 @@ export function ThreatGraphPage() {
       case 'path': handlePathFind(nodeId); break
       case 'expand': setExpandNodeId(nodeId); break
       case 'remove': setRemovedNodeIds(prev => new Set([...prev, nodeId])); break
+      case 'pin': setPinnedNodeIds(prev => { const s = new Set(prev); if (s.has(nodeId)) s.delete(nodeId); else s.add(nodeId); return s }); toast(pinnedNodeIds.has(nodeId) ? 'Node unpinned' : 'Node pinned'); break
       case 'copy': navigator.clipboard.writeText(node.label); toast('Copied to clipboard'); break
     }
   }, [allNodes, handlePathFind])
@@ -259,7 +261,7 @@ export function ThreatGraphPage() {
         .on('drag', (event: any, d: any) => { d.fx = event.x; d.fy = event.y })
         .on('end', (event: any, d: any) => {
           if (!event.active) simulation.alphaTarget(0)
-          d.fx = null; d.fy = null
+          if (pinnedNodeIds.has(d.id)) { d.fx = d.x; d.fy = d.y } else { d.fx = null; d.fy = null }
         }) as any,
       )
 
@@ -356,7 +358,7 @@ export function ThreatGraphPage() {
 
     svg.call(zoom.transform, d3.zoomIdentity.translate(0, 0).scale(0.85))
     return () => { simulation.stop() }
-  }, [filteredNodes, filteredEdges, selectedNodeId, pathNodeIds, pathEdgeIds, handleNodeClick])
+  }, [filteredNodes, filteredEdges, selectedNodeId, pathNodeIds, pathEdgeIds, handleNodeClick, pinnedNodeIds])
 
   const handleZoom = useCallback((factor: number) => {
     if (!svgRef.current) return
@@ -364,6 +366,24 @@ export function ThreatGraphPage() {
     const z = d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.2, 4])
     svg.transition().duration(300).call(z.scaleBy as any, factor)
   }, [])
+
+  const handleExportPng = useCallback(() => {
+    if (!svgRef.current) return
+    const svg = new XMLSerializer().serializeToString(svgRef.current)
+    const { width, height } = svgRef.current.getBoundingClientRect()
+    const canvas = document.createElement('canvas')
+    canvas.width = width * 2; canvas.height = height * 2
+    const ctx = canvas.getContext('2d')!; ctx.scale(2, 2)
+    const img = new Image()
+    img.onload = () => { ctx.fillStyle = '#0a0e1a'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); const a = document.createElement('a'); a.download = 'threat-graph.png'; a.href = canvas.toDataURL('image/png'); a.click(); toast('Graph exported as PNG', 'success') }
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)))
+  }, [])
+
+  const handleExportJson = useCallback(() => {
+    const blob = new Blob([JSON.stringify({ nodes: filteredNodes, edges: filteredEdges, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a'); a.download = 'threat-graph.json'; a.href = URL.createObjectURL(blob); a.click()
+    toast('Graph exported as JSON', 'success')
+  }, [filteredNodes, filteredEdges])
 
   const handleFitView = useCallback(() => {
     if (!svgRef.current || !containerRef.current) return
@@ -419,6 +439,12 @@ export function ThreatGraphPage() {
           </button>
           <button onClick={handleFitView} className="p-1.5 rounded border border-border text-text-muted hover:text-text-primary hover:bg-bg-hover" title="Fit View">
             <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={handleExportPng} className="p-1.5 rounded border border-border text-text-muted hover:text-text-primary hover:bg-bg-hover" title="Export PNG" data-testid="export-png">
+            <Download className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={handleExportJson} className="p-1.5 rounded border border-border text-text-muted hover:text-text-primary hover:bg-bg-hover" title="Export JSON" data-testid="export-json">
+            <Download className="w-3.5 h-3.5" />
           </button>
           <button onClick={handleFullscreen}
             className={cn('p-1.5 rounded border text-text-muted hover:text-text-primary hover:bg-bg-hover', isFullscreen ? 'border-accent bg-accent/10 text-accent' : 'border-border')}

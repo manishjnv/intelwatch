@@ -214,6 +214,30 @@ export function useTriageAlert() {
   })
 }
 
+export function useRequestTakedown() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, provider, evidence, urgency }: { id: string; provider: string; evidence: string; urgency: string }) =>
+      api<{ takedownId: string; alertId: string; status: string }>(`/drp/alerts/${id}/takedown`, { method: 'POST', body: { provider, evidence, urgency } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-alert-stats'] })
+    },
+  })
+}
+
+export function useBulkTriageAlerts() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ids, verdict, notes }: { ids: string[]; verdict: string; notes?: string }) =>
+      api<{ processed: number }>('/drp/alerts/bulk-triage', { method: 'POST', body: { ids, verdict, notes } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drp-alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['drp-alert-stats'] })
+    },
+  })
+}
+
 // ─── Threat Graph Hooks ─────────────────────────────────────────
 
 export function useGraphNodes(params: QueryParams = {}) {
@@ -314,6 +338,22 @@ export function useCorrelationFeedback() {
   return useMutation({
     mutationFn: ({ id, verdict, reason }: { id: string; verdict: 'true_positive' | 'false_positive'; reason?: string }) =>
       api<unknown>(`/correlations/${id}/feedback`, { method: 'POST', body: { verdict, reason } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['correlations'] })
+      queryClient.invalidateQueries({ queryKey: ['correlation-stats'] })
+    },
+  })
+}
+
+export function useBulkCorrelationFeedback() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ ids, verdict }: { ids: string[]; verdict: 'true_positive' | 'false_positive' }) => {
+      const results = await Promise.allSettled(
+        ids.map(id => api<unknown>(`/correlations/${id}/feedback`, { method: 'POST', body: { verdict } }))
+      )
+      return { processed: results.filter(r => r.status === 'fulfilled').length }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['correlations'] })
       queryClient.invalidateQueries({ queryKey: ['correlation-stats'] })

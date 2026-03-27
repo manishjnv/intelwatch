@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
   useCorrelations, useCorrelationStats, useCampaigns, useTriggerCorrelation,
-  useCorrelationFeedback, useCreateTicket, useAddToHunt, useHuntSessions,
+  useCorrelationFeedback, useBulkCorrelationFeedback, useCreateTicket, useAddToHunt, useHuntSessions,
   type CorrelationResult, type CampaignCluster,
 } from '@/hooks/use-phase4-data'
 import { useTicketingIntegrations } from '@/hooks/use-phase5-data'
@@ -388,6 +388,7 @@ export function CorrelationPage() {
   const [activeTab, setActiveTab] = useState<'correlations' | 'campaigns'>('correlations')
   const [killChainFilter, setKillChainFilter] = useState<string | null>(null)
   const [autoCorrelating, setAutoCorrelating] = useState(false)
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
 
   const [drawerCorrId, setDrawerCorrId] = useState<string | null>(null)
 
@@ -400,6 +401,7 @@ export function CorrelationPage() {
   const { data: huntData } = useHuntSessions({ status: 'active', limit: 20 })
   const { data: ticketingData } = useTicketingIntegrations()
   const ticketingConfigured = (ticketingData?.data?.length ?? 0) > 0
+  const bulkFeedback = useBulkCorrelationFeedback()
 
   const activeHunts = useMemo(
     () => (huntData?.data ?? []).filter(h => h.status === 'active').map(h => ({ id: h.id, name: h.name })),
@@ -491,9 +493,23 @@ export function CorrelationPage() {
     [correlations, selectedId],
   )
 
+  const handleBulkVerdict = (verdict: 'true_positive' | 'false_positive') => {
+    const ids = Array.from(checkedIds)
+    if (ids.length === 0) return
+    bulkFeedback.mutate({ ids, verdict }, {
+      onSuccess: (r) => { toast(`${r.processed} correlations marked as ${verdict.replace('_', ' ')}`, 'success'); setCheckedIds(new Set()) },
+      onError: () => toast('Bulk update failed', 'error'),
+    })
+  }
+
   const columns: Column<CorrelationResult>[] = [
+    { key: 'check', label: '', width: '3%', render: (row) => (
+      <input type="checkbox" checked={checkedIds.has(row.id)} data-testid={`check-corr-${row.id}`}
+        onChange={e => { e.stopPropagation(); setCheckedIds(prev => { const s = new Set(prev); if (s.has(row.id)) s.delete(row.id); else s.add(row.id); return s }) }}
+        className="w-3.5 h-3.5 accent-accent" />
+    )},
     {
-      key: 'severity', label: 'Sev', width: '6%',
+      key: 'severity', label: 'Sev', width: '5%',
       render: (row) => <SeverityBadge severity={row.severity.toUpperCase() as any} showDot />,
     },
     {
@@ -612,6 +628,16 @@ export function CorrelationPage() {
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {activeTab === 'correlations' && (
           <>
+            {checkedIds.size > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-accent/5 border border-accent/20 rounded-md mb-2" data-testid="bulk-corr-bar">
+                <span className="text-xs text-accent font-medium">{checkedIds.size} selected</span>
+                <button onClick={() => handleBulkVerdict('false_positive')} disabled={bulkFeedback.isPending}
+                  className="text-[10px] px-2 py-1 rounded bg-sev-low/10 text-sev-low hover:bg-sev-low/20 border border-sev-low/20">Mark FP</button>
+                <button onClick={() => handleBulkVerdict('true_positive')} disabled={bulkFeedback.isPending}
+                  className="text-[10px] px-2 py-1 rounded bg-sev-critical/10 text-sev-critical hover:bg-sev-critical/20 border border-sev-critical/20">Mark TP</button>
+                <button onClick={() => setCheckedIds(new Set())} className="text-[10px] text-text-muted hover:text-text-primary ml-auto">Clear</button>
+              </div>
+            )}
             <FilterBar
               searchValue={search}
               onSearchChange={(v) => { setSearch(v); setPage(1) }}

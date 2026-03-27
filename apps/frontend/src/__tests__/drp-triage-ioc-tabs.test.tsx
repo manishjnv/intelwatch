@@ -22,6 +22,8 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useAlertFeedback: () => ({ mutate: mockFeedbackMutate, isPending: false, isSuccess: false }),
   useTriageAlert: () => ({ mutate: mockTriageMutate, isPending: false, isSuccess: false }),
   useNodeNeighbors: () => ({ data: null, isLoading: false }),
+  useRequestTakedown: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useBulkTriageAlerts: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 vi.mock('@/hooks/use-enrichment-data', () => ({

@@ -8,13 +8,15 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useCreateAsset, useChangeAlertStatus, useAssignAlert, useAlertFeedback, useTriageAlert,
+  useRequestTakedown,
   type DRPAlert,
 } from '@/hooks/use-phase4-data'
+import { toast, ToastContainer } from '@/components/ui/Toast'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import {
   X, Plus, Shield, Globe, User, Smartphone,
   CheckCircle, XCircle, Eye, AlertTriangle,
-  ThumbsUp, ThumbsDown, UserPlus, ChevronRight,
+  ThumbsUp, ThumbsDown, UserPlus, ChevronRight, Gavel,
 } from 'lucide-react'
 
 // ─── Asset Type Options ─────────────────────────────────────────
@@ -185,10 +187,14 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
   alert: DRPAlert; onClose: () => void; isDemo: boolean
 }) {
   const [triageNotes, setTriageNotes] = useState('')
+  const [showTakedown, setShowTakedown] = useState(false)
+  const [takedownForm, setTakedownForm] = useState({ provider: '', evidence: '', urgency: 'medium' })
   const statusMutation = useChangeAlertStatus()
   const assignMutation = useAssignAlert()
   const feedbackMutation = useAlertFeedback()
   const triageMutation = useTriageAlert()
+  const takedownMutation = useRequestTakedown()
+  const canTakedown = ['typosquatting', 'credential_leak'].includes(alert.type)
 
   const nextStatuses = STATUS_TRANSITIONS[alert.status] ?? []
   const riskColor = alert.confidence >= 80 ? 'text-sev-critical' : alert.confidence >= 50 ? 'text-sev-medium' : 'text-sev-low'
@@ -346,6 +352,42 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
             <p className="text-[10px] text-sev-low mt-1">Feedback recorded. Signal accuracy updated.</p>
           )}
         </div>
+
+        {/* Takedown Request */}
+        {canTakedown && (
+          <div>
+            <h4 className="text-[10px] text-text-muted uppercase mb-2">Takedown</h4>
+            {!showTakedown ? (
+              <button onClick={() => setShowTakedown(true)} disabled={isDemo}
+                data-testid="takedown-btn"
+                className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-rose-400/10 border border-rose-400/20 text-rose-400 hover:bg-rose-400/20 transition-colors disabled:opacity-50">
+                <Gavel className="w-3 h-3" />Request Takedown
+              </button>
+            ) : (
+              <div className="space-y-2" data-testid="takedown-form">
+                <input value={takedownForm.provider} onChange={e => setTakedownForm(f => ({ ...f, provider: e.target.value }))}
+                  placeholder="Registrar / hosting provider" className="w-full px-2 py-1.5 text-xs bg-bg-secondary border border-border rounded-md text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent" />
+                <textarea value={takedownForm.evidence} onChange={e => setTakedownForm(f => ({ ...f, evidence: e.target.value }))}
+                  placeholder="Evidence description" rows={2} className="w-full px-2 py-1.5 text-xs bg-bg-secondary border border-border rounded-md text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none" />
+                <select value={takedownForm.urgency} onChange={e => setTakedownForm(f => ({ ...f, urgency: e.target.value }))}
+                  className="w-full px-2 py-1.5 text-xs bg-bg-secondary border border-border rounded-md text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+                  <option value="low">Low urgency</option><option value="medium">Medium urgency</option><option value="high">High urgency</option>
+                </select>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowTakedown(false)} className="text-[10px] px-2 py-1 rounded border border-border text-text-muted hover:bg-bg-hover">Cancel</button>
+                  <button onClick={() => takedownMutation.mutate({ id: alert.id, ...takedownForm }, {
+                    onSuccess: () => { toast('Takedown request submitted', 'success'); setShowTakedown(false) },
+                    onError: () => toast('Failed to submit takedown', 'error'),
+                  })} disabled={takedownMutation.isPending || !takedownForm.provider}
+                    data-testid="takedown-submit"
+                    className="text-[10px] px-2 py-1 rounded bg-rose-400/10 border border-rose-400/20 text-rose-400 hover:bg-rose-400/20 disabled:opacity-50">
+                    {takedownMutation.isPending ? 'Submitting…' : 'Submit'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Alert metadata */}
         <div>

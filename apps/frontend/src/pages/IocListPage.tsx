@@ -13,11 +13,13 @@ import { TableSkeleton } from '@/components/data/TableSkeleton'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { EntityChip } from '@etip/shared-ui/components/EntityChip'
+import { toast, ToastContainer } from '@/components/ui/Toast'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { EntityPreview } from '@/components/viz/EntityPreview'
 import { SplitPane } from '@/components/viz/SplitPane'
 import { QuickActionToolbar } from '@/components/viz/QuickActionToolbar'
 import { SparklineCell, generateStubTrend } from '@/components/viz/SparklineCell'
+import { Download } from 'lucide-react'
 import { IocDetailPanel } from './IocDetailPanel'
 
 const IOC_FILTERS: FilterOption[] = [
@@ -127,6 +129,32 @@ export function IocListPage() {
       return sortOrder === 'asc' ? cmp : -cmp
     })
   }, [data, isDemo, sortBy, sortOrder, search, filters])
+
+  const [showExport, setShowExport] = useState(false)
+
+  const exportCsv = () => {
+    const header = 'type,value,severity,confidence,lifecycle,firstSeen,lastSeen,tags'
+    const csvRows = rows.map(r => [r.iocType, r.normalizedValue, r.severity, r.confidence, r.lifecycle, r.firstSeen ?? '', r.lastSeen ?? '', r.tags.join(';')].map(v => `"${v}"`).join(','))
+    const blob = new Blob([header + '\n' + csvRows.join('\n')], { type: 'text/csv' })
+    const a = document.createElement('a'); a.download = 'iocs.csv'; a.href = URL.createObjectURL(blob); a.click()
+    toast('Exported CSV', 'success'); setShowExport(false)
+  }
+  const exportJson = () => {
+    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a'); a.download = 'iocs.json'; a.href = URL.createObjectURL(blob); a.click()
+    toast('Exported JSON', 'success'); setShowExport(false)
+  }
+  const exportStix = () => {
+    const bundle = { type: 'bundle', id: `bundle--${crypto.randomUUID()}`, objects: rows.map(r => ({
+      type: 'indicator', id: `indicator--${r.id}`, created: r.firstSeen ?? new Date().toISOString(),
+      modified: r.lastSeen ?? new Date().toISOString(), name: r.normalizedValue,
+      pattern: `[${r.iocType}:value = '${r.normalizedValue}']`, pattern_type: 'stix',
+      confidence: r.confidence, labels: [r.severity, r.lifecycle],
+    }))}
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a'); a.download = 'iocs-stix.json'; a.href = URL.createObjectURL(blob); a.click()
+    toast('Exported STIX 2.1 bundle', 'success'); setShowExport(false)
+  }
 
   const selectedRecord = useMemo(() => rows.find(r => r.id === selectedId) ?? null, [rows, selectedId])
 
@@ -243,6 +271,19 @@ export function IocListPage() {
         onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1) }}
       >
         <div className="flex items-center gap-2 sm:gap-3 ml-auto text-[10px] sm:text-xs shrink-0">
+          <div className="relative">
+            <button onClick={() => setShowExport(s => !s)} data-testid="export-iocs-btn"
+              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-border text-text-muted hover:text-accent hover:border-accent/30 transition-colors">
+              <Download className="w-3 h-3" />Export
+            </button>
+            {showExport && (
+              <div className="absolute right-0 top-full mt-1 bg-bg-secondary border border-border rounded-lg shadow-lg z-20 py-1 w-36" data-testid="export-dropdown">
+                <button onClick={exportCsv} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">CSV</button>
+                <button onClick={exportJson} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">JSON</button>
+                <button onClick={exportStix} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">STIX 2.1 Bundle</button>
+              </div>
+            )}
+          </div>
           <span className="text-text-muted">IOCs <span className="text-text-primary font-medium">{stats?.total?.toLocaleString() ?? '—'}</span></span>
           <span className="text-text-muted">Critical <span className="text-sev-critical font-medium">{(stats?.bySeverity as Record<string, number> | undefined)?.['critical'] ?? 0}</span></span>
           <span className="text-text-muted">Active <span className="text-sev-low font-medium">{(stats?.byLifecycle as Record<string, number> | undefined)?.['active'] ?? 0}</span></span>
@@ -289,6 +330,7 @@ export function IocListPage() {
         selectedCount={selectedId ? 1 : 0}
         onClear={() => setSelectedId(null)}
       />
+      <ToastContainer />
     </div>
   )
 }

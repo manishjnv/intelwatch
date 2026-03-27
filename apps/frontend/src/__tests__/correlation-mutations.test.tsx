@@ -25,6 +25,7 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useCreateTicket: () => ({ mutate: mockTicketMutate, isPending: false }),
   useAddToHunt: () => ({ mutate: mockHuntMutate, isPending: false }),
   useHuntSessions: (...args: any[]) => mockUseHuntSessions(...args),
+  useBulkCorrelationFeedback: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 const mockUseTicketingIntegrations = vi.fn()

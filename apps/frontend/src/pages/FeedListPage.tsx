@@ -7,7 +7,7 @@
  * source favicon, radial SVG gauge, 24h schedule timeline, card/table toggle.
  */
 import { useState, useMemo } from 'react'
-import { useFeeds, useRetryFeed, useFeedQuota, type FeedRecord } from '@/hooks/use-intel-data'
+import { useFeeds, useRetryFeed, useToggleFeed, useDeleteFeed, useForceFetch, useFeedQuota, type FeedRecord } from '@/hooks/use-intel-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
@@ -15,7 +15,7 @@ import { TableSkeleton } from '@/components/data/TableSkeleton'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
-import { Rss, AlertTriangle, CheckCircle, Clock, RefreshCw, LayoutGrid, List } from 'lucide-react'
+import { Rss, AlertTriangle, CheckCircle, Clock, RefreshCw, LayoutGrid, List, Trash2, Play, ToggleLeft, ToggleRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   FeedTypeIcon, StatusDot, ReliabilityBar,
@@ -55,32 +55,13 @@ const FEED_FILTERS: FilterOption[] = [
 type ViewMode = 'table' | 'card'
 
 function ViewToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
-  return (
-    <div className="inline-flex rounded-md border border-border overflow-hidden ml-1">
-      <button
-        className={cn(
-          'p-1.5 transition-colors',
-          mode === 'table' ? 'bg-accent/20 text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover',
-        )}
-        title="Table view"
-        data-testid="view-toggle-table"
-        onClick={() => onChange('table')}
-      >
-        <List className="w-3.5 h-3.5" />
-      </button>
-      <button
-        className={cn(
-          'p-1.5 transition-colors',
-          mode === 'card' ? 'bg-accent/20 text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover',
-        )}
-        title="Card view"
-        data-testid="view-toggle-card"
-        onClick={() => onChange('card')}
-      >
-        <LayoutGrid className="w-3.5 h-3.5" />
-      </button>
-    </div>
+  const btn = (m: ViewMode, Icon: typeof List, label: string) => (
+    <button className={cn('p-1.5 transition-colors', mode === m ? 'bg-accent/20 text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover')}
+      title={label} data-testid={`view-toggle-${m}`} onClick={() => onChange(m)}>
+      <Icon className="w-3.5 h-3.5" />
+    </button>
   )
+  return <div className="inline-flex rounded-md border border-border overflow-hidden ml-1">{btn('table', List, 'Table view')}{btn('card', LayoutGrid, 'Card view')}</div>
 }
 
 // ─── Page ─────────────────────────────────────────────────────
@@ -96,8 +77,14 @@ export function FeedListPage() {
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
+  const [deleteConfirm, setDeleteConfirm] = useState<FeedRecord | null>(null)
+  const [fetchCooldowns, setFetchCooldowns] = useState<Record<string, number>>({})
+
   const { data, isLoading } = useFeeds({ page: 1, limit: 50 })
   const retryFeed = useRetryFeed()
+  const toggleFeed = useToggleFeed()
+  const deleteFeed = useDeleteFeed()
+  const forceFetch = useForceFetch()
   const { data: quota } = useFeedQuota()
 
   const feeds = data?.data ?? []
@@ -248,7 +235,7 @@ export function FeedListPage() {
       ),
     },
     {
-      key: 'consecutiveFailures', label: 'Errors', width: '9%',
+      key: 'consecutiveFailures', label: 'Errors', width: '7%',
       render: (row) => (
         <span className="inline-flex items-center gap-1.5">
           <FailureSparkline consecutiveFailures={row.consecutiveFailures} />
@@ -269,6 +256,38 @@ export function FeedListPage() {
             </button>
           )}
         </span>
+      ),
+    },
+    {
+      key: 'actions', label: '', width: '11%',
+      render: (row) => (
+        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+          <button onClick={() => toggleFeed.mutate({ feedId: row.id, enabled: !row.enabled }, {
+            onSuccess: () => toast(`Feed ${row.enabled ? 'disabled' : 'enabled'}`, 'success'),
+            onError: () => toast('Failed to toggle feed', 'error'),
+          })} title={row.enabled ? 'Disable feed' : 'Enable feed'} data-testid={`toggle-feed-${row.id}`}
+            className="p-1 rounded text-text-muted hover:text-accent transition-colors">
+            {row.enabled ? <ToggleRight className="w-4 h-4 text-sev-low" /> : <ToggleLeft className="w-4 h-4 text-text-muted" />}
+          </button>
+          <button onClick={() => {
+            const cd = (fetchCooldowns[row.id] ?? 0) > Date.now()
+            if (cd) return
+            setFetchCooldowns(prev => ({ ...prev, [row.id]: Date.now() + 60_000 }))
+            forceFetch.mutate(row.id, {
+              onSuccess: () => toast(`Fetch queued for ${row.name}`, 'success'),
+              onError: () => { setFetchCooldowns(prev => ({ ...prev, [row.id]: 0 })); toast('Failed to queue fetch', 'error') },
+            })
+          }} disabled={(fetchCooldowns[row.id] ?? 0) > Date.now() || forceFetch.isPending}
+            title={(fetchCooldowns[row.id] ?? 0) > Date.now() ? 'Cooldown — wait 60s' : 'Fetch now'}
+            data-testid={`force-fetch-${row.id}`}
+            className="p-1 rounded text-text-muted hover:text-accent transition-colors disabled:opacity-40">
+            <Play className="w-3 h-3" />
+          </button>
+          <button onClick={() => setDeleteConfirm(row)} title="Delete feed" data-testid={`delete-feed-${row.id}`}
+            className="p-1 rounded text-text-muted hover:text-sev-critical transition-colors">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
       ),
     },
   ]
@@ -347,6 +366,25 @@ export function FeedListPage() {
         page={page} limit={50} total={data?.total ?? 0}
         onPageChange={setPage} density={density} onDensityChange={setDensity}
       />
+      {deleteConfirm && (<>
+        <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setDeleteConfirm(null)} />
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" data-testid="delete-feed-modal">
+          <div className="bg-bg-primary border border-border rounded-lg shadow-xl p-5 max-w-sm w-full">
+            <h3 className="text-sm font-semibold text-text-primary mb-2">Delete Feed</h3>
+            <p className="text-xs text-text-secondary mb-4">Delete feed &ldquo;{deleteConfirm.name}&rdquo;? This cannot be undone.</p>
+            <div className="flex items-center gap-2 justify-end">
+              <button onClick={() => setDeleteConfirm(null)} data-testid="delete-cancel"
+                className="text-xs px-3 py-1.5 rounded-md border border-border text-text-secondary hover:bg-bg-hover transition-colors">Cancel</button>
+              <button onClick={() => deleteFeed.mutate(deleteConfirm.id, {
+                onSuccess: () => { toast(`Feed "${deleteConfirm.name}" deleted`, 'success'); setDeleteConfirm(null) },
+                onError: () => toast('Failed to delete feed', 'error'),
+              })} disabled={deleteFeed.isPending} data-testid="delete-confirm"
+                className="text-xs px-3 py-1.5 rounded-md bg-sev-critical/10 border border-sev-critical/20 text-sev-critical hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
+                {deleteFeed.isPending ? 'Deleting…' : 'Delete'}</button>
+            </div>
+          </div>
+        </div>
+      </>)}
       <ToastContainer />
     </div>
   )

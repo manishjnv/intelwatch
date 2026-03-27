@@ -77,6 +77,9 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useHuntHypotheses: (...args: any[]) => mockUseHuntHypotheses(...args),
   useHuntEvidence: (...args: any[]) => mockUseHuntEvidence(...args),
   useHuntTemplates: () => mockUseHuntTemplates(),
+  useRequestTakedown: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useBulkTriageAlerts: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useBulkCorrelationFeedback: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 vi.mock('@/hooks/use-phase5-data', () => ({
