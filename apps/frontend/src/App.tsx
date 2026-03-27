@@ -34,6 +34,7 @@ import { SearchPage } from '@/pages/SearchPage';
 import { GlobalCatalogPage } from '@/pages/GlobalCatalogPage';
 import { GlobalAiConfigPage } from '@/pages/GlobalAiConfigPage';
 import { PlanLimitsPage } from '@/pages/PlanLimitsPage';
+import { GlobalMonitoringPage } from '@/pages/GlobalMonitoringPage';
 
 // Lazy-loaded — D3 (~190KB) splits into its own chunk, only fetched on /graph navigation
 const ThreatGraphPage = React.lazy(() =>
@@ -104,6 +105,7 @@ export function App() {
             <Route path="/global-catalog" element={<GlobalCatalogPage />} />
             <Route path="/global-ai-config" element={<GlobalAiConfigPage />} />
             <Route path="/plan-limits" element={<PlanLimitsPage />} />
+            <Route path="/global-monitoring" element={<GlobalMonitoringPage />} />
             {/* ES Search — cross-cutting */}
             <Route path="/search" element={<SearchPage />} />
           </Route>

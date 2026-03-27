@@ -1,76 +1,78 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-27
-**Session:** 94
-**Session Summary:** DECISION-029 Phase C Activation — wired orchestrator/workers/handler into service index.ts files, added env vars to docker-compose, activated global processing on VPS, E2E verified (50 articles → IOCs extracted).
+**Session:** 94 (Phase D)
+**Session Summary:** DECISION-029 Phase D — Global AI Config UI, Plan Limits UI, E2E pipeline smoke tests, seed script. All phases A1-D complete.
 
-## ✅ Changes Made
+## Changes Made
 
-| Commit | Description |
-|--------|-------------|
-| 805a2b9 | feat: wire global pipeline orchestrator, normalize/enrich workers, alert handler (4 files) |
-| b572259 | chore: add TI_GLOBAL_PROCESSING_ENABLED env to ingestion/normalization/alerting compose (1 file) |
+| Commit | Files | Description |
+|--------|-------|-------------|
+| 45b46d4 | 15 | feat: DECISION-029 Phase D — GlobalAiConfigPage, PlanLimitsPage, hooks, icons, E2E tests, seed script |
+| 6b5cbbc | 1 | fix: remove unused `defaults` destructure in PlanLimitsPage (lint) |
+| 59a4017 | 2 | fix: remove 3 unused imports caught by CI lint (PLAN_PRESETS, DollarSign, useAuthStore) |
 
-## 📁 Files / Documents Affected
+## Files / Documents Affected
 
-**Modified files (5):**
+### New Files (11)
+| File | Purpose |
+|------|---------|
+| apps/frontend/src/pages/GlobalAiConfigPage.tsx | Super admin AI model config (4 sections) |
+| apps/frontend/src/pages/PlanLimitsPage.tsx | Super admin plan tier limits (4 cards + comparison) |
+| apps/frontend/src/hooks/use-global-ai-config.ts | TanStack Query hook + demo fallback |
+| apps/frontend/src/hooks/use-plan-limits.ts | TanStack Query hook + demo fallback |
+| apps/frontend/src/__tests__/global-ai-config-page.test.tsx | 18 tests |
+| apps/frontend/src/__tests__/plan-limits-page.test.tsx | 10 tests |
+| tests/e2e/global-pipeline-smoke.test.ts | 15 E2E pipeline tests (cred-gated) |
+| tests/e2e/delivery-smoke.test.ts | +5 global endpoint tests (cred-gated) |
+| tests/e2e/seed-global-feeds.test.ts | 3 seed validation tests |
+| scripts/seed-global-feeds.ts | Idempotent seed: 10 OSINT feeds with Admiralty scoring |
+
+### Modified Files (6)
 | File | Change |
 |------|--------|
-| apps/ingestion/src/index.ts | Wired GlobalPipelineOrchestrator with 6 queues, normalizeGlobalQueue to fetch workers |
-| apps/normalization/src/index.ts | Registered GlobalNormalizeWorker + GlobalEnrichWorker, Shodan/GreyNoise clients, alertEvaluateQueue |
-| apps/normalization/src/workers/global-enrich-worker.ts | Added alertEvaluateQueue dep for cross-service alert delivery |
-| apps/alerting-service/src/index.ts | Wired GlobalIocAlertHandler with EventEmitter + in-memory tenant registry |
-| docker-compose.etip.yml | Added TI_GLOBAL_PROCESSING_ENABLED, TI_SHODAN_API_KEY, TI_GREYNOISE_API_KEY, TI_DEFAULT_TENANT_ID |
+| apps/frontend/src/App.tsx | +2 routes (/global-ai-config, /plan-limits) |
+| apps/frontend/src/config/modules.ts | +2 sidebar entries (AI Config, Plan Limits) |
+| apps/frontend/src/components/brand/ModuleIcons.tsx | +2 SVG icons (IconAiConfig, IconPlanLimits) |
+| docs/PROJECT_STATE.md | Session 94d deployment log, WIP section |
+| docs/DECISIONS_LOG.md | DECISION-029 status → IMPLEMENTED |
 
-## 🔧 Decisions & Rationale
+## Decisions & Rationale
+- DECISION-029: Status changed from "Approved" to "IMPLEMENTED (S89-S94)". All 6 phases (A1, A2, B1, B2, C, D) complete. Pipeline LIVE and feature-flagged.
 
-No new DECISION entries. Key design choices:
-- Cross-service alert delivery: enrich worker pushes to ALERT_EVALUATE queue (BullMQ), not HTTP
-- Alerting tenant registry: in-memory Set with default tenant as MVP; HTTP adapter to catalog API deferred
-- docker-compose restart vs force-recreate: restart doesn't reload .env vars — must use force-recreate
+## E2E / Deploy Verification Results
+- CI run 23632374415: All green (test + build + deploy)
+- 33 containers healthy on VPS
+- Frontend deployed with 2 new pages + sidebar entries
+- E2E tests: 15 pipeline + 5 delivery + 3 seed = 23 new (all cred-gated, pass locally)
 
-## 🧪 E2E / Deploy Verification Results
+## Open Items / Next Steps
 
-**VPS E2E (live production data):**
-- THN Global RSS feed inserted into global_feed_catalog via psql
-- GlobalFeedScheduler tick: 1 feed found, 1 enqueued
-- RSS connector: 50 articles fetched from The Hacker News
-- 50 articles enqueued to NORMALIZE_GLOBAL
-- 30/50 articles normalized (pipeline_status='normalized'), 20 pending
-- IOCs extracted: CVE-2026-3055, CVE-2026-4368, CVE-2026-21992, CVE-2025-32975, domain:tasks.json
-- Enrichment: IOCs enriched (confidence=31, enrichmentQuality=0 — no API keys, graceful degradation)
-- All 33 containers healthy after force-recreate
+### Immediate (Session 95)
+1. Run `npx tsx scripts/seed-global-feeds.ts` on VPS to populate GlobalFeedCatalog
+2. Set Shodan/GreyNoise API keys on VPS (TI_SHODAN_API_KEY, TI_GREYNOISE_API_KEY)
+3. Wire HTTP subscription adapter in alerting (query ingestion catalog API for real tenant subscriptions)
 
-**Service logs confirmed:**
-- ingestion: "Global feed processing: ENABLED — 5 workers, 6 queues, orchestrator active"
-- normalization: "Global processing workers: ENABLED — normalize + enrich workers started"
-- alerting: "Global IOC alert handler: ENABLED — listening for GLOBAL_IOC_CRITICAL/UPDATED events"
+### Deferred
+4. Phase E: stale enrichment re-processing cron, community FP signal, AI relationship extraction
+5. STIX import/export wizard, ATT&CK Navigator heatmap (remaining DECISION-029 improvements)
 
-## ⚠️ Open Items / Next Steps
-
-**Immediate (Session 95):**
-- DECISION-029 Phase D improvements (stale enrichment re-processing, community FP, AI relationship extraction)
-- Set Shodan/GreyNoise API keys on VPS for real enrichment data
-- Wire HTTP subscription adapter in alerting (query ingestion catalog /subscriptions API)
-- Add more global feeds to catalog (CISA KEV, NVD, Abuse.ch, etc.)
-
-**Deferred:**
-- enrichmentQuality=0 until API keys are set
-- Alert fan-out only reaches default tenant until subscription adapter is wired
-
-## 🔁 How to Resume
+## How to Resume
 
 ```
-Session 95: DECISION-029 Phase D + Global Processing Improvements
+Session 95: DECISION-029 Phase E — Stale Enrichment + Community FP + AI Relationship Extraction
 
-Context: Phase C fully activated on VPS. Global pipeline LIVE:
-Fetch → Normalize → Enrich → Alert all working. 50 articles, IOCs extracted.
+Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md, docs/DECISIONS_LOG.md
 
-This session options:
-1. Phase D: stale enrichment re-processing cron (daily re-enrich IOCs older than 24h)
-2. Phase D: community FP signal (increment FP rate, auto-tag)
-3. Phase D: AI relationship extraction (emit GRAPH_RELATION_EXTRACTED events)
-4. Wire HTTP subscription adapter in alerting for real tenant fan-out
-5. Add global feeds: CISA KEV, NVD CVE, Abuse.ch MalwareBazaar, CIRCL MISP
-6. Set Shodan/GreyNoise API keys on VPS
+Module target: normalization, ingestion
+Do NOT modify: ai-enrichment, billing, onboarding, shared-types, frontend (except new pages)
+
+Phase D is COMPLETE. Pipeline is LIVE on VPS. 33 containers healthy.
+GlobalAiConfigPage and PlanLimitsPage deployed.
+
+Task 1: Run seed-global-feeds.ts on VPS (10 feeds)
+Task 2: Set Shodan/GreyNoise API keys
+Task 3: Stale enrichment re-processing cron (normalization)
+Task 4: Community FP signal endpoint
+Task 5: AI relationship extraction from article content
 ```

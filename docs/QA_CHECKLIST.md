@@ -1,6 +1,6 @@
 # QA Checklist — Backend Features → UI Visibility
 
-**Last updated:** 2026-03-26 (Session 78)
+**Last updated:** 2026-03-27 (Session 95)
 **Rule:** Update this file after every implementation session via /session-end.
 **Rule:** A feature is "DONE" only when it is visible and functional in the browser, not just coded.
 
@@ -241,6 +241,36 @@
 | - | Enriched Today | [B] /enrichment/stats | [U] | DashboardPage.tsx:123 | Wired to enrichment API (falls back to 0) |
 | - | Severity distribution chart | [B] | [U] | DashboardPage.tsx | Pie chart |
 | - | IOC type distribution chart | [B] | [U] | DashboardPage.tsx | Bar chart |
+
+---
+
+## Global Processing (DECISION-029, Sessions 89-95)
+
+### Feed Catalog + Subscriptions
+
+- `[U]` Global Catalog page loads, shows 10 feeds
+- `[U]` Subscribe/unsubscribe works
+- `[U]` My Subscriptions tab shows tenant's feeds
+- `[U]` Pipeline Health tab shows queue stats (admin)
+
+### AI Config + Plan Limits
+
+- `[U]` AI Config page shows 15 subtask rows
+- `[U]` Plan Limits page shows 4 tier cards
+
+### Pipeline Monitoring (Session 95)
+
+- `[U]` Pipeline Monitor dashboard shows live stats
+- `[U]` Admiralty Code badges render with correct colors (A1=green, C3=amber, F6=red)
+- `[U]` STIX confidence tiers render with correct colors (High=green, Med=amber, Low=red)
+- `[U]` IOC overlay panel shows global + overlay data
+- `[U]` Dashboard widget shows global pipeline stats
+- `[U]` IOC search shows Global/Private source badges
+- `[U]` Source filter (All/Global/Private) works on IOC list
+- `[B]` Feed recovery cron (6h, re-enable after 24h cooldown)
+- `[B]` Stuck article recovery (reset to pending after 1h)
+- `[B]` Unenriched IOC re-enqueue (max 500/run)
+- `[B]` Feed metrics recording + trending
 
 ---
 

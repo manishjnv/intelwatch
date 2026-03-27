@@ -9,6 +9,7 @@ import {
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
   IconCustomization, IconBilling, IconAdmin, IconOnboarding, IconReporting,
   IconAlerting, IconAnalytics, IconGlobalCatalog, IconAiConfig, IconPlanLimits,
+  IconPipelineMonitor,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -247,6 +248,16 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-amber-400',
     phase: 6,
     route: '/plan-limits',
+  },
+  {
+    id: 'pipeline-monitor',
+    title: 'Pipeline Monitor',
+    description: 'Real-time global pipeline health, feed status, IOC throughput, and operational controls.',
+    helpText: 'Monitor global feed processing pipeline — queue health, IOC stats, corroboration, and admin actions.',
+    icon: IconPipelineMonitor,
+    color: 'text-teal-400',
+    phase: 2,
+    route: '/global-monitoring',
   },
 ]
 

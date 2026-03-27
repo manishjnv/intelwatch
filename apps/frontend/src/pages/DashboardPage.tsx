@@ -16,7 +16,8 @@ import { useCountUp } from '@/hooks/use-count-up'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import { useDashboardStats } from '@/hooks/use-intel-data'
 import { useCostStats, useEnrichmentStats, useEnrichmentQuality } from '@/hooks/use-enrichment-data'
-import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain } from 'lucide-react'
+import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain, Globe } from 'lucide-react'
+import { useGlobalPipelineHealth } from '@/hooks/use-global-catalog'
 
 // UI improvements (#2, #13, #14, #15)
 import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'
@@ -119,6 +120,53 @@ function EnrichmentQualityWidget({ data }: EnrichmentQualityWidgetProps) {
             </span>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Global Pipeline Widget                                              */
+/* ------------------------------------------------------------------ */
+function GlobalPipelineWidget() {
+  const navigate = useNavigate()
+  const { data: health, isDemo } = useGlobalPipelineHealth()
+
+  if (!health && !isDemo) return null
+
+  const pipeline = health?.pipeline
+  const statusColor = (pipeline?.articlesProcessed24h ?? 0) > 0 ? 'bg-sev-low' : 'bg-text-muted'
+
+  return (
+    <div
+      data-testid="global-pipeline-widget"
+      onClick={() => navigate('/global-monitoring')}
+      className="p-3 bg-bg-secondary rounded-lg border border-border hover:border-border-strong cursor-pointer transition-colors mb-6"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Globe className="w-3.5 h-3.5 text-teal-400" />
+        <span className="text-xs font-medium text-text-primary">Global Pipeline</span>
+        <span className={cn('w-2 h-2 rounded-full', statusColor)} />
+        {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
+        <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div>
+          <span className="text-[10px] text-text-muted block">Articles/24h</span>
+          <span className="text-sm font-semibold text-text-primary tabular-nums">{(pipeline?.articlesProcessed24h ?? 0).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-text-muted block">IOCs Created</span>
+          <span className="text-sm font-semibold text-text-primary tabular-nums">{(pipeline?.iocsCreated24h ?? 0).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-text-muted block">IOCs Enriched</span>
+          <span className="text-sm font-semibold text-text-primary tabular-nums">{(pipeline?.iocsEnriched24h ?? 0).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-text-muted block">Avg Latency</span>
+          <span className="text-sm font-semibold text-text-primary tabular-nums">{pipeline?.avgNormalizeLatencyMs ?? 0}ms</span>
+        </div>
       </div>
     </div>
   )
@@ -258,6 +306,9 @@ export function DashboardPage() {
 
         {/* Enrichment quality confidence tier breakdown */}
         <EnrichmentQualityWidget data={enrichQuality} />
+
+        {/* Global Pipeline widget (DECISION-029) */}
+        <GlobalPipelineWidget />
 
         {/* #2: Severity Heatmap Grid */}
         <SeverityHeatmap className="mb-6" />

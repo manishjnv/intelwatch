@@ -5,6 +5,7 @@
  * P0-3: Inline entity hover preview. P0-5: Radial confidence gauge.
  */
 import { useState, useMemo } from 'react'
+import { cn } from '@/lib/utils'
 import { useIOCs, useIOCStats, type IOCRecord } from '@/hooks/use-intel-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
@@ -34,6 +35,9 @@ const IOC_FILTERS: FilterOption[] = [
   { key: 'lifecycle', label: 'Lifecycle', options: [
     { value: 'new', label: 'New' }, { value: 'active', label: 'Active' },
     { value: 'aging', label: 'Aging' }, { value: 'expired', label: 'Expired' },
+  ]},
+  { key: 'source', label: 'Source', options: [
+    { value: 'global', label: 'Global' }, { value: 'private', label: 'Private' },
   ]},
   { key: 'hasCampaign', label: 'Campaign', options: [
     { value: 'true', label: 'Campaign IOCs only' },
@@ -114,6 +118,7 @@ export function IocListPage() {
     if (filters.iocType) items = items.filter(r => r.iocType === filters.iocType)
     if (filters.severity) items = items.filter(r => r.severity === filters.severity)
     if (filters.lifecycle) items = items.filter(r => r.lifecycle === filters.lifecycle)
+    if (filters.source) items = items.filter(r => (r as any).source === filters.source)
     if (filters.hasCampaign === 'true') items = items.filter(r => r.campaignId != null && r.campaignId !== '')
     return [...items].sort((a, b) => {
       const av = a[sortBy as keyof IOCRecord] ?? ''
@@ -154,6 +159,20 @@ export function IocListPage() {
       render: (row, d) => d === 'ultra-dense'
         ? <span className="tabular-nums">{row.confidence}</span>
         : <ConfidenceGauge value={row.confidence} />,
+    },
+    {
+      key: 'source', label: 'Source', width: '7%',
+      render: (row) => {
+        const src = (row as any).source === 'global' ? 'global' : 'private'
+        return (
+          <span className={cn(
+            'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+            src === 'global' ? 'bg-blue-400/10 text-blue-400' : 'bg-text-muted/10 text-text-muted',
+          )}>
+            {src === 'global' ? 'Global' : 'Private'}
+          </span>
+        )
+      },
     },
     {
       key: 'lifecycle', label: 'Status', sortable: true, width: '8%',

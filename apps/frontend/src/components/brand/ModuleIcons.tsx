@@ -419,6 +419,17 @@ export function IconPlanLimits({ size = defaults.size, className }: IconProps) {
   )
 }
 
+/** Pipeline Monitor — heartbeat wave + magnifying glass */
+export function IconPipelineMonitor({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      <path d="M3 12h3l2-5 3 10 2-7 2 4h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="18" cy="18" r="3.5" stroke="currentColor" strokeWidth="1.5" opacity="0.6"/>
+      <line x1="20.5" y1="20.5" x2="22" y2="22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
