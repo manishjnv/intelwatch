@@ -4,14 +4,15 @@
  * Features: faceted sidebar, sortable results table, URL-synced state,
  * saved searches, export, keyboard shortcuts, and demo fallback.
  */
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useEsSearch } from '@/hooks/use-es-search'
 import { SearchBar } from '@/components/search/SearchBar'
 import { FacetedSidebar, MobileFilterTrigger } from '@/components/search/FacetedSidebar'
 import { SearchResultsTable } from '@/components/search/SearchResultsTable'
-import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
-import { Search, Download, ChevronDown, Database, Zap } from 'lucide-react'
+// PageStatsBar replaced with inline compact toolbar
+import { Search, Download, ChevronDown, Database, Zap, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { EsSearchFilters } from '@/hooks/use-es-search'
 
 // ─── Constants ───────────────────────────────────────────────
@@ -69,91 +70,97 @@ export function SearchPage() {
 
   const hasQuery = query.trim().length > 0
 
+  // Build active filter pills for display
+  const filterPills = useMemo(() => {
+    const pills: { label: string; key: string; group: keyof EsSearchFilters }[] = []
+    filters.type?.forEach(t => pills.push({ label: t, key: `type:${t}`, group: 'type' }))
+    filters.severity?.forEach(s => pills.push({ label: s, key: `sev:${s}`, group: 'severity' }))
+    filters.tlp?.forEach(t => pills.push({ label: `TLP:${t}`, key: `tlp:${t}`, group: 'tlp' }))
+    if (filters.enriched) pills.push({ label: 'Enriched', key: 'enriched', group: 'enriched' })
+    if (filters.confidenceMin != null && filters.confidenceMin > 0) pills.push({ label: `Conf ≥${filters.confidenceMin}`, key: 'conf', group: 'confidenceMin' })
+    return pills
+  }, [filters])
+
+  const removePill = useCallback((pill: { label: string; group: keyof EsSearchFilters }) => {
+    const next = { ...filters }
+    if (pill.group === 'type') next.type = filters.type?.filter(t => t !== pill.label)
+    else if (pill.group === 'severity') next.severity = filters.severity?.filter(s => s !== pill.label)
+    else if (pill.group === 'tlp') next.tlp = filters.tlp?.filter(t => `TLP:${t}` !== pill.label)
+    else if (pill.group === 'enriched') next.enriched = undefined
+    else if (pill.group === 'confidenceMin') next.confidenceMin = undefined
+    if (!next.type?.length) next.type = undefined
+    if (!next.severity?.length) next.severity = undefined
+    if (!next.tlp?.length) next.tlp = undefined
+    setFilters(next)
+  }, [filters, setFilters])
+
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Stats bar */}
-      <PageStatsBar title="IOC Search" isDemo={isDemo}>
-        <CompactStat label="Results" value={totalCount > 0 ? totalCount.toLocaleString() : '—'} />
-        <CompactStat label="Engine" value="Elasticsearch" />
-        <CompactStat label="Index" value={isDemo ? 'demo' : 'live'} highlight={!isDemo} />
-      </PageStatsBar>
-
-      {/* Search bar */}
-      <div className="px-4 pt-4 pb-3">
-        <SearchBar
-          query={query}
-          onQueryChange={setQuery}
-          onSearch={handleSearch}
-          isLoading={isLoading}
-        />
-      </div>
-
-      {/* Toolbar: sort + page size + export + mobile filter trigger */}
-      <div className="px-4 pb-3 flex items-center gap-2 flex-wrap">
+      {/* Combined stats + toolbar — single row */}
+      <div className="px-4 py-2 border-b border-border flex items-center gap-3 flex-wrap" data-testid="search-toolbar">
+        {/* Left: stats */}
         <MobileFilterTrigger activeCount={activeFilterCount} onClick={() => setShowMobileSidebar(!showMobileSidebar)} />
+        <span className="text-[11px] text-text-muted">Results <strong className="text-text-primary">{totalCount > 0 ? totalCount.toLocaleString() : '—'}</strong></span>
+        <span className="text-[11px] text-text-muted hidden sm:inline">Engine <strong className="text-text-primary">Elasticsearch</strong></span>
+        <span className="text-[11px] text-text-muted hidden sm:inline">Index <strong className={isDemo ? 'text-text-primary' : 'text-accent'}>{isDemo ? 'demo' : 'live'}</strong></span>
 
+        {/* Right: controls */}
         <div className="flex items-center gap-2 ml-auto">
-          {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            className="text-xs bg-bg-elevated border border-border rounded-md px-2.5 py-1.5 text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
-            data-testid="sort-select"
-          >
-            {SORT_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+            className="text-[11px] bg-bg-elevated border border-border rounded-md px-2 py-1 text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
+            data-testid="sort-select">
+            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-
-          {/* Page size */}
-          <select
-            value={pageSize}
-            onChange={e => setPageSize(Number(e.target.value))}
-            className="text-xs bg-bg-elevated border border-border rounded-md px-2.5 py-1.5 text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
-            data-testid="page-size-select"
-          >
-            {PAGE_SIZES.map(s => (
-              <option key={s} value={s}>{s} / page</option>
-            ))}
+          <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))}
+            className="text-[11px] bg-bg-elevated border border-border rounded-md px-2 py-1 text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
+            data-testid="page-size-select">
+            {PAGE_SIZES.map(s => <option key={s} value={s}>{s} / page</option>)}
           </select>
-
-          {/* Export */}
           <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-1 text-xs bg-bg-elevated border border-border rounded-md px-2.5 py-1.5 text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
-              data-testid="export-btn"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Export
-              <ChevronDown className="w-3 h-3" />
+            <button onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1 text-[11px] bg-bg-elevated border border-border rounded-md px-2 py-1 text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
+              data-testid="export-btn">
+              <Download className="w-3 h-3" />Export<ChevronDown className="w-2.5 h-2.5" />
             </button>
             {showExportMenu && (
               <div className="absolute right-0 top-full mt-1 bg-bg-elevated border border-border rounded-lg shadow-lg z-50 min-w-[120px]" data-testid="export-menu">
-                <button
-                  onClick={() => handleExport('csv')}
-                  className="w-full text-left text-xs px-3 py-2 hover:bg-bg-hover transition-colors rounded-t-lg"
-                >
-                  Export CSV
-                </button>
-                <button
-                  onClick={() => handleExport('json')}
-                  className="w-full text-left text-xs px-3 py-2 hover:bg-bg-hover transition-colors rounded-b-lg"
-                >
-                  Export JSON
-                </button>
+                <button onClick={() => handleExport('csv')} className="w-full text-left text-xs px-3 py-2 hover:bg-bg-hover transition-colors rounded-t-lg">Export CSV</button>
+                <button onClick={() => handleExport('json')} className="w-full text-left text-xs px-3 py-2 hover:bg-bg-hover transition-colors rounded-b-lg">Export JSON</button>
               </div>
             )}
           </div>
+          {isDemo && (
+            <span className="text-[10px] text-accent/70 bg-accent/5 px-1.5 py-0.5 rounded border border-accent/15 whitespace-nowrap">
+              ES unavailable — demo
+            </span>
+          )}
         </div>
-
-        {/* Demo banner */}
-        {isDemo && (
-          <span className="text-[11px] text-accent/70 bg-accent/5 px-2 py-1 rounded border border-accent/15">
-            ES unavailable — showing demo results
-          </span>
-        )}
       </div>
+
+      {/* Search bar */}
+      <div className="px-4 pt-3 pb-2">
+        <SearchBar query={query} onQueryChange={setQuery} onSearch={handleSearch} isLoading={isLoading} />
+      </div>
+
+      {/* Active filter pills strip */}
+      {filterPills.length > 0 && (
+        <div className="px-4 pb-2 flex items-center gap-1.5 flex-wrap" data-testid="active-filter-pills">
+          {filterPills.map(pill => (
+            <button key={pill.key} onClick={() => removePill(pill)}
+              className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
+              data-testid={`pill-${pill.key}`}>
+              {pill.label}
+              <X className="w-3 h-3" />
+            </button>
+          ))}
+          {filterPills.length > 1 && (
+            <button onClick={clearAll}
+              className="text-[10px] text-text-muted hover:text-accent transition-colors ml-1">
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Main content: sidebar + results */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
