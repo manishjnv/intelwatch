@@ -324,6 +324,85 @@ export function useEsSearch() {
     else exportJson(data)
   }, [results, isDemo])
 
+  // Apply client-side filtering to demo data
+  const demoFiltered = useMemo(() => {
+    if (!isDemo) return DEMO_ES_RESULTS
+    let data = [...DEMO_ES_RESULTS]
+
+    // Text search
+    const q = debouncedQuery.trim().toLowerCase()
+    if (q) {
+      data = data.filter(r =>
+        r.value.toLowerCase().includes(q) ||
+        r.tags.some(t => t.toLowerCase().includes(q)) ||
+        r.iocType.toLowerCase().includes(q)
+      )
+    }
+
+    // Type filter
+    if (filters.type?.length) {
+      const mapped = filters.type.map(t => t === 'hash_sha256' ? 'hash_sha256' : t === 'hash_md5' ? 'hash_md5' : t)
+      data = data.filter(r => mapped.includes(r.iocType))
+    }
+
+    // Severity filter
+    if (filters.severity?.length) {
+      data = data.filter(r => filters.severity!.includes(r.severity))
+    }
+
+    // TLP filter
+    if (filters.tlp?.length) {
+      data = data.filter(r => filters.tlp!.includes(r.tlp))
+    }
+
+    // Enriched filter
+    if (filters.enriched != null) {
+      data = data.filter(r => r.enriched === filters.enriched)
+    }
+
+    // Confidence filter
+    if (filters.confidenceMin != null) {
+      data = data.filter(r => r.confidence >= filters.confidenceMin!)
+    }
+
+    // Sort
+    if (sortBy === 'confidence_desc') data.sort((a, b) => b.confidence - a.confidence)
+    else if (sortBy === 'severity_desc') {
+      const sevOrder: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1, info: 0 }
+      data.sort((a, b) => (sevOrder[b.severity] ?? 0) - (sevOrder[a.severity] ?? 0))
+    }
+    else if (sortBy === 'lastSeen_desc') data.sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime())
+    else if (sortBy === 'firstSeen_asc') data.sort((a, b) => new Date(a.firstSeen).getTime() - new Date(b.firstSeen).getTime())
+
+    return data
+  }, [isDemo, debouncedQuery, filters, sortBy])
+
+  // Recompute facets from filtered demo data
+  const demoFacets: EsSearchFacets = useMemo(() => {
+    if (!isDemo) return DEMO_FACETS
+    const base = demoFiltered.length > 0 ? DEMO_ES_RESULTS : []
+    const byType: Record<string, number> = {}
+    const bySeverity: Record<string, number> = {}
+    const byTlp: Record<string, number> = {}
+    for (const r of base) {
+      byType[r.iocType] = (byType[r.iocType] ?? 0) + 1
+      bySeverity[r.severity] = (bySeverity[r.severity] ?? 0) + 1
+      byTlp[r.tlp] = (byTlp[r.tlp] ?? 0) + 1
+    }
+    return {
+      byType: Object.entries(byType).map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
+      bySeverity: Object.entries(bySeverity).map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
+      byTlp: Object.entries(byTlp).map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
+    }
+  }, [isDemo, demoFiltered])
+
+  // Paginate demo results
+  const demoPaginated = useMemo(() => {
+    if (!isDemo) return demoFiltered
+    const start = (page - 1) * pageSize
+    return demoFiltered.slice(start, start + pageSize)
+  }, [isDemo, demoFiltered, page, pageSize])
+
   return {
     // Query state
     query,
@@ -338,9 +417,9 @@ export function useEsSearch() {
     setPageSize,
 
     // Results
-    results: isDemo ? DEMO_ES_RESULTS : results,
-    totalCount: isDemo ? DEMO_ES_RESULTS.length : (apiData?.total ?? 0),
-    facets: isDemo ? DEMO_FACETS : facets,
+    results: isDemo ? demoPaginated : results,
+    totalCount: isDemo ? demoFiltered.length : (apiData?.total ?? 0),
+    facets: isDemo ? demoFacets : facets,
     isLoading: result.isLoading,
     isDemo,
     error: result.error,
