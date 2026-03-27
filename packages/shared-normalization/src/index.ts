@@ -78,3 +78,31 @@ export {
   listAttackTechniques,
   type AttackTechniqueWeight,
 } from './attack-weighting.js';
+
+// ── Fuzzy Deduplication ──────────────────────────────────────────
+export {
+  computeFuzzyHash,
+  areFuzzyDuplicates,
+  normalizeIocValue as fuzzyNormalizeIocValue,
+  stripDefang,
+  stripPort,
+  normalizeUrl as fuzzyNormalizeUrl,
+} from './fuzzy-dedupe.js';
+
+// ── Velocity Score ───────────────────────────────────────────────
+export {
+  calculateVelocityScore,
+  isVelocitySpike,
+  decayVelocityScore,
+  type VelocityInput,
+  type VelocityResult,
+} from './velocity-score.js';
+
+// ── CWE Chain Mapper ─────────────────────────────────────────────
+export {
+  getCweEntry,
+  getCweSeverity,
+  getCwesByCategoryMap,
+  buildCweChain,
+  type CweEntry,
+} from './cwe-chain.js';

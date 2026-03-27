@@ -17,6 +17,7 @@ export default defineConfig({
     alias: {
       '@etip/shared-utils': path.resolve(__dirname, '../../packages/shared-utils/src/index.ts'),
       '@etip/shared-types': path.resolve(__dirname, '../../packages/shared-types/src/index.ts'),
+      '@etip/shared-normalization': path.resolve(__dirname, '../../packages/shared-normalization/src/index.ts'),
     },
   },
   test: {

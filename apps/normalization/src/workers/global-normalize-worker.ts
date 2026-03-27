@@ -14,6 +14,7 @@ import {
   WarninglistMatcher,
   calculateBayesianConfidence,
   stixConfidenceTier,
+  computeFuzzyHash,
 } from '@etip/shared-normalization';
 import type { PrismaClient } from '@prisma/client';
 import type pino from 'pino';
@@ -119,8 +120,9 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
       // 5a. Normalize
       const normalizedValue = normalizeIOCValue(raw.rawValue, raw.rawType as Parameters<typeof normalizeIOCValue>[1]);
 
-      // 5b. Dedupe hash
+      // 5b. Dedupe hashes (exact + fuzzy)
       const dedupeHash = buildGlobalDedupeHash(raw.rawType, normalizedValue);
+      const fuzzyDedupeHash = computeFuzzyHash(raw.rawType, raw.rawValue);
 
       // 5c. Warninglist check
       const wlMatch = matcher.check(raw.rawType, normalizedValue);
@@ -129,16 +131,28 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
         continue;
       }
 
-      // 5d. UPSERT into global_iocs
-      const existing = await prisma.globalIoc.findUnique({ where: { dedupeHash } });
+      // 5d. UPSERT into global_iocs — exact match first, then fuzzy
+      let existing = await prisma.globalIoc.findUnique({ where: { dedupeHash } });
+
+      // 5d-ii. Fuzzy match if no exact match
+      if (!existing) {
+        const fuzzyMatch = await prisma.globalIoc.findFirst({ where: { fuzzyDedupeHash } });
+        if (fuzzyMatch) {
+          existing = fuzzyMatch;
+          logger.info(
+            { newValue: raw.rawValue, existingValue: fuzzyMatch.value },
+            `Fuzzy dedupe: merged ${raw.rawValue} into existing ${fuzzyMatch.value}`,
+          );
+        }
+      }
 
       if (existing) {
         // Update existing: bump lastSeen, increment corroboration, append source
-        const sources = existing.sightingSources ?? [];
+        const sources = (existing.sightingSources as string[]) ?? [];
         const newSources = sources.includes(globalFeedId) ? sources : [...sources, globalFeedId];
 
         await prisma.globalIoc.update({
-          where: { dedupeHash },
+          where: { id: existing.id },
           data: {
             lastSeen: new Date(),
             crossFeedCorroboration: newSources.length,
@@ -172,6 +186,7 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
             value: raw.rawValue,
             normalizedValue,
             dedupeHash,
+            fuzzyDedupeHash,
             confidence: confidence.score,
             stixConfidenceTier: tier,
             lifecycle: 'new',
