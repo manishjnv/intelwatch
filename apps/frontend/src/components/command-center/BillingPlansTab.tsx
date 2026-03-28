@@ -16,7 +16,7 @@ import {
 } from '@/hooks/use-phase6-data'
 import { usePlanLimits, type PlanTierConfig } from '@/hooks/use-plan-limits'
 import {
-  CreditCard, Crown,
+  CreditCard, Crown, Rss, ShieldCheck, Users, Activity,
   Download, Check, X, ArrowUpCircle, AlertTriangle,
   RotateCcw, Gift,
 } from 'lucide-react'
@@ -220,6 +220,37 @@ function SubscriptionPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           })}
         </div>
       )}
+
+      {/* Plan includes — what feeds/features the tenant's plan provides */}
+      <div className="space-y-3" data-testid="plan-includes">
+        <h3 className="text-sm font-semibold text-text-primary">Your Plan Includes</h3>
+        {(() => {
+          const plan = s?.planName ?? 'Free'
+          const features = PLAN_FEATURES[plan] ?? PLAN_FEATURES.Free
+          const items = [
+            { label: 'Threat Feeds', value: features.feeds, icon: Rss },
+            { label: 'IOC Capacity', value: features.iocs, icon: ShieldCheck },
+            { label: 'Team Members', value: features.members, icon: Users },
+            { label: 'AI Enrichment', value: features.ai, icon: Activity },
+            { label: 'Exports', value: features.exports, icon: Download },
+            { label: 'Integrations', value: features.integrations, icon: ArrowUpCircle },
+            { label: 'Support', value: features.support, icon: AlertTriangle },
+          ]
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {items.map(item => (
+                <div key={item.label} className="flex items-center gap-2 p-2 rounded-md bg-bg-elevated border border-border/50">
+                  <item.icon className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-text-muted">{item.label}</p>
+                    <p className="text-xs font-medium text-text-primary truncate">{item.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
+      </div>
     </div>
   )
 }

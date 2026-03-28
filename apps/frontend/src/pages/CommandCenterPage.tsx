@@ -2,7 +2,8 @@
  * @module pages/CommandCenterPage
  * @description Unified AI processing & platform management page.
  * Super-admin: 10 tabs (Overview, Configuration, Queue, Feeds, Settings, Users & Access, Clients, Billing & Plans, Alerts & Reports, System).
- * Tenant-admin: 7 tabs (Overview, Configuration, Feeds, Settings, Users & Access, Billing & Plans, Alerts & Reports).
+ * Tenant-admin: 6 tabs (Overview, Configuration, Settings, Users & Access, Billing & Plans, Alerts & Reports).
+ * Session 112: Feeds tab moved to super-admin only — tenants get feeds via plan, not manual subscription.
  * Hash-based tab navigation (/command-center#feeds → opens Feeds tab).
  */
 import { useState, useMemo, useEffect, useCallback } from 'react'
@@ -46,7 +47,7 @@ const TABS: CommandCenterTab[] = [
   { id: 'overview',       label: 'Overview',        icon: BarChart3,   roles: ['super_admin', 'tenant_admin'] },
   { id: 'configuration',  label: 'Configuration',   icon: Sliders,     roles: ['super_admin', 'tenant_admin'] },
   { id: 'queue',          label: 'Queue',           icon: ListOrdered, roles: ['super_admin'] },
-  { id: 'feeds',          label: 'Feeds',           icon: Rss,         roles: ['super_admin', 'tenant_admin'] },
+  { id: 'feeds',          label: 'Feeds',           icon: Rss,         roles: ['super_admin'] },
   { id: 'settings',       label: 'Settings',        icon: Settings,    roles: ['super_admin', 'tenant_admin'] },
   { id: 'users-access',   label: 'Users & Access',  icon: ShieldCheck, roles: ['super_admin', 'tenant_admin'] },
   { id: 'clients',        label: 'Clients',         icon: Users,       roles: ['super_admin'] },

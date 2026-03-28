@@ -5,12 +5,13 @@
  * ComingSoonPage (placeholders), and App.tsx (routing).
  *
  * Session 111: Removed 12 modules absorbed into Command Center tabs.
- * Sidebar now shows 12 items: Dashboard, IOC Search, + 10 modules below.
+ * Session 112: Removed Global Catalog from sidebar (feeds governed by plan, not user choice).
+ * Sidebar now shows 11 items: Dashboard, IOC Search, + 9 modules below.
  */
 import {
   IconIOC, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation,
-  IconGlobalCatalog, IconCommandCenter,
+  IconCommandCenter,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -39,16 +40,6 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-accent',
     phase: 3,
     route: '/iocs',
-  },
-  {
-    id: 'global-catalog',
-    title: 'Global Catalog',
-    description: 'Browse and subscribe to curated global threat intelligence feeds.',
-    helpText: 'Global feed catalog with pipeline health, subscriptions, and IOC overlay management.',
-    icon: IconGlobalCatalog,
-    color: 'text-teal-400',
-    phase: 2,
-    route: '/global-catalog',
   },
   {
     id: 'threat-graph',

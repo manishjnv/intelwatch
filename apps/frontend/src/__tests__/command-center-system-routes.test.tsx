@@ -225,13 +225,13 @@ describe('SystemTab', () => {
 describe('Sidebar cleanup — MODULES array', () => {
   const moduleIds = MODULES.map(m => m.id)
 
-  it('has exactly 10 modules in MODULES array', () => {
-    expect(MODULES.length).toBe(10)
+  it('has exactly 9 modules in MODULES array', () => {
+    expect(MODULES.length).toBe(9)
   })
 
-  it('contains all 10 expected modules', () => {
+  it('contains all 9 expected modules', () => {
     const expected = [
-      'ioc-intelligence', 'global-catalog', 'threat-graph', 'threat-actors',
+      'ioc-intelligence', 'threat-graph', 'threat-actors',
       'malware-analysis', 'vulnerability-intel', 'threat-hunting',
       'digital-risk-protection', 'correlation-engine', 'command-center',
     ]
@@ -242,7 +242,7 @@ describe('Sidebar cleanup — MODULES array', () => {
 
   it('does NOT contain absorbed modules', () => {
     const absorbed = [
-      'feed-ingestion', 'enterprise-integrations', 'rbac-sso',
+      'feed-ingestion', 'global-catalog', 'enterprise-integrations', 'rbac-sso',
       'customization', 'billing', 'admin-ops', 'onboarding',
       'reporting', 'alerting', 'analytics', 'plan-limits', 'pipeline-monitor',
     ]

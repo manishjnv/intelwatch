@@ -130,18 +130,18 @@ describe('CommandCenterPage', () => {
     expect(screen.getByTestId('tab-system')).toBeInTheDocument()
   })
 
-  it('shows 7 tabs for tenant_admin (no queue, clients, system)', () => {
+  it('shows 6 tabs for tenant_admin (no queue, feeds, clients, system)', () => {
     mockRole = 'tenant_admin'
     mockCommandCenter.isSuperAdmin = false
     render(<CommandCenterPage />)
     expect(screen.getByTestId('tab-overview')).toBeInTheDocument()
     expect(screen.getByTestId('tab-configuration')).toBeInTheDocument()
-    expect(screen.getByTestId('tab-feeds')).toBeInTheDocument()
     expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
     expect(screen.getByTestId('tab-users-access')).toBeInTheDocument()
     expect(screen.getByTestId('tab-billing-plans')).toBeInTheDocument()
     expect(screen.getByTestId('tab-alerts-reports')).toBeInTheDocument()
     expect(screen.queryByTestId('tab-queue')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tab-feeds')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tab-clients')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tab-system')).not.toBeInTheDocument()
   })

@@ -2,6 +2,7 @@
  * @module App
  * @description Root app component with React Router configuration.
  * Session 111: 12 absorbed routes now redirect to /command-center#tab.
+ * Session 112: Global Catalog removed — feeds governed by plan, redirect to #feeds.
  */
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -21,7 +22,7 @@ import { DRPDashboardPage } from '@/pages/DRPDashboardPage';
 import { CorrelationPage } from '@/pages/CorrelationPage';
 import { HuntingWorkbenchPage } from '@/pages/HuntingWorkbenchPage';
 import { SearchPage } from '@/pages/SearchPage';
-import { GlobalCatalogPage } from '@/pages/GlobalCatalogPage';
+
 
 // Lazy-loaded — D3 (~190KB) splits into its own chunk, only fetched on /graph navigation
 const ThreatGraphPage = React.lazy(() =>
@@ -74,7 +75,7 @@ export function App() {
             <Route path="/hunting" element={<HuntingWorkbenchPage />} />
             <Route path="/drp" element={<DRPDashboardPage />} />
             <Route path="/correlation" element={<CorrelationPage />} />
-            <Route path="/global-catalog" element={<GlobalCatalogPage />} />
+            <Route path="/global-catalog" element={<Navigate to="/command-center#feeds" replace />} />
             <Route path="/search" element={<SearchPage />} />
             {/* Command Center — unified hub */}
             <Route path="/command-center" element={<CommandCenterPage />} />
