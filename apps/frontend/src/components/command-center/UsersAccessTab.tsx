@@ -9,13 +9,12 @@ import { PillSwitcher, type PillItem } from './PillSwitcher'
 import type { useCommandCenter } from '@/hooks/use-command-center'
 import {
   useUsers, useRoles, useSIEMIntegrations, useWebhooks, useIntegrationStats,
-  type UserRecord, type RoleRecord, type SIEMIntegration, type WebhookConfig,
 } from '@/hooks/use-phase5-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
-  Search, UserPlus, Shield, ShieldCheck, Crown, Mail, MoreHorizontal,
-  Check, X, Lock, Globe, Key, Webhook, ExternalLink, AlertTriangle,
-  Settings, CheckCircle, XCircle, ArrowUpCircle, Clock, Zap,
+  Search, UserPlus, Shield, ShieldCheck, Mail,
+  Check, X, Globe, Key, Webhook, AlertTriangle,
+  Settings, CheckCircle, XCircle, ArrowUpCircle, Zap,
 } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -63,7 +62,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Team Sub-Tab ───────────────────────────────────────────
 
-function TeamPanel({ isSuperAdmin, tenantPlan }: { isSuperAdmin: boolean; tenantPlan: string }) {
+function TeamPanel({ isSuperAdmin: _isSuperAdmin, tenantPlan }: { isSuperAdmin: boolean; tenantPlan: string }) {
   const users = useUsers()
   const [search, setSearch] = useState('')
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -225,7 +224,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 }
 
 function RolesPanel({ tenantPlan }: { tenantPlan: string }) {
-  const roles = useRoles()
+  const _roles = useRoles()
   const isEnterprise = tenantPlan === 'enterprise'
 
   return (
@@ -369,8 +368,8 @@ const DEMO_INTEGRATION_CARDS: IntegrationCard[] = [
 ]
 
 function IntegrationsPanel() {
-  const siemData = useSIEMIntegrations()
-  const webhookData = useWebhooks()
+  const _siemData = useSIEMIntegrations()
+  const _webhookData = useWebhooks()
   const stats = useIntegrationStats()
 
   // Use demo cards enriched with real data when available

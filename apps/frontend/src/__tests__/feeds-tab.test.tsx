@@ -2,8 +2,8 @@
  * @module __tests__/feeds-tab.test
  * @description Tests for FeedsTab — My Feeds, Catalog, Pipeline Health sub-tabs.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@/test/test-utils'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@/test/test-utils'
 import { FeedsTab } from '@/components/command-center/FeedsTab'
 
 // ─── Mock hooks ──────────────────────────────────────────────
@@ -59,7 +59,7 @@ vi.mock('@/components/feed/FeedCard', () => ({
   ReliabilityBar: ({ value }: any) => <span data-testid="reliability-bar">{value}</span>,
   HealthDot: ({ score }: any) => <span data-testid="health-dot">{score}</span>,
   FailureSparkline: () => <span />,
-  formatTime: (d: string) => 'just now',
+  formatTime: (_d: string) => 'just now',
   computeFeedHealth: () => 85,
 }))
 

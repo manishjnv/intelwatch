@@ -11,13 +11,13 @@ import { useFeeds, useToggleFeed, useDeleteFeed, useForceFetch, type FeedRecord 
 import { useGlobalCatalog, useMySubscriptions, useGlobalPipelineHealth } from '@/hooks/use-global-catalog'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
-  FeedTypeIcon, StatusDot, ReliabilityBar, HealthDot, FailureSparkline,
+  FeedTypeIcon, StatusDot, ReliabilityBar, HealthDot,
   formatTime, computeFeedHealth,
 } from '@/components/feed/FeedCard'
 import {
-  Search, Rss, Trash2, Play, ToggleLeft, ToggleRight, Star,
-  AlertTriangle, Activity, Clock, Zap, Pause, ChevronRight,
-  Shield, Crown, X,
+  Search, Rss, Trash2, Play, ToggleLeft, ToggleRight,
+  AlertTriangle, Activity, Clock, Zap,
+  Shield,
 } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -233,7 +233,7 @@ function MyFeedsPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 // ─── Feed Catalog Sub-Tab ───────────────────────────────────
 
-function CatalogPanel({ tenantPlan }: { tenantPlan: string }) {
+function CatalogPanel({ tenantPlan: _tenantPlan }: { tenantPlan: string }) {
   const catalog = useGlobalCatalog()
   const subs = useMySubscriptions()
 
