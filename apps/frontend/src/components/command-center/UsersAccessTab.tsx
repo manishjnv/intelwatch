@@ -14,7 +14,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   Search, UserPlus, Shield, ShieldCheck, Mail,
   Check, X, Globe, Key, Webhook, AlertTriangle,
-  Settings, CheckCircle, XCircle, ArrowUpCircle, Zap, Crown,
+  Settings, CheckCircle, ArrowUpCircle, Zap, Crown,
 } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -224,7 +224,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 }
 
 function RolesPanel({ tenantPlan }: { tenantPlan: string }) {
-  const _roles = useRoles()
+  useRoles() // pre-fetch for future use
   const isEnterprise = tenantPlan === 'enterprise'
 
   return (
@@ -368,8 +368,8 @@ const DEMO_INTEGRATION_CARDS: IntegrationCard[] = [
 ]
 
 function IntegrationsPanel() {
-  const _siemData = useSIEMIntegrations()
-  const _webhookData = useWebhooks()
+  useSIEMIntegrations() // pre-fetch for future use
+  useWebhooks() // pre-fetch for future use
   const stats = useIntegrationStats()
 
   // Use demo cards enriched with real data when available
