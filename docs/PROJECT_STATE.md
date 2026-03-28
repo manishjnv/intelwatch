@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-28 (update at end of EVERY session via /session-end)
-**Session counter:** 108 — CI fix + deploy: 17 TS errors + ~30 ESLint errors fixed. Command Center Phases C-E deployed to VPS.
+**Session counter:** 110 — Command Center Phase F: BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 33 new tests. Deployed.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.1 | 2026-03-27 | Health check passing. **Session 85:** Tiered rate limiting (search 10/write 30/read 120), error alerting (5-min window, QUEUE_ALERT), @fastify/compress (gzip >1KB), GET /api/v1/gateway/error-stats. 59 tests. |
-| etip_frontend | ✅ Running | 0.14.0 | 2026-03-28 | Dashboard + 20 data pages + Command Center (9 tabs). **Session 108:** CI lint/TS fixes for Phases C-E code. 977 tests (979 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.15.0 | 2026-03-28 | Dashboard + 20 data pages + Command Center (9 tabs SA / 7 TA). **Session 110:** BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 1010 tests (1012 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-28 | **24 data pages + Command Center**. 977 tests. **Session 108:** Command Center Phases C-E deployed (Overview, Configuration, Settings, Feeds, Users & Access tabs). CI lint/TS fixes. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-28 | **24 data pages + Command Center (9 tabs SA / 7 TA)**. 1010 tests. **Session 110:** Phase F — BillingPlansTab (6 sub-tabs: Subscription, Invoices, Plans & Upgrade, Limits, Offers, Billing Info) + AlertsReportsTab (4 sub-tabs: Alert Rules, Alert History, Report Templates, Generate & Schedule). Role-gated. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 96:** Fuzzy dedupe in global worker, batch normalizer. 256 tests. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 11 — Command Center. Unified admin hub at /command-center (9 tabs super-admin, 6 tabs tenant). Sessions 102-109.
-- **Last session outcome:** Session 108 (2026-03-28). **CI fix + deploy session.** Fixed 17 TS errors (PrismaLike index sig, Zod default cast, unused imports, TS2532 object possibly undefined) and ~30 ESLint unused-import/variable errors across Phase A-E Command Center code. 5 fix commits: ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92. CI run 23685986125 green. All 33 containers deployed and healthy on VPS (KVM4, 187.127.138.93, 16GB RAM). Command Center Phases C-E now live.
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. Uncommitted files: AlertsReportsTab.tsx, BillingPlansTab.tsx, CommandCenterPage.tsx (Phase F/G WIP from prior sessions).
-- **Next tasks:** (1) Complete Command Center Phase F (Alerts & Reports tab) + Phase G (Billing & Plans tab). (2) Command Center Phase H (System Health super-admin tab). (3) Set Shodan/GreyNoise API keys on VPS. (4) Wire fuzzy dedupe hash column in Prisma schema. (5) Fix vitest alias caching.
+- **Current phase:** Phase 11 — Command Center. Unified admin hub at /command-center (9 tabs super-admin, 7 tabs tenant). Sessions 102-110.
+- **Last session outcome:** Session 110 (2026-03-28). **Command Center Phase F COMPLETE.** BillingPlansTab (6 sub-tabs: Subscription, Invoices, Plans & Upgrade, Limits, Offers, Billing Info) + AlertsReportsTab (4 sub-tabs: Alert Rules, Alert History, Report Templates, Generate & Schedule). Role-gated sub-tabs. Reuses existing hooks (useBillingPlans, useAlertRules, useReports, usePlanLimits, etc). 33 new tests. 2 commits: ada5fb6 (feat), d78fab5 (lint fix). CI green. All 33 containers deployed. 1304 frontend tests (1306 total, 2 skipped).
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. SystemTab import in CommandCenterPage.tsx added by linter — needs SystemTab.tsx to be created (Phase G/H).
+- **Next tasks:** (1) Command Center Phase G — SystemTab (super-admin: system health, queue monitor, maintenance windows, DLQ). (2) Delete standalone pages absorbed by Command Center (BillingPage, PlanLimitsPage, AlertingPage, ReportingPage). (3) Set Shodan/GreyNoise API keys on VPS. (4) Wire fuzzy dedupe hash column in Prisma schema. (5) Fix vitest alias caching.
 
 ## Deployment Log
 
@@ -238,6 +238,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 95 | 2026-03-27 | Code pushed, VPS git pull + activation script run | ⏳ Frontend rebuild pending | 377c7b1 | Phase E: GlobalMonitoringPage, AdmiraltyBadge, StixConfidenceBadge, GlobalFeedRecovery, GlobalFeedMetrics, DashboardPage widget, IOC Source column. 56 new tests (882 frontend, 612 ingestion). Activation script: Prisma in sync, feeds already seeded from S94. |
 | 101 | 2026-03-27 | No deploy (code-only session) | — | d841199 | AnalyticsPage executive dashboard: 3 sections (KPI cards, trend charts, intelligence breakdown). +2 analytics endpoints (distributions, cost-tracking). 55 new tests (977 frontend, 93 analytics). 6,733 total. |
 | 108 | 2026-03-28 | All 33 containers redeployed (Command Center Phases C-E) | ✅ All 33 healthy | ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92 | CI fix session: 17 TS errors + ~30 ESLint errors. PrismaLike index sig, Zod default cast, unused imports/vars. Command Center (Overview, Config, Settings, Feeds, Users & Access tabs) now live. KVM4 VPS (16GB). |
+| 110 | 2026-03-28 | etip_frontend redeployed (Command Center Phase F) | ✅ All 33 healthy | ada5fb6, d78fab5 | BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 33 new tests. Command Center: 9 tabs SA / 7 tabs TA. CI run 23686477062 green. |
 
 ## E2E Verification Results (Session 13)
 
