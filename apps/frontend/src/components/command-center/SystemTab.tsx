@@ -13,8 +13,7 @@ import {
   type ServiceHealth, type QueueDepth, type DlqQueueEntry,
 } from '@/hooks/use-phase6-data'
 import {
-  Activity, Server, HardDrive, Clock, RefreshCw,
-  CheckCircle2, AlertTriangle, XCircle, Play, Square,
+  RefreshCw, CheckCircle2, AlertTriangle, XCircle, Play, Square,
   ArrowRight, RotateCcw, Database, Shield, Calendar,
   Download, Upload, Trash2,
 } from 'lucide-react'

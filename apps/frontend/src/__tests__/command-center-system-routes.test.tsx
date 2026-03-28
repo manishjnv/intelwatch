@@ -2,7 +2,7 @@
  * @module __tests__/command-center-system-routes.test
  * @description Session 111 tests: SystemTab, sidebar cleanup, route redirects, hash navigation.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
 import { MODULES } from '@/config/modules'
 import { SystemTab } from '@/components/command-center/SystemTab'

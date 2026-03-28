@@ -98,7 +98,7 @@ export function CommandCenterPage() {
     if (tabFromHash && tabFromHash !== activeTab) {
       setActiveTab(tabFromHash)
     }
-  }, [location.hash]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [location.hash, activeTab])
 
   // Tab click handler — updates both state and URL hash
   const handleTabChange = useCallback((tabId: TabId) => {
