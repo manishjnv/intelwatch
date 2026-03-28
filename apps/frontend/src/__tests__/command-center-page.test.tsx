@@ -91,8 +91,9 @@ describe('CommandCenterPage', () => {
 
   it('shows KPI strip with stats', () => {
     render(<CommandCenterPage />)
-    expect(screen.getByText('12,450')).toBeInTheDocument()
-    expect(screen.getByText('$142.30')).toBeInTheDocument()
+    // Values appear in KPI strip and in OverviewTab KPI cards
+    expect(screen.getAllByText('12,450').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('$142.30').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows period picker buttons', () => {

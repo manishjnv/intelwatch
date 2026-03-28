@@ -20,6 +20,8 @@ import { IconCommandCenter } from '@/components/brand/ModuleIcons'
 import { ConfigureTab } from '@/components/command-center/ConfigureTab'
 import { ClientsTab } from '@/components/command-center/ClientsTab'
 import { QueueTab } from '@/components/command-center/QueueTab'
+import { OverviewTab } from '@/components/command-center/OverviewTab'
+import { ConfigurationTab } from '@/components/command-center/ConfigurationTab'
 
 // ─── Tab Registry ───────────────────────────────────────────────
 
@@ -49,31 +51,7 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'month', label: 'This Month' },
 ]
 
-// ─── Placeholder tabs (Overview + Configuration built in Session C) ──
-
-function OverviewPlaceholder() {
-  return (
-    <div data-testid="overview-tab" className="flex items-center justify-center h-64 text-text-muted">
-      <div className="text-center">
-        <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-40" />
-        <p className="text-sm">Overview — coming in next session</p>
-        <p className="text-xs mt-1 text-text-muted">Cost timeline, charts, consumption breakdown</p>
-      </div>
-    </div>
-  )
-}
-
-function ConfigurationPlaceholder() {
-  return (
-    <div data-testid="configuration-tab" className="flex items-center justify-center h-64 text-text-muted">
-      <div className="text-center">
-        <Sliders className="w-10 h-10 mx-auto mb-3 opacity-40" />
-        <p className="text-sm">Configuration — coming in next session</p>
-        <p className="text-xs mt-1 text-text-muted">Read-only model assignments, cost estimator</p>
-      </div>
-    </div>
-  )
-}
+// Placeholder components removed — OverviewTab and ConfigurationTab are now live.
 
 // ─── Page Component ─────────────────────────────────────────────
 
@@ -302,8 +280,8 @@ export function CommandCenterPage() {
 
         {/* Tab Content */}
         <div className="px-4 sm:px-6 py-4" data-testid="tab-content">
-          {effectiveTab === 'overview' && <OverviewPlaceholder />}
-          {effectiveTab === 'configuration' && <ConfigurationPlaceholder />}
+          {effectiveTab === 'overview' && <OverviewTab data={cc} />}
+          {effectiveTab === 'configuration' && <ConfigurationTab data={cc} aiConfig={aiConfig} />}
           {effectiveTab === 'queue' && <QueueTab data={cc} />}
           {effectiveTab === 'configure' && <ConfigureTab data={cc} aiConfig={aiConfig} />}
           {effectiveTab === 'clients' && <ClientsTab data={cc} />}
