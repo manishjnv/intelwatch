@@ -55,7 +55,7 @@ const MODEL_PRICING: Record<ModelTier, { input: number; output: number }> = {
 
 /** Prisma-compatible writer for ai_processing_costs table (fire-and-forget) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PrismaLike = { aiProcessingCost?: { create: (args: any) => Promise<any> } };
+type PrismaLike = { aiProcessingCost?: { create: (args: any) => Promise<any> }; [key: string]: any };
 
 export class EnrichmentCostTracker {
   private iocCosts: Map<string, ProviderCostRecord[]> = new Map();

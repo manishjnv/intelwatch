@@ -5,7 +5,6 @@
  */
 
 import type { PrismaClient } from '@prisma/client';
-import { AppError } from '@etip/shared-utils';
 
 export interface ConsumptionRecord {
   tenantId: string;
@@ -22,7 +21,10 @@ export interface TenantConsumptionStats {
 }
 
 export class ConsumptionTracker {
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly db: any;
+  constructor(private readonly prisma: PrismaClient) {
+    this.db = prisma as any;
+  }
 
   /**
    * Record that a tenant consumed an item (idempotent via UNIQUE constraint).
@@ -30,7 +32,7 @@ export class ConsumptionTracker {
    */
   async trackConsumption(record: ConsumptionRecord): Promise<boolean> {
     try {
-      await this.prisma.tenantItemConsumption.create({
+      await this.db.tenantItemConsumption.create({
         data: {
           tenantId: record.tenantId,
           itemId: record.itemId,
@@ -91,13 +93,13 @@ export class ConsumptionTracker {
       // Aggregate by provider
       const prov = row.provider ?? 'unknown';
       if (!byProvider[prov]) byProvider[prov] = { count: 0, costUsd: 0 };
-      byProvider[prov].count += count;
-      byProvider[prov].costUsd += cost;
+      byProvider[prov]!.count += count;
+      byProvider[prov]!.costUsd += cost;
 
       // Aggregate by item type
       if (!byItemType[row.item_type]) byItemType[row.item_type] = { count: 0, costUsd: 0 };
-      byItemType[row.item_type].count += count;
-      byItemType[row.item_type].costUsd += cost;
+      byItemType[row.item_type]!.count += count;
+      byItemType[row.item_type]!.costUsd += cost;
 
       totalItems += count;
       totalCostUsd += cost;
@@ -118,7 +120,7 @@ export class ConsumptionTracker {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const count = await this.prisma.tenantItemConsumption.count({
+    const count = await this.db.tenantItemConsumption.count({
       where: {
         tenantId,
         consumedAt: { gte: startOfMonth },

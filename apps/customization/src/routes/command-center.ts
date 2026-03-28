@@ -91,8 +91,8 @@ export function commandCenterRoutes(deps: CommandCenterRouteDeps) {
       '/global-stats',
       async (req, reply) => {
         requireSuperAdmin(req);
-        const period = safeParse(PeriodSchema, req.query.period);
-        const range = parsePeriod(period);
+        const period = safeParse(PeriodSchema, req.query.period ?? 'month');
+        const range = parsePeriod(period as string);
 
         const stats = await queries.getGlobalStats(range);
         return reply.send({ data: stats });
@@ -104,8 +104,8 @@ export function commandCenterRoutes(deps: CommandCenterRouteDeps) {
       '/tenant-stats',
       async (req, reply) => {
         const tenantId = getTenantId(req);
-        const period = safeParse(PeriodSchema, req.query.period);
-        const range = parsePeriod(period);
+        const period = safeParse(PeriodSchema, req.query.period ?? 'month');
+        const range = parsePeriod(period as string);
 
         const stats = await queries.getTenantStats(tenantId, range);
         return reply.send({ data: stats });
@@ -117,8 +117,8 @@ export function commandCenterRoutes(deps: CommandCenterRouteDeps) {
       '/tenant-list',
       async (req, reply) => {
         requireSuperAdmin(req);
-        const period = safeParse(PeriodSchema, req.query.period);
-        const range = parsePeriod(period);
+        const period = safeParse(PeriodSchema, req.query.period ?? 'month');
+        const range = parsePeriod(period as string);
 
         const list = await queries.getTenantList(range);
         return reply.send({ data: list, total: list.length });
@@ -131,9 +131,9 @@ export function commandCenterRoutes(deps: CommandCenterRouteDeps) {
 
       // Queue stats from admin-service — for now, return from local AI processing costs
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const recentCount = await deps.queries['prisma'].aiProcessingCost.count({
+      const recentCount = await (deps.queries as any)['prisma'].aiProcessingCost.count({
         where: { processedAt: { gte: oneHourAgo } },
-      });
+      }).catch(() => 0);
 
       return reply.send({
         data: {

@@ -46,7 +46,10 @@ function maskKey(key: string): string {
 }
 
 export class ProviderKeyStore {
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly db: any;
+  constructor(prisma: PrismaClient) {
+    this.db = prisma as any;
+  }
 
   /** Validate key prefix for a provider */
   validateKeyPrefix(provider: AiProvider, key: string): boolean {
@@ -70,7 +73,7 @@ export class ProviderKeyStore {
     const masked = maskKey(input.apiKey);
     const hash = sha256(input.apiKey);
 
-    const record = await this.prisma.providerApiKey.upsert({
+    const record = await this.db.providerApiKey.upsert({
       where: { provider: input.provider },
       create: {
         provider: input.provider,
@@ -99,7 +102,7 @@ export class ProviderKeyStore {
 
   /** Get key info for a provider (never returns the actual key) */
   async getKey(provider: AiProvider): Promise<ProviderKeyInfo | null> {
-    const record = await this.prisma.providerApiKey.findUnique({
+    const record = await this.db.providerApiKey.findUnique({
       where: { provider },
     });
 
@@ -116,11 +119,11 @@ export class ProviderKeyStore {
 
   /** Get all provider key statuses */
   async getAllKeys(): Promise<ProviderKeyInfo[]> {
-    const records = await this.prisma.providerApiKey.findMany({
+    const records = await this.db.providerApiKey.findMany({
       orderBy: { provider: 'asc' },
     });
 
-    return records.map(r => ({
+    return records.map((r: any) => ({
       provider: r.provider as AiProvider,
       keyMasked: r.keyMasked,
       isValid: r.isValid,
@@ -132,7 +135,7 @@ export class ProviderKeyStore {
   /** Remove an API key for a provider */
   async removeKey(provider: AiProvider): Promise<boolean> {
     try {
-      await this.prisma.providerApiKey.delete({
+      await this.db.providerApiKey.delete({
         where: { provider },
       });
       return true;
@@ -161,7 +164,7 @@ export class ProviderKeyStore {
       }
 
       // Mark as valid in DB
-      await this.prisma.providerApiKey.updateMany({
+      await this.db.providerApiKey.updateMany({
         where: { provider },
         data: { isValid: true, lastTested: new Date() },
       });
@@ -169,7 +172,7 @@ export class ProviderKeyStore {
       return { provider, success: true, latencyMs: Date.now() - start };
     } catch (err) {
       // Mark as invalid in DB
-      await this.prisma.providerApiKey.updateMany({
+      await this.db.providerApiKey.updateMany({
         where: { provider },
         data: { isValid: false, lastTested: new Date() },
       });

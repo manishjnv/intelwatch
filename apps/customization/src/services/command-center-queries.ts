@@ -46,12 +46,15 @@ export interface QueueStats {
 // ── Query Service ─────────────────────────────────────────────────
 
 export class CommandCenterQueries {
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly db: any;
+  constructor(private readonly prisma: PrismaClient) {
+    this.db = prisma as any;
+  }
 
   /** Global processing stats — super-admin only */
   async getGlobalStats(range: DateRange): Promise<GlobalStats> {
     // Aggregate totals
-    const totals = await this.prisma.aiProcessingCost.aggregate({
+    const totals = await this.db.aiProcessingCost.aggregate({
       where: { processedAt: { gte: range.since, lte: range.until } },
       _sum: { costUsd: true, inputTokens: true, outputTokens: true },
       _count: true,
