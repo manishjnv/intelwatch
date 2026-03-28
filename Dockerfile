@@ -49,7 +49,9 @@ COPY apps/caching-service/package.json        apps/caching-service/tsconfig.json
 COPY apps/frontend/package.json               apps/frontend/
 
 # RULE: strict --frozen-lockfile, NO fallback. Stale lockfile = build MUST fail. (Issues #11, #16)
-RUN pnpm install --frozen-lockfile --ignore-scripts
+# Cache mount: persists pnpm store across builds so unchanged packages aren't re-downloaded.
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts
 
 # ── Stage 2: Build TypeScript ──────────────────────────────────
 FROM deps AS build
@@ -63,8 +65,9 @@ RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 # tsc -b (build mode) compiles all projects in strict dependency order via references.
 # Guarantees .d.ts files exist before dependents compile. No race conditions.
 # No '|| true' — failures must fail the image build visibly. (Issue 15 — DEPLOYMENT_RCA.md)
-# --force: always rebuild all projects (no .tsbuildinfo cache in fresh Docker layer)
-RUN pnpm exec tsc -b --force tsconfig.build.json
+# Cache mount: persists .tsbuildinfo so tsc skips unchanged projects across builds.
+RUN --mount=type=cache,target=/tmp/tsbuildinfo \
+    pnpm exec tsc -b tsconfig.build.json
 
 # ── Stage 3: Production ───────────────────────────────────────
 FROM node:20-slim AS production

@@ -65,6 +65,17 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useApplyCoupon: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false, isError: false }),
   useUpgradePlan: () => ({ mutate: vi.fn(), isPending: false }),
   useCancelSubscription: () => ({ mutate: vi.fn(), isPending: false }),
+  // SystemTab hooks (not exercised in this test file, but module mock must be complete)
+  useSystemHealth: () => ({ data: { services: [], summary: { healthy: 0, degraded: 0, down: 0, total: 0, uptimePercent: 0, lastUpdated: '' } }, refetch: vi.fn(), isFetching: false }),
+  useQueueHealth: () => ({ data: { queues: [], updatedAt: '' }, refetch: vi.fn(), isFetching: false }),
+  useQueueAlerts: () => ({ data: { alerts: [] } }),
+  useMaintenanceWindows: () => ({ data: { data: [], total: 0, page: 1, limit: 50 } }),
+  useActivateMaintenance: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeactivateMaintenance: () => ({ mutate: vi.fn(), isPending: false }),
+  useCreateMaintenanceWindow: () => ({ mutate: vi.fn(), isPending: false }),
+  useDlqStatus: () => ({ data: { queues: [], totalFailed: 0, updatedAt: '' } }),
+  useRetryDlqQueue: () => ({ mutate: vi.fn(), isPending: false }),
+  useRetryAllDlq: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/hooks/use-plan-limits', () => ({

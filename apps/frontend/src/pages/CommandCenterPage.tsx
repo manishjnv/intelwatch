@@ -1,11 +1,12 @@
 /**
  * @module pages/CommandCenterPage
  * @description Unified AI processing & platform management page.
- * Super-admin: 9 tabs (Overview, Configuration, Queue, Feeds, Settings, Users & Access, Clients, Billing & Plans, Alerts & Reports).
+ * Super-admin: 10 tabs (Overview, Configuration, Queue, Feeds, Settings, Users & Access, Clients, Billing & Plans, Alerts & Reports, System).
  * Tenant-admin: 7 tabs (Overview, Configuration, Feeds, Settings, Users & Access, Billing & Plans, Alerts & Reports).
- * Extensible tab registry, role-based filtering, KPI strip, date range picker.
+ * Hash-based tab navigation (/command-center#feeds → opens Feeds tab).
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCommandCenter, type Period } from '@/hooks/use-command-center'
 import { useGlobalAiConfig } from '@/hooks/use-global-ai-config'
@@ -15,7 +16,7 @@ import {
   BarChart3, Sliders, ListOrdered, Settings, Users,
   RefreshCw, Download, ChevronDown, DollarSign,
   Activity, Building2, TrendingUp, AlertTriangle,
-  Rss, ShieldCheck, CreditCard, Bell,
+  Rss, ShieldCheck, CreditCard, Bell, Server,
 } from 'lucide-react'
 import { IconCommandCenter } from '@/components/brand/ModuleIcons'
 import { ClientsTab } from '@/components/command-center/ClientsTab'
@@ -27,10 +28,11 @@ import { FeedsTab } from '@/components/command-center/FeedsTab'
 import { UsersAccessTab } from '@/components/command-center/UsersAccessTab'
 import { BillingPlansTab } from '@/components/command-center/BillingPlansTab'
 import { AlertsReportsTab } from '@/components/command-center/AlertsReportsTab'
+import { SystemTab } from '@/components/command-center/SystemTab'
 
 // ─── Tab Registry ───────────────────────────────────────────────
 
-type TabId = 'overview' | 'configuration' | 'queue' | 'feeds' | 'settings' | 'users-access' | 'clients' | 'billing-plans' | 'alerts-reports'
+type TabId = 'overview' | 'configuration' | 'queue' | 'feeds' | 'settings' | 'users-access' | 'clients' | 'billing-plans' | 'alerts-reports' | 'system'
 type UserRole = 'super_admin' | 'tenant_admin'
 
 interface CommandCenterTab {
@@ -41,15 +43,16 @@ interface CommandCenterTab {
 }
 
 const TABS: CommandCenterTab[] = [
-  { id: 'overview',      label: 'Overview',       icon: BarChart3,   roles: ['super_admin', 'tenant_admin'] },
-  { id: 'configuration', label: 'Configuration',  icon: Sliders,     roles: ['super_admin', 'tenant_admin'] },
-  { id: 'queue',         label: 'Queue',          icon: ListOrdered, roles: ['super_admin'] },
-  { id: 'feeds',         label: 'Feeds',          icon: Rss,         roles: ['super_admin', 'tenant_admin'] },
-  { id: 'settings',      label: 'Settings',       icon: Settings,    roles: ['super_admin', 'tenant_admin'] },
-  { id: 'users-access',  label: 'Users & Access', icon: ShieldCheck, roles: ['super_admin', 'tenant_admin'] },
-  { id: 'clients',       label: 'Clients',        icon: Users,       roles: ['super_admin'] },
-  { id: 'billing-plans', label: 'Billing & Plans', icon: CreditCard,  roles: ['super_admin', 'tenant_admin'] },
-  { id: 'alerts-reports',label: 'Alerts & Reports',icon: Bell,        roles: ['super_admin', 'tenant_admin'] },
+  { id: 'overview',       label: 'Overview',        icon: BarChart3,   roles: ['super_admin', 'tenant_admin'] },
+  { id: 'configuration',  label: 'Configuration',   icon: Sliders,     roles: ['super_admin', 'tenant_admin'] },
+  { id: 'queue',          label: 'Queue',           icon: ListOrdered, roles: ['super_admin'] },
+  { id: 'feeds',          label: 'Feeds',           icon: Rss,         roles: ['super_admin', 'tenant_admin'] },
+  { id: 'settings',       label: 'Settings',        icon: Settings,    roles: ['super_admin', 'tenant_admin'] },
+  { id: 'users-access',   label: 'Users & Access',  icon: ShieldCheck, roles: ['super_admin', 'tenant_admin'] },
+  { id: 'clients',        label: 'Clients',         icon: Users,       roles: ['super_admin'] },
+  { id: 'billing-plans',  label: 'Billing & Plans',  icon: CreditCard,  roles: ['super_admin', 'tenant_admin'] },
+  { id: 'alerts-reports', label: 'Alerts & Reports', icon: Bell,        roles: ['super_admin', 'tenant_admin'] },
+  { id: 'system',         label: 'System',           icon: Server,      roles: ['super_admin'] },
 ]
 
 // ─── Period Picker ──────────────────────────────────────────────
@@ -64,20 +67,44 @@ const PERIODS: { value: Period; label: string }[] = [
 
 // ─── Page Component ─────────────────────────────────────────────
 
+/** Parse URL hash to a valid TabId, or return null. */
+function hashToTabId(hash: string): TabId | null {
+  const id = hash.replace('#', '') as TabId
+  return TABS.some(t => t.id === id) ? id : null
+}
+
 export function CommandCenterPage() {
   const user = useAuthStore(s => s.user)
   const userRole = (user?.role ?? 'tenant_admin') as UserRole
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const cc = useCommandCenter()
   const aiConfig = useGlobalAiConfig()
 
-  const [activeTab, setActiveTab] = useState<TabId>('overview')
+  // Derive initial tab from URL hash
+  const initialTab = hashToTabId(location.hash) ?? 'overview'
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
   const [mobileTabOpen, setMobileTabOpen] = useState(false)
 
   const visibleTabs = useMemo(
     () => TABS.filter(t => t.roles.includes(userRole)),
     [userRole],
   )
+
+  // Sync hash → tab on popstate (browser back/forward)
+  useEffect(() => {
+    const tabFromHash = hashToTabId(location.hash)
+    if (tabFromHash && tabFromHash !== activeTab) {
+      setActiveTab(tabFromHash)
+    }
+  }, [location.hash]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tab click handler — updates both state and URL hash
+  const handleTabChange = useCallback((tabId: TabId) => {
+    setActiveTab(tabId)
+    navigate(`/command-center#${tabId}`, { replace: true })
+  }, [navigate])
 
   // Ensure active tab is visible for current role
   const effectiveTab = visibleTabs.find(t => t.id === activeTab) ? activeTab : visibleTabs[0]?.id ?? 'overview'
@@ -225,7 +252,7 @@ export function CommandCenterPage() {
                 <button
                   key={tab.id}
                   data-testid={`tab-${tab.id}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={cn(
                     'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
                     isActive
@@ -268,7 +295,7 @@ export function CommandCenterPage() {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => { setActiveTab(tab.id); setMobileTabOpen(false) }}
+                      onClick={() => { handleTabChange(tab.id); setMobileTabOpen(false) }}
                       className={cn(
                         'w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors',
                         effectiveTab === tab.id ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-bg-hover',
@@ -298,6 +325,7 @@ export function CommandCenterPage() {
           {effectiveTab === 'clients' && <ClientsTab data={cc} />}
           {effectiveTab === 'billing-plans' && <BillingPlansTab data={cc} />}
           {effectiveTab === 'alerts-reports' && <AlertsReportsTab data={cc} />}
+          {effectiveTab === 'system' && <SystemTab />}
         </div>
       </div>
     </div>

@@ -86,6 +86,23 @@ vi.mock('@/components/feed/FeedCard', () => ({
   HealthDot: () => null, FailureSparkline: () => null, formatTime: () => '', computeFeedHealth: () => 0,
 }))
 
+// Mock phase6 hooks for SystemTab (lazy-rendered)
+vi.mock('@/hooks/use-phase6-data', () => ({
+  useSystemHealth: () => ({
+    data: { services: [], summary: { healthy: 0, degraded: 0, down: 0, total: 0, uptimePercent: 0, lastUpdated: '' } },
+    refetch: vi.fn(), isFetching: false,
+  }),
+  useQueueHealth: () => ({ data: { queues: [], updatedAt: '' }, refetch: vi.fn(), isFetching: false }),
+  useQueueAlerts: () => ({ data: { alerts: [] } }),
+  useMaintenanceWindows: () => ({ data: { data: [], total: 0, page: 1, limit: 50 } }),
+  useActivateMaintenance: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeactivateMaintenance: () => ({ mutate: vi.fn(), isPending: false }),
+  useCreateMaintenanceWindow: () => ({ mutate: vi.fn(), isPending: false }),
+  useDlqStatus: () => ({ data: { queues: [], totalFailed: 0, updatedAt: '' } }),
+  useRetryDlqQueue: () => ({ mutate: vi.fn(), isPending: false }),
+  useRetryAllDlq: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
 describe('CommandCenterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -99,7 +116,7 @@ describe('CommandCenterPage', () => {
     expect(screen.getByText('Command Center')).toBeInTheDocument()
   })
 
-  it('shows 7 tabs for super_admin', () => {
+  it('shows 10 tabs for super_admin', () => {
     render(<CommandCenterPage />)
     expect(screen.getByTestId('tab-overview')).toBeInTheDocument()
     expect(screen.getByTestId('tab-configuration')).toBeInTheDocument()
@@ -108,9 +125,12 @@ describe('CommandCenterPage', () => {
     expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
     expect(screen.getByTestId('tab-users-access')).toBeInTheDocument()
     expect(screen.getByTestId('tab-clients')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-billing-plans')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-alerts-reports')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-system')).toBeInTheDocument()
   })
 
-  it('shows 5 tabs for tenant_admin', () => {
+  it('shows 7 tabs for tenant_admin (no queue, clients, system)', () => {
     mockRole = 'tenant_admin'
     mockCommandCenter.isSuperAdmin = false
     render(<CommandCenterPage />)
@@ -119,8 +139,11 @@ describe('CommandCenterPage', () => {
     expect(screen.getByTestId('tab-feeds')).toBeInTheDocument()
     expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
     expect(screen.getByTestId('tab-users-access')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-billing-plans')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-alerts-reports')).toBeInTheDocument()
     expect(screen.queryByTestId('tab-queue')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tab-clients')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tab-system')).not.toBeInTheDocument()
   })
 
   it('shows KPI strip with stats', () => {

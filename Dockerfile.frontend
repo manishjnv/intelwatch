@@ -19,7 +19,9 @@ COPY apps/frontend/package.json     apps/frontend/
 COPY packages/shared-ui/package.json packages/shared-ui/
 
 # RULE: strict --frozen-lockfile, NO fallback. Stale lockfile = build MUST fail. (Issues #11, #16)
-RUN pnpm install --frozen-lockfile
+# Cache mount: persists pnpm store across builds so unchanged packages aren't re-downloaded.
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 # Copy sources — frontend + shared-ui (required by vite alias at build time)
 COPY apps/frontend/   apps/frontend/

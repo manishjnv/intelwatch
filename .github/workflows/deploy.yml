@@ -58,26 +58,24 @@ jobs:
         run: pnpm exec prisma generate --schema=prisma/schema.prisma
 
       - name: Build (tsc -b — strict dependency order, generates .d.ts for cross-package imports)
-        run: pnpm exec tsc -b --force tsconfig.build.json
+        run: pnpm exec tsc -b tsconfig.build.json
 
       - name: Run tests (after build — shared packages must be compiled first, RCA #37)
         run: pnpm -r test
 
-      - name: Type-check (excludes frontend — Vite aliases incompatible with tsc)
-        run: pnpm --filter '!@etip/frontend' -r run typecheck
+      - name: Typecheck + Lint + Audit (parallel — these are independent of each other)
+        run: |
+          pnpm --filter '!@etip/frontend' -r run typecheck &
+          PID_TC=$!
+          pnpm -r run lint &
+          PID_LINT=$!
+          pnpm audit --audit-level=high &
+          PID_AUDIT=$!
 
-      - name: Lint
-        run: pnpm -r run lint
-
-      - name: Security audit
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
-
-      - name: Docker build validation (API)
-        run: docker build -f Dockerfile -t etip-api-ci:test .
-
-      - name: Docker build validation (Frontend)
-        run: docker build -f Dockerfile.frontend -t etip-frontend-ci:test .
+          # Wait for typecheck and lint (must pass), audit is non-blocking
+          wait $PID_TC || exit 1
+          wait $PID_LINT || exit 1
+          wait $PID_AUDIT || true
 
   # ─── Build Docker images in CI (not on VPS) ────────────────
   build-images:
