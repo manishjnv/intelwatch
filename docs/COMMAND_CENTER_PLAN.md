@@ -2,7 +2,7 @@
 
 ## Context
 
-3 fragmented AI pages → 1 unified `/command-center` page. Global processing model (AI costs incurred once, consumption tracked per-tenant). Super-admin: 5 tabs. Tenant admin: 2 read-only tabs. Multi-provider AI. Extensible tab architecture for future admin sections.
+Unified admin hub at `/command-center`. Absorbs 12 standalone admin pages into 9 tabs (3 sections). Global processing model (AI costs incurred once, consumption tracked per-tenant). Super-admin: 9 tabs. Tenant-admin/Free: 6 tabs. Multi-provider AI. Sidebar shrinks from 22 → 12 items (11 intelligence + Command Center).
 
 ---
 
@@ -26,51 +26,235 @@ AI enriches IOCs (cost stored once)   →→→   Tenant consumes IOC → cost l
 
 ## Access Model
 
-| Role | Description | Tabs Visible |
-|------|-------------|-------------|
-| Super Admin | Platform owner. Full control. | 5 tabs (3 read + 2 admin) |
-| Tenant Admin | Org manager. Min 1, max all. Multiple see identical views. | 2 read-only tabs |
-| Regular User | Analyst. Display designation (Analyst/Lead/Manager) only. | No access (AI results inline in detail panels) |
+### Functional Access (Sidebar Intelligence Pages)
 
-- Free tier = solo tenant admin with 0 employees, free-tier content
+ALL users (analyst, tenant admin, free) get FULL functional access to intelligence pages:
+- IOC Search, IOC Intelligence, Threat Graph, Threat Actors, Malware, Vulnerability, Threat Hunting, DRP, Correlation, Global Catalog
+- All filtering, sorting, search, export, pivot, detail panels, bulk actions
+- Dashboard (customized by org profile — see Org-Aware Dashboard below)
+
+### Command Center Access (Admin Hub)
+
+| Role | Description | Command Center Tabs |
+|------|-------------|---------------------|
+| Super Admin | Platform owner. Full control. | 9 tabs (all sections) |
+| Tenant Admin | Org manager (paid). Analyst access + admin extras. | 6 tabs (outcome-focused, no AI internals) |
+| Free User | Solo tenant admin. Can upgrade → add members. | 6 tabs (with upgrade CTAs) |
+| Analyst | Full intelligence access. No admin. | No Command Center access |
+
+**Tenant Admin extras over Analyst:** Settings (org config, onboarding, notifications), Feeds (subscription management), Users & Access (team, roles, invites), Billing & Plans (subscription, invoices, upgrade), Alerts & Reports (org-level alert rules, scheduled reports)
+
+- Free user = tenant admin on free tier (single user, upgrade to add members)
+- Tenant admin and free user have SAME access level, different plan context
 - Original signup user cannot be demoted/removed
 - Any user can be promoted to tenant admin by existing tenant admin
+- Module access governed by subscription plan (no manual toggles)
+- Tenant admins/free users NEVER see AI model names, provider names, or technical details — only outcome metrics
 
 ---
 
-## Tab Structure
+## Org-Aware Dashboard
+
+Dashboard content is customized based on the org's profile. When the org updates their profile, dashboard automatically re-weights what intel surfaces.
+
+### Org Profile Fields (set during onboarding, editable in Settings)
+
+| Field | Options | Effect on Dashboard |
+|-------|---------|---------------------|
+| **Industry** | Finance, Healthcare, Government, Energy, Telecom, Retail, Manufacturing, Education, Technology, Defense | Prioritize threat actors & campaigns targeting this sector |
+| **Tech Stack** | Windows/Linux/macOS, Cloud (AWS/Azure/GCP), Network (Cisco/Fortinet/Palo Alto), Database (Oracle/Postgres/MongoDB), Web (Apache/Nginx/IIS) | Surface CVEs and malware affecting these technologies |
+| **Business Risk** | Data breach, Ransomware, IP theft, Service disruption, Regulatory compliance, Supply chain | Weight IOCs and alerts by relevance to these risk categories |
+| **Org Size** | Startup (<50), SMB (50-500), Enterprise (500-5000), Large Enterprise (5000+) | Adjust threat model (nation-state targeting for enterprise, opportunistic for SMB) |
+| **Geography** | Country/region of operations | Prioritize regional threat actors and regulatory-relevant threats |
+
+### Dashboard Sections (personalized)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  YOUR THREAT LANDSCAPE                                          │
+│  Based on: Healthcare + Windows/Azure + Data breach risk        │
+│                                                                  │
+│  ┌─ Priority Threats ──────────────────────────────────────┐    │
+│  │  Threats targeting Healthcare sector this week:          │    │
+│  │  • APT41 — new campaign against healthcare orgs          │    │
+│  │  • CVE-2026-1234 — Azure AD bypass (your stack)         │    │
+│  │  • Ransomware: BlackCat variant targeting HIPAA data     │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─ Your Tech Stack Exposure ──┐  ┌─ Industry Trend ─────────┐ │
+│  │  Windows CVEs: 12 new       │  │  Healthcare attacks ▲23% │ │
+│  │  Azure CVEs: 3 critical     │  │  vs last month            │ │
+│  │  CVSS >8: 5 unpatched      │  │  ▁▂▃▄▅▆▇█ 30d trend      │ │
+│  └─────────────────────────────┘  └───────────────────────────┘ │
+│                                                                  │
+│  ┌─ Risk-Weighted IOCs ────────────────────────────────────┐    │
+│  │  Showing IOCs most relevant to your risk profile:        │    │
+│  │  (Data breach + Ransomware weighted highest)             │    │
+│  │  1. 198.51.100.23 — C2 linked to ransomware (score: 98) │    │
+│  │  2. evil-domain.com — data exfil endpoint (score: 95)    │    │
+│  │  3. CVE-2026-5678 — RCE in Azure (score: 94)            │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─ Recommended Actions ───────────────────────────────────┐    │
+│  │  Based on your profile, we recommend:                    │    │
+│  │  □ Patch 3 critical Azure CVEs (affects your stack)      │    │
+│  │  □ Review 5 IOCs linked to healthcare ransomware         │    │
+│  │  □ Update firewall rules for 2 new C2 domains            │    │
+│  └──────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### How Profile Drives Content
+
+```
+Org Profile → Relevance Scoring Engine → Weighted Results
+
+1. Industry filter:   IOCs/actors/campaigns tagged with matching sector get +30 boost
+2. Tech stack filter: CVEs affecting org's technologies get +25 boost
+3. Risk filter:       IOCs matching risk categories (ransomware, breach) get +20 boost
+4. Geography filter:  Regional threat actors get +15 boost
+5. Org size filter:   Threat model adjustment (nation-state vs opportunistic) +10 boost
+
+Dashboard sorts ALL intel by (base_score + relevance_boost) descending
+```
+
+### Profile Change → Dashboard Refresh
+
+When org updates their profile in Settings:
+1. Relevance scores recalculated for all current IOCs/actors/CVEs
+2. Dashboard widgets refresh with new weights
+3. Alert rules auto-suggest based on new risk profile
+4. Feed recommendations update in Global Catalog ("recommended for Healthcare")
+
+---
+
+## Tab Structure — 9 Tabs, 3 Sections
 
 ```
 /command-center
 
-Super-admin:    [Overview]  [Configuration]  [Queue]  [Configure ⚙️]  [Clients 👥]
-Tenant admin:   [Overview]  [Configuration]
+                    ┌─ Intelligence ─────────────────────────────┐
+Super-admin:        │ [Overview]  [Queue]  [Clients]             │
+                    ├─ Management ───────────────────────────────┤
+                    │ [Settings]  [Feeds]  [Users & Access]      │
+                    ├─ Business ─────────────────────────────────┤
+                    │ [Billing & Plans]  [Alerts & Reports]  [System] │
+                    └────────────────────────────────────────────┘
+
+                    ┌─ Intelligence ─────────────────────────────┐
+Tenant-admin/Free:  │ [Overview]                                 │
+                    ├─ Management ───────────────────────────────┤
+                    │ [Settings]  [Feeds]  [Users & Access]      │
+                    ├─ Business ─────────────────────────────────┤
+                    │ [Billing & Plans]  [Alerts & Reports]      │
+                    └────────────────────────────────────────────┘
 ```
+
+### Sidebar — 12 items (down from 22)
+
+```
+Dashboard                          ← landing
+IOC Search                         ← analyst
+IOC Intelligence                   ← analyst
+Global Catalog                     ← analyst
+Threat Graph                       ← analyst
+Threat Actors                      ← analyst
+Malware Analysis                   ← analyst
+Vulnerability Intel                ← analyst
+Threat Hunting                     ← analyst
+Digital Risk Protection            ← analyst
+Correlation Engine                 ← analyst
+Command Center ⬡                  ← 9 tabs inside (admin hub)
+```
+
+### Pages absorbed into Command Center
+
+| Old Sidebar Page | Absorbed Into Tab | Section |
+|-----------------|-------------------|---------|
+| Feed Ingestion | Feeds | Management |
+| Enterprise Integration | Users & Access | Management |
+| RBAC & SSO | Users & Access | Management |
+| Customization | Settings | Management |
+| Onboarding | Settings | Management |
+| Billing | Billing & Plans | Business |
+| Plan Limits | Billing & Plans | Business |
+| Alerting | Alerts & Reports | Business |
+| Reporting | Alerts & Reports | Business |
+| Admin Ops | System | Business |
+| Pipeline Monitor | System | Business |
+| Analytics | Overview | Intelligence |
 
 ### Extensible Tab Registry
 
 ```typescript
+type TabSection = 'intelligence' | 'management' | 'business';
+
 interface CommandCenterTab {
   id: string;
   label: string;
   icon: LucideIcon;
-  section: 'ai' | 'platform' | 'business';  // future sections
+  section: TabSection;
   roles: ('super_admin' | 'tenant_admin')[];
-  badge?: () => number | null;               // dynamic notification count
+  badge?: () => number | null;
 }
 
 const TABS: CommandCenterTab[] = [
-  { id: 'overview',      label: 'Overview',      icon: BarChart3,   section: 'ai', roles: ['super_admin', 'tenant_admin'] },
-  { id: 'configuration', label: 'Configuration', icon: Sliders,     section: 'ai', roles: ['super_admin', 'tenant_admin'] },
-  { id: 'queue',         label: 'Queue',         icon: ListOrdered, section: 'ai', roles: ['super_admin'], badge: () => pendingCount },
-  { id: 'configure',     label: 'Configure',     icon: Settings,    section: 'ai', roles: ['super_admin'] },
-  { id: 'clients',       label: 'Clients',       icon: Users,       section: 'ai', roles: ['super_admin'], badge: () => overLimitCount },
-  // Future: { id: 'system-health', label: 'Health', icon: Activity, section: 'platform', roles: ['super_admin'] },
+  // Intelligence
+  { id: 'overview',         label: 'Overview',         icon: BarChart3,     section: 'intelligence', roles: ['super_admin', 'tenant_admin'] },
+  { id: 'queue',            label: 'Queue',            icon: ListOrdered,   section: 'intelligence', roles: ['super_admin'], badge: () => pendingCount },
+  { id: 'clients',          label: 'Clients',          icon: Building2,     section: 'intelligence', roles: ['super_admin'], badge: () => overLimitCount },
+  // Management
+  { id: 'settings',         label: 'Settings',         icon: Settings,      section: 'management',   roles: ['super_admin', 'tenant_admin'] },
+  { id: 'feeds',            label: 'Feeds',            icon: Rss,           section: 'management',   roles: ['super_admin', 'tenant_admin'] },
+  { id: 'users-access',     label: 'Users & Access',   icon: Users,         section: 'management',   roles: ['super_admin', 'tenant_admin'] },
+  // Business
+  { id: 'billing-plans',    label: 'Billing & Plans',  icon: CreditCard,    section: 'business',     roles: ['super_admin', 'tenant_admin'] },
+  { id: 'alerts-reports',   label: 'Alerts & Reports', icon: Bell,          section: 'business',     roles: ['super_admin', 'tenant_admin'] },
+  { id: 'system',           label: 'System',           icon: Activity,      section: 'business',     roles: ['super_admin'] },
 ];
 
-// Filter by role
 const visibleTabs = TABS.filter(t => t.roles.includes(user.role));
+// Group by section for rendering section headers in tab bar
+const groupedTabs = groupBy(visibleTabs, 'section');
 ```
+
+### Settings Tab — Role-based content (no model names for tenants)
+
+| Section | Super-Admin | Tenant-Admin / Free |
+|---------|-------------|---------------------|
+| **Org Profile** | View/edit all tenants | Edit own org: industry, tech stack, business risk, size, geography |
+| AI Providers & Keys | Full edit (keys, test, assignments, confidence) | — hidden — |
+| Model Assignments | Per-subtask model selection with accuracy/cost | — hidden — |
+| Confidence Model | Linear / Bayesian toggle | — hidden — |
+| Intelligence Quality | — | Accuracy gauge, enrichment stats |
+| Alert Sensitivity | — | Low / Balanced / Aggressive |
+| Notifications | Global rules | Own notification prefs |
+| Onboarding | Manage all tenant wizards | Own setup wizard progress, getting started checklist |
+| Upgrade | — | Plan comparison, upgrade CTA, current plan details |
+| Platform Preferences | Global defaults | — hidden — |
+
+### Billing & Plans Tab — Tenant-Admin extras
+
+| Section | Super-Admin | Tenant-Admin / Free |
+|---------|-------------|---------------------|
+| Subscription | All tenant subscriptions | Own plan, usage vs limits |
+| Invoices | All invoices | Own invoice history, download PDF |
+| Plan Limits | Set per-tenant quotas | View own limits, usage meters |
+| Upgrade/Downgrade | — | Compare plans, initiate upgrade |
+| Offers & Coupons | Create/manage promotions | Apply coupon code, view active offers |
+| Billing Info | — | Update payment method, GST details |
+
+### Sidebar Access — All Roles
+
+```
+                        Analyst    Tenant-Admin/Free    Super-Admin
+                        ───────    ─────────────────    ───────────
+Sidebar (11 intel pages)   ✓ full      ✓ full              ✓ full
+Dashboard (org-aware)      ✓ view      ✓ view + edit profile ✓ all
+Command Center             ✗           ✓ 6 tabs             ✓ 9 tabs
+```
+
+Analysts get ALL functional intelligence features: search, filter, sort, export, pivot, detail panels, bulk actions, hunt sessions, graph exploration. No restrictions on intelligence pages. Command Center is the only analyst exclusion — that's admin territory.
 
 ---
 
@@ -670,45 +854,69 @@ All charts custom SVG (matching existing D3 pattern).
 CommandCenterPage
 ├── PageStatsBar (KPI strip — role-dependent content)
 ├── PageHeader (title, date range picker, export button)
-├── TabBar (filtered by role, with badges)
-│   ├── Tab badge: pending count (Queue), over-limit count (Clients)
+├── SectionTabBar (grouped by section, filtered by role, with badges)
+│   ├── Section headers: Intelligence | Management | Business
+│   ├── Tab badges: pending count (Queue), over-limit count (Clients)
 │   └── Mobile: dropdown selector replacing tabs
 ├── TabContent
-│   ├── OverviewTab
+│   ├── OverviewTab (intelligence — all roles)
 │   │   ├── SuperAdminOverview
 │   │   │   ├── CostTimeline (SVG area chart)
 │   │   │   ├── CostByFeedType (horizontal bars)
 │   │   │   ├── CostByModel (horizontal bars, provider-colored)
-│   │   │   └── SubtaskHeatmap (grid cells)
+│   │   │   ├── SubtaskHeatmap (grid cells)
+│   │   │   └── PlatformAnalytics (absorbed from AnalyticsPage)
 │   │   └── TenantOverview
 │   │       ├── ConsumptionTimeline (SVG area chart)
 │   │       ├── CostByProvider (donut chart)
 │   │       ├── CostByIOCType (horizontal bars)
 │   │       └── BudgetGauge (thin bar)
-│   ├── ConfigurationTab (read-only for all)
-│   │   ├── ManagedBanner
-│   │   ├── PlanBadge
-│   │   ├── ModelAssignmentsTable (display-only DataTable)
-│   │   └── CostEstimator (slider + breakdown)
-│   ├── QueueTab (super-admin)
+│   ├── QueueTab (intelligence — super-admin)
 │   │   ├── QueueHealthBar (stats)
 │   │   ├── QueueDepthChart (stacked bars)
 │   │   └── PendingItemsTable (DataTable, selectable, batch actions)
-│   ├── ConfigureTab (super-admin)
-│   │   ├── ProviderKeyCards (3 provider cards)
-│   │   ├── ModelAssignmentsTable (editable dropdowns)
-│   │   │   └── ModelDropdown (grouped by provider, stars, accuracy, cost)
-│   │   └── ConfidenceModelToggle (radio)
-│   └── ClientsTab (super-admin)
-│       ├── SummaryCards (4-card grid)
-│       ├── FilterBar (search, plan filter, status filter, saved filters)
-│       ├── TenantTable (DataTable, clickable rows)
-│       └── TenantDetailDrawer (slide-out, 480px)
-│           ├── ConsumptionSparkline
-│           ├── CostBreakdown
-│           ├── TopCostlyItems
-│           ├── LimitEditor
-│           └── QuickActions
+│   ├── ClientsTab (intelligence — super-admin)
+│   │   ├── SummaryCards (4-card grid)
+│   │   ├── FilterBar (search, plan filter, status filter)
+│   │   ├── TenantTable (DataTable, clickable rows)
+│   │   └── TenantDetailDrawer (slide-out, 480px)
+│   ├── SettingsTab (management — all roles, content varies)
+│   │   ├── SuperAdminSettings
+│   │   │   ├── ProviderKeyCards (3 provider cards)
+│   │   │   ├── ModelAssignmentsTable (editable dropdowns)
+│   │   │   │   └── ModelDropdown (grouped by provider, stars, accuracy, cost)
+│   │   │   ├── ConfidenceModelToggle (radio)
+│   │   │   └── PlatformPreferences (global defaults)
+│   │   └── TenantSettings (no AI model names or technical details)
+│   │       ├── IntelligenceQuality (accuracy gauge, enrichment stats)
+│   │       ├── IndustryFocus (sector selector for relevance scoring)
+│   │       ├── AlertSensitivity (Low / Balanced / Aggressive)
+│   │       ├── NotificationPreferences (digest, real-time, quiet hours)
+│   │       ├── OnboardingProgress (setup wizard status)
+│   │       └── UpgradeCTA (free users — plan comparison)
+│   ├── FeedsTab (management — all roles, absorbed from FeedIngestionPage)
+│   │   ├── FeedList (CRUD for super-admin, read-only for tenant)
+│   │   ├── ConnectorStatus (RSS/NVD/STIX/REST/MISP health)
+│   │   └── FeedScheduler (super-admin)
+│   ├── UsersAccessTab (management — all roles, absorbed RBAC + Integration)
+│   │   ├── TeamMembers (RBAC — roles, invite, remove)
+│   │   ├── SSOConfig (super-admin — SSO provider setup)
+│   │   └── Integrations (SIEM/SOAR/webhook config)
+│   ├── BillingPlansTab (business — all roles, absorbed Billing + Plan Limits)
+│   │   ├── SubscriptionInfo (current plan, usage meters)
+│   │   ├── InvoiceHistory (past invoices)
+│   │   ├── PlanLimits (super-admin — per-tenant quotas)
+│   │   └── UpgradeFlow (free/starter users)
+│   ├── AlertsReportsTab (business — all roles, absorbed Alerting + Reporting)
+│   │   ├── AlertRules (create/edit/toggle alert rules)
+│   │   ├── AlertHistory (past alerts, acknowledge)
+│   │   ├── ReportTemplates (create/clone templates)
+│   │   └── ReportGeneration (generate, schedule, export)
+│   └── SystemTab (business — super-admin only, absorbed AdminOps + Pipeline)
+│       ├── SystemHealth (container status, resource usage)
+│       ├── PipelineMonitor (queue flow, throughput, stuck items)
+│       ├── MaintenanceMode (enable/disable, schedule)
+│       └── BackupRestore (backup history, trigger restore)
 └── FreeTierUpgradeBanner (conditional)
 ```
 
@@ -779,40 +987,33 @@ GROUP BY c.tenant_id;
 
 ## What Gets Removed/Changed
 
-| Current | Action |
-|---------|--------|
-| `/global-ai-config` page | DELETE → Tab 4 |
-| `/customization` AI Config tab | DELETE → Tab 2 (read-only) |
-| `/enrichment` page | REBRAND → `/command-center` with 5 tabs |
+| Current Sidebar Page | Action |
+|---------------------|--------|
+| `/global-ai-config` page | DELETE → Settings tab (super-admin AI section) |
+| `/enrichment` page | DELETE → Queue tab + Overview tab |
+| `/customization` page | DELETE → Settings tab |
+| `/feed-ingestion` page | DELETE → Feeds tab |
+| `/rbac` page | DELETE → Users & Access tab |
+| `/integration` page | DELETE → Users & Access tab |
+| `/billing` page | DELETE → Billing & Plans tab |
+| `/plan-limits` page | DELETE → Billing & Plans tab |
+| `/alerting` page | DELETE → Alerts & Reports tab |
+| `/reporting` page | DELETE → Alerts & Reports tab |
+| `/admin-ops` page | DELETE → System tab |
+| `/analytics` page | DELETE → Overview tab (platform metrics) |
+| `/onboarding` page | DELETE → Settings tab (onboarding section) |
 | Sidebar "AI Enrichment" | Rename → "Command Center" |
 | Sidebar "AI Config" | DELETE |
-| Plan-tier model presets | DELETE — accuracy primary |
+| 10 more sidebar entries | DELETE (absorbed into CC tabs) |
 | `AI_MODELS = ['haiku', 'sonnet', 'opus']` | REPLACE → multi-provider ModelRegistry |
 | In-memory cost tracking | KEEP as hot cache + ADD Postgres |
-| BYOK (Anthropic only) | EXPAND → 3 providers in Tab 4 |
+| BYOK (Anthropic only) | EXPAND → 3 providers in Settings tab |
+| Module toggles (customization) | DELETE — plan tier governs access |
 
-## New Files
+## Implementation Status
 
-| File | Purpose |
-|------|---------|
-| `packages/shared-utils/src/model-registry.ts` | Multi-provider model catalog + pricing + accuracy |
-| `apps/customization/src/services/provider-key-store.ts` | 3-provider API key CRUD |
-| Prisma migration: `ai_processing_costs` | Global cost table |
-| Prisma migration: `tenant_item_consumption` | Consumption tracking |
-| `apps/frontend/src/pages/CommandCenterPage.tsx` | Page shell + tab routing |
-| `apps/frontend/src/components/command-center/OverviewTab.tsx` | Tab 1 |
-| `apps/frontend/src/components/command-center/ConfigurationTab.tsx` | Tab 2 |
-| `apps/frontend/src/components/command-center/QueueTab.tsx` | Tab 3 |
-| `apps/frontend/src/components/command-center/ConfigureTab.tsx` | Tab 4 |
-| `apps/frontend/src/components/command-center/ClientsTab.tsx` | Tab 5 |
-| `apps/frontend/src/components/command-center/TenantDetailDrawer.tsx` | Drawer |
-| `apps/frontend/src/components/command-center/ModelDropdown.tsx` | Multi-provider dropdown |
-| `apps/frontend/src/components/command-center/charts/` | SVG chart components |
-| `apps/frontend/src/hooks/use-command-center.ts` | Data hooks |
+### Phase A: Backend + Data Layer — DONE (S105)
 
-## Implementation Order (split across 2-3 sessions)
-
-### Session A: Backend + Data Layer
 1. Model Registry (shared constant, 9 models, pricing, accuracy benchmarks)
 2. Postgres migrations (2 tables)
 3. Cost write path (ingestion + enrichment → global table)
@@ -820,30 +1021,47 @@ GROUP BY c.tenant_id;
 5. Provider Key Store (3-provider CRUD + test connection)
 6. Backend API endpoints for Command Center queries
 
-### Session B: Frontend — Shell + Admin Tabs
-7. CommandCenterPage shell (tab registry, role gating, KPI strip)
-8. Tab 4: Configure (API keys, model dropdown with stars, assignments table)
-9. Tab 5: Clients (summary cards, tenant table, detail drawer)
-10. Tab 3: Queue (health bar, depth chart, pending table)
+### Phase B: Frontend Shell + 3 Admin Tabs — DONE (S106)
 
-### Session C: Frontend — Shared Tabs + Cleanup
-11. Tab 1: Overview (super-admin vs tenant views, all charts)
-12. Tab 2: Configuration (read-only table, cost estimator, free-tier variant)
-13. Cleanup (delete old pages, update routes/sidebar, redirects)
-14. Mobile responsive pass + testing
+7. CommandCenterPage shell (tab registry, role gating, KPI strip)
+8. ConfigureTab (API keys, model dropdown with stars, assignments table)
+9. ClientsTab (summary cards, tenant table, detail drawer)
+10. QueueTab (health bar, depth chart, pending table)
+
+### Phase C: Overview + Settings tabs — NEXT (S107)
+
+11. OverviewTab (super-admin: cost timeline, feed/model/subtask charts, platform analytics; tenant: consumption, donut, budget gauge)
+12. SettingsTab (super-admin: AI config; tenant: outcome-focused — quality gauge, industry focus, alert sensitivity, notifications, onboarding)
+13. 6 SVG chart components (CostTimeline, CostByFeedType, CostByModel, SubtaskHeatmap, ConsumptionDonut, BudgetGauge)
+
+### Phase D: Remaining 4 tabs — S108
+
+14. FeedsTab (absorb FeedIngestionPage content)
+15. UsersAccessTab (absorb RBAC + Enterprise Integration)
+16. BillingPlansTab (absorb Billing + Plan Limits)
+17. AlertsReportsTab (absorb Alerting + Reporting)
+
+### Phase E: System tab + Sidebar cleanup — S109
+
+18. SystemTab (absorb Admin Ops + Pipeline Monitor)
+19. Sidebar cleanup (remove 12 absorbed pages, keep 11 intelligence + CC)
+20. Route redirects (all old routes → `/command-center`)
+21. Delete old page components
+22. Mobile responsive pass + final testing
 
 ## Verification
 
-- Super-admin: 5 tabs, full control + global visibility, all charts render
-- Tenant admin (paid): 2 tabs, read-only, own consumption + attributed cost
-- Tenant admin (free): 2 tabs, free-tier content, upgrade prompts, no AI data
+- Super-admin: 9 tabs across 3 sections, full control + global visibility
+- Tenant admin (paid): 6 tabs, outcome-focused settings, NO AI model/provider names visible
+- Free user: same 6 tabs as tenant admin, with upgrade CTAs, plan comparison
 - Regular user: no Command Center access, AI results in detail panels only
 - Multiple tenant admins same org: identical view
 - Tenant A cannot see Tenant B's data
+- Module access governed by subscription plan (no manual toggle)
 - Global cost not multiplied by consumers
 - All charts responsive (desktop → tablet → mobile)
-- Model dropdown shows only providers with valid API keys
-- Stars update per subtask when model changes
-- Old routes (`/enrichment`, `/global-ai-config`) redirect to `/command-center`
+- Model dropdown shows only providers with valid API keys (super-admin only)
+- Old routes redirect to `/command-center`
 - Drawer closes on Esc, mobile renders as fullscreen modal
 - Tab badges show live counts
+- Section headers group tabs visually in tab bar
