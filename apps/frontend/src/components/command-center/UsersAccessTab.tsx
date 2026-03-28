@@ -14,7 +14,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   Search, UserPlus, Shield, ShieldCheck, Mail,
   Check, X, Globe, Key, Webhook, AlertTriangle,
-  Settings, CheckCircle, XCircle, ArrowUpCircle, Zap,
+  Settings, CheckCircle, XCircle, ArrowUpCircle, Zap, Crown,
 } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────
