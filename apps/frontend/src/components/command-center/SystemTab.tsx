@@ -39,7 +39,8 @@ function StatusDot({ status }: { status: string }) {
   return <span className={cn('inline-block w-2 h-2 rounded-full', color)} />
 }
 
-function formatUptime(pct: number) {
+function formatUptime(pct: number | undefined) {
+  if (pct == null || isNaN(pct)) return '—'
   return `${pct.toFixed(1)}%`
 }
 
@@ -170,15 +171,16 @@ function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode; lab
   )
 }
 
-function ResourceBar({ label, value, color }: { label: string; value: number; color: string }) {
+function ResourceBar({ label, value, color }: { label: string; value: number | undefined; color: string }) {
+  const v = value ?? 0
   return (
     <div className="p-3 bg-bg-elevated rounded-lg border border-border">
       <div className="flex justify-between text-xs mb-1.5">
         <span className="text-text-secondary">{label}</span>
-        <span className="text-text-primary font-medium">{value.toFixed(1)}%</span>
+        <span className="text-text-primary font-medium">{v.toFixed(1)}%</span>
       </div>
       <div className="h-2 bg-bg-base rounded-full overflow-hidden">
-        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${Math.min(value, 100)}%` }} />
+        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${Math.min(v, 100)}%` }} />
       </div>
     </div>
   )
