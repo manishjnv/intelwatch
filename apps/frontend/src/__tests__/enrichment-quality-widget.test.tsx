@@ -19,6 +19,7 @@ vi.mock('@/hooks/use-enrichment-data', () => ({
 
 vi.mock('@/hooks/use-intel-data', () => ({
   useDashboardStats: () => ({ data: null, isDemo: true }),
+  useIOCs: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true }),
 }))
 
 vi.mock('@/stores/auth-store', () => ({

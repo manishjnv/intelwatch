@@ -1,8 +1,8 @@
 /**
  * @module pages/CommandCenterPage
  * @description Unified AI processing & platform management page.
- * Super-admin: 5 tabs (Overview, Configuration, Queue, Configure, Clients).
- * Tenant-admin: 2 tabs (Overview, Configuration).
+ * Super-admin: 5 tabs (Overview, Configuration, Queue, Settings, Clients).
+ * Tenant-admin: 3 tabs (Overview, Configuration, Settings).
  * Extensible tab registry, role-based filtering, KPI strip, date range picker.
  */
 import { useState, useMemo } from 'react'
@@ -17,15 +17,15 @@ import {
   Activity, Building2, TrendingUp, AlertTriangle,
 } from 'lucide-react'
 import { IconCommandCenter } from '@/components/brand/ModuleIcons'
-import { ConfigureTab } from '@/components/command-center/ConfigureTab'
 import { ClientsTab } from '@/components/command-center/ClientsTab'
 import { QueueTab } from '@/components/command-center/QueueTab'
 import { OverviewTab } from '@/components/command-center/OverviewTab'
 import { ConfigurationTab } from '@/components/command-center/ConfigurationTab'
+import { SettingsTab } from '@/components/command-center/SettingsTab'
 
 // ─── Tab Registry ───────────────────────────────────────────────
 
-type TabId = 'overview' | 'configuration' | 'queue' | 'configure' | 'clients'
+type TabId = 'overview' | 'configuration' | 'queue' | 'settings' | 'clients'
 type UserRole = 'super_admin' | 'tenant_admin'
 
 interface CommandCenterTab {
@@ -39,7 +39,7 @@ const TABS: CommandCenterTab[] = [
   { id: 'overview',      label: 'Overview',       icon: BarChart3,   roles: ['super_admin', 'tenant_admin'] },
   { id: 'configuration', label: 'Configuration',  icon: Sliders,     roles: ['super_admin', 'tenant_admin'] },
   { id: 'queue',         label: 'Queue',          icon: ListOrdered, roles: ['super_admin'] },
-  { id: 'configure',     label: 'Configure',      icon: Settings,    roles: ['super_admin'] },
+  { id: 'settings',      label: 'Settings',       icon: Settings,    roles: ['super_admin', 'tenant_admin'] },
   { id: 'clients',       label: 'Clients',        icon: Users,       roles: ['super_admin'] },
 ]
 
@@ -283,7 +283,7 @@ export function CommandCenterPage() {
           {effectiveTab === 'overview' && <OverviewTab data={cc} />}
           {effectiveTab === 'configuration' && <ConfigurationTab data={cc} aiConfig={aiConfig} />}
           {effectiveTab === 'queue' && <QueueTab data={cc} />}
-          {effectiveTab === 'configure' && <ConfigureTab data={cc} aiConfig={aiConfig} />}
+          {effectiveTab === 'settings' && <SettingsTab data={cc} aiConfig={aiConfig} />}
           {effectiveTab === 'clients' && <ClientsTab data={cc} />}
         </div>
       </div>

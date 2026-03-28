@@ -34,6 +34,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
     data: { totalIOCs: 100, activeFeeds: 5, enrichedToday: 20, criticalIOCs: 3, lastIngestTime: 'now' },
     isDemo: false,
   })),
+  useIOCs: vi.fn(() => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true })),
 }))
 
 vi.mock('@/hooks/use-enrichment-data', () => ({

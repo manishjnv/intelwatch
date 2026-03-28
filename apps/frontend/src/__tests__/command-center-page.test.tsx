@@ -74,18 +74,18 @@ describe('CommandCenterPage', () => {
     expect(screen.getByTestId('tab-overview')).toBeInTheDocument()
     expect(screen.getByTestId('tab-configuration')).toBeInTheDocument()
     expect(screen.getByTestId('tab-queue')).toBeInTheDocument()
-    expect(screen.getByTestId('tab-configure')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
     expect(screen.getByTestId('tab-clients')).toBeInTheDocument()
   })
 
-  it('shows only 2 tabs for tenant_admin', () => {
+  it('shows 3 tabs for tenant_admin', () => {
     mockRole = 'tenant_admin'
     mockCommandCenter.isSuperAdmin = false
     render(<CommandCenterPage />)
     expect(screen.getByTestId('tab-overview')).toBeInTheDocument()
     expect(screen.getByTestId('tab-configuration')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
     expect(screen.queryByTestId('tab-queue')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('tab-configure')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tab-clients')).not.toBeInTheDocument()
   })
 
@@ -131,10 +131,10 @@ describe('CommandCenterPage', () => {
     expect(screen.getByTestId('queue-tab')).toBeInTheDocument()
   })
 
-  it('switches to configure tab on click', () => {
+  it('switches to settings tab on click', () => {
     render(<CommandCenterPage />)
-    fireEvent.click(screen.getByTestId('tab-configure'))
-    expect(screen.getByTestId('configure-tab')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('tab-settings'))
+    expect(screen.getByTestId('settings-tab-admin')).toBeInTheDocument()
   })
 
   it('switches to clients tab on click', () => {

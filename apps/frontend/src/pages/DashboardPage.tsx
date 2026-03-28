@@ -9,16 +9,20 @@
  *   - TooltipHelp (20-UI-UX mandate)
  *   - InlineHelp (20-UI-UX mandate)
  */
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import { useCountUp } from '@/hooks/use-count-up'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
-import { useDashboardStats } from '@/hooks/use-intel-data'
+import { useDashboardStats, useIOCs } from '@/hooks/use-intel-data'
 import { useCostStats, useEnrichmentStats, useEnrichmentQuality } from '@/hooks/use-enrichment-data'
-import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain, Globe } from 'lucide-react'
+import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain, Globe, Building2, Crosshair, AlertTriangle, CheckSquare } from 'lucide-react'
 import { StalenessIndicator } from '@/components/StalenessIndicator'
 import { useGlobalPipelineHealth } from '@/hooks/use-global-catalog'
+import type { OrgProfile } from '@/types/org-profile'
+import { DEMO_ORG_PROFILE } from '@/types/org-profile'
+import { calculateRelevanceBoost, getPriorityItems } from '@/lib/relevance-scoring'
 
 // Dashboard widgets (S103)
 import { EnrichmentSourceWidget } from '@/components/widgets/EnrichmentSourceWidget'
@@ -181,6 +185,98 @@ function GlobalPipelineWidget() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Threat Landscape (org-aware)                                        */
+/* ------------------------------------------------------------------ */
+
+const RECOMMENDED_ACTIONS: Record<string, string[]> = {
+  DataBreach: ['Enable MFA on all admin accounts', 'Review data access audit logs weekly', 'Test incident response playbook'],
+  Ransomware: ['Verify offline backup strategy', 'Block known ransomware C2 domains', 'Segment critical network assets'],
+  IPTheft: ['Monitor for credential exposure on dark web', 'Review DLP policy rules', 'Audit privileged access permissions'],
+  ServiceDisruption: ['Test DDoS mitigation plan', 'Implement rate limiting on public APIs', 'Enable auto-scaling thresholds'],
+  RegulatoryCompliance: ['Schedule quarterly compliance audit', 'Update data retention policies', 'Review third-party vendor access'],
+  SupplyChain: ['Audit software dependency versions', 'Enable SCA scanning in CI/CD', 'Monitor package registry advisories'],
+}
+
+function ThreatLandscapeSection({
+  orgProfile, iocs, navigate,
+}: {
+  orgProfile: OrgProfile
+  iocs: unknown[]
+  navigate: (path: string) => void
+}) {
+  const typedIocs = iocs as { tags?: string[]; threatActors?: string[]; malwareFamilies?: string[]; severity?: string; normalizedValue?: string; iocType?: string }[]
+  const priorityThreats = getPriorityItems(typedIocs, orgProfile, 5)
+  const techSummary = [
+    ...orgProfile.techStack.os,
+    ...orgProfile.techStack.cloud,
+  ].slice(0, 4).join(', ')
+  const riskSummary = orgProfile.businessRisk.slice(0, 3).join(', ')
+  const actions = orgProfile.businessRisk.flatMap(r => RECOMMENDED_ACTIONS[r] ?? []).slice(0, 5)
+
+  return (
+    <div data-testid="threat-landscape" className="mb-6 space-y-3">
+      {/* Banner */}
+      <div className="p-3 bg-purple-400/5 border border-purple-400/20 rounded-lg">
+        <div className="flex items-center gap-2 mb-1">
+          <Crosshair className="w-4 h-4 text-purple-400" />
+          <span className="text-sm font-semibold text-text-primary">Your Threat Landscape</span>
+        </div>
+        <p className="text-xs text-text-muted">
+          Based on: <span className="text-text-secondary">{orgProfile.industry}</span> +{' '}
+          <span className="text-text-secondary">{techSummary}</span> +{' '}
+          <span className="text-text-secondary">{riskSummary}</span>
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Priority Threats */}
+        <div className="p-3 bg-bg-secondary rounded-lg border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-3.5 h-3.5 text-sev-high" />
+            <span className="text-xs font-medium text-text-primary">Priority Threats</span>
+          </div>
+          {priorityThreats.length > 0 ? (
+            <div className="space-y-1.5">
+              {priorityThreats.map((ioc, i) => {
+                const boost = calculateRelevanceBoost(ioc, orgProfile)
+                return (
+                  <div key={i} className="flex items-center justify-between text-xs">
+                    <span className="text-text-secondary truncate flex-1 mr-2 font-mono">{ioc.normalizedValue ?? 'unknown'}</span>
+                    <span className="text-[10px] text-purple-400 tabular-nums shrink-0">+{boost}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted">No matching threats found. Your exposure is low.</p>
+          )}
+        </div>
+
+        {/* Recommended Actions */}
+        <div className="p-3 bg-bg-secondary rounded-lg border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckSquare className="w-3.5 h-3.5 text-sev-low" />
+            <span className="text-xs font-medium text-text-primary">Recommended Actions</span>
+          </div>
+          {actions.length > 0 ? (
+            <div className="space-y-1.5">
+              {actions.map((action, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  <span className="text-text-muted shrink-0">{i + 1}.</span>
+                  <span className="text-text-secondary">{action}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted">Complete your risk profile to get recommendations.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 export function DashboardPage() {
@@ -191,6 +287,10 @@ export function DashboardPage() {
   const { data: costStats } = useCostStats()
   const { data: enrichStats } = useEnrichmentStats()
   const { data: enrichQuality } = useEnrichmentQuality()
+  const { data: iocData } = useIOCs({ limit: 50 })
+
+  // Org profile — demo fallback until backend settings API is wired
+  const [orgProfile] = useState<OrgProfile | null>(DEMO_ORG_PROFILE)
 
   // Trigger Cmd+K search
   const triggerSearch = () => {
@@ -271,6 +371,30 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* ─── Your Threat Landscape (org-aware) ────────────────── */}
+        {orgProfile ? (
+          <ThreatLandscapeSection
+            orgProfile={orgProfile}
+            iocs={(iocData as { data?: unknown[] })?.data ?? []}
+            navigate={navigate}
+          />
+        ) : (
+          <div
+            data-testid="org-profile-cta"
+            className="p-4 bg-bg-elevated border border-border rounded-lg mb-6 flex items-center justify-between cursor-pointer hover:border-border-strong transition-colors"
+            onClick={() => navigate('/command-center')}
+          >
+            <div className="flex items-center gap-3">
+              <Building2 className="w-5 h-5 text-text-muted" />
+              <div>
+                <p className="text-sm font-medium text-text-primary">Personalize your dashboard</p>
+                <p className="text-xs text-text-muted">Complete your org profile to see relevant threats and recommendations.</p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-text-muted" />
+          </div>
+        )}
 
         {/* Enrichment cost summary */}
         {costStats && (
