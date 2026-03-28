@@ -2,7 +2,7 @@
  * @module __tests__/command-center-billing-alerts.test
  * @description Tests for BillingPlansTab and AlertsReportsTab (Command Center Phase F).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '@/test/test-utils'
 import { BillingPlansTab } from '@/components/command-center/BillingPlansTab'
 import { AlertsReportsTab } from '@/components/command-center/AlertsReportsTab'

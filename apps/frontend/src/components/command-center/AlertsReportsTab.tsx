@@ -18,10 +18,9 @@ import {
   type ReportTemplate, type ReportSchedule, type ReportType, type ReportFormat,
 } from '@/hooks/use-reporting-data'
 import {
-  Bell, History, FileText, Calendar,
-  Check, X, AlertTriangle, Shield, Copy, Trash2,
-  Plus, Play, Download, Clock, Eye,
-  ChevronDown, ChevronRight,
+  FileText, Calendar,
+  Check, X, Shield, Copy, Trash2,
+  Plus, Play, Download, Eye,
 } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -96,8 +95,8 @@ const QUICK_TEMPLATES = [
 
 // ─── Alert Rules Sub-Tab ────────────────────────────────────
 
-function AlertRulesPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  const { data: rules, isDemo } = useAlertRules()
+function AlertRulesPanel(_props: { isSuperAdmin: boolean }) {
+  const { data: rules } = useAlertRules()
   const toggleRule = useToggleRule()
   const deleteRule = useDeleteRule()
   const createRule = useCreateRule()
@@ -296,7 +295,7 @@ function AlertHistoryPanel() {
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id); else next.add(id)
       return next
     })
   }

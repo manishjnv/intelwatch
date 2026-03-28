@@ -9,16 +9,16 @@ import { cn } from '@/lib/utils'
 import { PillSwitcher, type PillItem } from './PillSwitcher'
 import type { useCommandCenter } from '@/hooks/use-command-center'
 import {
-  useBillingPlans, useUsageMeters, useCurrentSubscription,
-  usePaymentHistory, useBillingStats, useApplyCoupon,
+  useUsageMeters, useCurrentSubscription,
+  usePaymentHistory, useApplyCoupon,
   useUpgradePlan,
-  type BillingPlan, type PaymentRecord,
+  type PaymentRecord,
 } from '@/hooks/use-phase6-data'
 import { usePlanLimits, type PlanTierConfig } from '@/hooks/use-plan-limits'
 import {
-  CreditCard, Receipt, Crown, Sliders, Tag, Building2,
+  CreditCard, Crown,
   Download, Check, X, ArrowUpCircle, AlertTriangle,
-  Edit3, RotateCcw, Gift, Percent, Calendar,
+  RotateCcw, Gift,
 } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -120,7 +120,6 @@ const PLAN_PRICES: Record<string, number> = { Free: 0, Starter: 9999, Teams: 189
 function SubscriptionPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const sub = useCurrentSubscription()
   const usage = useUsageMeters()
-  const stats = useBillingStats()
 
   if (isSuperAdmin) {
     return (
@@ -278,7 +277,6 @@ function InvoicesPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 // ─── Plans & Upgrade Sub-Tab ─────────────────────────────────
 
 function PlansUpgradePanel() {
-  const plans = useBillingPlans()
   const sub = useCurrentSubscription()
   const upgrade = useUpgradePlan()
   const currentPlan = sub.data?.planName ?? 'Free'
@@ -361,7 +359,7 @@ function PlansUpgradePanel() {
 // ─── Limits Sub-Tab (super-admin) ────────────────────────────
 
 function LimitsPanel() {
-  const { plans, isDemo, updatePlan, isUpdating, resetPlan } = usePlanLimits()
+  const { plans, updatePlan, resetPlan } = usePlanLimits()
   const [editing, setEditing] = useState<{ planId: string; field: string } | null>(null)
   const [editVal, setEditVal] = useState('')
 
