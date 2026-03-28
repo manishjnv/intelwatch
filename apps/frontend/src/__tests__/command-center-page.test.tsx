@@ -56,6 +56,36 @@ vi.mock('@/hooks/use-enrichment-data', () => ({
   useBatchEnrichment: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false }),
 }))
 
+vi.mock('@/hooks/use-intel-data', () => ({
+  useFeeds: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isDemo: true }),
+  useToggleFeed: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteFeed: () => ({ mutate: vi.fn(), isPending: false }),
+  useForceFetch: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
+vi.mock('@/hooks/use-global-catalog', () => ({
+  useGlobalCatalog: () => ({ data: [], isLoading: false, isDemo: true }),
+  useMySubscriptions: () => ({ data: [], isLoading: false, isDemo: true, subscribe: vi.fn(), unsubscribe: vi.fn(), isSubscribing: false, isUnsubscribing: false }),
+  useGlobalPipelineHealth: () => ({ data: { queues: [], pipeline: { articlesProcessed24h: 0, iocsCreated24h: 0, iocsEnriched24h: 0, avgNormalizeLatencyMs: 0, avgEnrichLatencyMs: 0 } }, isLoading: false, isDemo: true }),
+}))
+
+vi.mock('@/hooks/use-phase5-data', () => ({
+  useUsers: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isDemo: true }),
+  useRoles: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isDemo: true }),
+  useSIEMIntegrations: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isDemo: true }),
+  useWebhooks: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isDemo: true }),
+  useIntegrationStats: () => ({ data: { total: 0, active: 0, failing: 0, eventsPerHour: 0, lastSync: null }, isLoading: false, isDemo: true }),
+}))
+
+vi.mock('@/hooks/useDebouncedValue', () => ({
+  useDebouncedValue: (v: any) => v,
+}))
+
+vi.mock('@/components/feed/FeedCard', () => ({
+  FeedTypeIcon: () => null, StatusDot: () => null, ReliabilityBar: () => null,
+  HealthDot: () => null, FailureSparkline: () => null, formatTime: () => '', computeFeedHealth: () => 0,
+}))
+
 describe('CommandCenterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -69,22 +99,26 @@ describe('CommandCenterPage', () => {
     expect(screen.getByText('Command Center')).toBeInTheDocument()
   })
 
-  it('shows 5 tabs for super_admin', () => {
+  it('shows 7 tabs for super_admin', () => {
     render(<CommandCenterPage />)
     expect(screen.getByTestId('tab-overview')).toBeInTheDocument()
     expect(screen.getByTestId('tab-configuration')).toBeInTheDocument()
     expect(screen.getByTestId('tab-queue')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-feeds')).toBeInTheDocument()
     expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-users-access')).toBeInTheDocument()
     expect(screen.getByTestId('tab-clients')).toBeInTheDocument()
   })
 
-  it('shows 3 tabs for tenant_admin', () => {
+  it('shows 5 tabs for tenant_admin', () => {
     mockRole = 'tenant_admin'
     mockCommandCenter.isSuperAdmin = false
     render(<CommandCenterPage />)
     expect(screen.getByTestId('tab-overview')).toBeInTheDocument()
     expect(screen.getByTestId('tab-configuration')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-feeds')).toBeInTheDocument()
     expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-users-access')).toBeInTheDocument()
     expect(screen.queryByTestId('tab-queue')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tab-clients')).not.toBeInTheDocument()
   })

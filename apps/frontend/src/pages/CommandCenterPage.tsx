@@ -1,8 +1,8 @@
 /**
  * @module pages/CommandCenterPage
  * @description Unified AI processing & platform management page.
- * Super-admin: 5 tabs (Overview, Configuration, Queue, Settings, Clients).
- * Tenant-admin: 3 tabs (Overview, Configuration, Settings).
+ * Super-admin: 7 tabs (Overview, Configuration, Queue, Feeds, Settings, Users & Access, Clients).
+ * Tenant-admin: 5 tabs (Overview, Configuration, Feeds, Settings, Users & Access).
  * Extensible tab registry, role-based filtering, KPI strip, date range picker.
  */
 import { useState, useMemo } from 'react'
@@ -15,6 +15,7 @@ import {
   BarChart3, Sliders, ListOrdered, Settings, Users,
   RefreshCw, Download, ChevronDown, DollarSign,
   Activity, Building2, TrendingUp, AlertTriangle,
+  Rss, ShieldCheck,
 } from 'lucide-react'
 import { IconCommandCenter } from '@/components/brand/ModuleIcons'
 import { ClientsTab } from '@/components/command-center/ClientsTab'
@@ -22,10 +23,12 @@ import { QueueTab } from '@/components/command-center/QueueTab'
 import { OverviewTab } from '@/components/command-center/OverviewTab'
 import { ConfigurationTab } from '@/components/command-center/ConfigurationTab'
 import { SettingsTab } from '@/components/command-center/SettingsTab'
+import { FeedsTab } from '@/components/command-center/FeedsTab'
+import { UsersAccessTab } from '@/components/command-center/UsersAccessTab'
 
 // ─── Tab Registry ───────────────────────────────────────────────
 
-type TabId = 'overview' | 'configuration' | 'queue' | 'settings' | 'clients'
+type TabId = 'overview' | 'configuration' | 'queue' | 'feeds' | 'settings' | 'users-access' | 'clients'
 type UserRole = 'super_admin' | 'tenant_admin'
 
 interface CommandCenterTab {
@@ -39,7 +42,9 @@ const TABS: CommandCenterTab[] = [
   { id: 'overview',      label: 'Overview',       icon: BarChart3,   roles: ['super_admin', 'tenant_admin'] },
   { id: 'configuration', label: 'Configuration',  icon: Sliders,     roles: ['super_admin', 'tenant_admin'] },
   { id: 'queue',         label: 'Queue',          icon: ListOrdered, roles: ['super_admin'] },
+  { id: 'feeds',         label: 'Feeds',          icon: Rss,         roles: ['super_admin', 'tenant_admin'] },
   { id: 'settings',      label: 'Settings',       icon: Settings,    roles: ['super_admin', 'tenant_admin'] },
+  { id: 'users-access',  label: 'Users & Access', icon: ShieldCheck, roles: ['super_admin', 'tenant_admin'] },
   { id: 'clients',       label: 'Clients',        icon: Users,       roles: ['super_admin'] },
 ]
 
@@ -283,7 +288,9 @@ export function CommandCenterPage() {
           {effectiveTab === 'overview' && <OverviewTab data={cc} />}
           {effectiveTab === 'configuration' && <ConfigurationTab data={cc} aiConfig={aiConfig} />}
           {effectiveTab === 'queue' && <QueueTab data={cc} />}
+          {effectiveTab === 'feeds' && <FeedsTab data={cc} />}
           {effectiveTab === 'settings' && <SettingsTab data={cc} aiConfig={aiConfig} />}
+          {effectiveTab === 'users-access' && <UsersAccessTab data={cc} />}
           {effectiveTab === 'clients' && <ClientsTab data={cc} />}
         </div>
       </div>
