@@ -70,16 +70,18 @@ If unsure about impact, scope, or correctness: STOP. Do not write code.
 5. Update docs/PROJECT_STATE.md module table + dependency map
 
 ## VPS Safety — CRITICAL
-Two sites on VPS 72.61.227.64:
-- `intelwatch.in` = live site → ti-platform-* containers → NEVER TOUCH
+Production VPS: 187.127.138.93 (srv1536443.hstgr.cloud) — Hostinger KVM4, 4 vCPU, 16GB RAM, 200GB NVMe, Mumbai
 - `ti.intelwatch.in` = ETIP → etip_* containers → our project
+- `intelwatch.in` = old live site on old VPS (72.61.227.64, KVM2 8GB) → ti-platform-* containers
+Old VPS (72.61.227.64): cloudflared DISABLED, KVM2 locked 18mo. Do NOT deploy there.
 NEVER modify non-etip_ containers, nginx configs, or files belonging to intelwatch.in.
 
 ## VPS SSH Access
 
 - SSH user: `root` — NEVER guess `etip` or other names
-- Command: `ssh -o ProxyCommand="cloudflared access ssh --hostname ssh.intelwatch.in" root@ssh.intelwatch.in`
-- NEVER use direct IP:22 — use Cloudflare Tunnel only
+- Direct SSH (new VPS): `ssh root@187.127.138.93`
+- Tunnel SSH: `ssh -o ProxyCommand="cloudflared access ssh --hostname ssh.intelwatch.in" root@ssh.intelwatch.in`
+- GitHub Actions uses Cloudflare Tunnel via `ssh.intelwatch.in`
 - VPS path: `/opt/intelwatch`
 - Compose: `docker-compose.etip.yml`
 
