@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 101 &middot; 2026-03-27 &middot; AnalyticsPage Executive Dashboard (KPI cards + trend charts + intelligence breakdown). 33 containers, ~6,733 tests</span>
+  <span class="version">Session 108 &middot; 2026-03-28 &middot; Command Center Phases C-E deployed (CI fix session). 33 containers, ~6,733 tests</span>
 </div>
 </div>
 
@@ -91,7 +91,7 @@ li strong { color: var(--text-primary); }
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
     <div class="stat-card"><div class="stat-value">~6,733</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~591</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">101</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">108</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -512,7 +512,7 @@ li strong { color: var(--text-primary); }
       <tr><td>AI</td><td>Anthropic Claude API</td><td>Haiku 4.5 + Sonnet 4.6</td></tr>
       <tr><td>Payment</td><td>Razorpay</td><td>2.9.5 (INR, GST, UPI)</td></tr>
       <tr><td>CI/CD</td><td>GitHub Actions + GHCR</td><td>CI builds images → GHCR push → VPS pull (DECISION-028)</td></tr>
-      <tr><td>VPS</td><td>Hostinger KVM 2</td><td>8 GB RAM, 100 GB NVMe, Cloudflare Tunnel SSH</td></tr>
+      <tr><td>VPS</td><td>Hostinger KVM 4</td><td>16 GB RAM, 200 GB NVMe, 4 vCPU, Cloudflare Tunnel SSH</td></tr>
     </tbody>
   </table>
 </div>
@@ -523,22 +523,20 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 97 COMPLETE ✅</span> DECISION-029 Phase G (FINAL) — Corroboration + Severity Voting + Community FP</div>
+    <div class="card-title"><span class="badge badge-blue">Session 108</span> Command Center CI Fix + Deploy</div>
     <div class="card-body">
-      <strong>Session 97:</strong> Intelligence quality layer — "wisdom of crowds":<br>
-      &bull; <strong>Cross-Feed Corroboration</strong> — Weighted scoring (rawCount+reliability+independence+recency), 5 tiers: uncorroborated→confirmed<br>
-      &bull; <strong>Severity Voting</strong> — Admiralty-weighted votes (A1=15, F6=0), idempotent per-feed, consensus severity<br>
-      &bull; <strong>Community FP Reporting</strong> — Per-tenant dedupe, auto-downgrade &gt;50%, mark false_positive &gt;75%, confidence reduction<br>
-      &bull; <strong>6 New API Routes</strong> — report-fp, withdraw-fp, fp-summary, corroboration, severity-votes, fp-candidates<br>
-      &bull; <strong>Frontend Intelligence Sections</strong> — CorroborationSection, SeverityVotesSection, CommunityFpSection + 4 hooks<br>
-      &bull; <strong>Worker Integration</strong> — Corroboration+voting+velocity wired into global-normalize-worker on every IOC upsert<br>
-      &bull; <strong>~6,733 tests</strong> — 78 new (18 shared-normalization + 40 normalization + 12 frontend + 8 E2E)<br>
-      &bull; <strong>DECISION-029 CLOSED</strong> — 9 sessions (S89-S97), ~590 tests, 27 improvements, pipeline LIVE<br><br>
+      <strong>Session 108:</strong> CI fix + deploy for Command Center Phases C-E:<br>
+      &bull; <strong>17 TS errors fixed</strong> — PrismaLike index sig, Zod default cast, unused imports, TS2532 object possibly undefined<br>
+      &bull; <strong>~30 ESLint errors fixed</strong> — Unused imports/variables across SettingsTab, DashboardPage, FeedsTab, UsersAccessTab, feeds-tab.test<br>
+      &bull; <strong>5 commits</strong> — ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92<br>
+      &bull; <strong>CI green</strong> — Run 23685986125, all steps passed<br>
+      &bull; <strong>VPS deployed</strong> — All 33 containers healthy on KVM4 (187.127.138.93, 16GB RAM)<br>
+      &bull; <strong>Command Center LIVE</strong> — Overview, Configuration, Settings, Feeds, Users &amp; Access tabs<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Deploy S95-S97 to VPS</strong> — git pull + rebuild frontend + backend containers<br>
-      2. <strong>Set Shodan/GreyNoise API keys on VPS</strong><br>
-      3. <strong>Fix vitest alias caching</strong> — 2 pre-existing test files (batch-normalizer, fuzzy-dedupe-integration)<br>
-      4. <strong>Begin next initiative</strong> — DECISION-030 or feature work (Grafana, STIX wizard, ATT&amp;CK Navigator)<br>
+      1. <strong>Command Center Phase F</strong> — Alerts &amp; Reports tab (AlertsReportsTab.tsx WIP)<br>
+      2. <strong>Command Center Phase G</strong> — Billing &amp; Plans tab (BillingPlansTab.tsx WIP)<br>
+      3. <strong>Command Center Phase H</strong> — System Health super-admin tab<br>
+      4. <strong>Set Shodan/GreyNoise API keys on VPS</strong><br>
     </div>
   </div>
 </div>
@@ -546,7 +544,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 97 &middot; 2026-03-27 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 108 &middot; 2026-03-28 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 

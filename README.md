@@ -2,7 +2,7 @@
 
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
-![Phase](https://img.shields.io/badge/phase-9%20global%20processing-00ff88)
+![Phase](https://img.shields.io/badge/phase-11%20command%20center-00ff88)
 ![Tests](https://img.shields.io/badge/tests-6733%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 

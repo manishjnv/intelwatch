@@ -1,12 +1,12 @@
 # ETIP Project State
-**Last updated:** 2026-03-27 (update at end of EVERY session via /session-end)
-**Session counter:** 101 — AnalyticsPage executive dashboard: KPI cards, trend charts, intelligence breakdown. 55 new tests.
+**Last updated:** 2026-03-28 (update at end of EVERY session via /session-end)
+**Session counter:** 108 — CI fix + deploy: 17 TS errors + ~30 ESLint errors fixed. Command Center Phases C-E deployed to VPS.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.1.1 | 2026-03-27 | Health check passing. **Session 85:** Tiered rate limiting (search 10/write 30/read 120), error alerting (5-min window, QUEUE_ALERT), @fastify/compress (gzip >1KB), GET /api/v1/gateway/error-stats. 59 tests. |
-| etip_frontend | ✅ Running | 0.13.0 | 2026-03-27 | Dashboard + 20 data pages. **Session 101:** AnalyticsPage rewrite (3-section executive dashboard, 8 KPI cards, 5 SVG charts, 6 intelligence panels). 977 tests (979 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.14.0 | 2026-03-28 | Dashboard + 20 data pages + Command Center (9 tabs). **Session 108:** CI lint/TS fixes for Phases C-E code. 977 tests (979 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -24,7 +24,7 @@
 | etip_drp | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3011. 36 endpoints, 310 tests. |
 | etip_integration | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. |
 | etip_user_management | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. |
-| etip_customization | ✅ Deployed | 0.4.0 | 2026-03-27 | Port 3017. 58 endpoints, 319 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. F2 + F3 + BYOK + Feed Quotas. **Session 90:** Global AI Config (6 routes) + Plan Limits (2 routes) + CostPredictor. |
+| etip_customization | ✅ Deployed | 0.5.0 | 2026-03-28 | Port 3017. 58 endpoints, 319 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. F2 + F3 + BYOK + Feed Quotas. **Session 108:** Command Center backend (cost routes, consumption tracker, provider key store). |
 | etip_onboarding | ✅ Deployed | 0.3.0 | 2026-03-26 | Port 3018. 32 endpoints, 241 tests. Setup wizard (Redis-backed), demo seeder. **Session 78: Free-tier default** — seeds 3 feeds (THN, CISA RSS, NVD) instead of 10. seedUpgradeFeeds() for plan upgrades. freeTier flag on all 10 DEFAULT_FEEDS. |
 | etip_billing | ✅ Deployed | 0.3.0 | 2026-03-27 | Port 3019. 28 endpoints, 190 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. **Session 83: All 3 remaining stores (Usage, Invoice, Coupon) wired to Prisma** — dual-mode with in-memory fallback. 21 new tests. |
 | etip_admin | ✅ Deployed | 0.5.0 | 2026-03-27 | Port 3022. 35 endpoints, 195 tests. Queue monitor + DLQ processor + P2-1 queue alerting. **Session 83: 10s response cache on GET /queues** — reduces Redis ops from 250+/s to 1/10s. 5 new cache tests. |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-15 | None |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-27 | **24 data pages**. 977 tests. **Session 101:** AnalyticsPage rewrite — ExecutiveSummary (8 KPI cards), TrendCharts (5 SVG charts), IntelligenceBreakdown (6 panels). use-analytics-dashboard hook. CSV/PDF export, auto-refresh. 47 new tests. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-28 | **24 data pages + Command Center**. 977 tests. **Session 108:** Command Center Phases C-E deployed (Overview, Configuration, Settings, Feeds, Users & Access tabs). CI lint/TS fixes. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 96:** Fuzzy dedupe in global worker, batch normalizer. 256 tests. |
@@ -64,7 +64,7 @@
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
 | user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
-| customization | 5 | ✅ Complete | 2026-03-27 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK + Feed Quotas + Global AI Config COMPLETE**. 58 endpoints, 319 tests. **Session 90:** GlobalAiStore (15 subtasks), CostPredictor, 6 global-ai routes, 2 plan-limits routes. |
+| customization | 5 | ✅ Complete | 2026-03-28 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK + Feed Quotas + Global AI Config + Command Center backend COMPLETE**. 58 endpoints, 319 tests. **Session 108:** Command Center cost routes, consumption tracker, provider key store deployed. |
 | onboarding | 6 | ✅ Deployed | 2026-03-26 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 241 tests. **Session 78:** DemoSeeder seeds 3 free-tier feeds by default (was 10). seedUpgradeFeeds() for Starter+ upgrades. freeTier flag on DEFAULT_FEEDS. |
 | billing | 6 | ✅ Complete | 2026-03-27 | Port 3019. 28 endpoints, 5 P0 improvements, 190 tests. **Session 83: All 4 stores Prisma-backed** — UsageStore, InvoiceStore, CouponStore wired to repos (PlanStore was S74). Every method try/catch → in-memory fallback. 21 new tests. FEATURE-COMPLETE + FULLY PERSISTENT. |
 | admin-ops | 6 | ✅ Complete | 2026-03-27 | Port 3022. **Core + 5 P0 + queue monitor + DLQ + P2-1 queue alerting COMPLETE**. 35 endpoints, 195 tests. **Session 83:** 10s response cache on GET /queues (module-level cache, error responses not cached). 5 new tests. FEATURE-COMPLETE. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 10 — UI Polish + E2E Integration. DECISION-029 CLOSED (S89-S97). Sessions 98-101: pipeline wiring, UI actions, onboarding, analytics dashboard.
-- **Last session outcome:** Session 101 (2026-03-27). **AnalyticsPage executive dashboard.** Rewrite from 4-tab layout to vertical 3-section layout: ExecutiveSummary (8 KPI cards with sparklines/deltas/progress rings), TrendCharts (5 SVG charts: IOC area, severity bars, alert line, feed contribution, AI cost with budget line), IntelligenceBreakdown (6 panels: donut chart, confidence histogram, lifecycle bar, top IOCs table, top CVEs/EPSS, enrichment matrix). Backend: +2 analytics endpoints (GET /distributions, GET /cost-tracking). Frontend: use-analytics-dashboard hook (parallel fetch 10 endpoints, 5-min cache, demo fallback), CSV/PDF export, auto-refresh toggle, section-level error boundaries. Commit: d841199. 55 new tests (47 frontend + 8 backend). 6,733 total tests passing.
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. VPS: `tsx` not in production image. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching.
-- **Next tasks:** (1) Deploy S101 to VPS. (2) Set Shodan/GreyNoise API keys on VPS. (3) Wire fuzzy dedupe hash column in Prisma schema. (4) Wire batch normalizer into global-normalize-worker. (5) Fix vitest alias caching. (6) Grafana dashboards for Prometheus metrics. (7) Begin next major initiative.
+- **Current phase:** Phase 11 — Command Center. Unified admin hub at /command-center (9 tabs super-admin, 6 tabs tenant). Sessions 102-109.
+- **Last session outcome:** Session 108 (2026-03-28). **CI fix + deploy session.** Fixed 17 TS errors (PrismaLike index sig, Zod default cast, unused imports, TS2532 object possibly undefined) and ~30 ESLint unused-import/variable errors across Phase A-E Command Center code. 5 fix commits: ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92. CI run 23685986125 green. All 33 containers deployed and healthy on VPS (KVM4, 187.127.138.93, 16GB RAM). Command Center Phases C-E now live.
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. Uncommitted files: AlertsReportsTab.tsx, BillingPlansTab.tsx, CommandCenterPage.tsx (Phase F/G WIP from prior sessions).
+- **Next tasks:** (1) Complete Command Center Phase F (Alerts & Reports tab) + Phase G (Billing & Plans tab). (2) Command Center Phase H (System Health super-admin tab). (3) Set Shodan/GreyNoise API keys on VPS. (4) Wire fuzzy dedupe hash column in Prisma schema. (5) Fix vitest alias caching.
 
 ## Deployment Log
 
@@ -237,6 +237,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 94d | 2026-03-27 | etip_frontend redeployed (CI auto-deploy) | ✅ All 33 healthy | 45b46d4, 6b5cbbc, 59a4017 | Phase D: GlobalAiConfigPage + PlanLimitsPage + 2 hooks + 2 icons + sidebar entries. E2E pipeline smoke tests (15) + delivery tests (5) + seed script (10 OSINT feeds). CI run 23632374415 green. |
 | 95 | 2026-03-27 | Code pushed, VPS git pull + activation script run | ⏳ Frontend rebuild pending | 377c7b1 | Phase E: GlobalMonitoringPage, AdmiraltyBadge, StixConfidenceBadge, GlobalFeedRecovery, GlobalFeedMetrics, DashboardPage widget, IOC Source column. 56 new tests (882 frontend, 612 ingestion). Activation script: Prisma in sync, feeds already seeded from S94. |
 | 101 | 2026-03-27 | No deploy (code-only session) | — | d841199 | AnalyticsPage executive dashboard: 3 sections (KPI cards, trend charts, intelligence breakdown). +2 analytics endpoints (distributions, cost-tracking). 55 new tests (977 frontend, 93 analytics). 6,733 total. |
+| 108 | 2026-03-28 | All 33 containers redeployed (Command Center Phases C-E) | ✅ All 33 healthy | ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92 | CI fix session: 17 TS errors + ~30 ESLint errors. PrismaLike index sig, Zod default cast, unused imports/vars. Command Center (Overview, Config, Settings, Feeds, Users & Access tabs) now live. KVM4 VPS (16GB). |
 
 ## E2E Verification Results (Session 13)
 
@@ -251,7 +252,7 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ```
 
 ## Environment Notes
-- VPS: 72.61.227.64, 8GB RAM (~8GB estimated by 34 containers), 96GB disk (16% used, daily Docker cleanup cron active)
+- VPS: 187.127.138.93 (KVM4), 16GB RAM, 200GB NVMe, 4 vCPU, daily Docker cleanup cron active
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel

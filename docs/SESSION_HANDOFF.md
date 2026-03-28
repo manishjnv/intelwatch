@@ -1,73 +1,74 @@
 # SESSION HANDOFF DOCUMENT
 
-**Date:** 2026-03-27
-**Session:** 101
-**Session Summary:** AnalyticsPage rewrite — executive dashboard with 3 vertical sections (KPI cards, trend charts, intelligence breakdown), 2 new backend endpoints, 55 new tests.
+**Date:** 2026-03-28
+**Session:** 108
+**Session Summary:** CI fix + deploy — resolved 17 TS errors + ~30 ESLint errors blocking CI. Command Center Phases C-E now deployed to VPS.
 
-## Changes Made
-- Commit d841199: 14 files — feat: AnalyticsPage executive dashboard (KPI cards, trend charts, intelligence breakdown)
+## ✅ Changes Made
+- Commit `ceb6984`: fix: resolve 17 TS errors blocking CI — PrismaLike index sig, Zod default cast, unused imports (6 files)
+- Commit `0109276`: fix: remove 6 unused imports blocking CI lint — SettingsTab, DashboardPage (2 files)
+- Commit `23bd35e`: fix: resolve ESLint unused-import/variable errors in frontend — feeds-tab.test, FeedsTab, UsersAccessTab (3 files)
+- Commit `e725a7b`: fix: restore Crown import removed by lint cleanup — UsersAccessTab (1 file)
+- Commit `85f3c92`: fix: remove unused vars/imports in UsersAccessTab — XCircle, roles, siemData, webhookData (1 file)
 
-## Files / Documents Affected
+## 📁 Files / Documents Affected
 
-### New Files (8)
-| File | Purpose |
-|------|---------|
-| apps/frontend/src/hooks/use-analytics-dashboard.ts | Comprehensive hook: parallel fetch 10 endpoints, 5-min cache, demo fallback, date range presets |
-| apps/frontend/src/components/analytics/ExecutiveSummary.tsx | 8 KPI cards: IOCs, threats, feed health, throughput, confidence, enrichment, AI cost, alerts |
-| apps/frontend/src/components/analytics/TrendCharts.tsx | 5 SVG charts: IOC area, severity bars, alert line, feed contribution, AI cost with budget line |
-| apps/frontend/src/components/analytics/IntelligenceBreakdown.tsx | 6 panels: donut chart, confidence histogram, lifecycle bar, top IOCs, top CVEs/EPSS, enrichment matrix |
-| apps/frontend/src/__tests__/use-analytics-dashboard.test.ts | 10 hook tests |
-| apps/frontend/src/__tests__/ExecutiveSummary.test.tsx | 8 component tests |
-| apps/frontend/src/__tests__/TrendCharts.test.tsx | 10 component tests |
-| apps/frontend/src/__tests__/IntelligenceBreakdown.test.tsx | 9 component tests |
-
-### Modified Files (6)
+### Modified Files (10)
 | File | Change |
 |------|--------|
-| apps/analytics-service/src/services/aggregator.ts | +getDistributions() +getCostTracking() methods + 2 interfaces |
-| apps/analytics-service/src/routes/dashboard.ts | +GET /distributions +GET /cost-tracking routes |
-| apps/analytics-service/tests/routes.test.ts | +8 tests for new endpoints |
-| apps/frontend/src/pages/AnalyticsPage.tsx | Full rewrite: 4-tab to 3-section vertical layout with error boundaries |
-| apps/frontend/src/__tests__/analytics-page.test.tsx | Rewritten for new layout (10 tests) |
-| apps/frontend/src/__tests__/mobile-responsive.test.tsx | Updated for new grid structure (3 tests updated) |
+| apps/customization/src/routes/command-center.ts | Zod `.default()` cast fix (`?? 'month'`, `as string`) |
+| apps/customization/src/services/consumption-tracker.ts | `this.db = prisma as any` dual-mode pattern for unmigrated models |
+| apps/customization/src/services/provider-key-store.ts | Same dual-mode pattern, `(r: any)` type annotation |
+| apps/customization/src/services/command-center-queries.ts | Same dual-mode pattern |
+| apps/ingestion/src/services/cost-tracker.ts | PrismaLike type: added `[key: string]: any` index signature |
+| apps/ai-enrichment/src/cost-tracker.ts | Same PrismaLike fix |
+| apps/frontend/src/components/command-center/SettingsTab.tsx | Removed unused type/icon imports |
+| apps/frontend/src/pages/DashboardPage.tsx | Removed unused `navigate` param |
+| apps/frontend/src/components/command-center/FeedsTab.tsx | Removed unused imports, `_tenantPlan` rename |
+| apps/frontend/src/components/command-center/UsersAccessTab.tsx | Removed unused imports, hook calls without assignment, Crown restored |
 
-## Decisions & Rationale
-No new architectural decisions. Used existing SVG chart patterns (MiniSparkline) instead of adding chart libraries.
+## 🔧 Decisions & Rationale
+No new architectural decisions. Used existing dual-mode `this.db = prisma as any` pattern (DECISION-013/027) for Prisma models not yet migrated (`aiProcessingCost`, `tenantItemConsumption`, `providerApiKey`).
 
-## E2E / Deploy Verification Results
-- No deploy this session (code-only)
-- Frontend: 977 passed, 0 failed (2 skipped)
-- Analytics service: 93 passed, 0 failed
-- Full monorepo: 6,733 total tests passing
+## 🧪 E2E / Deploy Verification Results
+- CI run `23685986125`: ALL steps green (tests, typecheck, lint, audit, Docker build API, Docker build frontend)
+- Deploy job: Build & Push Docker Images ✅, Deploy to VPS ✅
+- All 33 containers healthy on VPS (KVM4, 187.127.138.93, 16GB RAM)
 
-## Open Items / Next Steps
+## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. Deploy S101 to VPS (frontend + analytics-service rebuild)
-2. Set Shodan/GreyNoise API keys on VPS
+1. Complete Command Center Phase F (Alerts & Reports tab) — uncommitted `AlertsReportsTab.tsx` exists
+2. Complete Command Center Phase G (Billing & Plans tab) — uncommitted `BillingPlansTab.tsx` exists
+3. Complete Command Center Phase H (System Health super-admin tab)
 
 ### Deferred
-3. Wire fuzzyDedupeHash column in Prisma schema
-4. Wire batch normalizer into global-normalize-worker
-5. Fix vitest alias caching for @etip/shared-normalization
-6. Grafana dashboards for Prometheus metrics
-7. Begin next major initiative
+4. Set Shodan/GreyNoise API keys on VPS
+5. Wire fuzzy dedupe hash column in Prisma schema
+6. Wire batch normalizer into global-normalize-worker
+7. Fix vitest alias caching (batch-normalizer, fuzzy-dedupe-integration tests)
+8. Grafana dashboards for Prometheus metrics
 
-## How to Resume
+## 🔁 How to Resume
 ```
-Session 102: Deploy S101 + Next Feature
+Session 109: Command Center Phase F — Alerts & Reports Tab
 
 Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
 
-Session 101: AnalyticsPage executive dashboard COMPLETE.
-- 3 sections: ExecutiveSummary, TrendCharts, IntelligenceBreakdown
-- 2 new backend endpoints: /distributions, /cost-tracking
-- 55 new tests, 6,733 total
+Session 108: CI fix + deploy. 17 TS errors + ~30 ESLint errors fixed.
+Command Center Phases C-E now live on VPS.
+- 5 commits: ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92
+- CI green, 33 containers healthy
 
-Possible next:
-  - Deploy S101 to VPS (frontend + analytics-service)
-  - STIX Export wizard
-  - ATT&CK Navigator integration
-  - Grafana dashboards
-  - SearchPage improvements
+Uncommitted WIP:
+  - apps/frontend/src/components/command-center/AlertsReportsTab.tsx (new)
+  - apps/frontend/src/components/command-center/BillingPlansTab.tsx (new)
+  - apps/frontend/src/pages/CommandCenterPage.tsx (modified)
+
+FROZEN: All shared-*, api-gateway, user-service, ingestion, normalization, ai-enrichment
+FREE: frontend (Command Center tabs)
+
+Module → skill map:
+  frontend → skills/20-UI-UX.md
+  testing  → skills/02-TESTING.md
 ```

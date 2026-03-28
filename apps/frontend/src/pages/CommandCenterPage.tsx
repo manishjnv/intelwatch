@@ -1,8 +1,8 @@
 /**
  * @module pages/CommandCenterPage
  * @description Unified AI processing & platform management page.
- * Super-admin: 7 tabs (Overview, Configuration, Queue, Feeds, Settings, Users & Access, Clients).
- * Tenant-admin: 5 tabs (Overview, Configuration, Feeds, Settings, Users & Access).
+ * Super-admin: 9 tabs (Overview, Configuration, Queue, Feeds, Settings, Users & Access, Clients, Billing & Plans, Alerts & Reports).
+ * Tenant-admin: 7 tabs (Overview, Configuration, Feeds, Settings, Users & Access, Billing & Plans, Alerts & Reports).
  * Extensible tab registry, role-based filtering, KPI strip, date range picker.
  */
 import { useState, useMemo } from 'react'
@@ -15,7 +15,7 @@ import {
   BarChart3, Sliders, ListOrdered, Settings, Users,
   RefreshCw, Download, ChevronDown, DollarSign,
   Activity, Building2, TrendingUp, AlertTriangle,
-  Rss, ShieldCheck,
+  Rss, ShieldCheck, CreditCard, Bell,
 } from 'lucide-react'
 import { IconCommandCenter } from '@/components/brand/ModuleIcons'
 import { ClientsTab } from '@/components/command-center/ClientsTab'
@@ -25,10 +25,12 @@ import { ConfigurationTab } from '@/components/command-center/ConfigurationTab'
 import { SettingsTab } from '@/components/command-center/SettingsTab'
 import { FeedsTab } from '@/components/command-center/FeedsTab'
 import { UsersAccessTab } from '@/components/command-center/UsersAccessTab'
+import { BillingPlansTab } from '@/components/command-center/BillingPlansTab'
+import { AlertsReportsTab } from '@/components/command-center/AlertsReportsTab'
 
 // ─── Tab Registry ───────────────────────────────────────────────
 
-type TabId = 'overview' | 'configuration' | 'queue' | 'feeds' | 'settings' | 'users-access' | 'clients'
+type TabId = 'overview' | 'configuration' | 'queue' | 'feeds' | 'settings' | 'users-access' | 'clients' | 'billing-plans' | 'alerts-reports'
 type UserRole = 'super_admin' | 'tenant_admin'
 
 interface CommandCenterTab {
@@ -46,6 +48,8 @@ const TABS: CommandCenterTab[] = [
   { id: 'settings',      label: 'Settings',       icon: Settings,    roles: ['super_admin', 'tenant_admin'] },
   { id: 'users-access',  label: 'Users & Access', icon: ShieldCheck, roles: ['super_admin', 'tenant_admin'] },
   { id: 'clients',       label: 'Clients',        icon: Users,       roles: ['super_admin'] },
+  { id: 'billing-plans', label: 'Billing & Plans', icon: CreditCard,  roles: ['super_admin', 'tenant_admin'] },
+  { id: 'alerts-reports',label: 'Alerts & Reports',icon: Bell,        roles: ['super_admin', 'tenant_admin'] },
 ]
 
 // ─── Period Picker ──────────────────────────────────────────────
@@ -292,6 +296,8 @@ export function CommandCenterPage() {
           {effectiveTab === 'settings' && <SettingsTab data={cc} aiConfig={aiConfig} />}
           {effectiveTab === 'users-access' && <UsersAccessTab data={cc} />}
           {effectiveTab === 'clients' && <ClientsTab data={cc} />}
+          {effectiveTab === 'billing-plans' && <BillingPlansTab data={cc} />}
+          {effectiveTab === 'alerts-reports' && <AlertsReportsTab data={cc} />}
         </div>
       </div>
     </div>
