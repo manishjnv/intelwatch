@@ -75,6 +75,14 @@ Two sites on VPS 72.61.227.64:
 - `ti.intelwatch.in` = ETIP → etip_* containers → our project
 NEVER modify non-etip_ containers, nginx configs, or files belonging to intelwatch.in.
 
+## VPS SSH Access
+
+- SSH user: `root` — NEVER guess `etip` or other names
+- Command: `ssh -o ProxyCommand="cloudflared access ssh --hostname ssh.intelwatch.in" root@ssh.intelwatch.in`
+- NEVER use direct IP:22 — use Cloudflare Tunnel only
+- VPS path: `/opt/intelwatch`
+- Compose: `docker-compose.etip.yml`
+
 ## Architecture Constants
 - API version: v1 prefix on all routes
 - Max file lines: 400 (split if exceeded)

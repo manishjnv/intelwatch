@@ -42,9 +42,19 @@ const MODEL_PRICING: Record<ModelTier, { input: number; output: number }> = {
   opus: { input: 15.00, output: 75.00 },
 };
 
+/** Prisma-compatible writer for ai_processing_costs table (fire-and-forget) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PrismaLike = { aiProcessingCost?: { create: (args: any) => Promise<any> } };
+
 export class CostTracker {
   private articleCosts: Map<string, StageRecord[]> = new Map();
   private tenantSpend: Map<string, { costUsd: number; resetAt: Date }> = new Map();
+  private prisma: PrismaLike | null = null;
+
+  /** Attach a Prisma client for dual-write to ai_processing_costs table */
+  setPrisma(prisma: PrismaLike): void {
+    this.prisma = prisma;
+  }
 
   /** Calculate cost for a single stage */
   calculateStageCost(inputTokens: number, outputTokens: number, model: ModelTier): number {
@@ -54,7 +64,7 @@ export class CostTracker {
     return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000; // 6 decimal precision
   }
 
-  /** Record a pipeline stage execution */
+  /** Record a pipeline stage execution (in-memory + Postgres dual-write) */
   trackStage(
     articleId: string, stage: PipelineStage,
     inputTokens: number, outputTokens: number, model: ModelTier,
@@ -68,6 +78,22 @@ export class CostTracker {
       this.articleCosts.set(articleId, []);
     }
     this.articleCosts.get(articleId)!.push(record);
+
+    // Fire-and-forget Postgres write for Command Center cost analytics
+    if (this.prisma?.aiProcessingCost) {
+      this.prisma.aiProcessingCost.create({
+        data: {
+          itemId: articleId,
+          itemType: 'article',
+          subtask: stage,
+          provider: 'anthropic',
+          model: model === 'haiku' ? 'claude-haiku-4-5' : model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-opus-4-6',
+          inputTokens,
+          outputTokens,
+          costUsd,
+        },
+      }).catch(() => { /* non-critical — Redis cache is primary */ });
+    }
 
     return record;
   }

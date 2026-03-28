@@ -4,7 +4,7 @@
  * Routes: /login, /register, /dashboard (protected), module pages, /404
  */
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LandingPage } from '@/pages/LandingPage'; // ⛔ DESIGN LOCKED — see UI_DESIGN_LOCK.md
@@ -20,7 +20,7 @@ import { FeedListPage } from '@/pages/FeedListPage';
 import { ThreatActorListPage } from '@/pages/ThreatActorListPage';
 import { MalwareListPage } from '@/pages/MalwareListPage';
 import { VulnerabilityListPage } from '@/pages/VulnerabilityListPage';
-import { EnrichmentPage } from '@/pages/EnrichmentPage';
+import { CommandCenterPage } from '@/pages/CommandCenterPage';
 import { DRPDashboardPage } from '@/pages/DRPDashboardPage';
 import { CorrelationPage } from '@/pages/CorrelationPage';
 import { HuntingWorkbenchPage } from '@/pages/HuntingWorkbenchPage';
@@ -32,7 +32,6 @@ import { AlertingPage } from '@/pages/AlertingPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage'
 import { SearchPage } from '@/pages/SearchPage';
 import { GlobalCatalogPage } from '@/pages/GlobalCatalogPage';
-import { GlobalAiConfigPage } from '@/pages/GlobalAiConfigPage';
 import { PlanLimitsPage } from '@/pages/PlanLimitsPage';
 import { GlobalMonitoringPage } from '@/pages/GlobalMonitoringPage';
 
@@ -87,7 +86,8 @@ export function App() {
               </React.Suspense>
             } />
             <Route path="/hunting" element={<HuntingWorkbenchPage />} />
-            <Route path="/enrichment" element={<EnrichmentPage />} />
+            <Route path="/command-center" element={<CommandCenterPage />} />
+            <Route path="/enrichment" element={<Navigate to="/command-center" replace />} />
             <Route path="/drp" element={<DRPDashboardPage />} />
             <Route path="/correlation" element={<CorrelationPage />} />
             <Route path="/integrations" element={<IntegrationPage />} />
@@ -103,7 +103,7 @@ export function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             {/* Global Feed Catalog (DECISION-029) */}
             <Route path="/global-catalog" element={<GlobalCatalogPage />} />
-            <Route path="/global-ai-config" element={<GlobalAiConfigPage />} />
+            <Route path="/global-ai-config" element={<Navigate to="/command-center" replace />} />
             <Route path="/plan-limits" element={<PlanLimitsPage />} />
             <Route path="/global-monitoring" element={<GlobalMonitoringPage />} />
             {/* ES Search — cross-cutting */}

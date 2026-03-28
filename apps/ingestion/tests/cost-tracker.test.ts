@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CostTracker } from '../src/services/cost-tracker.js';
 
 let tracker: CostTracker;
@@ -92,5 +92,47 @@ describe('CostTracker.getPricing', () => {
     expect(pricing.haiku.input).toBe(0.25);
     expect(pricing.sonnet.output).toBe(15.00);
     expect(pricing.opus.input).toBe(15.00);
+  });
+});
+
+describe('CostTracker — Postgres dual-write', () => {
+  it('writes to Prisma when attached', () => {
+    const mockCreate = vi.fn().mockResolvedValue({});
+    const mockPrisma = { aiProcessingCost: { create: mockCreate } };
+
+    tracker.setPrisma(mockPrisma as any);
+    tracker.trackStage('article-99', 'triage', 500, 100, 'haiku');
+
+    expect(mockCreate).toHaveBeenCalledOnce();
+    const arg = mockCreate.mock.calls[0][0];
+    expect(arg.data.itemId).toBe('article-99');
+    expect(arg.data.itemType).toBe('article');
+    expect(arg.data.subtask).toBe('triage');
+    expect(arg.data.provider).toBe('anthropic');
+    expect(arg.data.model).toBe('claude-haiku-4-5');
+    expect(arg.data.costUsd).toBeGreaterThan(0);
+  });
+
+  it('maps sonnet model correctly', () => {
+    const mockCreate = vi.fn().mockResolvedValue({});
+    tracker.setPrisma({ aiProcessingCost: { create: mockCreate } } as any);
+    tracker.trackStage('a1', 'extraction', 2000, 500, 'sonnet');
+
+    expect(mockCreate.mock.calls[0][0].data.model).toBe('claude-sonnet-4-6');
+  });
+
+  it('does not fail when Prisma is not attached', () => {
+    // No setPrisma call — should not throw
+    const record = tracker.trackStage('a1', 'triage', 500, 100, 'haiku');
+    expect(record.costUsd).toBeGreaterThan(0);
+  });
+
+  it('silently catches Prisma write errors', () => {
+    const mockCreate = vi.fn().mockRejectedValue(new Error('DB down'));
+    tracker.setPrisma({ aiProcessingCost: { create: mockCreate } } as any);
+
+    // Should not throw
+    const record = tracker.trackStage('a1', 'triage', 500, 100, 'haiku');
+    expect(record.costUsd).toBeGreaterThan(0);
   });
 });

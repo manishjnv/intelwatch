@@ -48,3 +48,22 @@ export { sleep, retryWithBackoff } from './sleep.js';
 
 // ── Prometheus metrics ────────────────────────────────────────────
 export { registerMetrics, type MetricsCompatibleApp } from './metrics.js';
+
+// ── AI Model Registry ────────────────────────────────────────────
+export {
+  MODEL_CATALOG,
+  PROVIDER_META,
+  ALL_SUBTASKS,
+  getModelById,
+  getModelsByProvider,
+  getBestAccuracy,
+  getBestCost,
+  getAccuracy,
+  estimatePerItemCost,
+  type AiProvider,
+  type ModelTier,
+  type ModelPricing,
+  type SubtaskBenchmark,
+  type ModelDefinition,
+  type Subtask,
+} from './model-registry.js';

@@ -53,11 +53,21 @@ const MODEL_PRICING: Record<ModelTier, { input: number; output: number }> = {
   opus: { input: 15.00, output: 75.00 },
 };
 
+/** Prisma-compatible writer for ai_processing_costs table (fire-and-forget) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PrismaLike = { aiProcessingCost?: { create: (args: any) => Promise<any> } };
+
 export class EnrichmentCostTracker {
   private iocCosts: Map<string, ProviderCostRecord[]> = new Map();
   private iocTypes: Map<string, string> = new Map();
   private tenantSpend: Map<string, { costUsd: number; resetAt: Date }> = new Map();
   private readonly startedAt: Date;
+  private prisma: PrismaLike | null = null;
+
+  /** Attach a Prisma client for dual-write to ai_processing_costs table */
+  setPrisma(prisma: PrismaLike): void {
+    this.prisma = prisma;
+  }
 
   constructor() {
     this.startedAt = new Date();
@@ -87,6 +97,22 @@ export class EnrichmentCostTracker {
     }
     this.iocCosts.get(iocId)!.push(record);
     this.iocTypes.set(iocId, iocType);
+
+    // Fire-and-forget Postgres write for Command Center cost analytics
+    if (this.prisma?.aiProcessingCost && model && costUsd > 0) {
+      this.prisma.aiProcessingCost.create({
+        data: {
+          itemId: iocId,
+          itemType: 'ioc',
+          subtask: provider === 'haiku_triage' ? 'triage' : provider,
+          provider: 'anthropic',
+          model: model === 'haiku' ? 'claude-haiku-4-5' : model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-opus-4-6',
+          inputTokens,
+          outputTokens,
+          costUsd,
+        },
+      }).catch(() => { /* non-critical — Redis cache is primary */ });
+    }
 
     return record;
   }

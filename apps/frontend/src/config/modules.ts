@@ -5,11 +5,11 @@
  * ComingSoonPage (placeholders), and App.tsx (routing).
  */
 import {
-  IconIOC, IconFeed, IconAI, IconGraph, IconActors, IconMalware,
+  IconIOC, IconFeed, IconGraph, IconActors, IconMalware,
   IconVuln, IconHunting, IconDRP, IconCorrelation, IconIntegrations, IconRBAC,
   IconCustomization, IconBilling, IconAdmin, IconOnboarding, IconReporting,
-  IconAlerting, IconAnalytics, IconGlobalCatalog, IconAiConfig, IconPlanLimits,
-  IconPipelineMonitor,
+  IconAlerting, IconAnalytics, IconGlobalCatalog, IconPlanLimits,
+  IconPipelineMonitor, IconCommandCenter,
 } from '@/components/brand/ModuleIcons'
 
 export interface IconComponentProps {
@@ -60,14 +60,14 @@ export const MODULES: ModuleConfig[] = [
     route: '/global-catalog',
   },
   {
-    id: 'ai-enrichment',
-    title: 'AI Enrichment',
-    description: 'Claude-powered analysis with VirusTotal & AbuseIPDB correlation.',
-    helpText: 'Uses AI to generate risk assessments, context summaries, and correlation insights.',
-    icon: IconAI,
+    id: 'command-center',
+    title: 'Command Center',
+    description: 'Unified AI processing, model config, queue management & tenant oversight.',
+    helpText: 'AI processing costs, provider keys, model assignments, queue monitoring, and client management.',
+    icon: IconCommandCenter,
     color: 'text-purple-400',
     phase: 2,
-    route: '/enrichment',
+    route: '/command-center',
   },
   {
     id: 'threat-graph',
@@ -228,16 +228,6 @@ export const MODULES: ModuleConfig[] = [
     color: 'text-blue-400',
     phase: 7,
     route: '/analytics',
-  },
-  {
-    id: 'global-ai-config',
-    title: 'AI Config',
-    description: 'Global AI model assignments, confidence model, cost dashboard, and plan presets.',
-    helpText: 'Control which AI models power each pipeline subtask across all tenants.',
-    icon: IconAiConfig,
-    color: 'text-purple-400',
-    phase: 2,
-    route: '/global-ai-config',
   },
   {
     id: 'plan-limits',

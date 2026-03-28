@@ -789,3 +789,55 @@ model PlanTierConfig {
   updatedAt              DateTime @updatedAt @map("updated_at")
   @@map("plan_tier_config")
 }
+
+// ── Command Center: Global AI Processing Costs ─────────────────────
+// Global table (no tenant_id). One row per AI call per item/subtask.
+model AiProcessingCost {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId       String   @map("item_id") @db.VarChar(255)
+  itemType     String   @map("item_type") @db.VarChar(20)   // 'article' | 'ioc' | 'report'
+  subtask      String   @db.VarChar(50)
+  provider     String   @db.VarChar(20)                      // 'anthropic' | 'openai' | 'google'
+  model        String   @db.VarChar(50)
+  inputTokens  Int      @map("input_tokens")
+  outputTokens Int      @map("output_tokens")
+  costUsd      Float    @map("cost_usd")
+  processedAt  DateTime @default(now()) @map("processed_at")
+
+  @@index([itemId, itemType], name: "idx_apc_item")
+  @@index([processedAt], name: "idx_apc_date")
+  @@index([subtask], name: "idx_apc_subtask")
+  @@index([provider], name: "idx_apc_provider")
+  @@map("ai_processing_costs")
+}
+
+// ── Command Center: Per-Tenant Item Consumption ────────────────────
+// Tracks when a tenant consumes (views/uses) a globally processed item.
+model TenantItemConsumption {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.VarChar(255)
+  itemId     String   @map("item_id") @db.VarChar(255)
+  itemType   String   @map("item_type") @db.VarChar(20)     // 'article' | 'ioc' | 'report'
+  consumedAt DateTime @default(now()) @map("consumed_at")
+
+  @@unique([tenantId, itemId, itemType], name: "uq_tenant_item")
+  @@index([tenantId, consumedAt], name: "idx_tic_tenant")
+  @@index([itemId], name: "idx_tic_item")
+  @@map("tenant_item_consumption")
+}
+
+// ── Command Center: Provider API Keys ──────────────────────────────
+// Stores encrypted API keys for each AI provider (platform-level).
+model ProviderApiKey {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider   String   @unique @db.VarChar(20)                // 'anthropic' | 'openai' | 'google'
+  keyMasked  String   @map("key_masked") @db.VarChar(50)     // e.g. "sk-ant-***abc1"
+  keyHash    String   @map("key_hash") @db.VarChar(64)       // SHA-256 of full key
+  isValid    Boolean  @default(true) @map("is_valid")
+  lastTested DateTime? @map("last_tested")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  updatedBy  String?  @map("updated_by") @db.VarChar(255)
+
+  @@map("provider_api_keys")
+}

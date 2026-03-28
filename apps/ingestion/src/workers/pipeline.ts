@@ -156,6 +156,7 @@ export class ArticlePipeline {
     this.contextExtractor = new ContextExtractor();
     this.dedup = new DedupService();
     this.costTracker = new CostTracker();
+    if (deps.db) this.costTracker.setPrisma(deps.db);
     this.corroboration = new CorroborationEngine();
     this.triangulation = new SourceTriangulation();
     this.calibrator = new ConfidenceCalibrator();

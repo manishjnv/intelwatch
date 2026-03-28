@@ -430,6 +430,19 @@ export function IconPipelineMonitor({ size = defaults.size, className }: IconPro
   )
 }
 
+/** Command Center — hexagonal HUD command panel */
+export function IconCommandCenter({ size = defaults.size, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={cn('shrink-0', className)}>
+      <path d="M12 2L20.66 7v10L12 22 3.34 17V7L12 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5"/>
+      <line x1="12" y1="9" x2="12" y2="5" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+      <line x1="14.6" y1="13.5" x2="17.5" y2="15.5" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+      <line x1="9.4" y1="13.5" x2="6.5" y2="15.5" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+    </svg>
+  )
+}
+
 /** Map module IDs to icon components */
 export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'dashboard': IconDashboard,
@@ -455,4 +468,5 @@ export const MODULE_ICONS: Record<string, React.FC<IconProps>> = {
   'global-catalog': IconGlobalCatalog,
   'global-ai-config': IconAiConfig,
   'plan-limits': IconPlanLimits,
+  'command-center': IconCommandCenter,
 }

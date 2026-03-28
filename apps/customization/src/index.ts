@@ -14,6 +14,9 @@ import { RiskWeightStore } from './services/risk-weight-store.js';
 import { DashboardStore } from './services/dashboard-store.js';
 import { NotificationStore } from './services/notification-store.js';
 import { FeedQuotaStore } from './services/feed-quota-store.js';
+import { ProviderKeyStore } from './services/provider-key-store.js';
+import { ConsumptionTracker } from './services/consumption-tracker.js';
+import { CommandCenterQueries } from './services/command-center-queries.js';
 import { prisma, disconnectPrisma } from './prisma.js';
 import { FeedQuotaRepo } from './repository.js';
 
@@ -46,6 +49,11 @@ async function main(): Promise<void> {
     ? new FeedQuotaRepo(prisma)
     : undefined;
   const feedQuotaStore = new FeedQuotaStore(feedQuotaRepo);
+
+  // 4b. Command Center services (require Prisma)
+  const providerKeyStore = new ProviderKeyStore(prisma);
+  const consumptionTracker = new ConsumptionTracker(prisma);
+  const commandCenterQueries = new CommandCenterQueries(prisma);
 
   // 5. Register stores with config portability
   configPortability.registerStore('modules', {
@@ -80,6 +88,8 @@ async function main(): Promise<void> {
     notificationDeps: { notificationStore },
     configDeps: { configPortability, auditTrail, configVersioning },
     feedQuotaDeps: { feedQuotaStore },
+    providerKeyDeps: { providerKeyStore },
+    commandCenterDeps: { queries: commandCenterQueries, consumptionTracker },
   });
 
   // 7. Graceful shutdown

@@ -15,6 +15,8 @@ import { apiKeyRoutes, type ApiKeyRouteDeps } from './routes/api-keys.js';
 import { feedQuotaRoutes, type FeedQuotaRouteDeps } from './routes/feed-quota.js';
 import { globalAiRoutes, type GlobalAiRouteDeps } from './routes/global-ai.js';
 import { planLimitsRoutes, type PlanLimitsRouteDeps } from './routes/plan-limits.js';
+import { providerKeyRoutes, type ProviderKeyRouteDeps } from './routes/provider-keys.js';
+import { commandCenterRoutes, type CommandCenterRouteDeps } from './routes/command-center.js';
 import { registerMetrics } from '@etip/shared-utils';
 import type { CustomizationConfig } from './config.js';
 
@@ -30,6 +32,8 @@ export interface BuildAppOptions {
   feedQuotaDeps?: FeedQuotaRouteDeps;
   globalAiDeps?: GlobalAiRouteDeps;
   planLimitsDeps?: PlanLimitsRouteDeps;
+  providerKeyDeps?: ProviderKeyRouteDeps;
+  commandCenterDeps?: CommandCenterRouteDeps;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -110,6 +114,12 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   }
   if (opts.planLimitsDeps) {
     await app.register(planLimitsRoutes(opts.planLimitsDeps), { prefix: '/api/v1/customization/plans' });
+  }
+  if (opts.providerKeyDeps) {
+    await app.register(providerKeyRoutes(opts.providerKeyDeps), { prefix: '/api/v1/customization/provider-keys' });
+  }
+  if (opts.commandCenterDeps) {
+    await app.register(commandCenterRoutes(opts.commandCenterDeps), { prefix: '/api/v1/customization/command-center' });
   }
 
   return app;

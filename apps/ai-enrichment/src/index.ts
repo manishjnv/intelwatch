@@ -40,8 +40,9 @@ async function main(): Promise<void> {
     ? new HaikuTriageProvider(config.TI_ANTHROPIC_API_KEY, config.TI_AI_ENABLED, logger, config.TI_HAIKU_MODEL)
     : null;
 
-  // Cost tracker (in-memory per DECISION-013)
+  // Cost tracker (in-memory per DECISION-013 + Postgres dual-write for Command Center)
   const costTracker = new EnrichmentCostTracker();
+  costTracker.setPrisma(prisma);
 
   // #14 Cost Persistence — Redis flush/reload
   let costPersistence: CostPersistence | null = null;
