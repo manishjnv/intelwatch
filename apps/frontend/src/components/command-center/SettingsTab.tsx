@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import type { useCommandCenter } from '@/hooks/use-command-center'
 import type { useGlobalAiConfig } from '@/hooks/use-global-ai-config'
 import type {
-  OrgProfile, Industry, BusinessRisk, OrgSize, AlertSensitivity,
+  OrgProfile, Industry, AlertSensitivity,
   DigestFrequency, NotificationPrefs, OnboardingProgress,
 } from '@/types/org-profile'
 import {
@@ -18,8 +18,8 @@ import {
 } from '@/types/org-profile'
 import {
   Key, CheckCircle, XCircle, Eye, EyeOff, Loader2, Save, RotateCcw, Shield,
-  Building2, Cpu, AlertTriangle, Globe, Bell, Rocket, TrendingUp, ChevronRight,
-  Clock, Mail, Volume2, VolumeX, Check, Circle, SkipForward, X,
+  Building2, Cpu, AlertTriangle, Bell, Rocket, TrendingUp, ChevronRight,
+  Clock, Mail, Volume2, VolumeX, Check, Circle,
 } from 'lucide-react'
 import { MiniSparkline } from './charts'
 

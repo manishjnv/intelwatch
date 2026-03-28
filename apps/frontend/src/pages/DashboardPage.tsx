@@ -198,11 +198,10 @@ const RECOMMENDED_ACTIONS: Record<string, string[]> = {
 }
 
 function ThreatLandscapeSection({
-  orgProfile, iocs, navigate,
+  orgProfile, iocs,
 }: {
   orgProfile: OrgProfile
   iocs: unknown[]
-  navigate: (path: string) => void
 }) {
   const typedIocs = iocs as { tags?: string[]; threatActors?: string[]; malwareFamilies?: string[]; severity?: string; normalizedValue?: string; iocType?: string }[]
   const priorityThreats = getPriorityItems(typedIocs, orgProfile, 5)
@@ -377,7 +376,6 @@ export function DashboardPage() {
           <ThreatLandscapeSection
             orgProfile={orgProfile}
             iocs={(iocData as { data?: unknown[] })?.data ?? []}
-            navigate={navigate}
           />
         ) : (
           <div
