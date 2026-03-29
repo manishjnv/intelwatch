@@ -9,8 +9,12 @@ import { createLogger } from './logger.js';
 import { registerMetrics } from '@etip/shared-utils';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { registerErrorAlerting, errorAlertingRoutes } from './plugins/error-alerting.js';
+import { registerQuotaEnforcement } from './plugins/quota-enforcement.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
+import { planRoutes } from './routes/plans.js';
+import { overrideRoutes } from './routes/overrides.js';
+import { usageRoutes } from './routes/usage.js';
 
 /** Determine per-request rate limit tier based on URL + method */
 function resolveRateLimit(req: FastifyRequest): number {
@@ -87,6 +91,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   // Error alerting — aggregate 5xx errors, emit QUEUE_ALERT above threshold
   registerErrorAlerting(app, config.TI_REDIS_URL);
 
+  // Quota enforcement — per-tenant plan limits, usage counters, X-Quota headers
+  await registerQuotaEnforcement(app, config.TI_REDIS_URL);
+
   app.addHook('onRequest', async (req) => { (req as unknown as Record<string, unknown>)._startTime = Date.now(); });
   app.addHook('onResponse', async (req, reply) => {
     const startTime = (req as unknown as Record<string, unknown>)._startTime as number | undefined;
@@ -97,7 +104,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(planRoutes, { prefix: '/api/v1/admin/plans' });
+  await app.register(overrideRoutes, { prefix: '/api/v1/admin/tenants' });
   await app.register(errorAlertingRoutes, { prefix: '/api/v1/gateway' });
+  await app.register(usageRoutes, { prefix: '/api/v1' });
 
   logger.info('API Gateway configured successfully');
   return app;

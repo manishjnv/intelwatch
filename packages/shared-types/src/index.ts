@@ -153,6 +153,27 @@ export {
   buildStixSighting,
 } from './stix.js';
 
+// ── Plan Definition System ─────────────────────────────────────────
+export {
+  FEATURE_KEYS,
+  FeatureKeySchema,
+  type FeatureKey,
+  PlanFeatureLimitSchema,
+  type PlanFeatureLimit,
+  PlanDefinitionCreateSchema,
+  type PlanDefinitionCreate,
+  PlanDefinitionUpdateSchema,
+  type PlanDefinitionUpdate,
+  TenantFeatureOverrideCreateSchema,
+  type TenantFeatureOverrideCreate,
+  TenantFeatureOverrideUpdateSchema,
+  type TenantFeatureOverrideUpdate,
+  type FeatureLimits,
+  type QuotaCheckResult,
+  type UsageSnapshot,
+  type QuotaThresholdEvent,
+} from './plan.js';
+
 // ── Config & constants ─────────────────────────────────────────────
 export {
   AI_MODELS,

@@ -39,6 +39,7 @@ model Tenant {
   invoices              BillingInvoice[]
   usageRecords          BillingUsageRecord[]
   gracePeriods          BillingGracePeriod[]
+  featureOverrides      TenantFeatureOverride[]
   @@map("tenants")
 }
 
@@ -839,4 +840,62 @@ model ProviderApiKey {
   updatedBy  String?  @map("updated_by") @db.VarChar(255)
 
   @@map("provider_api_keys")
+}
+
+// ── Plan Definition System (Phase A — Quota Enforcement) ─────────────
+// One row per plan (Free/Starter/Pro/Enterprise). Super admin manages.
+model SubscriptionPlanDefinition {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId          String   @unique @map("plan_id") @db.VarChar(30)
+  name            String   @db.VarChar(100)
+  description     String?  @db.Text
+  priceMonthlyInr Int      @default(0) @map("price_monthly_inr")
+  priceAnnualInr  Int      @default(0) @map("price_annual_inr")
+  isPublic        Boolean  @default(true) @map("is_public")
+  isDefault       Boolean  @default(false) @map("is_default")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdBy       String?  @map("created_by") @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  features PlanFeatureLimit[]
+
+  @@map("subscription_plan_definitions")
+}
+
+// One row per feature per plan — ON/OFF + daily/weekly/monthly/total limits.
+model PlanFeatureLimit {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planDefId   String  @map("plan_def_id") @db.Uuid
+  featureKey  String  @map("feature_key") @db.VarChar(50)
+  enabled     Boolean @default(true)
+  limitDaily  Int     @default(-1) @map("limit_daily")
+  limitWeekly Int     @default(-1) @map("limit_weekly")
+  limitMonthly Int    @default(-1) @map("limit_monthly")
+  limitTotal  Int     @default(-1) @map("limit_total")
+
+  planDef SubscriptionPlanDefinition @relation(fields: [planDefId], references: [id], onDelete: Cascade)
+
+  @@unique([planDefId, featureKey])
+  @@map("plan_feature_limits")
+}
+
+// Per-tenant overrides — super admin grants custom limits beyond plan defaults.
+model TenantFeatureOverride {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  featureKey  String    @map("feature_key") @db.VarChar(50)
+  limitDaily  Int?      @map("limit_daily")
+  limitWeekly Int?      @map("limit_weekly")
+  limitMonthly Int?     @map("limit_monthly")
+  limitTotal  Int?      @map("limit_total")
+  reason      String?   @db.VarChar(255)
+  grantedBy   String    @map("granted_by") @db.VarChar(255)
+  grantedAt   DateTime  @default(now()) @map("granted_at")
+  expiresAt   DateTime? @map("expires_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, featureKey])
+  @@map("tenant_feature_overrides")
 }
