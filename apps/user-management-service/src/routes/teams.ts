@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { TeamStore } from '../services/team-store.js';
 import type { AuditLogger } from '../services/audit-logger.js';
-import { InviteUserSchema, UpdateUserRoleSchema, TeamListQuerySchema } from '../schemas/user-management.js';
+import { InviteUserSchema, UpdateUserRoleSchema, UpdateDesignationSchema, TeamListQuerySchema } from '../schemas/user-management.js';
 
 export interface TeamRouteDeps {
   teamStore: TeamStore;
@@ -74,10 +74,24 @@ export function teamRoutes(deps: TeamRouteDeps) {
       return reply.send({ data: member });
     });
 
-    /** POST /team/:userId/deactivate — Deactivate a team member. */
+    /** PUT /team/:userId/designation — Set user designation (cosmetic tag). */
+    app.put('/team/:userId/designation', async (req: FastifyRequest<{ Params: { userId: string } }>, reply: FastifyReply) => {
+      const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
+      const { designation } = UpdateDesignationSchema.parse(req.body);
+      const member = teamStore.setDesignation(req.params.userId, tenantId, designation);
+      auditLogger.log({
+        tenantId, userId: (req.headers['x-user-id'] as string) || null,
+        action: 'team.designation_changed', riskLevel: 'low',
+        details: { memberId: member.id, email: member.email, designation },
+      });
+      return reply.send({ data: member });
+    });
+
+    /** POST /team/:userId/deactivate — Deactivate a team member. Guards: self-action, last-admin. */
     app.post('/team/:userId/deactivate', async (req: FastifyRequest<{ Params: { userId: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const member = teamStore.deactivate(req.params.userId, tenantId);
+      const actorUserId = (req.headers['x-user-id'] as string) || undefined;
+      const member = teamStore.deactivate(req.params.userId, tenantId, actorUserId);
       auditLogger.log({
         tenantId, userId: (req.headers['x-user-id'] as string) || null,
         action: 'team.deactivated', riskLevel: 'high',
@@ -98,10 +112,11 @@ export function teamRoutes(deps: TeamRouteDeps) {
       return reply.send({ data: member });
     });
 
-    /** DELETE /team/:userId — Remove team member permanently. */
+    /** DELETE /team/:userId — Remove team member permanently. Guards: self-action, tenant-admin protection. */
     app.delete('/team/:userId', async (req: FastifyRequest<{ Params: { userId: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      teamStore.removeMember(req.params.userId, tenantId);
+      const actorUserId = (req.headers['x-user-id'] as string) || undefined;
+      teamStore.removeMember(req.params.userId, tenantId, actorUserId);
       auditLogger.log({
         tenantId, userId: (req.headers['x-user-id'] as string) || null,
         action: 'team.removed', riskLevel: 'high',

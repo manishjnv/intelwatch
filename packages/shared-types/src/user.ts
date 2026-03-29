@@ -53,6 +53,7 @@ export const UserSchema = z.object({
   displayName: z.string().min(1).max(255),
   avatarUrl: z.string().url().optional(),
   role: RoleSchema,
+  designation: z.string().max(50).nullable().optional(),
   authProvider: AuthProviderSchema,
   authProviderId: z.string().optional(),
   passwordHash: z.string().optional(),

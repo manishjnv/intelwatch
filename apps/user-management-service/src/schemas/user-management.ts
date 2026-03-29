@@ -13,7 +13,7 @@ export const PERMISSION_RESOURCES = [
 export const PERMISSION_ACTIONS = ['read', 'create', 'update', 'delete'] as const;
 
 /** Built-in role names. */
-export const BUILT_IN_ROLES = ['super_admin', 'admin', 'analyst', 'hunter'] as const;
+export const BUILT_IN_ROLES = ['super_admin', 'tenant_admin', 'admin', 'analyst', 'hunter'] as const;
 
 export const PermissionStringSchema = z.string().regex(
   /^(\*|[a-z_]+:\*|[a-z_]+:(read|create|update|delete))$/,
@@ -47,6 +47,10 @@ export const InviteUserSchema = z.object({
 
 export const UpdateUserRoleSchema = z.object({
   role: z.string().min(1).max(64),
+});
+
+export const UpdateDesignationSchema = z.object({
+  designation: z.string().max(50).nullable(),
 });
 
 export const TeamListQuerySchema = z.object({
@@ -172,6 +176,7 @@ export interface TeamMember {
   invitedAt: string;
   acceptedAt: string | null;
   lastActiveAt: string | null;
+  designation: string | null;
   mfaEnabled: boolean;
   ssoLinked: boolean;
 }

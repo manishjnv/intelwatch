@@ -60,6 +60,7 @@ model User {
   authProvider   AuthProvider @default(email) @map("auth_provider")
   authProviderId String?      @map("auth_provider_id") @db.VarChar(255)
   passwordHash   String?      @map("password_hash") @db.VarChar(255)
+  designation    String?      @db.VarChar(50)
   mfaEnabled     Boolean      @default(false) @map("mfa_enabled")
   mfaSecret      String?      @map("mfa_secret") @db.VarChar(255)
   lastLoginAt    DateTime?    @map("last_login_at")

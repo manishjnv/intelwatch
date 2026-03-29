@@ -47,6 +47,7 @@ export class TeamStore {
       invitedAt: new Date().toISOString(),
       acceptedAt: null,
       lastActiveAt: null,
+      designation: null,
       mfaEnabled: false,
       ssoLinked: false,
     };
@@ -70,7 +71,7 @@ export class TeamStore {
     return updated;
   }
 
-  /** Update a user's role. */
+  /** Update a user's role. Enforces I-05 Guard C (last-admin protection on demote). */
   updateRole(memberId: string, role: string, tenantId: string): TeamMember {
     const member = this.getMember(memberId, tenantId);
     const roleRecord = this.permissionStore.getRoleByName(role, tenantId);
@@ -78,17 +79,33 @@ export class TeamStore {
       throw new AppError(400, `Role '${role}' not found`, 'ROLE_NOT_FOUND');
     }
 
+    // Guard C: prevent demoting the last active tenant_admin
+    if (member.role === 'tenant_admin' && role !== 'tenant_admin') {
+      this.ensureNotLastAdmin(memberId, tenantId);
+    }
+
     const updated: TeamMember = { ...member, role };
     this.members.set(memberId, updated);
     return updated;
   }
 
-  /** Deactivate a team member. */
-  deactivate(memberId: string, tenantId: string): TeamMember {
+  /** Deactivate a team member. Enforces I-05 Guard A (no self-action) and Guard C (last-admin). */
+  deactivate(memberId: string, tenantId: string, actorUserId?: string): TeamMember {
+    // Guard A: cannot disable self
+    if (actorUserId && actorUserId === memberId) {
+      throw new AppError(403, 'You cannot disable or delete your own account.', 'SELF_ACTION_DENIED');
+    }
+
     const member = this.getMember(memberId, tenantId);
     if (member.status === 'inactive') {
       throw new AppError(400, 'User is already deactivated', 'ALREADY_DEACTIVATED');
     }
+
+    // Guard C: prevent disabling the last active tenant_admin
+    if (member.role === 'tenant_admin') {
+      this.ensureNotLastAdmin(memberId, tenantId);
+    }
+
     const updated: TeamMember = { ...member, status: 'inactive' };
     this.members.set(memberId, updated);
     return updated;
@@ -109,9 +126,20 @@ export class TeamStore {
     return updated;
   }
 
-  /** Remove a team member permanently. */
-  removeMember(memberId: string, tenantId: string): void {
-    this.getMember(memberId, tenantId);
+  /** Remove a team member permanently. Enforces I-04 (tenant_admin undeletable) and I-05 Guard A (no self-delete). */
+  removeMember(memberId: string, tenantId: string, actorUserId?: string): void {
+    // Guard A: cannot delete self
+    if (actorUserId && actorUserId === memberId) {
+      throw new AppError(403, 'You cannot disable or delete your own account.', 'SELF_ACTION_DENIED');
+    }
+
+    const member = this.getMember(memberId, tenantId);
+
+    // I-04: tenant_admin accounts cannot be deleted
+    if (member.role === 'tenant_admin') {
+      throw new AppError(403, 'Tenant admin accounts cannot be deleted. They can only be disabled by a super_admin.', 'TENANT_ADMIN_UNDELETABLE');
+    }
+
     this.members.delete(memberId);
   }
 
@@ -174,6 +202,34 @@ export class TeamStore {
     const member = this.members.get(memberId);
     if (member && member.tenantId === tenantId) {
       this.members.set(memberId, { ...member, lastActiveAt: new Date().toISOString() });
+    }
+  }
+
+  /** Set designation for a team member (I-03). Cosmetic only — never used in RBAC. */
+  setDesignation(memberId: string, tenantId: string, designation: string | null): TeamMember {
+    if (designation !== null && designation.length > 50) {
+      throw new AppError(400, 'Designation must be 50 characters or fewer', 'DESIGNATION_TOO_LONG');
+    }
+    const member = this.getMember(memberId, tenantId);
+    const updated: TeamMember = { ...member, designation };
+    this.members.set(memberId, updated);
+    return updated;
+  }
+
+  /** Validate org disable operation (I-05 Guard B). Only super_admin can disable own org. */
+  validateOrgDisable(actorTenantId: string, targetTenantId: string, actorRole: string): void {
+    if (actorTenantId === targetTenantId && actorRole !== 'super_admin') {
+      throw new AppError(403, 'Cannot disable your own organization.', 'ORG_SELF_DISABLE_DENIED');
+    }
+  }
+
+  /** Ensure the target is not the last active tenant_admin in the org (I-05 Guard C). */
+  private ensureNotLastAdmin(memberId: string, tenantId: string): void {
+    const activeTenantAdmins = Array.from(this.members.values()).filter(
+      (m) => m.tenantId === tenantId && m.role === 'tenant_admin' && m.status === 'active' && m.id !== memberId,
+    );
+    if (activeTenantAdmins.length === 0) {
+      throw new AppError(403, 'Cannot disable the last active tenant admin. Promote another user first.', 'LAST_ADMIN_PROTECTED');
     }
   }
 

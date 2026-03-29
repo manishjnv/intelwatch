@@ -34,10 +34,10 @@ describe('PermissionStore', () => {
   });
 
   describe('Built-in roles', () => {
-    it('seeds 4 built-in roles', () => {
+    it('seeds 5 built-in roles', () => {
       const roles = store.listRoles(TENANT);
       const builtIn = roles.filter((r) => r.isBuiltIn);
-      expect(builtIn).toHaveLength(4);
+      expect(builtIn).toHaveLength(5);
     });
 
     it('super_admin has wildcard permission', () => {
@@ -131,7 +131,7 @@ describe('PermissionStore', () => {
   describe('Permission inheritance (P0 #1)', () => {
     it('role hierarchy is correct', () => {
       const hierarchy = store.getHierarchy();
-      expect(hierarchy).toEqual(['hunter', 'analyst', 'admin', 'super_admin']);
+      expect(hierarchy).toEqual(['hunter', 'analyst', 'tenant_admin', 'admin', 'super_admin']);
     });
 
     it('custom role inherits parent permissions', () => {

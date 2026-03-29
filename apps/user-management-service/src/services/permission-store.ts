@@ -31,6 +31,12 @@ function buildPermissionCatalog(): string[] {
 /** Built-in role permission definitions. */
 const BUILT_IN_PERMISSIONS: Record<string, string[]> = {
   super_admin: ['*'],
+  tenant_admin: [
+    'ioc:*', 'threat_actor:*', 'malware:*', 'vuln:*',
+    'hunting:*', 'graph:*', 'alert:*', 'dashboard:*', 'report:*',
+    'feed:*', 'user:*', 'integration:*', 'settings:*', 'audit:read',
+    'correlation:*', 'drp:*',
+  ],
   admin: ['*'],
   analyst: [
     'ioc:*', 'threat_actor:*', 'malware:*', 'vuln:*',
@@ -45,7 +51,7 @@ const BUILT_IN_PERMISSIONS: Record<string, string[]> = {
 };
 
 /** Role hierarchy: higher index = higher privilege. */
-const ROLE_HIERARCHY: string[] = ['hunter', 'analyst', 'admin', 'super_admin'];
+const ROLE_HIERARCHY: string[] = ['hunter', 'analyst', 'tenant_admin', 'admin', 'super_admin'];
 
 /**
  * In-memory RBAC permission store.
