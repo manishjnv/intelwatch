@@ -1,6 +1,6 @@
 # ETIP Project State
-**Last updated:** 2026-03-28 (update at end of EVERY session via /session-end)
-**Session counter:** 110 — Command Center Phase F: BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 33 new tests. Deployed.
+**Last updated:** 2026-03-29 (update at end of EVERY session via /session-end)
+**Session counter:** 113 — Command Center v2.1 S2: Designation field (I-03) + tenant-admin delete protection (I-04) + self-action guards (I-05). 20 new tests. Deployed.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -23,7 +23,7 @@
 | etip_hunting | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3014. 47 endpoints, 15/15 improvements, 222 tests. |
 | etip_drp | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3011. 36 endpoints, 310 tests. |
 | etip_integration | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3015. 24 endpoints, 174 tests. SIEM + webhooks + ticketing + STIX/TAXII. |
-| etip_user_management | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3016. 32 endpoints, 185 tests. RBAC + teams + SSO + MFA + break-glass. |
+| etip_user_management | ✅ Deployed | 0.2.0 | 2026-03-29 | Port 3016. 33 endpoints, 210 tests. RBAC + teams + SSO + MFA + break-glass. **Session 113:** Designation field (I-03), tenant-admin delete guard (I-04), self-action guards (I-05). tenant_admin role in PermissionStore. |
 | etip_customization | ✅ Deployed | 0.5.0 | 2026-03-28 | Port 3017. 58 endpoints, 319 tests. Module toggles + AI model selection + risk weights + dashboard customization + notification preferences. F2 + F3 + BYOK + Feed Quotas. **Session 108:** Command Center backend (cost routes, consumption tracker, provider key store). |
 | etip_onboarding | ✅ Deployed | 0.3.0 | 2026-03-26 | Port 3018. 32 endpoints, 241 tests. Setup wizard (Redis-backed), demo seeder. **Session 78: Free-tier default** — seeds 3 feeds (THN, CISA RSS, NVD) instead of 10. seedUpgradeFeeds() for plan upgrades. freeTier flag on all 10 DEFAULT_FEEDS. |
 | etip_billing | ✅ Deployed | 0.3.0 | 2026-03-27 | Port 3019. 28 endpoints, 190 tests. Plan management, usage metering, Razorpay billing, GST invoices, upgrade/downgrade, coupon codes. **Session 83: All 3 remaining stores (Usage, Invoice, Coupon) wired to Prisma** — dual-mode with in-memory fallback. 21 new tests. |
@@ -63,7 +63,7 @@
 | correlation-engine | 4 | ✅ Complete | 2026-03-25 | Port 3013. **15/15 improvements + P1-1 Redis persistence COMPLETE**. 20 endpoints, 179 tests. store-checkpoint.ts: all 6 store Maps persisted to Redis on write (5s debounce, etip-correlation-{store} keys, 7-day TTL), restored on startup. ioredis dep added. TI_REDIS_URL env var wired. |
 | threat-hunting | 4 | 🔨 WIP | 2026-03-23 | Port 3014. **15/15 improvements COMPLETE**. 47 endpoints, 222 tests. Hunt query builder, session manager, IOC pivot, saved hunts, hypothesis engine, AI suggestions, timeline, evidence, collaboration, pattern recognition, playbooks, scoring, import/export. |
 | enterprise-integration | 5 | 🔨 WIP | 2026-03-23 | Port 3015. **Core + 5 P0 improvements COMPLETE**. 24 endpoints, 174 tests. SIEM (Splunk/Sentinel/Elastic), webhooks (HMAC+DLQ), ticketing (ServiceNow/Jira), STIX/TAXII 2.1, bulk export. Event router, credential encryption, rate limiter, health dashboard. FEATURE-COMPLETE. |
-| user-management | 5 | 🔨 WIP | 2026-03-23 | Port 3016. **Core + 5 P0 improvements COMPLETE**. 32 endpoints, 185 tests. RBAC (15 resources, 6 built-in roles, custom role builder, inheritance). Team mgmt (invite, roles, deactivate). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. FEATURE-COMPLETE. |
+| user-management | 5 | 🔨 WIP | 2026-03-29 | Port 3016. **Core + 5 P0 + I-03/I-04/I-05 COMPLETE**. 33 endpoints, 210 tests. RBAC (15 resources, 5 built-in roles: super_admin/tenant_admin/admin/analyst/hunter). Team mgmt (invite, roles, deactivate, designation). SSO config (SAML 2.0 + OIDC per-tenant). MFA (TOTP + backup codes + enforcement). Break-glass (recovery codes, 30-min sessions, audit). P0: permission inheritance, SOC2 audit trail, brute-force protection, session management, password policy. **I-03:** designation field (cosmetic, max 50 chars). **I-04:** tenant_admin undeletable (service guard + DB trigger). **I-05:** self-action guards (A: no self-disable/delete, B: no own-org disable, C: last-admin protection). FEATURE-COMPLETE. |
 | customization | 5 | ✅ Complete | 2026-03-28 | Port 3017. **Core + 5 P0 + F2 + F3 + G1b + BYOK + Feed Quotas + Global AI Config + Command Center backend COMPLETE**. 58 endpoints, 319 tests. **Session 108:** Command Center cost routes, consumption tracker, provider key store deployed. |
 | onboarding | 6 | ✅ Deployed | 2026-03-26 | Port 3018. **Core + 5 P0 + B1/B2 E2E COMPLETE**. 32 endpoints, 241 tests. **Session 78:** DemoSeeder seeds 3 free-tier feeds by default (was 10). seedUpgradeFeeds() for Starter+ upgrades. freeTier flag on DEFAULT_FEEDS. |
 | billing | 6 | ✅ Complete | 2026-03-27 | Port 3019. 28 endpoints, 5 P0 improvements, 190 tests. **Session 83: All 4 stores Prisma-backed** — UsageStore, InvoiceStore, CouponStore wired to repos (PlanStore was S74). Every method try/catch → in-memory fallback. 21 new tests. FEATURE-COMPLETE + FULLY PERSISTENT. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 11 — Command Center. Unified admin hub at /command-center (9 tabs super-admin, 7 tabs tenant). Sessions 102-110.
-- **Last session outcome:** Session 110 (2026-03-28). **Command Center Phase F COMPLETE.** BillingPlansTab (6 sub-tabs: Subscription, Invoices, Plans & Upgrade, Limits, Offers, Billing Info) + AlertsReportsTab (4 sub-tabs: Alert Rules, Alert History, Report Templates, Generate & Schedule). Role-gated sub-tabs. Reuses existing hooks (useBillingPlans, useAlertRules, useReports, usePlanLimits, etc). 33 new tests. 2 commits: ada5fb6 (feat), d78fab5 (lint fix). CI green. All 33 containers deployed. 1304 frontend tests (1306 total, 2 skipped).
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. SystemTab import in CommandCenterPage.tsx added by linter — needs SystemTab.tsx to be created (Phase G/H).
-- **Next tasks:** (1) Command Center Phase G — SystemTab (super-admin: system health, queue monitor, maintenance windows, DLQ). (2) Delete standalone pages absorbed by Command Center (BillingPage, PlanLimitsPage, AlertingPage, ReportingPage). (3) Set Shodan/GreyNoise API keys on VPS. (4) Wire fuzzy dedupe hash column in Prisma schema. (5) Fix vitest alias caching.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). RBAC cleanup + protection guards. Sessions 111-113.
+- **Last session outcome:** Session 113 (2026-03-29). **Command Center v2.1 S2 COMPLETE.** I-03: designation field (Prisma + shared-types + team-store + PUT route). I-04: tenant_admin delete protection (service guard TENANT_ADMIN_UNDELETABLE + DB trigger guard_tenant_admin_delete). I-05: 3 self-action guards (SELF_ACTION_DENIED, ORG_SELF_DISABLE_DENIED, LAST_ADMIN_PROTECTED). Also added tenant_admin to PermissionStore built-in roles. 20 new tests (protection-guards.test.ts). Commit 56c05bb. Migration 0003_add_designation_and_guards. CI run 23704114823 green. All 33 containers deployed.
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. Migration 0003 needs `prisma db push` on VPS (designation column + DB trigger). 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
+- **Next tasks:** (1) Command Center v2.1 S3 — MFA enforcement controls (I-06). (2) Command Center v2.1 S4 — SSO hardening (I-07). (3) Command Center v2.1 S5 — Session TTL controls (I-08). (4) Run `prisma db push` on VPS for migration 0003. (5) Set Shodan/GreyNoise API keys on VPS.
 
 ## Deployment Log
 
@@ -239,6 +239,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 101 | 2026-03-27 | No deploy (code-only session) | — | d841199 | AnalyticsPage executive dashboard: 3 sections (KPI cards, trend charts, intelligence breakdown). +2 analytics endpoints (distributions, cost-tracking). 55 new tests (977 frontend, 93 analytics). 6,733 total. |
 | 108 | 2026-03-28 | All 33 containers redeployed (Command Center Phases C-E) | ✅ All 33 healthy | ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92 | CI fix session: 17 TS errors + ~30 ESLint errors. PrismaLike index sig, Zod default cast, unused imports/vars. Command Center (Overview, Config, Settings, Feeds, Users & Access tabs) now live. KVM4 VPS (16GB). |
 | 110 | 2026-03-28 | etip_frontend redeployed (Command Center Phase F) | ✅ All 33 healthy | ada5fb6, d78fab5 | BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 33 new tests. Command Center: 9 tabs SA / 7 tabs TA. CI run 23686477062 green. |
+| 113 | 2026-03-29 | etip_user_management redeployed (I-03/I-04/I-05) | ✅ All 33 healthy | 56c05bb | Designation field + tenant-admin delete guard + self-action guards. 20 new tests. Migration 0003. CI run 23704114823 green. |
 
 ## E2E Verification Results (Session 13)
 

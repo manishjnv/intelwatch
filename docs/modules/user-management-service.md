@@ -1,6 +1,6 @@
 # User Management Service
 
-**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 185
+**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 210
 
 ## What It Does
 Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, and SOC2 audit logging. All in-memory (DECISION-013 pattern).
@@ -10,9 +10,14 @@ Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TO
 |---------|------|-------------|
 | Health check | routes/health.ts | GET /health, GET /ready |
 | Permission catalog | services/permission-store.ts | 15 resources × 4 actions + wildcards |
-| Built-in roles | services/permission-store.ts | 6 roles: super_admin, admin, analyst, hunter, viewer, api_only |
+| Built-in roles | services/permission-store.ts | 5 roles: super_admin, tenant_admin, admin, analyst, hunter |
 | Custom role builder | services/permission-store.ts | Create/update/delete custom roles with cherry-picked permissions |
-| Permission inheritance | services/permission-store.ts | Role hierarchy: viewer→hunter→analyst→admin→super_admin (P0 #1) |
+| Permission inheritance | services/permission-store.ts | Role hierarchy: hunter→analyst→tenant_admin→admin→super_admin (P0 #1) |
+| Designation field | services/team-store.ts | Cosmetic user tag (max 50 chars), never in RBAC. SET/GET via PUT /:userId/designation (I-03) |
+| Tenant admin delete guard | services/team-store.ts | tenant_admin accounts cannot be deleted — 403 TENANT_ADMIN_UNDELETABLE + DB trigger (I-04) |
+| Self-action guard | services/team-store.ts | Cannot disable/delete own account — 403 SELF_ACTION_DENIED (I-05 Guard A) |
+| Org self-disable guard | services/team-store.ts | Non-super_admin cannot disable own org — 403 ORG_SELF_DISABLE_DENIED (I-05 Guard B) |
+| Last admin protection | services/team-store.ts | Cannot disable/demote last active tenant_admin — 403 LAST_ADMIN_PROTECTED (I-05 Guard C) |
 | Team invite | services/team-store.ts | Invite by email, pending/accepted states |
 | Role assignment | services/team-store.ts | Assign/change roles per user per tenant |
 | Deactivate/reactivate | services/team-store.ts | Deactivate and reactivate team members |
@@ -51,7 +56,8 @@ Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TO
 | PUT | /api/v1/users/team/:userId/role | tenant | Change user role |
 | POST | /api/v1/users/team/:userId/deactivate | tenant | Deactivate member |
 | POST | /api/v1/users/team/:userId/reactivate | tenant | Reactivate member |
-| DELETE | /api/v1/users/team/:userId | tenant | Remove member |
+| PUT | /api/v1/users/team/:userId/designation | tenant | Set user designation (cosmetic tag, max 50 chars) |
+| DELETE | /api/v1/users/team/:userId | tenant | Remove member (blocked for tenant_admin) |
 | GET | /api/v1/users/sso | tenant | Get SSO config |
 | PUT | /api/v1/users/sso/saml | tenant | Configure SAML 2.0 |
 | PUT | /api/v1/users/sso/oidc | tenant | Configure OIDC |
