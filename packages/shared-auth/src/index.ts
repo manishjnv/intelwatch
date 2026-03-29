@@ -49,6 +49,13 @@ export {
   getResolvedPermissions,
 } from './permissions.js';
 
+// ── System tenant constants ───────────────────────────────────
+export {
+  SYSTEM_TENANT_ID,
+  SYSTEM_TENANT_NAME,
+  SYSTEM_TENANT_SLUG,
+} from './constants.js';
+
 // ── Service-to-service JWT ─────────────────────────────────────────
 export {
   loadServiceJwtSecret,

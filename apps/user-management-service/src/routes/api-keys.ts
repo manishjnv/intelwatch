@@ -29,14 +29,31 @@ export function apiKeyRoutes(deps: ApiKeyRouteDeps) {
       const tenantId = (req.headers['x-tenant-id'] as string) || '';
       const userId = (req.headers['x-user-id'] as string) || '';
 
-      // I-09: Enterprise tier gate
+      // I-09: Enterprise tier gate — check real plan definition system + overrides
       const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } });
       if (!tenant) throw new AppError(404, 'Tenant not found', 'NOT_FOUND');
-      if (tenant.plan !== 'enterprise') {
-        throw new AppError(403, 'API key management requires the Enterprise plan. Please upgrade.', 'FEATURE_NOT_AVAILABLE', {
-          upgradeUrl: '/command-center?tab=billing',
-          currentPlan: tenant.plan,
+
+      // Check if tenant has an api_access override (override presence = feature granted)
+      const override = await prisma.tenantFeatureOverride.findUnique({
+        where: { tenantId_featureKey: { tenantId, featureKey: 'api_access' } },
+        select: { id: true, expiresAt: true },
+      });
+      const overrideActive = override && (!override.expiresAt || override.expiresAt > new Date());
+
+      if (!overrideActive) {
+        // Check plan definition for api_access feature
+        const planDef = await prisma.subscriptionPlanDefinition.findUnique({
+          where: { planId: tenant.plan },
+          include: { features: { where: { featureKey: 'api_access' } } },
         });
+        const featureLimit = planDef?.features[0];
+        if (!featureLimit || !featureLimit.enabled) {
+          throw new AppError(403, 'API key management requires the Enterprise plan.', 'FEATURE_NOT_AVAILABLE', {
+            feature: 'api_access',
+            currentPlan: tenant.plan,
+            upgradeUrl: '/command-center?tab=billing',
+          });
+        }
       }
 
       const body = CreateApiKeySchema.parse(req.body);

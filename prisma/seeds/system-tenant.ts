@@ -11,12 +11,9 @@
  *   TI_SUPER_ADMIN_PASSWORD  — Super admin password, min 12 chars (required)
  */
 import { PrismaClient } from '@prisma/client';
-import { createHmac, randomBytes } from 'crypto';
 import { hash } from 'bcryptjs';
+import { SYSTEM_TENANT_ID, SYSTEM_TENANT_NAME, SYSTEM_TENANT_SLUG } from '@etip/shared-auth';
 
-const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000000';
-const SYSTEM_TENANT_NAME = 'IntelWatch Platform';
-const SYSTEM_TENANT_SLUG = 'intelwatch-system';
 const BCRYPT_ROUNDS = 12;
 
 async function main(): Promise<void> {

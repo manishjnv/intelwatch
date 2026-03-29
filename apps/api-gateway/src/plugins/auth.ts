@@ -16,6 +16,16 @@ function extractBearerToken(authHeader: string | undefined): string {
 export async function authenticate(req: FastifyRequest, _reply: FastifyReply): Promise<void> {
   const token = extractBearerToken(req.headers.authorization);
   const payload = verifyAccessToken(token);
+
+  // I-08: Super admin cross-tenant access — allow x-tenant-id header override
+  if (payload.role === 'super_admin') {
+    const targetTenantId = req.headers['x-tenant-id'] as string | undefined;
+    if (targetTenantId && targetTenantId !== payload.tenantId) {
+      (payload as Record<string, unknown>)['_originalTenantId'] = payload.tenantId;
+      (payload as Record<string, unknown>)['tenantId'] = targetTenantId;
+    }
+  }
+
   (req as FastifyRequest & AuthenticatedRequest).user = payload;
 }
 

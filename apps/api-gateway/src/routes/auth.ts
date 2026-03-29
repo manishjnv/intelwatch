@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { AppError } from '@etip/shared-utils';
 import { authenticate, getUser } from '../plugins/auth.js';
+import { SYSTEM_TENANT_SLUG } from '@etip/shared-auth';
 
 const RegisterBodySchema = z.object({
   email: z.string().email(),
@@ -31,6 +32,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         403,
         'Super admin accounts are provisioned via seed script only.',
         'SUPER_ADMIN_REGISTRATION_BLOCKED'
+      );
+    }
+
+    // I-08: Block registration against the system tenant
+    if (body.tenantSlug === SYSTEM_TENANT_SLUG) {
+      throw new AppError(
+        403,
+        'Cannot register under the system tenant.',
+        'SYSTEM_TENANT_REGISTRATION_BLOCKED'
       );
     }
 
