@@ -17,6 +17,19 @@ export interface JwtConfig {
   refreshExpirySeconds: number;
 }
 
+/** Role-based refresh token / session TTL (seconds) */
+const ROLE_SESSION_TTL: Record<string, number> = {
+  super_admin: 14_400,  // 4 hours — security requirement for platform operators
+};
+
+/**
+ * Get the refresh token / session TTL for a given role.
+ * super_admin: 4 hours. All others: default refreshExpirySeconds (7 days).
+ */
+export function getRefreshExpiryForRole(role: Role): number {
+  return ROLE_SESSION_TTL[role] ?? _config.refreshExpirySeconds;
+}
+
 /** Refresh token payload (subset of access token) */
 export const RefreshTokenPayloadSchema = z.object({
   sub: z.string().uuid(),
@@ -96,17 +109,20 @@ export function signAccessToken(params: SignAccessTokenParams): string {
 }
 
 /**
- * Sign a long-lived refresh token (default 7 days).
- * Minimal payload — only used to re-issue access tokens.
+ * Sign a refresh token with role-based TTL.
+ * super_admin: 4 hours. All others: default 7 days.
+ * Pass `role` to apply role-specific TTL; omit for default.
  */
 export function signRefreshToken(params: {
   userId: string;
   tenantId: string;
   sessionId: string;
+  role?: Role;
 }): string {
   if (!_config.secret) {
     throw new AppError(500, 'JWT not configured — call loadJwtConfig() first', 'CONFIG_ERROR');
   }
+  const ttl = params.role ? getRefreshExpiryForRole(params.role) : _config.refreshExpirySeconds;
   return jwt.sign(
     {
       sub: params.userId,
@@ -116,7 +132,7 @@ export function signRefreshToken(params: {
     },
     _config.secret,
     {
-      expiresIn: _config.refreshExpirySeconds,
+      expiresIn: ttl,
       issuer: _config.issuer,
     }
   );

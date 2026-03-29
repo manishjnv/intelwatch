@@ -1,6 +1,7 @@
 import { AppError } from '@etip/shared-utils';
-import { hashPassword, verifyPassword, signAccessToken, signRefreshToken, verifyRefreshToken, getJwtConfig } from '@etip/shared-auth';
+import { hashPassword, verifyPassword, signAccessToken, signRefreshToken, verifyRefreshToken, getJwtConfig, getRefreshExpiryForRole } from '@etip/shared-auth';
 import { sha256 } from '@etip/shared-utils';
+import type { Role } from '@etip/shared-types';
 import * as repo from './repository.js';
 
 export interface RegisterInput {
@@ -126,15 +127,17 @@ export class UserService {
     if (!user) throw new AppError(500, 'User not found after creation', 'INTERNAL_ERROR');
 
     const jwtConfig = getJwtConfig();
-    const sessionExpiresAt = new Date(Date.now() + jwtConfig.refreshExpirySeconds * 1000);
+    const role = user.role as Role;
+    const refreshTtl = getRefreshExpiryForRole(role);
+    const sessionExpiresAt = new Date(Date.now() + refreshTtl * 1000);
 
     const session = await repo.createSession({
       userId, tenantId, refreshTokenHash: 'pending',
       ipAddress, userAgent, expiresAt: sessionExpiresAt,
     });
 
-    const accessToken = signAccessToken({ userId, tenantId, email: user.email, role: user.role, sessionId: session.id });
-    const refreshToken = signRefreshToken({ userId, tenantId, sessionId: session.id });
+    const accessToken = signAccessToken({ userId, tenantId, email: user.email, role, sessionId: session.id });
+    const refreshToken = signRefreshToken({ userId, tenantId, sessionId: session.id, role });
 
     const refreshTokenHash = sha256(refreshToken);
     await repo.updateSessionHash(session.id, refreshTokenHash);

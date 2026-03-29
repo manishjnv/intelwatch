@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { AppError } from '@etip/shared-utils';
 import { authenticate, getUser } from '../plugins/auth.js';
 
 const RegisterBodySchema = z.object({
@@ -22,6 +23,17 @@ const RefreshBodySchema = z.object({
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post('/register', async (req: FastifyRequest, reply: FastifyReply) => {
     const body = RegisterBodySchema.parse(req.body);
+
+    // I-08: Block super_admin registration — provisioned via seed script only
+    const rawBody = req.body as Record<string, unknown>;
+    if (rawBody['role'] === 'super_admin') {
+      throw new AppError(
+        403,
+        'Super admin accounts are provisioned via seed script only.',
+        'SUPER_ADMIN_REGISTRATION_BLOCKED'
+      );
+    }
+
     const { UserService } = await import('@etip/user-service');
     const userService = new UserService();
     const result = await userService.register({

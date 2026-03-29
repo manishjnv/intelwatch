@@ -11,6 +11,7 @@ import { ssoRoutes, type SsoRouteDeps } from './routes/sso.js';
 import { mfaRoutes, type MfaRouteDeps } from './routes/mfa.js';
 import { breakGlassRoutes, type BreakGlassRouteDeps } from './routes/break-glass.js';
 import { sessionRoutes, type SessionRouteDeps } from './routes/sessions.js';
+import { apiKeyRoutes, type ApiKeyRouteDeps } from './routes/api-keys.js';
 import { registerMetrics } from '@etip/shared-utils';
 import type { UserManagementConfig } from './config.js';
 
@@ -22,6 +23,7 @@ export interface BuildAppOptions {
   mfaDeps?: MfaRouteDeps;
   breakGlassDeps?: BreakGlassRouteDeps;
   sessionDeps?: SessionRouteDeps;
+  apiKeyDeps?: ApiKeyRouteDeps;
 }
 
 /** Build and configure the Fastify application. */
@@ -91,6 +93,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   }
   if (opts.sessionDeps) {
     await app.register(sessionRoutes(opts.sessionDeps), { prefix: '/api/v1/users' });
+  }
+  if (opts.apiKeyDeps) {
+    await app.register(apiKeyRoutes(opts.apiKeyDeps), { prefix: '/api/v1/users' });
   }
 
   return app;

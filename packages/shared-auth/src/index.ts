@@ -19,6 +19,7 @@
 export {
   loadJwtConfig,
   getJwtConfig,
+  getRefreshExpiryForRole,
   signAccessToken,
   signRefreshToken,
   verifyAccessToken,

@@ -40,6 +40,7 @@ async function main(): Promise<void> {
     mfaDeps: { mfaService, auditLogger, teamStore },
     breakGlassDeps: { breakGlassService },
     sessionDeps: { sessionManager, auditLogger },
+    apiKeyDeps: { auditLogger },
   });
 
   // 5. Graceful shutdown
