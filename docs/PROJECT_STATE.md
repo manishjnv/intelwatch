@@ -1,11 +1,11 @@
 # ETIP Project State
 **Last updated:** 2026-03-29 (update at end of EVERY session via /session-end)
-**Session counter:** 114 — Quota Enforcement Middleware (S3+S4): Plan definitions (3 Prisma models, 10 CRUD endpoints, seed script) + quota enforcement (Redis Lua counters, plan cache, 5 usage endpoints, X-Quota headers). 18 new tests. Pushed to master.
+**Session counter:** 115 — MFA Implementation (I-10): TOTP setup/verify/disable, two-step login with challenge tokens, backup codes (bcrypt-hashed, single-use), platform + org enforcement policies. 9 API endpoints, 33 new tests. SOC 2 CC6.1 / ISO 27001 A.9.4.2. Pushed to master.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
-| etip_api | ✅ Running | 0.2.0 | 2026-03-29 | Health check passing. **Session 114:** Quota enforcement middleware (plan cache, Lua counters, X-Quota headers, threshold events). Plan definitions CRUD (10 endpoints). Override CRUD (4 endpoints). Usage API (5 endpoints). 108 tests. |
+| etip_api | ✅ Running | 0.2.1 | 2026-03-29 | Health check passing. **Session 115:** MFA endpoints (9 routes under /auth/mfa). **Session 114:** Quota enforcement middleware (plan cache, Lua counters, X-Quota headers, threshold events). Plan definitions CRUD (10 endpoints). Override CRUD (4 endpoints). Usage API (5 endpoints). 108 tests. |
 | etip_frontend | ✅ Running | 0.15.0 | 2026-03-28 | Dashboard + 20 data pages + Command Center (9 tabs SA / 7 TA). **Session 110:** BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 1010 tests (1012 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
@@ -39,16 +39,16 @@
 ## Module Development Status
 | Module | Phase | Status | Last Worked | Blockers |
 |--------|-------|--------|-------------|----------|
-| api-gateway | 1 | ✅ Deployed | 2026-03-29 | **Session 114:** Plan definitions CRUD (10 endpoints) + override CRUD (4 endpoints) + quota enforcement middleware (Redis Lua counters, plan cache 5min TTL, X-Quota headers, 80/90% threshold events) + usage API (5 endpoints). 108 tests. |
+| api-gateway | 1 | ✅ Deployed | 2026-03-29 | **Session 115:** +9 MFA routes (/auth/mfa/*). **Session 114:** Plan definitions CRUD (10 endpoints) + override CRUD (4 endpoints) + quota enforcement middleware (Redis Lua counters, plan cache 5min TTL, X-Quota headers, 80/90% threshold events) + usage API (5 endpoints). 108 tests. |
 | shared-types | 1 | ✅ Deployed | 2026-03-29 | **Session 114:** +plan.ts module (FeatureKey, PlanDefinitionCreate/Update, TenantFeatureOverride, FeatureLimits, QuotaCheckResult, UsageSnapshot, QuotaThresholdEvent). |
 | shared-utils | 1 | ✅ Deployed | 2026-03-27 | QUEUES: 24 constants (6 global queues added). EVENTS: 22 constants (+GLOBAL_FEED_PROCESSED, +GLOBAL_IOC_CREATED). **registerMetrics()**: prom-client Prometheus plugin. 91 tests. |
-| shared-auth | 1 | ✅ Deployed | 2026-03-15 | None |
+| shared-auth | 1 | ✅ Deployed | 2026-03-29 | **Session 115:** +MFA token utilities (signMfaChallengeToken, verifyMfaChallengeToken, signMfaSetupToken, verifyMfaSetupToken). 92 tests. |
 | shared-cache | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-audit | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-normalization | 1 | ✅ Deployed | 2026-03-27 | **Session 96:** + Fuzzy dedupe, velocity scoring, CWE chain mapper. 204 tests. |
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
-| user-service | 1 | ✅ Deployed | 2026-03-15 | None |
+| user-service | 1 | ✅ Deployed | 2026-03-29 | **Session 115:** MFA implementation (I-10) — TOTP setup/verify/disable, two-step login with MFA challenge tokens, backup codes (bcrypt-hashed, single-use), platform + org enforcement policies. 9 API endpoints, 49 tests. |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-28 | **24 data pages + Command Center (9 tabs SA / 7 TA)**. 1010 tests. **Session 110:** Phase F — BillingPlansTab (6 sub-tabs: Subscription, Invoices, Plans & Upgrade, Limits, Offers, Billing Info) + AlertsReportsTab (4 sub-tabs: Alert Rules, Alert History, Report Templates, Generate & Schedule). Role-gated. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |

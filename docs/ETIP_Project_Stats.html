@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 114 &middot; 2026-03-29 &middot; Quota Enforcement S3+S4 deployed. 33 containers, ~7,238 tests</span>
+  <span class="version">Session 115 &middot; 2026-03-29 &middot; MFA (I-10) deployed. 33 containers, ~7,316 tests</span>
 </div>
 </div>
 
@@ -89,13 +89,13 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,238</div><div class="stat-label">Tests Passing</div></div>
-    <div class="stat-card"><div class="stat-value">~610</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">114</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">~7,316</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~619</div><div class="stat-label">API Endpoints</div></div>
+    <div class="stat-card"><div class="stat-value">115</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
-    <div class="stat-card"><div class="stat-value">76.8K</div><div class="stat-label">Lines of Code</div></div>
+    <div class="stat-card"><div class="stat-value">79.1K</div><div class="stat-label">Lines of Code</div></div>
   </div>
 </div>
 </section>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API</td><td>108</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth</td><td>21</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Global Catalog + AI Config + Plan Limits + Analytics Dashboard + error toasts + debounce + skeletons</td><td>977</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Plan Builder + Usage Page + FeatureGate + Quota Banners</td><td>1,377</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats</td><td>237</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
@@ -157,7 +157,7 @@ li strong { color: var(--text-primary); }
       <tr><td>correlation-engine</td><td>3013</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>20</td><td>173</td></tr>
       <tr><td>threat-hunting</td><td>3014</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>47</td><td>222</td></tr>
       <tr><td>digital-risk-protection</td><td>3011</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>36</td><td>310</td></tr>
-      <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58</td><td>335</td></tr>
+      <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>24</td><td>174</td></tr>
       <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>33</td><td>210</td></tr>
       <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58 (+BYOK +FeedQuota +GlobalAI +PlanLimits)</td><td>319</td></tr>
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>241</td></tr>
@@ -241,6 +241,10 @@ li strong { color: var(--text-primary); }
     <div class="card">
       <div class="card-title"><span class="badge badge-green">COMPLETE</span> Differentiator K — Indian Market Billing (Razorpay)</div>
       <div class="card-body">4-tier plans (Free/Starter ₹9,999/Teams ₹18,999/Enterprise ₹49,999), Razorpay subscriptions + orders + HMAC webhook verification, GST 18% auto-applied, usage metering with 80/90/100% threshold alerts, upgrade/downgrade with 72hr grace period, coupon/discount codes, proration calculator, admin revenue dashboard (MRR, churn, plan distribution). 28 endpoints.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-green">COMPLETE</span> Differentiator L — Command Center + Quota Enforcement</div>
+      <div class="card-body">Super-admin Command Center (10 tabs: Overview, Feeds, Users &amp; Access, Configuration, Settings, Billing &amp; Plans, Alerts &amp; Reports, Clients, System Health, Audit Log). Tenant-admin view (7 tabs). Plan Builder with 16-feature limit grid, Plan Comparison Matrix, Tenant Override Panel, Usage Dashboard (16 feature cards with progress bars), FeatureGate conditional rendering, Quota Warning Banners (80%/90%/100% severity). Backend: Redis Lua atomic counters, plan cache (5min TTL), X-Quota response headers, 429 QUOTA_EXCEEDED enforcement, 19 admin endpoints. 1,377 frontend tests.</div>
     </div>
   </div>
 </div>
@@ -488,6 +492,16 @@ li strong { color: var(--text-primary); }
       <tr><td>Billing PlanStore → Prisma</td><td><span class="badge badge-green">DONE (S80)</span></td><td>✅ SubscriptionRepo wired, graceful fallback</td></tr>
       <tr><td>IocListPage over 400 lines</td><td><span class="badge badge-green">DONE (S80)</span></td><td>✅ Split to 271+298 (IocDetailPanel)</td></tr>
       <tr><td>Frontend TS errors (60+)</td><td><span class="badge badge-green">DONE (S80)</span></td><td>✅ Down to 14 (1 D3 lib + 13 test-only)</td></tr>
+      <tr><td>Quota enforcement backend (S3+S4)</td><td><span class="badge badge-green">DONE (S114)</span></td><td>✅ Redis Lua counters, plan cache, X-Quota headers, 429 enforcement, 5 usage endpoints</td></tr>
+      <tr><td>Plan Builder UI (super_admin CRUD)</td><td><span class="badge badge-green">DONE (S115)</span></td><td>✅ PlanBuilderPanel + 16-feature limit grid + PlanEditorModal</td></tr>
+      <tr><td>Plan Comparison Matrix</td><td><span class="badge badge-green">DONE (S115)</span></td><td>✅ Reusable side-by-side with tier colors, used in BillingPlansTab + UpgradeModal</td></tr>
+      <tr><td>Tenant Override Panel</td><td><span class="badge badge-green">DONE (S115)</span></td><td>✅ Per-tenant feature overrides in Clients tab drawer</td></tr>
+      <tr><td>Tenant Usage Page (16 features)</td><td><span class="badge badge-green">DONE (S115)</span></td><td>✅ Daily/monthly progress bars, severity colors, upgrade CTAs</td></tr>
+      <tr><td>FeatureGate component</td><td><span class="badge badge-green">DONE (S115)</span></td><td>✅ Conditional render based on plan. Not yet wrapped around pages (deferred)</td></tr>
+      <tr><td>Quota Warning Banners + 429 interceptor</td><td><span class="badge badge-green">DONE (S115)</span></td><td>✅ 80% amber / 90% red / 100% exceeded + upgrade modal + global listener</td></tr>
+      <tr><td>Wrap FeatureGate around existing pages</td><td><span class="badge badge-gray">DEFERRED</span></td><td>Built but not integrated — next session</td></tr>
+      <tr><td>Prisma db push on VPS (plans + overrides)</td><td><span class="badge badge-gray">DEFERRED</span></td><td>Plan definition + override models need schema push</td></tr>
+      <tr><td>Plan seed script on VPS</td><td><span class="badge badge-gray">DEFERRED</span></td><td>4 default plans × 16 features</td></tr>
       <tr><td>Razorpay live keys on VPS</td><td><span class="badge badge-gray">DEFERRED</span></td><td>Post-launch</td></tr>
       <tr><td>Billing priceInr field mismatch</td><td><span class="badge badge-gray">DEFERRED</span></td><td>Frontend workaround in place</td></tr>
     </tbody>
@@ -523,20 +537,24 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-blue">Session 108</span> Command Center CI Fix + Deploy</div>
+    <div class="card-title"><span class="badge badge-green">Session 115</span> MFA Implementation (I-10) Deployed</div>
     <div class="card-body">
-      <strong>Session 108:</strong> CI fix + deploy for Command Center Phases C-E:<br>
-      &bull; <strong>17 TS errors fixed</strong> — PrismaLike index sig, Zod default cast, unused imports, TS2532 object possibly undefined<br>
-      &bull; <strong>~30 ESLint errors fixed</strong> — Unused imports/variables across SettingsTab, DashboardPage, FeedsTab, UsersAccessTab, feeds-tab.test<br>
-      &bull; <strong>5 commits</strong> — ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92<br>
-      &bull; <strong>CI green</strong> — Run 23685986125, all steps passed<br>
-      &bull; <strong>VPS deployed</strong> — All 33 containers healthy on KVM4 (187.127.138.93, 16GB RAM)<br>
-      &bull; <strong>Command Center LIVE</strong> — Overview, Configuration, Settings, Feeds, Users &amp; Access tabs<br><br>
+      <strong>Session 115 (2026-03-29):</strong> Command Center v2.1 S8 — MFA (I-10):<br>
+      &bull; <strong>TOTP MFA</strong> — Setup/verify/disable flow with AES-256-GCM encrypted secrets (otplib)<br>
+      &bull; <strong>Two-step login</strong> — Password validation → MFA challenge token (5-min JWT) → session creation<br>
+      &bull; <strong>Backup codes</strong> — 10 single-use XXXX-XXXX codes, bcrypt-12 hashed, low-code warning at &le;2<br>
+      &bull; <strong>Enforcement policies</strong> — Platform-wide (super_admin) + org-level (tenant_admin) MFA enforcement<br>
+      &bull; <strong>9 API endpoints</strong> — setup, verify-setup, disable, challenge, regenerate, 2× admin enforcement, 2× org enforcement<br>
+      &bull; <strong>Prisma schema</strong> — mfaBackupCodes, mfaVerifiedAt fields + MfaEnforcementPolicy model<br>
+      &bull; <strong>33 new tests</strong> (28 mfa-service + 5 shared-auth MFA tokens). 49 user-service total, 92 shared-auth total.<br>
+      &bull; <strong>Compliance</strong> — SOC 2 CC6.1, ISO 27001 A.9.4.2<br>
+      &bull; <strong>Commit:</strong> 92957f9 — CI run 23713181251 green, VPS deployed<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Command Center Phase F</strong> — Alerts &amp; Reports tab (AlertsReportsTab.tsx WIP)<br>
-      2. <strong>Command Center Phase G</strong> — Billing &amp; Plans tab (BillingPlansTab.tsx WIP)<br>
-      3. <strong>Command Center Phase H</strong> — System Health super-admin tab<br>
-      4. <strong>Set Shodan/GreyNoise API keys on VPS</strong><br>
+      1. <strong>Run prisma db push on VPS</strong> — MfaEnforcementPolicy + mfaBackupCodes/mfaVerifiedAt + Plan models + migration 0003<br>
+      2. <strong>Set TI_MFA_ENCRYPTION_KEY on VPS</strong> — Required for TOTP secret encryption (≥32 chars)<br>
+      3. <strong>Run plan seed script on VPS</strong> — 4 default plans &times; 16 features<br>
+      4. <strong>Command Center v2.1 Phase D</strong> — System Health tab (super-admin), remaining hardening items<br>
+      5. <strong>Wrap FeatureGate around existing pages</strong> — Currently built but not integrated into page components<br>
     </div>
   </div>
 </div>
@@ -544,7 +562,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 114 &middot; 2026-03-29 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 115 &middot; 2026-03-29 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
