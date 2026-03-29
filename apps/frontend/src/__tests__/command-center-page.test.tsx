@@ -116,11 +116,10 @@ describe('CommandCenterPage', () => {
     expect(screen.getByText('Command Center')).toBeInTheDocument()
   })
 
-  it('shows 10 tabs for super_admin', () => {
+  it('shows 9 tabs for super_admin', () => {
     render(<CommandCenterPage />)
     expect(screen.getByTestId('tab-overview')).toBeInTheDocument()
     expect(screen.getByTestId('tab-configuration')).toBeInTheDocument()
-    expect(screen.getByTestId('tab-queue')).toBeInTheDocument()
     expect(screen.getByTestId('tab-feeds')).toBeInTheDocument()
     expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
     expect(screen.getByTestId('tab-users-access')).toBeInTheDocument()
@@ -130,7 +129,7 @@ describe('CommandCenterPage', () => {
     expect(screen.getByTestId('tab-system')).toBeInTheDocument()
   })
 
-  it('shows 6 tabs for tenant_admin (no queue, feeds, clients, system)', () => {
+  it('shows 6 tabs for tenant_admin (no feeds, clients, system)', () => {
     mockRole = 'tenant_admin'
     mockCommandCenter.isSuperAdmin = false
     render(<CommandCenterPage />)
@@ -140,7 +139,6 @@ describe('CommandCenterPage', () => {
     expect(screen.getByTestId('tab-users-access')).toBeInTheDocument()
     expect(screen.getByTestId('tab-billing-plans')).toBeInTheDocument()
     expect(screen.getByTestId('tab-alerts-reports')).toBeInTheDocument()
-    expect(screen.queryByTestId('tab-queue')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tab-feeds')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tab-clients')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tab-system')).not.toBeInTheDocument()
@@ -182,12 +180,6 @@ describe('CommandCenterPage', () => {
     expect(mockCommandCenter.refetchAll).toHaveBeenCalled()
   })
 
-  it('switches to queue tab on click', () => {
-    render(<CommandCenterPage />)
-    fireEvent.click(screen.getByTestId('tab-queue'))
-    expect(screen.getByTestId('queue-tab')).toBeInTheDocument()
-  })
-
   it('switches to settings tab on click', () => {
     render(<CommandCenterPage />)
     fireEvent.click(screen.getByTestId('tab-settings'))
@@ -198,12 +190,6 @@ describe('CommandCenterPage', () => {
     render(<CommandCenterPage />)
     fireEvent.click(screen.getByTestId('tab-clients'))
     expect(screen.getByTestId('clients-tab')).toBeInTheDocument()
-  })
-
-  it('shows queue badge when pending items > 0', () => {
-    render(<CommandCenterPage />)
-    const badge = screen.getByTestId('tab-queue')
-    expect(badge.textContent).toContain('34')
   })
 
   it('shows clients badge when over_limit tenants exist', () => {
