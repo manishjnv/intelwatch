@@ -5,7 +5,7 @@
  */
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Pencil, Trash2, X, Clock, AlertTriangle } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Clock } from 'lucide-react'
 import { useTenantOverrides, type TenantFeatureOverride, type OverrideCreate } from '@/hooks/use-tenant-overrides'
 import { FEATURE_KEYS, FEATURE_LABELS, type FeatureKey } from '@/hooks/use-feature-limits'
 
@@ -144,7 +144,7 @@ interface TenantOverridePanelProps {
   planDefaults?: Record<FeatureKey, { daily: number; monthly: number }>
 }
 
-export function TenantOverridePanel({ tenantId, planDefaults }: TenantOverridePanelProps) {
+export function TenantOverridePanel({ tenantId, planDefaults: _planDefaults }: TenantOverridePanelProps) {
   const { overrides, isLoading, isDemo, createOverride, updateOverride, deleteOverride, isCreating, isUpdating, isDeleting } = useTenantOverrides(tenantId)
   const [editingOverride, setEditingOverride] = useState<TenantFeatureOverride | null | 'new'>(null)
 

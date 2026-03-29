@@ -6,8 +6,8 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  Plus, Pencil, Trash2, Crown, Users, Globe, Star,
-  Check, X, AlertTriangle,
+  Plus, Pencil, Trash2, Users, Globe, Star,
+  X, AlertTriangle,
 } from 'lucide-react'
 import { usePlanBuilder, type PlanDefinition, type PlanDefinitionCreate } from '@/hooks/use-plan-builder'
 import { FEATURE_KEYS, FEATURE_LABELS, type FeatureKey } from '@/hooks/use-feature-limits'
@@ -21,25 +21,11 @@ function fmtINR(amount: number): string {
   return `₹${amount.toLocaleString('en-IN')}`
 }
 
-function fmtLimit(val: number): string {
-  if (val < 0) return '∞'
-  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`
-  if (val >= 1_000) return `${(val / 1_000).toFixed(0)}K`
-  return String(val)
-}
-
 const PLAN_COLORS: Record<string, string> = {
   free: 'border-text-muted/30',
   starter: 'border-sev-low/40',
   teams: 'border-accent/40',
   enterprise: 'border-purple-400/40',
-}
-
-const PLAN_BADGE_COLORS: Record<string, string> = {
-  free: 'bg-bg-elevated text-text-muted',
-  starter: 'bg-sev-low/10 text-sev-low',
-  teams: 'bg-accent/10 text-accent',
-  enterprise: 'bg-purple-400/10 text-purple-400',
 }
 
 // ─── Plan Card ──────────────────────────────────────────────

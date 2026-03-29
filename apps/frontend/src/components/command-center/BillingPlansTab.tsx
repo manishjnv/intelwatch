@@ -18,7 +18,7 @@ import { usePlanLimits, type PlanTierConfig } from '@/hooks/use-plan-limits'
 import {
   CreditCard, Crown, Rss, ShieldCheck, Users, Activity,
   Download, Check, X, ArrowUpCircle, AlertTriangle,
-  RotateCcw, Gift, BarChart3,
+  RotateCcw, Gift,
 } from 'lucide-react'
 import { PlanBuilderPanel } from './PlanBuilderPanel'
 import { PlanComparisonMatrix } from './PlanComparisonMatrix'

@@ -4,10 +4,10 @@
  * Reads from useQuotaStatus() hook — no extra API calls.
  * The 429 interceptor is installed in lib/api.ts via installQuotaInterceptor().
  */
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { AlertTriangle, X, ArrowUpCircle, BarChart3 } from 'lucide-react'
-import { useQuotaStatus, FEATURE_LABELS, type FeatureKey, type QuotaStatus } from '@/hooks/use-feature-limits'
+import { useQuotaStatus, FEATURE_LABELS, type FeatureKey } from '@/hooks/use-feature-limits'
 import { PlanComparisonMatrix } from './command-center/PlanComparisonMatrix'
 import { usePlanBuilder } from '@/hooks/use-plan-builder'
 

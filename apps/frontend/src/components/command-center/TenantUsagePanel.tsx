@@ -10,7 +10,7 @@ import {
   Globe, Workflow, FileText, Sparkles, Rss, Users,
   Archive, Key, Database, Bell, Lock, ArrowUpCircle, Crown,
 } from 'lucide-react'
-import { useFeatureLimits, FEATURE_LABELS, FEATURE_KEYS, type FeatureLimitEntry, type FeatureKey } from '@/hooks/use-feature-limits'
+import { useFeatureLimits, FEATURE_LABELS, type FeatureLimitEntry, type FeatureKey } from '@/hooks/use-feature-limits'
 
 // ─── Icon Map ───────────────────────────────────────────────
 

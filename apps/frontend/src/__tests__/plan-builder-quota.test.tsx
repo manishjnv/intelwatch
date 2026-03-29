@@ -3,8 +3,8 @@
  * @description Tests for Phase C: Plan Builder, PlanComparisonMatrix, Override Panel,
  * Tenant Usage, FeatureGate, QuotaWarningBanner, useFeatureLimits hook, 429 interceptor.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within, waitFor } from '@/test/test-utils'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@/test/test-utils'
 
 // ─── Mock hooks ─────────────────────────────────────────────
 
