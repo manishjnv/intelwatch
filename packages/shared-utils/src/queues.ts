@@ -38,6 +38,8 @@ export const QUEUES = {
   EMAIL_SEND:             'etip-email-send',
   // Billing (I-14)
   BILLING_PLAN_CHANGED:   'etip-billing-plan-changed',
+  // Audit replication (I-15)
+  AUDIT_REPLICATION:      'etip-audit-replication',
 } as const;
 
 /** Union type of all queue name string literals */

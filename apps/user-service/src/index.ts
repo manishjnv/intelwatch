@@ -8,6 +8,7 @@ export {
   type LoginResult,
   type MfaLoginResult,
   type SafeUserResult,
+  type SessionListResult,
 } from './service.js';
 
 export { MfaService } from './mfa-service.js';
@@ -16,6 +17,10 @@ export {
   generateVerificationToken, buildEmailJobPayload,
   verifyEmail, resendVerification, cleanupUnverifiedUsers,
 } from './email-verification-service.js';
+
+export { AuditService, type IntegrityResult, type IntegrityViolation } from './audit-service.js';
+export { buildAuditReplicationJob, replicateAuditLog, getS3Config } from './audit-replication.js';
+export { lookupIP, enrichSessionGeo, initGeoIP, clearGeoCache, type GeoData } from './geoip.js';
 
 export { prisma, disconnectPrisma } from './prisma.js';
 

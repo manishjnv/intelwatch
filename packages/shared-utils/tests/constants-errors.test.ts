@@ -15,8 +15,8 @@ import {
 // ── QUEUES Tests ───────────────────────────────────────────────────
 
 describe('QUEUES', () => {
-  it('has exactly 26 queue names', () => {
-    expect(Object.keys(QUEUES)).toHaveLength(26);
+  it('has exactly 27 queue names', () => {
+    expect(Object.keys(QUEUES)).toHaveLength(27);
   });
 
   it('all queue names start with etip- prefix (RCA #42: no colons)', () => {
@@ -37,7 +37,7 @@ describe('QUEUES', () => {
 
   it('ALL_QUEUE_NAMES matches QUEUES values', () => {
     expect(ALL_QUEUE_NAMES).toEqual(Object.values(QUEUES));
-    expect(ALL_QUEUE_NAMES).toHaveLength(26);
+    expect(ALL_QUEUE_NAMES).toHaveLength(27);
   });
 
   it('queue names are unique', () => {
@@ -49,8 +49,8 @@ describe('QUEUES', () => {
 // ── EVENTS Tests ───────────────────────────────────────────────────
 
 describe('EVENTS', () => {
-  it('has exactly 28 event types', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(28);
+  it('has exactly 30 event types', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(30);
   });
 
   it('all event types use dot-notation', () => {

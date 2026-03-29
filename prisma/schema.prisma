@@ -112,6 +112,9 @@ model Session {
   userAgent        String?   @map("user_agent") @db.Text
   expiresAt        DateTime  @map("expires_at")
   revokedAt        DateTime? @map("revoked_at")
+  geoCountry       String?   @map("geo_country") @db.VarChar(2)
+  geoCity          String?   @map("geo_city") @db.VarChar(100)
+  geoIsp           String?   @map("geo_isp") @db.VarChar(255)
   createdAt        DateTime  @default(now()) @map("created_at")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -153,6 +156,9 @@ model AuditLog {
   changes      Json?
   ipAddress    String?  @map("ip_address") @db.VarChar(45)
   userAgent    String?  @map("user_agent") @db.Text
+  hashChain    String?  @map("hash_chain") @db.VarChar(64)
+  externalRef  String?  @map("external_ref") @db.VarChar(500)
+  replicatedAt DateTime? @map("replicated_at")
   createdAt    DateTime @default(now()) @map("created_at")
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)

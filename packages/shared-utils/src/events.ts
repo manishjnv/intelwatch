@@ -46,6 +46,9 @@ export const EVENTS = {
   SCIM_USER_DEPROVISIONED:   'scim.user.deprovisioned',
   // Billing (I-14)
   BILLING_PLAN_CHANGED:      'billing.plan.changed',
+  // Audit & session security (I-15, I-16)
+  AUDIT_INTEGRITY_VIOLATION: 'audit.integrity.violation',
+  SESSION_SUSPICIOUS_GEO:    'session.suspicious.geo',
 } as const;
 
 /** Union type of all event type string literals */

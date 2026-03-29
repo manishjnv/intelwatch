@@ -18,6 +18,8 @@ import { overrideRoutes } from './routes/overrides.js';
 import { usageRoutes } from './routes/usage.js';
 import { mfaRoutes } from './routes/mfa.js';
 import { billingUpgradeRoutes } from './routes/billing-upgrade.js';
+import { auditRoutes } from './routes/audit.js';
+import { sessionRoutes } from './routes/sessions.js';
 
 /** Determine per-request rate limit tier based on URL + method */
 function resolveRateLimit(req: FastifyRequest): number {
@@ -116,6 +118,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(usageRoutes, { prefix: '/api/v1' });
   await app.register(mfaRoutes, { prefix: '/api/v1/auth' });
   await app.register(billingUpgradeRoutes, { prefix: '/api/v1/billing' });
+  await app.register(auditRoutes, { prefix: '/api/v1' });
+  await app.register(sessionRoutes, { prefix: '/api/v1/auth' });
 
   logger.info('API Gateway configured successfully');
   return app;

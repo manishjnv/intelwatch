@@ -3,13 +3,18 @@ import { loadJwtConfig } from '@etip/shared-auth';
 import { generateSecret as otplibGenerateSecret, generateSync, verifySync } from 'otplib';
 
 // Mock Prisma
+const { _mfaAuditCreate } = vi.hoisted(() => ({
+  _mfaAuditCreate: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
+    Promise.resolve({ id: 'audit-1', ...args.data, createdAt: new Date() })),
+}));
+
 vi.mock('../src/prisma.js', () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    auditLog: { create: vi.fn() },
+    auditLog: { create: _mfaAuditCreate, findFirst: vi.fn() },
     mfaEnforcementPolicy: {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
@@ -17,6 +22,9 @@ vi.mock('../src/prisma.js', () => ({
       update: vi.fn(),
       upsert: vi.fn(),
     },
+    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn({
+      auditLog: { findFirst: vi.fn().mockResolvedValue(null), create: _mfaAuditCreate },
+    })),
   },
   disconnectPrisma: vi.fn(),
 }));

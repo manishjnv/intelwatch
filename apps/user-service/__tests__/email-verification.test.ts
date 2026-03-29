@@ -19,9 +19,12 @@ vi.mock('../src/prisma.js', () => ({
       create: vi.fn(),
     },
     session: { create: vi.fn(), update: vi.fn() },
-    auditLog: { create: vi.fn() },
+    auditLog: { create: vi.fn(), findFirst: vi.fn() },
     mfaEnforcementPolicy: { findFirst: vi.fn() },
     ssoConfig: { findFirst: vi.fn() },
+    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn({
+      auditLog: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) => Promise.resolve({ id: 'audit-1', ...args.data, createdAt: new Date() })) },
+    })),
   },
   disconnectPrisma: vi.fn(),
 }));

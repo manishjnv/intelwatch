@@ -4,6 +4,8 @@ import { sha256 } from '@etip/shared-utils';
 import type { Role } from '@etip/shared-types';
 import * as repo from './repository.js';
 import { generateVerificationToken, buildEmailJobPayload } from './email-verification-service.js';
+import { enrichSessionGeo } from './geoip.js';
+import { buildAuditReplicationJob } from './audit-replication.js';
 
 export interface RegisterInput {
   email: string; password: string; displayName: string;
@@ -41,6 +43,11 @@ export interface MfaLoginResult {
 
 export interface SafeUserResult {
   id: string; email: string; displayName: string; role: string; tenantId: string; avatarUrl: string | null;
+}
+
+export interface SessionListResult {
+  id: string; ipAddress: string | null; userAgent: string | null; createdAt: Date;
+  geoCountry: string | null; geoCity: string | null; geoIsp: string | null; isCurrent: boolean;
 }
 
 export class UserService {
@@ -209,7 +216,36 @@ export class UserService {
     const refreshTokenHash = sha256(refreshToken);
     await repo.updateSessionHash(session.id, refreshTokenHash);
 
+    // Fire-and-forget geo enrichment (I-16)
+    enrichSessionGeo(session.id, userId, tenantId, ipAddress).catch((err) =>
+      console.warn('[geo] enrichment failed:', err),
+    );
+
     return { accessToken, refreshToken, expiresIn: jwtConfig.accessExpirySeconds };
+  }
+
+  /** List active sessions for a user with geo data (I-16) */
+  async listSessions(userId: string, currentSessionId: string): Promise<SessionListResult[]> {
+    const sessions = await repo.findActiveSessionsByUser(userId);
+    return sessions.map((s) => ({
+      ...s, ipAddress: s.ipAddress ?? null, userAgent: s.userAgent ?? null,
+      isCurrent: s.id === currentSessionId,
+    }));
+  }
+
+  /** Terminate (revoke) a specific session — cannot terminate current session */
+  async terminateSession(userId: string, sessionId: string, currentSessionId: string, tenantId: string, ipAddress?: string): Promise<void> {
+    if (sessionId === currentSessionId) throw new AppError(403, 'Cannot terminate current session', 'FORBIDDEN');
+    await repo.revokeSession(sessionId);
+    await repo.createAuditLog({
+      tenantId, userId, action: 'SESSION_TERMINATED',
+      entityType: 'session', entityId: sessionId, ipAddress,
+    });
+  }
+
+  /** Build audit replication job payload for BullMQ (I-15) */
+  getAuditReplicationJob(auditLogId: string, tenantId: string) {
+    return buildAuditReplicationJob(auditLogId, tenantId);
   }
 
   private _toSafeUser(user: { id: string; email: string; displayName: string; role: string; tenantId: string; avatarUrl: string | null; }): SafeUserResult {

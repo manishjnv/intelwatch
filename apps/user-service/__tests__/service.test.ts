@@ -2,13 +2,24 @@ import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { loadJwtConfig, signRefreshToken } from '@etip/shared-auth';
 import { sha256 } from '@etip/shared-utils';
 
+vi.mock('../src/geoip.js', () => ({ enrichSessionGeo: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('../src/audit-replication.js', () => ({ buildAuditReplicationJob: vi.fn().mockReturnValue({ queue: 'etip-audit-replication', data: {} }) }));
+
+const { _auditCreate } = vi.hoisted(() => ({
+  _auditCreate: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
+    Promise.resolve({ id: 'audit-1', ...args.data, createdAt: new Date() })),
+}));
+
 vi.mock('../src/prisma.js', () => ({
   prisma: {
     tenant: { create: vi.fn(), findUnique: vi.fn() },
     user: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
-    session: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
-    auditLog: { create: vi.fn() },
+    session: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
+    auditLog: { create: _auditCreate, findFirst: vi.fn() },
     mfaEnforcementPolicy: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
+    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn({
+      auditLog: { findFirst: vi.fn().mockResolvedValue(null), create: _auditCreate },
+    })),
   },
   disconnectPrisma: vi.fn(),
 }));
