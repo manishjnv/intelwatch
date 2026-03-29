@@ -10,6 +10,7 @@ import { registerMetrics } from '@etip/shared-utils';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { registerErrorAlerting, errorAlertingRoutes } from './plugins/error-alerting.js';
 import { registerQuotaEnforcement } from './plugins/quota-enforcement.js';
+import { registerRls } from './plugins/rls.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
 import { planRoutes } from './routes/plans.js';
@@ -90,6 +91,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   // Error alerting — aggregate 5xx errors, emit QUEUE_ALERT above threshold
   registerErrorAlerting(app, config.TI_REDIS_URL);
+
+  // RLS — set PostgreSQL session vars (app.tenant_id, app.is_super_admin) per request
+  registerRls(app);
 
   // Quota enforcement — per-tenant plan limits, usage counters, X-Quota headers
   await registerQuotaEnforcement(app, config.TI_REDIS_URL);

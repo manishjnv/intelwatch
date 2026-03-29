@@ -56,6 +56,16 @@ export {
   SYSTEM_TENANT_SLUG,
 } from './constants.js';
 
+// ── Row Level Security (RLS) ──────────────────────────────────────
+export {
+  withRls,
+  superAdminRlsContext,
+  rlsSetLocalSql,
+  RLS_PROTECTED_TABLES,
+  RLS_EXCLUDED_TABLES,
+  type RlsContext,
+} from './rls.js';
+
 // ── Service-to-service JWT ─────────────────────────────────────────
 export {
   loadServiceJwtSecret,
