@@ -64,6 +64,8 @@ model User {
   designation    String?      @db.VarChar(50)
   mfaEnabled     Boolean      @default(false) @map("mfa_enabled")
   mfaSecret      String?      @map("mfa_secret") @db.VarChar(255)
+  mfaBackupCodes String[]     @default([]) @map("mfa_backup_codes")
+  mfaVerifiedAt  DateTime?    @map("mfa_verified_at")
   lastLoginAt    DateTime?    @map("last_login_at")
   loginCount     Int          @default(0) @map("login_count")
   active         Boolean      @default(true)
@@ -152,6 +154,16 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model MfaEnforcementPolicy {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String?  @unique @map("tenant_id") @db.Uuid
+  scope      String   @db.VarChar(20) // "platform" or "org"
+  enforced   Boolean  @default(false)
+  enforcedBy String   @map("enforced_by") @db.VarChar(255)
+  enforcedAt DateTime @default(now()) @map("enforced_at")
+  @@map("mfa_enforcement_policies")
 }
 
 // ─── Phase 2: Data Pipeline ───────────────────────────────────────────────────

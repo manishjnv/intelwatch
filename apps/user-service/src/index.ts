@@ -6,9 +6,13 @@ export {
   type AuthTokens,
   type RegisterResult,
   type LoginResult,
+  type MfaLoginResult,
   type SafeUserResult,
 } from './service.js';
+
+export { MfaService } from './mfa-service.js';
 
 export { prisma, disconnectPrisma } from './prisma.js';
 
 export * as userRepo from './repository.js';
+export * as mfaRepo from './mfa-repository.js';

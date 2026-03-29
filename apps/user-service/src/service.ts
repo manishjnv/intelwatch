@@ -26,6 +26,15 @@ export interface RegisterResult extends AuthTokens {
 
 export interface LoginResult extends AuthTokens { user: SafeUserResult; }
 
+/** Returned when MFA is required or enforcement requires MFA setup */
+export interface MfaLoginResult {
+  mfaRequired?: boolean;
+  mfaSetupRequired?: boolean;
+  mfaToken?: string;
+  setupToken?: string;
+  message: string;
+}
+
 export interface SafeUserResult {
   id: string; email: string; displayName: string; role: string; tenantId: string; avatarUrl: string | null;
 }
@@ -61,7 +70,7 @@ export class UserService {
     };
   }
 
-  async login(input: LoginInput): Promise<LoginResult> {
+  async login(input: LoginInput): Promise<LoginResult | MfaLoginResult> {
     const user = await repo.findUserByEmail(input.email);
     if (!user) throw new AppError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
     if (!user.active) throw new AppError(401, 'Account is deactivated', 'ACCOUNT_INACTIVE');
@@ -73,11 +82,51 @@ export class UserService {
 
     await repo.updateUserLoginStats(user.id);
 
+    // Check MFA requirement
+    const { MfaService } = await import('./mfa-service.js');
+    const mfaService = new MfaService();
+    const mfaCheck = await mfaService.checkMfaRequired(user.id, user.tenantId);
+
+    if (mfaCheck.mfaRequired) {
+      // MFA enabled — return challenge token, no session yet
+      return {
+        mfaRequired: true,
+        mfaToken: mfaCheck.mfaToken,
+        message: 'MFA verification required',
+      };
+    }
+
+    if (mfaCheck.mfaSetupRequired) {
+      // Enforcement requires MFA setup first
+      return {
+        mfaSetupRequired: true,
+        setupToken: mfaCheck.setupToken,
+        message: 'MFA setup required by organization policy',
+      };
+    }
+
+    // No MFA — normal login
     const tokens = await this._createSession(user.id, user.tenantId, input.ipAddress, input.userAgent);
 
     await repo.createAuditLog({
       tenantId: user.tenantId, userId: user.id, action: 'USER_LOGIN',
       entityType: 'session', ipAddress: input.ipAddress, userAgent: input.userAgent,
+    });
+
+    return { ...tokens, user: this._toSafeUser(user) };
+  }
+
+  /** Complete login after successful MFA verification — creates session + returns tokens */
+  async completeLoginAfterMfa(userId: string, tenantId: string, ipAddress: string, userAgent: string): Promise<LoginResult> {
+    const user = await repo.findUserById(userId);
+    if (!user) throw new AppError(404, 'User not found', 'NOT_FOUND');
+
+    const tokens = await this._createSession(userId, tenantId, ipAddress, userAgent);
+
+    await repo.createAuditLog({
+      tenantId, userId, action: 'USER_LOGIN',
+      entityType: 'session', ipAddress, userAgent,
+      changes: { mfaVerified: true },
     });
 
     return { ...tokens, user: this._toSafeUser(user) };

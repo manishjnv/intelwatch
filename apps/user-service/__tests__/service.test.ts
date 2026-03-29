@@ -8,6 +8,7 @@ vi.mock('../src/prisma.js', () => ({
     user: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
     session: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     auditLog: { create: vi.fn() },
+    mfaEnforcementPolicy: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
   },
   disconnectPrisma: vi.fn(),
 }));
@@ -32,7 +33,8 @@ const mockUser = {
   id: '550e8400-e29b-41d4-a716-446655440020', tenantId: mockTenant.id,
   email: 'analyst@acme.com', displayName: 'Jane Analyst', avatarUrl: null,
   role: 'tenant_admin' as const, authProvider: 'email' as const, authProviderId: null,
-  passwordHash: '', mfaEnabled: false, mfaSecret: null, lastLoginAt: null, loginCount: 0,
+  passwordHash: '', designation: null, mfaEnabled: false, mfaSecret: null,
+  mfaBackupCodes: [], mfaVerifiedAt: null, lastLoginAt: null, loginCount: 0,
   active: true, createdAt: new Date(), updatedAt: new Date(), tenant: mockTenant,
 };
 

@@ -43,7 +43,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/admin-service:
     dependencies:
@@ -92,7 +92,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/ai-enrichment:
     dependencies:
@@ -156,7 +156,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.1.0
-        version: 2.1.9(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/alerting-service:
     dependencies:
@@ -205,7 +205,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/analytics-service:
     dependencies:
@@ -251,7 +251,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/api-gateway:
     dependencies:
@@ -303,7 +303,7 @@ importers:
         version: 20.19.37
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@20.19.37)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       prisma:
         specifier: ^5.18.0
         version: 5.22.0
@@ -318,7 +318,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/billing-service:
     dependencies:
@@ -370,7 +370,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/caching-service:
     dependencies:
@@ -434,7 +434,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/correlation-engine:
     dependencies:
@@ -483,7 +483,7 @@ importers:
         version: 22.19.15
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       tsx:
         specifier: ^4.16.0
         version: 4.21.0
@@ -492,7 +492,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/customization:
     dependencies:
@@ -541,7 +541,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/drp-service:
     dependencies:
@@ -587,7 +587,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/elasticsearch-indexing-service:
     dependencies:
@@ -639,7 +639,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/frontend:
     dependencies:
@@ -715,7 +715,7 @@ importers:
         version: 10.4.27(postcss@8.5.8)
       jsdom:
         specifier: ^29.0.1
-        version: 29.0.1
+        version: 29.0.1(@noble/hashes@2.0.1)
       postcss:
         specifier: ^8.4.0
         version: 8.5.8
@@ -730,7 +730,7 @@ importers:
         version: 5.4.21(@types/node@24.12.0)
       vitest:
         specifier: ^2.1.9
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/hunting-service:
     dependencies:
@@ -779,7 +779,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/ingestion:
     dependencies:
@@ -852,7 +852,7 @@ importers:
         version: 3.0.11
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       tsx:
         specifier: ^4.16.0
         version: 4.21.0
@@ -861,7 +861,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/integration-service:
     dependencies:
@@ -910,7 +910,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/ioc-intelligence:
     dependencies:
@@ -953,7 +953,7 @@ importers:
         version: 22.19.15
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       tsx:
         specifier: ^4.16.0
         version: 4.21.0
@@ -962,7 +962,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/malware-intel:
     dependencies:
@@ -1005,7 +1005,7 @@ importers:
         version: 22.19.15
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       tsx:
         specifier: ^4.16.0
         version: 4.21.0
@@ -1014,7 +1014,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/normalization:
     dependencies:
@@ -1072,7 +1072,7 @@ importers:
         version: 3.0.11
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       tsx:
         specifier: ^4.16.0
         version: 4.21.0
@@ -1081,7 +1081,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/onboarding:
     dependencies:
@@ -1130,7 +1130,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/reporting-service:
     dependencies:
@@ -1185,7 +1185,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/threat-actor-intel:
     dependencies:
@@ -1228,7 +1228,7 @@ importers:
         version: 22.19.15
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       tsx:
         specifier: ^4.16.0
         version: 4.21.0
@@ -1237,7 +1237,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/threat-graph:
     dependencies:
@@ -1286,7 +1286,7 @@ importers:
         version: 22.19.15
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       tsx:
         specifier: ^4.16.0
         version: 4.21.0
@@ -1295,7 +1295,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/user-management-service:
     dependencies:
@@ -1341,7 +1341,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/user-service:
     dependencies:
@@ -1357,13 +1357,22 @@ importers:
       '@prisma/client':
         specifier: ^5.18.0
         version: 5.22.0(prisma@5.22.0)
+      bcryptjs:
+        specifier: ^2.4.3
+        version: 2.4.3
+      otplib:
+        specifier: ^13.4.0
+        version: 13.4.0
       zod:
         specifier: ^3.23.0
         version: 3.25.76
     devDependencies:
+      '@types/bcryptjs':
+        specifier: ^2.4.0
+        version: 2.4.6
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       prisma:
         specifier: ^5.18.0
         version: 5.22.0
@@ -1375,7 +1384,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   apps/vulnerability-intel:
     dependencies:
@@ -1418,7 +1427,7 @@ importers:
         version: 22.19.15
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       tsx:
         specifier: ^4.16.0
         version: 4.21.0
@@ -1427,7 +1436,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   packages/shared-audit:
     dependencies:
@@ -1440,7 +1449,7 @@ importers:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -1449,7 +1458,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   packages/shared-auth:
     dependencies:
@@ -1477,7 +1486,7 @@ importers:
         version: 9.0.10
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -1486,7 +1495,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   packages/shared-cache:
     dependencies:
@@ -1496,7 +1505,7 @@ importers:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -1505,7 +1514,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   packages/shared-enrichment:
     dependencies:
@@ -1518,7 +1527,7 @@ importers:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -1527,7 +1536,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   packages/shared-normalization:
     dependencies:
@@ -1540,7 +1549,7 @@ importers:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -1549,7 +1558,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   packages/shared-persistence:
     dependencies:
@@ -1568,7 +1577,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1)
+        version: 3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   packages/shared-types:
     dependencies:
@@ -1578,7 +1587,7 @@ importers:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -1587,7 +1596,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
   packages/shared-ui:
     dependencies:
@@ -1634,7 +1643,7 @@ importers:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^2.0.0
-        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))
+        version: 2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -1643,7 +1652,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+        version: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
 
 packages:
 
@@ -2294,6 +2303,10 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@noble/hashes@2.0.1':
+    resolution: {integrity: sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==}
+    engines: {node: '>= 20.19.0'}
+
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -2319,6 +2332,24 @@ packages:
   '@opentelemetry/semantic-conventions@1.40.0':
     resolution: {integrity: sha512-cifvXDhcqMwwTlTK04GBNeIe7yyo28Mfby85QXFe1Yk8nmi36Ab/5UQwptOx84SsoGNRg+EVSjwzfSZMy6pmlw==}
     engines: {node: '>=14'}
+
+  '@otplib/core@13.4.0':
+    resolution: {integrity: sha512-JqOGcvZQi2wIkEQo8f3/iAjstavpXy6gouIDMHygjNuH6Q0FjbHOiXMdcE94RwfgDNMABhzwUmvaPsxvgm9NYw==}
+
+  '@otplib/hotp@13.4.0':
+    resolution: {integrity: sha512-MJjE0x06mn2ptymz5qZmQveb+vWFuaIftqE0b5/TZZqUOK7l97cV8lRTmid5BpAQMwJDNLW6RnYxGeCRiNdekw==}
+
+  '@otplib/plugin-base32-scure@13.4.0':
+    resolution: {integrity: sha512-/t9YWJmMbB8bF5z8mXrBZc2FXBe8B/3hG5FhWr9K8cFwFhyxScbPysmZe8s1UTzSA6N+s8Uv8aIfCtVXPNjJWw==}
+
+  '@otplib/plugin-crypto-noble@13.4.0':
+    resolution: {integrity: sha512-KrvE4m7Zv+TT1944HzgqFJWJpKb6AyoxDbvhPStmBqdMlv5Gekb80d66cuFRL08kkPgJ5gXUSb5SFpYeB+bACg==}
+
+  '@otplib/totp@13.4.0':
+    resolution: {integrity: sha512-dK+vl0f0ekzf6mCENRI9AKS2NJUC7OjI3+X8e7QSnhQ2WM7I+i4PGpb3QxKi5hxjTtwVuoZwXR2CFtXdcRtNdQ==}
+
+  '@otplib/uri@13.4.0':
+    resolution: {integrity: sha512-x1ozBa5bPbdZCrrTL/HK21qchiK7jYElTu+0ft22abeEhiLYgH1+SIULvOcVk3CK8YwF4kdcidvkq4ciejucJA==}
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -2482,6 +2513,9 @@ packages:
     resolution: {integrity: sha512-2HRCml6OztYXyJXAvdDXPKcawukWY2GpR5/nxKp4iBgiO3wcoEGkAaqctIbZcNB6KlUQBIqt8VYkNSj2397EfA==}
     cpu: [x64]
     os: [win32]
+
+  '@scure/base@2.0.0':
+    resolution: {integrity: sha512-3E1kpuZginKkek01ovG8krQ0Z44E3DHPjc5S2rjJw9lZn3KSQOs8S7wqikF/AH7iRanHypj85uGyxk0XAyC37w==}
 
   '@swc/helpers@0.5.19':
     resolution: {integrity: sha512-QamiFeIK3txNjgUTNppE6MiG3p7TdninpZu0E0PbqVh1a9FNLT2FRhisaa4NcaX52XVhA5l7Pk58Ft7Sqi/2sA==}
@@ -4099,6 +4133,9 @@ packages:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
 
+  otplib@13.4.0:
+    resolution: {integrity: sha512-RUcYcRMCgRWhUE/XabRppXpUwCwaWBNHe5iPXhdvP8wwDGpGpsIf/kxX/ec3zFsOaM1Oq8lEhUqDwk6W7DHkwg==}
+
   p-limit@3.1.0:
     resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
     engines: {node: '>=10'}
@@ -5350,7 +5387,9 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@exodus/bytes@1.15.0': {}
+  '@exodus/bytes@1.15.0(@noble/hashes@2.0.1)':
+    optionalDependencies:
+      '@noble/hashes': 2.0.1
 
   '@fastify/accept-negotiator@1.1.0': {}
 
@@ -5501,6 +5540,8 @@ snapshots:
   '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
     optional: true
 
+  '@noble/hashes@2.0.1': {}
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -5521,6 +5562,33 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.40.0
 
   '@opentelemetry/semantic-conventions@1.40.0': {}
+
+  '@otplib/core@13.4.0': {}
+
+  '@otplib/hotp@13.4.0':
+    dependencies:
+      '@otplib/core': 13.4.0
+      '@otplib/uri': 13.4.0
+
+  '@otplib/plugin-base32-scure@13.4.0':
+    dependencies:
+      '@otplib/core': 13.4.0
+      '@scure/base': 2.0.0
+
+  '@otplib/plugin-crypto-noble@13.4.0':
+    dependencies:
+      '@noble/hashes': 2.0.1
+      '@otplib/core': 13.4.0
+
+  '@otplib/totp@13.4.0':
+    dependencies:
+      '@otplib/core': 13.4.0
+      '@otplib/hotp': 13.4.0
+      '@otplib/uri': 13.4.0
+
+  '@otplib/uri@13.4.0':
+    dependencies:
+      '@otplib/core': 13.4.0
 
   '@pinojs/redact@0.4.0': {}
 
@@ -5630,6 +5698,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.59.0':
     optional: true
+
+  '@scure/base@2.0.0': {}
 
   '@swc/helpers@0.5.19':
     dependencies:
@@ -5979,7 +6049,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@2.1.9(vitest@2.1.9(@types/node@20.19.37)(jsdom@29.0.1))':
+  '@vitest/coverage-v8@2.1.9(vitest@2.1.9(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1)))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -5993,11 +6063,11 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.2
       tinyrainbow: 1.2.0
-      vitest: 2.1.9(@types/node@20.19.37)(jsdom@29.0.1)
+      vitest: 2.1.9(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1))
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1))':
+  '@vitest/coverage-v8@2.1.9(vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -6011,11 +6081,11 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.2
       tinyrainbow: 1.2.0
-      vitest: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1)
+      vitest: 2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1))
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1))':
+  '@vitest/coverage-v8@2.1.9(vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -6029,7 +6099,7 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.2
       tinyrainbow: 1.2.0
-      vitest: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1)
+      vitest: 2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -6055,6 +6125,14 @@ snapshots:
       magic-string: 0.30.21
     optionalDependencies:
       vite: 5.4.21(@types/node@20.19.37)
+
+  '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@22.19.15))':
+    dependencies:
+      '@vitest/spy': 2.1.9
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 5.4.21(@types/node@22.19.15)
 
   '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@24.12.0))':
     dependencies:
@@ -6565,10 +6643,10 @@ snapshots:
       d3-transition: 3.0.1(d3-selection@3.0.0)
       d3-zoom: 3.0.0
 
-  data-urls@7.0.0:
+  data-urls@7.0.0(@noble/hashes@2.0.1):
     dependencies:
       whatwg-mimetype: 5.0.0
-      whatwg-url: 16.0.1
+      whatwg-url: 16.0.1(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - '@noble/hashes'
 
@@ -7030,9 +7108,9 @@ snapshots:
 
   hpagent@1.2.0: {}
 
-  html-encoding-sniffer@6.0.0:
+  html-encoding-sniffer@6.0.0(@noble/hashes@2.0.1):
     dependencies:
-      '@exodus/bytes': 1.15.0
+      '@exodus/bytes': 1.15.0(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - '@noble/hashes'
 
@@ -7166,17 +7244,17 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
-  jsdom@29.0.1:
+  jsdom@29.0.1(@noble/hashes@2.0.1):
     dependencies:
       '@asamuzakjp/css-color': 5.0.1
       '@asamuzakjp/dom-selector': 7.0.4
       '@bramus/specificity': 2.4.2
       '@csstools/css-syntax-patches-for-csstree': 1.1.1(css-tree@3.2.1)
-      '@exodus/bytes': 1.15.0
+      '@exodus/bytes': 1.15.0(@noble/hashes@2.0.1)
       css-tree: 3.2.1
-      data-urls: 7.0.0
+      data-urls: 7.0.0(@noble/hashes@2.0.1)
       decimal.js: 10.6.0
-      html-encoding-sniffer: 6.0.0
+      html-encoding-sniffer: 6.0.0(@noble/hashes@2.0.1)
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.2.7
       parse5: 8.0.0
@@ -7187,7 +7265,7 @@ snapshots:
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
-      whatwg-url: 16.0.1
+      whatwg-url: 16.0.1(@noble/hashes@2.0.1)
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - '@noble/hashes'
@@ -7465,6 +7543,15 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
       word-wrap: 1.2.5
+
+  otplib@13.4.0:
+    dependencies:
+      '@otplib/core': 13.4.0
+      '@otplib/hotp': 13.4.0
+      '@otplib/plugin-base32-scure': 13.4.0
+      '@otplib/plugin-crypto-noble': 13.4.0
+      '@otplib/totp': 13.4.0
+      '@otplib/uri': 13.4.0
 
   p-limit@3.1.0:
     dependencies:
@@ -8194,7 +8281,7 @@ snapshots:
       '@types/node': 24.12.0
       fsevents: 2.3.3
 
-  vitest@2.1.9(@types/node@20.19.37)(jsdom@29.0.1):
+  vitest@2.1.9(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1)):
     dependencies:
       '@vitest/expect': 2.1.9
       '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@20.19.37))
@@ -8218,7 +8305,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 20.19.37
-      jsdom: 29.0.1
+      jsdom: 29.0.1(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - less
       - lightningcss
@@ -8230,10 +8317,10 @@ snapshots:
       - supports-color
       - terser
 
-  vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1):
+  vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)):
     dependencies:
       '@vitest/expect': 2.1.9
-      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@20.19.37))
+      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@22.19.15))
       '@vitest/pretty-format': 2.1.9
       '@vitest/runner': 2.1.9
       '@vitest/snapshot': 2.1.9
@@ -8254,7 +8341,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.19.15
-      jsdom: 29.0.1
+      jsdom: 29.0.1(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - less
       - lightningcss
@@ -8266,7 +8353,7 @@ snapshots:
       - supports-color
       - terser
 
-  vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1):
+  vitest@2.1.9(@types/node@24.12.0)(jsdom@29.0.1(@noble/hashes@2.0.1)):
     dependencies:
       '@vitest/expect': 2.1.9
       '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@24.12.0))
@@ -8290,7 +8377,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.12.0
-      jsdom: 29.0.1
+      jsdom: 29.0.1(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - less
       - lightningcss
@@ -8302,7 +8389,7 @@ snapshots:
       - supports-color
       - terser
 
-  vitest@3.2.4(@types/node@20.19.37)(jsdom@29.0.1):
+  vitest@3.2.4(@types/node@20.19.37)(jsdom@29.0.1(@noble/hashes@2.0.1)):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.4
@@ -8329,7 +8416,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 20.19.37
-      jsdom: 29.0.1
+      jsdom: 29.0.1(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - less
       - lightningcss
@@ -8353,9 +8440,9 @@ snapshots:
 
   whatwg-mimetype@5.0.0: {}
 
-  whatwg-url@16.0.1:
+  whatwg-url@16.0.1(@noble/hashes@2.0.1):
     dependencies:
-      '@exodus/bytes': 1.15.0
+      '@exodus/bytes': 1.15.0(@noble/hashes@2.0.1)
       tr46: 6.0.0
       webidl-conversions: 8.0.1
     transitivePeerDependencies:

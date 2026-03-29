@@ -66,6 +66,16 @@ export {
   type RlsContext,
 } from './rls.js';
 
+// ── MFA challenge tokens ──────────────────────────────────────────
+export {
+  signMfaChallengeToken,
+  verifyMfaChallengeToken,
+  signMfaSetupToken,
+  verifyMfaSetupToken,
+  type MfaChallengePayload,
+  type MfaSetupTokenPayload,
+} from './mfa.js';
+
 // ── Service-to-service JWT ─────────────────────────────────────────
 export {
   loadServiceJwtSecret,

@@ -59,6 +59,8 @@ export const UserSchema = z.object({
   passwordHash: z.string().optional(),
   mfaEnabled: z.boolean().default(false),
   mfaSecret: z.string().optional(),
+  mfaBackupCodes: z.array(z.string()).default([]),
+  mfaVerifiedAt: z.string().datetime().optional(),
   lastLoginAt: z.string().datetime().optional(),
   loginCount: z.number().int().min(0).default(0),
   active: z.boolean().default(true),
@@ -71,6 +73,7 @@ export type User = z.infer<typeof UserSchema>;
 export const SafeUserSchema = UserSchema.omit({
   passwordHash: true,
   mfaSecret: true,
+  mfaBackupCodes: true,
 });
 export type SafeUser = z.infer<typeof SafeUserSchema>;
 
