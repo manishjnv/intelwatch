@@ -34,6 +34,8 @@ export const QUEUES = {
   FEED_FETCH_GLOBAL_REST: 'etip-feed-fetch-global-rest',
   NORMALIZE_GLOBAL:       'etip-normalize-global',
   ENRICH_GLOBAL:          'etip-enrich-global',
+  // User lifecycle (I-13)
+  EMAIL_SEND:             'etip-email-send',
 } as const;
 
 /** Union type of all queue name string literals */

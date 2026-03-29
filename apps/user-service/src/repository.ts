@@ -23,12 +23,16 @@ export async function createUser(data: {
   tenantId: string; email: string; displayName: string; passwordHash?: string;
   role?: 'super_admin' | 'tenant_admin' | 'analyst';
   authProvider?: 'email' | 'google' | 'saml' | 'oidc'; authProviderId?: string;
+  emailVerified?: boolean; active?: boolean; designation?: string;
 }) {
   return prisma.user.create({
     data: {
       tenantId: data.tenantId, email: data.email, displayName: data.displayName,
       passwordHash: data.passwordHash, role: data.role ?? 'analyst',
       authProvider: data.authProvider ?? 'email', authProviderId: data.authProviderId,
+      emailVerified: data.emailVerified ?? false,
+      active: data.active ?? true,
+      designation: data.designation,
     },
   });
 }
@@ -37,8 +41,21 @@ export async function findUserByEmail(email: string) {
   return prisma.user.findFirst({ where: { email, active: true }, include: { tenant: true } });
 }
 
+/** Find user by email including inactive/unverified (for login email-verified check) */
+export async function findUserByEmailAnyStatus(email: string) {
+  return prisma.user.findFirst({ where: { email }, include: { tenant: true } });
+}
+
 export async function findUserByEmailAndTenant(email: string, tenantId: string) {
-  return prisma.user.findFirst({ where: { email, tenantId, active: true }, include: { tenant: true } });
+  return prisma.user.findFirst({ where: { email, tenantId }, include: { tenant: true } });
+}
+
+/** Update SSO-synced fields (role, designation) on login */
+export async function updateUserSsoFields(userId: string, role: string, designation: string | null) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { role: role as 'super_admin' | 'tenant_admin' | 'analyst', designation },
+  });
 }
 
 export async function findUserById(id: string) {

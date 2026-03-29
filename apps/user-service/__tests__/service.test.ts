@@ -33,7 +33,9 @@ const mockUser = {
   id: '550e8400-e29b-41d4-a716-446655440020', tenantId: mockTenant.id,
   email: 'analyst@acme.com', displayName: 'Jane Analyst', avatarUrl: null,
   role: 'tenant_admin' as const, authProvider: 'email' as const, authProviderId: null,
-  passwordHash: '', designation: null, mfaEnabled: false, mfaSecret: null,
+  passwordHash: '', designation: null, emailVerified: true,
+  emailVerifyToken: null, emailVerifyExpires: null,
+  mfaEnabled: false, mfaSecret: null,
   mfaBackupCodes: [], mfaVerifiedAt: null, lastLoginAt: null, loginCount: 0,
   active: true, createdAt: new Date(), updatedAt: new Date(), tenant: mockTenant,
 };
@@ -65,14 +67,12 @@ describe('UserService', () => {
   // ── Matrix #83: User Creation ──────────────────────────────────────
 
   describe('register (#83)', () => {
-    it('creates tenant, user, session, and returns tokens', async () => {
+    it('creates tenant, user (unverified), and returns verification job payload', async () => {
       vi.mocked(prisma.tenant.findUnique).mockResolvedValue(null);
       vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.tenant.create).mockResolvedValue(mockTenant as never);
-      vi.mocked(prisma.user.create).mockResolvedValue(mockUser as never);
-      vi.mocked(prisma.session.create).mockResolvedValue(mockSession as never);
-      vi.mocked(prisma.session.update).mockResolvedValue(mockSession as never);
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+      vi.mocked(prisma.user.create).mockResolvedValue({ ...mockUser, active: false, emailVerified: false } as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(mockUser as never);
       vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
 
       const result = await service.register({
@@ -80,15 +80,16 @@ describe('UserService', () => {
         tenantName: 'ACME Corp', tenantSlug: 'acme-corp', ipAddress: '127.0.0.1', userAgent: 'test-agent',
       });
 
-      expect(result.accessToken).toBeTruthy();
-      expect(result.refreshToken).toBeTruthy();
-      expect(result.expiresIn).toBe(900);
+      expect(result.message).toContain('verify your email');
+      expect(result.emailJobPayload).toBeDefined();
+      expect(result.emailJobPayload!.data.type).toBe('email_verification');
       expect(result.user.email).toBe('analyst@acme.com');
       expect(result.user.role).toBe('tenant_admin');
       expect(result.tenant.slug).toBe('acme-corp');
       expect(prisma.tenant.create).toHaveBeenCalledOnce();
-      expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ role: 'tenant_admin' }) }));
-      expect(prisma.session.create).toHaveBeenCalledOnce();
+      expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ role: 'tenant_admin', active: false, emailVerified: false }),
+      }));
       expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'USER_REGISTERED' }) }));
     });
 
@@ -149,18 +150,18 @@ describe('UserService', () => {
       catch (err: unknown) { const e = err as { statusCode: number; code: string }; expect(e.statusCode).toBe(401); expect(e.code).toBe('INVALID_CREDENTIALS'); }
     });
 
-    it('rejects inactive user', async () => {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, active: false } as never);
+    it('rejects inactive user (email verified but account deactivated)', async () => {
+      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, active: false, emailVerified: true } as never);
       await expect(service.login({ email: 'analyst@acme.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Account is deactivated');
     });
 
     it('rejects suspended tenant', async () => {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, tenant: { ...mockTenant, active: false } } as never);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, emailVerified: true, tenant: { ...mockTenant, active: false } } as never);
       await expect(service.login({ email: 'analyst@acme.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Organization is suspended');
     });
 
     it('rejects user without password hash (SSO-only)', async () => {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, passwordHash: null } as never);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, emailVerified: true, passwordHash: null } as never);
       await expect(service.login({ email: 'analyst@acme.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Password login not available');
     });
   });
@@ -338,15 +339,21 @@ describe('UserService', () => {
   // ── Matrix #94: Internal Error Handling ────────────────────────────
 
   describe('error handling (#94)', () => {
-    it('#94: _createSession throws 500 if user not found after creation', async () => {
-      vi.mocked(prisma.tenant.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.tenant.create).mockResolvedValue(mockTenant as never);
-      vi.mocked(prisma.user.create).mockResolvedValue(mockUser as never);
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    it('#94: _createSession throws 500 if user not found during login session creation', async () => {
+      const { hashPassword } = await import('@etip/shared-auth');
+      const hash = await hashPassword('SecurePassword123!');
+      const userWithHash = { ...mockUser, passwordHash: hash, emailVerified: true };
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(userWithHash as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(userWithHash as never);
+      // MFA check: findUserForMfa returns the user (MFA not enabled → no MFA required)
+      // Then _createSession: findUserById returns null → 500
+      vi.mocked(prisma.user.findUnique)
+        .mockResolvedValueOnce({ id: mockUser.id, email: mockUser.email, tenantId: mockUser.tenantId, mfaEnabled: false, mfaSecret: null, mfaBackupCodes: [], mfaVerifiedAt: null } as never)
+        .mockResolvedValueOnce(null as never); // _createSession lookup
+      vi.mocked(prisma.mfaEnforcementPolicy.findFirst).mockResolvedValue(null as never);
 
       try {
-        await service.register({ email: 'test@test.com', password: 'SecurePassword123!', displayName: 'Test', tenantName: 'Test', tenantSlug: 'test-slug', ipAddress: '127.0.0.1', userAgent: 'test' });
+        await service.login({ email: 'analyst@acme.com', password: 'SecurePassword123!', ipAddress: '127.0.0.1', userAgent: 'test' });
         expect.fail('Should have thrown');
       } catch (err: unknown) {
         const e = err as { statusCode: number; code: string };

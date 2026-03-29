@@ -3,6 +3,7 @@ import { hashPassword, verifyPassword, signAccessToken, signRefreshToken, verify
 import { sha256 } from '@etip/shared-utils';
 import type { Role } from '@etip/shared-types';
 import * as repo from './repository.js';
+import { generateVerificationToken, buildEmailJobPayload } from './email-verification-service.js';
 
 export interface RegisterInput {
   email: string; password: string; displayName: string;
@@ -19,9 +20,12 @@ export interface RefreshInput {
 
 export interface AuthTokens { accessToken: string; refreshToken: string; expiresIn: number; }
 
-export interface RegisterResult extends AuthTokens {
+export interface RegisterResult {
   user: SafeUserResult;
   tenant: { id: string; name: string; slug: string; plan: string };
+  message: string;
+  /** Email verification job payload — caller should queue this to BullMQ */
+  emailJobPayload?: { queue: string; data: { type: string; userId: string; email: string; token: string; tenantName: string } };
 }
 
 export interface LoginResult extends AuthTokens { user: SafeUserResult; }
@@ -44,7 +48,7 @@ export class UserService {
     const existingTenant = await repo.findTenantBySlug(input.tenantSlug);
     if (existingTenant) throw new AppError(409, 'Tenant slug already taken', 'CONFLICT');
 
-    const existingUser = await repo.findUserByEmail(input.email);
+    const existingUser = await repo.findUserByEmailAnyStatus(input.email);
     if (existingUser) throw new AppError(409, 'Email already registered', 'CONFLICT');
 
     const passwordHash = await hashPassword(input.password);
@@ -54,9 +58,12 @@ export class UserService {
     const user = await repo.createUser({
       tenantId: tenant.id, email: input.email, displayName: input.displayName,
       passwordHash, role: 'tenant_admin', authProvider: 'email',
+      active: false, emailVerified: false,
     });
 
-    const tokens = await this._createSession(user.id, tenant.id, input.ipAddress, input.userAgent);
+    // Generate verification token and build email job payload
+    const token = await generateVerificationToken(user.id);
+    const emailJobPayload = buildEmailJobPayload(user.id, user.email, token, tenant.name);
 
     await repo.createAuditLog({
       tenantId: tenant.id, userId: user.id, action: 'USER_REGISTERED',
@@ -64,15 +71,26 @@ export class UserService {
     });
 
     return {
-      ...tokens,
       user: this._toSafeUser(user),
       tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug, plan: tenant.plan },
+      message: 'Account created. Please verify your email within 24 hours.',
+      emailJobPayload,
     };
   }
 
   async login(input: LoginInput): Promise<LoginResult | MfaLoginResult> {
-    const user = await repo.findUserByEmail(input.email);
+    const user = await repo.findUserByEmailAnyStatus(input.email);
     if (!user) throw new AppError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
+
+    // Email verification guard — before active/password checks
+    if (!user.emailVerified) {
+      throw new AppError(403,
+        'Please verify your email before logging in. Check your inbox or request a new verification link.',
+        'EMAIL_NOT_VERIFIED',
+        { resendUrl: '/api/v1/auth/resend-verification' }
+      );
+    }
+
     if (!user.active) throw new AppError(401, 'Account is deactivated', 'ACCOUNT_INACTIVE');
     if (!user.tenant.active) throw new AppError(401, 'Organization is suspended', 'TENANT_INACTIVE');
     if (!user.passwordHash) throw new AppError(401, 'Password login not available for this account', 'INVALID_CREDENTIALS');
