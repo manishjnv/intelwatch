@@ -1,6 +1,6 @@
 # User Management Service
 
-**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 210
+**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 210 (+ 73 in user-service for SSO/MFA/email-verification)
 
 ## What It Does
 Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, and SOC2 audit logging. All in-memory (DECISION-013 pattern).

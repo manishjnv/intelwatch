@@ -1,49 +1,53 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-29
-**Session:** 114
-**Session Summary:** Quota Enforcement S3+S4 — Plan definitions (3 Prisma models, 10 CRUD endpoints, seed script) + quota enforcement middleware (Redis Lua counters, plan cache, 5 usage endpoints, X-Quota headers, threshold events). 18 new tests. Pushed to master.
+**Session:** 116
+**Session Summary:** SSO Group-to-Role Mapping (I-11) + Email Verification (I-13) — SsoConfig Prisma model with SAML/OIDC, JIT provisioning, domain validation; email verification flow with token gen/verify/resend/cleanup, login guard. 22 new tests (73 user-service total). Pushed to master.
 
 ## ✅ Changes Made
-- Commit 2a9b879: feat: quota enforcement middleware — Redis counters, plan cache, usage API (S3+S4)
-- Commit 39eaa35: feat: role-based session TTL, super admin isolation, API key tier gate (I-07, I-08, I-09)
+- Commit ecb327f: feat: SSO group-to-role mapping + email verification flow (I-11, I-13)
 
 ## 📁 Files / Documents Affected
 
-### New Files (7)
+### New Files (6)
 | File | Purpose |
 |------|---------|
-| apps/api-gateway/src/config/feature-routes.ts | Route-to-feature mapping (14 patterns → featureKey, exempt routes) |
-| apps/api-gateway/src/quota/plan-cache.ts | Redis-backed plan cache (5min TTL, override merge, invalidation) |
-| apps/api-gateway/src/quota/usage-counter.ts | Redis Lua atomic check-and-increment (4 period counters) |
-| apps/api-gateway/src/plugins/quota-enforcement.ts | Fastify preHandler hook (feature gate, quota check, rollback, headers, threshold events) |
-| apps/api-gateway/src/routes/usage.ts | 5 usage query endpoints (3 super_admin + 2 billing) |
-| apps/api-gateway/src/routes/plans.ts | 10 plan definition CRUD endpoints (super_admin) |
-| apps/api-gateway/src/routes/overrides.ts | 4 tenant feature override CRUD endpoints (super_admin) |
+| apps/user-service/src/sso-repository.ts | Prisma CRUD for SsoConfig model |
+| apps/user-service/src/sso-service.ts | SSO config CRUD, group-to-role mapping, JIT provisioning, callback handler |
+| apps/user-service/src/email-verification-repository.ts | Prisma queries for email verification fields |
+| apps/user-service/src/email-verification-service.ts | Token generation, verify, resend, cleanup |
+| apps/user-service/__tests__/sso-service.test.ts | 10 SSO test cases |
+| apps/user-service/__tests__/email-verification.test.ts | 12 email verification test cases |
 
-### Modified Files (4)
+### Modified Files (9)
 | File | Change |
 |------|--------|
-| packages/shared-types/src/plan.ts | +FeatureLimits, QuotaCheckResult, UsageSnapshot, QuotaThresholdEvent types |
-| packages/shared-types/src/index.ts | +re-exports for 4 new quota types |
-| apps/api-gateway/src/app.ts | +registerQuotaEnforcement, +planRoutes, +overrideRoutes, +usageRoutes |
-| apps/api-gateway/src/routes/plan-repository.ts | Fixed unused variable in updatePlan |
+| prisma/schema.prisma | +SsoConfig model, +emailVerified/emailVerifyToken/emailVerifyExpires on User, +ssoConfig relation on Tenant |
+| packages/shared-utils/src/queues.ts | +EMAIL_SEND queue constant (25 total) |
+| packages/shared-utils/tests/constants-errors.test.ts | Queue count 24→25 |
+| apps/user-service/src/service.ts | Register: active=false, emailVerified=false, queue verification email. Login: 403 if !emailVerified |
+| apps/user-service/src/repository.ts | +findUserByEmailAnyStatus, +updateUserSsoFields, +createUser emailVerified/active params |
+| apps/user-service/src/index.ts | +SsoService, +email verification exports, +ssoRepo, +emailVerificationRepo |
+| apps/user-service/__tests__/service.test.ts | Fixed 7 tests for email verification changes |
+| apps/admin-service/tests/dlq-processor.test.ts | Queue count 24→25 |
+| apps/admin-service/tests/queue-monitor.test.ts | Queue count 24→25 |
 
 ## 🔧 Decisions & Rationale
-No new architectural decisions. Quota enforcement follows existing patterns (Redis for counters, BullMQ for threshold alerts, Fastify hooks for middleware).
+No new architectural decisions. SSO follows existing MFA patterns (AES-256-GCM encryption reused from mfa-service). Email verification follows standard SHA-256 token hashing pattern.
 
 ## 🧪 E2E / Deploy Verification Results
-- Pre-push: 7,238 tests passed, 0 TypeScript errors, 0 lint errors, no secrets
-- Commit 2a9b879 pushed to master, CI triggered
-- 18 new quota enforcement tests (108 api-gateway total)
+- TypeScript build: 0 errors (`tsc -b --force`)
+- All tests pass: 73 user-service, 195 admin-service, 91 shared-utils
+- Deploy verified: `/health` → ok (api-gateway v1.0.0), `/ready` → ok
+- Live site: intelwatch.in → 307 (expected redirect)
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. Verify CI/CD deploy for quota enforcement (commit 2a9b879)
-2. Run `prisma db push` on VPS for plan definition models + migration 0003
-3. Run seed script for 4 default plans (free/starter/teams/enterprise × 16 features)
-4. Command Center v2.1 S5 — Quota UI (billing/limits frontend)
+1. Run `prisma db push` on VPS (SsoConfig model + User email verification fields + plan models + migration 0003)
+2. Set TI_MFA_ENCRYPTION_KEY env var on VPS
+3. Run seed script for 4 default plans
+4. Continue Command Center v2.1 — remaining I-items or Quota UI
 
 ### Deferred
 5. Set Shodan/GreyNoise API keys on VPS
@@ -53,22 +57,18 @@ No new architectural decisions. Quota enforcement follows existing patterns (Red
 
 ## 🔁 How to Resume
 ```
-Session 115: Command Center v2.1 S5 — Quota UI (Billing/Limits Frontend)
+Session 117: Command Center v2.1 — next I-items or Quota UI
 
 Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
 
-Session 114: Quota Enforcement S3+S4 COMPLETE.
-- S3: 3 Prisma models (SubscriptionPlanDefinition, PlanFeatureLimit, TenantFeatureOverride)
-- S3: 10 plan CRUD endpoints + 4 override CRUD endpoints + seed script
-- S4: Redis Lua atomic check-and-increment (daily/weekly/monthly/total counters)
-- S4: Plan cache (5min TTL, override merge, per-plan invalidation)
-- S4: Feature gate (403 FEATURE_NOT_AVAILABLE) + Quota exceeded (429 QUOTA_EXCEEDED)
-- S4: Super admin bypass, counter rollback on error, X-Quota response headers
-- S4: 80/90% threshold alerts to BullMQ (etip-alert-evaluate)
-- S4: 5 usage query endpoints (admin tenant usage, platform summary, reset, billing usage, billing limits)
-- 18 new tests, 108 api-gateway total. 7,238 monorepo tests. Pushed to master.
-- VPS needs: prisma db push (plan models + migration 0003) + seed 4 plans
+Session 116: SSO Group-to-Role Mapping (I-11) + Email Verification (I-13) COMPLETE.
+- I-11: SsoConfig Prisma model (SAML/OIDC), group-to-role mapping (tenant_admin/analyst),
+  JIT provisioning, domain validation, maxUsers enforcement, MFA passthrough
+- I-13: Email verification (SHA-256 token, 24h expiry, rate-limited resend 5min,
+  7-day cleanup), login guard (403 EMAIL_NOT_VERIFIED), register returns job payload
+- 6 new files, 9 modified. 22 new tests (73 user-service total). Commit ecb327f.
+- VPS needs: prisma db push (SsoConfig + email verification + plan models) + TI_MFA_ENCRYPTION_KEY
 
-Scope: apps/frontend (billing/limits components)
-Do not modify: api-gateway quota code, Prisma schema, backend services
+Scope: apps/user-service or apps/frontend
+Do not modify: shared-utils queue constants, MFA code, admin-service, api-gateway quota
 ```

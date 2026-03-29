@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-11%20command%20center-00ff88)
-![Tests](https://img.shields.io/badge/tests-6791%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-7262%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
@@ -16,7 +16,7 @@
 |-----------|--------|-------|
 | Shared packages (types, utils, cache, auth, audit, normalization, enrichment) | ✅ Deployed | 355 |
 | API Gateway (Fastify, tiered rate limiting, error alerting, gzip compression) | ✅ Live on VPS | 59 |
-| User Service (register, login, refresh) | ✅ Live on VPS | 21 |
+| User Service (register, login, refresh, SSO, MFA, email verification) | ✅ Live on VPS | 73 |
 | Ingestion Service (RSS + NVD + STIX/TAXII + REST_API, 11 pipeline modules, scheduler retry, global fetch workers, Redis caching) | ✅ Live on VPS | 629 |
 | Normalization Service (18 accuracy improvements, global normalize/enrich, tenant overlay, fuzzy dedupe, batch processing, corroboration, severity voting, community FP) | ✅ Live on VPS | 315 |
 | AI Enrichment Service (VT + AbuseIPDB + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 253 |

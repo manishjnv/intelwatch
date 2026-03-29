@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 115 &middot; 2026-03-29 &middot; MFA (I-10) deployed. 33 containers, ~7,316 tests</span>
+  <span class="version">Session 116 &middot; 2026-03-29 &middot; SSO Group Mapping (I-11) + Email Verification (I-13) deployed. 33 containers, ~7,262 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,316</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~7,262</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~619</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">115</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">116</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -144,7 +144,7 @@ li strong { color: var(--text-primary); }
     <thead><tr><th>Module</th><th>Port</th><th>Phase</th><th>Status</th><th>Endpoints</th><th>Tests</th></tr></thead>
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API</td><td>108</td></tr>
-      <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth</td><td>21</td></tr>
+      <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify</td><td>73</td></tr>
       <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Plan Builder + Usage Page + FeatureGate + Quota Banners</td><td>1,377</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats</td><td>237</td></tr>
@@ -537,24 +537,23 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 115</span> MFA Implementation (I-10) Deployed</div>
+    <div class="card-title"><span class="badge badge-green">Session 116</span> SSO Group Mapping (I-11) + Email Verification (I-13) Deployed</div>
     <div class="card-body">
-      <strong>Session 115 (2026-03-29):</strong> Command Center v2.1 S8 — MFA (I-10):<br>
-      &bull; <strong>TOTP MFA</strong> — Setup/verify/disable flow with AES-256-GCM encrypted secrets (otplib)<br>
-      &bull; <strong>Two-step login</strong> — Password validation → MFA challenge token (5-min JWT) → session creation<br>
-      &bull; <strong>Backup codes</strong> — 10 single-use XXXX-XXXX codes, bcrypt-12 hashed, low-code warning at &le;2<br>
-      &bull; <strong>Enforcement policies</strong> — Platform-wide (super_admin) + org-level (tenant_admin) MFA enforcement<br>
-      &bull; <strong>9 API endpoints</strong> — setup, verify-setup, disable, challenge, regenerate, 2× admin enforcement, 2× org enforcement<br>
-      &bull; <strong>Prisma schema</strong> — mfaBackupCodes, mfaVerifiedAt fields + MfaEnforcementPolicy model<br>
-      &bull; <strong>33 new tests</strong> (28 mfa-service + 5 shared-auth MFA tokens). 49 user-service total, 92 shared-auth total.<br>
-      &bull; <strong>Compliance</strong> — SOC 2 CC6.1, ISO 27001 A.9.4.2<br>
-      &bull; <strong>Commit:</strong> 92957f9 — CI run 23713181251 green, VPS deployed<br><br>
+      <strong>Session 116 (2026-03-29):</strong> Command Center v2.1 S9 — SSO + Email Verification:<br>
+      &bull; <strong>SSO Config (I-11)</strong> — SsoConfig Prisma model (SAML/OIDC per-tenant), group-to-role mapping (tenant_admin/analyst), encrypted clientSecret (AES-256-GCM)<br>
+      &bull; <strong>JIT Provisioning</strong> — Auto-create users on SSO callback, domain validation against approvedDomains, maxUsers enforcement<br>
+      &bull; <strong>Email Verification (I-13)</strong> — SHA-256 hashed tokens (24h expiry), verify/resend endpoints, 5-min rate limit on resend, 7-day unverified cleanup<br>
+      &bull; <strong>Login Guard</strong> — 403 EMAIL_NOT_VERIFIED before password check, anti-enumeration on resend (always 200)<br>
+      &bull; <strong>Register Flow</strong> — Creates user with active=false, emailVerified=false, returns email job payload (QUEUES.EMAIL_SEND)<br>
+      &bull; <strong>Prisma schema</strong> — SsoConfig model + emailVerified/emailVerifyToken/emailVerifyExpires on User<br>
+      &bull; <strong>22 new tests</strong> (10 SSO + 12 email verification). 73 user-service total.<br>
+      &bull; <strong>Commit:</strong> ecb327f — Deploy verified: /health ok, /ready ok<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Run prisma db push on VPS</strong> — MfaEnforcementPolicy + mfaBackupCodes/mfaVerifiedAt + Plan models + migration 0003<br>
-      2. <strong>Set TI_MFA_ENCRYPTION_KEY on VPS</strong> — Required for TOTP secret encryption (≥32 chars)<br>
+      1. <strong>Run prisma db push on VPS</strong> — SsoConfig + email verification fields + MFA + Plan models + migration 0003<br>
+      2. <strong>Set TI_MFA_ENCRYPTION_KEY on VPS</strong> — Required for TOTP + SSO clientSecret encryption<br>
       3. <strong>Run plan seed script on VPS</strong> — 4 default plans &times; 16 features<br>
-      4. <strong>Command Center v2.1 Phase D</strong> — System Health tab (super-admin), remaining hardening items<br>
-      5. <strong>Wrap FeatureGate around existing pages</strong> — Currently built but not integrated into page components<br>
+      4. <strong>Continue Command Center v2.1</strong> — Remaining I-items or Quota UI (billing/limits frontend)<br>
+      5. <strong>Set Shodan/GreyNoise API keys on VPS</strong><br>
     </div>
   </div>
 </div>
@@ -562,7 +561,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 115 &middot; 2026-03-29 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 116 &middot; 2026-03-29 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
