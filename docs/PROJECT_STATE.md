@@ -1,11 +1,11 @@
 # ETIP Project State
 **Last updated:** 2026-03-29 (update at end of EVERY session via /session-end)
-**Session counter:** 113 — Command Center v2.1 S2: Designation field (I-03) + tenant-admin delete protection (I-04) + self-action guards (I-05). 20 new tests. Deployed.
+**Session counter:** 114 — Quota Enforcement Middleware (S3+S4): Plan definitions (3 Prisma models, 10 CRUD endpoints, seed script) + quota enforcement (Redis Lua counters, plan cache, 5 usage endpoints, X-Quota headers). 18 new tests. Pushed to master.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
-| etip_api | ✅ Running | 0.1.1 | 2026-03-27 | Health check passing. **Session 85:** Tiered rate limiting (search 10/write 30/read 120), error alerting (5-min window, QUEUE_ALERT), @fastify/compress (gzip >1KB), GET /api/v1/gateway/error-stats. 59 tests. |
+| etip_api | ✅ Running | 0.2.0 | 2026-03-29 | Health check passing. **Session 114:** Quota enforcement middleware (plan cache, Lua counters, X-Quota headers, threshold events). Plan definitions CRUD (10 endpoints). Override CRUD (4 endpoints). Usage API (5 endpoints). 108 tests. |
 | etip_frontend | ✅ Running | 0.15.0 | 2026-03-28 | Dashboard + 20 data pages + Command Center (9 tabs SA / 7 TA). **Session 110:** BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 1010 tests (1012 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
@@ -39,8 +39,8 @@
 ## Module Development Status
 | Module | Phase | Status | Last Worked | Blockers |
 |--------|-------|--------|-------------|----------|
-| api-gateway | 1 | ✅ Deployed | 2026-03-27 | **Session 85:** Tiered rate limits + error alerting + @fastify/compress. 59 tests. |
-| shared-types | 1 | ✅ Deployed | 2026-03-27 | StixSightingSchema added. Queue JSDoc comments updated (colon→dash). |
+| api-gateway | 1 | ✅ Deployed | 2026-03-29 | **Session 114:** Plan definitions CRUD (10 endpoints) + override CRUD (4 endpoints) + quota enforcement middleware (Redis Lua counters, plan cache 5min TTL, X-Quota headers, 80/90% threshold events) + usage API (5 endpoints). 108 tests. |
+| shared-types | 1 | ✅ Deployed | 2026-03-29 | **Session 114:** +plan.ts module (FeatureKey, PlanDefinitionCreate/Update, TenantFeatureOverride, FeatureLimits, QuotaCheckResult, UsageSnapshot, QuotaThresholdEvent). |
 | shared-utils | 1 | ✅ Deployed | 2026-03-27 | QUEUES: 24 constants (6 global queues added). EVENTS: 22 constants (+GLOBAL_FEED_PROCESSED, +GLOBAL_IOC_CREATED). **registerMetrics()**: prom-client Prometheus plugin. 91 tests. |
 | shared-auth | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-cache | 1 | ✅ Deployed | 2026-03-15 | None |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). RBAC cleanup + protection guards. Sessions 111-113.
-- **Last session outcome:** Session 113 (2026-03-29). **Command Center v2.1 S2 COMPLETE.** I-03: designation field (Prisma + shared-types + team-store + PUT route). I-04: tenant_admin delete protection (service guard TENANT_ADMIN_UNDELETABLE + DB trigger guard_tenant_admin_delete). I-05: 3 self-action guards (SELF_ACTION_DENIED, ORG_SELF_DISABLE_DENIED, LAST_ADMIN_PROTECTED). Also added tenant_admin to PermissionStore built-in roles. 20 new tests (protection-guards.test.ts). Commit 56c05bb. Migration 0003_add_designation_and_guards. CI run 23704114823 green. All 33 containers deployed.
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. Migration 0003 needs `prisma db push` on VPS (designation column + DB trigger). 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
-- **Next tasks:** (1) Command Center v2.1 S3 — MFA enforcement controls (I-06). (2) Command Center v2.1 S4 — SSO hardening (I-07). (3) Command Center v2.1 S5 — Session TTL controls (I-08). (4) Run `prisma db push` on VPS for migration 0003. (5) Set Shodan/GreyNoise API keys on VPS.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening) + Plan Config / Quota Enforcement (Phase B). Sessions 111-114.
+- **Last session outcome:** Session 114 (2026-03-29). **Quota Enforcement S3+S4 COMPLETE.** S3: 3 Prisma models (SubscriptionPlanDefinition, PlanFeatureLimit, TenantFeatureOverride), 10 plan CRUD endpoints, 4 override CRUD endpoints, seed script (4 plans × 16 features). S4: Redis Lua atomic check-and-increment (4 period counters), plan cache (5min TTL, override merge), feature gate (403), quota exceeded (429), super admin bypass, counter rollback on error, X-Quota response headers, 80/90% threshold alerts to BullMQ, 5 usage query endpoints. 18 new tests (108 total api-gateway). Commit 2a9b879. Pushed to master. 7,238 monorepo tests.
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. Migration 0003 needs `prisma db push` on VPS (designation column + DB trigger). 1 pre-existing flaky test in shared-auth (password.test.ts unique salts). Prisma plan models need `prisma db push` on VPS.
+- **Next tasks:** (1) Verify CI/CD deploy for quota enforcement (commit 2a9b879). (2) Run `prisma db push` on VPS for plan definition models + migration 0003. (3) Run seed script for 4 default plans. (4) Command Center v2.1 S5 — Quota UI (billing/limits frontend). (5) Set Shodan/GreyNoise API keys on VPS.
 
 ## Deployment Log
 
@@ -240,6 +240,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 108 | 2026-03-28 | All 33 containers redeployed (Command Center Phases C-E) | ✅ All 33 healthy | ceb6984, 0109276, 23bd35e, e725a7b, 85f3c92 | CI fix session: 17 TS errors + ~30 ESLint errors. PrismaLike index sig, Zod default cast, unused imports/vars. Command Center (Overview, Config, Settings, Feeds, Users & Access tabs) now live. KVM4 VPS (16GB). |
 | 110 | 2026-03-28 | etip_frontend redeployed (Command Center Phase F) | ✅ All 33 healthy | ada5fb6, d78fab5 | BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 33 new tests. Command Center: 9 tabs SA / 7 tabs TA. CI run 23686477062 green. |
 | 113 | 2026-03-29 | etip_user_management redeployed (I-03/I-04/I-05) | ✅ All 33 healthy | 56c05bb | Designation field + tenant-admin delete guard + self-action guards. 20 new tests. Migration 0003. CI run 23704114823 green. |
+| 114 | 2026-03-29 | etip_api redeployed (quota enforcement S3+S4) | ⏳ CI triggered | 2a9b879 | Plan definitions CRUD (10 endpoints) + override CRUD (4 endpoints) + quota enforcement middleware (Redis Lua counters, plan cache 5min TTL, X-Quota headers, 80/90% threshold events) + usage API (5 endpoints). 18 new tests (108 api-gateway total). 7,238 monorepo tests. |
 
 ## E2E Verification Results (Session 13)
 

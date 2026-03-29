@@ -1,71 +1,74 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-29
-**Session:** 113
-**Session Summary:** Command Center v2.1 S2 — Designation field (I-03), tenant-admin delete protection (I-04), self-action guards (I-05). 20 new tests. Deployed.
+**Session:** 114
+**Session Summary:** Quota Enforcement S3+S4 — Plan definitions (3 Prisma models, 10 CRUD endpoints, seed script) + quota enforcement middleware (Redis Lua counters, plan cache, 5 usage endpoints, X-Quota headers, threshold events). 18 new tests. Pushed to master.
 
 ## ✅ Changes Made
-- Commit 56c05bb: 9 files — feat: designation field + tenant-admin/self-action guards (I-03, I-04, I-05)
+- Commit 2a9b879: feat: quota enforcement middleware — Redis counters, plan cache, usage API (S3+S4)
+- Commit 39eaa35: feat: role-based session TTL, super admin isolation, API key tier gate (I-07, I-08, I-09)
 
 ## 📁 Files / Documents Affected
 
-### New Files (2)
+### New Files (7)
 | File | Purpose |
 |------|---------|
-| apps/user-management-service/tests/protection-guards.test.ts | 20 tests: designation CRUD, tenant-admin delete guard, self-action guards A/B/C |
-| prisma/migrations/0003_add_designation_and_guards/migration.sql | ALTER TABLE users ADD designation VARCHAR(50) + DB trigger guard_tenant_admin_delete |
+| apps/api-gateway/src/config/feature-routes.ts | Route-to-feature mapping (14 patterns → featureKey, exempt routes) |
+| apps/api-gateway/src/quota/plan-cache.ts | Redis-backed plan cache (5min TTL, override merge, invalidation) |
+| apps/api-gateway/src/quota/usage-counter.ts | Redis Lua atomic check-and-increment (4 period counters) |
+| apps/api-gateway/src/plugins/quota-enforcement.ts | Fastify preHandler hook (feature gate, quota check, rollback, headers, threshold events) |
+| apps/api-gateway/src/routes/usage.ts | 5 usage query endpoints (3 super_admin + 2 billing) |
+| apps/api-gateway/src/routes/plans.ts | 10 plan definition CRUD endpoints (super_admin) |
+| apps/api-gateway/src/routes/overrides.ts | 4 tenant feature override CRUD endpoints (super_admin) |
 
-### Modified Files (7)
+### Modified Files (4)
 | File | Change |
 |------|--------|
-| prisma/schema.prisma | +designation String? @db.VarChar(50) on User model |
-| packages/shared-types/src/user.ts | +designation optional field in UserSchema (additive, backward-compat) |
-| apps/user-management-service/src/schemas/user-management.ts | +UpdateDesignationSchema, +tenant_admin to BUILT_IN_ROLES, +designation to TeamMember |
-| apps/user-management-service/src/services/permission-store.ts | +tenant_admin to BUILT_IN_PERMISSIONS + ROLE_HIERARCHY |
-| apps/user-management-service/src/services/team-store.ts | +setDesignation(), +validateOrgDisable(), +ensureNotLastAdmin(), guards in deactivate/removeMember/updateRole |
-| apps/user-management-service/src/routes/teams.ts | +PUT /:userId/designation, wire actorUserId into deactivate/delete |
-| apps/user-management-service/tests/permission-store.test.ts | Updated built-in role count 4→5, hierarchy assertion |
+| packages/shared-types/src/plan.ts | +FeatureLimits, QuotaCheckResult, UsageSnapshot, QuotaThresholdEvent types |
+| packages/shared-types/src/index.ts | +re-exports for 4 new quota types |
+| apps/api-gateway/src/app.ts | +registerQuotaEnforcement, +planRoutes, +overrideRoutes, +usageRoutes |
+| apps/api-gateway/src/routes/plan-repository.ts | Fixed unused variable in updatePlan |
 
 ## 🔧 Decisions & Rationale
-No new architectural decisions. tenant_admin permissions in PermissionStore aligned with shared-auth ROLE_PERMISSIONS from S1 (d5c0d58).
+No new architectural decisions. Quota enforcement follows existing patterns (Redis for counters, BullMQ for threshold alerts, Fastify hooks for middleware).
 
 ## 🧪 E2E / Deploy Verification Results
-- CI run 23704114823: all 3 jobs passed (Test/Lint/Audit, Docker Build, Deploy to VPS)
-- User-management-service: 210 tests passed, 12 test files, 0 failed
-- TypeScript build: clean (tsc -b --force)
-- Lint: 0 errors
-- No new env vars, no Docker/infra changes
-- Migration 0003 needs `prisma db push` on VPS (designation column + DB trigger)
+- Pre-push: 7,238 tests passed, 0 TypeScript errors, 0 lint errors, no secrets
+- Commit 2a9b879 pushed to master, CI triggered
+- 18 new quota enforcement tests (108 api-gateway total)
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
-1. Run `prisma db push` on VPS to apply migration 0003 (designation column + guard_tenant_admin_delete trigger)
-2. Command Center v2.1 S3 — MFA enforcement controls (I-06)
-3. Command Center v2.1 S4 — SSO hardening (I-07)
+1. Verify CI/CD deploy for quota enforcement (commit 2a9b879)
+2. Run `prisma db push` on VPS for plan definition models + migration 0003
+3. Run seed script for 4 default plans (free/starter/teams/enterprise × 16 features)
+4. Command Center v2.1 S5 — Quota UI (billing/limits frontend)
 
 ### Deferred
-4. Set Shodan/GreyNoise API keys on VPS
-5. Wire fuzzyDedupeHash column in Prisma schema
-6. Fix vitest alias caching for @etip/shared-normalization
-7. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts)
+5. Set Shodan/GreyNoise API keys on VPS
+6. Wire fuzzyDedupeHash column in Prisma schema
+7. Fix vitest alias caching for @etip/shared-normalization
+8. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts)
 
 ## 🔁 How to Resume
 ```
-Session 114: Command Center v2.1 S3 — MFA Enforcement Controls (I-06)
+Session 115: Command Center v2.1 S5 — Quota UI (Billing/Limits Frontend)
 
 Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
 
-Session 113: Command Center v2.1 S2 COMPLETE.
-- I-03: designation field (Prisma + shared-types + team-store + PUT /team/:userId/designation)
-- I-04: tenant_admin undeletable (403 TENANT_ADMIN_UNDELETABLE + DB trigger)
-- I-05: 3 self-action guards (SELF_ACTION_DENIED, ORG_SELF_DISABLE_DENIED, LAST_ADMIN_PROTECTED)
-- tenant_admin added to PermissionStore built-in roles (was missing after S1)
-- 20 new tests, 210 total. CI green. Deployed.
-- Migration 0003 needs prisma db push on VPS
+Session 114: Quota Enforcement S3+S4 COMPLETE.
+- S3: 3 Prisma models (SubscriptionPlanDefinition, PlanFeatureLimit, TenantFeatureOverride)
+- S3: 10 plan CRUD endpoints + 4 override CRUD endpoints + seed script
+- S4: Redis Lua atomic check-and-increment (daily/weekly/monthly/total counters)
+- S4: Plan cache (5min TTL, override merge, per-plan invalidation)
+- S4: Feature gate (403 FEATURE_NOT_AVAILABLE) + Quota exceeded (429 QUOTA_EXCEEDED)
+- S4: Super admin bypass, counter rollback on error, X-Quota response headers
+- S4: 80/90% threshold alerts to BullMQ (etip-alert-evaluate)
+- S4: 5 usage query endpoints (admin tenant usage, platform summary, reset, billing usage, billing limits)
+- 18 new tests, 108 api-gateway total. 7,238 monorepo tests. Pushed to master.
+- VPS needs: prisma db push (plan models + migration 0003) + seed 4 plans
 
-Scope: apps/user-management-service, packages/shared-auth (if MFA policy changes needed)
-Do not modify: frontend, ROLE_PERMISSIONS (done in S1), any other backend service
-
-Reference: docs/ETIP_CommandCenter_FinalPlan_v2.1.docx (Section 5.1, items I-06+)
+Scope: apps/frontend (billing/limits components)
+Do not modify: api-gateway quota code, Prisma schema, backend services
 ```
