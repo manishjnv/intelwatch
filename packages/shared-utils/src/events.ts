@@ -41,6 +41,11 @@ export const EVENTS = {
   // Global feed processing (DECISION-029)
   GLOBAL_IOC_UPDATED:        'global.ioc.updated',
   GLOBAL_IOC_CRITICAL:       'global.ioc.critical',
+  // SCIM provisioning (I-12)
+  SCIM_USER_PROVISIONED:     'scim.user.provisioned',
+  SCIM_USER_DEPROVISIONED:   'scim.user.deprovisioned',
+  // Billing (I-14)
+  BILLING_PLAN_CHANGED:      'billing.plan.changed',
 } as const;
 
 /** Union type of all event type string literals */

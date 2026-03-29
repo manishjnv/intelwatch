@@ -36,6 +36,8 @@ export const QUEUES = {
   ENRICH_GLOBAL:          'etip-enrich-global',
   // User lifecycle (I-13)
   EMAIL_SEND:             'etip-email-send',
+  // Billing (I-14)
+  BILLING_PLAN_CHANGED:   'etip-billing-plan-changed',
 } as const;
 
 /** Union type of all queue name string literals */

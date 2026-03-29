@@ -12,6 +12,9 @@ import { mfaRoutes, type MfaRouteDeps } from './routes/mfa.js';
 import { breakGlassRoutes, type BreakGlassRouteDeps } from './routes/break-glass.js';
 import { sessionRoutes, type SessionRouteDeps } from './routes/sessions.js';
 import { apiKeyRoutes, type ApiKeyRouteDeps } from './routes/api-keys.js';
+import { scimTokenRoutes, type ScimTokenRouteDeps } from './routes/scim-tokens.js';
+import { scimUserRoutes, type ScimUserRouteDeps } from './routes/scim-users.js';
+import { scimGroupRoutes, type ScimGroupRouteDeps } from './routes/scim-groups.js';
 import { registerMetrics } from '@etip/shared-utils';
 import type { UserManagementConfig } from './config.js';
 
@@ -24,6 +27,9 @@ export interface BuildAppOptions {
   breakGlassDeps?: BreakGlassRouteDeps;
   sessionDeps?: SessionRouteDeps;
   apiKeyDeps?: ApiKeyRouteDeps;
+  scimTokenDeps?: ScimTokenRouteDeps;
+  scimUserDeps?: ScimUserRouteDeps;
+  scimGroupDeps?: ScimGroupRouteDeps;
 }
 
 /** Build and configure the Fastify application. */
@@ -96,6 +102,16 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   }
   if (opts.apiKeyDeps) {
     await app.register(apiKeyRoutes(opts.apiKeyDeps), { prefix: '/api/v1/users' });
+  }
+  // ─── SCIM 2.0 routes (I-12) ──────────────────────────────────
+  if (opts.scimTokenDeps) {
+    await app.register(scimTokenRoutes(opts.scimTokenDeps), { prefix: '/api/v1/settings/scim/tokens' });
+  }
+  if (opts.scimUserDeps) {
+    await app.register(scimUserRoutes(opts.scimUserDeps), { prefix: '/scim/v2/Users' });
+  }
+  if (opts.scimGroupDeps) {
+    await app.register(scimGroupRoutes(opts.scimGroupDeps), { prefix: '/scim/v2/Groups' });
   }
 
   return app;

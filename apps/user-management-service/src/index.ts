@@ -8,6 +8,9 @@ import { MfaService } from './services/mfa-service.js';
 import { AuditLogger } from './services/audit-logger.js';
 import { BreakGlassService } from './services/break-glass-service.js';
 import { SessionManager } from './services/session-manager.js';
+import { ScimTokenService } from './services/scim-token-service.js';
+import { ScimUserService } from './services/scim-user-service.js';
+import { ScimGroupService } from './services/scim-group-service.js';
 import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
@@ -30,6 +33,9 @@ async function main(): Promise<void> {
   const mfaService = new MfaService(config.TI_MFA_ISSUER, config.TI_MFA_BACKUP_CODE_COUNT);
   const breakGlassService = new BreakGlassService(auditLogger, config.TI_BREAK_GLASS_SESSION_TTL_MIN);
   const sessionManager = new SessionManager();
+  const scimTokenService = new ScimTokenService();
+  const scimUserService = new ScimUserService(sessionManager);
+  const scimGroupService = new ScimGroupService();
 
   // 4. Build Fastify app
   const app = await buildApp({
@@ -41,6 +47,9 @@ async function main(): Promise<void> {
     breakGlassDeps: { breakGlassService },
     sessionDeps: { sessionManager, auditLogger },
     apiKeyDeps: { auditLogger },
+    scimTokenDeps: { scimTokenService, auditLogger },
+    scimUserDeps: { scimUserService, scimTokenService, auditLogger },
+    scimGroupDeps: { scimGroupService, scimTokenService },
   });
 
   // 5. Graceful shutdown

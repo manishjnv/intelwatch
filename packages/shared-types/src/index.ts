@@ -174,6 +174,33 @@ export {
   type QuotaThresholdEvent,
 } from './plan.js';
 
+// ── SCIM 2.0 types (I-12) ─────────────────────────────────────────
+export {
+  SCIM_SCHEMAS,
+  SCIM_ERROR_TYPES,
+  type ScimMeta,
+  type ScimName,
+  type ScimEmail,
+  type ScimGroupRef,
+  type ScimUserResource,
+  type ScimGroupMember,
+  type ScimGroupResource,
+  type ScimListResponse,
+  type ScimErrorResponse,
+  ScimPatchOpSchema,
+  type ScimPatchOp,
+  ScimPatchBodySchema,
+  type ScimPatchBody,
+  ScimUserBodySchema,
+  type ScimUserBody,
+  ScimListQuerySchema,
+  type ScimListQuery,
+  ScimTokenCreateSchema,
+  type ScimTokenCreate,
+  buildScimError,
+  buildScimListResponse,
+} from './scim.js';
+
 // ── Config & constants ─────────────────────────────────────────────
 export {
   AI_MODELS,
