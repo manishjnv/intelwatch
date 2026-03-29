@@ -18,12 +18,16 @@ import { usePlanLimits, type PlanTierConfig } from '@/hooks/use-plan-limits'
 import {
   CreditCard, Crown, Rss, ShieldCheck, Users, Activity,
   Download, Check, X, ArrowUpCircle, AlertTriangle,
-  RotateCcw, Gift,
+  RotateCcw, Gift, BarChart3,
 } from 'lucide-react'
+import { PlanBuilderPanel } from './PlanBuilderPanel'
+import { PlanComparisonMatrix } from './PlanComparisonMatrix'
+import { TenantUsagePanel } from './TenantUsagePanel'
+import { usePlanBuilder } from '@/hooks/use-plan-builder'
 
 // ─── Types ──────────────────────────────────────────────────
 
-type SubTab = 'subscription' | 'invoices' | 'plans' | 'limits' | 'offers' | 'billing-info'
+type SubTab = 'subscription' | 'invoices' | 'plans' | 'limits' | 'offers' | 'billing-info' | 'plan-builder' | 'usage' | 'compare'
 
 interface BillingPlansTabProps {
   data: ReturnType<typeof useCommandCenter>
@@ -609,6 +613,18 @@ function BillingInfoPanel() {
   )
 }
 
+// ─── Compare Sub-Tab ─────────────────────────────────────────
+
+function ComparePanel() {
+  const { plans } = usePlanBuilder()
+  return (
+    <div className="space-y-3" data-testid="compare-panel">
+      <h3 className="text-sm font-semibold text-text-primary">Plan Comparison</h3>
+      <PlanComparisonMatrix plans={plans} />
+    </div>
+  )
+}
+
 // ─── Main Export ──────────────────────────────────────────────
 
 export function BillingPlansTab({ data }: BillingPlansTabProps) {
@@ -622,10 +638,13 @@ export function BillingPlansTab({ data }: BillingPlansTabProps) {
     ]
     if (!isSuperAdmin) {
       items.push({ id: 'plans', label: 'Plans & Upgrade' })
+      items.push({ id: 'usage', label: 'Usage' })
     }
     if (isSuperAdmin) {
+      items.push({ id: 'plan-builder', label: 'Plan Builder' })
       items.push({ id: 'limits', label: 'Limits' })
     }
+    items.push({ id: 'compare', label: 'Compare' })
     items.push({ id: 'offers', label: 'Offers' })
     if (!isSuperAdmin) {
       items.push({ id: 'billing-info', label: 'Billing Info' })
@@ -642,7 +661,10 @@ export function BillingPlansTab({ data }: BillingPlansTabProps) {
       {effectiveSubTab === 'subscription' && <SubscriptionPanel isSuperAdmin={isSuperAdmin} />}
       {effectiveSubTab === 'invoices' && <InvoicesPanel isSuperAdmin={isSuperAdmin} />}
       {effectiveSubTab === 'plans' && !isSuperAdmin && <PlansUpgradePanel />}
+      {effectiveSubTab === 'usage' && !isSuperAdmin && <TenantUsagePanel />}
+      {effectiveSubTab === 'plan-builder' && isSuperAdmin && <PlanBuilderPanel />}
       {effectiveSubTab === 'limits' && isSuperAdmin && <LimitsPanel />}
+      {effectiveSubTab === 'compare' && <ComparePanel />}
       {effectiveSubTab === 'offers' && <OffersPanel isSuperAdmin={isSuperAdmin} />}
       {effectiveSubTab === 'billing-info' && !isSuperAdmin && <BillingInfoPanel />}
     </div>

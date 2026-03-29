@@ -124,15 +124,44 @@ async function doFetch<T>(
   const json = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new ApiError(
+    const err = new ApiError(
       res.status,
       json?.error?.code ?? 'UNKNOWN',
       json?.error?.message ?? 'Request failed',
       json?.error?.details,
     );
+
+    // 429 QUOTA_EXCEEDED — trigger upgrade modal via global listener
+    if (res.status === 429 && json?.error?.code === 'QUOTA_EXCEEDED') {
+      _quotaExceededListener?.({
+        feature: json.error.feature ?? '',
+        limit: json.error.limit ?? 0,
+        used: json.error.used ?? 0,
+        period: json.error.period ?? 'monthly',
+        resetsAt: json.error.resetsAt ?? '',
+        currentPlan: json.error.currentPlan ?? '',
+      });
+    }
+
+    throw err;
   }
 
   return json.data as T;
+}
+
+// ─── 429 Quota Exceeded Global Listener ──────────────────────
+
+interface QuotaExceededInfo {
+  feature: string; limit: number; used: number;
+  period: string; resetsAt: string; currentPlan: string;
+}
+
+type QuotaListener = (info: QuotaExceededInfo) => void;
+let _quotaExceededListener: QuotaListener | null = null;
+
+/** Register a global listener for 429 QUOTA_EXCEEDED responses. */
+export function onQuotaExceeded(listener: QuotaListener) {
+  _quotaExceededListener = listener;
 }
 
 /**

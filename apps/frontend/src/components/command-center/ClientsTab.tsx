@@ -11,6 +11,7 @@ import {
   DollarSign, Users, Building2, AlertTriangle,
   Search, X, ChevronRight,
 } from 'lucide-react'
+import { TenantOverridePanel } from './TenantOverridePanel'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -165,6 +166,11 @@ function TenantDetailDrawer({ tenant, data, onClose }: {
           <p className="text-[10px] text-text-muted">Attributed Cost</p>
           <p className="text-lg font-bold text-text-primary tabular-nums">${tenant.attributedCostUsd.toFixed(2)}</p>
         </div>
+      </div>
+
+      {/* Feature Overrides */}
+      <div className="p-4 border-t border-border">
+        <TenantOverridePanel tenantId={tenant.tenantId} />
       </div>
     </div>
   )
