@@ -228,6 +228,12 @@ describe('OverviewTab — Super-Admin', () => {
     render(<OverviewTab data={data} />)
     expect(screen.getByText('12,450')).toBeInTheDocument()
   })
+
+  it('shows queue status section', () => {
+    const data = makeMockCommandCenter()
+    render(<OverviewTab data={data} />)
+    expect(screen.getByTestId('queue-status-section')).toBeInTheDocument()
+  })
 })
 
 describe('OverviewTab — Tenant-Admin', () => {
@@ -238,11 +244,10 @@ describe('OverviewTab — Tenant-Admin', () => {
     expect(screen.getByTestId('kpi-consumed')).toBeInTheDocument()
   })
 
-  it('shows cost by provider donut', () => {
+  it('shows tenant user card', () => {
     const data = makeMockCommandCenter({ isSuperAdmin: false })
     render(<OverviewTab data={data} />)
-    expect(screen.getByTestId('chart-cost-by-provider')).toBeInTheDocument()
-    expect(screen.getByTestId('cc-donut-chart')).toBeInTheDocument()
+    expect(screen.getByTestId('tenant-user-card')).toBeInTheDocument()
   })
 
   it('shows budget gauge', () => {
@@ -266,10 +271,10 @@ describe('OverviewTab — Free Tier', () => {
     expect(screen.getByText('Upgrade Plan')).toBeInTheDocument()
   })
 
-  it('shows $0.00 cost for free plan', () => {
+  it('shows tenant user card for free plan', () => {
     const data = makeMockCommandCenter({ isSuperAdmin: false, tenantPlan: 'free' })
     render(<OverviewTab data={data} />)
-    expect(screen.getByText('$0.00')).toBeInTheDocument()
+    expect(screen.getByTestId('tenant-user-card')).toBeInTheDocument()
   })
 })
 

@@ -1,7 +1,7 @@
 /**
  * @module pages/CommandCenterPage
  * @description Unified AI processing & platform management page.
- * Super-admin: 10 tabs (Overview, Configuration, Queue, Feeds, Settings, Users & Access, Clients, Billing & Plans, Alerts & Reports, System).
+ * Super-admin: 9 tabs (Overview, Configuration, Feeds, Settings, Users & Access, Clients, Billing & Plans, Alerts & Reports, System).
  * Tenant-admin: 6 tabs (Overview, Configuration, Settings, Users & Access, Billing & Plans, Alerts & Reports).
  * Session 112: Feeds tab moved to super-admin only — tenants get feeds via plan, not manual subscription.
  * Hash-based tab navigation (/command-center#feeds → opens Feeds tab).
@@ -21,7 +21,6 @@ import {
 } from 'lucide-react'
 import { IconCommandCenter } from '@/components/brand/ModuleIcons'
 import { ClientsTab } from '@/components/command-center/ClientsTab'
-import { QueueTab } from '@/components/command-center/QueueTab'
 import { OverviewTab } from '@/components/command-center/OverviewTab'
 import { ConfigurationTab } from '@/components/command-center/ConfigurationTab'
 import { SettingsTab } from '@/components/command-center/SettingsTab'
@@ -33,7 +32,7 @@ import { SystemTab } from '@/components/command-center/SystemTab'
 
 // ─── Tab Registry ───────────────────────────────────────────────
 
-type TabId = 'overview' | 'configuration' | 'queue' | 'feeds' | 'settings' | 'users-access' | 'clients' | 'billing-plans' | 'alerts-reports' | 'system'
+type TabId = 'overview' | 'configuration' | 'feeds' | 'settings' | 'users-access' | 'clients' | 'billing-plans' | 'alerts-reports' | 'system'
 type UserRole = 'super_admin' | 'tenant_admin'
 
 interface CommandCenterTab {
@@ -46,7 +45,6 @@ interface CommandCenterTab {
 const TABS: CommandCenterTab[] = [
   { id: 'overview',       label: 'Overview',        icon: BarChart3,   roles: ['super_admin', 'tenant_admin'] },
   { id: 'configuration',  label: 'Configuration',   icon: Sliders,     roles: ['super_admin', 'tenant_admin'] },
-  { id: 'queue',          label: 'Queue',           icon: ListOrdered, roles: ['super_admin'] },
   { id: 'feeds',          label: 'Feeds',           icon: Rss,         roles: ['super_admin'] },
   { id: 'settings',       label: 'Settings',        icon: Settings,    roles: ['super_admin', 'tenant_admin'] },
   { id: 'users-access',   label: 'Users & Access',  icon: ShieldCheck, roles: ['super_admin', 'tenant_admin'] },
@@ -111,12 +109,10 @@ export function CommandCenterPage() {
   const effectiveTab = visibleTabs.find(t => t.id === activeTab) ? activeTab : visibleTabs[0]?.id ?? 'overview'
 
   // Badge counts
-  const queueBadge = cc.queueStats.pendingItems > 0 ? cc.queueStats.pendingItems : null
   const overLimitCount = cc.tenantList.filter(t => t.status === 'over_limit').length
   const clientsBadge = overLimitCount > 0 ? overLimitCount : null
 
   function getBadge(tabId: TabId): number | null {
-    if (tabId === 'queue') return queueBadge
     if (tabId === 'clients') return clientsBadge
     return null
   }
@@ -319,7 +315,6 @@ export function CommandCenterPage() {
         <div className="px-4 sm:px-6 py-4" data-testid="tab-content">
           {effectiveTab === 'overview' && <OverviewTab data={cc} />}
           {effectiveTab === 'configuration' && <ConfigurationTab data={cc} aiConfig={aiConfig} />}
-          {effectiveTab === 'queue' && <QueueTab data={cc} />}
           {effectiveTab === 'feeds' && <FeedsTab data={cc} />}
           {effectiveTab === 'settings' && <SettingsTab data={cc} aiConfig={aiConfig} />}
           {effectiveTab === 'users-access' && <UsersAccessTab data={cc} />}
