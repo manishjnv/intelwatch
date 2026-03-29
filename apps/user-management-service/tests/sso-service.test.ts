@@ -26,7 +26,7 @@ describe('SsoService', () => {
     scopes: ['openid', 'profile', 'email'],
     allowedDomains: ['acme.com'],
     jitProvisioning: true,
-    defaultRole: 'viewer',
+    defaultRole: 'analyst',
   };
 
   beforeEach(() => {

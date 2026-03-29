@@ -9,9 +9,7 @@ import { z } from 'zod';
 export const ROLES = [
   'super_admin',     // Platform operator (IntelWatch team)
   'tenant_admin',    // Customer org admin
-  'analyst',         // Full intel access, can create/edit
-  'viewer',          // Read-only access
-  'api_only',        // Machine-to-machine API consumer
+  'analyst',         // Full TI access, can create/edit/delete
 ] as const;
 export const RoleSchema = z.enum(ROLES);
 export type Role = z.infer<typeof RoleSchema>;
@@ -79,7 +77,7 @@ export type SafeUser = z.infer<typeof SafeUserSchema>;
 export const CreateUserInputSchema = z.object({
   email: z.string().email(),
   displayName: z.string().min(1).max(255),
-  role: RoleSchema.default('viewer'),
+  role: RoleSchema.default('analyst'),
   authProvider: AuthProviderSchema.default('email'),
   password: z.string().min(12).max(128).optional(),
 });

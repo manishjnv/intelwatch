@@ -120,7 +120,7 @@ describe('ProgressTracker', () => {
       await wizardStore.getOrCreate('t1');
       await wizardStore.addTeamInvites('t1', [
         { email: 'a@test.com', role: 'analyst' },
-        { email: 'b@test.com', role: 'viewer' },
+        { email: 'b@test.com', role: 'analyst' },
       ]);
       const stats = await tracker.getStats('t1');
       expect(stats.teamMembers).toBe(2);

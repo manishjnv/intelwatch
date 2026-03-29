@@ -37,18 +37,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly string[]> = {
     'feed:*', 'user:*', 'integration:*', 'settings:*', 'audit:read',
   ],
   analyst: [
-    'ioc:read', 'ioc:create', 'ioc:update',
-    'threat_actor:read', 'threat_actor:create',
-    'malware:read', 'malware:create',
-    'vuln:read', 'hunting:*', 'graph:read',
-    'alert:read', 'alert:create', 'alert:update',
-    'dashboard:read', 'report:read', 'report:create', 'feed:read',
+    'ioc:*', 'threat_actor:*', 'malware:*', 'vuln:*',
+    'hunting:*', 'graph:*', 'alert:*', 'dashboard:*', 'report:*',
+    'feed:read',
   ],
-  viewer: [
-    'ioc:read', 'threat_actor:read', 'malware:read', 'vuln:read',
-    'graph:read', 'alert:read', 'dashboard:read', 'report:read', 'feed:read',
-  ],
-  api_only: ['ioc:read', 'ioc:create', 'threat_actor:read', 'vuln:read'],
 } as const;
 
 export function hasPermission(role: Role, required: string): boolean {

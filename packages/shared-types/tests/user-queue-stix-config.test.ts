@@ -42,7 +42,7 @@ const UUID = '550e8400-e29b-41d4-a716-446655440000';
 
 describe('RoleSchema', () => {
   it('accepts all valid roles', () => {
-    for (const r of ['super_admin', 'tenant_admin', 'analyst', 'viewer', 'api_only']) {
+    for (const r of ['super_admin', 'tenant_admin', 'analyst']) {
       expect(RoleSchema.parse(r)).toBe(r);
     }
   });
@@ -107,11 +107,11 @@ describe('CreateUserInputSchema', () => {
     })).toThrow();
   });
 
-  it('defaults role to viewer', () => {
+  it('defaults role to analyst', () => {
     const result = CreateUserInputSchema.parse({
       email: 'a@b.com', displayName: 'A',
     });
-    expect(result.role).toBe('viewer');
+    expect(result.role).toBe('analyst');
   });
 });
 

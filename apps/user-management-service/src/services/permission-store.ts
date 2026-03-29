@@ -33,24 +33,19 @@ const BUILT_IN_PERMISSIONS: Record<string, string[]> = {
   super_admin: ['*'],
   admin: ['*'],
   analyst: [
-    'ioc:*', 'threat_actor:read', 'threat_actor:create', 'malware:*',
-    'vuln:read', 'hunting:*', 'graph:read', 'alert:*', 'dashboard:*',
-    'report:*', 'correlation:read', 'drp:read', 'integration:read', 'feed:read',
+    'ioc:*', 'threat_actor:*', 'malware:*', 'vuln:*',
+    'hunting:*', 'graph:*', 'alert:*', 'dashboard:*', 'report:*',
+    'feed:read', 'correlation:read', 'drp:read',
   ],
   hunter: [
     'ioc:read', 'threat_actor:read', 'malware:read', 'vuln:read',
     'hunting:*', 'graph:read', 'alert:read', 'dashboard:read',
     'correlation:read', 'drp:read',
   ],
-  viewer: [
-    'ioc:read', 'threat_actor:read', 'malware:read', 'vuln:read',
-    'dashboard:read', 'alert:read', 'graph:read', 'report:read',
-  ],
-  api_only: ['ioc:read', 'ioc:create', 'threat_actor:read', 'vuln:read'],
 };
 
-/** Role hierarchy: higher index = higher privilege. api_only is standalone (not in hierarchy). */
-const ROLE_HIERARCHY: string[] = ['viewer', 'hunter', 'analyst', 'admin', 'super_admin'];
+/** Role hierarchy: higher index = higher privilege. */
+const ROLE_HIERARCHY: string[] = ['hunter', 'analyst', 'admin', 'super_admin'];
 
 /**
  * In-memory RBAC permission store.

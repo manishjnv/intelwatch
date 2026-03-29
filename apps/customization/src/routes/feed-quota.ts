@@ -38,7 +38,7 @@ function getRequestContext(req: FastifyRequest) {
   return {
     tenantId: (req.headers['x-tenant-id'] as string) || '',
     userId: (req.headers['x-user-id'] as string) || 'unknown',
-    role: (req.headers['x-user-role'] as string) || 'viewer',
+    role: (req.headers['x-user-role'] as string) || 'analyst',
   };
 }
 

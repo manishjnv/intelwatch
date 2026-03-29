@@ -29,7 +29,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   {
     id: 'invite_team',
     title: 'Invite Your Team',
-    description: 'Add analysts, hunters, and viewers to your workspace',
+    description: 'Add analysts and hunters to your workspace',
     actionUrl: '/settings',
     icon: 'users',
     completed: false,

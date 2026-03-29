@@ -92,7 +92,7 @@ export type OrgProfileInput = z.infer<typeof OrgProfileSchema>;
 export const TeamInviteSchema = z.object({
   invites: z.array(z.object({
     email: z.string().email(),
-    role: z.enum(['admin', 'analyst', 'viewer']).default('analyst'),
+    role: z.enum(['admin', 'analyst']).default('analyst'),
     name: z.string().max(200).optional(),
   })).min(1).max(20),
 });

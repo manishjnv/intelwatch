@@ -55,7 +55,7 @@ describe('AuditEntrySchema', () => {
   it('accepts changes as a JSON record', () => {
     const result = AuditEntrySchema.safeParse({
       ...validEntry,
-      changes: { oldRole: 'viewer', newRole: 'analyst' },
+      changes: { oldRole: 'analyst', newRole: 'tenant_admin' },
     });
     expect(result.success).toBe(true);
   });

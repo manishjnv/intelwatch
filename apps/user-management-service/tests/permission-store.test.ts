@@ -34,10 +34,10 @@ describe('PermissionStore', () => {
   });
 
   describe('Built-in roles', () => {
-    it('seeds 6 built-in roles', () => {
+    it('seeds 4 built-in roles', () => {
       const roles = store.listRoles(TENANT);
       const builtIn = roles.filter((r) => r.isBuiltIn);
-      expect(builtIn).toHaveLength(6);
+      expect(builtIn).toHaveLength(4);
     });
 
     it('super_admin has wildcard permission', () => {
@@ -49,9 +49,17 @@ describe('PermissionStore', () => {
       expect(store.hasPermission('admin', 'drp:create', TENANT)).toBe(true);
     });
 
-    it('viewer can only read, not create', () => {
-      expect(store.hasPermission('viewer', 'ioc:read', TENANT)).toBe(true);
-      expect(store.hasPermission('viewer', 'ioc:create', TENANT)).toBe(false);
+    it('analyst has full TI access via wildcards', () => {
+      expect(store.hasPermission('analyst', 'ioc:read', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'ioc:create', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'ioc:delete', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'threat_actor:read', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'threat_actor:create', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'threat_actor:delete', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'malware:delete', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'vuln:update', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'graph:read', TENANT)).toBe(true);
+      expect(store.hasPermission('analyst', 'graph:write', TENANT)).toBe(true);
     });
 
     it('analyst has correlation:read and drp:read', () => {
@@ -59,16 +67,16 @@ describe('PermissionStore', () => {
       expect(store.hasPermission('analyst', 'drp:read', TENANT)).toBe(true);
     });
 
+    it('analyst cannot manage users, admin, integration, or settings', () => {
+      expect(store.hasPermission('analyst', 'user:read', TENANT)).toBe(false);
+      expect(store.hasPermission('analyst', 'admin:write', TENANT)).toBe(false);
+      expect(store.hasPermission('analyst', 'settings:read', TENANT)).toBe(false);
+    });
+
     it('hunter has hunting:* (wildcard)', () => {
       expect(store.hasPermission('hunter', 'hunting:read', TENANT)).toBe(true);
       expect(store.hasPermission('hunter', 'hunting:create', TENANT)).toBe(true);
       expect(store.hasPermission('hunter', 'hunting:delete', TENANT)).toBe(true);
-    });
-
-    it('api_only has limited permissions', () => {
-      expect(store.hasPermission('api_only', 'ioc:read', TENANT)).toBe(true);
-      expect(store.hasPermission('api_only', 'ioc:create', TENANT)).toBe(true);
-      expect(store.hasPermission('api_only', 'hunting:read', TENANT)).toBe(false);
     });
 
     it('cannot modify built-in roles', () => {
@@ -80,8 +88,8 @@ describe('PermissionStore', () => {
 
     it('cannot delete built-in roles', () => {
       const roles = store.listRoles(TENANT);
-      const viewer = roles.find((r) => r.name === 'viewer');
-      expect(() => store.deleteRole(viewer!.id, TENANT)).toThrow('Cannot delete built-in roles');
+      const analyst = roles.find((r) => r.name === 'analyst');
+      expect(() => store.deleteRole(analyst!.id, TENANT)).toThrow('Cannot delete built-in roles');
     });
   });
 
@@ -123,7 +131,7 @@ describe('PermissionStore', () => {
   describe('Permission inheritance (P0 #1)', () => {
     it('role hierarchy is correct', () => {
       const hierarchy = store.getHierarchy();
-      expect(hierarchy).toEqual(['viewer', 'hunter', 'analyst', 'admin', 'super_admin']);
+      expect(hierarchy).toEqual(['hunter', 'analyst', 'admin', 'super_admin']);
     });
 
     it('custom role inherits parent permissions', () => {
@@ -133,8 +141,8 @@ describe('PermissionStore', () => {
     });
 
     it('getEffectivePermissions includes inherited', () => {
-      store.createRole({ name: 'extended_viewer', permissions: ['feed:read'], inheritsFrom: 'viewer' }, TENANT);
-      const effective = store.getEffectivePermissions('extended_viewer', TENANT);
+      store.createRole({ name: 'extended_hunter', permissions: ['feed:read'], inheritsFrom: 'hunter' }, TENANT);
+      const effective = store.getEffectivePermissions('extended_hunter', TENANT);
       expect(effective).toContain('feed:read');
       expect(effective).toContain('ioc:read');
       expect(effective).toContain('dashboard:read');
@@ -166,8 +174,8 @@ describe('PermissionStore', () => {
     });
 
     it('exact permission match works', () => {
-      expect(store.hasPermission('viewer', 'alert:read', TENANT)).toBe(true);
-      expect(store.hasPermission('viewer', 'alert:create', TENANT)).toBe(false);
+      expect(store.hasPermission('hunter', 'alert:read', TENANT)).toBe(true);
+      expect(store.hasPermission('hunter', 'alert:create', TENANT)).toBe(false);
     });
   });
 });

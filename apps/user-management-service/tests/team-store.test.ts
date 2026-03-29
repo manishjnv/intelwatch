@@ -22,18 +22,18 @@ describe('TeamStore', () => {
     });
 
     it('normalizes email to lowercase', () => {
-      const member = store.inviteUser({ email: 'BOB@ACME.COM', role: 'viewer' }, TENANT, ADMIN);
+      const member = store.inviteUser({ email: 'BOB@ACME.COM', role: 'analyst' }, TENANT, ADMIN);
       expect(member.email).toBe('bob@acme.com');
     });
 
     it('rejects duplicate email in same tenant', () => {
-      store.inviteUser({ email: 'dup@acme.com', role: 'viewer' }, TENANT, ADMIN);
-      expect(() => store.inviteUser({ email: 'dup@acme.com', role: 'viewer' }, TENANT, ADMIN)).toThrow('already exists');
+      store.inviteUser({ email: 'dup@acme.com', role: 'analyst' }, TENANT, ADMIN);
+      expect(() => store.inviteUser({ email: 'dup@acme.com', role: 'analyst' }, TENANT, ADMIN)).toThrow('already exists');
     });
 
     it('allows same email in different tenant', () => {
-      store.inviteUser({ email: 'cross@acme.com', role: 'viewer' }, 'tenant-a', ADMIN);
-      const m = store.inviteUser({ email: 'cross@acme.com', role: 'viewer' }, 'tenant-b', ADMIN);
+      store.inviteUser({ email: 'cross@acme.com', role: 'analyst' }, 'tenant-a', ADMIN);
+      const m = store.inviteUser({ email: 'cross@acme.com', role: 'analyst' }, 'tenant-b', ADMIN);
       expect(m.tenantId).toBe('tenant-b');
     });
 
@@ -42,7 +42,7 @@ describe('TeamStore', () => {
     });
 
     it('sets optional name from input', () => {
-      const member = store.inviteUser({ email: 'named@acme.com', role: 'viewer', name: 'Alice Smith' }, TENANT, ADMIN);
+      const member = store.inviteUser({ email: 'named@acme.com', role: 'analyst', name: 'Alice Smith' }, TENANT, ADMIN);
       expect(member.name).toBe('Alice Smith');
     });
   });
@@ -56,7 +56,7 @@ describe('TeamStore', () => {
     });
 
     it('rejects already accepted invite', () => {
-      const m = store.inviteUser({ email: 'new2@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'new2@acme.com', role: 'analyst' }, TENANT, ADMIN);
       store.acceptInvite(m.id, TENANT);
       expect(() => store.acceptInvite(m.id, TENANT)).toThrow('already accepted');
     });
@@ -64,34 +64,34 @@ describe('TeamStore', () => {
 
   describe('Role management', () => {
     it('updates user role', () => {
-      const m = store.inviteUser({ email: 'role@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'role@acme.com', role: 'analyst' }, TENANT, ADMIN);
       const updated = store.updateRole(m.id, 'analyst', TENANT);
       expect(updated.role).toBe('analyst');
     });
 
     it('rejects invalid role', () => {
-      const m = store.inviteUser({ email: 'bad-role@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'bad-role@acme.com', role: 'analyst' }, TENANT, ADMIN);
       expect(() => store.updateRole(m.id, 'fake_role', TENANT)).toThrow('not found');
     });
   });
 
   describe('Deactivate / reactivate', () => {
     it('deactivates a member', () => {
-      const m = store.inviteUser({ email: 'deac@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'deac@acme.com', role: 'analyst' }, TENANT, ADMIN);
       store.acceptInvite(m.id, TENANT);
       const deactivated = store.deactivate(m.id, TENANT);
       expect(deactivated.status).toBe('inactive');
     });
 
     it('rejects double deactivation', () => {
-      const m = store.inviteUser({ email: 'deac2@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'deac2@acme.com', role: 'analyst' }, TENANT, ADMIN);
       store.acceptInvite(m.id, TENANT);
       store.deactivate(m.id, TENANT);
       expect(() => store.deactivate(m.id, TENANT)).toThrow('already deactivated');
     });
 
     it('reactivates a deactivated member', () => {
-      const m = store.inviteUser({ email: 'react@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'react@acme.com', role: 'analyst' }, TENANT, ADMIN);
       store.acceptInvite(m.id, TENANT);
       store.deactivate(m.id, TENANT);
       const reactivated = store.reactivate(m.id, TENANT);
@@ -99,7 +99,7 @@ describe('TeamStore', () => {
     });
 
     it('rejects reactivation of non-inactive member', () => {
-      const m = store.inviteUser({ email: 'active@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'active@acme.com', role: 'analyst' }, TENANT, ADMIN);
       store.acceptInvite(m.id, TENANT);
       expect(() => store.reactivate(m.id, TENANT)).toThrow('not deactivated');
     });
@@ -107,7 +107,7 @@ describe('TeamStore', () => {
 
   describe('Remove member', () => {
     it('permanently removes a member', () => {
-      const m = store.inviteUser({ email: 'remove@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'remove@acme.com', role: 'analyst' }, TENANT, ADMIN);
       store.removeMember(m.id, TENANT);
       expect(() => store.getMember(m.id, TENANT)).toThrow('not found');
     });
@@ -116,7 +116,7 @@ describe('TeamStore', () => {
   describe('List and filtering', () => {
     beforeEach(() => {
       store.inviteUser({ email: 'a@acme.com', role: 'analyst', name: 'Alice' }, TENANT, ADMIN);
-      const b = store.inviteUser({ email: 'b@acme.com', role: 'viewer', name: 'Bob' }, TENANT, ADMIN);
+      const b = store.inviteUser({ email: 'b@acme.com', role: 'analyst', name: 'Bob' }, TENANT, ADMIN);
       store.acceptInvite(b.id, TENANT);
       const c = store.inviteUser({ email: 'c@acme.com', role: 'hunter', name: 'Charlie' }, TENANT, ADMIN);
       store.acceptInvite(c.id, TENANT);
@@ -136,7 +136,7 @@ describe('TeamStore', () => {
     });
 
     it('filters by role', () => {
-      const result = store.listMembers(TENANT, { page: 1, limit: 50, status: 'all', role: 'viewer' });
+      const result = store.listMembers(TENANT, { page: 1, limit: 50, status: 'all', role: 'hunter' });
       expect(result.total).toBe(1);
     });
 
@@ -159,8 +159,8 @@ describe('TeamStore', () => {
 
   describe('Stats', () => {
     it('returns counts by status', () => {
-      store.inviteUser({ email: 'x@acme.com', role: 'viewer' }, TENANT, ADMIN);
-      const m = store.inviteUser({ email: 'y@acme.com', role: 'viewer' }, TENANT, ADMIN);
+      store.inviteUser({ email: 'x@acme.com', role: 'analyst' }, TENANT, ADMIN);
+      const m = store.inviteUser({ email: 'y@acme.com', role: 'analyst' }, TENANT, ADMIN);
       store.acceptInvite(m.id, TENANT);
       const stats = store.getStats(TENANT);
       expect(stats.total).toBe(2);

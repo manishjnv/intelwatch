@@ -13,7 +13,7 @@ export const PERMISSION_RESOURCES = [
 export const PERMISSION_ACTIONS = ['read', 'create', 'update', 'delete'] as const;
 
 /** Built-in role names. */
-export const BUILT_IN_ROLES = ['super_admin', 'admin', 'analyst', 'hunter', 'viewer', 'api_only'] as const;
+export const BUILT_IN_ROLES = ['super_admin', 'admin', 'analyst', 'hunter'] as const;
 
 export const PermissionStringSchema = z.string().regex(
   /^(\*|[a-z_]+:\*|[a-z_]+:(read|create|update|delete))$/,
@@ -68,7 +68,7 @@ export const SamlConfigSchema = z.object({
   nameIdFormat: z.enum(['email', 'persistent', 'transient']).default('email'),
   allowedDomains: z.array(z.string().min(1).max(256)).min(1).max(20),
   jitProvisioning: z.boolean().default(true),
-  defaultRole: z.string().default('viewer'),
+  defaultRole: z.string().default('analyst'),
 });
 
 export const OidcConfigSchema = z.object({
@@ -79,7 +79,7 @@ export const OidcConfigSchema = z.object({
   scopes: z.array(z.string()).default(['openid', 'profile', 'email']),
   allowedDomains: z.array(z.string().min(1).max(256)).min(1).max(20),
   jitProvisioning: z.boolean().default(true),
-  defaultRole: z.string().default('viewer'),
+  defaultRole: z.string().default('analyst'),
 });
 
 // ─── MFA Schemas ────────────────────────────────────────────────

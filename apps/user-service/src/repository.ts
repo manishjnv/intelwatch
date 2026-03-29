@@ -21,13 +21,13 @@ export async function findTenantById(id: string) {
 
 export async function createUser(data: {
   tenantId: string; email: string; displayName: string; passwordHash?: string;
-  role?: 'super_admin' | 'tenant_admin' | 'analyst' | 'viewer' | 'api_only';
+  role?: 'super_admin' | 'tenant_admin' | 'analyst';
   authProvider?: 'email' | 'google' | 'saml' | 'oidc'; authProviderId?: string;
 }) {
   return prisma.user.create({
     data: {
       tenantId: data.tenantId, email: data.email, displayName: data.displayName,
-      passwordHash: data.passwordHash, role: data.role ?? 'viewer',
+      passwordHash: data.passwordHash, role: data.role ?? 'analyst',
       authProvider: data.authProvider ?? 'email', authProviderId: data.authProviderId,
     },
   });

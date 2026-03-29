@@ -79,7 +79,7 @@ describe('Wizard Routes', () => {
       payload: {
         invites: [
           { email: 'alice@acme.com', role: 'analyst' },
-          { email: 'bob@acme.com', role: 'viewer' },
+          { email: 'bob@acme.com', role: 'analyst' },
         ],
       },
     });

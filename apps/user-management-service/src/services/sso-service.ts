@@ -124,10 +124,10 @@ export class SsoService {
   /** Get the default role for JIT-provisioned users. */
   getJitDefaultRole(tenantId: string): string {
     const config = this.configs.get(tenantId);
-    if (!config) return 'viewer';
+    if (!config) return 'analyst';
     if (config.saml?.enabled && config.saml.jitProvisioning) return config.saml.defaultRole;
     if (config.oidc?.enabled && config.oidc.jitProvisioning) return config.oidc.defaultRole;
-    return 'viewer';
+    return 'analyst';
   }
 
   private validateAllowedDomains(domains: string[]): void {

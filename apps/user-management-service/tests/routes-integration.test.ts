@@ -70,7 +70,7 @@ describe('Route integration tests', () => {
     it('GET /api/v1/users/roles — lists built-in roles', async () => {
       const res = await app.inject({ method: 'GET', url: '/api/v1/users/roles', headers });
       expect(res.statusCode).toBe(200);
-      expect(res.json().data.length).toBeGreaterThanOrEqual(6);
+      expect(res.json().data.length).toBeGreaterThanOrEqual(4);
     });
 
     it('POST /api/v1/users/roles — creates custom role', async () => {
@@ -162,7 +162,7 @@ describe('Route integration tests', () => {
     it('POST invite — rejects duplicate email', async () => {
       const res = await app.inject({
         method: 'POST', url: '/api/v1/users/team/invite', headers,
-        payload: { email: 'newuser@test.com', role: 'viewer' },
+        payload: { email: 'newuser@test.com', role: 'analyst' },
       });
       expect(res.statusCode).toBe(409);
     });

@@ -143,7 +143,7 @@ describe('WizardStore', () => {
   describe('addTeamInvites', () => {
     it('adds invites to the wizard', async () => {
       await store.getOrCreate('t1');
-      const invites = [{ email: 'a@test.com', role: 'analyst' as const }, { email: 'b@test.com', role: 'viewer' as const }];
+      const invites = [{ email: 'a@test.com', role: 'analyst' as const }, { email: 'b@test.com', role: 'analyst' as const }];
       const wizard = await store.addTeamInvites('t1', invites);
       expect(wizard.teamInvites).toHaveLength(2);
     });
@@ -151,7 +151,7 @@ describe('WizardStore', () => {
     it('appends to existing invites', async () => {
       await store.getOrCreate('t1');
       await store.addTeamInvites('t1', [{ email: 'a@test.com', role: 'analyst' as const }]);
-      const wizard = await store.addTeamInvites('t1', [{ email: 'b@test.com', role: 'viewer' as const }]);
+      const wizard = await store.addTeamInvites('t1', [{ email: 'b@test.com', role: 'analyst' as const }]);
       expect(wizard.teamInvites).toHaveLength(2);
     });
   });
