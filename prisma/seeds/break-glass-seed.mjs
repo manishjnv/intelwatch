@@ -9,16 +9,19 @@ const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000000';
 
 /** bcryptjs-compatible hash using Node crypto (bcrypt $2a$ format) */
 async function hashPassword(password) {
-  // Use dynamic import to try bcryptjs first (available in some containers)
+  let bcryptjs;
   try {
-    const bcryptjs = await import('bcryptjs');
-    return bcryptjs.hash(password, 12);
+    bcryptjs = await import('bcryptjs');
   } catch {
-    // Fallback: use Node.js built-in scrypt-based hash with bcrypt-like prefix
-    // This won't be verifiable by bcryptjs — so we must ensure bcryptjs is available
-    console.error('bcryptjs not found — trying to require from nested node_modules...');
-    process.exit(1);
+    try {
+      bcryptjs = await import('/app/node_modules/.pnpm/bcryptjs@2.4.3/node_modules/bcryptjs/index.js');
+    } catch {
+      console.error('bcryptjs not found — cannot hash password.');
+      process.exit(1);
+    }
   }
+  const mod = bcryptjs.default || bcryptjs;
+  return mod.hash(password, 12);
 }
 
 async function main() {

@@ -10,13 +10,19 @@ const SYSTEM_TENANT_SLUG = 'intelwatch-system';
 const BCRYPT_ROUNDS = 12;
 
 async function hashPassword(password) {
+  let bcryptjs;
   try {
-    const bcryptjs = await import('bcryptjs');
-    return bcryptjs.hash(password, BCRYPT_ROUNDS);
+    bcryptjs = await import('bcryptjs');
   } catch {
-    console.error('bcryptjs not found — cannot hash password.');
-    process.exit(1);
+    try {
+      bcryptjs = await import('/app/node_modules/.pnpm/bcryptjs@2.4.3/node_modules/bcryptjs/index.js');
+    } catch {
+      console.error('bcryptjs not found — cannot hash password.');
+      process.exit(1);
+    }
   }
+  const mod = bcryptjs.default || bcryptjs;
+  return mod.hash(password, BCRYPT_ROUNDS);
 }
 
 async function main() {
