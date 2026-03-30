@@ -31,6 +31,9 @@ interface AuthResponse {
     role: string;
     tenantId: string;
     avatarUrl: string | null;
+    mfaEnabled?: boolean;
+    emailVerified?: boolean;
+    mfaVerifiedAt?: string | null;
   };
   tenant?: {
     id: string;
@@ -38,10 +41,14 @@ interface AuthResponse {
     slug: string;
     plan: string;
   };
+  mfaRequired?: boolean;
+  mfaSetupRequired?: boolean;
+  mfaToken?: string;
 }
 
 export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setMfaToken = useAuthStore((s) => s.setMfaToken);
   const navigate = useNavigate();
 
   return useMutation<AuthResponse, ApiError, LoginInput>({
@@ -66,6 +73,19 @@ export function useLogin() {
         tenant: { id: 'demo-tenant', name: 'Demo Organization', slug: 'demo', plan: 'free' },
       })),
     onSuccess: (data) => {
+      // MFA challenge required — redirect to TOTP entry
+      if (data.mfaRequired && data.mfaToken) {
+        setMfaToken(data.mfaToken);
+        navigate('/auth/mfa-challenge');
+        return;
+      }
+      // MFA setup required by org policy — redirect to forced setup
+      if (data.mfaSetupRequired && data.mfaToken) {
+        setMfaToken(data.mfaToken);
+        navigate('/auth/mfa-setup-required');
+        return;
+      }
+      // Normal login
       setAuth(data);
       navigate('/dashboard');
     },

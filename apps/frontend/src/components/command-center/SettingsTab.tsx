@@ -22,6 +22,11 @@ import {
   Clock, Mail, Volume2, VolumeX, Check, Circle,
 } from 'lucide-react'
 import { MiniSparkline } from './charts'
+import { MfaEnforcementCard } from '@/components/security/SecurityPanel'
+
+function MfaEnforcementCardInline() {
+  return <MfaEnforcementCard scope="platform" />
+}
 
 // ═══════════════════════════════════════════════════════════════
 // SHARED: Model Catalog (same as former ConfigureTab)
@@ -273,13 +278,14 @@ function ModelDropdown({
 // SUPER-ADMIN VIEW
 // ═══════════════════════════════════════════════════════════════
 
-type AdminSection = 'providers' | 'models' | 'confidence' | 'platform'
+type AdminSection = 'providers' | 'models' | 'confidence' | 'platform' | 'security'
 
 const ADMIN_SECTIONS: { id: AdminSection; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: 'providers', label: 'AI Providers & Keys', icon: Key },
   { id: 'models', label: 'Model Assignments', icon: Cpu },
   { id: 'confidence', label: 'Confidence Model', icon: Shield },
   { id: 'platform', label: 'Platform Preferences', icon: Bell },
+  { id: 'security', label: 'Security & MFA', icon: Shield },
 ]
 
 function SuperAdminSettings({ data, aiConfig }: SettingsTabProps) {
@@ -520,6 +526,18 @@ function SuperAdminSettings({ data, aiConfig }: SettingsTabProps) {
                 </button>
               </label>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Security & MFA Enforcement */}
+      {section === 'security' && (
+        <section data-testid="section-security-content">
+          <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-accent" /> Security & MFA Enforcement
+          </h2>
+          <div className="max-w-lg">
+            <MfaEnforcementCardInline />
           </div>
         </section>
       )}

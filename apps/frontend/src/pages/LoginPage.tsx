@@ -6,17 +6,38 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLogin } from '@/hooks/use-auth';
-import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useResendVerification } from '@/hooks/use-email-verification';
+import { Shield, Eye, EyeOff, Loader2, Mail } from 'lucide-react';
+import { toast } from '@/components/ui/Toast';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
   const login = useLogin();
+  const resend = useResendVerification();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    login.mutate({ email, password });
+    setEmailNotVerified(false);
+    login.mutate({ email, password }, {
+      onError: (err) => {
+        if (err.status === 403 && err.code === 'EMAIL_NOT_VERIFIED') {
+          setEmailNotVerified(true);
+        }
+      },
+    });
+  };
+
+  const handleResendVerification = () => {
+    resend.mutate({ email }, {
+      onSuccess: () => toast('Verification email sent. Check your inbox.', 'success'),
+      onError: (err) => {
+        if (err.status === 429) toast('Please wait before requesting another link.', 'info');
+        else toast('Verification email sent. Check your inbox.', 'success');
+      },
+    });
   };
 
   return (
@@ -78,8 +99,25 @@ export function LoginPage() {
               </div>
             </div>
 
+            {/* Email not verified */}
+            {emailNotVerified && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs" data-testid="email-not-verified">
+                <p className="text-amber-400">Please verify your email before logging in.</p>
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resend.isPending}
+                  className="mt-1.5 inline-flex items-center gap-1 text-text-link hover:underline text-xs"
+                  data-testid="resend-verification-link"
+                >
+                  <Mail className="w-3 h-3" />
+                  {resend.isPending ? 'Sending...' : 'Resend verification email'}
+                </button>
+              </div>
+            )}
+
             {/* Error */}
-            {login.error && (
+            {login.error && !emailNotVerified && (
               <div className="p-3 bg-sev-critical/10 border border-sev-critical/20 rounded-lg text-xs text-sev-critical">
                 {login.error.message}
               </div>

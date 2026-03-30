@@ -14,12 +14,13 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   Search, UserPlus, Shield, ShieldCheck, Mail,
   Check, X, Globe, Key, Webhook, AlertTriangle,
-  Settings, CheckCircle, ArrowUpCircle, Zap, Crown,
+  Settings, CheckCircle, ArrowUpCircle, Zap, Crown, Lock,
 } from 'lucide-react'
+import { SecurityPanel } from '@/components/security/SecurityPanel'
 
 // ─── Types ──────────────────────────────────────────────────
 
-type SubTab = 'team' | 'roles' | 'sso' | 'integrations'
+type SubTab = 'team' | 'roles' | 'sso' | 'integrations' | 'security'
 
 interface UsersAccessTabProps {
   data: ReturnType<typeof useCommandCenter>
@@ -467,6 +468,7 @@ export function UsersAccessTab({ data }: UsersAccessTabProps) {
       items.push({ id: 'sso', label: 'SSO' })
     }
     items.push({ id: 'integrations', label: 'Integrations' })
+    items.push({ id: 'security', label: 'Security' })
     return items
   }, [isSuperAdmin])
 
@@ -480,6 +482,7 @@ export function UsersAccessTab({ data }: UsersAccessTabProps) {
       {effectiveSubTab === 'roles' && <RolesPanel tenantPlan={tenantPlan} />}
       {effectiveSubTab === 'sso' && <SSOPanel />}
       {effectiveSubTab === 'integrations' && <IntegrationsPanel />}
+      {effectiveSubTab === 'security' && <SecurityPanel data={data} />}
     </div>
   )
 }

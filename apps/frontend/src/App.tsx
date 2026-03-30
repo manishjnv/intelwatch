@@ -22,6 +22,9 @@ import { DRPDashboardPage } from '@/pages/DRPDashboardPage';
 import { CorrelationPage } from '@/pages/CorrelationPage';
 import { HuntingWorkbenchPage } from '@/pages/HuntingWorkbenchPage';
 import { SearchPage } from '@/pages/SearchPage';
+import { MfaChallengePage } from '@/pages/MfaChallengePage';
+import { MfaSetupRequiredPage } from '@/pages/MfaSetupRequiredPage';
+import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
 
 
 // Lazy-loaded — D3 (~190KB) splits into its own chunk, only fetched on /graph navigation
@@ -57,6 +60,9 @@ export function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth/mfa-challenge" element={<MfaChallengePage />} />
+        <Route path="/auth/mfa-setup-required" element={<MfaSetupRequiredPage />} />
+        <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>

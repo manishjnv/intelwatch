@@ -12,6 +12,9 @@ interface User {
   role: string;
   tenantId: string;
   avatarUrl: string | null;
+  mfaEnabled?: boolean;
+  emailVerified?: boolean;
+  mfaVerifiedAt?: string | null;
 }
 
 interface Tenant {
@@ -24,6 +27,7 @@ interface Tenant {
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
+  mfaToken: string | null;
   user: User | null;
   tenant: Tenant | null;
   isAuthenticated: boolean;
@@ -31,6 +35,7 @@ interface AuthState {
   setTokens: (access: string, refresh: string) => void;
   setAuth: (data: { accessToken: string; refreshToken: string; user: User; tenant?: Tenant }) => void;
   setUser: (user: User) => void;
+  setMfaToken: (token: string | null) => void;
   logout: () => void;
 }
 
@@ -78,6 +83,7 @@ function persistState(state: Partial<AuthState>): void {
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
+  mfaToken: null,
   user: null,
   tenant: null,
   isAuthenticated: false,
@@ -109,6 +115,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       persistState(newState);
       return newState;
     });
+  },
+
+  setMfaToken: (token) => {
+    set({ mfaToken: token });
   },
 
   logout: () => {
