@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-30 (update at end of EVERY session via /session-end)
-**Session counter:** 118b — E2E Integration Tests (S15): 8 suites (95 tests) validating Command Center v2.1 features I-01 through I-22 (RBAC, guards, MFA, break-glass, RLS isolation, offboarding, audit hash chain, SCIM). 2 lint fixes. api-gateway: 187 tests, user-service: 174 tests. ~7,635 monorepo total. Commits 642e2fe, a20a8ae.
+**Session counter:** 119 — S16: MFA Setup UI + Active Sessions + Email Verification Page. 21 new files + 7 modified = 28 total. MFA setup wizard (QR→verify→backup codes), MFA challenge page, forced MFA setup page, active sessions list (geo/UA/terminate), email verification page, login flow branching (MFA/email states), Security sub-tab in Command Center. 7 test files, 61 new tests. qrcode.react dependency. 1,438 frontend tests. ~7,696 monorepo total. Commits f743668, 784a8e9.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.2.2 | 2026-03-30 | Health check passing. **Session 118 (I-22):** Break-glass routes (5 endpoints: POST /auth/break-glass, GET status/audit, POST rotate-password, DELETE sessions). ioredis BullMQ alert queue. 130 tests. |
-| etip_frontend | ✅ Running | 0.15.0 | 2026-03-28 | Dashboard + 20 data pages + Command Center (9 tabs SA / 7 TA). **Session 110:** BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 1010 tests (1012 total, 2 skipped). |
+| etip_frontend | ✅ Running | 0.16.0 | 2026-03-30 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 119 (S16):** MFA setup wizard, MFA challenge/forced-setup pages, active sessions list, email verification page, login flow branching, Security sub-tab. 1,438 tests. |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-28 | **24 data pages + Command Center (9 tabs SA / 7 TA)**. 1010 tests. **Session 110:** Phase F — BillingPlansTab (6 sub-tabs: Subscription, Invoices, Plans & Upgrade, Limits, Offers, Billing Info) + AlertsReportsTab (4 sub-tabs: Alert Rules, Alert History, Report Templates, Generate & Schedule). Role-gated. |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-30 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,438 tests. **Session 119 (S16):** MFA setup wizard (QR→verify→backup codes), MFA challenge page, forced MFA setup page, active sessions list (geo/UA/terminate), email verification page, login flow branching, Security sub-tab. +qrcode.react dep. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 96:** Fuzzy dedupe in global worker, batch normalizer. 256 tests. |

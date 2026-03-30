@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 118b &middot; 2026-03-30 &middot; E2E Integration Tests (S15): 8 suites, 95 tests across RBAC, guards, MFA, RLS, offboarding, audit, SCIM. ~7,635 tests</span>
+  <span class="version">Session 119 &middot; 2026-03-30 &middot; S16: MFA Setup UI + Active Sessions + Email Verification (21 new components/pages/hooks, 61 tests). ~7,696 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,635</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~7,696</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~630</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">118</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">119</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass routes</td><td>130</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Plan Builder + Usage Page + FeatureGate + Quota Banners</td><td>1,377</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + MFA Setup/Challenge + Active Sessions + Email Verify</td><td>1,438</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats</td><td>237</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
