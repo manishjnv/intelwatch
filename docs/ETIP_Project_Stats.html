@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 116 &middot; 2026-03-29 &middot; SSO Group Mapping (I-11) + Email Verification (I-13) deployed. 33 containers, ~7,262 tests</span>
+  <span class="version">Session 117 &middot; 2026-03-30 &middot; Access Review (I-17) + Compliance Reports (I-18) deployed. 33 containers, ~7,331 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,262</div><div class="stat-label">Tests Passing</div></div>
-    <div class="stat-card"><div class="stat-value">~619</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">116</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">~7,331</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~630</div><div class="stat-label">API Endpoints</div></div>
+    <div class="stat-card"><div class="stat-value">117</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -144,7 +144,7 @@ li strong { color: var(--text-primary); }
     <thead><tr><th>Module</th><th>Port</th><th>Phase</th><th>Status</th><th>Endpoints</th><th>Tests</th></tr></thead>
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API</td><td>108</td></tr>
-      <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify</td><td>73</td></tr>
+      <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance</td><td>122</td></tr>
       <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Plan Builder + Usage Page + FeatureGate + Quota Banners</td><td>1,377</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats</td><td>237</td></tr>
@@ -158,7 +158,7 @@ li strong { color: var(--text-primary); }
       <tr><td>threat-hunting</td><td>3014</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>47</td><td>222</td></tr>
       <tr><td>digital-risk-protection</td><td>3011</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>36</td><td>310</td></tr>
       <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>24</td><td>174</td></tr>
-      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>33</td><td>210</td></tr>
+      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>49 (+I-17 access review +I-18 compliance)</td><td>279</td></tr>
       <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58 (+BYOK +FeedQuota +GlobalAI +PlanLimits)</td><td>319</td></tr>
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>241</td></tr>
       <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28 (PlanStore Prisma-backed)</td><td>174</td></tr>
@@ -537,22 +537,19 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 116</span> SSO Group Mapping (I-11) + Email Verification (I-13) Deployed</div>
+    <div class="card-title"><span class="badge badge-green">Session 117</span> Access Review (I-17) + Compliance Reports (I-18) Deployed</div>
     <div class="card-body">
-      <strong>Session 116 (2026-03-29):</strong> Command Center v2.1 S9 — SSO + Email Verification:<br>
-      &bull; <strong>SSO Config (I-11)</strong> — SsoConfig Prisma model (SAML/OIDC per-tenant), group-to-role mapping (tenant_admin/analyst), encrypted clientSecret (AES-256-GCM)<br>
-      &bull; <strong>JIT Provisioning</strong> — Auto-create users on SSO callback, domain validation against approvedDomains, maxUsers enforcement<br>
-      &bull; <strong>Email Verification (I-13)</strong> — SHA-256 hashed tokens (24h expiry), verify/resend endpoints, 5-min rate limit on resend, 7-day unverified cleanup<br>
-      &bull; <strong>Login Guard</strong> — 403 EMAIL_NOT_VERIFIED before password check, anti-enumeration on resend (always 200)<br>
-      &bull; <strong>Register Flow</strong> — Creates user with active=false, emailVerified=false, returns email job payload (QUEUES.EMAIL_SEND)<br>
-      &bull; <strong>Prisma schema</strong> — SsoConfig model + emailVerified/emailVerifyToken/emailVerifyExpires on User<br>
-      &bull; <strong>22 new tests</strong> (10 SSO + 12 email verification). 73 user-service total.<br>
-      &bull; <strong>Commit:</strong> ecb327f — Deploy verified: /health ok, /ready ok<br><br>
+      <strong>Session 117 (2026-03-30):</strong> Command Center v2.1 S10 — Access Review + Compliance:<br>
+      &bull; <strong>Access Review (I-17)</strong> — Stale super_admin scan (60d inactivity), stale user scan (90d), 14-day auto-disable with last-admin safety, review confirm/disable endpoints, quarterly summary (user counts, MFA adoption, role distribution)<br>
+      &bull; <strong>Compliance Reports (I-18)</strong> — SOC 2 CC6.3 access review report, privileged access report (super/tenant admins + sessions/geo + API keys + SCIM tokens), GDPR DSAR export (profile + sessions + audit logs + API keys)<br>
+      &bull; <strong>Prisma models</strong> — AccessReview (access_reviews) + ComplianceReport (compliance_reports) with Json reportData<br>
+      &bull; <strong>11 new endpoints</strong> (6 access review + 5 compliance). <strong>20 new tests</strong>. 279 user-management total.<br>
+      &bull; <strong>Commit:</strong> 4774489 — CI/CD passed, all 33 containers healthy<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Run prisma db push on VPS</strong> — SsoConfig + email verification fields + MFA + Plan models + migration 0003<br>
+      1. <strong>Run prisma db push on VPS</strong> — AccessReview + ComplianceReport + ScimToken + SsoConfig + email verification + plan models<br>
       2. <strong>Set TI_MFA_ENCRYPTION_KEY on VPS</strong> — Required for TOTP + SSO clientSecret encryption<br>
       3. <strong>Run plan seed script on VPS</strong> — 4 default plans &times; 16 features<br>
-      4. <strong>Continue Command Center v2.1</strong> — Remaining I-items or Quota UI (billing/limits frontend)<br>
+      4. <strong>Continue Command Center v2.1</strong> — I-19 Offboarding, I-20 Retention, I-21 Ownership Transfer<br>
       5. <strong>Set Shodan/GreyNoise API keys on VPS</strong><br>
     </div>
   </div>
@@ -561,7 +558,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 116 &middot; 2026-03-29 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 117 &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 

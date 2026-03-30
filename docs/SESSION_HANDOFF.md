@@ -1,71 +1,58 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-30
-**Session:** 116
-**Session Summary:** SCIM 2.0 Provisioning (I-12) + Free-to-Paid Billing Upgrade (I-14) — ScimToken Prisma model, SCIM bearer token management, /Users CRUD (create/patch/delete with deprovisioning), /Groups read-only, RFC 7644 filter parser, session termination + API key revocation on deprovision; POST /billing/upgrade with downgrade protection + GET /billing/plans. 49 new tests. 24 files changed (10 new, 8 modified, 6 test count fixes). Pushed to master.
+**Session:** 117
+**Session Summary:** Access Review Automation (I-17) + Compliance Report Generation (I-18) — stale super_admin/user scans, 14-day auto-disable, review confirm/disable endpoints, quarterly summary, SOC 2 report, privileged access report, GDPR DSAR export. 11 endpoints, 20 new tests. Pushed to master.
 
 ## ✅ Changes Made
 
-- Commit 48798de: feat: SCIM 2.0 provisioning (I-12) + free-to-paid billing upgrade (I-14)
+- Commit 4774489: feat: access review automation + compliance report generation (I-17, I-18)
+- Commit 409a2c0: docs: post-deploy stats update — session 117
 
 ## 📁 Files / Documents Affected
 
-### New Files (10)
+### New Files (6)
 
 | File | Purpose |
 |------|---------|
-| apps/user-service/src/scim-token-repository.ts | Prisma CRUD for ScimToken model |
-| apps/user-service/src/scim-token-service.ts | SCIM token generate/list/revoke, bearer auth validation |
-| apps/user-service/src/scim-users-service.ts | SCIM /Users CRUD — create, get, patch (RFC 7644), delete |
-| apps/user-service/src/scim-groups-service.ts | SCIM /Groups read-only — list + get |
-| apps/user-service/src/scim-deprovision-service.ts | Deprovisioning: terminates sessions + revokes API keys on SCIM delete |
-| apps/user-service/**tests**/scim-token-service.test.ts | SCIM token management tests |
-| apps/user-service/**tests**/scim-users.test.ts | SCIM /Users endpoint tests |
-| apps/user-service/**tests**/scim-deprovision.test.ts | Deprovisioning flow tests |
-| apps/user-service/**tests**/scim-groups.test.ts | SCIM /Groups read-only tests |
-| apps/billing-service/**tests**/billing-upgrade.test.ts | Billing upgrade/plans endpoint tests |
+| apps/user-service/src/access-review-repository.ts | Prisma CRUD for AccessReview model |
+| apps/user-service/src/access-review-service.ts | Stale scans (60d/90d), auto-disable (14d), review actions, quarterly summary |
+| apps/user-service/src/compliance-report-repository.ts | Prisma CRUD for ComplianceReport model |
+| apps/user-service/src/compliance-report-service.ts | SOC 2, privileged access, GDPR DSAR report generation |
+| apps/user-service/__tests__/access-review-service.test.ts | 10 tests for access review flows |
+| apps/user-service/__tests__/compliance-report-service.test.ts | 10 tests for compliance report flows |
 
-### Modified Files (8)
+### Modified Files (4+)
 
 | File | Change |
 |------|--------|
-| prisma/schema.prisma | +ScimToken model (tenantId, token hash, label, createdAt, lastUsedAt) |
-| packages/shared-types/src/scim.ts | SCIM 2.0 type definitions (ScimUser, ScimGroup, ScimListResponse, ScimPatch) |
-| packages/shared-utils/src/queues.ts | (if queue added for SCIM events) |
-| apps/user-service/src/index.ts | Register SCIM routes + scimTokenService + scimUsersService + scimGroupsService |
-| apps/user-service/src/routes/scim.ts | SCIM route handlers with bearer token middleware |
-| apps/billing-service/src/service.ts | upgradePlan() + getPlans() methods with downgrade protection |
-| apps/billing-service/src/routes.ts | POST /billing/upgrade + GET /billing/plans route registration |
-| apps/api-gateway/src/routes/billing.ts | Proxy new billing upgrade + plans routes |
-
-### Test Count Fixes (6)
-
-| File | Change |
-|------|--------|
-| apps/user-service/**tests**/service.test.ts | Updated test count expectations |
-| apps/admin-service/tests/dlq-processor.test.ts | Queue count sync |
-| apps/admin-service/tests/queue-monitor.test.ts | Queue count sync |
-| packages/shared-utils/tests/constants-errors.test.ts | Queue count sync |
-| apps/user-service/**tests**/sso-service.test.ts | Count sync |
-| apps/user-service/**tests**/email-verification.test.ts | Count sync |
+| prisma/schema.prisma | +AccessReview model (access_reviews table) + ComplianceReport model (compliance_reports table) |
+| packages/shared-types/src/access-review.ts | NEW: Zod schemas for review types, actions, queries, reports |
+| packages/shared-types/src/index.ts | +32 lines exporting access-review types |
+| apps/user-service/src/index.ts | +AccessReviewService, ComplianceReportService, repos |
+| apps/api-gateway/src/routes/access-review.ts | NEW: 6 access review endpoints |
+| apps/api-gateway/src/routes/compliance.ts | NEW: 5 compliance report endpoints |
+| apps/api-gateway/src/app.ts | +accessReviewRoutes, complianceRoutes registration |
+| docs/modules/user-management-service.md | Updated features, API, test counts |
 
 ## 🔧 Decisions & Rationale
-No new architectural decisions. SCIM 2.0 bearer tokens stored as SHA-256 hashes (same pattern as email verification tokens). Deprovisioning terminates active sessions via Redis + revokes API keys — follows existing session management patterns. Billing upgrade uses existing PlanStore + downgrade guard (cannot downgrade via upgrade endpoint).
+No new architectural decisions. Access review uses existing session/user Prisma models. Compliance reports store JSON in Prisma Json field (cast `as object` for InputJsonValue). DSAR export refactored to keep DB access inside service layer (not gateway).
 
 ## 🧪 E2E / Deploy Verification Results
 - TypeScript build: 0 errors (`tsc -b --force`)
-- All tests pass: 49 new tests across 5 SCIM+billing test files
-- CI/CD passed. API gateway healthy (110s uptime).
-- All 33 containers healthy post-deploy.
+- All tests pass: 20 new tests (10 access review + 10 compliance)
+- CI/CD run 23722293306: all green (test → build → deploy)
+- All 33 containers healthy post-deploy
+- Smoke test: /health ok, /ready ok
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
 
-1. Run `prisma db push` on VPS (ScimToken model + SsoConfig + email verification fields + plan models + migration 0003)
+1. Run `prisma db push` on VPS (AccessReview + ComplianceReport + ScimToken + SsoConfig + email verification + plan models)
 2. Set TI_MFA_ENCRYPTION_KEY env var on VPS
 3. Run seed script for 4 default plans
-4. Continue Command Center v2.1 — remaining I-items or Quota UI (billing/limits frontend)
+4. Continue Command Center v2.1 — I-19 Offboarding, I-20 Retention, I-21 Ownership Transfer
 
 ### Deferred
 
@@ -76,20 +63,17 @@ No new architectural decisions. SCIM 2.0 bearer tokens stored as SHA-256 hashes 
 
 ## 🔁 How to Resume
 ```
-Session 117: Command Center v2.1 — remaining I-items or Quota UI
+Session 118: Command Center v2.1 — I-19 Offboarding + I-20 Retention + I-21 Ownership Transfer
 
 Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
 
-Session 116: SCIM 2.0 Provisioning (I-12) + Billing Upgrade (I-14) COMPLETE.
-- I-12: ScimToken Prisma model, SCIM bearer token management (generate/list/revoke),
-  /Users CRUD (RFC 7644 PATCH, deprovisioning terminates sessions + revokes API keys),
-  /Groups read-only (list + get), bearer token auth middleware
-- I-14: POST /billing/upgrade (downgrade protection, plan validation, seat/feature enforcement),
-  GET /billing/plans
-- 10 new files, 8 modified, 6 test count fixes. 49 new tests. Commit 48798de.
-- VPS needs: prisma db push (ScimToken + SsoConfig + email verification + plan models)
-  + TI_MFA_ENCRYPTION_KEY + seed script for 4 default plans
+Session 117: Access Review (I-17) + Compliance Reports (I-18) COMPLETE.
+- I-17: Stale super_admin scan (60d), stale user scan (90d), 14-day auto-disable
+  with last-admin safety, review confirm/disable, quarterly summary
+- I-18: SOC 2 access review, privileged access report, GDPR DSAR export
+- 6 new files, 4+ modified. 20 new tests. Commits 4774489, 409a2c0.
+- VPS needs: prisma db push (AccessReview + ComplianceReport models)
 
-Scope: apps/user-service or apps/frontend
-Do not modify: shared-utils queue constants, MFA code, SSO code, api-gateway quota
+Scope: apps/user-service or apps/user-management-service
+Do not modify: shared-utils queue constants, MFA code, SSO code, SCIM code, api-gateway quota
 ```
