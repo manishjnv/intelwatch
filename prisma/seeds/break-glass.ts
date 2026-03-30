@@ -12,10 +12,7 @@
  *   TI_BREAK_GLASS_OTP_SECRET    — TOTP secret for OTP verification (env-only, never in DB)
  */
 import { PrismaClient } from '@prisma/client';
-import { hash } from 'bcryptjs';
-import { SYSTEM_TENANT_ID } from '@etip/shared-auth';
-
-const BCRYPT_ROUNDS = 12;
+import { hashPassword, SYSTEM_TENANT_ID } from '@etip/shared-auth';
 
 async function main(): Promise<void> {
   const email = process.env['TI_BREAK_GLASS_EMAIL'];
@@ -46,7 +43,7 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    const passwordHash = await hash(password, BCRYPT_ROUNDS);
+    const passwordHash = await hashPassword(password);
 
     // Idempotent upsert — safe to run multiple times
     const user = await prisma.user.upsert({
