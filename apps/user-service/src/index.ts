@@ -25,6 +25,12 @@ export { lookupIP, enrichSessionGeo, initGeoIP, clearGeoCache, type GeoData } fr
 export { AccessReviewService } from './access-review-service.js';
 export { ComplianceReportService } from './compliance-report-service.js';
 
+export { OffboardingService } from './offboarding-service.js';
+export { RetentionService } from './retention-service.js';
+export { OwnershipTransferService } from './ownership-transfer-service.js';
+export { AuditLogger } from './audit-logger.js';
+export { SessionManager } from './session-manager.js';
+
 export { prisma, disconnectPrisma } from './prisma.js';
 
 export * as userRepo from './repository.js';

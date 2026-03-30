@@ -1,11 +1,13 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { TeamStore } from '../services/team-store.js';
 import type { AuditLogger } from '../services/audit-logger.js';
+import type { OwnershipTransferService } from '../services/ownership-transfer-service.js';
 import { InviteUserSchema, UpdateUserRoleSchema, UpdateDesignationSchema, TeamListQuerySchema } from '../schemas/user-management.js';
 
 export interface TeamRouteDeps {
   teamStore: TeamStore;
   auditLogger: AuditLogger;
+  ownershipTransfer?: OwnershipTransferService;
 }
 
 /** Create team management route plugin. */
@@ -87,17 +89,29 @@ export function teamRoutes(deps: TeamRouteDeps) {
       return reply.send({ data: member });
     });
 
-    /** POST /team/:userId/deactivate — Deactivate a team member. Guards: self-action, last-admin. */
+    /** POST /team/:userId/deactivate — Deactivate a team member. Guards: self-action, last-admin. I-21: triggers ownership transfer. */
     app.post('/team/:userId/deactivate', async (req: FastifyRequest<{ Params: { userId: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const actorUserId = (req.headers['x-user-id'] as string) || undefined;
       const member = teamStore.deactivate(req.params.userId, tenantId, actorUserId);
+
+      // I-21: Transfer ownership on disable
+      let ownershipTransferred = null;
+      if (deps.ownershipTransfer) {
+        const transferResult = await deps.ownershipTransfer.transferOnDisable(
+          req.params.userId, tenantId, actorUserId ?? null,
+        );
+        if (transferResult) {
+          ownershipTransferred = { to: transferResult.to, ...transferResult.transferred };
+        }
+      }
+
       auditLogger.log({
         tenantId, userId: (req.headers['x-user-id'] as string) || null,
         action: 'team.deactivated', riskLevel: 'high',
-        details: { memberId: member.id, email: member.email },
+        details: { memberId: member.id, email: member.email, ownershipTransferred },
       });
-      return reply.send({ data: member });
+      return reply.send({ data: member, ownershipTransferred });
     });
 
     /** POST /team/:userId/reactivate — Reactivate a deactivated member. */

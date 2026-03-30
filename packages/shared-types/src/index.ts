@@ -233,6 +233,46 @@ export {
   type PrivilegedAccessReport,
 } from './access-review.js';
 
+// ── Offboarding, Retention, Ownership Transfer (I-19, I-20, I-21) ──
+export {
+  OFFBOARDING_STATUSES,
+  OffboardingStatusSchema,
+  type OffboardingStatus,
+  OffboardTenantResponseSchema,
+  type OffboardTenantResponse,
+  CancelOffboardResponseSchema,
+  type CancelOffboardResponse,
+  OffboardStatusResponseSchema,
+  type OffboardStatusResponse,
+  OffboardingPipelineItemSchema,
+  type OffboardingPipelineItem,
+  OffboardingJobPayloadSchema,
+  type OffboardingJobPayload,
+  RetentionRecordsAtRiskSchema,
+  type RetentionRecordsAtRisk,
+  TenantRetentionInfoSchema,
+  type TenantRetentionInfo,
+  RetentionRunSummarySchema,
+  type RetentionRunSummary,
+  RetentionStatusResponseSchema,
+  type RetentionStatusResponse,
+  RetentionJobPayloadSchema,
+  type RetentionJobPayload,
+  DataArchivedErrorSchema,
+  type DataArchivedError,
+  TRANSFERABLE_RESOURCE_TYPES,
+  TransferableResourceTypeSchema,
+  type TransferableResourceType,
+  TransferOwnershipInputSchema,
+  type TransferOwnershipInput,
+  TransferSummarySchema,
+  type TransferSummary,
+  TransferOwnershipResponseSchema,
+  type TransferOwnershipResponse,
+  UserDisableResponseSchema,
+  type UserDisableResponse,
+} from './offboarding.js';
+
 // ── Config & constants ─────────────────────────────────────────────
 export {
   AI_MODELS,

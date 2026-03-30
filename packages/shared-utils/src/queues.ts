@@ -40,6 +40,9 @@ export const QUEUES = {
   BILLING_PLAN_CHANGED:   'etip-billing-plan-changed',
   // Audit replication (I-15)
   AUDIT_REPLICATION:      'etip-audit-replication',
+  // Offboarding & retention (I-19, I-20)
+  OFFBOARDING:            'etip-offboarding',
+  DATA_RETENTION:         'etip-data-retention',
 } as const;
 
 /** Union type of all queue name string literals */

@@ -11,6 +11,7 @@ import {
 } from '@etip/shared-types';
 import { prisma } from '../prisma.js';
 import type { SessionManager } from './session-manager.js';
+import type { OwnershipTransferService } from './ownership-transfer-service.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PrismaUser = any;
@@ -61,9 +62,11 @@ function parseScimFilter(filter: string): { field: string; value: string } | nul
  */
 export class ScimUserService {
   private sessionManager: SessionManager;
+  private ownershipTransfer?: OwnershipTransferService;
 
-  constructor(sessionManager: SessionManager) {
+  constructor(sessionManager: SessionManager, ownershipTransfer?: OwnershipTransferService) {
     this.sessionManager = sessionManager;
+    this.ownershipTransfer = ownershipTransfer;
   }
 
   /** GET /scim/v2/Users — list with optional filter and pagination. */
@@ -330,7 +333,7 @@ export class ScimUserService {
     }
   }
 
-  /** Terminate sessions + revoke API keys for a deprovisioned user. */
+  /** Terminate sessions + revoke API keys + transfer ownership for a deprovisioned user. */
   private async deprovisionUser(userId: string, tenantId: string): Promise<void> {
     // Terminate all active sessions (in-memory)
     this.sessionManager.revokeAll(userId, tenantId);
@@ -340,5 +343,10 @@ export class ScimUserService {
       where: { userId, tenantId },
       data: { active: false },
     });
+
+    // I-21: Transfer ownership on SCIM deprovision
+    if (this.ownershipTransfer) {
+      await this.ownershipTransfer.transferOnDisable(userId, tenantId, null, 'scim_deprovision');
+    }
   }
 }

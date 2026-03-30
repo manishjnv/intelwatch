@@ -15,8 +15,8 @@ import {
 // ── QUEUES Tests ───────────────────────────────────────────────────
 
 describe('QUEUES', () => {
-  it('has exactly 27 queue names', () => {
-    expect(Object.keys(QUEUES)).toHaveLength(27);
+  it('has exactly 29 queue names', () => {
+    expect(Object.keys(QUEUES)).toHaveLength(29);
   });
 
   it('all queue names start with etip- prefix (RCA #42: no colons)', () => {
@@ -37,7 +37,7 @@ describe('QUEUES', () => {
 
   it('ALL_QUEUE_NAMES matches QUEUES values', () => {
     expect(ALL_QUEUE_NAMES).toEqual(Object.values(QUEUES));
-    expect(ALL_QUEUE_NAMES).toHaveLength(27);
+    expect(ALL_QUEUE_NAMES).toHaveLength(29);
   });
 
   it('queue names are unique', () => {
@@ -49,13 +49,13 @@ describe('QUEUES', () => {
 // ── EVENTS Tests ───────────────────────────────────────────────────
 
 describe('EVENTS', () => {
-  it('has exactly 30 event types', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(30);
+  it('has exactly 36 event types', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(36);
   });
 
   it('all event types use dot-notation', () => {
     for (const event of Object.values(EVENTS)) {
-      expect(event).toMatch(/^[a-z]+\.[a-z]+(\.[a-z]+)?$/);
+      expect(event).toMatch(/^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/);
     }
   });
 

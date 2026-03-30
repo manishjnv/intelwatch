@@ -11,6 +11,10 @@ import { SessionManager } from './services/session-manager.js';
 import { ScimTokenService } from './services/scim-token-service.js';
 import { ScimUserService } from './services/scim-user-service.js';
 import { ScimGroupService } from './services/scim-group-service.js';
+import { OffboardingService } from './services/offboarding-service.js';
+import { RetentionService } from './services/retention-service.js';
+import { OwnershipTransferService } from './services/ownership-transfer-service.js';
+import { prisma } from './prisma.js';
 import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
@@ -34,14 +38,22 @@ async function main(): Promise<void> {
   const breakGlassService = new BreakGlassService(auditLogger, config.TI_BREAK_GLASS_SESSION_TTL_MIN);
   const sessionManager = new SessionManager();
   const scimTokenService = new ScimTokenService();
-  const scimUserService = new ScimUserService(sessionManager);
+
+  // 3b. Offboarding, retention, ownership transfer (I-19, I-20, I-21)
+  const ownershipTransfer = new OwnershipTransferService({ prisma, auditLogger });
+
+  const scimUserService = new ScimUserService(sessionManager, ownershipTransfer);
   const scimGroupService = new ScimGroupService();
+  const offboardingService = new OffboardingService({
+    prisma, auditLogger, sessionManager, offboardingQueue: null,
+  });
+  const retentionService = new RetentionService({ prisma, auditLogger });
 
   // 4. Build Fastify app
   const app = await buildApp({
     config,
     permissionDeps: { permissionStore, auditLogger },
-    teamDeps: { teamStore, auditLogger },
+    teamDeps: { teamStore, auditLogger, ownershipTransfer },
     ssoDeps: { ssoService, auditLogger },
     mfaDeps: { mfaService, auditLogger, teamStore },
     breakGlassDeps: { breakGlassService },
@@ -50,6 +62,9 @@ async function main(): Promise<void> {
     scimTokenDeps: { scimTokenService, auditLogger },
     scimUserDeps: { scimUserService, scimTokenService, auditLogger },
     scimGroupDeps: { scimGroupService, scimTokenService },
+    offboardingDeps: { offboardingService, auditLogger },
+    retentionDeps: { retentionService },
+    ownershipTransferDeps: { ownershipTransfer, auditLogger },
   });
 
   // 5. Graceful shutdown

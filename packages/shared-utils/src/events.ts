@@ -49,6 +49,15 @@ export const EVENTS = {
   // Audit & session security (I-15, I-16)
   AUDIT_INTEGRITY_VIOLATION: 'audit.integrity.violation',
   SESSION_SUSPICIOUS_GEO:    'session.suspicious.geo',
+  // Offboarding lifecycle (I-19)
+  OFFBOARDING_INITIATED:     'offboarding.initiated',
+  OFFBOARDING_ARCHIVED:      'offboarding.archived',
+  OFFBOARDING_PURGED:        'offboarding.purged',
+  OFFBOARDING_CANCELLED:     'offboarding.cancelled',
+  // Data retention (I-20)
+  DATA_RETENTION_ENFORCED:   'data_retention.enforced',
+  // Ownership transfer (I-21)
+  DATA_OWNERSHIP_TRANSFERRED: 'data_ownership.transferred',
 } as const;
 
 /** Union type of all event type string literals */

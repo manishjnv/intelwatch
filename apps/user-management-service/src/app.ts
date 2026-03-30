@@ -15,6 +15,9 @@ import { apiKeyRoutes, type ApiKeyRouteDeps } from './routes/api-keys.js';
 import { scimTokenRoutes, type ScimTokenRouteDeps } from './routes/scim-tokens.js';
 import { scimUserRoutes, type ScimUserRouteDeps } from './routes/scim-users.js';
 import { scimGroupRoutes, type ScimGroupRouteDeps } from './routes/scim-groups.js';
+import { offboardingRoutes, type OffboardingRouteDeps } from './routes/offboarding.js';
+import { retentionRoutes, type RetentionRouteDeps } from './routes/retention.js';
+import { ownershipTransferRoutes, type OwnershipTransferRouteDeps } from './routes/ownership-transfer.js';
 import { registerMetrics } from '@etip/shared-utils';
 import type { UserManagementConfig } from './config.js';
 
@@ -30,6 +33,9 @@ export interface BuildAppOptions {
   scimTokenDeps?: ScimTokenRouteDeps;
   scimUserDeps?: ScimUserRouteDeps;
   scimGroupDeps?: ScimGroupRouteDeps;
+  offboardingDeps?: OffboardingRouteDeps;
+  retentionDeps?: RetentionRouteDeps;
+  ownershipTransferDeps?: OwnershipTransferRouteDeps;
 }
 
 /** Build and configure the Fastify application. */
@@ -112,6 +118,16 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   }
   if (opts.scimGroupDeps) {
     await app.register(scimGroupRoutes(opts.scimGroupDeps), { prefix: '/scim/v2/Groups' });
+  }
+  // ─── Offboarding, Retention, Ownership Transfer (I-19, I-20, I-21) ──
+  if (opts.offboardingDeps) {
+    await app.register(offboardingRoutes(opts.offboardingDeps), { prefix: '/api/v1' });
+  }
+  if (opts.retentionDeps) {
+    await app.register(retentionRoutes(opts.retentionDeps), { prefix: '/api/v1' });
+  }
+  if (opts.ownershipTransferDeps) {
+    await app.register(ownershipTransferRoutes(opts.ownershipTransferDeps), { prefix: '/api/v1' });
   }
 
   return app;

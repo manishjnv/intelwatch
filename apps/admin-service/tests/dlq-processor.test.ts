@@ -54,7 +54,7 @@ describe('DLQ Processor Routes', () => {
     it('returns all 27 canonical queues', async () => {
       const res = await app.inject({ method: 'GET', url: '/api/v1/admin/dlq' });
       const body = JSON.parse(res.body) as { data: { queues: { name: string; failed: number }[] } };
-      expect(body.data.queues.length).toBe(27);
+      expect(body.data.queues.length).toBe(29);
       body.data.queues.forEach((q) => {
         expect(q.name.startsWith('etip-')).toBe(true);
         expect(typeof q.failed).toBe('number');
@@ -70,7 +70,7 @@ describe('DLQ Processor Routes', () => {
       try {
         const res = await app2.inject({ method: 'GET', url: '/api/v1/admin/dlq' });
         const body = JSON.parse(res.body) as { data: { totalFailed: number } };
-        expect(body.data.totalFailed).toBe(3 * 27); // 3 per queue × 27 queues
+        expect(body.data.totalFailed).toBe(3 * 29); // 3 per queue × 29 queues
       } finally {
         await app2.close();
       }
