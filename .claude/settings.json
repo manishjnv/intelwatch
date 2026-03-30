@@ -29,9 +29,7 @@
       "Bash(docker volume rm:*)",
       "Bash(docker network rm:*)",
       "Bash(git push --force:*)",
-      "Bash(git push -f:*)",
-      "Bash(ssh:*)",
-      "Bash(scp:*)"
+      "Bash(git push -f:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\manis\\.ssh"

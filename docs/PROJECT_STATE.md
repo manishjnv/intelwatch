@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-30 (update at end of EVERY session via /session-end)
-**Session counter:** 121 — S18: Offboarding Panel + Break-Glass Status + SSO Config UI (frontend only). 10 new files + 3 modified = 13 total. OffboardingPanel (pipeline view, type-to-confirm offboard, cancel, status detail timeline, purge countdown), BreakGlassPanel (status card with green/red states, audit log with colored event badges, rotate password modal with 20+ char validation, force terminate), SsoConfigPanel (SAML/OIDC provider selection, domain tags, group-role mapping, test/save/delete, AdminSsoView read-only). 3 hook files (use-offboarding, use-break-glass, use-sso). 3 test files, 37 new tests. 1,522 frontend tests. ~7,780 monorepo total. Commits 9f75cca, cefb40f.
+**Session counter:** 122 — S19: VPS Production Deploy (S1-S18). All backend features (I-01 through I-22) deployed to VPS. prisma db push (all pending schema), RLS policies (19 tables), DB triggers (tenant_admin guard), 3 seed scripts (system tenant, plan definitions, break-glass). 6 new env vars wired. 32/32 containers healthy. Redis 48,743 keys. All endpoints verified.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-121.
-- **Last session outcome:** Session 121 (2026-03-30). **S18: Offboarding Panel + Break-Glass Status + SSO Config UI (frontend only).** 10 new files + 3 modified = 13 total. OffboardingPanel (pipeline view, type-to-confirm, cancel, status detail timeline, purge countdown), BreakGlassPanel (green/red status card, audit log with colored event badges, rotate password 20+ char, force terminate), SsoConfigPanel (SAML/OIDC, domain tags, group-role mapping, test/save/delete, AdminSsoView). 37 new tests. 1,522 frontend / ~7,780 monorepo total. Commits 9f75cca, cefb40f. CI run 23741416630 green, all 33 containers healthy.
-- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. VPS needs `prisma db push` (all pending schema changes). 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
-- **Next tasks:** (1) Run `prisma db push` on VPS for all pending schema changes. (2) Set env vars on VPS: TI_BREAK_GLASS_EMAIL, TI_BREAK_GLASS_PASSWORD, TI_BREAK_GLASS_OTP_SECRET, TI_MFA_ENCRYPTION_KEY. (3) Run break-glass seed + plan seed scripts on VPS. (4) Continue Command Center v2.1 — remaining features. (5) Set Shodan/GreyNoise API keys on VPS.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-122.
+- **Last session outcome:** Session 122 (2026-03-30). **S19: VPS Production Deploy (S1-S18).** All backend features (I-01 through I-22) deployed to production VPS. prisma db push synced all pending schema changes. RLS enabled on 19 tenant-scoped tables (super_admin bypass). Migration 0003 (designation + tenant_admin guard trigger). 3 seed scripts executed (system tenant, 4 plan definitions, break-glass super_admin). 6 new env vars wired to api + user_management containers. 32/32 containers healthy. Redis 48,743 keys. All endpoints verified (API, user-mgmt, MFA, break-glass, frontend). Commits d5ef448, 13145ea, 53e5147.
+- **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
+- **Next tasks:** (1) Continue Command Center v2.1 — remaining features. (2) Set Shodan/GreyNoise API keys on VPS. (3) Cyber news feed strategy implementation.
 
 ## Deployment Log
 
@@ -249,6 +249,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 118b | 2026-03-30 | No deploy (test-only session) | ✅ CI green | 642e2fe | E2E Integration Tests (S15): 8 suites validating I-01 through I-22. Role/Permission/Plan (22), Protection Guards (11), MFA/Break-Glass (13), RLS Isolation (11), Offboarding/Retention (15), Audit/Compliance (13), SCIM/Guards (10). 95 new tests. 2 lint fixes. ~7,635 monorepo total. |
 | 120 | 2026-03-30 | etip_frontend redeployed (S17 Access Review + Compliance + FeatureGate) | ✅ All 33 healthy | d74022d, 9ee0e79 | AccessReviewPanel (stats, review table, confirm/disable modals, quarterly summary), ComplianceReportsPanel (SOC 2/Privileged/DSAR), DsarPanel (tenant exports), FeatureGate wiring (9 routes + sidebar locks + dashboard gating). 47 new tests. 1,485 frontend / ~7,743 monorepo. CI run 23737638316 green. |
 | 121 | 2026-03-30 | etip_frontend redeployed (S18 Offboarding + Break-Glass + SSO Config) | ✅ All 33 healthy | 9f75cca, cefb40f | OffboardingPanel (pipeline, type-to-confirm, cancel, detail timeline, purge countdown), BreakGlassPanel (status card, audit log, rotate password, force terminate), SsoConfigPanel (SAML/OIDC, domains, group mappings, admin view). 3 hooks + 3 test files. 37 new tests. 1,522 frontend / ~7,780 monorepo. CI run 23741416630 green. |
+| 122 | 2026-03-30 | All 32 containers rebuilt + restarted (VPS production deploy S1-S18) | ✅ All 32 healthy | d5ef448, 13145ea, 53e5147 | **S19: VPS Production Deploy.** prisma db push (all pending schema: MFA, SCIM, SSO, access review, compliance, offboarding, break-glass fields). RLS on 19 tables + super_admin bypass. Migration 0003 (designation + tenant_admin guard trigger). 3 seeds: system tenant (00000000-...), 4 plan definitions (Free/Starter/Pro/Enterprise), break-glass super_admin. 6 env vars wired (TI_MFA_ENCRYPTION_KEY, TI_SUPER_ADMIN_EMAIL/PASSWORD, TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET). Redis 48,743 keys. Endpoints: API /health ok, user-mgmt /health ok, MFA 401 (auth required), break-glass validation error (route exists), frontend 200. |
 
 ## E2E Verification Results (Session 13)
 
@@ -268,4 +269,6 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 - Caddy: routing ti.intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
 - API keys configured: TI_VIRUSTOTAL_API_KEY (free, 4/min), TI_ABUSEIPDB_API_KEY (free, 1000/day), TI_AI_ENABLED=true
+- MFA/Break-glass configured: TI_MFA_ENCRYPTION_KEY, TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET, TI_SUPER_ADMIN_EMAIL/PASSWORD — wired to etip_api + etip_user_management
+- DB: RLS enabled on 19 tables, tenant_admin delete guard trigger active, 4 plan definitions seeded, break-glass super_admin seeded
 - Grafana: <https://ti.intelwatch.in/grafana/> (default: admin / TI_GRAFANA_PASSWORD env). 6 dashboards auto-provisioned (service-health, pipeline-queues, api-gateway, pipeline-overview, ai-cost-tracking, feed-health)
