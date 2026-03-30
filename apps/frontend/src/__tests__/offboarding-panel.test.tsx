@@ -130,10 +130,8 @@ describe('OffboardingPanel', () => {
     const modal = screen.getByTestId('offboard-confirm-modal')
     expect(modal).toBeInTheDocument()
 
-    // Click cancel button inside modal
-    const cancelBtn = modal.querySelector('button:first-of-type')!
-    // The X close button is the first button in the modal header
-    fireEvent.click(modal.querySelectorAll('button')[0]) // X button
+    // Click the X close button in the modal header
+    fireEvent.click(modal.querySelectorAll('button')[0])
     expect(screen.queryByTestId('offboard-confirm-modal')).not.toBeInTheDocument()
     expect(mockOffboardMutate).not.toHaveBeenCalled()
   })

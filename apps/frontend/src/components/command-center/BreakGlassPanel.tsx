@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import {
   useBreakGlassStatus, useBreakGlassAudit,
   useRotateBreakGlassPassword, useForceTerminateBreakGlass,
-  type BreakGlassAuditEntry, type AuditEventType,
+  type AuditEventType,
 } from '@/hooks/use-break-glass'
 import {
   Shield, ShieldAlert, X, Key, Trash2, Clock,
