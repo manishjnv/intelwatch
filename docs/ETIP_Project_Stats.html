@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 117 &middot; 2026-03-30 &middot; Access Review (I-17) + Compliance Reports (I-18) deployed. 33 containers, ~7,331 tests</span>
+  <span class="version">Session 117b &middot; 2026-03-30 &middot; Offboarding (I-19) + Retention (I-20) + Ownership Transfer (I-21) deployed. 33 containers, ~7,386 tests</span>
 </div>
 </div>
 
@@ -158,7 +158,7 @@ li strong { color: var(--text-primary); }
       <tr><td>threat-hunting</td><td>3014</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>47</td><td>222</td></tr>
       <tr><td>digital-risk-protection</td><td>3011</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>36</td><td>310</td></tr>
       <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>24</td><td>174</td></tr>
-      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>49 (+I-17 access review +I-18 compliance)</td><td>279</td></tr>
+      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58 (+I-19 offboarding +I-20 retention +I-21 transfer)</td><td>334</td></tr>
       <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58 (+BYOK +FeedQuota +GlobalAI +PlanLimits)</td><td>319</td></tr>
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>241</td></tr>
       <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28 (PlanStore Prisma-backed)</td><td>174</td></tr>
@@ -537,19 +537,20 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 117</span> Access Review (I-17) + Compliance Reports (I-18) Deployed</div>
+    <div class="card-title"><span class="badge badge-green">Session 117b</span> Offboarding (I-19) + Retention (I-20) + Ownership Transfer (I-21) Deployed</div>
     <div class="card-body">
-      <strong>Session 117 (2026-03-30):</strong> Command Center v2.1 S10 — Access Review + Compliance:<br>
-      &bull; <strong>Access Review (I-17)</strong> — Stale super_admin scan (60d inactivity), stale user scan (90d), 14-day auto-disable with last-admin safety, review confirm/disable endpoints, quarterly summary (user counts, MFA adoption, role distribution)<br>
-      &bull; <strong>Compliance Reports (I-18)</strong> — SOC 2 CC6.3 access review report, privileged access report (super/tenant admins + sessions/geo + API keys + SCIM tokens), GDPR DSAR export (profile + sessions + audit logs + API keys)<br>
-      &bull; <strong>Prisma models</strong> — AccessReview (access_reviews) + ComplianceReport (compliance_reports) with Json reportData<br>
-      &bull; <strong>11 new endpoints</strong> (6 access review + 5 compliance). <strong>20 new tests</strong>. 279 user-management total.<br>
-      &bull; <strong>Commit:</strong> 4774489 — CI/CD passed, all 33 containers healthy<br><br>
+      <strong>Session 117b (2026-03-30):</strong> Command Center v2.1 S11 — Data Lifecycle:<br>
+      &bull; <strong>Org Offboarding (I-19)</strong> — 6-step lifecycle: disable tenant &rarr; terminate sessions &rarr; revoke API keys &rarr; disable SSO/SCIM &rarr; S3 archive &rarr; 60-day purge. GDPR Article 17 + SOC 2 CC6.5<br>
+      &bull; <strong>Data Retention (I-20)</strong> — Plan-aware soft-delete (free 30d, starter 90d, pro 365d, enterprise unlimited). Audit logs exempt. Session cleanup<br>
+      &bull; <strong>Ownership Transfer (I-21)</strong> — Auto-transfer to active tenant_admin on user disable. Team deactivate + SCIM deprovision hooks. Manual transfer endpoint<br>
+      &bull; <strong>Schema</strong> — 6 Tenant offboarding fields + archivedAt/archiveReason on 5 data models. 2 new queues, 6 new events<br>
+      &bull; <strong>9 new endpoints</strong>, <strong>55 new tests</strong>. 334 user-management total. 32 files changed.<br>
+      &bull; <strong>Commit:</strong> bb56adf — CI/CD passed, all 33 containers healthy<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Run prisma db push on VPS</strong> — AccessReview + ComplianceReport + ScimToken + SsoConfig + email verification + plan models<br>
+      1. <strong>Run prisma db push on VPS</strong> — Tenant offboarding fields + archivedAt columns on 5 data models<br>
       2. <strong>Set TI_MFA_ENCRYPTION_KEY on VPS</strong> — Required for TOTP + SSO clientSecret encryption<br>
       3. <strong>Run plan seed script on VPS</strong> — 4 default plans &times; 16 features<br>
-      4. <strong>Continue Command Center v2.1</strong> — I-19 Offboarding, I-20 Retention, I-21 Ownership Transfer<br>
+      4. <strong>Continue Command Center v2.1</strong> — I-22+ remaining features<br>
       5. <strong>Set Shodan/GreyNoise API keys on VPS</strong><br>
     </div>
   </div>
@@ -558,7 +559,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 117 &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 117b &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
