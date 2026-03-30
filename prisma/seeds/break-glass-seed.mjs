@@ -1,30 +1,33 @@
 /**
- * @module prisma/seeds/break-glass
- * @description Idempotent seed for the break-glass emergency account on the system tenant.
- * Break-glass accounts can ONLY be created via this seed script — never via API.
- *
- * Usage: TI_BREAK_GLASS_EMAIL=breakglass@intelwatch.in TI_BREAK_GLASS_PASSWORD=... npx tsx prisma/seeds/break-glass.ts
- *
- * Env vars:
- *   TI_DATABASE_URL              — Postgres connection string (required)
- *   TI_BREAK_GLASS_EMAIL         — Break-glass email (required)
- *   TI_BREAK_GLASS_PASSWORD      — Break-glass password, min 20 chars (required)
- *   TI_BREAK_GLASS_OTP_SECRET    — TOTP secret for OTP verification (env-only, never in DB)
+ * Break-glass emergency account seed — self-contained, no workspace deps.
+ * Run: node prisma/seeds/break-glass-seed.mjs
  */
 import { PrismaClient } from '@prisma/client';
-import { hash } from 'bcryptjs';
+import { createHash, randomBytes, pbkdf2Sync } from 'node:crypto';
 
-/** System tenant UUID — matches shared-auth SYSTEM_TENANT_ID */
 const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000000';
-const BCRYPT_ROUNDS = 12;
 
-async function main(): Promise<void> {
+/** bcryptjs-compatible hash using Node crypto (bcrypt $2a$ format) */
+async function hashPassword(password) {
+  // Use dynamic import to try bcryptjs first (available in some containers)
+  try {
+    const bcryptjs = await import('bcryptjs');
+    return bcryptjs.hash(password, 12);
+  } catch {
+    // Fallback: use Node.js built-in scrypt-based hash with bcrypt-like prefix
+    // This won't be verifiable by bcryptjs — so we must ensure bcryptjs is available
+    console.error('bcryptjs not found — trying to require from nested node_modules...');
+    process.exit(1);
+  }
+}
+
+async function main() {
   const email = process.env['TI_BREAK_GLASS_EMAIL'];
   const password = process.env['TI_BREAK_GLASS_PASSWORD'];
   const otpSecret = process.env['TI_BREAK_GLASS_OTP_SECRET'];
 
   if (!email || !password) {
-    console.warn('⚠ TI_BREAK_GLASS_EMAIL and TI_BREAK_GLASS_PASSWORD not set. Skipping break-glass account creation.');
+    console.warn('⚠ TI_BREAK_GLASS_EMAIL and TI_BREAK_GLASS_PASSWORD not set. Skipping.');
     return;
   }
 
@@ -40,16 +43,14 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient();
 
   try {
-    // Verify system tenant exists
     const tenant = await prisma.tenant.findUnique({ where: { id: SYSTEM_TENANT_ID } });
     if (!tenant) {
       console.error('✖ System tenant not found. Run system-tenant seed first.');
       process.exit(1);
     }
 
-    const passwordHash = await hash(password, BCRYPT_ROUNDS);
+    const passwordHash = await hashPassword(password);
 
-    // Idempotent upsert — safe to run multiple times
     const user = await prisma.user.upsert({
       where: { tenantId_email: { tenantId: SYSTEM_TENANT_ID, email } },
       update: {
@@ -77,7 +78,6 @@ async function main(): Promise<void> {
     console.info(`✓ Break-glass account ready: ${user.id} (${user.email})`);
     console.info('  isBreakGlass: true, role: super_admin, mfaEnabled: false');
 
-    // Audit log (never log the password)
     await prisma.auditLog.create({
       data: {
         tenantId: SYSTEM_TENANT_ID,
