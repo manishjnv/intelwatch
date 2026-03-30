@@ -1,9 +1,9 @@
 # User Management Service
 
-**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 210 (+ 73 in user-service for SSO/MFA/email-verification)
+**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 210 (+ 121 in user-service for SSO/MFA/email-verification/access-review/compliance)
 
 ## What It Does
-Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, and SOC2 audit logging. All in-memory (DECISION-013 pattern).
+Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, SOC2 audit logging, quarterly access review automation (I-17), and compliance report generation (I-18). All in-memory (DECISION-013 pattern).
 
 ## Features
 | Feature | File | Description |
@@ -34,6 +34,14 @@ Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TO
 | Brute-force protection | services/brute-force-guard.ts | 5-attempt lockout, 15-min auto-unlock (P0 #3) |
 | Session management | services/session-manager.ts | View/revoke active sessions (P0 #4) |
 | Password policy | services/password-policy.ts | Per-tenant strength rules, reuse prevention (P0 #5) |
+| Stale super admin scan | access-review-service.ts | Monthly scan: flag super_admins inactive >60 days (I-17) |
+| Stale user scan | access-review-service.ts | Monthly scan: flag org users inactive >90 days (I-17) |
+| Auto-disable | access-review-service.ts | 14-day grace period, auto-disable + session termination (I-17) |
+| Review actions | access-review-service.ts | Confirm or disable flagged users (I-17) |
+| Quarterly report | access-review-service.ts | User counts, MFA adoption, role distribution per tenant (I-17) |
+| SOC 2 report | compliance-report-service.ts | User access review, stale accounts, access changes (I-18) |
+| Privileged access report | compliance-report-service.ts | Super/tenant admins, API keys, SCIM tokens (I-18) |
+| GDPR DSAR export | compliance-report-service.ts | All user data: profile, sessions, audit logs, API keys (I-18) |
 
 ## API
 | Method | Path | Auth | Description |
@@ -80,6 +88,17 @@ Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TO
 | DELETE | /api/v1/users/sessions/:id | user | Revoke session |
 | DELETE | /api/v1/users/sessions | user | Revoke all sessions |
 | GET | /api/v1/users/sessions/count | user | Count active sessions |
+| GET | /api/v1/admin/access-reviews | super_admin | List all access reviews |
+| PUT | /api/v1/admin/access-reviews/:reviewId | super_admin | Confirm or disable flagged user |
+| GET | /api/v1/admin/access-reviews/quarterly | super_admin | Platform-wide quarterly summary |
+| GET | /api/v1/settings/access-reviews | tenant_admin | List own org access reviews |
+| PUT | /api/v1/settings/access-reviews/:reviewId | tenant_admin | Confirm or disable own org user |
+| GET | /api/v1/settings/access-reviews/quarterly | tenant_admin | Own org quarterly summary |
+| POST | /api/v1/admin/compliance/reports | super_admin | Generate compliance report |
+| GET | /api/v1/admin/compliance/reports | super_admin | List generated reports |
+| GET | /api/v1/admin/compliance/reports/:reportId | super_admin | Download report JSON |
+| POST | /api/v1/settings/compliance/dsar | tenant_admin | Generate DSAR for own org user |
+| GET | /api/v1/settings/compliance/dsar/:reportId | tenant_admin | Download DSAR export |
 
 ## Config
 | Env Var | Default | Purpose |

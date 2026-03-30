@@ -201,6 +201,38 @@ export {
   buildScimListResponse,
 } from './scim.js';
 
+// ── Access Review & Compliance (I-17, I-18) ───────────────────────
+export {
+  REVIEW_TYPES,
+  ReviewTypeSchema,
+  type ReviewType,
+  REVIEW_ACTIONS,
+  ReviewActionSchema,
+  type ReviewAction,
+  AccessReviewSchema,
+  type AccessReview,
+  AccessReviewActionSchema,
+  type AccessReviewActionInput,
+  AccessReviewQuerySchema,
+  type AccessReviewQuery,
+  COMPLIANCE_REPORT_TYPES,
+  ComplianceReportTypeSchema,
+  type ComplianceReportType,
+  REPORT_STATUSES,
+  ReportStatusSchema,
+  type ReportStatus,
+  ComplianceReportSchema,
+  type ComplianceReport,
+  GenerateReportInputSchema,
+  type GenerateReportInput,
+  ComplianceReportQuerySchema,
+  type ComplianceReportQuery,
+  type QuarterlyReviewSummary,
+  type DsarExport,
+  type Soc2AccessReviewReport,
+  type PrivilegedAccessReport,
+} from './access-review.js';
+
 // ── Config & constants ─────────────────────────────────────────────
 export {
   AI_MODELS,

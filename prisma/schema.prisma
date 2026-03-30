@@ -961,3 +961,44 @@ model ScimToken {
   @@index([tenantId])
   @@map("scim_tokens")
 }
+
+// ─── Access Review Automation (I-17) ──────────────────────────────────────────
+model AccessReview {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  reviewType   String    @map("review_type") @db.VarChar(30)
+  reviewedBy   String?   @map("reviewed_by") @db.Uuid
+  reviewedAt   DateTime? @map("reviewed_at")
+  action       String    @default("pending") @db.VarChar(20)
+  notes        String?   @db.Text
+  autoDisabled Boolean   @default(false) @map("auto_disabled")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([reviewType])
+  @@index([action])
+  @@map("access_reviews")
+}
+
+// ─── Compliance Report Generation (I-18) ──────────────────────────────────────
+model ComplianceReport {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String?   @map("tenant_id") @db.Uuid
+  reportType  String    @map("report_type") @db.VarChar(30)
+  periodFrom  DateTime  @map("period_from")
+  periodTo    DateTime  @map("period_to")
+  status      String    @default("generating") @db.VarChar(20)
+  reportData  Json?     @map("report_data")
+  externalRef String?   @map("external_ref") @db.VarChar(500)
+  generatedBy String    @map("generated_by") @db.Uuid
+  completedAt DateTime? @map("completed_at")
+  fileSizeKb  Int?      @map("file_size_kb")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([reportType])
+  @@index([status])
+  @@map("compliance_reports")
+}
