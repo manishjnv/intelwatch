@@ -1,6 +1,6 @@
 /**
  * @module __tests__/feeds-tab.test
- * @description Tests for FeedsTab — My Feeds, Catalog, Pipeline Health sub-tabs.
+ * @description Tests for FeedsTab — Unified feeds view + Pipeline Health sub-tab.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
@@ -76,63 +76,74 @@ const baseMockCC: any = {
 }
 
 describe('FeedsTab', () => {
-  it('renders My Feeds sub-tab by default', () => {
+  it('renders unified feeds panel by default', () => {
     render(<FeedsTab data={baseMockCC} />)
     expect(screen.getByTestId('feeds-tab')).toBeInTheDocument()
-    expect(screen.getByTestId('my-feeds-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('unified-feeds-panel')).toBeInTheDocument()
   })
 
-  it('renders feed table with all feeds', () => {
+  it('renders both subscribed and catalog feeds in unified table', () => {
     render(<FeedsTab data={baseMockCC} />)
     expect(screen.getByTestId('feed-table')).toBeInTheDocument()
+    // Subscribed tenant feeds
     expect(screen.getByText('CISA RSS')).toBeInTheDocument()
     expect(screen.getByText('NVD Feed')).toBeInTheDocument()
     expect(screen.getByText('Disabled Feed')).toBeInTheDocument()
+    // Catalog feeds (AlienVault subscribed via gf-1, CISA KEV available)
+    expect(screen.getByText('AlienVault OTX')).toBeInTheDocument()
+    expect(screen.getByText('CISA KEV')).toBeInTheDocument()
   })
 
-  it('shows super-admin action buttons', () => {
+  it('shows Source badges — Subscribed and Available', () => {
+    render(<FeedsTab data={baseMockCC} />)
+    const subscribedBadges = screen.getAllByTestId('source-badge-subscribed')
+    const availableBadges = screen.getAllByTestId('source-badge-available')
+    // 3 tenant feeds + 1 subscribed catalog (AlienVault OTX) = 4 subscribed
+    expect(subscribedBadges.length).toBe(4)
+    // CISA KEV is available
+    expect(availableBadges.length).toBe(1)
+  })
+
+  it('shows super-admin action buttons on subscribed feeds', () => {
     render(<FeedsTab data={baseMockCC} />)
     expect(screen.getByTestId('toggle-feed-f1')).toBeInTheDocument()
     expect(screen.getByTestId('force-fetch-f1')).toBeInTheDocument()
     expect(screen.getByTestId('delete-feed-f1')).toBeInTheDocument()
   })
 
+  it('shows subscribe button on available feeds', () => {
+    render(<FeedsTab data={baseMockCC} />)
+    // CISA KEV (gf-2) is available
+    expect(screen.getByTestId('subscribe-gf-2')).toHaveTextContent('Subscribe')
+  })
+
   it('filters feeds by search', () => {
     render(<FeedsTab data={baseMockCC} />)
-    const searchInput = screen.getByTestId('feed-search')
-    fireEvent.change(searchInput, { target: { value: 'NVD' } })
+    fireEvent.change(screen.getByTestId('feed-search'), { target: { value: 'NVD' } })
     expect(screen.getByText('NVD Feed')).toBeInTheDocument()
     expect(screen.queryByText('CISA RSS')).not.toBeInTheDocument()
   })
 
-  it('switches to Feed Catalog sub-tab', () => {
+  it('filters by source — Subscribed only', () => {
     render(<FeedsTab data={baseMockCC} />)
-    fireEvent.click(screen.getByTestId('pill-catalog'))
-    expect(screen.getByTestId('catalog-panel')).toBeInTheDocument()
+    fireEvent.change(screen.getByTestId('feed-source-filter'), { target: { value: 'subscribed' } })
+    expect(screen.getByText('CISA RSS')).toBeInTheDocument()
     expect(screen.getByText('AlienVault OTX')).toBeInTheDocument()
+    expect(screen.queryByText('CISA KEV')).not.toBeInTheDocument()
+  })
+
+  it('filters by source — Available only', () => {
+    render(<FeedsTab data={baseMockCC} />)
+    fireEvent.change(screen.getByTestId('feed-source-filter'), { target: { value: 'available' } })
     expect(screen.getByText('CISA KEV')).toBeInTheDocument()
+    expect(screen.queryByText('CISA RSS')).not.toBeInTheDocument()
   })
 
-  it('shows subscribe/unsubscribe buttons in catalog', () => {
+  it('filters by type', () => {
     render(<FeedsTab data={baseMockCC} />)
-    fireEvent.click(screen.getByTestId('pill-catalog'))
-    // gf-1 is subscribed
-    expect(screen.getByTestId('subscribe-gf-1')).toHaveTextContent('Unsubscribe')
-    // gf-2 is not subscribed
-    expect(screen.getByTestId('subscribe-gf-2')).toHaveTextContent('Subscribe')
-  })
-
-  it('switches to Pipeline Health sub-tab (super-admin)', () => {
-    render(<FeedsTab data={baseMockCC} />)
-    fireEvent.click(screen.getByTestId('pill-pipeline'))
-    expect(screen.getByTestId('pipeline-health-panel')).toBeInTheDocument()
-    expect(screen.getByText('1,240')).toBeInTheDocument() // articles
-  })
-
-  it('hides Pipeline Health for tenant admin', () => {
-    const tenantCC = { ...baseMockCC, isSuperAdmin: false, userRole: 'tenant_admin' }
-    render(<FeedsTab data={tenantCC} />)
-    expect(screen.queryByTestId('pill-pipeline')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByTestId('feed-type-filter'), { target: { value: 'nvd' } })
+    expect(screen.getByText('NVD Feed')).toBeInTheDocument()
+    expect(screen.queryByText('CISA RSS')).not.toBeInTheDocument()
   })
 
   it('shows delete confirmation modal', () => {
@@ -142,11 +153,17 @@ describe('FeedsTab', () => {
     expect(screen.getByText('Delete Feed')).toBeInTheDocument()
   })
 
-  it('filters by type', () => {
+  it('switches to Pipeline Health sub-tab (super-admin)', () => {
     render(<FeedsTab data={baseMockCC} />)
-    fireEvent.change(screen.getByTestId('feed-type-filter'), { target: { value: 'nvd' } })
-    expect(screen.getByText('NVD Feed')).toBeInTheDocument()
-    expect(screen.queryByText('CISA RSS')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('pill-pipeline'))
+    expect(screen.getByTestId('pipeline-health-panel')).toBeInTheDocument()
+    expect(screen.getByText('1,240')).toBeInTheDocument()
+  })
+
+  it('hides Pipeline Health for tenant admin', () => {
+    const tenantCC = { ...baseMockCC, isSuperAdmin: false, userRole: 'tenant_admin' }
+    render(<FeedsTab data={tenantCC} />)
+    expect(screen.queryByTestId('pill-pipeline')).not.toBeInTheDocument()
   })
 
   it('shows queue health cards in pipeline', () => {
