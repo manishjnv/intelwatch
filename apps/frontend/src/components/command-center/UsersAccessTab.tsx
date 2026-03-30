@@ -12,12 +12,14 @@ import {
 } from '@/hooks/use-phase5-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
-  Search, UserPlus, Shield, ShieldCheck, Mail,
-  Check, X, Globe, Key, Webhook, AlertTriangle,
+  Search, UserPlus, Shield, Mail,
+  Check, X, Key, Webhook, AlertTriangle,
   Settings, CheckCircle, ArrowUpCircle, Zap, Crown,
 } from 'lucide-react'
 import { SecurityPanel } from '@/components/security/SecurityPanel'
 import { AccessReviewPanel } from './AccessReviewPanel'
+import { SsoConfigPanel, SsoStatusBadge } from './SsoConfigPanel'
+import { useSsoConfig } from '@/hooks/use-sso'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -270,86 +272,7 @@ function RolesPanel({ tenantPlan }: { tenantPlan: string }) {
   )
 }
 
-// ─── SSO Sub-Tab ────────────────────────────────────────────
-
-interface SSOProvider {
-  id: string; name: string; type: 'saml' | 'oidc' | 'google' | 'azure'
-  configured: boolean; lastTested: string | null
-}
-
-const DEMO_SSO_PROVIDERS: SSOProvider[] = [
-  { id: 'saml', name: 'SAML 2.0', type: 'saml', configured: false, lastTested: null },
-  { id: 'oidc', name: 'OpenID Connect', type: 'oidc', configured: false, lastTested: null },
-  { id: 'google', name: 'Google Workspace', type: 'google', configured: true, lastTested: new Date(Date.now() - 86400_000).toISOString() },
-  { id: 'azure', name: 'Azure AD', type: 'azure', configured: false, lastTested: null },
-]
-
-function SSOPanel() {
-  const [providers] = useState<SSOProvider[]>(DEMO_SSO_PROVIDERS)
-  const [configuring, setConfiguring] = useState<string | null>(null)
-
-  const Icons: Record<string, typeof Shield> = { saml: Shield, oidc: Key, google: Globe, azure: ShieldCheck }
-
-  return (
-    <div className="space-y-3" data-testid="sso-panel">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {providers.map(p => {
-          const Icon = Icons[p.type] ?? Shield
-          return (
-            <div key={p.id} className="border border-border rounded-lg p-4 bg-bg-primary" data-testid={`sso-${p.id}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Icon className="w-4 h-4 text-accent" />
-                  <span className="text-xs font-medium text-text-primary">{p.name}</span>
-                </div>
-                <StatusBadge status={p.configured ? 'configured' : 'disabled'} />
-              </div>
-              {p.lastTested && (
-                <p className="text-[10px] text-text-muted mb-2">Last tested: {formatTimeAgo(p.lastTested)}</p>
-              )}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setConfiguring(configuring === p.id ? null : p.id)}
-                  className="px-2 py-1 text-[10px] font-medium bg-accent/10 text-accent rounded hover:bg-accent/20"
-                  data-testid={`configure-${p.id}`}
-                >
-                  {p.configured ? 'Edit Config' : 'Configure'}
-                </button>
-                {p.configured && (
-                  <button className="px-2 py-1 text-[10px] font-medium border border-border rounded text-text-muted hover:text-text-primary" data-testid={`test-${p.id}`}>
-                    Test Connection
-                  </button>
-                )}
-              </div>
-
-              {/* Inline Config Form */}
-              {configuring === p.id && (
-                <div className="mt-3 pt-3 border-t border-border space-y-2" data-testid={`sso-config-form-${p.id}`}>
-                  {(p.type === 'saml' || p.type === 'oidc') && (
-                    <>
-                      <label className="block text-[10px] text-text-muted">Metadata URL</label>
-                      <input className="w-full px-2 py-1 text-xs bg-bg-elevated border border-border rounded text-text-primary" placeholder="https://..." />
-                    </>
-                  )}
-                  <label className="block text-[10px] text-text-muted">Client ID</label>
-                  <input className="w-full px-2 py-1 text-xs bg-bg-elevated border border-border rounded text-text-primary" placeholder="client-id" />
-                  <label className="block text-[10px] text-text-muted">Client Secret</label>
-                  <input className="w-full px-2 py-1 text-xs bg-bg-elevated border border-border rounded text-text-primary" type="password" placeholder="********" />
-                  <label className="block text-[10px] text-text-muted">Callback URL</label>
-                  <input className="w-full px-2 py-1 text-xs bg-bg-elevated border border-border rounded text-text-primary" value={`https://ti.intelwatch.in/auth/${p.type}/callback`} readOnly />
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button onClick={() => setConfiguring(null)} className="px-2 py-1 text-[10px] border border-border rounded text-text-muted">Cancel</button>
-                    <button className="px-2 py-1 text-[10px] bg-accent text-white rounded">Save</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
+// ─── SSO Sub-Tab (replaced with SsoConfigPanel — S18) ──────
 
 // ─── Integrations Sub-Tab ───────────────────────────────────
 
@@ -459,30 +382,32 @@ function formatDate(dateStr: string): string {
 export function UsersAccessTab({ data }: UsersAccessTabProps) {
   const { isSuperAdmin, tenantPlan } = data
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('team')
+  const { data: ssoConfig } = useSsoConfig()
 
   const pills: PillItem[] = useMemo(() => {
     const items: PillItem[] = [
       { id: 'team', label: 'Team' },
       { id: 'roles', label: 'Roles & Permissions' },
+      { id: 'sso', label: 'SSO' },
+      { id: 'integrations', label: 'Integrations' },
+      { id: 'security', label: 'Security' },
+      { id: 'access-reviews', label: 'Access Reviews' },
     ]
-    if (isSuperAdmin) {
-      items.push({ id: 'sso', label: 'SSO' })
-    }
-    items.push({ id: 'integrations', label: 'Integrations' })
-    items.push({ id: 'security', label: 'Security' })
-    items.push({ id: 'access-reviews', label: 'Access Reviews' })
     return items
-  }, [isSuperAdmin])
+  }, [])
 
   const effectiveSubTab = pills.find(p => p.id === activeSubTab) ? activeSubTab : 'team'
 
   return (
     <div className="space-y-4" data-testid="users-access-tab">
-      <PillSwitcher items={pills} activeId={effectiveSubTab} onChange={id => setActiveSubTab(id as SubTab)} />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <PillSwitcher items={pills} activeId={effectiveSubTab} onChange={id => setActiveSubTab(id as SubTab)} />
+        <SsoStatusBadge config={ssoConfig} />
+      </div>
 
       {effectiveSubTab === 'team' && <TeamPanel isSuperAdmin={isSuperAdmin} tenantPlan={tenantPlan} />}
       {effectiveSubTab === 'roles' && <RolesPanel tenantPlan={tenantPlan} />}
-      {effectiveSubTab === 'sso' && <SSOPanel />}
+      {effectiveSubTab === 'sso' && <SsoConfigPanel />}
       {effectiveSubTab === 'integrations' && <IntegrationsPanel />}
       {effectiveSubTab === 'security' && <SecurityPanel data={data} />}
       {effectiveSubTab === 'access-reviews' && <AccessReviewPanel isSuperAdmin={isSuperAdmin} />}

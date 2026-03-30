@@ -12,6 +12,8 @@ import {
   Search, X, ChevronRight,
 } from 'lucide-react'
 import { TenantOverridePanel } from './TenantOverridePanel'
+import { OffboardingPanel } from './OffboardingPanel'
+import { AdminSsoView } from './SsoConfigPanel'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -172,6 +174,17 @@ function TenantDetailDrawer({ tenant, data, onClose }: {
       <div className="p-4 border-t border-border">
         <TenantOverridePanel tenantId={tenant.tenantId} />
       </div>
+
+      {/* SSO Config (read-only) */}
+      <div className="p-4 border-t border-border">
+        <h4 className="text-xs font-semibold text-text-primary mb-2">SSO Configuration</h4>
+        <AdminSsoView tenantId={tenant.tenantId} />
+      </div>
+
+      {/* Offboard Action */}
+      <div className="p-4 border-t border-border">
+        <OffboardingPanel triggerForTenant={{ tenantId: tenant.tenantId, orgName: tenant.name }} />
+      </div>
     </div>
   )
 }
@@ -318,6 +331,9 @@ export function ClientsTab({ data }: ClientsTabProps) {
         emptyMessage="No tenants match your filters"
         severityField={(row) => row.status === 'over_limit' ? 'high' : row.status === 'suspended' ? 'low' : undefined}
       />
+
+      {/* Offboarding Pipeline */}
+      <OffboardingPanel />
 
       {/* Tenant Detail Drawer */}
       {selectedTenant && (

@@ -48,6 +48,16 @@ vi.mock('@/hooks/useDebouncedValue', () => ({
   useDebouncedValue: (v: any) => v,
 }))
 
+vi.mock('@/hooks/use-sso', () => ({
+  useSsoConfig: () => ({ data: null, isLoading: false, isDemo: false }),
+  useSaveSsoConfig: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteSsoConfig: () => ({ mutate: vi.fn(), isPending: false }),
+  useTestSsoConnection: () => ({ mutate: vi.fn(), isPending: false }),
+  useAdminSsoConfig: () => ({ data: null, isLoading: false, isDemo: false }),
+}))
+
+vi.mock('@/components/ui/Toast', () => ({ toast: vi.fn() }))
+
 // ─── Mock data ──────────────────────────────────────────────
 
 const baseMockCC: any = {
@@ -119,19 +129,19 @@ describe('UsersAccessTab', () => {
     expect(screen.queryByTestId('custom-roles-banner')).not.toBeInTheDocument()
   })
 
-  it('shows SSO sub-tab for super-admin', () => {
+  it('shows SSO sub-tab for super-admin with SsoConfigPanel', () => {
     render(<UsersAccessTab data={baseMockCC} />)
     expect(screen.getByTestId('pill-sso')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('pill-sso'))
-    expect(screen.getByTestId('sso-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('sso-saml')).toBeInTheDocument()
-    expect(screen.getByTestId('sso-google')).toBeInTheDocument()
+    expect(screen.getByTestId('sso-config-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('provider-saml')).toBeInTheDocument()
+    expect(screen.getByTestId('provider-oidc')).toBeInTheDocument()
   })
 
-  it('hides SSO sub-tab for tenant admin', () => {
+  it('shows SSO sub-tab for tenant admin (SSO now available to all roles)', () => {
     const tenantCC = { ...baseMockCC, isSuperAdmin: false, userRole: 'tenant_admin' }
     render(<UsersAccessTab data={tenantCC} />)
-    expect(screen.queryByTestId('pill-sso')).not.toBeInTheDocument()
+    expect(screen.getByTestId('pill-sso')).toBeInTheDocument()
   })
 
   it('switches to Integrations sub-tab', () => {
@@ -156,10 +166,8 @@ describe('UsersAccessTab', () => {
     expect(screen.queryByText('Manish Kumar')).not.toBeInTheDocument()
   })
 
-  it('shows SSO configure form when clicked', () => {
+  it('shows SsoStatusBadge in Users & Access tab header', () => {
     render(<UsersAccessTab data={baseMockCC} />)
-    fireEvent.click(screen.getByTestId('pill-sso'))
-    fireEvent.click(screen.getByTestId('configure-saml'))
-    expect(screen.getByTestId('sso-config-form-saml')).toBeInTheDocument()
+    expect(screen.getByText('SSO Not Configured')).toBeInTheDocument()
   })
 })

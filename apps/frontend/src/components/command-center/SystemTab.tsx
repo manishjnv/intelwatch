@@ -17,14 +17,16 @@ import {
   ArrowRight, RotateCcw, Database, Shield, Calendar,
   Download, Upload, Trash2,
 } from 'lucide-react'
+import { BreakGlassPanel } from './BreakGlassPanel'
 
 // ─── Sub-tab Switcher ───────────────────────────────────────────
 
-type SubTab = 'health' | 'pipeline' | 'maintenance' | 'backups'
+type SubTab = 'health' | 'pipeline' | 'maintenance' | 'backups' | 'emergency'
 
 const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: 'health', label: 'System Health' },
   { id: 'pipeline', label: 'Pipeline Monitor' },
+  { id: 'emergency', label: 'Emergency Access' },
   { id: 'maintenance', label: 'Maintenance' },
   { id: 'backups', label: 'Backups' },
 ]
@@ -72,6 +74,7 @@ export function SystemTab() {
 
       {subTab === 'health' && <HealthSubTab />}
       {subTab === 'pipeline' && <PipelineSubTab />}
+      {subTab === 'emergency' && <BreakGlassPanel />}
       {subTab === 'maintenance' && <MaintenanceSubTab />}
       {subTab === 'backups' && <BackupsSubTab />}
     </div>
