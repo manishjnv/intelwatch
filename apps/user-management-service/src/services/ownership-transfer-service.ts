@@ -65,7 +65,7 @@ export class OwnershipTransferService {
     sourceUserId: string,
     targetUserId: string,
     tenantId: string,
-    _triggeredBy: string,
+    triggeredBy: string,
     resourceTypes?: string[],
   ): Promise<TransferResult> {
     // Validate target exists, is active, and in same tenant
@@ -94,6 +94,7 @@ export class OwnershipTransferService {
       tenantId,
       'manual_transfer',
       resourceTypes,
+      triggeredBy,
     );
   }
 
@@ -107,6 +108,7 @@ export class OwnershipTransferService {
     tenantId: string,
     reason: string,
     resourceTypes?: string[],
+    triggeredBy?: string | null,
   ): Promise<TransferResult> {
     const types = resourceTypes ?? ['investigations', 'reports', 'alert_rules', 'saved_hunts'];
     const summary: TransferSummary = { investigations: 0, reports: 0, alertRules: 0, savedHunts: 0 };
@@ -140,7 +142,7 @@ export class OwnershipTransferService {
     // Log the aggregate transfer
     this.auditLogger.log({
       tenantId,
-      userId: null,
+      userId: triggeredBy ?? null,
       action: 'data_ownership.transferred',
       riskLevel: 'high',
       details: {

@@ -45,7 +45,7 @@ export class OwnershipTransferService {
   /** Manual transfer endpoint. */
   async manualTransfer(
     sourceUserId: string, targetUserId: string, tenantId: string,
-    _triggeredBy: string, resourceTypes?: string[],
+    triggeredBy: string, resourceTypes?: string[],
   ): Promise<TransferResult> {
     const target = await this.prisma.user.findFirst({ where: { id: targetUserId, tenantId, active: true } });
     if (!target) throw new AppError(400, 'Target user must be active and in the same tenant', 'INVALID_TRANSFER_TARGET');
@@ -54,12 +54,13 @@ export class OwnershipTransferService {
     if (!source) throw new AppError(404, 'Source user not found in this tenant', 'USER_NOT_FOUND');
     if (sourceUserId === targetUserId) throw new AppError(400, 'Cannot transfer to the same user', 'SELF_TRANSFER');
 
-    return this.executeTransfer(sourceUserId, { id: target.id, email: target.email }, tenantId, 'manual_transfer', resourceTypes);
+    return this.executeTransfer(sourceUserId, { id: target.id, email: target.email }, tenantId, 'manual_transfer', resourceTypes, triggeredBy);
   }
 
   private async executeTransfer(
     fromUserId: string, target: { id: string; email: string },
     tenantId: string, reason: string, resourceTypes?: string[],
+    triggeredBy?: string | null,
   ): Promise<TransferResult> {
     const types = resourceTypes ?? ['investigations', 'reports', 'alert_rules', 'saved_hunts'];
     const summary: TransferSummary = { investigations: 0, reports: 0, alertRules: 0, savedHunts: 0 };
@@ -72,7 +73,7 @@ export class OwnershipTransferService {
     }
 
     this.auditLogger.log({
-      tenantId, userId: null, action: 'data_ownership.transferred', riskLevel: 'high',
+      tenantId, userId: triggeredBy ?? null, action: 'data_ownership.transferred', riskLevel: 'high',
       details: { fromUserId, toUserId: target.id, toEmail: target.email, reason, transferred: summary },
     });
 
