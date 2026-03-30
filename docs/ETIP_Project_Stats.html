@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 118 &middot; 2026-03-30 &middot; Break-Glass Emergency Account (I-22) deployed. 33 containers, ~7,540 tests</span>
+  <span class="version">Session 118b &middot; 2026-03-30 &middot; E2E Integration Tests (S15): 8 suites, 95 tests across RBAC, guards, MFA, RLS, offboarding, audit, SCIM. ~7,635 tests</span>
 </div>
 </div>
 
@@ -89,7 +89,7 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,540</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~7,635</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~630</div><div class="stat-label">API Endpoints</div></div>
     <div class="stat-card"><div class="stat-value">118</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
@@ -537,19 +537,20 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 118</span> Break-Glass Emergency Account (I-22) Deployed</div>
+    <div class="card-title"><span class="badge badge-green">Session 118b</span> E2E Integration Tests — Command Center v2.1 Full Validation (S15)</div>
     <div class="card-body">
-      <strong>Session 118 (2026-03-30):</strong> Command Center v2.1 S12 — Break-Glass Emergency Access:<br>
-      &bull; <strong>Break-Glass Login (I-22)</strong> — OTP-verified emergency login via TOTP (otplib). 30-minute non-renewable sessions. SOC 2 CC6.1 + NIST 800-53 AC-2(2)<br>
-      &bull; <strong>In-memory rate limiter</strong> — 3 attempts per 15 minutes per IP. Automatic lockout with critical audit<br>
-      &bull; <strong>Session management</strong> — Concurrent limit: 1 (auto-terminates previous). No refresh token. breakGlassSession flag on Session model<br>
-      &bull; <strong>Admin endpoints</strong> — GET status, GET audit, POST rotate-password (min 20 chars), DELETE force-terminate. All rbac(&apos;admin:*&apos;)<br>
-      &bull; <strong>Alert pipeline</strong> — BullMQ BREAK_GLASS_ALERT queue (ioredis lpush). Critical severity on every login<br>
-      &bull; <strong>Normal login exclusion</strong> — Break-glass accounts cannot use /auth/login. Registration guard on /auth/register<br>
-      &bull; <strong>Idempotent seed script</strong> — prisma/seeds/break-glass.ts (upsert pattern, env-driven)<br>
-      &bull; <strong>Schema</strong> — 3 User fields (isBreakGlass, breakGlassLastUsed, breakGlassUseCount) + 1 Session field (breakGlassSession). shared-auth: expiresInOverride + extraClaims. 30 queues, 39 events<br>
-      &bull; <strong>5 new endpoints</strong>, <strong>15 new break-glass tests</strong>. 136 user-service total, 130 api-gateway total, 195 admin-service total. 20 files changed, 1,158 insertions.<br>
-      &bull; <strong>Commit:</strong> 3a1e4ee — CI/CD passed, all 33 containers healthy<br><br>
+      <strong>Session 118b (2026-03-30):</strong> Command Center v2.1 S15 — E2E Integration Test Suite:<br>
+      &bull; <strong>8 E2E test suites</strong> validating all I-01 through I-22 features across RBAC, guards, MFA, RLS, offboarding, audit, SCIM<br>
+      &bull; <strong>Suite 1-2: Role/Permission/Plan</strong> — 22 tests. Analyst/tenant_admin/super_admin RBAC boundaries, plan upgrade, quota enforcement<br>
+      &bull; <strong>Suite 3: Protection Guards</strong> — 11 tests. Self-action (I-04), undeletable tenant_admin (I-05), last-admin safety, org self-disable<br>
+      &bull; <strong>Suite 4: MFA/Login/Break-Glass</strong> — 13 tests. MFA enforcement, TOTP challenge, 5-attempt lockout, break-glass 30-min session, audit trail<br>
+      &bull; <strong>Suite 5: RLS/Multi-Tenant Isolation</strong> — 11 tests. Cross-tenant data isolation, super_admin override, RLS fail-safe (null/empty → zero rows)<br>
+      &bull; <strong>Suite 6: Offboarding/Retention/Ownership</strong> — 15 tests. 6-step offboarding lifecycle, cancel flow, ownership transfer, retention enforcement<br>
+      &bull; <strong>Suite 7: Audit/Compliance/Access Review</strong> — 13 tests. SHA-256 hash chain integrity, tamper detection, SOC 2, GDPR DSAR, stale user auto-disable<br>
+      &bull; <strong>Suite 8: SCIM/Guards/Quota</strong> — 10 tests. SCIM de-provision (session+key revocation), last-admin guard, ownership transfer, plan limits<br>
+      &bull; <strong>2 lint fixes</strong> — ownership-transfer-service.ts: wired _triggeredBy into audit log<br>
+      &bull; <strong>95 new E2E tests</strong>. 187 api-gateway tests, 174 user-service tests. ~7,635 monorepo total.<br>
+      &bull; <strong>Commit:</strong> 642e2fe — CI/CD passed, all 33 containers healthy<br><br>
       <strong>Next session priorities:</strong><br>
       1. <strong>Run prisma db push on VPS</strong> — Break-glass fields + all pending schema changes<br>
       2. <strong>Set TI_BREAK_GLASS_EMAIL, TI_BREAK_GLASS_PASSWORD, TI_BREAK_GLASS_OTP_SECRET on VPS</strong><br>
@@ -563,7 +564,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 118 &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 118b &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
