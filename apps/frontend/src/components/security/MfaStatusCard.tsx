@@ -3,7 +3,7 @@
  * @description MFA status display with enable/disable/regenerate actions.
  */
 import { useState } from 'react'
-import { ShieldCheck, ShieldOff, KeyRound, Loader2 } from 'lucide-react'
+import { ShieldCheck, ShieldOff, KeyRound } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { MfaSetupWizard } from './MfaSetupWizard'
 import { DisableMfaModal } from './DisableMfaModal'
