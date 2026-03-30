@@ -35,8 +35,7 @@ export function MfaSetupWizard({ onClose, inline, onComplete }: MfaSetupWizardPr
     setup.mutate(undefined, {
       onSuccess: (data) => setSetupData(data),
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []) // run once on mount
 
   const handleVerify = () => {
     if (code.length !== 6) return

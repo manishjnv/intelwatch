@@ -32,8 +32,7 @@ export function VerifyEmailPage() {
         else setPageState('invalid')
       },
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
+  }, [token]) // only re-run when token changes
 
   const handleResend = () => {
     if (!email) return
