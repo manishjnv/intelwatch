@@ -43,12 +43,6 @@ function formatTimeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
-}
-
 // Country code → flag emoji
 function countryFlag(code: string | null): string {
   if (!code || code.length !== 2) return ''

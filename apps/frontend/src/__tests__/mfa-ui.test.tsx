@@ -3,7 +3,7 @@
  * @description Tests for MFA UI components: StatusCard, SetupWizard, DisableModal, BackupCodesModal.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@/test/test-utils'
+import { render, screen, fireEvent } from '@/test/test-utils'
 import { MfaStatusCard } from '@/components/security/MfaStatusCard'
 import { MfaSetupWizard } from '@/components/security/MfaSetupWizard'
 import { DisableMfaModal } from '@/components/security/DisableMfaModal'

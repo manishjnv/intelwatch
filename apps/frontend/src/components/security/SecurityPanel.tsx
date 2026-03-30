@@ -3,7 +3,7 @@
  * @description Security sub-tab: MFA status, enforcement toggle (tenant_admin), active sessions.
  */
 import { useState } from 'react'
-import { Shield, Loader2 } from 'lucide-react'
+import { Shield } from 'lucide-react'
 import { MfaStatusCard } from './MfaStatusCard'
 import { ActiveSessionsList } from './ActiveSessionsList'
 import { useMfaEnforcement, useUpdateMfaEnforcement } from '@/hooks/use-mfa'

@@ -14,7 +14,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   Search, UserPlus, Shield, ShieldCheck, Mail,
   Check, X, Globe, Key, Webhook, AlertTriangle,
-  Settings, CheckCircle, ArrowUpCircle, Zap, Crown, Lock,
+  Settings, CheckCircle, ArrowUpCircle, Zap, Crown,
 } from 'lucide-react'
 import { SecurityPanel } from '@/components/security/SecurityPanel'
 
