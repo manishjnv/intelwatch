@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-03-30 (update at end of EVERY session via /session-end)
-**Session counter:** 118 — Break-Glass Emergency Account (I-22): OTP-verified emergency login, 30-min non-renewable sessions, in-memory rate limiter (3/15min per IP), critical audit trail, BullMQ alert queue, admin management endpoints (status/audit/rotate-password/force-terminate), idempotent seed script. SOC 2 CC6.1 + NIST 800-53 AC-2(2). 5 new endpoints, 15 new tests, 20 files changed. Pushed to master. Commit 3a1e4ee.
+**Session counter:** 118b — E2E Integration Tests (S15): 8 suites (95 tests) validating Command Center v2.1 features I-01 through I-22 (RBAC, guards, MFA, break-glass, RLS isolation, offboarding, audit hash chain, SCIM). 2 lint fixes. api-gateway: 187 tests, user-service: 174 tests. ~7,635 monorepo total. Commits 642e2fe, a20a8ae.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -146,7 +146,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 - **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-118b.
 - **Last session outcome:** Session 118b (2026-03-30). **E2E Integration Tests (S15) — Command Center v2.1 Full Validation.** 8 E2E test suites covering all I-01 through I-22 features: RBAC boundaries, protection guards, MFA/break-glass, RLS multi-tenant isolation, offboarding lifecycle, audit hash chain, SCIM guards+quota. 95 new E2E tests. 2 lint fixes (ownership-transfer-service). api-gateway: 187 tests, user-service: 174 tests. ~7,635 monorepo total. Commit 642e2fe. CI/CD passed, all 33 containers healthy.
 - **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. VPS needs `prisma db push` (AccessReview + ComplianceReport + ScimToken + SsoConfig + email verification + plan models). 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
-- **Next tasks:** (1) Run `prisma db push` on VPS for AccessReview + ComplianceReport + ScimToken + SsoConfig + email verification + plan models. (2) Run seed script for 4 default plans. (3) Set TI_MFA_ENCRYPTION_KEY env var on VPS. (4) Command Center v2.1 — remaining I-items (I-19 Offboarding, I-20 Retention, I-21 Ownership Transfer). (5) Set Shodan/GreyNoise API keys on VPS.
+- **Next tasks:** (1) Run `prisma db push` on VPS for all pending schema changes (AccessReview, ComplianceReport, ScimToken, SsoConfig, email verification, plan models, break-glass fields, offboarding fields). (2) Set env vars on VPS: TI_BREAK_GLASS_EMAIL, TI_BREAK_GLASS_PASSWORD, TI_BREAK_GLASS_OTP_SECRET, TI_MFA_ENCRYPTION_KEY. (3) Run break-glass seed script on VPS. (4) Run seed script for 4 default plans. (5) Continue Command Center v2.1 — remaining I-items (I-23+). (6) Set Shodan/GreyNoise API keys on VPS.
 
 ## Deployment Log
 
