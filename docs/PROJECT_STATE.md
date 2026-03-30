@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-30 (update at end of EVERY session via /session-end)
-**Session counter:** 120 — S17: Access Review UI + Compliance Reports UI + FeatureGate Wiring. 7 new files + 5 modified = 12 total. AccessReviewPanel (stats cards, review table, confirm/disable modals, quarterly summary), ComplianceReportsPanel (SOC 2/Privileged/DSAR report generation/viewing/deletion), DsarPanel (tenant DSAR exports), FeatureGate wrapping on 9 TI routes, sidebar lock badges, dashboard widget gating. 3 test files, 47 new tests. 1,485 frontend tests. ~7,743 monorepo total. Commits d74022d, 9ee0e79.
+**Session counter:** 121 — S18: Offboarding Panel + Break-Glass Status + SSO Config UI (frontend only). 10 new files + 3 modified = 13 total. OffboardingPanel (pipeline view, type-to-confirm offboard, cancel, status detail timeline, purge countdown), BreakGlassPanel (status card with green/red states, audit log with colored event badges, rotate password modal with 20+ char validation, force terminate), SsoConfigPanel (SAML/OIDC provider selection, domain tags, group-role mapping, test/save/delete, AdminSsoView read-only). 3 hook files (use-offboarding, use-break-glass, use-sso). 3 test files, 37 new tests. 1,522 frontend tests. ~7,780 monorepo total. Commits 9f75cca, cefb40f.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.2.2 | 2026-03-30 | Health check passing. **Session 118 (I-22):** Break-glass routes (5 endpoints: POST /auth/break-glass, GET status/audit, POST rotate-password, DELETE sessions). ioredis BullMQ alert queue. 130 tests. |
-| etip_frontend | ✅ Running | 0.17.0 | 2026-03-30 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 120 (S17):** AccessReviewPanel, ComplianceReportsPanel, DsarPanel, FeatureGate wiring (9 routes + sidebar locks + dashboard gating). 1,485 tests. |
+| etip_frontend | ✅ Running | 0.18.0 | 2026-03-30 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 121 (S18):** OffboardingPanel, BreakGlassPanel, SsoConfigPanel + AdminSsoView. 3 React Query hook files. 1,522 tests. |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-30 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,485 tests. **Session 120 (S17):** AccessReviewPanel, ComplianceReportsPanel, DsarPanel, FeatureGate wiring (9 routes + sidebar locks + dashboard gating). |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-30 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,522 tests. **Session 121 (S18):** OffboardingPanel, BreakGlassPanel, SsoConfigPanel (SAML/OIDC, domain tags, group mappings, admin read-only view). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 96:** Fuzzy dedupe in global worker, batch normalizer. 256 tests. |
@@ -143,8 +143,8 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-120.
-- **Last session outcome:** Session 120 (2026-03-30). **S17: Access Review UI + Compliance Reports + FeatureGate Wiring (frontend only).** 7 new files + 5 modified = 12 total. AccessReviewPanel (stats cards, review table, confirm/disable modals, quarterly summary), ComplianceReportsPanel (SOC 2/Privileged/DSAR reports), DsarPanel (tenant DSAR exports), FeatureGate wrapping on 9 TI routes, sidebar lock badges, dashboard widget gating. 47 new tests. 1,485 frontend / ~7,743 monorepo total. Commits d74022d, 9ee0e79. CI run 23737638316 green, all 33 containers healthy.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-121.
+- **Last session outcome:** Session 121 (2026-03-30). **S18: Offboarding Panel + Break-Glass Status + SSO Config UI (frontend only).** 10 new files + 3 modified = 13 total. OffboardingPanel (pipeline view, type-to-confirm, cancel, status detail timeline, purge countdown), BreakGlassPanel (green/red status card, audit log with colored event badges, rotate password 20+ char, force terminate), SsoConfigPanel (SAML/OIDC, domain tags, group-role mapping, test/save/delete, AdminSsoView). 37 new tests. 1,522 frontend / ~7,780 monorepo total. Commits 9f75cca, cefb40f. CI run 23741416630 green, all 33 containers healthy.
 - **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. VPS needs `prisma db push` (all pending schema changes). 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
 - **Next tasks:** (1) Run `prisma db push` on VPS for all pending schema changes. (2) Set env vars on VPS: TI_BREAK_GLASS_EMAIL, TI_BREAK_GLASS_PASSWORD, TI_BREAK_GLASS_OTP_SECRET, TI_MFA_ENCRYPTION_KEY. (3) Run break-glass seed + plan seed scripts on VPS. (4) Continue Command Center v2.1 — remaining features. (5) Set Shodan/GreyNoise API keys on VPS.
 
@@ -248,6 +248,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 118 | 2026-03-30 | etip_api + etip_user_service redeployed (break-glass I-22) | ✅ All 33 healthy | 3a1e4ee | Break-glass emergency account (I-22): OTP login, 30-min non-renewable sessions, rate limiter, critical audit, BullMQ alert queue, admin management endpoints. 5 new endpoints, 15 new tests. ~7,540 monorepo tests. VPS needs: prisma db push (break-glass fields) + env vars (TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET) + seed script. |
 | 118b | 2026-03-30 | No deploy (test-only session) | ✅ CI green | 642e2fe | E2E Integration Tests (S15): 8 suites validating I-01 through I-22. Role/Permission/Plan (22), Protection Guards (11), MFA/Break-Glass (13), RLS Isolation (11), Offboarding/Retention (15), Audit/Compliance (13), SCIM/Guards (10). 95 new tests. 2 lint fixes. ~7,635 monorepo total. |
 | 120 | 2026-03-30 | etip_frontend redeployed (S17 Access Review + Compliance + FeatureGate) | ✅ All 33 healthy | d74022d, 9ee0e79 | AccessReviewPanel (stats, review table, confirm/disable modals, quarterly summary), ComplianceReportsPanel (SOC 2/Privileged/DSAR), DsarPanel (tenant exports), FeatureGate wiring (9 routes + sidebar locks + dashboard gating). 47 new tests. 1,485 frontend / ~7,743 monorepo. CI run 23737638316 green. |
+| 121 | 2026-03-30 | etip_frontend redeployed (S18 Offboarding + Break-Glass + SSO Config) | ✅ All 33 healthy | 9f75cca, cefb40f | OffboardingPanel (pipeline, type-to-confirm, cancel, detail timeline, purge countdown), BreakGlassPanel (status card, audit log, rotate password, force terminate), SsoConfigPanel (SAML/OIDC, domains, group mappings, admin view). 3 hooks + 3 test files. 37 new tests. 1,522 frontend / ~7,780 monorepo. CI run 23741416630 green. |
 
 ## E2E Verification Results (Session 13)
 

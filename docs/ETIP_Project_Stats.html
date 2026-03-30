@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 120 &middot; 2026-03-30 &middot; S17: Access Review UI + Compliance Reports + FeatureGate Wiring (7 new files, 47 tests). ~7,743 tests</span>
+  <span class="version">Session 121 &middot; 2026-03-30 &middot; S18: Offboarding Panel + Break-Glass Status + SSO Config UI (10 new files, 37 tests). ~7,780 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,743</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~7,780</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~630</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">119</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">120</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass routes</td><td>130</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + MFA + Sessions + FeatureGate + Access Review + Compliance</td><td>1,485</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,522</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats</td><td>237</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
@@ -537,23 +537,21 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 120</span> Access Review UI + Compliance Reports + FeatureGate Wiring (S17)</div>
+    <div class="card-title"><span class="badge badge-green">Session 121</span> Offboarding Panel + Break-Glass Status + SSO Config UI (S18)</div>
     <div class="card-body">
-      <strong>Session 120 (2026-03-30):</strong> Command Center v2.1 S17 — Frontend UI + Feature Gating:<br>
-      &bull; <strong>AccessReviewPanel</strong> — Stats cards (pending/auto-disabled/confirmed), review table with type/status badges, confirm/disable modals, quarterly summary with role distribution + MFA bar<br>
-      &bull; <strong>ComplianceReportsPanel</strong> — Generate/view/delete SOC 2, Privileged Access, GDPR DSAR reports. Structured report viewer with sections per report type<br>
-      &bull; <strong>DsarPanel</strong> — Tenant admin DSAR exports with user selector dropdown<br>
-      &bull; <strong>FeatureGate wiring</strong> — 9 TI page routes wrapped (IOCs, search, threat-actors, malware, vulnerabilities, hunting, graph, DRP, correlation)<br>
-      &bull; <strong>Sidebar lock badges</strong> — Lock icon + muted styling for disabled features in DashboardLayout<br>
-      &bull; <strong>Dashboard widget gating</strong> — Upgrade overlay with Lock icon on disabled feature cards<br>
-      &bull; <strong>2 React Query hooks</strong> — use-access-reviews.ts + use-compliance-reports.ts with demo data fallback<br>
-      &bull; <strong>47 new tests</strong> (3 test files). 1,485 frontend / ~7,743 monorepo total.<br>
-      &bull; <strong>Commits:</strong> d74022d, 9ee0e79 — CI run 23737638316 green, all 33 containers healthy<br><br>
+      <strong>Session 121 (2026-03-30):</strong> Command Center v2.1 S18 — Frontend UI (3 panels + 3 hooks + 3 test suites):<br>
+      &bull; <strong>OffboardingPanel</strong> — Pipeline list with status badges (offboarding/archived/purged), purge countdown, type-to-confirm offboard trigger, cancel offboarding, status detail timeline with completed/pending steps<br>
+      &bull; <strong>BreakGlassPanel</strong> — Status card (green Ready / red pulsing ACTIVE SESSION with IP, geo, countdown), audit log table with colored event badges, rotate password modal (20+ char, strength indicator), force terminate with confirm<br>
+      &bull; <strong>SsoConfigPanel</strong> — SAML/OIDC provider selection, conditional field sets (Entity ID/Metadata/Certificate vs Client ID/Secret/Issuer), approved domain tag input, group-to-role mapping table, enabled toggle, test/save/delete. AdminSsoView read-only for super_admin. SsoStatusBadge in Users &amp; Access header<br>
+      &bull; <strong>3 React Query hooks</strong> — use-offboarding.ts, use-break-glass.ts, use-sso.ts with demo data fallback<br>
+      &bull; <strong>Wiring</strong> — SystemTab +Emergency Access sub-tab (BreakGlassPanel), ClientsTab +OffboardingPanel pipeline + AdminSsoView in drawer, UsersAccessTab SSO sub-tab replaced with SsoConfigPanel<br>
+      &bull; <strong>37 new tests</strong> (3 test files). 1,522 frontend / ~7,780 monorepo total.<br>
+      &bull; <strong>Commits:</strong> 9f75cca, cefb40f — CI run 23741416630 green, all 33 containers healthy<br><br>
       <strong>Next session priorities:</strong><br>
       1. <strong>Run prisma db push on VPS</strong> — All pending schema changes<br>
       2. <strong>Set env vars on VPS</strong> — TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET, TI_MFA_ENCRYPTION_KEY<br>
       3. <strong>Run seed scripts on VPS</strong> — Break-glass account + 4 default plans<br>
-      4. <strong>Continue Command Center v2.1</strong> — Remaining features<br>
+      4. <strong>Continue Command Center v2.1</strong> — Remaining features (Cyber News Feed, IOC Strategy)<br>
     </div>
   </div>
 </div>
@@ -561,7 +559,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 120 &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 121 &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
