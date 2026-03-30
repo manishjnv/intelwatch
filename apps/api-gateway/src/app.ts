@@ -23,6 +23,7 @@ import { sessionRoutes } from './routes/sessions.js';
 import { accessReviewRoutes } from './routes/access-review.js';
 import { complianceRoutes } from './routes/compliance.js';
 import { offboardingGatewayRoutes } from './routes/offboarding.js';
+import { breakGlassRoutes } from './routes/break-glass.js';
 
 /** Determine per-request rate limit tier based on URL + method */
 function resolveRateLimit(req: FastifyRequest): number {
@@ -126,6 +127,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(accessReviewRoutes, { prefix: '/api/v1' });
   await app.register(complianceRoutes, { prefix: '/api/v1' });
   await app.register(offboardingGatewayRoutes, { prefix: '/api/v1' });
+  await app.register(breakGlassRoutes, { prefix: '/api/v1' });
 
   logger.info('API Gateway configured successfully');
   return app;

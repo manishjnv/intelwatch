@@ -79,6 +79,9 @@ model User {
   mfaSecret      String?      @map("mfa_secret") @db.VarChar(255)
   mfaBackupCodes String[]     @default([]) @map("mfa_backup_codes")
   mfaVerifiedAt  DateTime?    @map("mfa_verified_at")
+  isBreakGlass       Boolean   @default(false) @map("is_break_glass")
+  breakGlassLastUsed DateTime? @map("break_glass_last_used")
+  breakGlassUseCount Int       @default(0) @map("break_glass_use_count")
   lastLoginAt    DateTime?    @map("last_login_at")
   loginCount     Int          @default(0) @map("login_count")
   active         Boolean      @default(true)
@@ -119,6 +122,7 @@ model Session {
   userAgent        String?   @map("user_agent") @db.Text
   expiresAt        DateTime  @map("expires_at")
   revokedAt        DateTime? @map("revoked_at")
+  breakGlassSession Boolean  @default(false) @map("break_glass_session")
   geoCountry       String?   @map("geo_country") @db.VarChar(2)
   geoCity          String?   @map("geo_city") @db.VarChar(100)
   geoIsp           String?   @map("geo_isp") @db.VarChar(255)

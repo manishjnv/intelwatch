@@ -85,6 +85,10 @@ export interface SignAccessTokenParams {
   email: string;
   role: Role;
   sessionId: string;
+  /** Override default TTL (seconds). Used by break-glass 30-min sessions (I-22). */
+  expiresInOverride?: number;
+  /** Extra claims to embed in the token payload (e.g. isBreakGlass). */
+  extraClaims?: Record<string, unknown>;
 }
 
 /**
@@ -95,15 +99,16 @@ export function signAccessToken(params: SignAccessTokenParams): string {
   if (!_config.secret) {
     throw new AppError(500, 'JWT not configured — call loadJwtConfig() first', 'CONFIG_ERROR');
   }
-  const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
+  const payload: Omit<JwtPayload, 'iat' | 'exp'> & Record<string, unknown> = {
     sub: params.userId,
     tenantId: params.tenantId,
     email: params.email,
     role: params.role,
     sessionId: params.sessionId,
+    ...params.extraClaims,
   };
   return jwt.sign(payload, _config.secret, {
-    expiresIn: _config.accessExpirySeconds,
+    expiresIn: params.expiresInOverride ?? _config.accessExpirySeconds,
     issuer: _config.issuer,
   });
 }

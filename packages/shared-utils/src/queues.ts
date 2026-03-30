@@ -43,6 +43,8 @@ export const QUEUES = {
   // Offboarding & retention (I-19, I-20)
   OFFBOARDING:            'etip-offboarding',
   DATA_RETENTION:         'etip-data-retention',
+  // Break-glass emergency account (I-22)
+  BREAK_GLASS_ALERT:      'etip-break-glass-alert',
 } as const;
 
 /** Union type of all queue name string literals */

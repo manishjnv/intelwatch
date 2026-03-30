@@ -35,6 +35,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       );
     }
 
+    // I-22: Block registration with break-glass email
+    const breakGlassEmail = process.env['TI_BREAK_GLASS_EMAIL'];
+    if (breakGlassEmail && body.email.toLowerCase() === breakGlassEmail.toLowerCase()) {
+      throw new AppError(403, 'This email is reserved.', 'BREAK_GLASS_PROVISION_DENIED');
+    }
+
     // I-08: Block registration against the system tenant
     if (body.tenantSlug === SYSTEM_TENANT_SLUG) {
       throw new AppError(

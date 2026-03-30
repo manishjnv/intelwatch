@@ -273,6 +273,21 @@ export {
   type UserDisableResponse,
 } from './offboarding.js';
 
+// ── Break-Glass Emergency Account (I-22) ──────────────────────────
+export {
+  BreakGlassLoginBodySchema,
+  type BreakGlassLoginBody,
+  BreakGlassLoginResponseSchema,
+  type BreakGlassLoginResponse,
+  BreakGlassStatusResponseSchema,
+  type BreakGlassStatusResponse,
+  BreakGlassRotatePasswordBodySchema,
+  type BreakGlassRotatePasswordBody,
+  BreakGlassAlertPayloadSchema,
+  type BreakGlassAlertPayload,
+  BREAK_GLASS_AUDIT_EVENTS,
+} from './break-glass.js';
+
 // ── Config & constants ─────────────────────────────────────────────
 export {
   AI_MODELS,

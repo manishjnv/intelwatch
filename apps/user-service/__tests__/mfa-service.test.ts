@@ -50,6 +50,7 @@ const baseMfaUser = {
   mfaSecret: null as string | null,
   mfaBackupCodes: [] as string[],
   mfaVerifiedAt: null as Date | null,
+  isBreakGlass: false, breakGlassLastUsed: null, breakGlassUseCount: 0,
 };
 
 // Set required env var for encryption

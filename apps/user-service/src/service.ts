@@ -89,6 +89,14 @@ export class UserService {
     const user = await repo.findUserByEmailAnyStatus(input.email);
     if (!user) throw new AppError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
 
+    // Break-glass accounts must use the emergency login endpoint (I-22)
+    if (user.isBreakGlass) {
+      throw new AppError(403,
+        'Break-glass accounts must use the emergency login endpoint',
+        'BREAK_GLASS_NORMAL_LOGIN_DENIED',
+      );
+    }
+
     // Email verification guard — before active/password checks
     if (!user.emailVerified) {
       throw new AppError(403,
@@ -162,6 +170,14 @@ export class UserService {
 
     const session = await repo.findSessionById(payload.sessionId);
     if (!session) throw new AppError(401, 'Session not found', 'SESSION_NOT_FOUND');
+
+    // Break-glass sessions are non-renewable (I-22)
+    if (session.breakGlassSession) {
+      throw new AppError(403,
+        'Break-glass sessions cannot be renewed. Initiate a new break-glass login if needed.',
+        'BREAK_GLASS_NOT_RENEWABLE',
+      );
+    }
 
     if (session.revokedAt) {
       await repo.revokeAllUserSessions(session.userId);

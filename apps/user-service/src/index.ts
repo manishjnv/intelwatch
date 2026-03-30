@@ -31,6 +31,8 @@ export { OwnershipTransferService } from './ownership-transfer-service.js';
 export { AuditLogger } from './audit-logger.js';
 export { SessionManager } from './session-manager.js';
 
+export { BreakGlassService, type BreakGlassLoginInput, type BreakGlassLoginResult } from './break-glass-service.js';
+
 export { prisma, disconnectPrisma } from './prisma.js';
 
 export * as userRepo from './repository.js';
@@ -39,3 +41,4 @@ export * as ssoRepo from './sso-repository.js';
 export * as emailVerificationRepo from './email-verification-repository.js';
 export * as accessReviewRepo from './access-review-repository.js';
 export * as complianceReportRepo from './compliance-report-repository.js';
+export * as breakGlassRepo from './break-glass-repository.js';

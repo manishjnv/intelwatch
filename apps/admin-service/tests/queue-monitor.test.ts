@@ -50,10 +50,10 @@ describe('Queue Monitor Routes', () => {
       expect(Array.isArray(body.data.queues)).toBe(true);
     });
 
-    it('returns all 27 canonical queues', async () => {
+    it('returns all 30 canonical queues', async () => {
       const res = await app.inject({ method: 'GET', url: '/api/v1/admin/queues' });
       const body = JSON.parse(res.body) as { data: { queues: unknown[] } };
-      expect(body.data.queues.length).toBe(29);
+      expect(body.data.queues.length).toBe(30);
     });
 
     it('each entry has name, waiting, active, failed, completed', async () => {

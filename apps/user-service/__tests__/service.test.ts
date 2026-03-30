@@ -47,7 +47,9 @@ const mockUser = {
   passwordHash: '', designation: null, emailVerified: true,
   emailVerifyToken: null, emailVerifyExpires: null,
   mfaEnabled: false, mfaSecret: null,
-  mfaBackupCodes: [], mfaVerifiedAt: null, lastLoginAt: null, loginCount: 0,
+  mfaBackupCodes: [], mfaVerifiedAt: null,
+  isBreakGlass: false, breakGlassLastUsed: null, breakGlassUseCount: 0,
+  lastLoginAt: null, loginCount: 0,
   active: true, createdAt: new Date(), updatedAt: new Date(), tenant: mockTenant,
 };
 
@@ -55,6 +57,7 @@ const mockSession = {
   id: '550e8400-e29b-41d4-a716-446655440030', userId: mockUser.id, tenantId: mockTenant.id,
   refreshTokenHash: '', ipAddress: '127.0.0.1', userAgent: 'test-agent',
   expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000), revokedAt: null,
+  breakGlassSession: false,
   createdAt: new Date(), user: mockUser,
 };
 

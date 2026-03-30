@@ -58,6 +58,10 @@ export const EVENTS = {
   DATA_RETENTION_ENFORCED:   'data_retention.enforced',
   // Ownership transfer (I-21)
   DATA_OWNERSHIP_TRANSFERRED: 'data_ownership.transferred',
+  // Break-glass emergency account (I-22)
+  BREAK_GLASS_LOGIN:           'break_glass.login',
+  BREAK_GLASS_FAILED:          'break_glass.failed',
+  BREAK_GLASS_LOCKED:          'break_glass.locked',
 } as const;
 
 /** Union type of all event type string literals */
