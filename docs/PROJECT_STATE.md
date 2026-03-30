@@ -1,11 +1,11 @@
 # ETIP Project State
 **Last updated:** 2026-03-30 (update at end of EVERY session via /session-end)
-**Session counter:** 117b — Org Offboarding (I-19) + Data Retention (I-20) + Ownership Transfer (I-21): Offboarding lifecycle (disable→terminate→revoke→archive→purge 60d), plan-aware retention enforcement (30/90/365/unlimited), ownership transfer on user disable (team deactivate + SCIM deprovision). 9 new routes, 32 new files, 55 new tests. Pushed to master. Commit bb56adf.
+**Session counter:** 118 — Break-Glass Emergency Account (I-22): OTP-verified emergency login, 30-min non-renewable sessions, in-memory rate limiter (3/15min per IP), critical audit trail, BullMQ alert queue, admin management endpoints (status/audit/rotate-password/force-terminate), idempotent seed script. SOC 2 CC6.1 + NIST 800-53 AC-2(2). 5 new endpoints, 15 new tests, 20 files changed. Pushed to master. Commit 3a1e4ee.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
-| etip_api | ✅ Running | 0.2.1 | 2026-03-29 | Health check passing. **Session 115:** MFA endpoints (9 routes under /auth/mfa). **Session 114:** Quota enforcement middleware (plan cache, Lua counters, X-Quota headers, threshold events). Plan definitions CRUD (10 endpoints). Override CRUD (4 endpoints). Usage API (5 endpoints). 108 tests. |
+| etip_api | ✅ Running | 0.2.2 | 2026-03-30 | Health check passing. **Session 118 (I-22):** Break-glass routes (5 endpoints: POST /auth/break-glass, GET status/audit, POST rotate-password, DELETE sessions). ioredis BullMQ alert queue. 130 tests. |
 | etip_frontend | ✅ Running | 0.15.0 | 2026-03-28 | Dashboard + 20 data pages + Command Center (9 tabs SA / 7 TA). **Session 110:** BillingPlansTab (6 sub-tabs) + AlertsReportsTab (4 sub-tabs). 1010 tests (1012 total, 2 skipped). |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
@@ -39,16 +39,16 @@
 ## Module Development Status
 | Module | Phase | Status | Last Worked | Blockers |
 |--------|-------|--------|-------------|----------|
-| api-gateway | 1 | ✅ Deployed | 2026-03-29 | **Session 115:** +9 MFA routes (/auth/mfa/*). **Session 114:** Plan definitions CRUD (10 endpoints) + override CRUD (4 endpoints) + quota enforcement middleware (Redis Lua counters, plan cache 5min TTL, X-Quota headers, 80/90% threshold events) + usage API (5 endpoints). 108 tests. |
-| shared-types | 1 | ✅ Deployed | 2026-03-29 | **Session 114:** +plan.ts module (FeatureKey, PlanDefinitionCreate/Update, TenantFeatureOverride, FeatureLimits, QuotaCheckResult, UsageSnapshot, QuotaThresholdEvent). |
-| shared-utils | 1 | ✅ Deployed | 2026-03-30 | QUEUES: 29 constants (+OFFBOARDING, +DATA_RETENTION). EVENTS: 36 constants (+offboarding.*, +data_retention.enforced, +data_ownership.transferred). **registerMetrics()**: prom-client Prometheus plugin. 123 tests. |
-| shared-auth | 1 | ✅ Deployed | 2026-03-29 | **Session 115:** +MFA token utilities (signMfaChallengeToken, verifyMfaChallengeToken, signMfaSetupToken, verifyMfaSetupToken). 92 tests. |
+| api-gateway | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** +5 break-glass routes (POST /auth/break-glass, GET status/audit, POST rotate-password, DELETE sessions). ioredis BullMQ alert push. 130 tests. |
+| shared-types | 1 | ✅ Deployed | 2026-03-30 | **Session 118:** +break-glass.ts (BreakGlassLoginBody, BreakGlassAlertPayload, BREAK_GLASS_AUDIT_EVENTS — 7 event constants). |
+| shared-utils | 1 | ✅ Deployed | 2026-03-30 | QUEUES: 30 constants (+BREAK_GLASS_ALERT). EVENTS: 39 constants (+break_glass.login/failed/locked). 123 tests. |
+| shared-auth | 1 | ✅ Deployed | 2026-03-30 | **Session 118:** signAccessToken extended with expiresInOverride + extraClaims (backward-compatible). 92 tests. |
 | shared-cache | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-audit | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-normalization | 1 | ✅ Deployed | 2026-03-27 | **Session 96:** + Fuzzy dedupe, velocity scoring, CWE chain mapper. 204 tests. |
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
-| user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 116 (I-12):** SCIM 2.0 provisioning — token management, /Users CRUD, /Groups read-only, bearer token auth, deprovisioning (session termination + API key revocation). 49 new SCIM tests (122 user-service total). |
+| user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-28 | **24 data pages + Command Center (9 tabs SA / 7 TA)**. 1010 tests. **Session 110:** Phase F — BillingPlansTab (6 sub-tabs: Subscription, Invoices, Plans & Upgrade, Limits, Offers, Billing Info) + AlertsReportsTab (4 sub-tabs: Alert Rules, Alert History, Report Templates, Generate & Schedule). Role-gated. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
@@ -243,6 +243,9 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 114 | 2026-03-29 | etip_api redeployed (quota enforcement S3+S4) | ⏳ CI triggered | 2a9b879 | Plan definitions CRUD (10 endpoints) + override CRUD (4 endpoints) + quota enforcement middleware (Redis Lua counters, plan cache 5min TTL, X-Quota headers, 80/90% threshold events) + usage API (5 endpoints). 18 new tests (108 api-gateway total). 7,238 monorepo tests. |
 | 116 | 2026-03-29 | etip_api redeployed (SSO + email verification) | ✅ All 33 healthy | ecb327f | SSO group-to-role mapping (I-11) + email verification flow (I-13). SsoConfig Prisma model, JIT provisioning, email verify/resend/cleanup. 22 new tests (73 user-service). ~7,262 monorepo tests. Deploy verified: /health ok, /ready ok. |
 | 116 | 2026-03-30 | etip_user_management + etip_billing redeployed (SCIM + billing upgrade) | ✅ All 33 healthy | 48798de | SCIM 2.0 provisioning (I-12): ScimToken model, /Users CRUD, /Groups read-only, bearer token auth, deprovisioning (session termination + API key revocation). Billing upgrade (I-14): POST /billing/upgrade + GET /billing/plans. 49 new tests. ~7,311 monorepo tests. API gateway healthy (110s uptime). |
+| 117 | 2026-03-30 | etip_user_service redeployed (access review + compliance) | ✅ All 33 healthy | 4774489 | Access review automation (I-17) + compliance report generation (I-18). 2 Prisma models, 11 endpoints, 20 new tests. CI run 23722293306 green. |
+| 117b | 2026-03-30 | etip_user_management redeployed (offboarding lifecycle) | ✅ All 33 healthy | bb56adf | Org offboarding (I-19) + data retention (I-20) + ownership transfer (I-21). 6 Tenant offboarding fields, 2 new queues, 6 new events. 9 endpoints, 55 new tests. ~7,386 monorepo tests. |
+| 118 | 2026-03-30 | etip_api + etip_user_service redeployed (break-glass I-22) | ✅ All 33 healthy | 3a1e4ee | Break-glass emergency account (I-22): OTP login, 30-min non-renewable sessions, rate limiter, critical audit, BullMQ alert queue, admin management endpoints. 5 new endpoints, 15 new tests. ~7,540 monorepo tests. VPS needs: prisma db push (break-glass fields) + env vars (TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET) + seed script. |
 
 ## E2E Verification Results (Session 13)
 

@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 117b &middot; 2026-03-30 &middot; Offboarding (I-19) + Retention (I-20) + Ownership Transfer (I-21) deployed. 33 containers, ~7,386 tests</span>
+  <span class="version">Session 118 &middot; 2026-03-30 &middot; Break-Glass Emergency Account (I-22) deployed. 33 containers, ~7,540 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,331</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~7,540</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~630</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">117</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">118</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -143,8 +143,8 @@ li strong { color: var(--text-primary); }
   <table>
     <thead><tr><th>Module</th><th>Port</th><th>Phase</th><th>Status</th><th>Endpoints</th><th>Tests</th></tr></thead>
     <tbody>
-      <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API</td><td>108</td></tr>
-      <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance</td><td>122</td></tr>
+      <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass routes</td><td>130</td></tr>
+      <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
       <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Plan Builder + Usage Page + FeatureGate + Quota Banners</td><td>1,377</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats</td><td>237</td></tr>
@@ -162,7 +162,7 @@ li strong { color: var(--text-primary); }
       <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58 (+BYOK +FeedQuota +GlobalAI +PlanLimits)</td><td>319</td></tr>
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>241</td></tr>
       <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28 (PlanStore Prisma-backed)</td><td>174</td></tr>
-      <tr><td>admin-ops</td><td>3022</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>35 (+feed-usage)</td><td>190</td></tr>
+      <tr><td>admin-ops</td><td>3022</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>35 (+feed-usage)</td><td>195</td></tr>
       <tr><td>elasticsearch-indexing</td><td>3020</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>3</td><td>57</td></tr>
       <tr><td>reporting</td><td>3021</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>25</td><td>217</td></tr>
       <tr><td><strong>alerting</strong></td><td>3023</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>35 + Global IOC Alert Handler</td><td>322</td></tr>
@@ -537,21 +537,25 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 117b</span> Offboarding (I-19) + Retention (I-20) + Ownership Transfer (I-21) Deployed</div>
+    <div class="card-title"><span class="badge badge-green">Session 118</span> Break-Glass Emergency Account (I-22) Deployed</div>
     <div class="card-body">
-      <strong>Session 117b (2026-03-30):</strong> Command Center v2.1 S11 — Data Lifecycle:<br>
-      &bull; <strong>Org Offboarding (I-19)</strong> — 6-step lifecycle: disable tenant &rarr; terminate sessions &rarr; revoke API keys &rarr; disable SSO/SCIM &rarr; S3 archive &rarr; 60-day purge. GDPR Article 17 + SOC 2 CC6.5<br>
-      &bull; <strong>Data Retention (I-20)</strong> — Plan-aware soft-delete (free 30d, starter 90d, pro 365d, enterprise unlimited). Audit logs exempt. Session cleanup<br>
-      &bull; <strong>Ownership Transfer (I-21)</strong> — Auto-transfer to active tenant_admin on user disable. Team deactivate + SCIM deprovision hooks. Manual transfer endpoint<br>
-      &bull; <strong>Schema</strong> — 6 Tenant offboarding fields + archivedAt/archiveReason on 5 data models. 2 new queues, 6 new events<br>
-      &bull; <strong>9 new endpoints</strong>, <strong>55 new tests</strong>. 334 user-management total. 32 files changed.<br>
-      &bull; <strong>Commit:</strong> bb56adf — CI/CD passed, all 33 containers healthy<br><br>
+      <strong>Session 118 (2026-03-30):</strong> Command Center v2.1 S12 — Break-Glass Emergency Access:<br>
+      &bull; <strong>Break-Glass Login (I-22)</strong> — OTP-verified emergency login via TOTP (otplib). 30-minute non-renewable sessions. SOC 2 CC6.1 + NIST 800-53 AC-2(2)<br>
+      &bull; <strong>In-memory rate limiter</strong> — 3 attempts per 15 minutes per IP. Automatic lockout with critical audit<br>
+      &bull; <strong>Session management</strong> — Concurrent limit: 1 (auto-terminates previous). No refresh token. breakGlassSession flag on Session model<br>
+      &bull; <strong>Admin endpoints</strong> — GET status, GET audit, POST rotate-password (min 20 chars), DELETE force-terminate. All rbac(&apos;admin:*&apos;)<br>
+      &bull; <strong>Alert pipeline</strong> — BullMQ BREAK_GLASS_ALERT queue (ioredis lpush). Critical severity on every login<br>
+      &bull; <strong>Normal login exclusion</strong> — Break-glass accounts cannot use /auth/login. Registration guard on /auth/register<br>
+      &bull; <strong>Idempotent seed script</strong> — prisma/seeds/break-glass.ts (upsert pattern, env-driven)<br>
+      &bull; <strong>Schema</strong> — 3 User fields (isBreakGlass, breakGlassLastUsed, breakGlassUseCount) + 1 Session field (breakGlassSession). shared-auth: expiresInOverride + extraClaims. 30 queues, 39 events<br>
+      &bull; <strong>5 new endpoints</strong>, <strong>15 new break-glass tests</strong>. 136 user-service total, 130 api-gateway total, 195 admin-service total. 20 files changed, 1,158 insertions.<br>
+      &bull; <strong>Commit:</strong> 3a1e4ee — CI/CD passed, all 33 containers healthy<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Run prisma db push on VPS</strong> — Tenant offboarding fields + archivedAt columns on 5 data models<br>
-      2. <strong>Set TI_MFA_ENCRYPTION_KEY on VPS</strong> — Required for TOTP + SSO clientSecret encryption<br>
-      3. <strong>Run plan seed script on VPS</strong> — 4 default plans &times; 16 features<br>
-      4. <strong>Continue Command Center v2.1</strong> — I-22+ remaining features<br>
-      5. <strong>Set Shodan/GreyNoise API keys on VPS</strong><br>
+      1. <strong>Run prisma db push on VPS</strong> — Break-glass fields + all pending schema changes<br>
+      2. <strong>Set TI_BREAK_GLASS_EMAIL, TI_BREAK_GLASS_PASSWORD, TI_BREAK_GLASS_OTP_SECRET on VPS</strong><br>
+      3. <strong>Run break-glass seed script on VPS</strong> — Provision emergency account<br>
+      4. <strong>Set TI_MFA_ENCRYPTION_KEY on VPS</strong> — Required for TOTP + SSO clientSecret encryption<br>
+      5. <strong>Continue Command Center v2.1</strong> — I-23+ remaining features<br>
     </div>
   </div>
 </div>
@@ -559,7 +563,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 117b &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 118 &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
