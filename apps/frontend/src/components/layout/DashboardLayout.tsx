@@ -14,8 +14,9 @@ import { useDashboardStats } from '@/hooks/use-intel-data'
 import { cn } from '@/lib/utils'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import {
-  Search, LogOut, Menu, X, Sun, Moon,
+  Search, LogOut, Menu, X, Sun, Moon, Lock,
 } from 'lucide-react'
+import { useFeatureLimits, type FeatureKey } from '@/hooks/use-feature-limits'
 import { IconDashboard } from '@/components/brand/ModuleIcons'
 import { LogoMark } from '@/components/brand/LogoMark'
 import { TopStatsBar }                          from '@etip/shared-ui/components/TopStatsBar'
@@ -70,6 +71,19 @@ function SidebarCollapseToggle({ collapsed, onClick }: { collapsed: boolean; onC
 /* ------------------------------------------------------------------ */
 /* Derive sidebar nav from modules config + dashboard entry            */
 /* ------------------------------------------------------------------ */
+/** Maps sidebar route → feature key for lock badge display. */
+const ROUTE_FEATURE_MAP: Record<string, FeatureKey> = {
+  '/iocs': 'ioc_management',
+  '/search': 'ioc_management',
+  '/threat-actors': 'threat_actors',
+  '/malware': 'malware_intel',
+  '/vulnerabilities': 'vulnerability_intel',
+  '/hunting': 'threat_hunting',
+  '/graph': 'graph_exploration',
+  '/drp': 'digital_risk_protection',
+  '/correlation': 'correlation_engine',
+}
+
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/dashboard', icon: IconDashboard, phase: 0, color: 'text-accent' },
   { label: 'IOC Search', path: '/search', icon: Search, phase: 7, color: 'text-cyan-400' },
@@ -87,6 +101,9 @@ export function DashboardLayout() {
 
   // ⛔ LOCKED: GlobalSearch Cmd+K / Ctrl+K
   const { open: searchOpen, setOpen: setSearchOpen } = useGlobalSearch()
+
+  // Feature limits for sidebar lock badges
+  const { features: featureLimits } = useFeatureLimits()
 
   // Platform stats for TopStatsBar — uses aggregated hook from use-intel-data
   const { data: stats } = useDashboardStats()
@@ -154,7 +171,7 @@ export function DashboardLayout() {
           </button>
         )}
 
-        {/* Nav — all items are clickable, future phases navigate to ComingSoonPage */}
+        {/* Nav — all items are clickable. Disabled features show lock badge. */}
         <nav className="flex-1 overflow-y-auto py-2 px-2">
           {NAV_ITEMS.map(item => {
             const isActive    = location.pathname === item.path
@@ -162,6 +179,8 @@ export function DashboardLayout() {
             const phaseColor  = getPhaseColor(item.phase)
             const phaseBg     = getPhaseBgColor(item.phase)
             const Icon        = item.icon
+            const featureKey  = ROUTE_FEATURE_MAP[item.path]
+            const isGated     = featureKey ? !(featureLimits.find(f => f.featureKey === featureKey)?.enabled ?? true) : false
             return (
               <NavLink key={item.path} to={item.path}
                 onClick={() => setMobileOpen(false)}
@@ -169,14 +188,19 @@ export function DashboardLayout() {
                   'group flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
                   isActive
                     ? 'bg-accent/10 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover',
+                    : isGated
+                      ? 'text-text-muted hover:text-text-secondary hover:bg-bg-hover opacity-60'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover',
                 )}
-                title={isFuture ? `${item.label} — Phase ${item.phase}` : item.label}>
-                <span className={cn('shrink-0', isActive ? 'text-accent' : item.color)}>
+                title={isGated ? `${item.label} — Upgrade to unlock` : isFuture ? `${item.label} — Phase ${item.phase}` : item.label}>
+                <span className={cn('shrink-0', isActive ? 'text-accent' : isGated ? 'text-text-muted' : item.color)}>
                   <Icon size={18} />
                 </span>
                 {!collapsed && <span className="truncate">{item.label}</span>}
-                {!collapsed && isFuture && (
+                {!collapsed && isGated && (
+                  <Lock className="ml-auto w-3 h-3 text-text-muted shrink-0" data-testid={`lock-${featureKey}`} />
+                )}
+                {!collapsed && !isGated && isFuture && (
                   <span className={cn(
                     'ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-medium',
                     phaseBg, phaseColor,

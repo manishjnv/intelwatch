@@ -25,6 +25,7 @@ import { SearchPage } from '@/pages/SearchPage';
 import { MfaChallengePage } from '@/pages/MfaChallengePage';
 import { MfaSetupRequiredPage } from '@/pages/MfaSetupRequiredPage';
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
+import { FeatureGate } from '@/components/FeatureGate';
 
 
 // Lazy-loaded — D3 (~190KB) splits into its own chunk, only fetched on /graph navigation
@@ -68,21 +69,23 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
-            {/* Intelligence pages — standalone */}
-            <Route path="/iocs" element={<IocListPage />} />
-            <Route path="/threat-actors" element={<ThreatActorListPage />} />
-            <Route path="/malware" element={<MalwareListPage />} />
-            <Route path="/vulnerabilities" element={<VulnerabilityListPage />} />
+            {/* Intelligence pages — FeatureGate wrapped */}
+            <Route path="/iocs" element={<FeatureGate feature="ioc_management"><IocListPage /></FeatureGate>} />
+            <Route path="/threat-actors" element={<FeatureGate feature="threat_actors"><ThreatActorListPage /></FeatureGate>} />
+            <Route path="/malware" element={<FeatureGate feature="malware_intel"><MalwareListPage /></FeatureGate>} />
+            <Route path="/vulnerabilities" element={<FeatureGate feature="vulnerability_intel"><VulnerabilityListPage /></FeatureGate>} />
             <Route path="/graph" element={
-              <React.Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand" /></div>}>
-                <ThreatGraphPage />
-              </React.Suspense>
+              <FeatureGate feature="graph_exploration">
+                <React.Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand" /></div>}>
+                  <ThreatGraphPage />
+                </React.Suspense>
+              </FeatureGate>
             } />
-            <Route path="/hunting" element={<HuntingWorkbenchPage />} />
-            <Route path="/drp" element={<DRPDashboardPage />} />
-            <Route path="/correlation" element={<CorrelationPage />} />
+            <Route path="/hunting" element={<FeatureGate feature="threat_hunting"><HuntingWorkbenchPage /></FeatureGate>} />
+            <Route path="/drp" element={<FeatureGate feature="digital_risk_protection"><DRPDashboardPage /></FeatureGate>} />
+            <Route path="/correlation" element={<FeatureGate feature="correlation_engine"><CorrelationPage /></FeatureGate>} />
             <Route path="/global-catalog" element={<Navigate to="/command-center#feeds" replace />} />
-            <Route path="/search" element={<SearchPage />} />
+            <Route path="/search" element={<FeatureGate feature="ioc_management"><SearchPage /></FeatureGate>} />
             {/* Command Center — unified hub */}
             <Route path="/command-center" element={<CommandCenterPage />} />
             {/* Absorbed route redirects → Command Center tabs */}

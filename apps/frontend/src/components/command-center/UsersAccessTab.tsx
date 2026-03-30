@@ -17,10 +17,11 @@ import {
   Settings, CheckCircle, ArrowUpCircle, Zap, Crown,
 } from 'lucide-react'
 import { SecurityPanel } from '@/components/security/SecurityPanel'
+import { AccessReviewPanel } from './AccessReviewPanel'
 
 // ─── Types ──────────────────────────────────────────────────
 
-type SubTab = 'team' | 'roles' | 'sso' | 'integrations' | 'security'
+type SubTab = 'team' | 'roles' | 'sso' | 'integrations' | 'security' | 'access-reviews'
 
 interface UsersAccessTabProps {
   data: ReturnType<typeof useCommandCenter>
@@ -469,6 +470,7 @@ export function UsersAccessTab({ data }: UsersAccessTabProps) {
     }
     items.push({ id: 'integrations', label: 'Integrations' })
     items.push({ id: 'security', label: 'Security' })
+    items.push({ id: 'access-reviews', label: 'Access Reviews' })
     return items
   }, [isSuperAdmin])
 
@@ -483,6 +485,7 @@ export function UsersAccessTab({ data }: UsersAccessTabProps) {
       {effectiveSubTab === 'sso' && <SSOPanel />}
       {effectiveSubTab === 'integrations' && <IntegrationsPanel />}
       {effectiveSubTab === 'security' && <SecurityPanel data={data} />}
+      {effectiveSubTab === 'access-reviews' && <AccessReviewPanel isSuperAdmin={isSuperAdmin} />}
     </div>
   )
 }

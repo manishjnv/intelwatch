@@ -22,10 +22,11 @@ import {
   Check, X, Shield, Copy, Trash2,
   Plus, Play, Download, Eye,
 } from 'lucide-react'
+import { ComplianceReportsList, DsarPanel } from './ComplianceReportsPanel'
 
 // ─── Types ──────────────────────────────────────────────────
 
-type SubTab = 'rules' | 'history' | 'templates' | 'generate'
+type SubTab = 'rules' | 'history' | 'templates' | 'generate' | 'compliance'
 
 interface AlertsReportsTabProps {
   data: ReturnType<typeof useCommandCenter>
@@ -687,6 +688,7 @@ export function AlertsReportsTab({ data }: AlertsReportsTabProps) {
     { id: 'history', label: 'Alert History' },
     { id: 'templates', label: 'Report Templates' },
     { id: 'generate', label: 'Generate & Schedule' },
+    { id: 'compliance', label: 'Compliance' },
   ], [])
 
   const effectiveSubTab = pills.find(p => p.id === activeSubTab) ? activeSubTab : 'rules'
@@ -699,6 +701,7 @@ export function AlertsReportsTab({ data }: AlertsReportsTabProps) {
       {effectiveSubTab === 'history' && <AlertHistoryPanel />}
       {effectiveSubTab === 'templates' && <ReportTemplatesPanel />}
       {effectiveSubTab === 'generate' && <GenerateSchedulePanel />}
+      {effectiveSubTab === 'compliance' && (isSuperAdmin ? <ComplianceReportsList /> : <DsarPanel />)}
     </div>
   )
 }

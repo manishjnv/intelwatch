@@ -17,7 +17,8 @@ import { useCountUp } from '@/hooks/use-count-up'
 import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
 import { useDashboardStats, useIOCs } from '@/hooks/use-intel-data'
 import { useCostStats, useEnrichmentStats, useEnrichmentQuality } from '@/hooks/use-enrichment-data'
-import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain, Globe, Building2, Crosshair, AlertTriangle, CheckSquare } from 'lucide-react'
+import { Zap, ArrowRight, Search, Activity, Shield, DollarSign, Brain, Globe, Building2, Crosshair, AlertTriangle, CheckSquare, Lock } from 'lucide-react'
+import { useFeatureLimits, type FeatureKey } from '@/hooks/use-feature-limits'
 import { StalenessIndicator } from '@/components/StalenessIndicator'
 import { useGlobalPipelineHealth } from '@/hooks/use-global-catalog'
 import type { OrgProfile } from '@/types/org-profile'
@@ -276,6 +277,76 @@ function ThreatLandscapeSection({
 }
 
 /* ------------------------------------------------------------------ */
+/* Feature-gated dashboard module cards                                */
+/* ------------------------------------------------------------------ */
+const DASHBOARD_FEATURE_MAP: Record<string, FeatureKey> = {
+  '/iocs': 'ioc_management',
+  '/search': 'ioc_management',
+  '/threat-actors': 'threat_actors',
+  '/malware': 'malware_intel',
+  '/vulnerabilities': 'vulnerability_intel',
+  '/hunting': 'threat_hunting',
+  '/graph': 'graph_exploration',
+  '/drp': 'digital_risk_protection',
+  '/correlation': 'correlation_engine',
+}
+
+function DashboardFeatureCards({ navigate }: { navigate: (path: string) => void }) {
+  const { features } = useFeatureLimits()
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {MODULES.map((mod) => {
+        const Icon = mod.icon
+        const phaseColor = getPhaseColor(mod.phase)
+        const phaseBg = getPhaseBgColor(mod.phase)
+        const featureKey = DASHBOARD_FEATURE_MAP[mod.route]
+        const isGated = featureKey ? !(features.find(f => f.featureKey === featureKey)?.enabled ?? true) : false
+
+        return (
+          <ParallaxCard key={mod.id}>
+          <IntelCard
+            onClick={() => navigate(mod.route)}
+            className={cn('group relative', getPhaseOpacity(mod.phase))}
+          >
+            {isGated && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-bg-primary/80 rounded-xl" data-testid={`gated-card-${featureKey}`}>
+                <Lock className="w-5 h-5 text-text-muted mb-1.5" />
+                <span className="text-[10px] text-text-muted font-medium">Upgrade to access</span>
+              </div>
+            )}
+            <div className="flex items-start gap-3">
+              <div className={cn(
+                'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+                'bg-[var(--bg-elevated)] group-hover:scale-110 transition-transform duration-200',
+                isGated ? 'text-text-muted' : mod.color,
+              )}>
+                <Icon size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
+                    <h3 className="text-sm font-medium text-[var(--text-primary)] truncate">{mod.title}</h3>
+                    <TooltipHelp message={mod.helpText} size={3} />
+                  </div>
+                  <span className={cn(
+                    'text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium',
+                    phaseBg, phaseColor,
+                  )}>
+                    Phase {mod.phase}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">{mod.description}</p>
+              </div>
+            </div>
+          </IntelCard>
+          </ParallaxCard>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 export function DashboardPage() {
@@ -450,47 +521,8 @@ export function DashboardPage() {
         <SeverityHeatmap className="mb-6" />
 
         {/* Feature cards grid — ⛔ LOCKED: IntelCard with Framer Motion 3D hover, WRAPPED with #13 ParallaxCard */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {MODULES.map((mod) => {
-            const Icon = mod.icon
-            const phaseColor = getPhaseColor(mod.phase)
-            const phaseBg = getPhaseBgColor(mod.phase)
+        <DashboardFeatureCards navigate={navigate} />
 
-            return (
-              <ParallaxCard key={mod.id}>
-              <IntelCard
-                onClick={() => navigate(mod.route)}
-                className={cn('group', getPhaseOpacity(mod.phase))}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
-                    'bg-[var(--bg-elevated)] group-hover:scale-110 transition-transform duration-200',
-                    mod.color,
-                  )}>
-                    <Icon size={20} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1">
-                        <h3 className="text-sm font-medium text-[var(--text-primary)] truncate">{mod.title}</h3>
-                        <TooltipHelp message={mod.helpText} size={3} />
-                      </div>
-                      <span className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium',
-                        phaseBg, phaseColor,
-                      )}>
-                        Phase {mod.phase}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">{mod.description}</p>
-                  </div>
-                </div>
-              </IntelCard>
-              </ParallaxCard>
-            )
-          })}
-        </div>
 
         {/* #14: Threat Timeline */}
         <ThreatTimeline className="mt-6" />
