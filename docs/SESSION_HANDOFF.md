@@ -1,89 +1,83 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-03-30
-**Session:** 118b
-**Session Summary:** E2E Integration Tests (S15) — 8 test suites (95 tests) validating all Command Center v2.1 features I-01 through I-22. Test-only session with 2 lint fixes. CI/CD passed, all 33 containers healthy.
+**Session:** 120
+**Session Summary:** S17: Access Review UI + Compliance Reports UI + FeatureGate Wiring (frontend only). AccessReviewPanel, ComplianceReportsPanel, DsarPanel, FeatureGate on 9 TI routes, sidebar lock badges, dashboard widget gating. 47 new tests. CI/CD passed, all 33 containers healthy.
 
 ## Changes Made
 
-- Commit 642e2fe: test: E2E integration tests — plans, quota, RBAC, guards, audit full flow (S15)
-- Commit a20a8ae: docs: post-deploy stats update — session 118b
+- Commit d74022d: feat: access review UI + compliance reports + FeatureGate wiring (S17)
+- Commit 9ee0e79: fix: remove unused imports causing CI lint failure (S17)
 
 ## Files / Documents Affected
 
-### New Files (8)
+### New Files (7)
 
 | File | Purpose |
 |------|---------|
-| apps/api-gateway/__tests__/e2e-role-plan-quota.test.ts | Suite 1-2: RBAC boundaries + plan upgrade + quota (22 tests) |
-| apps/api-gateway/__tests__/e2e-protection-guards.test.ts | Suite 3: Self-action, undeletable, last-admin guards (11 tests) |
-| apps/api-gateway/__tests__/e2e-mfa-breakglass.test.ts | Suite 4: MFA enforcement + break-glass flow (13 tests) |
-| apps/api-gateway/__tests__/e2e-tenant-isolation.test.ts | Suite 5: RLS multi-tenant isolation (11 tests) |
-| apps/user-service/__tests__/e2e-offboarding-retention.test.ts | Suite 6: Offboarding lifecycle + retention + ownership (15 tests) |
-| apps/user-service/__tests__/e2e-audit-compliance.test.ts | Suite 7: Audit hash chain + SOC 2 + DSAR + access review (13 tests) |
-| apps/user-service/__tests__/e2e-scim-guards.test.ts | Suite 8: SCIM de-provision + provision + plan limits (10 tests) |
+| apps/frontend/src/hooks/use-access-reviews.ts | React Query hooks for access review stats, list, actions, quarterly |
+| apps/frontend/src/hooks/use-compliance-reports.ts | React Query hooks for compliance reports, DSAR exports |
+| apps/frontend/src/components/command-center/AccessReviewPanel.tsx | Stats cards, review table, confirm/disable modals, quarterly summary |
+| apps/frontend/src/components/command-center/ComplianceReportsPanel.tsx | Reports list, report viewer (SOC 2/Privileged/DSAR), generate modal, DsarPanel |
+| apps/frontend/src/__tests__/access-review-panel.test.tsx | 16 tests: stats, table, badges, modals, filters, quarterly |
+| apps/frontend/src/__tests__/compliance-reports-panel.test.tsx | 17 tests: reports CRUD, viewer, DSAR panel |
+| apps/frontend/src/__tests__/feature-gate-wiring.test.tsx | 16 tests: FeatureGate, UpgradeCTA, sidebar, dashboard gating |
 
-### Modified Files (4)
+### Modified Files (5)
 
 | File | Change |
 |------|--------|
-| apps/user-management-service/src/services/ownership-transfer-service.ts | Lint fix: _triggeredBy -> triggeredBy, wired into audit log |
-| apps/user-service/src/ownership-transfer-service.ts | Same lint fix as above |
-| docs/ETIP_Project_Stats.html | Post-deploy stats update |
-| docs/PROJECT_STATE.md | Session 118b deployment log entry |
-| docs/DEPLOYMENT_RCA.md | No new issues row for 118b |
+| apps/frontend/src/App.tsx | Wrapped 9 TI routes with FeatureGate component |
+| apps/frontend/src/components/layout/DashboardLayout.tsx | Added ROUTE_FEATURE_MAP, sidebar lock badges for disabled features |
+| apps/frontend/src/pages/DashboardPage.tsx | Extracted DashboardFeatureCards with gated overlay for disabled features |
+| apps/frontend/src/components/command-center/UsersAccessTab.tsx | Added 'access-reviews' sub-tab → AccessReviewPanel |
+| apps/frontend/src/components/command-center/AlertsReportsTab.tsx | Added 'compliance' sub-tab → ComplianceReportsList / DsarPanel |
 
 ## Decisions & Rationale
-No new architectural decisions. E2E tests use real Fastify middleware (auth, RBAC, error handler) with simulated service logic. Service-level tests use in-memory data stores simulating Prisma models.
+No new architectural decisions. Followed existing patterns: PillSwitcher sub-tabs, ModalShell, withDemoFallback, React Query hooks with demo data. FeatureGate uses existing useFeatureEnabled hook from use-feature-limits.
 
 ## E2E / Deploy Verification Results
-- TypeScript build: 0 errors
-- All tests pass: 95 new E2E tests across 8 suites
-- api-gateway: 187 tests passing (including 57 new E2E)
-- user-service: 174 tests passing (including 38 new E2E)
-- CI/CD run 23725348784: all green (test -> build -> deploy)
+- Local tests: 89 files, 1,485 passed, 0 failed
+- CI run 23737638316: all green (test → build → deploy)
 - All 33 containers healthy post-deploy
 
 ## Open Items / Next Steps
 
 ### Immediate
 
-1. Run `prisma db push` on VPS — all pending schema changes (AccessReview, ComplianceReport, ScimToken, SsoConfig, email verification, plan models, break-glass fields, offboarding fields)
+1. Run `prisma db push` on VPS — all pending schema changes
 2. Set env vars on VPS: TI_BREAK_GLASS_EMAIL, TI_BREAK_GLASS_PASSWORD, TI_BREAK_GLASS_OTP_SECRET, TI_MFA_ENCRYPTION_KEY
-3. Run break-glass seed script on VPS
-4. Run seed script for 4 default plans
-5. Continue Command Center v2.1 — I-23+ remaining features
+3. Run break-glass seed script + plan seed on VPS
+4. Continue Command Center v2.1 — remaining features
 
 ### Deferred
 
-6. Set Shodan/GreyNoise API keys on VPS
-7. Wire fuzzyDedupeHash column in Prisma schema
-8. Fix vitest alias caching for @etip/shared-normalization
-9. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts)
+5. Set Shodan/GreyNoise API keys on VPS
+6. Wire fuzzyDedupeHash column in Prisma schema
+7. Fix vitest alias caching for @etip/shared-normalization
+8. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts)
 
 ## How to Resume
 ```
-Session 119: Command Center v2.1 — Continue with remaining I-items (I-23+)
+Session 121: Command Center v2.1 — Continue with remaining features
 
 Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
 
-Session 118b: E2E Integration Tests (S15) COMPLETE.
-- 8 E2E test suites covering all I-01 through I-22 features
-- Suite 1-2: Role/Permission/Plan (22 tests)
-- Suite 3: Protection Guards (11 tests)
-- Suite 4: MFA/Break-Glass (13 tests)
-- Suite 5: RLS Multi-Tenant Isolation (11 tests)
-- Suite 6: Offboarding/Retention/Ownership (15 tests)
-- Suite 7: Audit/Compliance/Access Review (13 tests)
-- Suite 8: SCIM/Guards/Quota (10 tests)
-- Commits 642e2fe, a20a8ae. CI/CD passed, 33 containers healthy.
-- VPS needs: prisma db push + env vars + seed scripts
+Session 120: S17 Access Review UI + Compliance Reports + FeatureGate COMPLETE.
+- AccessReviewPanel in Users & Access > Access Reviews sub-tab
+- ComplianceReportsPanel / DsarPanel in Alerts & Reports > Compliance sub-tab
+- FeatureGate wrapping on 9 TI routes (App.tsx)
+- Sidebar lock badges (DashboardLayout.tsx)
+- Dashboard widget gating with upgrade overlay (DashboardPage.tsx)
+- 2 React Query hooks (use-access-reviews, use-compliance-reports)
+- 47 new tests (1,485 frontend total)
+- Commits d74022d, 9ee0e79. CI/CD passed, 33 containers healthy.
 
 Frozen modules: shared-types, shared-utils, shared-auth, shared-cache, shared-audit,
   shared-normalization, shared-enrichment, shared-ui, api-gateway, user-service,
   frontend, ingestion, normalization, ai-enrichment
 
 Module -> skill file map:
-  user-management -> skills/16-USER-MANAGEMENT.md
+  frontend -> skills/20-UI-UX.md
   testing -> skills/02-TESTING.md
 ```

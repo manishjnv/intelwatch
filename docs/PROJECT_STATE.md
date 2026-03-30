@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-03-30 (update at end of EVERY session via /session-end)
-**Session counter:** 119 — S16: MFA Setup UI + Active Sessions + Email Verification Page. 21 new files + 7 modified = 28 total. MFA setup wizard (QR→verify→backup codes), MFA challenge page, forced MFA setup page, active sessions list (geo/UA/terminate), email verification page, login flow branching (MFA/email states), Security sub-tab in Command Center. 7 test files, 61 new tests. qrcode.react dependency. 1,438 frontend tests. ~7,696 monorepo total. Commits f743668, 784a8e9.
+**Session counter:** 120 — S17: Access Review UI + Compliance Reports UI + FeatureGate Wiring. 7 new files + 5 modified = 12 total. AccessReviewPanel (stats cards, review table, confirm/disable modals, quarterly summary), ComplianceReportsPanel (SOC 2/Privileged/DSAR report generation/viewing/deletion), DsarPanel (tenant DSAR exports), FeatureGate wrapping on 9 TI routes, sidebar lock badges, dashboard widget gating. 3 test files, 47 new tests. 1,485 frontend tests. ~7,743 monorepo total. Commits d74022d, 9ee0e79.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.2.2 | 2026-03-30 | Health check passing. **Session 118 (I-22):** Break-glass routes (5 endpoints: POST /auth/break-glass, GET status/audit, POST rotate-password, DELETE sessions). ioredis BullMQ alert queue. 130 tests. |
-| etip_frontend | ✅ Running | 0.16.0 | 2026-03-30 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 119 (S16):** MFA setup wizard, MFA challenge/forced-setup pages, active sessions list, email verification page, login flow branching, Security sub-tab. 1,438 tests. |
+| etip_frontend | ✅ Running | 0.17.0 | 2026-03-30 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 120 (S17):** AccessReviewPanel, ComplianceReportsPanel, DsarPanel, FeatureGate wiring (9 routes + sidebar locks + dashboard gating). 1,485 tests. |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -247,6 +247,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 117b | 2026-03-30 | etip_user_management redeployed (offboarding lifecycle) | ✅ All 33 healthy | bb56adf | Org offboarding (I-19) + data retention (I-20) + ownership transfer (I-21). 6 Tenant offboarding fields, 2 new queues, 6 new events. 9 endpoints, 55 new tests. ~7,386 monorepo tests. |
 | 118 | 2026-03-30 | etip_api + etip_user_service redeployed (break-glass I-22) | ✅ All 33 healthy | 3a1e4ee | Break-glass emergency account (I-22): OTP login, 30-min non-renewable sessions, rate limiter, critical audit, BullMQ alert queue, admin management endpoints. 5 new endpoints, 15 new tests. ~7,540 monorepo tests. VPS needs: prisma db push (break-glass fields) + env vars (TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET) + seed script. |
 | 118b | 2026-03-30 | No deploy (test-only session) | ✅ CI green | 642e2fe | E2E Integration Tests (S15): 8 suites validating I-01 through I-22. Role/Permission/Plan (22), Protection Guards (11), MFA/Break-Glass (13), RLS Isolation (11), Offboarding/Retention (15), Audit/Compliance (13), SCIM/Guards (10). 95 new tests. 2 lint fixes. ~7,635 monorepo total. |
+| 120 | 2026-03-30 | etip_frontend redeployed (S17 Access Review + Compliance + FeatureGate) | ✅ All 33 healthy | d74022d, 9ee0e79 | AccessReviewPanel (stats, review table, confirm/disable modals, quarterly summary), ComplianceReportsPanel (SOC 2/Privileged/DSAR), DsarPanel (tenant exports), FeatureGate wiring (9 routes + sidebar locks + dashboard gating). 47 new tests. 1,485 frontend / ~7,743 monorepo. CI run 23737638316 green. |
 
 ## E2E Verification Results (Session 13)
 

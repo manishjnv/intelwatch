@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 119 &middot; 2026-03-30 &middot; S16: MFA Setup UI + Active Sessions + Email Verification (21 new components/pages/hooks, 61 tests). ~7,696 tests</span>
+  <span class="version">Session 120 &middot; 2026-03-30 &middot; S17: Access Review UI + Compliance Reports + FeatureGate Wiring (7 new files, 47 tests). ~7,743 tests</span>
 </div>
 </div>
 
@@ -89,7 +89,7 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">33</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,696</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~7,743</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~630</div><div class="stat-label">API Endpoints</div></div>
     <div class="stat-card"><div class="stat-value">119</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass routes</td><td>130</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + MFA Setup/Challenge + Active Sessions + Email Verify</td><td>1,438</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + MFA + Sessions + FeatureGate + Access Review + Compliance</td><td>1,485</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats</td><td>237</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>253</td></tr>
@@ -537,26 +537,23 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 118b</span> E2E Integration Tests — Command Center v2.1 Full Validation (S15)</div>
+    <div class="card-title"><span class="badge badge-green">Session 120</span> Access Review UI + Compliance Reports + FeatureGate Wiring (S17)</div>
     <div class="card-body">
-      <strong>Session 118b (2026-03-30):</strong> Command Center v2.1 S15 — E2E Integration Test Suite:<br>
-      &bull; <strong>8 E2E test suites</strong> validating all I-01 through I-22 features across RBAC, guards, MFA, RLS, offboarding, audit, SCIM<br>
-      &bull; <strong>Suite 1-2: Role/Permission/Plan</strong> — 22 tests. Analyst/tenant_admin/super_admin RBAC boundaries, plan upgrade, quota enforcement<br>
-      &bull; <strong>Suite 3: Protection Guards</strong> — 11 tests. Self-action (I-04), undeletable tenant_admin (I-05), last-admin safety, org self-disable<br>
-      &bull; <strong>Suite 4: MFA/Login/Break-Glass</strong> — 13 tests. MFA enforcement, TOTP challenge, 5-attempt lockout, break-glass 30-min session, audit trail<br>
-      &bull; <strong>Suite 5: RLS/Multi-Tenant Isolation</strong> — 11 tests. Cross-tenant data isolation, super_admin override, RLS fail-safe (null/empty → zero rows)<br>
-      &bull; <strong>Suite 6: Offboarding/Retention/Ownership</strong> — 15 tests. 6-step offboarding lifecycle, cancel flow, ownership transfer, retention enforcement<br>
-      &bull; <strong>Suite 7: Audit/Compliance/Access Review</strong> — 13 tests. SHA-256 hash chain integrity, tamper detection, SOC 2, GDPR DSAR, stale user auto-disable<br>
-      &bull; <strong>Suite 8: SCIM/Guards/Quota</strong> — 10 tests. SCIM de-provision (session+key revocation), last-admin guard, ownership transfer, plan limits<br>
-      &bull; <strong>2 lint fixes</strong> — ownership-transfer-service.ts: wired _triggeredBy into audit log<br>
-      &bull; <strong>95 new E2E tests</strong>. 187 api-gateway tests, 174 user-service tests. ~7,635 monorepo total.<br>
-      &bull; <strong>Commit:</strong> 642e2fe — CI/CD passed, all 33 containers healthy<br><br>
+      <strong>Session 120 (2026-03-30):</strong> Command Center v2.1 S17 — Frontend UI + Feature Gating:<br>
+      &bull; <strong>AccessReviewPanel</strong> — Stats cards (pending/auto-disabled/confirmed), review table with type/status badges, confirm/disable modals, quarterly summary with role distribution + MFA bar<br>
+      &bull; <strong>ComplianceReportsPanel</strong> — Generate/view/delete SOC 2, Privileged Access, GDPR DSAR reports. Structured report viewer with sections per report type<br>
+      &bull; <strong>DsarPanel</strong> — Tenant admin DSAR exports with user selector dropdown<br>
+      &bull; <strong>FeatureGate wiring</strong> — 9 TI page routes wrapped (IOCs, search, threat-actors, malware, vulnerabilities, hunting, graph, DRP, correlation)<br>
+      &bull; <strong>Sidebar lock badges</strong> — Lock icon + muted styling for disabled features in DashboardLayout<br>
+      &bull; <strong>Dashboard widget gating</strong> — Upgrade overlay with Lock icon on disabled feature cards<br>
+      &bull; <strong>2 React Query hooks</strong> — use-access-reviews.ts + use-compliance-reports.ts with demo data fallback<br>
+      &bull; <strong>47 new tests</strong> (3 test files). 1,485 frontend / ~7,743 monorepo total.<br>
+      &bull; <strong>Commits:</strong> d74022d, 9ee0e79 — CI run 23737638316 green, all 33 containers healthy<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Run prisma db push on VPS</strong> — Break-glass fields + all pending schema changes<br>
-      2. <strong>Set TI_BREAK_GLASS_EMAIL, TI_BREAK_GLASS_PASSWORD, TI_BREAK_GLASS_OTP_SECRET on VPS</strong><br>
-      3. <strong>Run break-glass seed script on VPS</strong> — Provision emergency account<br>
-      4. <strong>Set TI_MFA_ENCRYPTION_KEY on VPS</strong> — Required for TOTP + SSO clientSecret encryption<br>
-      5. <strong>Continue Command Center v2.1</strong> — I-23+ remaining features<br>
+      1. <strong>Run prisma db push on VPS</strong> — All pending schema changes<br>
+      2. <strong>Set env vars on VPS</strong> — TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET, TI_MFA_ENCRYPTION_KEY<br>
+      3. <strong>Run seed scripts on VPS</strong> — Break-glass account + 4 default plans<br>
+      4. <strong>Continue Command Center v2.1</strong> — Remaining features<br>
     </div>
   </div>
 </div>
@@ -564,7 +561,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 118b &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 120 &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
