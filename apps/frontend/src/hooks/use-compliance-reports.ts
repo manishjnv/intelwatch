@@ -6,7 +6,6 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { useAuthStore } from '@/stores/auth-store'
 import { notifyApiError } from './useApiError'
 
 // ─── Types ──────────────────────────────────────────────────

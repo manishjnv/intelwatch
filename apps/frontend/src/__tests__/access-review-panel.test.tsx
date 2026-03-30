@@ -4,7 +4,7 @@
  * filters, confirm/disable actions, quarterly summary.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@/test/test-utils'
+import { render, screen, fireEvent } from '@/test/test-utils'
 import { AccessReviewPanel } from '@/components/command-center/AccessReviewPanel'
 
 // ─── Mock hooks ──────────────────────────────────────────────
@@ -16,7 +16,7 @@ vi.mock('@/hooks/use-access-reviews', () => ({
     data: { pending: 5, autoDisabled: 2, confirmed: 18 },
     isLoading: false, isDemo: false,
   }),
-  useAccessReviews: (filters: any) => ({
+  useAccessReviews: (_filters: any) => ({
     data: {
       data: [
         { id: 'r1', userId: 'u1', userName: 'Stale Admin', userEmail: 'admin@old.com', orgName: 'ACME Corp', reviewType: 'stale_super_admin', status: 'pending', autoDisabled: false, createdAt: '2026-03-15T10:00:00Z', updatedAt: '2026-03-15T10:00:00Z' },

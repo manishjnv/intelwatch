@@ -4,20 +4,20 @@
  * Super admin: generate/view/download/delete SOC 2, Privileged Access, GDPR reports.
  * Tenant admin: generate/view DSAR exports for own org users.
  */
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useComplianceReports, useGenerateReport, useComplianceReport,
   useDeleteReport, useDsarExports, useGenerateDsar,
   type ComplianceReportType, type ReportStatus, type ReportFilters,
-  type ComplianceReport, type ComplianceReportData, type DsarExport,
+  type ComplianceReport, type ComplianceReportData,
 } from '@/hooks/use-compliance-reports'
 import { useUsers } from '@/hooks/use-phase5-data'
 import { toast } from '@/components/ui/Toast'
 import {
-  FileText, Download, Eye, Trash2, Plus, X, Loader2,
-  Shield, Users, Key, Lock, Clock, CheckCircle, XCircle,
-  AlertTriangle, Globe,
+  Download, Eye, Trash2, Plus, X, Loader2,
+  Shield, CheckCircle, XCircle,
+  Globe,
 } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────

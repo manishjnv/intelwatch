@@ -25,7 +25,7 @@ vi.mock('@/hooks/use-compliance-reports', () => ({
     isLoading: false, isDemo: false,
   }),
   useGenerateReport: () => ({ mutate: mockGenerateMutate, isPending: false }),
-  useComplianceReport: (id: string) => ({
+  useComplianceReport: (_id: string) => ({
     data: {
       id: 'cr1', type: 'soc2_access_review', periodStart: '2026-01-01', periodEnd: '2026-03-31',
       scope: 'Platform-wide', status: 'completed', generatedBy: 'admin@etip.io', createdAt: '2026-03-28T10:00:00Z',
