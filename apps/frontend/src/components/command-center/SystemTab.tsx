@@ -1,8 +1,8 @@
 /**
  * @module components/command-center/SystemTab
  * @description System tab for Command Center — super-admin only.
- * Absorbs AdminOpsPage + PipelineMonitorPage content.
- * Sub-tabs: System Health, Pipeline (merged Monitor+Health), Feed Config, Emergency Access, Maintenance, Backups.
+ * Absorbs AdminOpsPage + PipelineMonitorPage + Feeds tab content.
+ * Sub-tabs: System Health, Pipeline, Feeds, Emergency Access, Maintenance, Backups.
  */
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -12,14 +12,12 @@ import {
   useCreateMaintenanceWindow,
   type ServiceHealth,
 } from '@/hooks/use-phase6-data'
-import type { useGlobalAiConfig } from '@/hooks/use-global-ai-config'
-import type { useCommandCenter } from '@/hooks/use-command-center'
 import {
   RefreshCw, CheckCircle2, AlertTriangle, XCircle, Play, Square,
   Shield, Calendar,
 } from 'lucide-react'
 import { BreakGlassPanel } from './BreakGlassPanel'
-import { FeedConfigPanel } from './FeedConfigPanel'
+import { UnifiedFeedsPanel } from './FeedsTab'
 import { PipelinePanel } from './PipelinePanel'
 import { BackupsPanel } from './BackupsPanel'
 
@@ -30,7 +28,7 @@ type SubTab = 'health' | 'pipeline' | 'feeds' | 'emergency' | 'maintenance' | 'b
 const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: 'health', label: 'System Health' },
   { id: 'pipeline', label: 'Pipeline' },
-  { id: 'feeds', label: 'Feed Config' },
+  { id: 'feeds', label: 'Feeds' },
   { id: 'emergency', label: 'Emergency Access' },
   { id: 'maintenance', label: 'Maintenance' },
   { id: 'backups', label: 'Backups' },
@@ -53,12 +51,7 @@ function formatUptime(pct: number | undefined) {
 
 // ─── Main Component ─────────────────────────────────────────────
 
-interface SystemTabProps {
-  aiConfig?: ReturnType<typeof useGlobalAiConfig>
-  providerKeys?: ReturnType<typeof useCommandCenter>['providerKeys']
-}
-
-export function SystemTab({ aiConfig, providerKeys }: SystemTabProps = {}) {
+export function SystemTab() {
   const [subTab, setSubTab] = useState<SubTab>('health')
 
   return (
@@ -84,14 +77,7 @@ export function SystemTab({ aiConfig, providerKeys }: SystemTabProps = {}) {
 
       {subTab === 'health' && <HealthSubTab />}
       {subTab === 'pipeline' && <PipelinePanel />}
-      {subTab === 'feeds' && aiConfig && providerKeys && (
-        <FeedConfigPanel aiConfig={aiConfig} providerKeys={providerKeys} />
-      )}
-      {subTab === 'feeds' && (!aiConfig || !providerKeys) && (
-        <p className="text-xs text-text-muted p-3 bg-bg-elevated rounded-lg border border-border">
-          Feed config not available — missing AI configuration data.
-        </p>
-      )}
+      {subTab === 'feeds' && <UnifiedFeedsPanel isSuperAdmin={true} />}
       {subTab === 'emergency' && <BreakGlassPanel />}
       {subTab === 'maintenance' && <MaintenanceSubTab />}
       {subTab === 'backups' && <BackupsPanel />}

@@ -1,30 +1,29 @@
 /**
  * @module pages/CommandCenterPage
  * @description Unified AI processing & platform management page.
- * Super-admin: 9 tabs (Overview, Configuration, Feeds, Settings, Users & Access, Clients, Billing & Plans, Alerts & Reports, System).
+ * Super-admin: 8 tabs (Overview, Configuration, Settings, Users & Access, Clients, Billing & Plans, Alerts & Reports, System).
  * Tenant-admin: 6 tabs (Overview, Configuration, Settings, Users & Access, Billing & Plans, Alerts & Reports).
- * Session 112: Feeds tab moved to super-admin only — tenants get feeds via plan, not manual subscription.
- * Hash-based tab navigation (/command-center#feeds → opens Feeds tab).
+ * Session 123e: Feeds tab absorbed into System tab → #feeds redirects to #system.
+ * Hash-based tab navigation (/command-center#tab → opens tab).
  */
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth-store'
-import { useCommandCenter, type Period } from '@/hooks/use-command-center'
+import { useCommandCenter } from '@/hooks/use-command-center'
 import { useGlobalAiConfig } from '@/hooks/use-global-ai-config'
 import { cn } from '@/lib/utils'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   BarChart3, Sliders, ListOrdered, Settings, Users,
-  RefreshCw, Download, ChevronDown, DollarSign,
+  RefreshCw, ChevronDown, DollarSign,
   Activity, Building2, TrendingUp, AlertTriangle,
-  Rss, ShieldCheck, CreditCard, Bell, Server,
+  ShieldCheck, CreditCard, Bell, Server,
 } from 'lucide-react'
 import { IconCommandCenter } from '@/components/brand/ModuleIcons'
 import { ClientsTab } from '@/components/command-center/ClientsTab'
 import { OverviewTab } from '@/components/command-center/OverviewTab'
 import { ConfigurationTab } from '@/components/command-center/ConfigurationTab'
 import { SettingsTab } from '@/components/command-center/SettingsTab'
-import { FeedsTab } from '@/components/command-center/FeedsTab'
 import { UsersAccessTab } from '@/components/command-center/UsersAccessTab'
 import { BillingPlansTab } from '@/components/command-center/BillingPlansTab'
 import { AlertsReportsTab } from '@/components/command-center/AlertsReportsTab'
@@ -32,7 +31,7 @@ import { SystemTab } from '@/components/command-center/SystemTab'
 
 // ─── Tab Registry ───────────────────────────────────────────────
 
-type TabId = 'overview' | 'configuration' | 'feeds' | 'settings' | 'users-access' | 'clients' | 'billing-plans' | 'alerts-reports' | 'system'
+type TabId = 'overview' | 'configuration' | 'settings' | 'users-access' | 'clients' | 'billing-plans' | 'alerts-reports' | 'system'
 type UserRole = 'super_admin' | 'tenant_admin'
 
 interface CommandCenterTab {
@@ -45,7 +44,6 @@ interface CommandCenterTab {
 const TABS: CommandCenterTab[] = [
   { id: 'overview',       label: 'Overview',        icon: BarChart3,   roles: ['super_admin', 'tenant_admin'] },
   { id: 'configuration',  label: 'Configuration',   icon: Sliders,     roles: ['super_admin', 'tenant_admin'] },
-  { id: 'feeds',          label: 'Feeds',           icon: Rss,         roles: ['super_admin'] },
   { id: 'settings',       label: 'Settings',        icon: Settings,    roles: ['super_admin', 'tenant_admin'] },
   { id: 'users-access',   label: 'Users & Access',  icon: ShieldCheck, roles: ['super_admin', 'tenant_admin'] },
   { id: 'clients',        label: 'Clients',         icon: Users,       roles: ['super_admin'] },
@@ -54,21 +52,20 @@ const TABS: CommandCenterTab[] = [
   { id: 'system',         label: 'System',           icon: Server,      roles: ['super_admin'] },
 ]
 
-// ─── Period Picker ──────────────────────────────────────────────
-
-const PERIODS: { value: Period; label: string }[] = [
-  { value: 'day', label: 'Today' },
-  { value: 'week', label: 'This Week' },
-  { value: 'month', label: 'This Month' },
-]
-
 // Placeholder components removed — OverviewTab and ConfigurationTab are now live.
 
 // ─── Page Component ─────────────────────────────────────────────
 
-/** Parse URL hash to a valid TabId, or return null. */
+/** Absorbed tab hashes → redirect to new location */
+const HASH_REDIRECTS: Record<string, TabId> = {
+  feeds: 'system',
+}
+
+/** Parse URL hash to a valid TabId, or return null. Handles absorbed tab redirects. */
 function hashToTabId(hash: string): TabId | null {
-  const id = hash.replace('#', '') as TabId
+  const raw = hash.replace('#', '')
+  const redirected = HASH_REDIRECTS[raw] ?? raw
+  const id = redirected as TabId
   return TABS.some(t => t.id === id) ? id : null
 }
 
@@ -117,31 +114,6 @@ export function CommandCenterPage() {
     return null
   }
 
-  // Export CSV
-  const handleExportCsv = () => {
-    const rows = cc.isSuperAdmin
-      ? [
-          ['Metric', 'Value'],
-          ['Total Cost (USD)', cc.globalStats.totalCostUsd.toFixed(2)],
-          ['Total Items Processed', String(cc.globalStats.totalItems)],
-          ['Active Tenants', String(cc.tenantList.filter(t => t.status === 'active').length)],
-        ]
-      : [
-          ['Metric', 'Value'],
-          ['Items Consumed', String(cc.tenantStats.itemsConsumed)],
-          ['Attributed Cost (USD)', cc.tenantStats.attributedCostUsd.toFixed(2)],
-          ['Budget Used %', String(cc.tenantStats.budgetUsedPercent)],
-        ]
-    const csv = rows.map(r => r.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `command-center-${cc.period}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   // Loading state
   if (cc.isLoading) {
     return (
@@ -182,6 +154,15 @@ export function CommandCenterPage() {
             <CompactStat icon={<TrendingUp className="w-3 h-3" />} label="Budget" value={`${cc.tenantStats.budgetUsedPercent}%`} color={cc.tenantStats.budgetUsedPercent > 80 ? 'text-sev-high' : 'text-sev-low'} />
           </>
         )}
+        <button
+          data-testid="refresh-btn"
+          onClick={cc.refetchAll}
+          disabled={cc.isFetching}
+          className="ml-auto flex items-center gap-1 px-2 py-1 text-xs text-text-muted hover:text-text-primary transition-colors disabled:opacity-50"
+          title="Refresh data"
+        >
+          <RefreshCw className={cn('w-3 h-3', cc.isFetching && 'animate-spin')} />
+        </button>
       </PageStatsBar>
 
       <div className="flex-1 overflow-y-auto">
@@ -196,45 +177,6 @@ export function CommandCenterPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Period picker */}
-              <div className="flex rounded-lg border border-border overflow-hidden">
-                {PERIODS.map(p => (
-                  <button
-                    key={p.value}
-                    data-testid={`period-${p.value}`}
-                    onClick={() => cc.setPeriod(p.value)}
-                    className={cn(
-                      'px-3 py-1.5 text-xs font-medium transition-colors',
-                      cc.period === p.value
-                        ? 'bg-accent/10 text-accent'
-                        : 'text-text-muted hover:text-text-primary hover:bg-bg-hover',
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Export CSV */}
-              <button
-                data-testid="export-csv"
-                onClick={handleExportCsv}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-lg hover:text-text-primary hover:border-border-strong transition-colors"
-              >
-                <Download className="w-3 h-3" /> CSV
-              </button>
-
-              {/* Refresh */}
-              <button
-                data-testid="refresh-btn"
-                onClick={cc.refetchAll}
-                disabled={cc.isFetching}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-lg hover:text-text-primary hover:border-border-strong transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={cn('w-3 h-3', cc.isFetching && 'animate-spin')} />
-              </button>
-            </div>
           </div>
         </div>
 
@@ -315,13 +257,12 @@ export function CommandCenterPage() {
         <div className="px-4 sm:px-6 py-4" data-testid="tab-content">
           {effectiveTab === 'overview' && <OverviewTab data={cc} />}
           {effectiveTab === 'configuration' && <ConfigurationTab data={cc} aiConfig={aiConfig} />}
-          {effectiveTab === 'feeds' && <FeedsTab data={cc} />}
           {effectiveTab === 'settings' && <SettingsTab data={cc} aiConfig={aiConfig} />}
           {effectiveTab === 'users-access' && <UsersAccessTab data={cc} />}
           {effectiveTab === 'clients' && <ClientsTab data={cc} />}
           {effectiveTab === 'billing-plans' && <BillingPlansTab data={cc} />}
           {effectiveTab === 'alerts-reports' && <AlertsReportsTab data={cc} />}
-          {effectiveTab === 'system' && <SystemTab aiConfig={aiConfig} providerKeys={cc.providerKeys} />}
+          {effectiveTab === 'system' && <SystemTab />}
         </div>
       </div>
     </div>

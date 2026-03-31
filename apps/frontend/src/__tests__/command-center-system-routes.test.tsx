@@ -92,6 +92,29 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   }),
 }))
 
+// ─── Mock feed hooks (UnifiedFeedsPanel absorbed into System tab S123e) ─────
+
+vi.mock('@/hooks/use-intel-data', () => ({
+  useFeeds: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false }),
+  useToggleFeed: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteFeed: () => ({ mutate: vi.fn(), isPending: false }),
+  useForceFetch: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
+vi.mock('@/hooks/use-global-catalog', () => ({
+  useGlobalCatalog: () => ({ data: [], isLoading: false }),
+  useMySubscriptions: () => ({ data: [], isLoading: false, subscribe: vi.fn(), unsubscribe: vi.fn(), isSubscribing: false, isUnsubscribing: false }),
+}))
+
+vi.mock('@/hooks/useDebouncedValue', () => ({
+  useDebouncedValue: (v: any) => v,
+}))
+
+vi.mock('@/components/feed/FeedCard', () => ({
+  FeedTypeIcon: () => null, StatusDot: () => null, ReliabilityBar: () => null,
+  HealthDot: () => null, formatTime: () => '', computeFeedHealth: () => 0,
+}))
+
 // ─── Helper ─────────────────────────────────────────────────────
 
 function renderSystemTab() {
@@ -298,7 +321,7 @@ describe('Sidebar cleanup — MODULES array', () => {
 
 describe('Route redirects — structural', () => {
   const REDIRECTS: Record<string, string> = {
-    '/feeds': '/command-center#feeds',
+    '/feeds': '/command-center#system',
     '/integrations': '/command-center#users-access',
     '/settings': '/command-center#users-access',
     '/customization': '/command-center#settings',
@@ -310,12 +333,13 @@ describe('Route redirects — structural', () => {
     '/analytics': '/command-center#overview',
     '/plan-limits': '/command-center#billing-plans',
     '/global-monitoring': '/command-center#system',
+    '/global-catalog': '/command-center#system',
     '/enrichment': '/command-center',
     '/global-ai-config': '/command-center',
   }
 
-  it('has 14 redirect mappings defined', () => {
-    expect(Object.keys(REDIRECTS).length).toBe(14)
+  it('has 15 redirect mappings defined', () => {
+    expect(Object.keys(REDIRECTS).length).toBe(15)
   })
 
   it('all redirects target /command-center', () => {
@@ -327,6 +351,8 @@ describe('Route redirects — structural', () => {
   it('absorbed admin routes target #system', () => {
     expect(REDIRECTS['/admin']).toBe('/command-center#system')
     expect(REDIRECTS['/global-monitoring']).toBe('/command-center#system')
+    expect(REDIRECTS['/feeds']).toBe('/command-center#system')
+    expect(REDIRECTS['/global-catalog']).toBe('/command-center#system')
   })
 
   it('absorbed billing routes target #billing-plans', () => {
@@ -358,13 +384,14 @@ describe('Hash-based tab navigation', () => {
 
   it('all tab IDs are valid hash targets', () => {
     const validTabs = [
-      'overview', 'configuration', 'queue', 'feeds', 'settings',
+      'overview', 'configuration', 'settings',
       'users-access', 'clients', 'billing-plans', 'alerts-reports', 'system',
     ]
-    // Just verify the expected set — the component uses these as hash values
-    expect(validTabs.length).toBe(10)
+    // S123e: 8 tabs — feeds absorbed into system sub-tab
+    expect(validTabs.length).toBe(8)
     expect(validTabs).toContain('system')
     expect(validTabs).toContain('billing-plans')
     expect(validTabs).toContain('alerts-reports')
+    expect(validTabs).not.toContain('feeds')
   })
 })

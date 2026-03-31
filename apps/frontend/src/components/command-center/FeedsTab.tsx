@@ -1,32 +1,25 @@
 /**
  * @module components/command-center/FeedsTab
- * @description Unified feeds management tab — merges My Feeds + Feed Catalog into single table.
- * 2 sub-tabs: Feeds (unified), Pipeline Health (super-admin only).
+ * @description Unified feeds panel — merges My Feeds + Feed Catalog into single table.
+ * Session 123e: Gutted standalone tab — UnifiedFeedsPanel absorbed into System tab.
  */
 import { useState, useMemo, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { PillSwitcher, type PillItem } from './PillSwitcher'
-import type { useCommandCenter } from '@/hooks/use-command-center'
 import { useFeeds, useToggleFeed, useDeleteFeed, useForceFetch, type FeedRecord } from '@/hooks/use-intel-data'
-import { useGlobalCatalog, useMySubscriptions, useGlobalPipelineHealth } from '@/hooks/use-global-catalog'
+import { useGlobalCatalog, useMySubscriptions } from '@/hooks/use-global-catalog'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   FeedTypeIcon, StatusDot, ReliabilityBar, HealthDot,
   formatTime, computeFeedHealth,
 } from '@/components/feed/FeedCard'
 import {
-  Search, Rss, Trash2, Play, ToggleLeft, ToggleRight,
-  AlertTriangle, Clock, Zap, Shield, Plus,
+  Search, Trash2, Play, ToggleLeft, ToggleRight,
+  AlertTriangle, Plus,
 } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────
 
-type SubTab = 'feeds' | 'pipeline'
 type FeedSource = 'subscribed' | 'available'
-
-interface FeedsTabProps {
-  data: ReturnType<typeof useCommandCenter>
-}
 
 interface UnifiedFeedRow {
   id: string
@@ -88,7 +81,7 @@ function feedStatus(f: { enabled: boolean | null; consecutiveFailures: number })
 
 // ─── Unified Feeds Panel ────────────────────────────────────
 
-function UnifiedFeedsPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+export function UnifiedFeedsPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const feeds = useFeeds()
   const catalog = useGlobalCatalog()
   const subs = useMySubscriptions()
@@ -333,94 +326,3 @@ function UnifiedFeedsPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   )
 }
 
-// ─── Pipeline Health Sub-Tab ────────────────────────────────
-
-function PipelineHealthPanel() {
-  const pipeline = useGlobalPipelineHealth()
-  const health = pipeline.data
-
-  if (pipeline.isLoading || !health) {
-    return <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-20 bg-bg-elevated rounded animate-pulse" />)}</div>
-  }
-
-  const metrics = health.pipeline
-
-  return (
-    <div className="space-y-4" data-testid="pipeline-health-panel">
-      {/* Pipeline Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {[
-          { label: 'Articles/24h', value: metrics.articlesProcessed24h.toLocaleString(), icon: Rss, color: 'text-blue-400' },
-          { label: 'IOCs Created', value: metrics.iocsCreated24h.toLocaleString(), icon: Shield, color: 'text-purple-400' },
-          { label: 'IOCs Enriched', value: metrics.iocsEnriched24h.toLocaleString(), icon: Zap, color: 'text-amber-400' },
-          { label: 'Normalize Latency', value: `${metrics.avgNormalizeLatencyMs}ms`, icon: Clock, color: 'text-sev-low' },
-          { label: 'Enrich Latency', value: `${metrics.avgEnrichLatencyMs}ms`, icon: Clock, color: metrics.avgEnrichLatencyMs > 2000 ? 'text-sev-high' : 'text-sev-low' },
-        ].map(m => (
-          <div key={m.label} className="border border-border rounded-lg p-3 bg-bg-primary">
-            <div className="flex items-center gap-1.5 mb-1">
-              <m.icon className={cn('w-3.5 h-3.5', m.color)} />
-              <span className="text-[10px] text-text-muted">{m.label}</span>
-            </div>
-            <span className="text-sm font-bold text-text-primary">{m.value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Queue Health Cards */}
-      <div>
-        <h3 className="text-xs font-medium text-text-muted mb-2">Queue Health</h3>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {health.queues.map(q => {
-            const total = q.waiting + q.active + q.completed + q.failed + q.delayed
-            const failRate = total > 0 ? (q.failed / total) * 100 : 0
-            return (
-              <div key={q.name} className={cn('border rounded-lg p-3', failRate > 5 ? 'border-sev-high/30 bg-sev-high/5' : 'border-border bg-bg-primary')} data-testid={`queue-${q.name}`}>
-                <div className="text-[11px] font-medium text-text-primary mb-2 truncate" title={q.name}>
-                  {q.name.replace('etip-', '').replace(/-/g, ' ')}
-                </div>
-                <div className="grid grid-cols-5 gap-1 text-[10px]">
-                  {[
-                    { label: 'Wait', value: q.waiting, color: 'text-amber-400' },
-                    { label: 'Act', value: q.active, color: 'text-blue-400' },
-                    { label: 'Done', value: q.completed, color: 'text-sev-low' },
-                    { label: 'Fail', value: q.failed, color: q.failed > 0 ? 'text-sev-high' : 'text-text-muted' },
-                    { label: 'Delay', value: q.delayed, color: q.delayed > 0 ? 'text-amber-400' : 'text-text-muted' },
-                  ].map(s => (
-                    <div key={s.label} className="text-center">
-                      <div className="text-text-muted">{s.label}</div>
-                      <div className={cn('font-medium', s.color)}>{s.value}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main FeedsTab ──────────────────────────────────────────
-
-export function FeedsTab({ data }: FeedsTabProps) {
-  const { isSuperAdmin } = data
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('feeds')
-
-  const pills: PillItem[] = useMemo(() => {
-    const items: PillItem[] = [{ id: 'feeds', label: 'Feeds' }]
-    if (isSuperAdmin) items.push({ id: 'pipeline', label: 'Pipeline Health' })
-    return items
-  }, [isSuperAdmin])
-
-  const effectiveSubTab = pills.find(p => p.id === activeSubTab) ? activeSubTab : 'feeds'
-
-  return (
-    <div className="space-y-4" data-testid="feeds-tab">
-      <PillSwitcher items={pills} activeId={effectiveSubTab} onChange={id => setActiveSubTab(id as SubTab)} />
-
-      {effectiveSubTab === 'feeds' && <UnifiedFeedsPanel isSuperAdmin={isSuperAdmin} />}
-      {effectiveSubTab === 'pipeline' && <PipelineHealthPanel />}
-    </div>
-  )
-}

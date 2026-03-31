@@ -2,7 +2,8 @@
  * @module App
  * @description Root app component with React Router configuration.
  * Session 111: 12 absorbed routes now redirect to /command-center#tab.
- * Session 112: Global Catalog removed — feeds governed by plan, redirect to #feeds.
+ * Session 112: Global Catalog removed — feeds governed by plan.
+ * Session 123e: Feeds tab absorbed into System tab — /feeds + /global-catalog → #system.
  */
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -84,12 +85,12 @@ export function App() {
             <Route path="/hunting" element={<FeatureGate feature="threat_hunting"><HuntingWorkbenchPage /></FeatureGate>} />
             <Route path="/drp" element={<FeatureGate feature="digital_risk_protection"><DRPDashboardPage /></FeatureGate>} />
             <Route path="/correlation" element={<FeatureGate feature="correlation_engine"><CorrelationPage /></FeatureGate>} />
-            <Route path="/global-catalog" element={<Navigate to="/command-center#feeds" replace />} />
+            <Route path="/global-catalog" element={<Navigate to="/command-center#system" replace />} />
             <Route path="/search" element={<FeatureGate feature="ioc_management"><SearchPage /></FeatureGate>} />
             {/* Command Center — unified hub */}
             <Route path="/command-center" element={<CommandCenterPage />} />
             {/* Absorbed route redirects → Command Center tabs */}
-            <Route path="/feeds" element={<Navigate to="/command-center#feeds" replace />} />
+            <Route path="/feeds" element={<Navigate to="/command-center#system" replace />} />
             <Route path="/integrations" element={<Navigate to="/command-center#users-access" replace />} />
             <Route path="/settings" element={<Navigate to="/command-center#users-access" replace />} />
             <Route path="/customization" element={<Navigate to="/command-center#settings" replace />} />

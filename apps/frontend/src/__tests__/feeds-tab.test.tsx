@@ -1,10 +1,10 @@
 /**
  * @module __tests__/feeds-tab.test
- * @description Tests for FeedsTab — Unified feeds view + Pipeline Health sub-tab.
+ * @description Tests for UnifiedFeedsPanel — unified feeds view (absorbed into System tab S123e).
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
-import { FeedsTab } from '@/components/command-center/FeedsTab'
+import { UnifiedFeedsPanel } from '@/components/command-center/FeedsTab'
 
 // ─── Mock hooks ──────────────────────────────────────────────
 
@@ -38,15 +38,6 @@ vi.mock('@/hooks/use-global-catalog', () => ({
     isLoading: false, isDemo: false,
     subscribe: vi.fn(), unsubscribe: vi.fn(), isSubscribing: false, isUnsubscribing: false,
   }),
-  useGlobalPipelineHealth: () => ({
-    data: {
-      queues: [
-        { name: 'etip-feed-fetch-global-rss', waiting: 3, active: 1, completed: 1240, failed: 2, delayed: 0 },
-      ],
-      pipeline: { articlesProcessed24h: 1240, iocsCreated24h: 580, iocsEnriched24h: 420, avgNormalizeLatencyMs: 320, avgEnrichLatencyMs: 1450 },
-    },
-    isLoading: false, isDemo: false,
-  }),
 }))
 
 vi.mock('@/hooks/useDebouncedValue', () => ({
@@ -63,39 +54,24 @@ vi.mock('@/components/feed/FeedCard', () => ({
   computeFeedHealth: () => 85,
 }))
 
-// ─── Mock data ──────────────────────────────────────────────
-
-const baseMockCC: any = {
-  isSuperAdmin: true, userRole: 'super_admin', tenantPlan: 'teams',
-  globalStats: { totalCostUsd: 0, totalItems: 0, itemsBySubtask: {}, costByProvider: {}, costByModel: {}, costBySubtask: {}, costTrend: [] },
-  tenantStats: { tenantId: 't1', itemsConsumed: 0, attributedCostUsd: 0, costByProvider: {}, costByItemType: {}, consumptionTrend: [], budgetUsedPercent: 0, budgetLimitUsd: 0 },
-  tenantList: [], queueStats: { pendingItems: 0, processingRate: 0 }, providerKeys: [],
-  isLoading: false, isDemo: false, period: 'month' as const,
-  setPeriod: vi.fn(), refetchAll: vi.fn(), isFetching: false,
-  setProviderKey: vi.fn(), isSettingKey: false, testProviderKey: vi.fn(), isTestingKey: false, removeProviderKey: vi.fn(), isRemovingKey: false,
-}
-
-describe('FeedsTab', () => {
-  it('renders unified feeds panel by default', () => {
-    render(<FeedsTab data={baseMockCC} />)
-    expect(screen.getByTestId('feeds-tab')).toBeInTheDocument()
+describe('UnifiedFeedsPanel', () => {
+  it('renders unified feeds panel', () => {
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     expect(screen.getByTestId('unified-feeds-panel')).toBeInTheDocument()
   })
 
   it('renders both subscribed and catalog feeds in unified table', () => {
-    render(<FeedsTab data={baseMockCC} />)
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     expect(screen.getByTestId('feed-table')).toBeInTheDocument()
-    // Subscribed tenant feeds
     expect(screen.getByText('CISA RSS')).toBeInTheDocument()
     expect(screen.getByText('NVD Feed')).toBeInTheDocument()
     expect(screen.getByText('Disabled Feed')).toBeInTheDocument()
-    // Catalog feeds (AlienVault subscribed via gf-1, CISA KEV available)
     expect(screen.getByText('AlienVault OTX')).toBeInTheDocument()
     expect(screen.getByText('CISA KEV')).toBeInTheDocument()
   })
 
   it('shows Source badges — Subscribed and Available', () => {
-    render(<FeedsTab data={baseMockCC} />)
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     const subscribedBadges = screen.getAllByTestId('source-badge-subscribed')
     const availableBadges = screen.getAllByTestId('source-badge-available')
     // 3 tenant feeds + 1 subscribed catalog (AlienVault OTX) = 4 subscribed
@@ -105,27 +81,26 @@ describe('FeedsTab', () => {
   })
 
   it('shows super-admin action buttons on subscribed feeds', () => {
-    render(<FeedsTab data={baseMockCC} />)
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     expect(screen.getByTestId('toggle-feed-f1')).toBeInTheDocument()
     expect(screen.getByTestId('force-fetch-f1')).toBeInTheDocument()
     expect(screen.getByTestId('delete-feed-f1')).toBeInTheDocument()
   })
 
   it('shows subscribe button on available feeds', () => {
-    render(<FeedsTab data={baseMockCC} />)
-    // CISA KEV (gf-2) is available
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     expect(screen.getByTestId('subscribe-gf-2')).toHaveTextContent('Subscribe')
   })
 
   it('filters feeds by search', () => {
-    render(<FeedsTab data={baseMockCC} />)
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     fireEvent.change(screen.getByTestId('feed-search'), { target: { value: 'NVD' } })
     expect(screen.getByText('NVD Feed')).toBeInTheDocument()
     expect(screen.queryByText('CISA RSS')).not.toBeInTheDocument()
   })
 
   it('filters by source — Subscribed only', () => {
-    render(<FeedsTab data={baseMockCC} />)
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     fireEvent.change(screen.getByTestId('feed-source-filter'), { target: { value: 'subscribed' } })
     expect(screen.getByText('CISA RSS')).toBeInTheDocument()
     expect(screen.getByText('AlienVault OTX')).toBeInTheDocument()
@@ -133,42 +108,23 @@ describe('FeedsTab', () => {
   })
 
   it('filters by source — Available only', () => {
-    render(<FeedsTab data={baseMockCC} />)
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     fireEvent.change(screen.getByTestId('feed-source-filter'), { target: { value: 'available' } })
     expect(screen.getByText('CISA KEV')).toBeInTheDocument()
     expect(screen.queryByText('CISA RSS')).not.toBeInTheDocument()
   })
 
   it('filters by type', () => {
-    render(<FeedsTab data={baseMockCC} />)
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     fireEvent.change(screen.getByTestId('feed-type-filter'), { target: { value: 'nvd' } })
     expect(screen.getByText('NVD Feed')).toBeInTheDocument()
     expect(screen.queryByText('CISA RSS')).not.toBeInTheDocument()
   })
 
   it('shows delete confirmation modal', () => {
-    render(<FeedsTab data={baseMockCC} />)
+    render(<UnifiedFeedsPanel isSuperAdmin={true} />)
     fireEvent.click(screen.getByTestId('delete-feed-f1'))
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument()
     expect(screen.getByText('Delete Feed')).toBeInTheDocument()
-  })
-
-  it('switches to Pipeline Health sub-tab (super-admin)', () => {
-    render(<FeedsTab data={baseMockCC} />)
-    fireEvent.click(screen.getByTestId('pill-pipeline'))
-    expect(screen.getByTestId('pipeline-health-panel')).toBeInTheDocument()
-    expect(screen.getByText('1,240')).toBeInTheDocument()
-  })
-
-  it('hides Pipeline Health for tenant admin', () => {
-    const tenantCC = { ...baseMockCC, isSuperAdmin: false, userRole: 'tenant_admin' }
-    render(<FeedsTab data={tenantCC} />)
-    expect(screen.queryByTestId('pill-pipeline')).not.toBeInTheDocument()
-  })
-
-  it('shows queue health cards in pipeline', () => {
-    render(<FeedsTab data={baseMockCC} />)
-    fireEvent.click(screen.getByTestId('pill-pipeline'))
-    expect(screen.getByTestId('queue-etip-feed-fetch-global-rss')).toBeInTheDocument()
   })
 })
