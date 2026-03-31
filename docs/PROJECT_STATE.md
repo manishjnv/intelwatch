@@ -1,11 +1,11 @@
 # ETIP Project State
 **Last updated:** 2026-03-31 (update at end of EVERY session via /session-end)
-**Session counter:** 126 — S126: OpenAPI/Swagger docs + enrichment metadata + API key rotation (3 public API gaps). 248 api-gateway tests. 32/32 containers healthy.
+**Session counter:** 127 — S127: TAXII 2.1 server, webhook exponential backoff, changelog endpoint, SDK generation scaffolding. 279 api-gateway tests. 32/32 containers healthy.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
-| etip_api | ✅ Running | 0.2.3 | 2026-03-31 | Health check passing. **Session 126:** OpenAPI/Swagger docs (/api/v1/public/docs), enrichment metadata (?include=enrichment), API key rotation (POST /api-keys/rotate, 24h grace). 248 tests. |
+| etip_api | ✅ Running | 0.2.3 | 2026-03-31 | Health check passing. **Session 127:** TAXII 2.1 (discovery/collections/objects), webhook Stripe-style backoff (6 attempts), GET /changelog, SDK scaffolding. 279 tests. |
 | etip_frontend | ✅ Running | 0.18.0 | 2026-03-31 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 123c (S123c):** Merged Pipeline Monitor + Pipeline Health into unified Pipeline sub-tab (System tab). 1,526 tests. |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
@@ -39,7 +39,7 @@
 ## Module Development Status
 | Module | Phase | Status | Last Worked | Blockers |
 |--------|-------|--------|-------------|----------|
-| api-gateway | 1 | ✅ Deployed | 2026-03-31 | **Session 126:** OpenAPI/Swagger docs (P0-1), enrichment metadata (P1-8), API key rotation (P1-7). @fastify/swagger + @fastify/swagger-ui + zod-to-json-schema. 248 tests. |
+| api-gateway | 1 | ✅ Deployed | 2026-03-31 | **Session 127:** TAXII 2.1 public server, webhook exponential backoff, changelog endpoint, SDK generation script. 279 tests. All 14/14 public API gaps complete. |
 | shared-types | 1 | ✅ Deployed | 2026-03-31 | **Session 126:** +PublicIocEnrichmentDtoSchema, +ApiKeyRotateResponseSchema. |
 | shared-utils | 1 | ✅ Deployed | 2026-03-30 | QUEUES: 30 constants (+BREAK_GLASS_ALERT). EVENTS: 39 constants (+break_glass.login/failed/locked). 123 tests. |
 | shared-auth | 1 | ✅ Deployed | 2026-03-30 | **Session 118:** signAccessToken extended with expiresInOverride + extraClaims (backward-compatible). 92 tests. |
@@ -255,6 +255,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 124 | 2026-03-31 | Public API deployed (S124 Public REST API) | ✅ All 32 healthy | — | Public API for client IOC/feed consumption — 14 new files, /api/v1/public/* endpoints, DB-driven plan limits, webhook delivery. |
 | 125 | 2026-03-31 | etip_api redeployed (S125 public API improvements) | ✅ All 32 healthy | 1130361 | Rate limit headers, SSRF fix, delta sync, bulk IOC lookup, stats endpoint. 7/14 industry gaps fixed. |
 | 126 | 2026-03-31 | etip_api redeployed (S126 OpenAPI + enrichment + key rotation) | ✅ All 32 healthy | 11c8319, cd41d80 | OpenAPI/Swagger docs at /api/v1/public/docs (P0-1). Enrichment metadata ?include=enrichment (P1-8). API key rotation POST /api-keys/rotate with 24h grace (P1-7). 248 api-gateway tests (was 130). RCA: .map(toPublicIoc) type mismatch fixed. |
+| 127 | 2026-03-31 | etip_api redeployed (S127 TAXII 2.1 + webhook backoff + changelog + SDK) | ✅ All 32 healthy | — | TAXII 2.1 server (discovery/collections/objects), webhook Stripe-style exponential backoff (6 attempts), GET /changelog endpoint, SDK generation scaffolding. 279 api-gateway tests (was 248). All 14/14 public API gaps complete. |
 
 ## E2E Verification Results (Session 13)
 
