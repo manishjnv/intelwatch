@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 124 &middot; 2026-03-31 &middot; S124: Public REST API for client IOC/feed consumption. DB-driven plan limits, webhook delivery, STIX 2.1 export. 32/32 containers healthy. ~7,800 tests</span>
+  <span class="version">Session 126 &middot; 2026-03-31 &middot; S126: OpenAPI/Swagger docs, enrichment metadata, API key rotation — 3 public API gaps. 32/32 containers healthy. ~7,920 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~7,800</div><div class="stat-label">Tests Passing</div></div>
-    <div class="stat-card"><div class="stat-value">~645</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">124</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">~7,920</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
+    <div class="stat-card"><div class="stat-value">126</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -143,7 +143,7 @@ li strong { color: var(--text-primary); }
   <table>
     <thead><tr><th>Module</th><th>Port</th><th>Phase</th><th>Status</th><th>Endpoints</th><th>Tests</th></tr></thead>
     <tbody>
-      <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass routes</td><td>130</td></tr>
+      <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass + public API (OpenAPI docs, enrichment, key rotation)</td><td>248</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
       <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,526</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 5 Connectors + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>602</td></tr>
@@ -537,18 +537,18 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 124</span> Public REST API (S124)</div>
+    <div class="card-title"><span class="badge badge-green">Session 126</span> Public API Gaps P0-1, P1-8, P1-7 (S126)</div>
     <div class="card-body">
-      <strong>Session 124 (2026-03-31):</strong> Public REST API for client IOC/feed consumption:<br>
-      &bull; <strong>/api/v1/public/*</strong> — IOC list/detail/search/export, feeds, webhooks CRUD, usage status<br>
-      &bull; <strong>API key auth</strong> — X-API-Key header, Redis-cached verification, scope-based access<br>
-      &bull; <strong>DB-driven plan limits</strong> — Per-minute burst, daily/monthly quotas, webhook caps from plan definitions<br>
-      &bull; <strong>STIX 2.1 export</strong> — Indicators, SCOs, relationships, malware/threat-actor SDOs<br>
-      &bull; <strong>Webhook delivery</strong> — BullMQ worker, HMAC-SHA256 signing, auto-disable after 10 failures<br>
-      &bull; <strong>22 new tests, 0 regressions</strong> — 32/32 containers healthy<br><br>
+      <strong>Session 126 (2026-03-31):</strong> 3 public API industry-standard gaps fixed:<br>
+      &bull; <strong>P0-1: OpenAPI/Swagger Docs</strong> — @fastify/swagger + @fastify/swagger-ui at /api/v1/public/docs. Schema objects on all 15 public routes via zod-to-json-schema<br>
+      &bull; <strong>P1-8: Enrichment Metadata</strong> — ?include=enrichment on GET /iocs and GET /iocs/:id. mapEnrichmentData() strips cost/internal data, exposes sources/geo/aiSummary<br>
+      &bull; <strong>P1-7: API Key Rotation</strong> — POST /api-keys/rotate with 24h grace period. Interactive Prisma transaction, Redis cache TTL capping, double-rotation guard (409)<br>
+      &bull; <strong>248 api-gateway tests (was 130)</strong> — 15 new tests in public-api-p2.test.ts. 32/32 containers healthy<br>
+      &bull; <strong>RCA: .map(toPublicIoc) type mismatch</strong> — map index (number) passed as includeEnrichment (boolean). Fixed with arrow wrapper<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Continue Command Center v2.1</strong> — Remaining features (Cyber News Feed, IOC Strategy)<br>
-      2. <strong>Set Shodan/GreyNoise API keys on VPS</strong> — Enrichment currently degraded gracefully<br>
+      1. <strong>4 remaining public API gaps</strong> — P1-6 TAXII 2.1, P1-9 webhook retry backoff, P2-11 changelog, P2-12 SDK generation<br>
+      2. <strong>Cyber News Feed strategy</strong> — docs/ETIP_Cyber_News_Feed_Strategy_v1.docx<br>
+      3. <strong>Set Shodan/GreyNoise API keys on VPS</strong> — Enrichment currently degraded gracefully<br>
     </div>
   </div>
 </div>
@@ -556,7 +556,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 124 &middot; 2026-03-31 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 126 &middot; 2026-03-31 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
