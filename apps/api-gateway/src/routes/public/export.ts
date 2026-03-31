@@ -55,7 +55,7 @@ export async function publicExportRoutes(app: FastifyInstance): Promise<void> {
       take: body.limit,
     });
 
-    const iocs = rows.map(toPublicIoc);
+    const iocs = rows.map((r) => toPublicIoc(r));
 
     switch (body.format) {
       case 'json':

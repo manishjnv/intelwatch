@@ -42,7 +42,7 @@ export async function publicBulkRoutes(app: FastifyInstance): Promise<void> {
       orderBy: { lastSeen: 'desc' },
     });
 
-    const found = rows.map(toPublicIoc);
+    const found = rows.map((r) => toPublicIoc(r));
 
     // Build a lookup map for quick existence checking
     const foundValues = new Set(found.map((ioc) => ioc.value.toLowerCase()));

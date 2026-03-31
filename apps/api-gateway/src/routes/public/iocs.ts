@@ -153,7 +153,7 @@ export async function publicIocRoutes(app: FastifyInstance): Promise<void> {
     const { data, hasMore, nextCursor } = extractPaginationMeta(rows, body.limit, 'lastSeen');
 
     return reply.send({
-      data: data.map(toPublicIoc),
+      data: data.map((r) => toPublicIoc(r)),
       pagination: { limit: body.limit, hasMore, nextCursor },
     });
   });
