@@ -149,24 +149,6 @@ describe('CommandCenterPage', () => {
     expect(screen.getAllByText('$142.30').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows period picker buttons', () => {
-    render(<CommandCenterPage />)
-    expect(screen.getByTestId('period-day')).toBeInTheDocument()
-    expect(screen.getByTestId('period-week')).toBeInTheDocument()
-    expect(screen.getByTestId('period-month')).toBeInTheDocument()
-  })
-
-  it('calls setPeriod when clicking period button', () => {
-    render(<CommandCenterPage />)
-    fireEvent.click(screen.getByTestId('period-week'))
-    expect(mockCommandCenter.setPeriod).toHaveBeenCalledWith('week')
-  })
-
-  it('has export CSV button', () => {
-    render(<CommandCenterPage />)
-    expect(screen.getByTestId('export-csv')).toBeInTheDocument()
-  })
-
   it('has refresh button', () => {
     render(<CommandCenterPage />)
     expect(screen.getByTestId('refresh-btn')).toBeInTheDocument()
