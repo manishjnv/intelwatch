@@ -16,7 +16,7 @@ import {
 } from '@/components/feed/FeedCard'
 import {
   Search, Rss, Trash2, Play, ToggleLeft, ToggleRight,
-  AlertTriangle, Activity, Clock, Zap, Shield, Plus,
+  AlertTriangle, Clock, Zap, Shield, Plus,
 } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -110,7 +110,6 @@ function UnifiedFeedsPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     const catalogFeeds = catalog.data ?? []
     const subList: Array<{ globalFeedId?: string; id?: string }> = subs.data?.data ?? subs.data ?? []
     const subscribedCatalogIds = new Set(subList.map(s => s.globalFeedId ?? s.id))
-    const tenantNameMap = new Map(tenantFeeds.map(f => [f.name.toLowerCase().trim(), f]))
     const claimedNames = new Set<string>()
     const rows: UnifiedFeedRow[] = []
 
