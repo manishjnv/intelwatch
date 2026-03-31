@@ -248,6 +248,8 @@ services:
       TI_BREAK_GLASS_EMAIL: ${TI_BREAK_GLASS_EMAIL:-}
       TI_BREAK_GLASS_PASSWORD: ${TI_BREAK_GLASS_PASSWORD:-}
       TI_BREAK_GLASS_OTP_SECRET: ${TI_BREAK_GLASS_OTP_SECRET:-}
+      TI_ADMIN_SERVICE_URL: http://etip_admin:3022
+      TI_TURNSTILE_SECRET: ${TI_TURNSTILE_SECRET:-}
     ports:
       - "3001:3001"
     depends_on:
@@ -608,6 +610,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
     container_name: etip_frontend
     restart: unless-stopped
     healthcheck:

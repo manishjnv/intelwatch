@@ -6,6 +6,8 @@
 # ── Stage 1: Install + Build ───────────────────────────────────
 # RULE: NEVER use Alpine for Node build stages (DEPLOYMENT_RCA Issue #7)
 FROM node:20-slim AS build
+ARG VITE_TURNSTILE_SITE_KEY=""
+ENV VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY}
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
