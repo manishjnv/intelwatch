@@ -5,7 +5,7 @@
  */
 import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Shield, Eye, EyeOff, Loader2, ArrowRight, Check } from 'lucide-react'
+import { Shield, Eye, EyeOff, ArrowRight, Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { PlanCards } from '@/components/PlanCards'
 
