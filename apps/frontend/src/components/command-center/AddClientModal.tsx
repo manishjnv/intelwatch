@@ -38,11 +38,11 @@ export function useCreateTenant() {
 
   const mutation = useMutation({
     mutationFn: async (input: AddClientInput) => {
-      const res = await api<{ data: CreatedTenant }>('/admin/tenants', {
+      const tenant = await api<CreatedTenant>('/admin/tenants', {
         method: 'POST',
         body: { ...input, plan: 'free' },
       })
-      return res
+      return tenant
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['command-center'] })
@@ -99,8 +99,8 @@ export function AddClientModal({ onClose }: AddClientModalProps) {
     if (!data) return
 
     try {
-      const res = await createTenant(data)
-      setCreated(res.data)
+      const tenant = await createTenant(data)
+      setCreated(tenant)
       toast('Client onboarded — invite email sent', 'success')
     } catch {
       toast('Failed to create client — check API connection', 'error')
