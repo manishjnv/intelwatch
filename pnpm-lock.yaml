@@ -285,6 +285,9 @@ importers:
       '@prisma/client':
         specifier: ^5.18.0
         version: 5.22.0(prisma@5.22.0)
+      bullmq:
+        specifier: ^5.12.0
+        version: 5.71.0
       fastify:
         specifier: ^4.28.0
         version: 4.29.1
@@ -7353,14 +7356,6 @@ snapshots:
     optionalDependencies:
       vite: 5.4.21(@types/node@20.19.37)
 
-  '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@22.19.15))':
-    dependencies:
-      '@vitest/spy': 2.1.9
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 5.4.21(@types/node@22.19.15)
-
   '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@24.12.0))':
     dependencies:
       '@vitest/spy': 2.1.9
@@ -9594,7 +9589,7 @@ snapshots:
   vitest@2.1.9(@types/node@22.19.15)(jsdom@29.0.1(@noble/hashes@2.0.1)):
     dependencies:
       '@vitest/expect': 2.1.9
-      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@22.19.15))
+      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@20.19.37))
       '@vitest/pretty-format': 2.1.9
       '@vitest/runner': 2.1.9
       '@vitest/snapshot': 2.1.9

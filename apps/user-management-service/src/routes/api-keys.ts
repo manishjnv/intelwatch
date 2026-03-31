@@ -48,7 +48,7 @@ export function apiKeyRoutes(deps: ApiKeyRouteDeps) {
         });
         const featureLimit = planDef?.features[0];
         if (!featureLimit || !featureLimit.enabled) {
-          throw new AppError(403, 'API key management requires the Enterprise plan.', 'FEATURE_NOT_AVAILABLE', {
+          throw new AppError(403, 'API key management is not enabled on your current plan. Contact your admin.', 'FEATURE_NOT_AVAILABLE', {
             feature: 'api_access',
             currentPlan: tenant.plan,
             upgradeUrl: '/command-center?tab=billing',

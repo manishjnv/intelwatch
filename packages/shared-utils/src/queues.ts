@@ -45,6 +45,8 @@ export const QUEUES = {
   DATA_RETENTION:         'etip-data-retention',
   // Break-glass emergency account (I-22)
   BREAK_GLASS_ALERT:      'etip-break-glass-alert',
+  // Public API webhooks (I-23)
+  WEBHOOK_DELIVERY:       'etip-webhook-delivery',
 } as const;
 
 /** Union type of all queue name string literals */

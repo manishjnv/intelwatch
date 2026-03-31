@@ -288,6 +288,37 @@ export {
   BREAK_GLASS_AUDIT_EVENTS,
 } from './break-glass.js';
 
+// ── Public API types ──────────────────────────────────────────────
+export {
+  PublicIocDtoSchema,
+  type PublicIocDto,
+  PublicFeedDtoSchema,
+  type PublicFeedDto,
+  PublicArticleDtoSchema,
+  type PublicArticleDto,
+  CursorPaginationQuerySchema,
+  type CursorPaginationQuery,
+  type CursorPaginationMeta,
+  type CursorPaginatedResponse,
+  PublicIocFilterSchema,
+  type PublicIocFilter,
+  PublicIocSearchBodySchema,
+  type PublicIocSearchBody,
+  PublicIocExportBodySchema,
+  type PublicIocExportBody,
+  WEBHOOK_EVENTS,
+  WebhookEventSchema,
+  type WebhookEvent,
+  WebhookCreateBodySchema,
+  type WebhookCreateBody,
+  WebhookUpdateBodySchema,
+  type WebhookUpdateBody,
+  type PublicWebhookDto,
+  type WebhookDeliveryPayload,
+  type PublicApiUsageDto,
+  PUBLIC_API_BURST_FALLBACK,
+} from './public-api.js';
+
 // ── Config & constants ─────────────────────────────────────────────
 export {
   AI_MODELS,

@@ -62,6 +62,9 @@ export const EVENTS = {
   BREAK_GLASS_LOGIN:           'break_glass.login',
   BREAK_GLASS_FAILED:          'break_glass.failed',
   BREAK_GLASS_LOCKED:          'break_glass.locked',
+  // Public API webhooks (I-23)
+  WEBHOOK_DELIVERY_FAILED:     'webhook.delivery.failed',
+  WEBHOOK_DELIVERY_DISABLED:   'webhook.delivery.disabled',
 } as const;
 
 /** Union type of all event type string literals */

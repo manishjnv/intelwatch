@@ -15,6 +15,8 @@ interface RouteMapping {
  * First match wins. More specific patterns come first.
  */
 const ROUTE_MAPPINGS: RouteMapping[] = [
+  // Public API — all routes map to api_access (must be first to match before /iocs)
+  { pattern: /^\/api\/v1\/public(\/|$)/, featureKey: 'api_access' },
   { pattern: /^\/api\/v1\/iocs(\/|$)/, featureKey: 'ioc_management' },
   { pattern: /^\/api\/v1\/threat-actors(\/|$)/, featureKey: 'threat_actors' },
   { pattern: /^\/api\/v1\/malware(\/|$)/, featureKey: 'malware_intel' },

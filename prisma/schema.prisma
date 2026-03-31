@@ -49,6 +49,7 @@ model Tenant {
   featureOverrides      TenantFeatureOverride[]
   ssoConfig             SsoConfig?
   scimTokens            ScimToken[]
+  webhookSubscriptions  WebhookSubscription[]
   @@map("tenants")
 }
 
@@ -150,6 +151,7 @@ model ApiKey {
   updatedAt DateTime  @updatedAt @map("updated_at")
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  webhookSubscriptions WebhookSubscription[]
   @@unique([tenantId, name])
   @@index([tenantId])
   @@index([userId])
@@ -1027,4 +1029,28 @@ model ComplianceReport {
   @@index([reportType])
   @@index([status])
   @@map("compliance_reports")
+}
+
+// ─── Webhook Subscriptions (I-23 — Public API) ─────────────────────────────
+model WebhookSubscription {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  apiKeyId    String    @map("api_key_id") @db.Uuid
+  url         String    @db.Text
+  secret      String    @db.VarChar(255)
+  events      String[]  @default(["ioc.created"])
+  active      Boolean   @default(true)
+  failCount   Int       @default(0) @map("fail_count")
+  lastSuccess DateTime? @map("last_success")
+  lastFailure DateTime? @map("last_failure")
+  disabledAt  DateTime? @map("disabled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([active])
+  @@map("webhook_subscriptions")
 }

@@ -24,10 +24,13 @@ import { accessReviewRoutes } from './routes/access-review.js';
 import { complianceRoutes } from './routes/compliance.js';
 import { offboardingGatewayRoutes } from './routes/offboarding.js';
 import { breakGlassRoutes } from './routes/break-glass.js';
+import { publicRoutes } from './routes/public/index.js';
 
 /** Determine per-request rate limit tier based on URL + method */
 function resolveRateLimit(req: FastifyRequest): number {
   const url = req.url;
+  // Public API has its own scoped rate limiter — set high ceiling to avoid double-limiting
+  if (url.startsWith('/api/v1/public')) return 10000;
   // Search tier — ES-backed, expensive
   if (url.startsWith('/api/v1/search') || (url.startsWith('/api/v1/iocs') && url.includes('q='))) {
     return 10;
@@ -65,7 +68,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(cors, {
     origin: allowedOrigins, credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Service-Token'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Service-Token', 'X-API-Key'],
   });
 
   // Response compression — gzip for payloads >1KB, skip binaries
@@ -128,6 +131,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(complianceRoutes, { prefix: '/api/v1' });
   await app.register(offboardingGatewayRoutes, { prefix: '/api/v1' });
   await app.register(breakGlassRoutes, { prefix: '/api/v1' });
+
+  // Public API — API key auth, plan-based rate limits, IOC/feed consumption
+  await app.register(publicRoutes, { prefix: '/api/v1/public' });
 
   logger.info('API Gateway configured successfully');
   return app;
