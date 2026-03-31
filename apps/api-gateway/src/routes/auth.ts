@@ -10,6 +10,8 @@ const RegisterBodySchema = z.object({
   displayName: z.string().min(1).max(255),
   tenantName: z.string().min(1).max(255),
   tenantSlug: z.string().min(1).max(63).regex(/^[a-z0-9-]+$/),
+  inviteToken: z.string().uuid().optional(),
+  plan: z.enum(['free', 'starter', 'pro', 'enterprise']).optional(),
 });
 
 const LoginBodySchema = z.object({
@@ -55,6 +57,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const result = await userService.register({
       email: body.email, password: body.password, displayName: body.displayName,
       tenantName: body.tenantName, tenantSlug: body.tenantSlug,
+      plan: body.plan, inviteToken: body.inviteToken,
       ipAddress: req.ip, userAgent: req.headers['user-agent'] ?? '',
     });
     return reply.status(201).send({ data: result });

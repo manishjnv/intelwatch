@@ -84,6 +84,7 @@ export function ClientOnboardingPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
 
   const tenantSlug = useMemo(
     () => orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 63),
@@ -142,8 +143,8 @@ export function ClientOnboardingPage() {
     }
     setSelectedPlan(planId)
     setIsSubmitting(true)
+    setError('')
     try {
-      // Register account with selected plan
       const res = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -158,11 +159,12 @@ export function ClientOnboardingPage() {
         }),
       })
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Registration failed' }))
-        throw new Error(err.message ?? 'Registration failed')
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody?.error?.message ?? errBody?.message ?? 'Registration failed')
       }
       setDone(true)
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed — please try again')
       setIsSubmitting(false)
       setSelectedPlan(null)
     }
@@ -279,6 +281,12 @@ export function ClientOnboardingPage() {
           <h1 className="text-xl font-semibold text-text-primary">Choose your plan</h1>
           <p className="text-sm text-text-muted mt-1">Select the plan that fits <strong className="text-text-primary">{orgName}</strong></p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-sev-critical/10 border border-sev-critical/30 text-sm text-sev-critical text-center">
+            {error}
+          </div>
+        )}
 
         {/* Plan Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

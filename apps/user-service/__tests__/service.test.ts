@@ -13,6 +13,7 @@ const { _auditCreate } = vi.hoisted(() => ({
 vi.mock('../src/prisma.js', () => ({
   prisma: {
     tenant: { create: vi.fn(), findUnique: vi.fn() },
+    tenantSubscription: { create: vi.fn() },
     user: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
     session: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
     auditLog: { create: _auditCreate, findFirst: vi.fn() },

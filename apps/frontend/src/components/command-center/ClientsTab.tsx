@@ -9,8 +9,10 @@ import type { useCommandCenter, TenantListItem } from '@/hooks/use-command-cente
 import { DataTable, type Column } from '@/components/data/DataTable'
 import {
   DollarSign, Users, Building2, AlertTriangle,
-  Search, X, ChevronRight, UserPlus,
+  Search, X, ChevronRight, UserPlus, Clock,
 } from 'lucide-react'
+import { api } from '@/lib/api'
+import { toast } from '@/components/ui/Toast'
 import { TenantOverridePanel } from './TenantOverridePanel'
 import { OffboardingPanel } from './OffboardingPanel'
 import { AdminSsoView } from './SsoConfigPanel'
@@ -89,6 +91,48 @@ function MiniSparkline({ data, width = 200, height = 60 }: { data: number[]; wid
 
 // ─── Tenant Detail Drawer ─────────���─────────────────────────────
 
+function ExtendTrialButton({ tenantId }: { tenantId: string }) {
+  const [days, setDays] = useState(7)
+  const [extending, setExtending] = useState(false)
+
+  async function handleExtend() {
+    setExtending(true)
+    try {
+      await api(`/admin/tenants/${tenantId}/extend-trial`, {
+        method: 'PUT',
+        body: { days },
+      })
+      toast(`Trial extended by ${days} days`, 'success')
+    } catch {
+      toast('Failed to extend trial', 'error')
+    } finally {
+      setExtending(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Clock className="w-3.5 h-3.5 text-accent shrink-0" />
+      <select
+        value={days}
+        onChange={e => setDays(Number(e.target.value))}
+        className="bg-bg-elevated border border-border rounded px-2 py-1 text-xs text-text-primary"
+      >
+        <option value={7}>+7 days</option>
+        <option value={14}>+14 days</option>
+        <option value={30}>+30 days</option>
+      </select>
+      <button
+        onClick={handleExtend}
+        disabled={extending}
+        className="px-2.5 py-1 text-xs font-medium rounded bg-accent text-bg-primary hover:bg-accent/90 disabled:opacity-50"
+      >
+        {extending ? 'Extending...' : 'Extend Trial'}
+      </button>
+    </div>
+  )
+}
+
 function TenantDetailDrawer({ tenant, data, onClose }: {
   tenant: TenantListItem
   data: ReturnType<typeof useCommandCenter>
@@ -127,6 +171,14 @@ function TenantDetailDrawer({ tenant, data, onClose }: {
           </span>
         </div>
       </div>
+
+      {/* Extend Trial */}
+      {tenant.plan !== 'free' && (
+        <div className="p-4 border-b border-border">
+          <p className="text-xs text-text-muted mb-2">Trial Management</p>
+          <ExtendTrialButton tenantId={tenant.tenantId} />
+        </div>
+      )}
 
       {/* 30-Day Consumption Sparkline */}
       <div className="p-4 border-b border-border">

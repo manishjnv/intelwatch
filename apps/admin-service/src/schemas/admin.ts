@@ -54,6 +54,10 @@ export const ChangePlanSchema = z.object({
   plan: z.enum(['free', 'starter', 'pro', 'enterprise']),
 });
 
+export const ExtendTrialSchema = z.object({
+  days: z.number().int().min(1).max(90),
+});
+
 export type CreateTenantDto = z.infer<typeof CreateTenantSchema>;
 
 // ─── Audit ─────────────────────────────────────────────────────────

@@ -10,6 +10,8 @@ import { buildAuditReplicationJob } from './audit-replication.js';
 export interface RegisterInput {
   email: string; password: string; displayName: string;
   tenantName: string; tenantSlug: string; ipAddress: string; userAgent: string;
+  plan?: 'free' | 'starter' | 'pro' | 'enterprise';
+  inviteToken?: string;
 }
 
 export interface LoginInput {
@@ -60,7 +62,18 @@ export class UserService {
 
     const passwordHash = await hashPassword(input.password);
 
-    const tenant = await repo.createTenant({ name: input.tenantName, slug: input.tenantSlug });
+    const plan = input.plan ?? 'free';
+    const tenant = await repo.createTenant({ name: input.tenantName, slug: input.tenantSlug, plan });
+
+    // Create subscription with 7-day trial for paid plans
+    const isTrial = plan !== 'free';
+    const trialEndsAt = isTrial ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : undefined;
+    await repo.createTenantSubscription({
+      tenantId: tenant.id,
+      plan,
+      status: isTrial ? 'trialing' : 'active',
+      trialEndsAt,
+    });
 
     const user = await repo.createUser({
       tenantId: tenant.id, email: input.email, displayName: input.displayName,

@@ -8,8 +8,22 @@ const GENESIS_HASH = '0'.repeat(64);
 
 // ── Tenant Queries ───────────────────────────────────────────────────
 
-export async function createTenant(data: { name: string; slug: string; plan?: 'free' | 'pro' | 'enterprise'; }) {
+export async function createTenant(data: { name: string; slug: string; plan?: 'free' | 'starter' | 'pro' | 'enterprise'; }) {
   return prisma.tenant.create({ data: { name: data.name, slug: data.slug, plan: data.plan ?? 'free' } });
+}
+
+export async function createTenantSubscription(data: {
+  tenantId: string; plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  status: string; trialEndsAt?: Date;
+}) {
+  return prisma.tenantSubscription.create({
+    data: {
+      tenantId: data.tenantId,
+      plan: data.plan,
+      status: data.status,
+      trialEndsAt: data.trialEndsAt ?? null,
+    },
+  });
 }
 
 export async function findTenantBySlug(slug: string) {

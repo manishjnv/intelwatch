@@ -13,6 +13,7 @@ export interface TenantRecord {
   status: TenantStatus;
   suspensionReason?: string;
   inviteToken: string;
+  trialEndsAt?: string;
   featureFlags: Record<string, boolean>;
   createdAt: string;
   updatedAt: string;
@@ -50,14 +51,17 @@ export class TenantStore {
   /** Create a new tenant. */
   create(input: CreateTenantInput): TenantRecord {
     const now = new Date().toISOString();
+    const plan = input.plan ?? 'free';
+    const isTrial = plan !== 'free';
     const tenant: TenantRecord = {
       id: randomUUID(),
       name: input.name,
       ownerName: input.ownerName,
       ownerEmail: input.ownerEmail,
-      plan: input.plan ?? 'free',
+      plan,
       status: 'active',
       inviteToken: randomUUID(),
+      trialEndsAt: isTrial ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
       featureFlags: input.featureFlags ?? {},
       createdAt: now,
       updatedAt: now,
@@ -123,6 +127,17 @@ export class TenantStore {
     const tenant = this._tenants.get(id);
     if (!tenant) throw new AppError(404, `Tenant not found: ${id}`, 'NOT_FOUND');
     const updated: TenantRecord = { ...tenant, plan, updatedAt: new Date().toISOString() };
+    this._tenants.set(id, updated);
+    return updated;
+  }
+
+  /** Extend a tenant's trial by N days (super-admin only). */
+  extendTrial(id: string, days: number): TenantRecord {
+    const tenant = this._tenants.get(id);
+    if (!tenant) throw new AppError(404, `Tenant not found: ${id}`, 'NOT_FOUND');
+    const base = tenant.trialEndsAt ? new Date(tenant.trialEndsAt) : new Date();
+    const newEnd = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+    const updated: TenantRecord = { ...tenant, trialEndsAt: newEnd.toISOString(), updatedAt: new Date().toISOString() };
     this._tenants.set(id, updated);
     return updated;
   }

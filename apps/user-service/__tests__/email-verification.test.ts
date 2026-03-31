@@ -18,6 +18,7 @@ vi.mock('../src/prisma.js', () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
     },
+    tenantSubscription: { create: vi.fn() },
     session: { create: vi.fn(), update: vi.fn() },
     auditLog: { create: vi.fn(), findFirst: vi.fn() },
     mfaEnforcementPolicy: { findFirst: vi.fn() },
