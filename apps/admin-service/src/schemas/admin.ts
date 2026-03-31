@@ -40,6 +40,7 @@ export type TriggerBackupDto = z.infer<typeof TriggerBackupSchema>;
 
 export const CreateTenantSchema = z.object({
   name: z.string().min(1).max(200),
+  ownerName: z.string().min(1).max(200),
   ownerEmail: z.string().email(),
   plan: z.enum(['free', 'starter', 'pro', 'enterprise']).default('free'),
   featureFlags: z.record(z.boolean()).optional(),

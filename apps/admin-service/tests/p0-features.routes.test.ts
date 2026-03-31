@@ -126,7 +126,7 @@ describe('P0 Features Routes', () => {
 
   describe('GET /api/v1/admin/tenants/:id/analytics', () => {
     it('returns analytics for a known tenant', async () => {
-      const tenant = tenantStore.create({ name: 'Analytics Corp', ownerEmail: 'a@a.com' });
+      const tenant = tenantStore.create({ name: 'Analytics Corp', ownerName: 'Admin', ownerEmail: 'a@a.com' });
       const res = await app.inject({ method: 'GET', url: `/api/v1/admin/tenants/${tenant.id}/analytics?period=30d` });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);

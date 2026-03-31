@@ -7,10 +7,12 @@ export type TenantStatus = 'active' | 'suspended' | 'pending' | 'deleted';
 export interface TenantRecord {
   id: string;
   name: string;
+  ownerName: string;
   ownerEmail: string;
   plan: TenantPlan;
   status: TenantStatus;
   suspensionReason?: string;
+  inviteToken: string;
   featureFlags: Record<string, boolean>;
   createdAt: string;
   updatedAt: string;
@@ -29,6 +31,7 @@ export interface TenantUsage {
 
 export interface CreateTenantInput {
   name: string;
+  ownerName: string;
   ownerEmail: string;
   plan?: TenantPlan;
   featureFlags?: Record<string, boolean>;
@@ -50,9 +53,11 @@ export class TenantStore {
     const tenant: TenantRecord = {
       id: randomUUID(),
       name: input.name,
+      ownerName: input.ownerName,
       ownerEmail: input.ownerEmail,
       plan: input.plan ?? 'free',
       status: 'active',
+      inviteToken: randomUUID(),
       featureFlags: input.featureFlags ?? {},
       createdAt: now,
       updatedAt: now,

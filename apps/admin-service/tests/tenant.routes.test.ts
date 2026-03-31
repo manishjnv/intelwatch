@@ -27,14 +27,14 @@ describe('Tenant Routes', () => {
     });
 
     it('returns created tenants', async () => {
-      tenantStore.create({ name: 'Corp A', ownerEmail: 'a@a.com' });
+      tenantStore.create({ name: 'Corp A', ownerName: 'A', ownerEmail: 'a@a.com' });
       const res = await app.inject({ method: 'GET', url: '/api/v1/admin/tenants' });
       expect(JSON.parse(res.body).data.length).toBe(1);
     });
 
     it('filters by plan', async () => {
-      tenantStore.create({ name: 'Free', ownerEmail: 'f@f.com', plan: 'free' });
-      tenantStore.create({ name: 'Pro', ownerEmail: 'p@p.com', plan: 'pro' });
+      tenantStore.create({ name: 'Free', ownerName: 'F', ownerEmail: 'f@f.com', plan: 'free' });
+      tenantStore.create({ name: 'Pro', ownerName: 'P', ownerEmail: 'p@p.com', plan: 'pro' });
       const res = await app.inject({ method: 'GET', url: '/api/v1/admin/tenants?plan=pro' });
       const body = JSON.parse(res.body);
       expect(body.data.every((t: { plan: string }) => t.plan === 'pro')).toBe(true);
@@ -46,7 +46,7 @@ describe('Tenant Routes', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/api/v1/admin/tenants',
-        payload: { name: 'New Corp', ownerEmail: 'admin@newcorp.com', plan: 'starter' },
+        payload: { name: 'New Corp', ownerName: 'Admin', ownerEmail: 'admin@newcorp.com', plan: 'starter' },
       });
       expect(res.statusCode).toBe(201);
       const body = JSON.parse(res.body);
@@ -66,7 +66,7 @@ describe('Tenant Routes', () => {
 
   describe('GET /api/v1/admin/tenants/:id', () => {
     it('returns 200 with tenant details', async () => {
-      const tenant = tenantStore.create({ name: 'Detail Corp', ownerEmail: 'd@d.com' });
+      const tenant = tenantStore.create({ name: 'Detail Corp', ownerName: 'Admin', ownerEmail: 'd@d.com' });
       const res = await app.inject({ method: 'GET', url: `/api/v1/admin/tenants/${tenant.id}` });
       expect(res.statusCode).toBe(200);
       expect(JSON.parse(res.body).data.id).toBe(tenant.id);
@@ -80,7 +80,7 @@ describe('Tenant Routes', () => {
 
   describe('PUT /api/v1/admin/tenants/:id/suspend', () => {
     it('suspends active tenant and returns 200', async () => {
-      const tenant = tenantStore.create({ name: 'Bad Actor', ownerEmail: 'b@b.com' });
+      const tenant = tenantStore.create({ name: 'Bad Actor', ownerName: 'Admin', ownerEmail: 'b@b.com' });
       const res = await app.inject({
         method: 'PUT',
         url: `/api/v1/admin/tenants/${tenant.id}/suspend`,
@@ -98,7 +98,7 @@ describe('Tenant Routes', () => {
 
   describe('PUT /api/v1/admin/tenants/:id/reinstate', () => {
     it('reinstates suspended tenant', async () => {
-      const tenant = tenantStore.create({ name: 'Pardoned', ownerEmail: 'p@p.com' });
+      const tenant = tenantStore.create({ name: 'Pardoned', ownerName: 'Admin', ownerEmail: 'p@p.com' });
       tenantStore.suspend(tenant.id, 'Test');
       const res = await app.inject({ method: 'PUT', url: `/api/v1/admin/tenants/${tenant.id}/reinstate` });
       expect(res.statusCode).toBe(200);
@@ -108,7 +108,7 @@ describe('Tenant Routes', () => {
 
   describe('PUT /api/v1/admin/tenants/:id/plan', () => {
     it('changes plan and returns 200', async () => {
-      const tenant = tenantStore.create({ name: 'Upgrading', ownerEmail: 'u@u.com', plan: 'free' });
+      const tenant = tenantStore.create({ name: 'Upgrading', ownerName: 'Admin', ownerEmail: 'u@u.com', plan: 'free' });
       const res = await app.inject({
         method: 'PUT',
         url: `/api/v1/admin/tenants/${tenant.id}/plan`,
@@ -121,7 +121,7 @@ describe('Tenant Routes', () => {
 
   describe('GET /api/v1/admin/tenants/:id/usage', () => {
     it('returns usage stats for tenant', async () => {
-      const tenant = tenantStore.create({ name: 'Stats Corp', ownerEmail: 's@s.com' });
+      const tenant = tenantStore.create({ name: 'Stats Corp', ownerName: 'Admin', ownerEmail: 's@s.com' });
       const res = await app.inject({ method: 'GET', url: `/api/v1/admin/tenants/${tenant.id}/usage` });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
@@ -132,7 +132,7 @@ describe('Tenant Routes', () => {
 
   describe('DELETE /api/v1/admin/tenants/:id', () => {
     it('deletes tenant and returns 204', async () => {
-      const tenant = tenantStore.create({ name: 'Gone', ownerEmail: 'g@g.com' });
+      const tenant = tenantStore.create({ name: 'Gone', ownerName: 'Admin', ownerEmail: 'g@g.com' });
       const res = await app.inject({ method: 'DELETE', url: `/api/v1/admin/tenants/${tenant.id}` });
       expect(res.statusCode).toBe(204);
     });

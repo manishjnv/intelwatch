@@ -10,7 +10,7 @@ describe('TenantStore', () => {
 
   describe('create', () => {
     it('creates a tenant with active status', () => {
-      const tenant = store.create({ name: 'Acme Corp', plan: 'pro', ownerEmail: 'admin@acme.com' });
+      const tenant = store.create({ name: 'Acme Corp', ownerName: 'Admin', plan: 'pro', ownerEmail: 'admin@acme.com' });
       expect(tenant.id).toBeTruthy();
       expect(tenant.name).toBe('Acme Corp');
       expect(tenant.status).toBe('active');
@@ -18,34 +18,34 @@ describe('TenantStore', () => {
     });
 
     it('defaults to free plan when not specified', () => {
-      const tenant = store.create({ name: 'StartupCo', ownerEmail: 'ceo@startup.io' });
+      const tenant = store.create({ name: 'StartupCo', ownerName: 'CEO', ownerEmail: 'ceo@startup.io' });
       expect(tenant.plan).toBe('free');
     });
 
     it('sets createdAt timestamp', () => {
-      const tenant = store.create({ name: 'Beta Corp', ownerEmail: 'admin@beta.com' });
+      const tenant = store.create({ name: 'Beta Corp', ownerName: 'Admin', ownerEmail: 'admin@beta.com' });
       expect(new Date(tenant.createdAt).getTime()).toBeLessThanOrEqual(Date.now());
     });
   });
 
   describe('list', () => {
     it('returns all tenants', () => {
-      store.create({ name: 'A', ownerEmail: 'a@a.com' });
-      store.create({ name: 'B', ownerEmail: 'b@b.com' });
+      store.create({ name: 'A', ownerName: 'A', ownerEmail: 'a@a.com' });
+      store.create({ name: 'B', ownerName: 'B', ownerEmail: 'b@b.com' });
       expect(store.list().length).toBe(2);
     });
 
     it('filters by status', () => {
-      const t = store.create({ name: 'X', ownerEmail: 'x@x.com' });
-      store.create({ name: 'Y', ownerEmail: 'y@y.com' });
+      const t = store.create({ name: 'X', ownerName: 'X', ownerEmail: 'x@x.com' });
+      store.create({ name: 'Y', ownerName: 'Y', ownerEmail: 'y@y.com' });
       store.suspend(t.id, 'Violation');
       const active = store.list({ status: 'active' });
       expect(active.every((ten) => ten.status === 'active')).toBe(true);
     });
 
     it('filters by plan', () => {
-      store.create({ name: 'F', ownerEmail: 'f@f.com', plan: 'free' });
-      store.create({ name: 'P', ownerEmail: 'p@p.com', plan: 'pro' });
+      store.create({ name: 'F', ownerName: 'F', ownerEmail: 'f@f.com', plan: 'free' });
+      store.create({ name: 'P', ownerName: 'P', ownerEmail: 'p@p.com', plan: 'pro' });
       const pro = store.list({ plan: 'pro' });
       expect(pro.every((t) => t.plan === 'pro')).toBe(true);
     });
@@ -53,7 +53,7 @@ describe('TenantStore', () => {
 
   describe('getById', () => {
     it('returns the tenant by id', () => {
-      const tenant = store.create({ name: 'Corp', ownerEmail: 'e@e.com' });
+      const tenant = store.create({ name: 'Corp', ownerName: 'Admin', ownerEmail: 'e@e.com' });
       expect(store.getById(tenant.id)?.id).toBe(tenant.id);
     });
 
@@ -64,14 +64,14 @@ describe('TenantStore', () => {
 
   describe('suspend / reinstate', () => {
     it('suspends an active tenant', () => {
-      const tenant = store.create({ name: 'Bad Actor', ownerEmail: 'bad@corp.com' });
+      const tenant = store.create({ name: 'Bad Actor', ownerName: 'Admin', ownerEmail: 'bad@corp.com' });
       store.suspend(tenant.id, 'ToS violation');
       expect(store.getById(tenant.id)?.status).toBe('suspended');
       expect(store.getById(tenant.id)?.suspensionReason).toBe('ToS violation');
     });
 
     it('reinstates a suspended tenant', () => {
-      const tenant = store.create({ name: 'Pardoned', ownerEmail: 'p@corp.com' });
+      const tenant = store.create({ name: 'Pardoned', ownerName: 'Admin', ownerEmail: 'p@corp.com' });
       store.suspend(tenant.id, 'Test');
       store.reinstate(tenant.id);
       expect(store.getById(tenant.id)?.status).toBe('active');
@@ -84,7 +84,7 @@ describe('TenantStore', () => {
 
   describe('changePlan', () => {
     it('changes the plan for a tenant', () => {
-      const tenant = store.create({ name: 'Growing', ownerEmail: 'g@g.com', plan: 'free' });
+      const tenant = store.create({ name: 'Growing', ownerName: 'Admin', ownerEmail: 'g@g.com', plan: 'free' });
       store.changePlan(tenant.id, 'enterprise');
       expect(store.getById(tenant.id)?.plan).toBe('enterprise');
     });
@@ -96,7 +96,7 @@ describe('TenantStore', () => {
 
   describe('delete', () => {
     it('removes the tenant', () => {
-      const tenant = store.create({ name: 'ToDelete', ownerEmail: 'd@d.com' });
+      const tenant = store.create({ name: 'ToDelete', ownerName: 'Admin', ownerEmail: 'd@d.com' });
       expect(store.delete(tenant.id)).toBe(true);
       expect(store.getById(tenant.id)).toBeUndefined();
     });
@@ -108,7 +108,7 @@ describe('TenantStore', () => {
 
   describe('getUsage', () => {
     it('returns usage overview for tenant', () => {
-      const tenant = store.create({ name: 'Metrics', ownerEmail: 'm@m.com' });
+      const tenant = store.create({ name: 'Metrics', ownerName: 'Admin', ownerEmail: 'm@m.com' });
       const usage = store.getUsage(tenant.id);
       expect(typeof usage.iocCount).toBe('number');
       expect(typeof usage.apiCallCount).toBe('number');
