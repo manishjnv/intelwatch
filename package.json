@@ -28,6 +28,7 @@
     "docker:ps": "docker compose -p etip -f docker-compose.etip.yml ps",
     "clean": "pnpm -r exec rm -rf dist node_modules/.cache",
     "scaffold": "node scripts/scaffold.js",
+    "sdk:generate": "bash scripts/generate-sdk.sh",
     "audit": "pnpm audit --audit-level=high",
     "prepare": "echo 'Ready'"
   },

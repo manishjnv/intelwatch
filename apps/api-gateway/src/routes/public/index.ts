@@ -13,6 +13,8 @@ import { publicStatsRoutes } from './stats.js';
 import { publicUsageRoutes } from './usage.js';
 import { publicWebhookRoutes } from './webhooks.js';
 import { publicApiKeyRoutes } from './api-keys.js';
+import { publicTaxiiRoutes } from './taxii.js';
+import { publicChangelogRoutes } from './changelog.js';
 
 export async function publicRoutes(app: FastifyInstance): Promise<void> {
   // Register scoped rate limit for all public routes
@@ -32,4 +34,6 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
   await app.register(publicUsageRoutes);
   await app.register(publicWebhookRoutes);
   await app.register(publicApiKeyRoutes);
+  await app.register(publicTaxiiRoutes);
+  await app.register(publicChangelogRoutes);
 }

@@ -57,6 +57,10 @@ ehthumbs.db
 tmp/
 temp/
 
+# ─── SDK (auto-generated) ───
+sdk/
+openapi.json
+
 # ─── Claude Code ───
 .claude/settings.local.json
 .claude/.session_*
