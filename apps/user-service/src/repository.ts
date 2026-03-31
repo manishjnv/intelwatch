@@ -34,6 +34,27 @@ export async function findTenantById(id: string) {
   return prisma.tenant.findUnique({ where: { id } });
 }
 
+/** Check if any tenant with a paid/trialing subscription already exists for this email domain */
+export async function findTrialingTenantByEmailDomain(emailDomain: string) {
+  // Find any user whose email ends with @domain in a tenant that has a non-free subscription
+  const user = await prisma.user.findFirst({
+    where: {
+      email: { endsWith: `@${emailDomain}` },
+      role: 'tenant_admin',
+      tenant: {
+        subscriptions: {
+          some: {
+            plan: { not: 'free' },
+            status: { in: ['trialing', 'active', 'past_due'] },
+          },
+        },
+      },
+    },
+    select: { tenant: { select: { name: true } } },
+  });
+  return user?.tenant ?? null;
+}
+
 // ── User Queries ─────────────────────────────────────────────────────
 
 export async function createUser(data: {

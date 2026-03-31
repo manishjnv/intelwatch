@@ -151,6 +151,44 @@ export function tenantRoutes(deps: TenantRouteDeps) {
       },
     );
 
+    /** GET /validate-invite — validate an invite token (public, called by api-gateway). */
+    app.get(
+      '/validate-invite',
+      async (
+        req: FastifyRequest<{ Querystring: { token?: string; email?: string } }>,
+        reply: FastifyReply,
+      ) => {
+        const { token, email } = req.query;
+        if (!token || !email) {
+          return reply.status(400).send({ error: { code: 'MISSING_PARAMS', message: 'token and email are required' } });
+        }
+        const tenant = tenantStore.validateInvite(token, email);
+        if (!tenant) {
+          return reply.status(404).send({ error: { code: 'INVITE_INVALID', message: 'Invite link is invalid, expired, or already used' } });
+        }
+        return reply.send({ data: { valid: true, tenantName: tenant.name, ownerEmail: tenant.ownerEmail } });
+      },
+    );
+
+    /** POST /claim-invite — mark an invite token as claimed (called by api-gateway after registration). */
+    app.post(
+      '/claim-invite',
+      async (
+        req: FastifyRequest<{ Body: { token: string } }>,
+        reply: FastifyReply,
+      ) => {
+        const { token } = req.body ?? {};
+        if (!token) {
+          return reply.status(400).send({ error: { code: 'MISSING_TOKEN', message: 'token is required' } });
+        }
+        const claimed = tenantStore.claimInvite(token);
+        if (!claimed) {
+          return reply.status(404).send({ error: { code: 'CLAIM_FAILED', message: 'Invite not found or already claimed' } });
+        }
+        return reply.send({ data: { claimed: true } });
+      },
+    );
+
     /** GET /feed-usage/summary — aggregate feed usage stats across tenants. */
     app.get(
       '/feed-usage/summary',

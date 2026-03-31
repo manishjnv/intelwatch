@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Shield, Eye, EyeOff, ArrowRight, Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { PlanCards } from '@/components/PlanCards'
+import { TurnstileWidget } from '@/components/TurnstileWidget'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -22,6 +23,7 @@ export function RegisterPage() {
   const [displayName, setDisplayName] = useState('')
   const [tenantName, setTenantName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   // Plan selection state
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
@@ -58,6 +60,7 @@ export function RegisterPage() {
           email, password, displayName,
           tenantName, tenantSlug,
           plan: planId,
+          cfTurnstileToken: turnstileToken || undefined,
         }),
       })
 
@@ -235,6 +238,9 @@ export function RegisterPage() {
                 </p>
               )}
             </div>
+
+            {/* Turnstile CAPTCHA */}
+            <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
             {/* Submit */}
             <button

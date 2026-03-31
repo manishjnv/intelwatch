@@ -13,6 +13,8 @@ export interface TenantRecord {
   status: TenantStatus;
   suspensionReason?: string;
   inviteToken: string;
+  inviteExpiresAt: string;
+  inviteClaimed: boolean;
   trialEndsAt?: string;
   featureFlags: Record<string, boolean>;
   createdAt: string;
@@ -61,6 +63,8 @@ export class TenantStore {
       plan,
       status: 'active',
       inviteToken: randomUUID(),
+      inviteExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      inviteClaimed: false,
       trialEndsAt: isTrial ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
       featureFlags: input.featureFlags ?? {},
       createdAt: now,
@@ -129,6 +133,30 @@ export class TenantStore {
     const updated: TenantRecord = { ...tenant, plan, updatedAt: new Date().toISOString() };
     this._tenants.set(id, updated);
     return updated;
+  }
+
+  /** Validate an invite token. Returns tenant if valid, null if not. */
+  validateInvite(token: string, email: string): TenantRecord | null {
+    for (const tenant of this._tenants.values()) {
+      if (tenant.inviteToken !== token) continue;
+      if (tenant.ownerEmail.toLowerCase() !== email.toLowerCase()) return null;
+      if (tenant.inviteClaimed) return null;
+      if (new Date(tenant.inviteExpiresAt) < new Date()) return null;
+      return tenant;
+    }
+    return null;
+  }
+
+  /** Mark an invite as claimed. Returns false if not found/already claimed. */
+  claimInvite(token: string): boolean {
+    for (const tenant of this._tenants.values()) {
+      if (tenant.inviteToken !== token) continue;
+      if (tenant.inviteClaimed) return false;
+      tenant.inviteClaimed = true;
+      tenant.updatedAt = new Date().toISOString();
+      return true;
+    }
+    return false;
   }
 
   /** Extend a tenant's trial by N days (super-admin only). */

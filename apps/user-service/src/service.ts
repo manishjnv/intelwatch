@@ -58,11 +58,25 @@ export class UserService {
     if (existingTenant) throw new AppError(409, 'Tenant slug already taken', 'CONFLICT');
 
     const existingUser = await repo.findUserByEmailAnyStatus(input.email);
-    if (existingUser) throw new AppError(409, 'Email already registered', 'CONFLICT');
+    if (existingUser) throw new AppError(409, 'Email already registered — please sign in instead', 'EMAIL_ALREADY_REGISTERED');
+
+    // Domain-level trial abuse guard: block if same email domain already has a paid/trialing tenant
+    const plan = input.plan ?? 'free';
+    if (plan !== 'free') {
+      const emailDomain = input.email.split('@')[1]?.toLowerCase();
+      if (emailDomain) {
+        const domainTenant = await repo.findTrialingTenantByEmailDomain(emailDomain);
+        if (domainTenant) {
+          throw new AppError(409,
+            `Your organization (${domainTenant.name}) already has an active subscription. Contact your admin for access.`,
+            'DOMAIN_TRIAL_EXISTS',
+          );
+        }
+      }
+    }
 
     const passwordHash = await hashPassword(input.password);
 
-    const plan = input.plan ?? 'free';
     const tenant = await repo.createTenant({ name: input.tenantName, slug: input.tenantSlug, plan });
 
     // Create subscription with 7-day trial for paid plans

@@ -9,6 +9,7 @@ import { useState, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Shield, Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
 import { PlanCards, PLANS } from '@/components/PlanCards'
+import { TurnstileWidget } from '@/components/TurnstileWidget'
 
 export function ClientOnboardingPage() {
   const [params] = useSearchParams()
@@ -23,6 +24,7 @@ export function ClientOnboardingPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   const tenantSlug = useMemo(
     () => orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 63),
@@ -90,6 +92,7 @@ export function ClientOnboardingPage() {
           email: inviteEmail, password, displayName,
           tenantName: orgName, tenantSlug, inviteToken,
           plan: planId,
+          cfTurnstileToken: turnstileToken || undefined,
         }),
       })
       if (!res.ok) {
@@ -172,6 +175,8 @@ export function ClientOnboardingPage() {
                   </p>
                 )}
               </div>
+
+              <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
               <button type="submit" disabled={!accountValid}
                 className="w-full h-10 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
