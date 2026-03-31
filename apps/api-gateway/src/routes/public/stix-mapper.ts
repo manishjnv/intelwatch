@@ -4,7 +4,7 @@
  * Maps IOCs to Indicators (SDO) + Cyber Observables (SCO) + Relationships.
  * Uses existing STIX type mappings from @etip/shared-types/stix.
  */
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import {
   IOC_TO_STIX_SCO,
   TLP_TO_STIX_MARKING,
@@ -16,7 +16,6 @@ interface StixObject { [key: string]: unknown; }
 
 /** Deterministic UUID from a string (for SCO deduplication). */
 function deterministicUuid(input: string): string {
-  const { createHash } = require('crypto') as typeof import('crypto');
   const hash = createHash('sha256').update(input).digest('hex');
   return [
     hash.slice(0, 8), hash.slice(8, 12), hash.slice(12, 16),
