@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.SecurityInsights/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "d4b5c6e7-f8a9-4b0c-1d2e-3f4a5b6c7d8e",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Multiple ETIP IOC Matches on Same Host",
+        "description": "Detects when 3 or more distinct ETIP IOCs match activity on the same host within 24 hours, indicating potential compromise.",
+        "severity": "High",
+        "enabled": true,
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where Active == true\n| join kind=inner (\n    union\n    (CommonSecurityLog | where TimeGenerated >= ago(24h) | project Computer, MatchValue = DestinationIP, TimeGenerated),\n    (DnsEvents | where TimeGenerated >= ago(24h) | project Computer, MatchValue = Name, TimeGenerated),\n    (SecurityEvent | where TimeGenerated >= ago(24h) | project Computer, MatchValue = IpAddress, TimeGenerated)\n) on $left.NetworkIP == $right.MatchValue\n| summarize DistinctIOCs = dcount(ExternalIndicatorId), IOCValues = make_set(NetworkIP, 10), FirstSeen = min(TimeGenerated1), LastSeen = max(TimeGenerated1) by Computer\n| where DistinctIOCs >= 3",
+        "queryFrequency": "PT6H",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "LateralMovement",
+          "CommandAndControl"
+        ],
+        "techniques": [],
+        "entityMappings": [
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "Computer"
+              }
+            ]
+          }
+        ],
+        "alertDetailsOverride": null
+      }
+    }
+  ]
+}

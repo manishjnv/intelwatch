@@ -1,0 +1,116 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "config": {
+      "isWizard": true,
+      "basics": {
+        "description": "**IntelWatch ETIP** integrates enterprise threat intelligence with Microsoft Sentinel.\n\nThis solution deploys:\n- 1 Workbook for IOC analytics and feed health monitoring\n- 5 Analytics Rules for automated threat detection\n- 4 Hunting Queries for proactive threat hunting\n\n[Learn more](https://ti.intelwatch.in)",
+        "subscription": {
+          "resourceProviders": [
+            "Microsoft.OperationalInsights/workspaces",
+            "Microsoft.SecurityInsights/alertRules"
+          ]
+        },
+        "location": {
+          "visible": true
+        }
+      }
+    },
+    "basics": [
+      {
+        "name": "workspace",
+        "type": "Microsoft.Solutions.ArmApiControl",
+        "label": "Log Analytics Workspace",
+        "toolTip": "Select the Log Analytics workspace with Microsoft Sentinel enabled.",
+        "defaultValue": "",
+        "constraints": {
+          "required": true
+        }
+      }
+    ],
+    "steps": [
+      {
+        "name": "dataConnectorConfig",
+        "label": "Data Connector",
+        "elements": [
+          {
+            "name": "etipInfo",
+            "type": "Microsoft.Common.TextBlock",
+            "visible": true,
+            "options": {
+              "text": "Configure your IntelWatch ETIP connection. You will need an API key from your ETIP account at ti.intelwatch.in."
+            }
+          },
+          {
+            "name": "etipApiKey",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "ETIP API Key"
+            },
+            "toolTip": "Your ETIP API key (starts with etip_). Get it from ti.intelwatch.in > Settings > API Keys.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "etipApiBaseUrl",
+            "type": "Microsoft.Common.TextBox",
+            "label": "ETIP API Base URL",
+            "defaultValue": "https://ti.intelwatch.in/api/v1/public",
+            "toolTip": "Base URL for the ETIP API. Change only if using a self-hosted instance.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "deployNote",
+            "type": "Microsoft.Common.InfoBox",
+            "visible": true,
+            "options": {
+              "text": "After installing this solution, deploy the Azure Function data connector separately. See the data-connector/README.md for step-by-step instructions.",
+              "style": "Info"
+            }
+          }
+        ]
+      },
+      {
+        "name": "analytics",
+        "label": "Analytics",
+        "elements": [
+          {
+            "name": "analyticsInfo",
+            "type": "Microsoft.Common.InfoBox",
+            "visible": true,
+            "options": {
+              "text": "This solution deploys 5 analytics rules:\n\n1. ETIP High-Confidence IOC Match (High)\n2. ETIP C2 Domain Communication Detected (High)\n3. New Critical Severity IOC Ingested (Medium)\n4. Multiple ETIP IOC Matches on Same Host (High)\n5. ETIP Feed Sync Stale (Low)",
+              "style": "Info"
+            }
+          }
+        ]
+      },
+      {
+        "name": "hunting",
+        "label": "Hunting Queries",
+        "elements": [
+          {
+            "name": "huntingInfo",
+            "type": "Microsoft.Common.InfoBox",
+            "visible": true,
+            "options": {
+              "text": "This solution deploys 4 hunting queries:\n\n1. High-Risk ETIP IOCs Without Detections\n2. Network Activity Matching ETIP Threat Actor IOCs\n3. Endpoints Communicating with New Malware Family IOCs\n4. Internal Hosts Matching ETIP Lateral Movement Indicators",
+              "style": "Info"
+            }
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "workspace": "[basics('workspace')]",
+      "workspaceResourceId": "[basics('workspace').id]",
+      "etipApiKey": "[steps('dataConnectorConfig').etipApiKey]",
+      "etipApiBaseUrl": "[steps('dataConnectorConfig').etipApiBaseUrl]"
+    }
+  }
+}

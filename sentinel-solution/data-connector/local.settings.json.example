@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "ETIP_API_BASE_URL": "https://ti.intelwatch.in/api/v1/public",
+    "ETIP_API_KEY": "etip_your_api_key_here",
+    "AZURE_TENANT_ID": "your-tenant-id",
+    "AZURE_CLIENT_ID": "your-client-id",
+    "AZURE_CLIENT_SECRET": "your-client-secret",
+    "AZURE_WORKSPACE_ID": "your-log-analytics-workspace-id",
+    "AZURE_LOG_ANALYTICS_KEY": "your-log-analytics-primary-key",
+    "ETIP_POLL_INTERVAL_MINUTES": "15"
+  }
+}

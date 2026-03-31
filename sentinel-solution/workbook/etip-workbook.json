@@ -1,0 +1,419 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# IntelWatch ETIP - Threat Intelligence Workbook\n\nThis workbook provides visibility into IOCs ingested from IntelWatch ETIP, enrichment quality, detection matches, and feed health."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000, "createdTime": "2024-01-01T00:00:00Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false },
+                { "durationMs": 43200000, "createdTime": "2024-01-01T00:00:00Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false },
+                { "durationMs": 86400000, "createdTime": "2024-01-01T00:00:00Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false },
+                { "durationMs": 604800000, "createdTime": "2024-01-01T00:00:00Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false },
+                { "durationMs": 2592000000, "createdTime": "2024-01-01T00:00:00Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false },
+                { "durationMs": 7776000000, "createdTime": "2024-01-01T00:00:00Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false }
+              ]
+            },
+            "value": {
+              "durationMs": 2592000000
+            }
+          },
+          {
+            "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+            "version": "KqlParameterItem/1.0",
+            "name": "Severity",
+            "label": "Severity",
+            "type": 2,
+            "isRequired": true,
+            "jsonData": "[\"All\", \"critical\", \"high\", \"medium\", \"low\", \"info\"]",
+            "value": "All"
+          }
+        ]
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": 0,
+        "title": "IOC Overview",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "## IOC Overview\n\nSummary of all threat intelligence indicators ingested from IntelWatch ETIP."
+            },
+            "name": "ioc-overview-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| where '{Severity}' == 'All' or tostring(ThreatSeverity) == '{Severity}'\n| summarize TotalIOCs = dcount(ExternalIndicatorId)",
+              "size": 1,
+              "title": "Total IOC Count",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "tiles",
+              "tileSettings": {
+                "titleContent": {
+                  "columnMatch": "TotalIOCs",
+                  "formatter": 12,
+                  "formatOptions": {
+                    "palette": "auto"
+                  }
+                },
+                "showBorder": true
+              }
+            },
+            "name": "total-ioc-count"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| where '{Severity}' == 'All' or tostring(ThreatSeverity) == '{Severity}'\n| summarize Count = dcount(ExternalIndicatorId) by bin(TimeGenerated, 1d)\n| order by TimeGenerated asc",
+              "size": 0,
+              "title": "IOCs Ingested Over Time",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "timechart"
+            },
+            "name": "iocs-over-time"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| where '{Severity}' == 'All' or tostring(ThreatSeverity) == '{Severity}'\n| extend IOCType = case(\n    isnotempty(NetworkIP), \"IP\",\n    isnotempty(DomainName), \"Domain\",\n    isnotempty(Url), \"URL\",\n    isnotempty(FileHashValue), \"Hash\",\n    isnotempty(EmailSenderAddress), \"Email\",\n    \"Other\")\n| summarize Count = dcount(ExternalIndicatorId) by IOCType",
+              "size": 0,
+              "title": "Breakdown by Type",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "piechart"
+            },
+            "name": "breakdown-by-type"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| summarize Count = dcount(ExternalIndicatorId) by ThreatSeverity",
+              "size": 0,
+              "title": "Breakdown by Severity",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "barchart"
+            },
+            "name": "breakdown-by-severity"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| where '{Severity}' == 'All' or tostring(ThreatSeverity) == '{Severity}'\n| summarize Count = dcount(ExternalIndicatorId) by TlpLevel",
+              "size": 0,
+              "title": "Breakdown by TLP",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "barchart"
+            },
+            "name": "breakdown-by-tlp"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| where '{Severity}' == 'All' or tostring(ThreatSeverity) == '{Severity}'\n| mv-expand Tags\n| summarize Count = dcount(ExternalIndicatorId) by tostring(Tags)\n| top 10 by Count",
+              "size": 0,
+              "title": "Top 10 Tags",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "barchart"
+            },
+            "name": "top-10-tags"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| mv-expand KillChainActions\n| summarize Count = dcount(ExternalIndicatorId) by tostring(KillChainActions)\n| top 10 by Count",
+              "size": 0,
+              "title": "Top 10 MITRE ATT&CK Techniques",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "barchart"
+            },
+            "name": "top-10-mitre"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where Active == true\n| where TimeGenerated {TimeRange}\n| extend AgeDays = datetime_diff('day', now(), todatetime(FirstReportedDateTime))\n| extend AgeBucket = case(AgeDays <= 1, \"< 1 day\", AgeDays <= 7, \"1-7 days\", AgeDays <= 30, \"8-30 days\", \"> 30 days\")\n| summarize Count = dcount(ExternalIndicatorId) by AgeBucket",
+              "size": 0,
+              "title": "Feed Freshness (Age Distribution)",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "barchart"
+            },
+            "name": "feed-freshness"
+          }
+        ]
+      },
+      "name": "group-ioc-overview"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": 0,
+        "title": "Enrichment & Risk Scores",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "## Enrichment & Risk Scores\n\nInsights into IOC enrichment quality, confidence distribution, and enrichment sources."
+            },
+            "name": "enrichment-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ETIP_Stats_CL\n| top 1 by TimeGenerated\n| project TotalIOCs = total_d, LastUpdated = lastUpdated_s",
+              "size": 1,
+              "title": "Latest ETIP Stats",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "tiles",
+              "tileSettings": {
+                "showBorder": true
+              }
+            },
+            "name": "latest-stats"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| extend ConfBucket = case(ConfidenceScore >= 90, \"90-100\", ConfidenceScore >= 70, \"70-89\", ConfidenceScore >= 50, \"50-69\", ConfidenceScore >= 30, \"30-49\", \"0-29\")\n| summarize Count = dcount(ExternalIndicatorId) by ConfBucket",
+              "size": 0,
+              "title": "Confidence Score Distribution",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "barchart"
+            },
+            "name": "confidence-distribution"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| where Description contains \"VirusTotal\" or Description contains \"AbuseIPDB\" or Description contains \"AI\"\n| extend Source = case(Description contains \"VirusTotal\", \"VirusTotal\", Description contains \"AbuseIPDB\", \"AbuseIPDB\", Description contains \"AI\", \"AI Triage\", \"Other\")\n| summarize Count = dcount(ExternalIndicatorId) by Source",
+              "size": 0,
+              "title": "Enrichment Sources",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "piechart"
+            },
+            "name": "enrichment-sources"
+          }
+        ]
+      },
+      "name": "group-enrichment"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": 0,
+        "title": "Detection & Matching",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "## Detection & Matching\n\nIOC match rates against security logs, top matched indicators, and unmatched high-confidence IOCs for threat hunting."
+            },
+            "name": "detection-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let etipIndicators = ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange};\nlet matched = etipIndicators\n| join kind=inner (SecurityAlert | where TimeGenerated {TimeRange}) on $left.NetworkIP == $right.CompromisedEntity\n| summarize MatchedIOCs = dcount(ExternalIndicatorId);\nlet total = etipIndicators | summarize TotalIOCs = dcount(ExternalIndicatorId);\nmatched | extend TotalIOCs = toscalar(total | project TotalIOCs)\n| extend MatchRate = round(todouble(MatchedIOCs) / todouble(TotalIOCs) * 100, 2)",
+              "size": 1,
+              "title": "IOC Match Rate",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "tiles",
+              "tileSettings": {
+                "showBorder": true
+              }
+            },
+            "name": "ioc-match-rate"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| join kind=inner (SecurityAlert | where TimeGenerated {TimeRange}) on $left.NetworkIP == $right.CompromisedEntity\n| summarize AlertCount = count() by IndicatorId = ExternalIndicatorId, IndicatorValue = coalesce(NetworkIP, DomainName, Url, FileHashValue)\n| top 10 by AlertCount",
+              "size": 0,
+              "title": "Top Matched IOCs",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "table"
+            },
+            "name": "top-matched-iocs"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated {TimeRange}\n| where ConfidenceScore >= 80\n| where Active == true\n| join kind=leftanti (SecurityAlert | where TimeGenerated {TimeRange}) on $left.NetworkIP == $right.CompromisedEntity\n| project ExternalIndicatorId, IndicatorValue = coalesce(NetworkIP, DomainName, Url, FileHashValue), ConfidenceScore, ThreatSeverity, TimeGenerated\n| top 20 by ConfidenceScore desc",
+              "size": 0,
+              "title": "Unmatched High-Confidence IOCs",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "table"
+            },
+            "name": "unmatched-high-confidence"
+          }
+        ]
+      },
+      "name": "group-detection"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": 0,
+        "title": "Feed Health",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "## Feed Health\n\nMonitoring ingestion rates, sync freshness, and error rates for the ETIP data connector."
+            },
+            "name": "feed-health-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ETIP_Stats_CL\n| where TimeGenerated {TimeRange}\n| summarize IOCCount = max(total_d) by bin(TimeGenerated, 1h)\n| order by TimeGenerated asc",
+              "size": 0,
+              "title": "Ingestion Rate",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "timechart"
+            },
+            "name": "ingestion-rate"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "ETIP_Stats_CL\n| top 1 by TimeGenerated\n| extend StalenessMinutes = datetime_diff('minute', now(), TimeGenerated)\n| extend Status = iff(StalenessMinutes > 120, \"\u26a0\ufe0f STALE\", \"\u2705 Healthy\")\n| project LastSync = TimeGenerated, StalenessMinutes, Status",
+              "size": 1,
+              "title": "Last Sync Status",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "tiles",
+              "tileSettings": {
+                "showBorder": true
+              }
+            },
+            "name": "last-sync-status"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "FunctionAppLogs\n| where FunctionName == \"syncIndicators\"\n| where TimeGenerated {TimeRange}\n| where Level == \"Error\"\n| summarize ErrorCount = count() by bin(TimeGenerated, 1h)\n| order by TimeGenerated asc",
+              "size": 0,
+              "title": "Error Rate",
+              "timeContext": {
+                "durationMs": 2592000000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "timechart"
+            },
+            "name": "error-rate"
+          }
+        ]
+      },
+      "name": "group-feed-health"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.OperationalInsights/workspaces/{ws}"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

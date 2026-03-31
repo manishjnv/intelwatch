@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.SecurityInsights/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "e5c6d7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "ETIP Feed Sync Stale",
+        "description": "Alerts when no new IOCs have been ingested from IntelWatch ETIP for over 2 hours, indicating a potential sync issue.",
+        "severity": "Low",
+        "enabled": true,
+        "query": "ETIP_Stats_CL\n| top 1 by TimeGenerated\n| where TimeGenerated < ago(2h)\n| extend StalenessHours = datetime_diff('hour', now(), TimeGenerated)\n| project TimeGenerated, StalenessHours, Status = \"Feed sync is stale\"",
+        "queryFrequency": "PT2H",
+        "queryPeriod": "PT4H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [],
+        "techniques": [],
+        "entityMappings": [],
+        "alertDetailsOverride": null
+      }
+    }
+  ]
+}

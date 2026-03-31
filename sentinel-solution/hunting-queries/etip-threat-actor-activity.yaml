@@ -1,0 +1,51 @@
+id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+name: "Network Activity Matching ETIP Threat Actor IOCs"
+description: |
+  Hunts for network connections to IOCs associated with specific threat actors
+  tracked by IntelWatch ETIP. Correlates against firewall logs and DNS events.
+requiredDataConnectors:
+  - connectorId: ThreatIntelligence
+    dataTypes:
+      - ThreatIntelligenceIndicator
+  - connectorId: CEF
+    dataTypes:
+      - CommonSecurityLog
+  - connectorId: DNS
+    dataTypes:
+      - DnsEvents
+tactics:
+  - CommandAndControl
+  - InitialAccess
+relevantTechniques:
+  - T1071
+  - T1566
+query: |
+  let threatActorIOCs = ThreatIntelligenceIndicator
+  | where SourceSystem == "IntelWatch ETIP"
+  | where Active == true
+  | where Description has "threatActors"
+  | project NetworkIP, DomainName, Url, ExternalIndicatorId, Description, ConfidenceScore, Tags;
+  union
+  (
+      threatActorIOCs
+      | where isnotempty(NetworkIP)
+      | join kind=inner (
+          CommonSecurityLog
+          | where TimeGenerated >= ago(7d)
+          | project TimeGenerated, DestinationIP, SourceIP, DeviceAction, Computer
+      ) on $left.NetworkIP == $right.DestinationIP
+      | project TimeGenerated, MatchType = "IP", MatchedValue = NetworkIP,
+          Computer, DeviceAction, ConfidenceScore, Description
+  ),
+  (
+      threatActorIOCs
+      | where isnotempty(DomainName)
+      | join kind=inner (
+          DnsEvents
+          | where TimeGenerated >= ago(7d)
+          | project TimeGenerated, Name, ClientIP, Computer
+      ) on $left.DomainName == $right.Name
+      | project TimeGenerated, MatchType = "Domain", MatchedValue = DomainName,
+          Computer, DeviceAction = "", ConfidenceScore, Description
+  )
+  | order by TimeGenerated desc

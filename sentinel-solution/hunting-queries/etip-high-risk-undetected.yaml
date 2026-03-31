@@ -1,0 +1,39 @@
+id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+name: "High-Risk ETIP IOCs Without Detections"
+description: |
+  Identifies high-confidence (>=85) IOCs from IntelWatch ETIP that have not triggered
+  any security alerts in the past 30 days. These represent potential blind spots in
+  detection coverage and should be prioritized for proactive threat hunting.
+requiredDataConnectors:
+  - connectorId: ThreatIntelligence
+    dataTypes:
+      - ThreatIntelligenceIndicator
+  - connectorId: AzureSecurityCenter
+    dataTypes:
+      - SecurityAlert
+tactics:
+  - Discovery
+relevantTechniques:
+  - T1046
+query: |
+  ThreatIntelligenceIndicator
+  | where SourceSystem == "IntelWatch ETIP"
+  | where ConfidenceScore >= 85
+  | where Active == true
+  | where TimeGenerated >= ago(30d)
+  | join kind=leftanti (
+      SecurityAlert
+      | where TimeGenerated >= ago(30d)
+      | mv-expand todynamic(Entities)
+      | extend AlertIndicator = tostring(Entities.Address)
+  ) on $left.NetworkIP == $right.AlertIndicator
+  | project ExternalIndicatorId,
+      IndicatorType = case(
+          isnotempty(NetworkIP), "IP",
+          isnotempty(DomainName), "Domain",
+          isnotempty(Url), "URL",
+          isnotempty(FileHashValue), "Hash",
+          "Other"),
+      IndicatorValue = coalesce(NetworkIP, DomainName, Url, FileHashValue, EmailSenderAddress),
+      ConfidenceScore, ThreatSeverity, Tags, FirstReportedDateTime, Description
+  | order by ConfidenceScore desc

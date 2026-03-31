@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.SecurityInsights/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "c3a4b5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "New Critical Severity IOC Ingested from ETIP",
+        "description": "Alerts when new critical-severity IOCs are ingested from IntelWatch ETIP, enabling proactive threat hunting.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated >= ago(1h)\n| where ThreatSeverity == \"critical\" or ThreatSeverity == \"Critical\"\n| where Active == true\n| project TimeGenerated, ExternalIndicatorId, IndicatorValue = coalesce(NetworkIP, DomainName, Url, FileHashValue, EmailSenderAddress), ThreatSeverity, ConfidenceScore, Tags, Description",
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "Execution"
+        ],
+        "techniques": [],
+        "entityMappings": [],
+        "alertDetailsOverride": null
+      }
+    }
+  ]
+}

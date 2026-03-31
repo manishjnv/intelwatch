@@ -1,0 +1,332 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "IntelWatch ETIP - Threat Intelligence Platform",
+    "description": "Integrates IntelWatch ETIP threat intelligence with Microsoft Sentinel for automated IOC ingestion, detection, and hunting.",
+    "version": "1.0.0",
+    "publisher": "IntelWatch",
+    "categories": {
+      "domains": [
+        "Security - Threat Intelligence"
+      ]
+    },
+    "support": {
+      "tier": "Community",
+      "link": "https://ti.intelwatch.in"
+    },
+    "source": {
+      "kind": "Solution",
+      "name": "IntelWatch ETIP"
+    }
+  },
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics workspace name"
+      }
+    },
+    "workspaceResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of the Log Analytics workspace"
+      }
+    },
+    "etipApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Your ETIP API key (starts with etip_)"
+      }
+    },
+    "etipApiBaseUrl": {
+      "type": "string",
+      "defaultValue": "https://ti.intelwatch.in/api/v1/public",
+      "metadata": {
+        "description": "ETIP API base URL"
+      }
+    }
+  },
+  "variables": {
+    "workbookId": "[guid(resourceGroup().id, 'etip-workbook-v1')]",
+    "rule1Id": "[guid(resourceGroup().id, 'etip-high-confidence-match')]",
+    "rule2Id": "[guid(resourceGroup().id, 'etip-c2-domain-detected')]",
+    "rule3Id": "[guid(resourceGroup().id, 'etip-new-critical-ioc')]",
+    "rule4Id": "[guid(resourceGroup().id, 'etip-multiple-ioc-match-host')]",
+    "rule5Id": "[guid(resourceGroup().id, 'etip-stale-feed-alert')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/workbooks",
+      "apiVersion": "2022-04-01",
+      "name": "[variables('workbookId')]",
+      "location": "[resourceGroup().location]",
+      "kind": "shared",
+      "properties": {
+        "displayName": "IntelWatch ETIP - Threat Intelligence Dashboard",
+        "serializedData": "See workbook/etip-workbook.json — inline during solution packaging",
+        "version": "1.0",
+        "sourceId": "[parameters('workspaceResourceId')]",
+        "category": "sentinel"
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/', variables('rule1Id'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "ETIP High-Confidence IOC Match",
+        "description": "Detects when a high-confidence (>=80) IOC from IntelWatch ETIP matches network, DNS, or security event logs.",
+        "severity": "High",
+        "enabled": true,
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where ConfidenceScore >= 80\n| where Active == true\n| join kind=inner (\n    union\n    (CommonSecurityLog | where TimeGenerated >= ago(1h) | extend MatchValue = DestinationIP),\n    (DnsEvents | where TimeGenerated >= ago(1h) | extend MatchValue = Name),\n    (SecurityEvent | where TimeGenerated >= ago(1h) | extend MatchValue = IpAddress)\n) on $left.NetworkIP == $right.MatchValue\n| project TimeGenerated, IndicatorValue = NetworkIP, ConfidenceScore, ThreatSeverity, Computer, MatchValue, SourceSystem",
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact",
+          "CommandAndControl"
+        ],
+        "entityMappings": [
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IndicatorValue"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "Computer"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/', variables('rule2Id'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "ETIP C2 Domain Communication Detected",
+        "description": "Detects DNS queries to domains tagged as C2 infrastructure in IntelWatch ETIP.",
+        "severity": "High",
+        "enabled": true,
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where Active == true\n| where Tags has \"c2\"\n| where isnotempty(DomainName)\n| join kind=inner (\n    DnsEvents | where TimeGenerated >= ago(15m)\n) on $left.DomainName == $right.Name\n| project TimeGenerated, C2Domain = DomainName, ClientIP, Computer, ConfidenceScore, Tags",
+        "queryFrequency": "PT15M",
+        "queryPeriod": "PT15M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "entityMappings": [
+          {
+            "entityType": "DNS",
+            "fieldMappings": [
+              {
+                "identifier": "DomainName",
+                "columnName": "C2Domain"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "Computer"
+              }
+            ]
+          },
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "ClientIP"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/', variables('rule3Id'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "New Critical Severity IOC Ingested from ETIP",
+        "description": "Alerts when new critical-severity IOCs are ingested from IntelWatch ETIP.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where TimeGenerated >= ago(1h)\n| where ThreatSeverity =~ \"critical\"\n| where Active == true\n| project TimeGenerated, ExternalIndicatorId, IndicatorValue = coalesce(NetworkIP, DomainName, Url, FileHashValue, EmailSenderAddress), ThreatSeverity, ConfidenceScore, Tags, Description",
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "Execution"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/', variables('rule4Id'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Multiple ETIP IOC Matches on Same Host",
+        "description": "3+ distinct ETIP IOCs matched on the same host within 24 hours.",
+        "severity": "High",
+        "enabled": true,
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where Active == true\n| join kind=inner (\n    union\n    (CommonSecurityLog | where TimeGenerated >= ago(24h) | project Computer, MatchValue = DestinationIP, TimeGenerated),\n    (DnsEvents | where TimeGenerated >= ago(24h) | project Computer, MatchValue = Name, TimeGenerated),\n    (SecurityEvent | where TimeGenerated >= ago(24h) | project Computer, MatchValue = IpAddress, TimeGenerated)\n) on $left.NetworkIP == $right.MatchValue\n| summarize DistinctIOCs = dcount(ExternalIndicatorId), IOCValues = make_set(NetworkIP, 10), FirstSeen = min(TimeGenerated1), LastSeen = max(TimeGenerated1) by Computer\n| where DistinctIOCs >= 3",
+        "queryFrequency": "PT6H",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT12H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "LateralMovement",
+          "CommandAndControl"
+        ],
+        "entityMappings": [
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "Computer"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/', variables('rule5Id'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "ETIP Feed Sync Stale",
+        "description": "No new IOCs from IntelWatch ETIP for over 2 hours.",
+        "severity": "Low",
+        "enabled": true,
+        "query": "ETIP_Stats_CL\n| top 1 by TimeGenerated\n| where TimeGenerated < ago(2h)\n| extend StalenessHours = datetime_diff('hour', now(), TimeGenerated)\n| project TimeGenerated, StalenessHours, Status = \"Feed sync is stale\"",
+        "queryFrequency": "PT2H",
+        "queryPeriod": "PT4H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT6H",
+        "suppressionEnabled": false,
+        "tactics": []
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[concat(parameters('workspace'), '/etip-hunting-high-risk-undetected')]",
+      "properties": {
+        "category": "Hunting Queries",
+        "displayName": "High-Risk ETIP IOCs Without Detections",
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where ConfidenceScore >= 85 and Active == true\n| where TimeGenerated >= ago(30d)\n| join kind=leftanti (SecurityAlert | where TimeGenerated >= ago(30d) | mv-expand todynamic(Entities) | extend AlertIndicator = tostring(Entities.Address)) on $left.NetworkIP == $right.AlertIndicator\n| project ExternalIndicatorId, IndicatorType = case(isnotempty(NetworkIP), \"IP\", isnotempty(DomainName), \"Domain\", isnotempty(Url), \"URL\", isnotempty(FileHashValue), \"Hash\", \"Other\"), IndicatorValue = coalesce(NetworkIP, DomainName, Url, FileHashValue, EmailSenderAddress), ConfidenceScore, ThreatSeverity, Tags\n| order by ConfidenceScore desc",
+        "tags": [
+          {
+            "name": "tactics",
+            "value": "Discovery"
+          },
+          {
+            "name": "techniques",
+            "value": "T1046"
+          }
+        ],
+        "version": 2
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[concat(parameters('workspace'), '/etip-hunting-threat-actor-activity')]",
+      "properties": {
+        "category": "Hunting Queries",
+        "displayName": "Network Activity Matching ETIP Threat Actor IOCs",
+        "query": "let threatActorIOCs = ThreatIntelligenceIndicator | where SourceSystem == \"IntelWatch ETIP\" and Active == true | where Description has \"threatActors\" | project NetworkIP, DomainName, ExternalIndicatorId, ConfidenceScore;\nunion (threatActorIOCs | where isnotempty(NetworkIP) | join kind=inner (CommonSecurityLog | where TimeGenerated >= ago(7d) | project TimeGenerated, DestinationIP, Computer, DeviceAction) on $left.NetworkIP == $right.DestinationIP | project TimeGenerated, MatchType=\"IP\", MatchedValue=NetworkIP, Computer, ConfidenceScore), (threatActorIOCs | where isnotempty(DomainName) | join kind=inner (DnsEvents | where TimeGenerated >= ago(7d) | project TimeGenerated, Name, Computer) on $left.DomainName == $right.Name | project TimeGenerated, MatchType=\"Domain\", MatchedValue=DomainName, Computer, ConfidenceScore) | order by TimeGenerated desc",
+        "tags": [
+          {
+            "name": "tactics",
+            "value": "CommandAndControl,InitialAccess"
+          },
+          {
+            "name": "techniques",
+            "value": "T1071,T1566"
+          }
+        ],
+        "version": 2
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[concat(parameters('workspace'), '/etip-hunting-new-malware-family')]",
+      "properties": {
+        "category": "Hunting Queries",
+        "displayName": "Endpoints Communicating with New Malware Family IOCs",
+        "query": "let recentMalwareIOCs = ThreatIntelligenceIndicator | where SourceSystem == \"IntelWatch ETIP\" | where TimeGenerated >= ago(7d) and Active == true | where Description has \"malwareFamilies\" | project NetworkIP, DomainName, ExternalIndicatorId, ConfidenceScore;\nunion (recentMalwareIOCs | where isnotempty(NetworkIP) | join kind=inner (CommonSecurityLog | where TimeGenerated >= ago(7d) | project TimeGenerated, DestinationIP, Computer, DeviceProduct) on $left.NetworkIP == $right.DestinationIP | project TimeGenerated, IOCType=\"IP\", IOCValue=NetworkIP, Computer, DeviceProduct, ConfidenceScore), (recentMalwareIOCs | where isnotempty(DomainName) | join kind=inner (DnsEvents | where TimeGenerated >= ago(7d) | project TimeGenerated, Name, Computer) on $left.DomainName == $right.Name | project TimeGenerated, IOCType=\"Domain\", IOCValue=DomainName, Computer, DeviceProduct=\"DNS\", ConfidenceScore) | order by ConfidenceScore desc",
+        "tags": [
+          {
+            "name": "tactics",
+            "value": "Execution,CommandAndControl"
+          },
+          {
+            "name": "techniques",
+            "value": "T1204,T1071"
+          }
+        ],
+        "version": 2
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[concat(parameters('workspace'), '/etip-hunting-lateral-movement')]",
+      "properties": {
+        "category": "Hunting Queries",
+        "displayName": "Internal Hosts Matching ETIP Lateral Movement Indicators",
+        "query": "let lateralIOCs = ThreatIntelligenceIndicator | where SourceSystem == \"IntelWatch ETIP\" and Active == true | where KillChainActions has \"T1021\" or KillChainActions has \"T1570\" or KillChainActions has \"T1563\" | project NetworkIP, ExternalIndicatorId, ConfidenceScore, KillChainActions;\nSecurityEvent | where TimeGenerated >= ago(14d) | where EventID in (4624, 4625, 4648) and LogonType in (3, 10) | join kind=inner (lateralIOCs | where isnotempty(NetworkIP)) on $left.IpAddress == $right.NetworkIP | summarize LoginAttempts=count(), DistinctTargets=dcount(Computer), FirstSeen=min(TimeGenerated), LastSeen=max(TimeGenerated) by IpAddress, Account, KillChainActions | where LoginAttempts >= 2 | order by LoginAttempts desc",
+        "tags": [
+          {
+            "name": "tactics",
+            "value": "LateralMovement"
+          },
+          {
+            "name": "techniques",
+            "value": "T1021,T1570,T1563"
+          }
+        ],
+        "version": 2
+      }
+    }
+  ]
+}

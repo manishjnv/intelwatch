@@ -1,0 +1,40 @@
+id: d4e5f6a7-b8c9-0123-defa-234567890123
+name: "Internal Hosts Matching ETIP Lateral Movement Indicators"
+description: |
+  Hunts for internal network activity matching IOCs tagged with MITRE ATT&CK lateral
+  movement techniques (T1021, T1570, T1563) from IntelWatch ETIP. Focuses on RDP,
+  SMB, and remote service logon events.
+requiredDataConnectors:
+  - connectorId: ThreatIntelligence
+    dataTypes:
+      - ThreatIntelligenceIndicator
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+tactics:
+  - LateralMovement
+relevantTechniques:
+  - T1021
+  - T1570
+  - T1563
+query: |
+  let lateralIOCs = ThreatIntelligenceIndicator
+  | where SourceSystem == "IntelWatch ETIP"
+  | where Active == true
+  | where KillChainActions has "T1021" or KillChainActions has "T1570" or KillChainActions has "T1563"
+  | project NetworkIP, DomainName, ExternalIndicatorId, ConfidenceScore, KillChainActions, Tags;
+  SecurityEvent
+  | where TimeGenerated >= ago(14d)
+  | where EventID in (4624, 4625, 4648)
+  | where LogonType in (3, 10)
+  | extend MatchIP = IpAddress
+  | join kind=inner (
+      lateralIOCs | where isnotempty(NetworkIP)
+  ) on $left.MatchIP == $right.NetworkIP
+  | summarize LoginAttempts = count(),
+      DistinctTargets = dcount(Computer),
+      FirstSeen = min(TimeGenerated),
+      LastSeen = max(TimeGenerated)
+      by MatchIP, Account, KillChainActions
+  | where LoginAttempts >= 2
+  | order by LoginAttempts desc

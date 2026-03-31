@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.SecurityInsights/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "b2f3a4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "ETIP C2 Domain Communication Detected",
+        "description": "Detects DNS queries to domains tagged as C2 infrastructure in IntelWatch ETIP threat intelligence.",
+        "severity": "High",
+        "enabled": true,
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where Active == true\n| where Tags has \"c2\"\n| where isnotempty(DomainName)\n| join kind=inner (\n    DnsEvents\n    | where TimeGenerated >= ago(15m)\n) on $left.DomainName == $right.Name\n| project TimeGenerated, C2Domain = DomainName, ClientIP, Computer, ConfidenceScore, Tags",
+        "queryFrequency": "PT15M",
+        "queryPeriod": "PT15M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "entityMappings": [
+          {
+            "entityType": "DNS",
+            "fieldMappings": [
+              {
+                "identifier": "DomainName",
+                "columnName": "C2Domain"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "Computer"
+              }
+            ]
+          },
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "ClientIP"
+              }
+            ]
+          }
+        ],
+        "alertDetailsOverride": null
+      }
+    }
+  ]
+}

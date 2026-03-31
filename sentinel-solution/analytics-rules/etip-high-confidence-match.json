@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.SecurityInsights/alertRules",
+      "apiVersion": "2023-02-01",
+      "name": "a1e2f3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "ETIP High-Confidence IOC Match",
+        "description": "Detects when a high-confidence (\u226580) IOC from IntelWatch ETIP matches network, DNS, or security event logs.",
+        "severity": "High",
+        "enabled": true,
+        "query": "ThreatIntelligenceIndicator\n| where SourceSystem == \"IntelWatch ETIP\"\n| where ConfidenceScore >= 80\n| where Active == true\n| join kind=inner (\n    union\n    (CommonSecurityLog | where TimeGenerated >= ago(1h) | extend MatchValue = DestinationIP),\n    (DnsEvents | where TimeGenerated >= ago(1h) | extend MatchValue = Name),\n    (SecurityEvent | where TimeGenerated >= ago(1h) | extend MatchValue = IpAddress)\n) on $left.NetworkIP == $right.MatchValue\n| project TimeGenerated, IndicatorValue = NetworkIP, ConfidenceScore, ThreatSeverity, Computer, MatchValue, SourceSystem",
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact",
+          "CommandAndControl"
+        ],
+        "techniques": [],
+        "entityMappings": [
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IndicatorValue"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "Computer"
+              }
+            ]
+          }
+        ],
+        "alertDetailsOverride": null
+      }
+    }
+  ]
+}
