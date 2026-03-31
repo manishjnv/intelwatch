@@ -2,25 +2,26 @@
  * @module components/command-center/SystemTab
  * @description System tab for Command Center — super-admin only.
  * Absorbs AdminOpsPage + PipelineMonitorPage content.
- * Sub-tabs: System Health, Pipeline Monitor, Maintenance, Backups.
+ * Sub-tabs: System Health, Pipeline (merged Monitor+Health), Feed Config, Emergency Access, Maintenance, Backups.
  */
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  useSystemHealth, useQueueHealth, useQueueAlerts,
+  useSystemHealth,
   useMaintenanceWindows, useActivateMaintenance, useDeactivateMaintenance,
-  useCreateMaintenanceWindow, useDlqStatus, useRetryDlqQueue, useRetryAllDlq,
-  type ServiceHealth, type QueueDepth, type DlqQueueEntry,
+  useCreateMaintenanceWindow,
+  type ServiceHealth,
 } from '@/hooks/use-phase6-data'
 import type { useGlobalAiConfig } from '@/hooks/use-global-ai-config'
 import type { useCommandCenter } from '@/hooks/use-command-center'
 import {
   RefreshCw, CheckCircle2, AlertTriangle, XCircle, Play, Square,
-  ArrowRight, RotateCcw, Database, Shield, Calendar,
-  Download, Upload, Trash2,
+  Shield, Calendar,
 } from 'lucide-react'
 import { BreakGlassPanel } from './BreakGlassPanel'
 import { FeedConfigPanel } from './FeedConfigPanel'
+import { PipelinePanel } from './PipelinePanel'
+import { BackupsPanel } from './BackupsPanel'
 
 // ─── Sub-tab Switcher ───────────────────────────────────────────
 
@@ -28,7 +29,7 @@ type SubTab = 'health' | 'pipeline' | 'feeds' | 'emergency' | 'maintenance' | 'b
 
 const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: 'health', label: 'System Health' },
-  { id: 'pipeline', label: 'Pipeline Monitor' },
+  { id: 'pipeline', label: 'Pipeline' },
   { id: 'feeds', label: 'Feed Config' },
   { id: 'emergency', label: 'Emergency Access' },
   { id: 'maintenance', label: 'Maintenance' },
@@ -82,7 +83,7 @@ export function SystemTab({ aiConfig, providerKeys }: SystemTabProps = {}) {
       </div>
 
       {subTab === 'health' && <HealthSubTab />}
-      {subTab === 'pipeline' && <PipelineSubTab />}
+      {subTab === 'pipeline' && <PipelinePanel />}
       {subTab === 'feeds' && aiConfig && providerKeys && (
         <FeedConfigPanel aiConfig={aiConfig} providerKeys={providerKeys} />
       )}
@@ -93,7 +94,7 @@ export function SystemTab({ aiConfig, providerKeys }: SystemTabProps = {}) {
       )}
       {subTab === 'emergency' && <BreakGlassPanel />}
       {subTab === 'maintenance' && <MaintenanceSubTab />}
-      {subTab === 'backups' && <BackupsSubTab />}
+      {subTab === 'backups' && <BackupsPanel />}
     </div>
   )
 }
@@ -202,139 +203,6 @@ function ResourceBar({ label, value, color }: { label: string; value: number | u
       <div className="h-2 bg-bg-base rounded-full overflow-hidden">
         <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${Math.min(v, 100)}%` }} />
       </div>
-    </div>
-  )
-}
-
-// ─── Pipeline Monitor Sub-tab ───────────────────────────────────
-
-const PIPELINE_STAGES = ['ingestion', 'normalization', 'enrichment', 'indexing'] as const
-
-function PipelineSubTab() {
-  const { data: queueData, refetch, isFetching } = useQueueHealth()
-  const { data: alertsData } = useQueueAlerts()
-  const { data: dlqData } = useDlqStatus()
-  const retryQueue = useRetryDlqQueue()
-  const retryAll = useRetryAllDlq()
-
-  const queues: QueueDepth[] = queueData?.queues ?? []
-  const alerts = alertsData?.alerts ?? []
-  const dlqQueues: DlqQueueEntry[] = dlqData?.queues?.filter((q: DlqQueueEntry) => q.failed > 0) ?? []
-
-  // Map queues to pipeline stages
-  const stageStatus = (stage: string) => {
-    const related = queues.filter(q => q.name.includes(stage.slice(0, 5)))
-    const hasFailures = related.some(q => q.failed > 0)
-    const hasWaiting = related.some(q => q.waiting > 10)
-    if (hasFailures) return 'error'
-    if (hasWaiting) return 'busy'
-    return 'healthy'
-  }
-
-  return (
-    <div className="space-y-4" data-testid="pipeline-subtab">
-      {/* Pipeline flow diagram */}
-      <div className="overflow-x-auto">
-        <div className="flex items-center gap-2 min-w-[500px] p-3 bg-bg-elevated rounded-lg border border-border" data-testid="pipeline-flow">
-          {PIPELINE_STAGES.map((stage, i) => {
-            const status = stageStatus(stage)
-            const dotColor = status === 'healthy' ? 'bg-sev-low' : status === 'busy' ? 'bg-amber-400' : 'bg-sev-critical'
-            return (
-              <div key={stage} className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-2 bg-bg-base rounded-md border border-border">
-                  <span className={cn('w-2 h-2 rounded-full', dotColor)} />
-                  <span className="text-xs font-medium text-text-primary capitalize">{stage}</span>
-                </div>
-                {i < PIPELINE_STAGES.length - 1 && <ArrowRight className="w-4 h-4 text-text-muted flex-shrink-0" />}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Active alerts banner */}
-      {alerts.length > 0 && (
-        <div className="p-2.5 bg-sev-critical/10 border border-sev-critical/30 rounded-lg" data-testid="queue-alerts">
-          <p className="text-xs font-medium text-sev-critical flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            {alerts.length} queue alert{alerts.length > 1 ? 's' : ''} active
-          </p>
-        </div>
-      )}
-
-      {/* Queue stats table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs" data-testid="queue-table">
-          <thead>
-            <tr className="border-b border-border text-text-muted">
-              <th className="text-left py-2 px-2 font-medium">Queue</th>
-              <th className="text-right py-2 px-2 font-medium">Waiting</th>
-              <th className="text-right py-2 px-2 font-medium">Active</th>
-              <th className="text-right py-2 px-2 font-medium">Completed</th>
-              <th className="text-right py-2 px-2 font-medium">Failed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {queues.map(q => {
-              const isStuck = q.waiting > 10
-              return (
-                <tr key={q.name} className={cn('border-b border-border/50', isStuck && 'bg-amber-400/5')}>
-                  <td className="py-1.5 px-2 font-medium text-text-primary">
-                    {q.name.replace('etip-', '')}
-                    {isStuck && <span className="ml-1 text-[10px] text-amber-400">(stuck)</span>}
-                  </td>
-                  <td className={cn('text-right py-1.5 px-2', q.waiting > 0 ? 'text-amber-400' : 'text-text-muted')}>{q.waiting}</td>
-                  <td className={cn('text-right py-1.5 px-2', q.active > 0 ? 'text-accent' : 'text-text-muted')}>{q.active}</td>
-                  <td className="text-right py-1.5 px-2 text-text-muted">{q.completed}</td>
-                  <td className={cn('text-right py-1.5 px-2', q.failed > 0 ? 'text-sev-critical' : 'text-text-muted')}>{q.failed}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Refresh + last updated */}
-      <div className="flex items-center justify-between text-xs text-text-muted">
-        <span>Updated: {queueData?.updatedAt ? new Date(queueData.updatedAt).toLocaleTimeString() : '—'}</span>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50"
-        >
-          <RefreshCw className={cn('w-3 h-3', isFetching && 'animate-spin')} /> Refresh
-        </button>
-      </div>
-
-      {/* DLQ failed items */}
-      {dlqQueues.length > 0 && (
-        <div className="space-y-2" data-testid="dlq-section">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
-              <Trash2 className="w-3.5 h-3.5 text-sev-critical" /> Failed Items (DLQ)
-            </h3>
-            <button
-              onClick={() => retryAll.mutate()}
-              disabled={retryAll.isPending}
-              className="text-[10px] text-accent hover:text-accent-hover disabled:opacity-50 flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" /> Retry All
-            </button>
-          </div>
-          {dlqQueues.map(q => (
-            <div key={q.name} className="flex items-center justify-between p-2 bg-bg-elevated rounded border border-border">
-              <span className="text-xs text-text-primary">{q.name.replace('etip-', '')} — {q.failed} failed</span>
-              <button
-                onClick={() => retryQueue.mutate(q.name)}
-                disabled={retryQueue.isPending}
-                className="text-[10px] text-accent hover:text-accent-hover disabled:opacity-50"
-              >
-                Retry
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -486,120 +354,3 @@ function CreateMaintenanceForm({ onSubmit, onCancel }: {
   )
 }
 
-// ─── Backups Sub-tab ────────────────────────────────────────────
-
-// Demo backup data
-const DEMO_BACKUPS = [
-  { id: 'b1', date: '2026-03-28T02:00:00Z', type: 'auto' as const, sizeMb: 245, status: 'completed' as const },
-  { id: 'b2', date: '2026-03-27T02:00:00Z', type: 'auto' as const, sizeMb: 238, status: 'completed' as const },
-  { id: 'b3', date: '2026-03-26T14:30:00Z', type: 'manual' as const, sizeMb: 240, status: 'completed' as const },
-  { id: 'b4', date: '2026-03-26T02:00:00Z', type: 'auto' as const, sizeMb: 235, status: 'completed' as const },
-  { id: 'b5', date: '2026-03-25T02:00:00Z', type: 'auto' as const, sizeMb: 230, status: 'completed' as const },
-]
-
-function BackupsSubTab() {
-  const [backups] = useState(DEMO_BACKUPS)
-  const [triggerPending, setTriggerPending] = useState(false)
-  const [confirmRestore, setConfirmRestore] = useState<string | null>(null)
-
-  const handleTriggerBackup = () => {
-    setTriggerPending(true)
-    setTimeout(() => setTriggerPending(false), 2000)
-  }
-
-  return (
-    <div className="space-y-4" data-testid="backups-subtab">
-      {/* Backup schedule info */}
-      <div className="flex items-center justify-between p-3 bg-bg-elevated rounded-lg border border-border">
-        <div>
-          <p className="text-xs font-medium text-text-primary">Auto Backup Schedule</p>
-          <p className="text-[10px] text-text-muted">Daily at 02:00 UTC · Last: {new Date(backups[0]?.date ?? '').toLocaleString()}</p>
-        </div>
-        <button
-          onClick={handleTriggerBackup}
-          disabled={triggerPending}
-          className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-md hover:bg-accent/20 disabled:opacity-50 flex items-center gap-1"
-          data-testid="trigger-backup-btn"
-        >
-          <Database className="w-3 h-3" /> {triggerPending ? 'Creating...' : 'Backup Now'}
-        </button>
-      </div>
-
-      {/* Backup table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs" data-testid="backup-table">
-          <thead>
-            <tr className="border-b border-border text-text-muted">
-              <th className="text-left py-2 px-2 font-medium">Date</th>
-              <th className="text-left py-2 px-2 font-medium">Type</th>
-              <th className="text-right py-2 px-2 font-medium">Size</th>
-              <th className="text-left py-2 px-2 font-medium">Status</th>
-              <th className="text-right py-2 px-2 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {backups.map(b => (
-              <tr key={b.id} className="border-b border-border/50">
-                <td className="py-1.5 px-2 text-text-primary">{new Date(b.date).toLocaleString()}</td>
-                <td className="py-1.5 px-2">
-                  <span className={cn(
-                    'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                    b.type === 'auto' ? 'bg-accent/10 text-accent' : 'bg-purple-400/10 text-purple-400',
-                  )}>
-                    {b.type}
-                  </span>
-                </td>
-                <td className="text-right py-1.5 px-2 text-text-muted">{b.sizeMb} MB</td>
-                <td className="py-1.5 px-2">
-                  <span className="text-sev-low flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> {b.status}
-                  </span>
-                </td>
-                <td className="text-right py-1.5 px-2">
-                  <div className="flex items-center justify-end gap-2">
-                    <button className="text-text-muted hover:text-accent" title="Download">
-                      <Download className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => setConfirmRestore(b.id)}
-                      className="text-text-muted hover:text-amber-400"
-                      title="Restore"
-                    >
-                      <Upload className="w-3 h-3" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Restore confirmation modal */}
-      {confirmRestore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="restore-confirm-modal">
-          <div className="bg-bg-primary border border-border rounded-lg p-4 max-w-sm w-full mx-4 space-y-3">
-            <h3 className="text-sm font-semibold text-text-primary">Confirm Restore</h3>
-            <p className="text-xs text-text-secondary">
-              This will restore the database to the selected backup point. Current data will be overwritten.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmRestore(null)}
-                className="px-3 py-1.5 text-xs text-text-muted hover:text-text-primary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setConfirmRestore(null)}
-                className="px-3 py-1.5 text-xs bg-sev-critical text-white rounded hover:bg-sev-critical/80"
-              >
-                Restore
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}

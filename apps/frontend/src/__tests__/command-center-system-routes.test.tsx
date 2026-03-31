@@ -76,6 +76,20 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useDlqStatus: () => mockDlqStatus,
   useRetryDlqQueue: () => ({ mutate: vi.fn(), isPending: false }),
   useRetryAllDlq: () => ({ mutate: vi.fn(), isPending: false }),
+  usePipelineHealth: () => ({
+    data: {
+      overall: 'healthy',
+      stages: [
+        { name: 'ingestion', status: 'healthy', latencyMs: 45, message: 'Processing 127 articles/min' },
+        { name: 'normalization', status: 'healthy', latencyMs: 12, message: 'All IOC types handled' },
+        { name: 'enrichment', status: 'healthy', latencyMs: 340, message: 'VT + AbuseIPDB active' },
+        { name: 'indexing', status: 'healthy', latencyMs: 8, message: 'IOC index up to date' },
+        { name: 'correlation', status: 'healthy', latencyMs: 28, message: 'All correlations active' },
+      ],
+      lastCheckedAt: new Date().toISOString(),
+    },
+    isLoading: false,
+  }),
 }))
 
 // ─── Helper ─────────────────────────────────────────────────────
@@ -89,11 +103,13 @@ function renderSystemTab() {
 // ═══════════════════════════════════════════════════════════════════
 
 describe('SystemTab', () => {
-  it('renders system tab with 4 sub-tabs', () => {
+  it('renders system tab with 6 sub-tabs', () => {
     renderSystemTab()
     expect(screen.getByTestId('system-tab')).toBeInTheDocument()
     expect(screen.getByTestId('subtab-health')).toBeInTheDocument()
     expect(screen.getByTestId('subtab-pipeline')).toBeInTheDocument()
+    expect(screen.getByTestId('subtab-feeds')).toBeInTheDocument()
+    expect(screen.getByTestId('subtab-emergency')).toBeInTheDocument()
     expect(screen.getByTestId('subtab-maintenance')).toBeInTheDocument()
     expect(screen.getByTestId('subtab-backups')).toBeInTheDocument()
   })
@@ -157,6 +173,26 @@ describe('SystemTab', () => {
     fireEvent.click(screen.getByTestId('subtab-pipeline'))
     // enrich-realtime has waiting=15 → should show "(stuck)"
     expect(screen.getByText('(stuck)')).toBeInTheDocument()
+  })
+
+  it('shows pipeline health banner with overall status', () => {
+    renderSystemTab()
+    fireEvent.click(screen.getByTestId('subtab-pipeline'))
+    const banner = screen.getByTestId('pipeline-health-banner')
+    expect(banner).toBeInTheDocument()
+    expect(banner.textContent).toContain('Pipeline healthy')
+  })
+
+  it('shows stage health cards with latency and messages', () => {
+    renderSystemTab()
+    fireEvent.click(screen.getByTestId('subtab-pipeline'))
+    const cards = screen.getByTestId('stage-health-cards')
+    expect(cards).toBeInTheDocument()
+    expect(cards.textContent).toContain('ingestion')
+    expect(cards.textContent).toContain('45ms')
+    expect(cards.textContent).toContain('Processing 127 articles/min')
+    expect(cards.textContent).toContain('enrichment')
+    expect(cards.textContent).toContain('340ms')
   })
 
   it('shows DLQ section when failed items exist', () => {
