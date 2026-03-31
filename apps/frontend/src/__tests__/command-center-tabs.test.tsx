@@ -265,19 +265,10 @@ describe('ClientsTab', () => {
     expect(screen.queryByTestId('error-contact-name')).not.toBeInTheDocument()
   })
 
-  it('has plan tier selector defaulting to Free', () => {
+  it('does not show plan selector — client picks plan via invite', () => {
     render(<ClientsTab data={makeMockCommandCenter()} />)
     fireEvent.click(screen.getByTestId('add-client-btn'))
-    const select = screen.getByTestId('select-plan') as HTMLSelectElement
-    expect(select.value).toBe('free')
-  })
-
-  it('renders all four plan options', () => {
-    render(<ClientsTab data={makeMockCommandCenter()} />)
-    fireEvent.click(screen.getByTestId('add-client-btn'))
-    const select = screen.getByTestId('select-plan') as HTMLSelectElement
-    const options = Array.from(select.options).map(o => o.value)
-    expect(options).toEqual(['free', 'starter', 'pro', 'enterprise'])
+    expect(screen.queryByTestId('select-plan')).not.toBeInTheDocument()
   })
 })
 

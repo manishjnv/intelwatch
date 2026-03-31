@@ -8,6 +8,8 @@ import {
   type CreateTenantDto,
 } from '../schemas/admin.js';
 import { validate } from '../utils/validate.js';
+import { sendInviteEmail, isEmailReady } from '../services/email-sender.js';
+import { getConfig } from '../config.js';
 
 export interface TenantRouteDeps {
   tenantStore: TenantStore;
@@ -32,12 +34,26 @@ export function tenantRoutes(deps: TenantRouteDeps) {
       },
     );
 
-    /** POST / — create a new tenant. */
+    /** POST / — create a new tenant and send invite email. */
     app.post(
       '/',
       async (req: FastifyRequest<{ Body: CreateTenantDto }>, reply: FastifyReply) => {
         const body = validate(CreateTenantSchema, req.body);
         const tenant = tenantStore.create(body);
+
+        // Send invite email (fire-and-forget — don't block response)
+        if (isEmailReady()) {
+          const config = getConfig();
+          sendInviteEmail({
+            to: tenant.ownerEmail,
+            orgName: tenant.name,
+            ownerName: tenant.ownerName,
+            inviteToken: tenant.inviteToken,
+            platformUrl: config.TI_PLATFORM_URL,
+            fromEmail: config.TI_FROM_EMAIL,
+          }).catch((err) => app.log.error({ err }, 'Failed to send invite email'));
+        }
+
         return reply.status(201).send({ data: tenant });
       },
     );

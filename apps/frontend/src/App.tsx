@@ -27,6 +27,7 @@ import { MfaChallengePage } from '@/pages/MfaChallengePage';
 import { MfaSetupRequiredPage } from '@/pages/MfaSetupRequiredPage';
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
 import { FeatureGate } from '@/components/FeatureGate';
+import { ClientOnboardingPage } from '@/pages/ClientOnboardingPage';
 
 
 // Lazy-loaded — D3 (~190KB) splits into its own chunk, only fetched on /graph navigation
@@ -65,6 +66,7 @@ export function App() {
         <Route path="/auth/mfa-challenge" element={<MfaChallengePage />} />
         <Route path="/auth/mfa-setup-required" element={<MfaSetupRequiredPage />} />
         <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/onboard/invite" element={<ClientOnboardingPage />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>

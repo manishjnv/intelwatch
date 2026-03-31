@@ -11,6 +11,7 @@ import { AlertRulesStore } from './services/alert-rules-store.js';
 import { ScheduledMaintenanceStore } from './services/scheduled-maintenance-store.js';
 import { TenantAnalyticsStore } from './services/tenant-analytics-store.js';
 import { AdminActivityStore } from './services/admin-activity-store.js';
+import { initEmailSender } from './services/email-sender.js';
 
 async function main(): Promise<void> {
   // 1. Config + Logger
@@ -18,6 +19,10 @@ async function main(): Promise<void> {
   const config = loadConfig(env);
   const logger = initLogger(config.TI_LOG_LEVEL);
   logger.info('Starting admin-service...');
+
+  // 1b. Email sender (optional — skipped if SMTP not configured)
+  initEmailSender(config);
+  if (config.TI_SMTP_USER) logger.info('SMTP email sender initialised');
 
   // 2. Auth secrets
   loadJwtConfig(env);
