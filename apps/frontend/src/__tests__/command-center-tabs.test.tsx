@@ -277,7 +277,7 @@ describe('ClientsTab', () => {
     fireEvent.click(screen.getByTestId('add-client-btn'))
     const select = screen.getByTestId('select-plan') as HTMLSelectElement
     const options = Array.from(select.options).map(o => o.value)
-    expect(options).toEqual(['free', 'starter', 'teams', 'enterprise'])
+    expect(options).toEqual(['free', 'starter', 'pro', 'enterprise'])
   })
 })
 
