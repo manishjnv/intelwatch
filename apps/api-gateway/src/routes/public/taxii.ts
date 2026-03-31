@@ -84,16 +84,12 @@ export async function publicTaxiiRoutes(app: FastifyInstance): Promise<void> {
     schema: {
       tags: ['TAXII 2.1'],
       summary: 'Get STIX 2.1 objects from a TAXII collection',
-      params: zodToJsonSchema(z.object({ id: z.string() }), { target: 'openApi3' }),
       querystring: zodToJsonSchema(TaxiiObjectsQuerySchema, { target: 'openApi3' }),
     },
     preHandler: [auth],
-  }, async (req: FastifyRequest<{
-    Params: { id: string };
-    Querystring: z.infer<typeof TaxiiObjectsQuerySchema>;
-  }>, reply: FastifyReply) => {
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
-    const { id: collectionId } = req.params;
+    const { id: collectionId } = req.params as { id: string };
     const query = TaxiiObjectsQuerySchema.parse(req.query);
 
     // Validate collection ID
@@ -147,11 +143,11 @@ export async function publicTaxiiRoutes(app: FastifyInstance): Promise<void> {
     const headers: Record<string, string> = {
       'Content-Type': STIX_CONTENT_TYPE,
     };
-    if (hasMore) {
-      headers['X-TAXII-Date-Added-First'] = pageRows[0]?.createdAt?.toISOString?.()
-        ?? new Date().toISOString();
-      headers['X-TAXII-Date-Added-Last'] = pageRows[pageRows.length - 1]?.createdAt?.toISOString?.()
-        ?? new Date().toISOString();
+    if (hasMore && pageRows.length > 0) {
+      const first = pageRows[0]!;
+      const last = pageRows[pageRows.length - 1]!;
+      headers['X-TAXII-Date-Added-First'] = new Date(first.createdAt).toISOString();
+      headers['X-TAXII-Date-Added-Last'] = new Date(last.createdAt).toISOString();
     }
 
     // Pagination: next offset
