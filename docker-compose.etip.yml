@@ -1025,11 +1025,8 @@ services:
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
-      TI_SMTP_HOST: ${TI_SMTP_HOST:-smtp.gmail.com}
-      TI_SMTP_PORT: ${TI_SMTP_PORT:-465}
-      TI_SMTP_USER: ${TI_SMTP_USER:-}
-      TI_SMTP_PASS: ${TI_SMTP_PASS:-}
-      TI_FROM_EMAIL: ${TI_FROM_EMAIL:-noreply@intelwatch.in}
+      TI_RESEND_API_KEY: ${TI_RESEND_API_KEY:-}
+      TI_FROM_EMAIL: ${TI_FROM_EMAIL:-IntelWatch ETIP <noreply@intelwatch.in>}
       TI_PLATFORM_URL: ${TI_PLATFORM_URL:-https://ti.intelwatch.in}
     ports:
       - "3022:3022"

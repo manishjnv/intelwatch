@@ -1,22 +1,19 @@
-import { createTransport, type Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import type { AdminConfig } from '../config.js';
 
-let transporter: Transporter | null = null;
+let resend: Resend | null = null;
+let fromEmail = 'IntelWatch ETIP <noreply@intelwatch.in>';
 
-/** Initialise SMTP transport. Call once at startup. */
+/** Initialise Resend client. Call once at startup. */
 export function initEmailSender(config: AdminConfig): void {
-  if (!config.TI_SMTP_USER || !config.TI_SMTP_PASS) return;
-  transporter = createTransport({
-    host: config.TI_SMTP_HOST,
-    port: config.TI_SMTP_PORT,
-    secure: config.TI_SMTP_PORT === 465,
-    auth: { user: config.TI_SMTP_USER, pass: config.TI_SMTP_PASS },
-  });
+  if (!config.TI_RESEND_API_KEY) return;
+  resend = new Resend(config.TI_RESEND_API_KEY);
+  fromEmail = config.TI_FROM_EMAIL;
 }
 
-/** Returns true if SMTP is configured and ready. */
+/** Returns true if Resend is configured and ready. */
 export function isEmailReady(): boolean {
-  return transporter !== null;
+  return resend !== null;
 }
 
 interface InviteEmailParams {
@@ -25,12 +22,11 @@ interface InviteEmailParams {
   ownerName: string;
   inviteToken: string;
   platformUrl: string;
-  fromEmail: string;
 }
 
-/** Send a client onboarding invite email. */
+/** Send a client onboarding invite email via Resend. */
 export async function sendInviteEmail(params: InviteEmailParams): Promise<void> {
-  if (!transporter) return;
+  if (!resend) return;
 
   const inviteLink = `${params.platformUrl}/onboard/invite?token=${params.inviteToken}&email=${encodeURIComponent(params.to)}`;
 
@@ -43,7 +39,7 @@ export async function sendInviteEmail(params: InviteEmailParams): Promise<void> 
     <!-- Header -->
     <div style="padding:24px 32px;background:linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%);">
       <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">
-        🛡️ IntelWatch ETIP
+        IntelWatch ETIP
       </h1>
       <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">
         Enterprise Threat Intelligence Platform
@@ -65,7 +61,7 @@ export async function sendInviteEmail(params: InviteEmailParams): Promise<void> 
       <div style="text-align:center;margin:24px 0;">
         <a href="${inviteLink}"
            style="display:inline-block;padding:12px 32px;background:#0ea5e9;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
-          Set Up Your Account →
+          Set Up Your Account
         </a>
       </div>
 
@@ -78,15 +74,15 @@ export async function sendInviteEmail(params: InviteEmailParams): Promise<void> 
     <!-- Footer -->
     <div style="padding:16px 32px;border-top:1px solid #1e293b;text-align:center;">
       <p style="color:#475569;font-size:11px;margin:0;">
-        © ${new Date().getFullYear()} IntelWatch · ti.intelwatch.in
+        &copy; ${new Date().getFullYear()} IntelWatch &middot; ti.intelwatch.in
       </p>
     </div>
   </div>
 </body>
 </html>`;
 
-  await transporter.sendMail({
-    from: `"IntelWatch ETIP" <${params.fromEmail}>`,
+  await resend.emails.send({
+    from: fromEmail,
     to: params.to,
     subject: `You're invited to ${params.orgName} on IntelWatch ETIP`,
     html,

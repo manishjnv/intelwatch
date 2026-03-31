@@ -20,9 +20,9 @@ async function main(): Promise<void> {
   const logger = initLogger(config.TI_LOG_LEVEL);
   logger.info('Starting admin-service...');
 
-  // 1b. Email sender (optional — skipped if SMTP not configured)
+  // 1b. Email sender (optional — skipped if Resend key not set)
   initEmailSender(config);
-  if (config.TI_SMTP_USER) logger.info('SMTP email sender initialised');
+  if (config.TI_RESEND_API_KEY) logger.info('Resend email sender initialised');
 
   // 2. Auth secrets
   loadJwtConfig(env);

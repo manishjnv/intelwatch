@@ -50,7 +50,6 @@ export function tenantRoutes(deps: TenantRouteDeps) {
             ownerName: tenant.ownerName,
             inviteToken: tenant.inviteToken,
             platformUrl: config.TI_PLATFORM_URL,
-            fromEmail: config.TI_FROM_EMAIL,
           }).catch((err) => app.log.error({ err }, 'Failed to send invite email'));
         }
 

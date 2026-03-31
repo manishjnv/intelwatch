@@ -12,11 +12,8 @@ const ConfigSchema = z.object({
   TI_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
   TI_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(200),
   TI_LOG_LEVEL: z.string().default('info'),
-  TI_SMTP_HOST: z.string().default('smtp.gmail.com'),
-  TI_SMTP_PORT: z.coerce.number().int().default(465),
-  TI_SMTP_USER: z.string().default(''),
-  TI_SMTP_PASS: z.string().default(''),
-  TI_FROM_EMAIL: z.string().default('noreply@intelwatch.in'),
+  TI_RESEND_API_KEY: z.string().default(''),
+  TI_FROM_EMAIL: z.string().default('IntelWatch ETIP <noreply@intelwatch.in>'),
   TI_PLATFORM_URL: z.string().default('https://ti.intelwatch.in'),
 });
 
