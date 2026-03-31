@@ -18,6 +18,8 @@ interface RegisterInput {
   displayName: string;
   tenantName: string;
   tenantSlug: string;
+  plan?: string;
+  inviteToken?: string;
 }
 
 interface AuthResponse {
