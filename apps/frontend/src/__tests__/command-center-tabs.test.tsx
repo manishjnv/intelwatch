@@ -216,6 +216,69 @@ describe('ClientsTab', () => {
     fireEvent.click(screen.getByTestId('close-drawer'))
     expect(screen.queryByTestId('tenant-detail-drawer')).not.toBeInTheDocument()
   })
+
+  it('renders Add Client button', () => {
+    render(<ClientsTab data={makeMockCommandCenter()} />)
+    expect(screen.getByTestId('add-client-btn')).toBeInTheDocument()
+    expect(screen.getByText('Add Client')).toBeInTheDocument()
+  })
+
+  it('opens Add Client modal on button click', () => {
+    render(<ClientsTab data={makeMockCommandCenter()} />)
+    fireEvent.click(screen.getByTestId('add-client-btn'))
+    expect(screen.getByTestId('add-client-modal')).toBeInTheDocument()
+  })
+
+  it('closes Add Client modal on close button', () => {
+    render(<ClientsTab data={makeMockCommandCenter()} />)
+    fireEvent.click(screen.getByTestId('add-client-btn'))
+    expect(screen.getByTestId('add-client-modal')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('close-add-client'))
+    expect(screen.queryByTestId('add-client-modal')).not.toBeInTheDocument()
+  })
+
+  it('closes Add Client modal on cancel button', () => {
+    render(<ClientsTab data={makeMockCommandCenter()} />)
+    fireEvent.click(screen.getByTestId('add-client-btn'))
+    fireEvent.click(screen.getByTestId('cancel-add-client'))
+    expect(screen.queryByTestId('add-client-modal')).not.toBeInTheDocument()
+  })
+
+  it('shows validation errors for empty required fields', () => {
+    render(<ClientsTab data={makeMockCommandCenter()} />)
+    fireEvent.click(screen.getByTestId('add-client-btn'))
+    fireEvent.click(screen.getByTestId('submit-add-client'))
+    expect(screen.getByTestId('error-org-name')).toBeInTheDocument()
+    expect(screen.getByTestId('error-contact-name')).toBeInTheDocument()
+    expect(screen.getByTestId('error-contact-email')).toBeInTheDocument()
+  })
+
+  it('shows validation error for invalid email', () => {
+    render(<ClientsTab data={makeMockCommandCenter()} />)
+    fireEvent.click(screen.getByTestId('add-client-btn'))
+    fireEvent.change(screen.getByTestId('input-org-name'), { target: { value: 'Test Org' } })
+    fireEvent.change(screen.getByTestId('input-contact-name'), { target: { value: 'Jane Doe' } })
+    fireEvent.change(screen.getByTestId('input-contact-email'), { target: { value: 'not-an-email' } })
+    fireEvent.click(screen.getByTestId('submit-add-client'))
+    expect(screen.getByTestId('error-contact-email')).toHaveTextContent('valid email')
+    expect(screen.queryByTestId('error-org-name')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('error-contact-name')).not.toBeInTheDocument()
+  })
+
+  it('has plan tier selector defaulting to Free', () => {
+    render(<ClientsTab data={makeMockCommandCenter()} />)
+    fireEvent.click(screen.getByTestId('add-client-btn'))
+    const select = screen.getByTestId('select-plan') as HTMLSelectElement
+    expect(select.value).toBe('free')
+  })
+
+  it('renders all four plan options', () => {
+    render(<ClientsTab data={makeMockCommandCenter()} />)
+    fireEvent.click(screen.getByTestId('add-client-btn'))
+    const select = screen.getByTestId('select-plan') as HTMLSelectElement
+    const options = Array.from(select.options).map(o => o.value)
+    expect(options).toEqual(['free', 'starter', 'teams', 'enterprise'])
+  })
 })
 
 // ─── QueueTab Tests ─────────────────────────────────────────────

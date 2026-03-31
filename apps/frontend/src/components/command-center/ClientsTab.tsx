@@ -9,11 +9,12 @@ import type { useCommandCenter, TenantListItem } from '@/hooks/use-command-cente
 import { DataTable, type Column } from '@/components/data/DataTable'
 import {
   DollarSign, Users, Building2, AlertTriangle,
-  Search, X, ChevronRight,
+  Search, X, ChevronRight, UserPlus,
 } from 'lucide-react'
 import { TenantOverridePanel } from './TenantOverridePanel'
 import { OffboardingPanel } from './OffboardingPanel'
 import { AdminSsoView } from './SsoConfigPanel'
+import { AddClientModal } from './AddClientModal'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -196,6 +197,7 @@ export function ClientsTab({ data }: ClientsTabProps) {
   const [planFilter, setPlanFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedTenant, setSelectedTenant] = useState<TenantListItem | null>(null)
+  const [showAddClient, setShowAddClient] = useState(false)
 
   const filteredTenants = useMemo(() => {
     return data.tenantList.filter(t => {
@@ -283,7 +285,7 @@ export function ClientsTab({ data }: ClientsTabProps) {
         />
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter Bar + Add Client */}
       <div className="flex flex-wrap items-center gap-2" data-testid="filter-bar">
         <div className="relative flex-1 min-w-[200px] max-w-[300px]">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
@@ -319,6 +321,15 @@ export function ClientsTab({ data }: ClientsTabProps) {
           <option value="over_limit">Over Limit</option>
           <option value="suspended">Suspended</option>
         </select>
+        <div className="ml-auto">
+          <button
+            onClick={() => setShowAddClient(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-accent text-bg-primary hover:bg-accent/90"
+            data-testid="add-client-btn"
+          >
+            <UserPlus className="w-3.5 h-3.5" /> Add Client
+          </button>
+        </div>
       </div>
 
       {/* Tenant Table */}
@@ -346,6 +357,9 @@ export function ClientsTab({ data }: ClientsTabProps) {
           />
         </>
       )}
+
+      {/* Add Client Modal */}
+      {showAddClient && <AddClientModal onClose={() => setShowAddClient(false)} />}
     </div>
   )
 }
