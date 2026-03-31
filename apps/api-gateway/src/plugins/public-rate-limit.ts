@@ -47,6 +47,18 @@ export async function registerPublicRateLimit(app: FastifyInstance): Promise<voi
       const user = (req as FastifyRequest & AuthenticatedRequest).user;
       return user?.tenantId ?? req.ip;
     },
+    // Industry-standard rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
+    addHeaders: {
+      'x-ratelimit-limit': true,
+      'x-ratelimit-remaining': true,
+      'x-ratelimit-reset': true,
+      'retry-after': true,
+    },
+    addHeadersOnExceeding: {
+      'x-ratelimit-limit': true,
+      'x-ratelimit-remaining': true,
+      'x-ratelimit-reset': true,
+    },
     errorResponseBuilder: (_req, context) => ({
       error: {
         code: 'RATE_LIMIT_EXCEEDED',

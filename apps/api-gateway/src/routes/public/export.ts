@@ -9,6 +9,7 @@ import { prisma } from '../../prisma.js';
 import { apiKeyAuth } from '../../plugins/api-key-auth.js';
 import { getUser } from '../../plugins/auth.js';
 import { toPublicIoc, IOC_PUBLIC_SELECT } from './dto.js';
+import { buildIocWhere } from './filters.js';
 import { iocsToStixBundle } from './stix-mapper.js';
 
 /** CSV header row. */
@@ -37,31 +38,7 @@ export async function publicExportRoutes(app: FastifyInstance): Promise<void> {
     const body = PublicIocExportBodySchema.parse(req.body);
     const filters = body.filters ?? {};
 
-    const where: Record<string, unknown> = {
-      tenantId: user.tenantId,
-      tlp: { not: 'red' },
-      archivedAt: null,
-    };
-
-    if (filters.iocType) where.iocType = filters.iocType;
-    if (filters.severity) where.severity = filters.severity;
-    if (filters.lifecycle) where.lifecycle = filters.lifecycle;
-    if (filters.tlp) where.tlp = filters.tlp;
-    if (filters.minConfidence !== undefined || filters.maxConfidence !== undefined) {
-      where.confidence = {
-        ...(filters.minConfidence !== undefined && { gte: filters.minConfidence }),
-        ...(filters.maxConfidence !== undefined && { lte: filters.maxConfidence }),
-      };
-    }
-    if (filters.tags) {
-      where.tags = { hasSome: filters.tags.split(',').map((t: string) => t.trim()) };
-    }
-    if (filters.firstSeenFrom || filters.firstSeenTo) {
-      where.firstSeen = {
-        ...(filters.firstSeenFrom && { gte: new Date(filters.firstSeenFrom) }),
-        ...(filters.firstSeenTo && { lte: new Date(filters.firstSeenTo) }),
-      };
-    }
+    const where = buildIocWhere(user.tenantId, filters);
 
     const rows = await prisma.ioc.findMany({
       where,

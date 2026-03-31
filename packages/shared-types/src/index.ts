@@ -316,6 +316,9 @@ export {
   type PublicWebhookDto,
   type WebhookDeliveryPayload,
   type PublicApiUsageDto,
+  BulkIocLookupBodySchema,
+  type BulkIocLookupBody,
+  type PublicIocStatsDto,
   PUBLIC_API_BURST_FALLBACK,
 } from './public-api.js';
 

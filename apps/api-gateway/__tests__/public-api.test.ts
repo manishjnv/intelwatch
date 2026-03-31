@@ -7,8 +7,14 @@ import {
   extractPaginationMeta,
 } from '../src/routes/public/cursor.js';
 import { toPublicIoc, toPublicFeed, toPublicArticle } from '../src/routes/public/dto.js';
+import { buildIocWhere } from '../src/routes/public/filters.js';
 import { iocsToStixBundle } from '../src/routes/public/stix-mapper.js';
 import type { PublicIocDto } from '@etip/shared-types';
+import {
+  WebhookCreateBodySchema,
+  WebhookUpdateBodySchema,
+  BulkIocLookupBodySchema,
+} from '@etip/shared-types';
 
 // ── Cursor Pagination Tests ─────────────────────────────────────────
 
@@ -294,5 +300,201 @@ describe('stix-mapper', () => {
     const bundle = iocsToStixBundle([]);
     expect(bundle.type).toBe('bundle');
     expect(bundle.objects).toHaveLength(1); // just the identity
+  });
+});
+
+// ── Shared Filter Builder Tests ────────────────────────────────────
+
+describe('buildIocWhere', () => {
+  const TENANT_ID = 'tenant-123';
+
+  it('always includes tenantId, TLP:RED exclusion, and archived exclusion', () => {
+    const where = buildIocWhere(TENANT_ID, {});
+    expect(where.tenantId).toBe(TENANT_ID);
+    expect(where.tlp).toEqual({ not: 'red' });
+    expect(where.archivedAt).toBeNull();
+  });
+
+  it('applies basic filters', () => {
+    const where = buildIocWhere(TENANT_ID, {
+      iocType: 'ip',
+      severity: 'high',
+      lifecycle: 'active',
+      tlp: 'amber',
+    });
+    expect(where.iocType).toBe('ip');
+    expect(where.severity).toBe('high');
+    expect(where.lifecycle).toBe('active');
+    expect(where.tlp).toBe('amber');
+  });
+
+  it('applies confidence range', () => {
+    const where = buildIocWhere(TENANT_ID, { minConfidence: 60, maxConfidence: 90 });
+    expect(where.confidence).toEqual({ gte: 60, lte: 90 });
+  });
+
+  it('splits comma-separated tags', () => {
+    const where = buildIocWhere(TENANT_ID, { tags: 'c2, cobalt-strike, phishing' });
+    expect(where.tags).toEqual({ hasSome: ['c2', 'cobalt-strike', 'phishing'] });
+  });
+
+  it('splits comma-separated threatActors', () => {
+    const where = buildIocWhere(TENANT_ID, { threatActors: 'APT28, APT29' });
+    expect(where.threatActors).toEqual({ hasSome: ['APT28', 'APT29'] });
+  });
+
+  it('splits comma-separated malwareFamilies', () => {
+    const where = buildIocWhere(TENANT_ID, { malwareFamilies: 'LockBit,BlackCat' });
+    expect(where.malwareFamilies).toEqual({ hasSome: ['LockBit', 'BlackCat'] });
+  });
+
+  it('applies date range filters', () => {
+    const where = buildIocWhere(TENANT_ID, {
+      firstSeenFrom: '2026-01-01T00:00:00Z',
+      lastSeenTo: '2026-03-31T23:59:59Z',
+    });
+    expect(where.firstSeen).toEqual({ gte: new Date('2026-01-01T00:00:00Z') });
+    expect(where.lastSeen).toEqual({ lte: new Date('2026-03-31T23:59:59Z') });
+  });
+
+  it('merges extra conditions (cursor, updatedSince)', () => {
+    const extra = { updatedAt: { gte: new Date('2026-03-30') } };
+    const where = buildIocWhere(TENANT_ID, { iocType: 'domain' }, extra);
+    expect(where.iocType).toBe('domain');
+    expect(where.updatedAt).toEqual({ gte: new Date('2026-03-30') });
+  });
+
+  it('ignores undefined optional filters', () => {
+    const where = buildIocWhere(TENANT_ID, {
+      iocType: undefined,
+      tags: undefined,
+      minConfidence: undefined,
+    });
+    expect(where).not.toHaveProperty('iocType');
+    expect(where).not.toHaveProperty('tags');
+    expect(where).not.toHaveProperty('confidence');
+  });
+});
+
+// ── Webhook SSRF Validation Tests ──────────────────────────────────
+
+describe('webhook URL validation', () => {
+  it('rejects HTTP URLs (requires HTTPS)', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'http://example.com/webhook',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts valid HTTPS URLs', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'https://example.com/webhook',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects localhost URLs', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'https://localhost/webhook',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects 127.x.x.x loopback', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'https://127.0.0.1/webhook',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects 10.x.x.x private range', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'https://10.0.0.1/webhook',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects 172.16-31.x.x private range', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'https://172.16.0.1/webhook',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects 192.168.x.x private range', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'https://192.168.1.1/webhook',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects link-local 169.254.x.x', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'https://169.254.169.254/latest/meta-data',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects IPv6 loopback', () => {
+    const result = WebhookCreateBodySchema.safeParse({
+      url: 'https://[::1]/webhook',
+      events: ['ioc.created'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('also validates on update schema', () => {
+    const result = WebhookUpdateBodySchema.safeParse({
+      url: 'http://internal.server/hook',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ── Bulk Lookup Schema Tests ───────────────────────────────────────
+
+describe('BulkIocLookupBodySchema', () => {
+  it('accepts valid bulk lookup request', () => {
+    const result = BulkIocLookupBodySchema.safeParse({
+      values: ['1.2.3.4', 'evil.com', 'abc123def456'],
+      iocType: 'ip',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts without iocType', () => {
+    const result = BulkIocLookupBodySchema.safeParse({
+      values: ['1.2.3.4'],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects empty values array', () => {
+    const result = BulkIocLookupBodySchema.safeParse({
+      values: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects more than 100 values', () => {
+    const result = BulkIocLookupBodySchema.safeParse({
+      values: Array.from({ length: 101 }, (_, i) => `value-${i}`),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty string values', () => {
+    const result = BulkIocLookupBodySchema.safeParse({
+      values: [''],
+    });
+    expect(result.success).toBe(false);
   });
 });

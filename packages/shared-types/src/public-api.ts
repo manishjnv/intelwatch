@@ -117,14 +117,38 @@ export const WEBHOOK_EVENTS = [
 export const WebhookEventSchema = z.enum(WEBHOOK_EVENTS);
 export type WebhookEvent = z.infer<typeof WebhookEventSchema>;
 
+/**
+ * Validate a webhook URL: must be HTTPS and must not resolve to private/loopback IPs (SSRF prevention).
+ */
+const PRIVATE_IP_PATTERNS = [
+  /^https?:\/\/localhost/i,
+  /^https?:\/\/127\./,
+  /^https?:\/\/10\./,
+  /^https?:\/\/172\.(1[6-9]|2\d|3[01])\./,
+  /^https?:\/\/192\.168\./,
+  /^https?:\/\/0\./,
+  /^https?:\/\/169\.254\./,              // link-local
+  /^https?:\/\/\[::1\]/,                 // IPv6 loopback
+  /^https?:\/\/\[fd[0-9a-f]{2}:/i,      // IPv6 ULA
+  /^https?:\/\/\[fe80:/i,               // IPv6 link-local
+];
+
+const safeWebhookUrl = z.string().url().max(2048).refine(
+  (url) => url.startsWith('https://'),
+  { message: 'Webhook URL must use HTTPS' },
+).refine(
+  (url) => !PRIVATE_IP_PATTERNS.some((re) => re.test(url)),
+  { message: 'Webhook URL must not point to private/internal networks' },
+);
+
 export const WebhookCreateBodySchema = z.object({
-  url: z.string().url().max(2048),
+  url: safeWebhookUrl,
   events: z.array(WebhookEventSchema).min(1),
 });
 export type WebhookCreateBody = z.infer<typeof WebhookCreateBodySchema>;
 
 export const WebhookUpdateBodySchema = z.object({
-  url: z.string().url().max(2048).optional(),
+  url: safeWebhookUrl.optional(),
   events: z.array(WebhookEventSchema).min(1).optional(),
   active: z.boolean().optional(),
 });
@@ -160,6 +184,23 @@ export interface PublicApiUsageDto {
     monthly: { limit: number; used: number; remaining: number };
   };
   webhooks: { limit: number; used: number };
+}
+
+// ── Bulk IOC Lookup ──────────────────────────────────────────────────
+export const BulkIocLookupBodySchema = z.object({
+  values: z.array(z.string().min(1).max(1000)).min(1).max(100),
+  iocType: z.string().optional(),
+});
+export type BulkIocLookupBody = z.infer<typeof BulkIocLookupBodySchema>;
+
+// ── IOC Stats Response ───────────────────────────────────────────────
+export interface PublicIocStatsDto {
+  total: number;
+  byType: Record<string, number>;
+  bySeverity: Record<string, number>;
+  byTlp: Record<string, number>;
+  byLifecycle: Record<string, number>;
+  lastUpdated: string | null;
 }
 
 /**
