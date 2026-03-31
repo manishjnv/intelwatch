@@ -12,20 +12,24 @@ import {
   useCreateMaintenanceWindow, useDlqStatus, useRetryDlqQueue, useRetryAllDlq,
   type ServiceHealth, type QueueDepth, type DlqQueueEntry,
 } from '@/hooks/use-phase6-data'
+import type { useGlobalAiConfig } from '@/hooks/use-global-ai-config'
+import type { useCommandCenter } from '@/hooks/use-command-center'
 import {
   RefreshCw, CheckCircle2, AlertTriangle, XCircle, Play, Square,
   ArrowRight, RotateCcw, Database, Shield, Calendar,
   Download, Upload, Trash2,
 } from 'lucide-react'
 import { BreakGlassPanel } from './BreakGlassPanel'
+import { FeedConfigPanel } from './FeedConfigPanel'
 
 // ─── Sub-tab Switcher ───────────────────────────────────────────
 
-type SubTab = 'health' | 'pipeline' | 'maintenance' | 'backups' | 'emergency'
+type SubTab = 'health' | 'pipeline' | 'feeds' | 'emergency' | 'maintenance' | 'backups'
 
 const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: 'health', label: 'System Health' },
   { id: 'pipeline', label: 'Pipeline Monitor' },
+  { id: 'feeds', label: 'Feed Config' },
   { id: 'emergency', label: 'Emergency Access' },
   { id: 'maintenance', label: 'Maintenance' },
   { id: 'backups', label: 'Backups' },
@@ -48,13 +52,18 @@ function formatUptime(pct: number | undefined) {
 
 // ─── Main Component ─────────────────────────────────────────────
 
-export function SystemTab() {
+interface SystemTabProps {
+  aiConfig?: ReturnType<typeof useGlobalAiConfig>
+  providerKeys?: ReturnType<typeof useCommandCenter>['providerKeys']
+}
+
+export function SystemTab({ aiConfig, providerKeys }: SystemTabProps = {}) {
   const [subTab, setSubTab] = useState<SubTab>('health')
 
   return (
     <div className="space-y-4" data-testid="system-tab">
       {/* PillSwitcher sub-tabs */}
-      <div className="flex gap-1 p-1 bg-bg-elevated rounded-lg w-fit" data-testid="system-subtabs">
+      <div className="flex flex-wrap gap-1 p-1 bg-bg-elevated rounded-lg w-fit" data-testid="system-subtabs">
         {SUB_TABS.map(t => (
           <button
             key={t.id}
@@ -74,6 +83,14 @@ export function SystemTab() {
 
       {subTab === 'health' && <HealthSubTab />}
       {subTab === 'pipeline' && <PipelineSubTab />}
+      {subTab === 'feeds' && aiConfig && providerKeys && (
+        <FeedConfigPanel aiConfig={aiConfig} providerKeys={providerKeys} />
+      )}
+      {subTab === 'feeds' && (!aiConfig || !providerKeys) && (
+        <p className="text-xs text-text-muted p-3 bg-bg-elevated rounded-lg border border-border">
+          Feed config not available — missing AI configuration data.
+        </p>
+      )}
       {subTab === 'emergency' && <BreakGlassPanel />}
       {subTab === 'maintenance' && <MaintenanceSubTab />}
       {subTab === 'backups' && <BackupsSubTab />}

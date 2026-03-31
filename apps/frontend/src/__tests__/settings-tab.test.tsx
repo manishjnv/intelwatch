@@ -1,7 +1,11 @@
 /**
  * @module __tests__/settings-tab.test
- * @description Tests for SettingsTab — super-admin (provider keys, models, confidence, platform)
- * and tenant (org profile, quality, sensitivity, notifications, onboarding, upgrade).
+ * @description Tests for SettingsTab — super-admin (provider keys, models,
+ * merged confidence & preferences, security) and tenant (org profile,
+ * quality, sensitivity, notifications, onboarding, upgrade).
+ *
+ * S123b: Confidence Model + Platform Preferences merged into single
+ * "Confidence & Preferences" section with widget cards.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
@@ -43,6 +47,7 @@ const baseMockAiConfig = {
     subtasks: [
       { category: 'news_feed', subtask: 'triage', model: 'haiku' as const, recommended: 'haiku' as const, accuracyPct: 78, monthlyCostEstimate: 4 },
       { category: 'news_feed', subtask: 'extraction', model: 'sonnet' as const, recommended: 'sonnet' as const, accuracyPct: 92, monthlyCostEstimate: 15 },
+      { category: 'ioc_enrichment', subtask: 'risk_scoring', model: 'sonnet' as const, recommended: 'sonnet' as const, accuracyPct: 94, monthlyCostEstimate: 12 },
     ],
     confidenceModel: 'bayesian' as const,
     costEstimate: { totalMonthly: 19, byCategory: {} },
@@ -75,25 +80,31 @@ describe('SettingsTab — Super Admin', () => {
     expect(screen.getByTestId('provider-card-anthropic')).toBeInTheDocument()
   })
 
-  it('switches to models section', () => {
+  it('switches to models section (excludes news_feed)', () => {
     render(<SettingsTab data={baseMockCC as any} aiConfig={baseMockAiConfig as any} />)
     fireEvent.click(screen.getByTestId('section-models'))
     expect(screen.getByTestId('section-models-content')).toBeInTheDocument()
     expect(screen.getByTestId('model-assignments-table')).toBeInTheDocument()
+    // news_feed subtasks moved to SystemTab Feed Config — should NOT appear here
+    expect(screen.queryByTestId('model-select-triage')).not.toBeInTheDocument()
+    // ioc_enrichment should still be present
+    expect(screen.getByTestId('model-select-risk_scoring')).toBeInTheDocument()
   })
 
-  it('switches to confidence section', () => {
+  it('switches to merged preferences section with both confidence and platform cards', () => {
     render(<SettingsTab data={baseMockCC as any} aiConfig={baseMockAiConfig as any} />)
-    fireEvent.click(screen.getByTestId('section-confidence'))
+    fireEvent.click(screen.getByTestId('section-preferences'))
+    // Both widget cards present in merged section
+    expect(screen.getByTestId('section-preferences-content')).toBeInTheDocument()
     expect(screen.getByTestId('section-confidence-content')).toBeInTheDocument()
+    expect(screen.getByTestId('section-platform-content')).toBeInTheDocument()
+    // Confidence model buttons
     expect(screen.getByTestId('confidence-linear')).toBeInTheDocument()
     expect(screen.getByTestId('confidence-bayesian')).toBeInTheDocument()
-  })
-
-  it('switches to platform section', () => {
-    render(<SettingsTab data={baseMockCC as any} aiConfig={baseMockAiConfig as any} />)
-    fireEvent.click(screen.getByTestId('section-platform'))
-    expect(screen.getByTestId('section-platform-content')).toBeInTheDocument()
+    // Platform preference controls
+    expect(screen.getByTestId('default-sensitivity-balanced')).toBeInTheDocument()
+    expect(screen.getByTestId('toggle-over-limit')).toBeInTheDocument()
+    expect(screen.getByTestId('toggle-provider-error')).toBeInTheDocument()
   })
 
   it('renders 3 provider cards', () => {
@@ -101,6 +112,17 @@ describe('SettingsTab — Super Admin', () => {
     expect(screen.getByTestId('provider-card-anthropic')).toBeInTheDocument()
     expect(screen.getByTestId('provider-card-openai')).toBeInTheDocument()
     expect(screen.getByTestId('provider-card-google')).toBeInTheDocument()
+  })
+
+  it('has 4 section pills (providers, models, preferences, security)', () => {
+    render(<SettingsTab data={baseMockCC as any} aiConfig={baseMockAiConfig as any} />)
+    expect(screen.getByTestId('section-providers')).toBeInTheDocument()
+    expect(screen.getByTestId('section-models')).toBeInTheDocument()
+    expect(screen.getByTestId('section-preferences')).toBeInTheDocument()
+    expect(screen.getByTestId('section-security')).toBeInTheDocument()
+    // Old separate pills should not exist
+    expect(screen.queryByTestId('section-confidence')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('section-platform')).not.toBeInTheDocument()
   })
 })
 
@@ -139,7 +161,6 @@ describe('SettingsTab — Tenant', () => {
     render(<SettingsTab data={baseMockCC as any} aiConfig={baseMockAiConfig as any} />)
     const chip = screen.getByTestId('tech-os-macos')
     fireEvent.click(chip)
-    // After click, macOS should be selected (accent border)
     expect(chip.className).toContain('accent')
   })
 

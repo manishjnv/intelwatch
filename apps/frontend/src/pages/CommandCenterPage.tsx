@@ -321,7 +321,7 @@ export function CommandCenterPage() {
           {effectiveTab === 'clients' && <ClientsTab data={cc} />}
           {effectiveTab === 'billing-plans' && <BillingPlansTab data={cc} />}
           {effectiveTab === 'alerts-reports' && <AlertsReportsTab data={cc} />}
-          {effectiveTab === 'system' && <SystemTab />}
+          {effectiveTab === 'system' && <SystemTab aiConfig={aiConfig} providerKeys={cc.providerKeys} />}
         </div>
       </div>
     </div>
