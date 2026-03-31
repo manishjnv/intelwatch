@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 122 &middot; 2026-03-30 &middot; S19: VPS Production Deploy (S1-S18). 32/32 containers healthy. RLS + seeds + env vars deployed. ~7,780 tests</span>
+  <span class="version">Session 123b &middot; 2026-03-31 &middot; S123: Unified Feeds + Settings/System refactor. 32/32 containers healthy. ~7,780 tests</span>
 </div>
 </div>
 
@@ -91,7 +91,7 @@ li strong { color: var(--text-primary); }
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
     <div class="stat-card"><div class="stat-value">~7,780</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~630</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">122</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">123</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -537,21 +537,18 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 121</span> Offboarding Panel + Break-Glass Status + SSO Config UI (S18)</div>
+    <div class="card-title"><span class="badge badge-green">Session 123b</span> Unified Feeds + Settings/System Refactor (S123)</div>
     <div class="card-body">
-      <strong>Session 121 (2026-03-30):</strong> Command Center v2.1 S18 — Frontend UI (3 panels + 3 hooks + 3 test suites):<br>
-      &bull; <strong>OffboardingPanel</strong> — Pipeline list with status badges (offboarding/archived/purged), purge countdown, type-to-confirm offboard trigger, cancel offboarding, status detail timeline with completed/pending steps<br>
-      &bull; <strong>BreakGlassPanel</strong> — Status card (green Ready / red pulsing ACTIVE SESSION with IP, geo, countdown), audit log table with colored event badges, rotate password modal (20+ char, strength indicator), force terminate with confirm<br>
-      &bull; <strong>SsoConfigPanel</strong> — SAML/OIDC provider selection, conditional field sets (Entity ID/Metadata/Certificate vs Client ID/Secret/Issuer), approved domain tag input, group-to-role mapping table, enabled toggle, test/save/delete. AdminSsoView read-only for super_admin. SsoStatusBadge in Users &amp; Access header<br>
-      &bull; <strong>3 React Query hooks</strong> — use-offboarding.ts, use-break-glass.ts, use-sso.ts with demo data fallback<br>
-      &bull; <strong>Wiring</strong> — SystemTab +Emergency Access sub-tab (BreakGlassPanel), ClientsTab +OffboardingPanel pipeline + AdminSsoView in drawer, UsersAccessTab SSO sub-tab replaced with SsoConfigPanel<br>
-      &bull; <strong>37 new tests</strong> (3 test files). 1,522 frontend / ~7,780 monorepo total.<br>
-      &bull; <strong>Commits:</strong> 9f75cca, cefb40f — CI run 23741416630 green, all 33 containers healthy<br><br>
+      <strong>Session 123b (2026-03-31):</strong> Command Center v2.1 S123 — Frontend refactor (Settings + System tabs):<br>
+      &bull; <strong>Confidence &amp; Preferences</strong> — Merged "Confidence Model" + "Platform Preferences" into single widget-card section in Settings tab<br>
+      &bull; <strong>Feed Config moved</strong> — news_feed model assignments relocated from Settings to SystemTab Feed Config sub-tab<br>
+      &bull; <strong>SettingsTab extraction</strong> — Split 974-line SettingsTab.tsx into 5 files, all under 400 lines (400-line compliance)<br>
+      &bull; <strong>SystemTab extraction</strong> — Extracted PipelinePanel + BackupsPanel from SystemTab for 400-line compliance<br>
+      &bull; <strong>Frontend-only</strong> — No backend/API changes. 21 tests passing.<br>
+      &bull; <strong>Commits:</strong> 954d43e, af36e3b — CI/CD passed, all 32 containers healthy<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Run prisma db push on VPS</strong> — All pending schema changes<br>
-      2. <strong>Set env vars on VPS</strong> — TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET, TI_MFA_ENCRYPTION_KEY<br>
-      3. <strong>Run seed scripts on VPS</strong> — Break-glass account + 4 default plans<br>
-      4. <strong>Continue Command Center v2.1</strong> — Remaining features (Cyber News Feed, IOC Strategy)<br>
+      1. <strong>Continue Command Center v2.1</strong> — Remaining features (Cyber News Feed, IOC Strategy)<br>
+      2. <strong>Set Shodan/GreyNoise API keys on VPS</strong> — Enrichment currently degraded gracefully<br>
     </div>
   </div>
 </div>
@@ -559,7 +556,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 121 &middot; 2026-03-30 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 123b &middot; 2026-03-31 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 

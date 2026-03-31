@@ -1,12 +1,12 @@
 # ETIP Project State
-**Last updated:** 2026-03-30 (update at end of EVERY session via /session-end)
-**Session counter:** 122 — S19: VPS Production Deploy (S1-S18). All backend features (I-01 through I-22) deployed to VPS. prisma db push (all pending schema), RLS policies (19 tables), DB triggers (tenant_admin guard), 3 seed scripts (system tenant, plan definitions, break-glass). 6 new env vars wired. 32/32 containers healthy. Redis 48,743 keys. All endpoints verified.
+**Last updated:** 2026-03-31 (update at end of EVERY session via /session-end)
+**Session counter:** 123b — S123: Merged Confidence+Preferences widget, moved Feed Config to SystemTab, extracted SettingsTab (974→5 files <400 lines), extracted PipelinePanel+BackupsPanel. Frontend-only. 21 tests passing. 32/32 containers healthy.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.2.2 | 2026-03-30 | Health check passing. **Session 118 (I-22):** Break-glass routes (5 endpoints: POST /auth/break-glass, GET status/audit, POST rotate-password, DELETE sessions). ioredis BullMQ alert queue. 130 tests. |
-| etip_frontend | ✅ Running | 0.18.0 | 2026-03-30 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 121 (S18):** OffboardingPanel, BreakGlassPanel, SsoConfigPanel + AdminSsoView. 3 React Query hook files. 1,522 tests. |
+| etip_frontend | ✅ Running | 0.18.0 | 2026-03-31 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 123b (S123):** Unified Feeds view, Settings/System refactor (SettingsTab 974→5 files, PipelinePanel+BackupsPanel extracted). 1,522 tests. |
 | etip_es_indexing | ✅ Deployed | 0.1.0 | 2026-03-24 | Port 3020. Module 20. Elasticsearch IOC indexing. 57 tests. BullMQ worker + full-text search + aggregations. esConnected=true, queueDepth=0. RCA #42: BullMQ colon restriction fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-30 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,522 tests. **Session 121 (S18):** OffboardingPanel, BreakGlassPanel, SsoConfigPanel (SAML/OIDC, domain tags, group mappings, admin read-only view). |
+| frontend | 1 | ✅ UI FROZEN | 2026-03-31 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,522 tests. **Session 123b (S123):** Unified Feeds view, Settings/System refactor (SettingsTab 974→5 files, PipelinePanel+BackupsPanel extracted). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
 | ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 96:** Fuzzy dedupe in global worker, batch normalizer. 256 tests. |
@@ -143,8 +143,8 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-122.
-- **Last session outcome:** Session 122 (2026-03-30). **S19: VPS Production Deploy (S1-S18).** All backend features (I-01 through I-22) deployed to production VPS. prisma db push synced all pending schema changes. RLS enabled on 19 tenant-scoped tables (super_admin bypass). Migration 0003 (designation + tenant_admin guard trigger). 3 seed scripts executed (system tenant, 4 plan definitions, break-glass super_admin). 6 new env vars wired to api + user_management containers. 32/32 containers healthy. Redis 48,743 keys. All endpoints verified (API, user-mgmt, MFA, break-glass, frontend). Commits d5ef448, 13145ea, 53e5147.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-123b.
+- **Last session outcome:** Session 123b (2026-03-31). **S123: Unified Feeds view + Settings/System refactor.** Merged "Confidence Model" + "Platform Preferences" into single "Confidence & Preferences" widget-card in Settings. Moved news_feed model assignments from Settings to SystemTab Feed Config sub-tab. Extracted SettingsTab.tsx (974 lines) into 5 files all under 400 lines. Extracted PipelinePanel + BackupsPanel from SystemTab for 400-line compliance. Frontend-only change, no backend/API changes. 21 tests passing. Commits 954d43e, af36e3b.
 - **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
 - **Next tasks:** (1) Continue Command Center v2.1 — remaining features. (2) Set Shodan/GreyNoise API keys on VPS. (3) Cyber news feed strategy implementation.
 
@@ -250,6 +250,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 120 | 2026-03-30 | etip_frontend redeployed (S17 Access Review + Compliance + FeatureGate) | ✅ All 33 healthy | d74022d, 9ee0e79 | AccessReviewPanel (stats, review table, confirm/disable modals, quarterly summary), ComplianceReportsPanel (SOC 2/Privileged/DSAR), DsarPanel (tenant exports), FeatureGate wiring (9 routes + sidebar locks + dashboard gating). 47 new tests. 1,485 frontend / ~7,743 monorepo. CI run 23737638316 green. |
 | 121 | 2026-03-30 | etip_frontend redeployed (S18 Offboarding + Break-Glass + SSO Config) | ✅ All 33 healthy | 9f75cca, cefb40f | OffboardingPanel (pipeline, type-to-confirm, cancel, detail timeline, purge countdown), BreakGlassPanel (status card, audit log, rotate password, force terminate), SsoConfigPanel (SAML/OIDC, domains, group mappings, admin view). 3 hooks + 3 test files. 37 new tests. 1,522 frontend / ~7,780 monorepo. CI run 23741416630 green. |
 | 122 | 2026-03-30 | All 32 containers rebuilt + restarted (VPS production deploy S1-S18) | ✅ All 32 healthy | d5ef448, 13145ea, 53e5147 | **S19: VPS Production Deploy.** prisma db push (all pending schema: MFA, SCIM, SSO, access review, compliance, offboarding, break-glass fields). RLS on 19 tables + super_admin bypass. Migration 0003 (designation + tenant_admin guard trigger). 3 seeds: system tenant (00000000-...), 4 plan definitions (Free/Starter/Pro/Enterprise), break-glass super_admin. 6 env vars wired (TI_MFA_ENCRYPTION_KEY, TI_SUPER_ADMIN_EMAIL/PASSWORD, TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET). Redis 48,743 keys. Endpoints: API /health ok, user-mgmt /health ok, MFA 401 (auth required), break-glass validation error (route exists), frontend 200. |
+| 123b | 2026-03-31 | etip_frontend redeployed (S123 Unified Feeds + Settings/System refactor) | ✅ All 32 healthy | 954d43e, af36e3b | Merged Confidence Model + Platform Preferences into single "Confidence & Preferences" widget-card in Settings. Moved news_feed model assignments from Settings to SystemTab Feed Config sub-tab. Extracted SettingsTab.tsx (974→5 files, all <400 lines). Extracted PipelinePanel + BackupsPanel from SystemTab for 400-line compliance. Frontend-only, no backend changes. 21 tests passing. ~7,780 monorepo. |
 
 ## E2E Verification Results (Session 13)
 
