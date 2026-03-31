@@ -50,8 +50,33 @@ export class TenantStore {
   private _tenants: Map<string, TenantRecord> = new Map();
   private _usage: Map<string, TenantUsage> = new Map();
 
-  /** Create a new tenant. */
+  /** Find existing tenant by owner email (for duplicate invite prevention). */
+  findByOwnerEmail(email: string): TenantRecord | undefined {
+    const lower = email.toLowerCase();
+    for (const tenant of this._tenants.values()) {
+      if (tenant.ownerEmail.toLowerCase() === lower && tenant.status !== 'deleted') return tenant;
+    }
+    return undefined;
+  }
+
+  /** Create a new tenant. Blocks duplicate invites for the same email. */
   create(input: CreateTenantInput): TenantRecord {
+    // Duplicate invite guard: if an unclaimed invite exists for this email, refresh it instead of creating a new one
+    const existing = this.findByOwnerEmail(input.ownerEmail);
+    if (existing) {
+      if (existing.inviteClaimed) {
+        throw new AppError(409, `${input.ownerEmail} has already registered. They can sign in directly.`, 'INVITE_ALREADY_CLAIMED');
+      }
+      // Refresh the invite: new token, new 24h expiry, update org details
+      existing.inviteToken = randomUUID();
+      existing.inviteExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      existing.name = input.name;
+      existing.ownerName = input.ownerName;
+      existing.plan = input.plan ?? existing.plan;
+      existing.updatedAt = new Date().toISOString();
+      return existing;
+    }
+
     const now = new Date().toISOString();
     const plan = input.plan ?? 'free';
     const isTrial = plan !== 'free';
