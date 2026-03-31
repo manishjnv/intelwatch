@@ -6,6 +6,7 @@
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { BulkIocLookupBodySchema } from '@etip/shared-types';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { prisma } from '../../prisma.js';
 import { apiKeyAuth } from '../../plugins/api-key-auth.js';
 import { getUser } from '../../plugins/auth.js';
@@ -15,7 +16,14 @@ export async function publicBulkRoutes(app: FastifyInstance): Promise<void> {
   const auth = apiKeyAuth('ioc:read');
 
   // ── POST /iocs/lookup — Bulk IOC lookup ──────────────────────────
-  app.post('/iocs/lookup', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.post('/iocs/lookup', {
+    schema: {
+      tags: ['IOCs'],
+      summary: 'Bulk IOC lookup — check up to 100 values',
+      body: zodToJsonSchema(BulkIocLookupBodySchema, { target: 'openApi3' }),
+    },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const body = BulkIocLookupBodySchema.parse(req.body);
 

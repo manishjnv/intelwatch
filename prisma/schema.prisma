@@ -145,7 +145,9 @@ model ApiKey {
   keyHash   String    @map("key_hash") @db.VarChar(255)
   scopes    String[]  @default(["ioc:read"])
   lastUsed  DateTime? @map("last_used")
-  expiresAt DateTime? @map("expires_at")
+  expiresAt        DateTime? @map("expires_at")
+  graceExpiresAt   DateTime? @map("grace_expires_at")
+  replacedByKeyId  String?   @map("replaced_by_key_id") @db.Uuid
   active    Boolean   @default(true)
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

@@ -14,7 +14,10 @@ export async function publicStatsRoutes(app: FastifyInstance): Promise<void> {
   const auth = apiKeyAuth('ioc:read');
 
   // ── GET /stats — IOC aggregate stats ─────────────────────────────
-  app.get('/stats', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.get('/stats', {
+    schema: { tags: ['Stats'], summary: 'Aggregate IOC statistics by type, severity, TLP, lifecycle' },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
 
     const baseWhere = {

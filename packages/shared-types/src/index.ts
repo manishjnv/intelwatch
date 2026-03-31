@@ -320,6 +320,12 @@ export {
   type BulkIocLookupBody,
   type PublicIocStatsDto,
   PUBLIC_API_BURST_FALLBACK,
+  PublicIocEnrichmentDtoSchema,
+  type PublicIocEnrichmentDto,
+  PublicIocWithEnrichmentDtoSchema,
+  type PublicIocWithEnrichmentDto,
+  ApiKeyRotateResponseSchema,
+  type ApiKeyRotateResponse,
 } from './public-api.js';
 
 // ── Config & constants ─────────────────────────────────────────────

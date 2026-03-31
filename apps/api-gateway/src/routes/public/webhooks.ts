@@ -6,6 +6,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { randomBytes } from 'crypto';
 import { AppError } from '@etip/shared-utils';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import {
   WebhookCreateBodySchema,
   WebhookUpdateBodySchema,
@@ -38,8 +39,17 @@ function toWebhookDto(row: {
 export async function publicWebhookRoutes(app: FastifyInstance): Promise<void> {
   const auth = apiKeyAuth('webhook:manage');
 
+  const idParam = { type: 'object' as const, properties: { id: { type: 'string' as const, format: 'uuid' } }, required: ['id'] as const };
+
   // ── POST /webhooks — Create subscription ─────────────────────────
-  app.post('/webhooks', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.post('/webhooks', {
+    schema: {
+      tags: ['Webhooks'],
+      summary: 'Create a webhook subscription',
+      body: zodToJsonSchema(WebhookCreateBodySchema, { target: 'openApi3' }),
+    },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const keyCtx = (req as FastifyRequest & { apiKeyContext?: ApiKeyContext }).apiKeyContext;
     const body = WebhookCreateBodySchema.parse(req.body);
@@ -84,7 +94,10 @@ export async function publicWebhookRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /webhooks — List subscriptions ───────────────────────────
-  app.get('/webhooks', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.get('/webhooks', {
+    schema: { tags: ['Webhooks'], summary: 'List webhook subscriptions' },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
 
     const webhooks = await prisma.webhookSubscription.findMany({
@@ -96,7 +109,15 @@ export async function publicWebhookRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── PUT /webhooks/:id — Update subscription ─────────────────────
-  app.put('/webhooks/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.put('/webhooks/:id', {
+    schema: {
+      tags: ['Webhooks'],
+      summary: 'Update a webhook subscription',
+      params: idParam,
+      body: zodToJsonSchema(WebhookUpdateBodySchema, { target: 'openApi3' }),
+    },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const { id } = req.params as { id: string };
     const body = WebhookUpdateBodySchema.parse(req.body);
@@ -123,7 +144,10 @@ export async function publicWebhookRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── DELETE /webhooks/:id — Delete subscription ──────────────────
-  app.delete('/webhooks/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.delete('/webhooks/:id', {
+    schema: { tags: ['Webhooks'], summary: 'Delete a webhook subscription', params: idParam },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const { id } = req.params as { id: string };
 
@@ -138,7 +162,10 @@ export async function publicWebhookRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── POST /webhooks/:id/test — Send test event ──────────────────
-  app.post('/webhooks/:id/test', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.post('/webhooks/:id/test', {
+    schema: { tags: ['Webhooks'], summary: 'Send a test webhook event', params: idParam },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const { id } = req.params as { id: string };
 

@@ -5,6 +5,7 @@
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { AppError } from '@etip/shared-utils';
 import { CursorPaginationQuerySchema } from '@etip/shared-types';
 import { prisma } from '../../prisma.js';
@@ -27,7 +28,14 @@ export async function publicFeedRoutes(app: FastifyInstance): Promise<void> {
   const auth = apiKeyAuth('feed:read');
 
   // ── GET /feeds — List tenant's feeds ──────────────────────────────
-  app.get('/feeds', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.get('/feeds', {
+    schema: {
+      tags: ['Feeds'],
+      summary: 'List feeds with optional status/type filter',
+      querystring: zodToJsonSchema(FeedFilterSchema, { target: 'openApi3' }),
+    },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const filters = FeedFilterSchema.parse(req.query);
 
@@ -48,7 +56,15 @@ export async function publicFeedRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /feeds/:id/articles — Recent articles from a feed ────────
-  app.get('/feeds/:id/articles', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.get('/feeds/:id/articles', {
+    schema: {
+      tags: ['Feeds'],
+      summary: 'List recent articles from a specific feed',
+      params: { type: 'object', properties: { id: { type: 'string', format: 'uuid' } }, required: ['id'] },
+      querystring: zodToJsonSchema(CursorPaginationQuerySchema, { target: 'openApi3' }),
+    },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const { id: feedId } = req.params as { id: string };
     const pagination = CursorPaginationQuerySchema.parse(req.query);

@@ -4,7 +4,7 @@
  * Strips internal fields (tenantId, enrichmentData, cost tracking, etc.)
  * and converts dates to ISO strings.
  */
-import type { PublicIocDto, PublicFeedDto, PublicArticleDto } from '@etip/shared-types';
+import type { PublicIocDto, PublicFeedDto, PublicArticleDto, PublicIocEnrichmentDto } from '@etip/shared-types';
 
 /** Type for raw Prisma IOC row */
 interface RawIoc {
@@ -26,9 +26,9 @@ interface RawIoc {
   [key: string]: unknown;
 }
 
-/** Project a raw IOC row to the public DTO. */
-export function toPublicIoc(raw: RawIoc): PublicIocDto {
-  return {
+/** Project a raw IOC row to the public DTO, optionally including enrichment metadata. */
+export function toPublicIoc(raw: RawIoc, includeEnrichment = false): PublicIocDto {
+  const base: PublicIocDto = {
     id: raw.id,
     type: raw.iocType,
     value: raw.value,
@@ -44,6 +44,38 @@ export function toPublicIoc(raw: RawIoc): PublicIocDto {
     lastSeen: raw.lastSeen.toISOString(),
     expiresAt: raw.expiresAt?.toISOString() ?? null,
     createdAt: raw.createdAt.toISOString(),
+  };
+  if (includeEnrichment && raw.enrichmentData) {
+    const enrichment = mapEnrichmentData(raw.enrichmentData);
+    if (enrichment) return { ...base, enrichment } as PublicIocDto;
+  }
+  return base;
+}
+
+/**
+ * Map raw enrichmentData JSON blob to a safe public subset.
+ * Strips cost data, raw provider blobs, and token counts.
+ */
+export function mapEnrichmentData(raw: unknown): PublicIocEnrichmentDto | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const data = raw as Record<string, unknown>;
+
+  const sources: string[] = [];
+  if (data.vtResult) sources.push('virustotal');
+  if (data.abuseipdbResult) sources.push('abuseipdb');
+  if (data.haikuResult) sources.push('ai-triage');
+
+  const haiku = data.haikuResult as Record<string, unknown> | null | undefined;
+  const geo = data.geolocation as { countryCode?: string; isp?: string; isTor?: boolean } | null | undefined;
+
+  return {
+    status: (data.enrichmentStatus as PublicIocEnrichmentDto['status']) ?? 'pending',
+    externalRiskScore: typeof data.externalRiskScore === 'number' ? data.externalRiskScore : null,
+    sources,
+    geolocation: geo
+      ? { countryCode: geo.countryCode ?? '', isp: geo.isp ?? '', isTor: geo.isTor ?? false }
+      : null,
+    aiSummary: (haiku?.reasoning as string) ?? null,
   };
 }
 
@@ -121,6 +153,12 @@ export const IOC_PUBLIC_SELECT = {
   lastSeen: true,
   expiresAt: true,
   createdAt: true,
+} as const;
+
+/** Extended select clause including enrichmentData for ?include=enrichment. */
+export const IOC_PUBLIC_SELECT_WITH_ENRICHMENT = {
+  ...IOC_PUBLIC_SELECT,
+  enrichmentData: true,
 } as const;
 
 /** Prisma select clause for feed queries — only public fields. */

@@ -49,12 +49,18 @@ async function resolveFromCache(rawKey: string): Promise<CachedKeyContext | null
 
 /**
  * Cache a verified key context in Redis.
+ * If graceExpiresAt is set, cap TTL to prevent serving stale auth past grace window.
  */
-async function cacheKeyContext(rawKey: string, ctx: CachedKeyContext): Promise<void> {
+async function cacheKeyContext(rawKey: string, ctx: CachedKeyContext, graceExpiresAt?: Date | null): Promise<void> {
   const redis = getRedis();
   if (!redis) return;
   try {
-    await redis.set(`${CACHE_PREFIX}${quickHash(rawKey)}`, JSON.stringify(ctx), 'EX', CACHE_TTL_SECONDS);
+    let ttl = CACHE_TTL_SECONDS;
+    if (graceExpiresAt) {
+      const secondsUntilGrace = Math.floor((graceExpiresAt.getTime() - Date.now()) / 1000);
+      if (secondsUntilGrace > 0) ttl = Math.min(ttl, secondsUntilGrace);
+    }
+    await redis.set(`${CACHE_PREFIX}${quickHash(rawKey)}`, JSON.stringify(ctx), 'EX', ttl);
   } catch { /* non-fatal */ }
 }
 
@@ -93,7 +99,7 @@ export function apiKeyAuth(requiredScope: string | null = null) {
         where: { prefix, active: true },
         select: {
           id: true, keyHash: true, userId: true, tenantId: true,
-          scopes: true, expiresAt: true,
+          scopes: true, expiresAt: true, graceExpiresAt: true,
         },
       });
 
@@ -112,9 +118,14 @@ export function apiKeyAuth(requiredScope: string | null = null) {
         throw new AppError(401, 'Invalid API key', 'UNAUTHORIZED');
       }
 
-      // Check expiry
+      // Check standard expiry
       if (matched.expiresAt && matched.expiresAt < new Date()) {
         throw new AppError(401, 'API key has expired', 'API_KEY_EXPIRED');
+      }
+
+      // Check grace period expiry (rotated keys — still valid during grace window)
+      if (matched.graceExpiresAt && matched.graceExpiresAt < new Date()) {
+        throw new AppError(401, 'API key grace period has expired — use the replacement key', 'API_KEY_GRACE_EXPIRED');
       }
 
       ctx = {
@@ -124,8 +135,8 @@ export function apiKeyAuth(requiredScope: string | null = null) {
         scopes: matched.scopes,
       };
 
-      // Cache for subsequent requests
-      await cacheKeyContext(rawKey, ctx);
+      // Cache for subsequent requests (cap TTL if grace period is set)
+      await cacheKeyContext(rawKey, ctx, matched.graceExpiresAt);
     }
 
     // Check tenant is active

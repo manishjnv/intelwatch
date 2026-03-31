@@ -5,6 +5,7 @@
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PublicIocExportBodySchema } from '@etip/shared-types';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { prisma } from '../../prisma.js';
 import { apiKeyAuth } from '../../plugins/api-key-auth.js';
 import { getUser } from '../../plugins/auth.js';
@@ -33,7 +34,14 @@ export async function publicExportRoutes(app: FastifyInstance): Promise<void> {
   const auth = apiKeyAuth('ioc:read');
 
   // ── POST /iocs/export — Export IOCs ──────────────────────────────
-  app.post('/iocs/export', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.post('/iocs/export', {
+    schema: {
+      tags: ['IOCs'],
+      summary: 'Export IOCs in JSON, CSV, or STIX 2.1 format',
+      body: zodToJsonSchema(PublicIocExportBodySchema, { target: 'openApi3' }),
+    },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const body = PublicIocExportBodySchema.parse(req.body);
     const filters = body.filters ?? {};

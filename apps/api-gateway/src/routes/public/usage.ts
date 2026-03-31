@@ -22,7 +22,10 @@ export async function publicUsageRoutes(app: FastifyInstance): Promise<void> {
   const auth = apiKeyAuth(null); // any valid key
 
   // ── GET /usage — Current quota/rate limit status ──────────────────
-  app.get('/usage', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  app.get('/usage', {
+    schema: { tags: ['Usage'], summary: 'Current plan quota and rate limit status' },
+    preHandler: [auth],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(req);
     const tenantId = user.tenantId;
 

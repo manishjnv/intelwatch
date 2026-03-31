@@ -203,6 +203,38 @@ export interface PublicIocStatsDto {
   lastUpdated: string | null;
 }
 
+// ── Enrichment Metadata (opt-in via ?include=enrichment) ────────────
+export const PublicIocEnrichmentDtoSchema = z.object({
+  status: z.enum(['enriched', 'partial', 'pending', 'failed', 'skipped']),
+  externalRiskScore: z.number().nullable(),
+  sources: z.array(z.string()),
+  geolocation: z.object({
+    countryCode: z.string(),
+    isp: z.string(),
+    isTor: z.boolean(),
+  }).nullable().optional(),
+  aiSummary: z.string().nullable().optional(),
+});
+export type PublicIocEnrichmentDto = z.infer<typeof PublicIocEnrichmentDtoSchema>;
+
+/** Extended IOC DTO with optional enrichment metadata. */
+export const PublicIocWithEnrichmentDtoSchema = PublicIocDtoSchema.extend({
+  enrichment: PublicIocEnrichmentDtoSchema.optional(),
+});
+export type PublicIocWithEnrichmentDto = z.infer<typeof PublicIocWithEnrichmentDtoSchema>;
+
+// ── API Key Rotation ────────────────────────────────────────────────
+export const ApiKeyRotateResponseSchema = z.object({
+  id: z.string().uuid(),
+  key: z.string(),
+  prefix: z.string(),
+  name: z.string(),
+  scopes: z.array(z.string()),
+  graceExpiresAt: z.string().datetime(),
+  message: z.string(),
+});
+export type ApiKeyRotateResponse = z.infer<typeof ApiKeyRotateResponseSchema>;
+
 /**
  * Default per-minute burst limit when the DB plan limit cannot be resolved.
  * All real limits (including per-minute burst) are DB-driven via the plan

@@ -25,6 +25,7 @@ import { complianceRoutes } from './routes/compliance.js';
 import { offboardingGatewayRoutes } from './routes/offboarding.js';
 import { breakGlassRoutes } from './routes/break-glass.js';
 import { publicRoutes } from './routes/public/index.js';
+import { registerSwagger } from './plugins/swagger.js';
 
 /** Determine per-request rate limit tier based on URL + method */
 function resolveRateLimit(req: FastifyRequest): number {
@@ -131,6 +132,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(complianceRoutes, { prefix: '/api/v1' });
   await app.register(offboardingGatewayRoutes, { prefix: '/api/v1' });
   await app.register(breakGlassRoutes, { prefix: '/api/v1' });
+
+  // OpenAPI docs — register BEFORE routes so schemas are captured
+  await registerSwagger(app);
 
   // Public API — API key auth, plan-based rate limits, IOC/feed consumption
   await app.register(publicRoutes, { prefix: '/api/v1/public' });
