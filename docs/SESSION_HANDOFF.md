@@ -1,12 +1,14 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-04-01
-**Session:** 131
-**Session Summary:** S131: Google Safe Browsing v4 URL/domain enrichment provider added to ai-enrichment service. Deployed etip_enrichment to VPS. 33/33 containers healthy.
+**Session:** 132
+**Session Summary:** S132: IPinfo.io IP geolocation & ASN enrichment provider (5th external provider). Per-IOC-type ES indices + ILM lifecycle. Deployed to VPS. 32/32 containers healthy.
 
 ## ✅ Changes Made
 
-- `1c51d87` — feat: Google Safe Browsing v4 URL/domain enrichment provider (S131) — 8 files, 444 insertions
+- `6a394be` — feat: IPinfo.io IP geolocation & ASN enrichment provider (S132) — 9 files, 520 insertions
+- `5147007` — fix: add ipinfoResult to skipped/failed EnrichmentResult literals (S132) — 2 files, 2 insertions
+- `5fc6f8a` — feat: per-IOC-type ES indices + ILM lifecycle management (S132) — 16 files, 1,044 insertions
 
 ## 📁 Files / Documents Affected
 
@@ -14,70 +16,88 @@
 
 | File | Purpose |
 |------|---------|
-| apps/ai-enrichment/src/providers/google-safe-browsing.ts | GSB v4 provider — lookup + batchLookup (up to 500 URLs/call) |
-| apps/ai-enrichment/tests/google-safe-browsing.test.ts | 20 test cases covering all requirements |
+| apps/ai-enrichment/src/providers/ipinfo.ts | IPinfo.io provider class (110 lines) |
+| apps/ai-enrichment/tests/ipinfo.test.ts | 25 unit tests for IPinfo provider |
+| apps/elasticsearch-indexing-service/src/ilm.ts | ILM lifecycle policy (hot→warm→cold→delete) |
+| apps/elasticsearch-indexing-service/src/index-naming.ts | Per-IOC-type index naming (ip/domain/hash/email/cve/other) |
+| apps/elasticsearch-indexing-service/src/mappings.ts | Type-specific ES mappings (IP→geo/asn, hash→AV, CVE→EPSS) |
+| apps/elasticsearch-indexing-service/src/migration.ts | Per-tenant reindex migration service |
+| apps/elasticsearch-indexing-service/src/routes/migrate.ts | POST /admin/migrate-indices/:tenantId route |
+| apps/elasticsearch-indexing-service/tests/per-type-indices.test.ts | 59 new tests for per-type indices |
 
 ### Modified Files
 
 | File | Change |
 |------|--------|
-| apps/ai-enrichment/src/schema.ts | +GSBThreatSchema, +GSBResultSchema, +gsbResult field on EnrichmentResultSchema |
-| apps/ai-enrichment/src/rate-limiter.ts | +createGSBRateLimiter() — 8,000 req/day sliding window |
-| apps/ai-enrichment/src/config.ts | +TI_GSB_API_KEY, +TI_GSB_RATE_LIMIT_PER_DAY env vars |
-| apps/ai-enrichment/src/service.ts | GSB wired after VT for url/domain/fqdn types, gsbResult in result object |
-| apps/ai-enrichment/src/index.ts | GSB provider instantiation when TI_GSB_API_KEY is set |
-| apps/ai-enrichment/src/workers/enrich-worker.ts | +gsbResult: null in error return path |
+| apps/ai-enrichment/src/schema.ts | +IPinfoResultSchema, +ipinfoResult in EnrichmentResultSchema, +ipinfo in ProviderCostRecord |
+| apps/ai-enrichment/src/rate-limiter.ts | +createIPinfoRateLimiter() (1200/day) |
+| apps/ai-enrichment/src/config.ts | +TI_IPINFO_TOKEN, +TI_IPINFO_RATE_LIMIT_PER_DAY |
+| apps/ai-enrichment/src/cost-tracker.ts | +'ipinfo' in EnrichmentProvider union |
+| apps/ai-enrichment/src/service.ts | +IPinfo lookup after AbuseIPDB, +ipinfoResult in output, +ipinfoResult:null in skipped path |
+| apps/ai-enrichment/src/workers/enrich-worker.ts | +ipinfoResult:null in failed job path |
+| apps/ai-enrichment/src/index.ts | +IPinfo provider instantiation and wiring |
+| apps/ai-enrichment/README.md | +IPinfo feature row, +config vars, updated test count |
+| apps/elasticsearch-indexing-service/src/es-client.ts | Per-type index creation, ILM wiring |
+| apps/elasticsearch-indexing-service/src/ioc-indexer.ts | Route docs to per-type indices |
+| apps/elasticsearch-indexing-service/src/search-service.ts | Search across per-type indices |
+| apps/elasticsearch-indexing-service/src/app.ts | +migrate route registration |
+| apps/elasticsearch-indexing-service/src/schemas.ts | +MigrateParams schema |
+| apps/elasticsearch-indexing-service/tests/*.test.ts | Updated for per-type index patterns (116 total) |
 
 ## 🔧 Decisions & Rationale
 
-No new architectural decisions. Followed existing provider pattern (VT/AbuseIPDB constructor + rateLimiter + logger).
+No new architectural decisions. Followed existing provider pattern exactly (DECISION-016, DECISION-017).
 
 ## 🧪 E2E / Deploy Verification Results
 
 ```
-etip_enrichment   Up 27 seconds (healthy)
-All 33/33 containers healthy
-```
+CI/CD: Run 23833177664 — ✅ All 3 jobs passed
+  - Test, Type-check, Lint & Audit: ✅
+  - Build & Push Docker Images: ✅ (1m59s)
+  - Deploy to VPS: ✅ (1m43s)
 
-Tests: 289 ai-enrichment (17 files), 0 lint errors, 0 TypeScript errors.
+etip_enrichment: Recreated → Healthy (port 3006)
+All 32/32 containers healthy on VPS
+Tests: 314 ai-enrichment (25 new), 116 elasticsearch-indexing (59 new)
+```
 
 ## ⚠️ Open Items / Next Steps
 
 ### Immediate
 
-1. **Set TI_GSB_API_KEY on VPS** — GSB provider is deployed but skipped without API key
-2. **Cyber news feed strategy** — docs/ETIP_Cyber_News_Feed_Strategy_v1.docx
-3. **IOC strategy implementation** — docs/ETIP_IOC_Strategy.docx
-4. **Set Shodan/GreyNoise API keys on VPS** (enrichment degrades gracefully)
+1. **Set TI_IPINFO_TOKEN on VPS** — activate IPinfo.io geolocation enrichment
+2. **Set TI_GSB_API_KEY on VPS** — activate Google Safe Browsing
+3. **Cyber news feed strategy** — docs/ETIP_Cyber_News_Feed_Strategy_v1.docx
+4. **IOC strategy implementation** — docs/ETIP_IOC_Strategy.docx
 
 ### Deferred
 
-5. Wire fuzzyDedupeHash column in Prisma schema
-6. Fix vitest alias caching for @etip/shared-normalization
-7. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts)
+5. Set Shodan/GreyNoise API keys on VPS (enrichment degrades gracefully)
+6. Wire fuzzyDedupeHash column in Prisma schema
+7. Fix vitest alias caching for @etip/shared-normalization
+8. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts)
 
 ## 🔁 How to Resume
 
 ```
-Session 132: Continue with Cyber News Feed strategy or IOC Strategy
+Session 133: Continue with Cyber News Feed strategy or IOC Strategy
 
 Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
 
-Session 131: Google Safe Browsing v4 enrichment provider.
-- 4 providers: VT, AbuseIPDB, Google Safe Browsing, Haiku AI triage
-- GSB: url/domain/fqdn types only (domains prefixed with http://)
-- Rate: 8,000 lookups/day (sliding window), batch 500 URLs per API call
-- Env: TI_GSB_API_KEY (empty = skip), TI_GSB_RATE_LIMIT_PER_DAY (default 8000)
-- Result: { safe: boolean, threats: [{type, platform}], checkedAt: ISO }
-- Stored under gsbResult in enrichmentData JSON
-- 289 ai-enrichment tests, 33/33 containers healthy on VPS
-- GSB NOT ACTIVE on VPS yet — needs TI_GSB_API_KEY env var set
+Session 132: IPinfo.io enrichment provider + per-type ES indices deployed.
+- 5 external enrichment providers: VT, AbuseIPDB, GSB, IPinfo.io, Haiku AI
+- IPinfo: ip/ipv6 → geo (city/region/country/lat/lng), ASN, org, VPN/proxy/Tor
+- Rate limit: 1,200/day (50k/mo free tier budget)
+- Env vars: TI_IPINFO_TOKEN, TI_IPINFO_RATE_LIMIT_PER_DAY
+- ES: 6 per-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle
+- 314 ai-enrichment tests, 116 ES indexing tests, 32/32 containers healthy
 
 Frozen modules: shared-types, shared-utils, shared-auth, shared-cache, shared-audit,
   shared-normalization, shared-enrichment, shared-ui, api-gateway, user-service,
   frontend, ingestion, normalization, ai-enrichment
 
 Module -> skill file map:
+  ai-enrichment -> skills/06-AI-ENRICHMENT.md
   ingestion -> skills/04-INGESTION.md
   normalization -> skills/05-NORMALIZATION.md
   testing -> skills/02-TESTING.md

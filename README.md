@@ -19,7 +19,7 @@
 | User Service (register, login, refresh, SSO, MFA, email verification, break-glass) | ✅ Live on VPS | 174 |
 | Ingestion Service (13 connectors: RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX, 11 pipeline modules, scheduler retry, global fetch workers) | ✅ Live on VPS | 770 |
 | Normalization Service (18 accuracy improvements, KEV/EPSS auto-severity, confidence bonus, global normalize/enrich, tenant overlay, fuzzy dedupe, corroboration, severity voting) | ✅ Live on VPS | 303 |
-| AI Enrichment Service (VT + AbuseIPDB + GSB + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 289 |
+| AI Enrichment Service (VT + AbuseIPDB + GSB + IPinfo.io + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 314 |
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
@@ -37,7 +37,7 @@
 | Admin Ops Service (system health, maintenance, backup/restore, tenant admin, audit, 28 endpoints) | ✅ Built | 147 |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| Elasticsearch IOC Indexing Service (BullMQ worker, full-text search, multi-tenant, 3 endpoints) | ✅ Deployed | 57 |
+| Elasticsearch IOC Indexing Service (BullMQ worker, per-IOC-type indices, ILM lifecycle, full-text search, multi-tenant) | ✅ Deployed | 116 |
 | Reporting Service (5 report types, BullMQ worker, cron scheduling, template engine, 25 endpoints) | ✅ Deployed | 217 |
 | Infrastructure (30 Docker containers) | ✅ All healthy | — |
 | **Phase 9 — Global Processing (DECISION-029 COMPLETE)** | **30/30 modules** | **~6,516** |
