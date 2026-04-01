@@ -1,0 +1,16 @@
+GlobalRank,TldRank,Domain,TLD,RefSubNets,RefIPs,IDN_Domain,IDN_TLD,PrevGlobalRank,PrevTldRank,PrevRefSubNets,PrevRefIPs
+1,1,google.com,com,484128,2812810,google.com,com,1,1,484190,2813210
+2,2,facebook.com,com,474892,2591870,facebook.com,com,2,2,474936,2592176
+3,3,youtube.com,com,415190,1894110,youtube.com,com,3,3,415238,1894445
+4,4,twitter.com,com,380118,1765190,twitter.com,com,4,4,380163,1765512
+5,5,instagram.com,com,343272,1607890,instagram.com,com,5,5,343308,1608176
+6,6,linkedin.com,com,323018,1543200,linkedin.com,com,6,6,323062,1543510
+7,1,wikipedia.org,org,302810,1478900,wikipedia.org,org,7,1,302856,1479212
+8,7,amazon.com,com,288100,1325600,amazon.com,com,8,7,288146,1325912
+9,8,apple.com,com,275210,1200100,apple.com,com,9,8,275256,1200412
+10,9,microsoft.com,com,268300,1187600,microsoft.com,com,10,9,268346,1187912
+11,10,reddit.com,com,252100,1098700,reddit.com,com,11,10,252146,1099012
+12,1,bbc.co.uk,co.uk,210500,987600,bbc.co.uk,co.uk,12,1,210546,987912
+13,11,cloudflare.com,com,198300,876500,cloudflare.com,com,13,11,198346,876812
+14,12,github.com,com,187200,765400,github.com,com,14,12,187246,765712
+15,13,nytimes.com,com,176100,654300,nytimes.com,com,15,13,176146,654612

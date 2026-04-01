@@ -9,6 +9,8 @@ export interface WarninglistEntry {
   name: string;
   type: 'string' | 'regex' | 'cidr' | 'hostname';
   category: 'false_positive' | 'known_benign';
+  /** What to do on match: 'drop' silently removes the IOC, 'flag' penalizes but keeps it. Default: 'drop'. */
+  action?: 'drop' | 'flag';
   values: string[];
 }
 
@@ -16,6 +18,8 @@ export interface WarninglistMatch {
   listName: string;
   category: 'false_positive' | 'known_benign';
   matchType: 'string' | 'regex' | 'cidr' | 'hostname';
+  /** Resolved action: 'drop' (default for built-in lists) or 'flag' (Majestic Million etc.). */
+  action: 'drop' | 'flag';
 }
 
 /** Simple CIDR check for /8, /16, /24 (covers 99% of warninglist CIDRs) */
@@ -77,52 +81,82 @@ const DEFAULT_LISTS: WarninglistEntry[] = [
 
 export class WarninglistMatcher {
   private lists: WarninglistEntry[] = [];
+  /** Pre-built Set indexes for large hostname lists (O(1) lookup vs O(n) scan). */
+  private domainSets = new Map<string, Set<string>>();
 
   loadDefaults(): void {
     this.lists = [...DEFAULT_LISTS];
+    this.rebuildDomainSets();
   }
 
   loadCustom(lists: WarninglistEntry[]): void {
     this.lists.push(...lists);
+    this.rebuildDomainSets();
+  }
+
+  /** Index hostname lists with plain-domain entries into Sets for O(1) lookup + subdomain matching. */
+  private rebuildDomainSets(): void {
+    this.domainSets.clear();
+    for (const list of this.lists) {
+      if (list.type !== 'hostname') continue;
+      const plainDomains = list.values.filter((v) => !v.startsWith('*'));
+      if (plainDomains.length > 0) {
+        this.domainSets.set(list.name, new Set(plainDomains.map((v) => v.toLowerCase())));
+      }
+    }
   }
 
   check(_iocType: string, value: string): WarninglistMatch | null {
     const lowerValue = value.toLowerCase().trim();
+    const mkMatch = (list: WarninglistEntry): WarninglistMatch => ({
+      listName: list.name,
+      category: list.category,
+      matchType: list.type,
+      action: list.action ?? 'drop',
+    });
 
     for (const list of this.lists) {
       switch (list.type) {
         case 'string': {
           const found = list.values.some((v) => v.toLowerCase() === lowerValue);
-          if (found) return { listName: list.name, category: list.category, matchType: 'string' };
+          if (found) return mkMatch(list);
           break;
         }
         case 'hostname': {
+          const domainSet = this.domainSets.get(list.name);
+          if (domainSet) {
+            // Fast Set-based matching for large domain lists (e.g., Majestic Million)
+            if (domainSet.has(lowerValue)) return mkMatch(list);
+            // Subdomain matching: cdn.example.com → check example.com, etc.
+            const parts = lowerValue.split('.');
+            for (let i = 1; i < parts.length - 1; i++) {
+              if (domainSet.has(parts.slice(i).join('.'))) return mkMatch(list);
+            }
+          }
+          // Always check wildcard patterns (wildcards are not in the Set)
           for (const pattern of list.values) {
             if (pattern.startsWith('*.')) {
               const suffix = pattern.slice(1).toLowerCase(); // e.g. ".cloudflare.com"
               if (lowerValue.endsWith(suffix) || lowerValue === suffix.slice(1)) {
-                return { listName: list.name, category: list.category, matchType: 'hostname' };
+                return mkMatch(list);
               }
-            } else if (lowerValue === pattern.toLowerCase()) {
-              return { listName: list.name, category: list.category, matchType: 'hostname' };
+            } else if (!domainSet) {
+              // Linear scan only when no Set exists (small lists)
+              if (lowerValue === pattern.toLowerCase()) return mkMatch(list);
             }
           }
           break;
         }
         case 'cidr': {
           for (const cidr of list.values) {
-            if (isIpInCidr(value.trim(), cidr)) {
-              return { listName: list.name, category: list.category, matchType: 'cidr' };
-            }
+            if (isIpInCidr(value.trim(), cidr)) return mkMatch(list);
           }
           break;
         }
         case 'regex': {
           for (const pattern of list.values) {
             try {
-              if (new RegExp(pattern, 'i').test(value)) {
-                return { listName: list.name, category: list.category, matchType: 'regex' };
-              }
+              if (new RegExp(pattern, 'i').test(value)) return mkMatch(list);
             } catch { /* invalid regex — skip */ }
           }
           break;

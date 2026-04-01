@@ -115,3 +115,12 @@ export {
   buildCweChain,
   type CweEntry,
 } from './cwe-chain.js';
+
+// ── Majestic Million Domain Whitelist ────────────────────────────
+export {
+  parseMajesticCsv,
+  buildMajesticEntry,
+  extractDomainFromUrl,
+  loadMajesticMillion,
+  type MajesticMillionConfig,
+} from './majestic-million.js';

@@ -28,6 +28,12 @@ const EnvSchema = z.object({
   TI_BLOOM_FP_RATE: z.coerce.number().min(0.00001).max(0.1).default(0.0001),
   /** Auto warm-up Bloom filter on service boot */
   TI_BLOOM_WARM_ON_BOOT: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  /** Enable Majestic Million domain whitelist for FP reduction */
+  TI_MAJESTIC_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  /** How many top domains to load from Majestic Million (default 100K) */
+  TI_MAJESTIC_TOP_N: z.coerce.number().int().min(1000).max(1_000_000).default(100_000),
+  /** Confidence penalty for IOCs matching Majestic Million domains */
+  TI_MAJESTIC_CONFIDENCE_PENALTY: z.coerce.number().int().min(0).max(100).default(30),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

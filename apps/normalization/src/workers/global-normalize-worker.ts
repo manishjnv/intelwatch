@@ -17,7 +17,9 @@ import {
   computeFuzzyHash,
   calculateCorroborationScore,
   calculateVelocityScore,
+  extractDomainFromUrl,
   type CorroborationSource,
+  type WarninglistMatch,
 } from '@etip/shared-normalization';
 import { SeverityVotingService } from '../services/severity-voting.js';
 import type { PrismaClient } from '@prisma/client';
@@ -146,12 +148,19 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
       const dedupeHash = buildGlobalDedupeHash(raw.rawType, normalizedValue);
       const fuzzyDedupeHash = computeFuzzyHash(raw.rawType, raw.rawValue);
 
-      // 5c. Warninglist check
-      const wlMatch = matcher.check(raw.rawType, normalizedValue);
-      if (wlMatch) {
+      // 5c. Warninglist check — extract domain from URL for hostname matching
+      let wlCheckValue = normalizedValue;
+      if (raw.rawType === 'url') {
+        const urlDomain = extractDomainFromUrl(normalizedValue);
+        if (urlDomain) wlCheckValue = urlDomain;
+      }
+      const wlMatch: WarninglistMatch | null = matcher.check(raw.rawType, wlCheckValue);
+      if (wlMatch && wlMatch.action !== 'flag') {
+        // Hard filter — silently drop the IOC
         filteredCount++;
         continue;
       }
+      // If wlMatch.action === 'flag': continue processing, apply penalty later
 
       // 5d. UPSERT into global_iocs — exact match first, then fuzzy
       let existing = await prisma.globalIoc.findUnique({ where: { dedupeHash } });
@@ -225,15 +234,36 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
           };
         } catch { /* velocity failure non-fatal */ }
 
+        // 5c-ii. Apply Majestic Million penalty if flagged
+        let finalConfidence = updatedConfidence.score;
+        const updateTags: string[] = [];
+        const updateWarninglistMatches: string[] = [];
+        if (wlMatch?.action === 'flag') {
+          const penalty = Number(process.env['TI_MAJESTIC_CONFIDENCE_PENALTY'] ?? 30);
+          finalConfidence = Math.max(0, finalConfidence - penalty);
+          updateTags.push('possible-false-positive');
+          updateWarninglistMatches.push(wlMatch.listName);
+          logger.info(
+            { value: raw.rawValue, listName: wlMatch.listName, penalty, original: updatedConfidence.score, penalized: finalConfidence },
+            `IOC ${raw.rawValue} matches ${wlMatch.listName} — confidence reduced`,
+          );
+        }
+
         await prisma.globalIoc.update({
           where: { id: existing.id },
           data: {
             lastSeen: new Date(),
             crossFeedCorroboration: corrobResult.score,
             sightingSources: newSources,
-            confidence: updatedConfidence.score,
-            stixConfidenceTier: stixConfidenceTier(updatedConfidence.score),
+            confidence: finalConfidence,
+            stixConfidenceTier: stixConfidenceTier(finalConfidence),
             ...velocityData,
+            ...(updateWarninglistMatches.length > 0 ? {
+              enrichmentData: {
+                ...(existing.enrichmentData as Record<string, unknown> ?? {}),
+                warninglistMatches: updateWarninglistMatches,
+              },
+            } : {}),
           },
         });
         updatedCount++;
@@ -248,13 +278,23 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
           iocType: raw.rawType,
         });
 
-        // 5f. STIX tier
-        const tier = stixConfidenceTier(confidence.score);
-
-        // 5g. ATT&CK severity (stored in enrichmentData if applicable)
+        // 5f. Apply Majestic Million penalty if flagged
+        let newConfidence = confidence.score;
         const enrichmentData: Record<string, unknown> = {};
-        // ATT&CK techniques would come from article extraction context
-        // For now, stored as empty — enrichment worker fills it
+        const newTags: string[] = [];
+        if (wlMatch?.action === 'flag') {
+          const penalty = Number(process.env['TI_MAJESTIC_CONFIDENCE_PENALTY'] ?? 30);
+          newConfidence = Math.max(0, newConfidence - penalty);
+          newTags.push('possible-false-positive');
+          enrichmentData.warninglistMatches = [wlMatch.listName];
+          logger.info(
+            { value: raw.rawValue, listName: wlMatch.listName, penalty, original: confidence.score, penalized: newConfidence },
+            `IOC ${raw.rawValue} matches ${wlMatch.listName} — confidence reduced`,
+          );
+        }
+
+        // 5g. STIX tier
+        const tier = stixConfidenceTier(newConfidence);
 
         await prisma.globalIoc.create({
           data: {
@@ -264,7 +304,7 @@ export function createGlobalNormalizeWorker(deps: GlobalNormalizeDeps): Worker {
             normalizedValue,
             dedupeHash,
             fuzzyDedupeHash,
-            confidence: confidence.score,
+            confidence: newConfidence,
             stixConfidenceTier: tier,
             lifecycle: 'new',
             sightingSources: [globalFeedId],
