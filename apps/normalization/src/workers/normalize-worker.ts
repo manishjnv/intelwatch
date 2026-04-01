@@ -4,20 +4,25 @@ import type pino from 'pino';
 import { NormalizeBatchJobSchema, type NormalizeBatchJob } from '../schema.js';
 import { NormalizationService, type NormalizationResult } from '../service.js';
 import type { IOCRepository } from '../repository.js';
+import type { BloomManager } from '../bloom.js';
 import { getConfig } from '../config.js';
 
 export interface NormalizeWorkerDeps {
   repo: IOCRepository;
   logger: pino.Logger;
+  bloomManager?: BloomManager;
 }
 
 export function createNormalizeWorker(deps: NormalizeWorkerDeps): Worker<NormalizeBatchJob, NormalizationResult> {
-  const { repo, logger } = deps;
+  const { repo, logger, bloomManager } = deps;
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
 
   const service = new NormalizationService(repo, logger);
+  if (bloomManager) {
+    service.setBloomManager(bloomManager);
+  }
 
   const worker = new Worker<NormalizeBatchJob, NormalizationResult>(
     QUEUES.NORMALIZE,

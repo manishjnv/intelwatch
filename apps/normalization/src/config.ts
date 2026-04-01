@@ -20,6 +20,14 @@ const EnvSchema = z.object({
   TI_NORMALIZATION_BATCH_SIZE: z.coerce.number().int().min(1).default(500),
   /** Worker concurrency for BullMQ normalize queue */
   TI_NORMALIZATION_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(3),
+  /** Enable Redis Bloom filter for pre-write IOC deduplication */
+  TI_BLOOM_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  /** Expected items per tenant Bloom filter (default 1M) */
+  TI_BLOOM_EXPECTED_ITEMS: z.coerce.number().int().min(1000).default(1_000_000),
+  /** Target false positive rate for Bloom filter (default 0.0001 = 0.01%) */
+  TI_BLOOM_FP_RATE: z.coerce.number().min(0.00001).max(0.1).default(0.0001),
+  /** Auto warm-up Bloom filter on service boot */
+  TI_BLOOM_WARM_ON_BOOT: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

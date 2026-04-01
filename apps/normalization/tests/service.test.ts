@@ -259,7 +259,7 @@ describe('NormalizationService', () => {
       const job = buildJob([]);
       const result = await service.normalizeBatch(job);
 
-      expect(result).toEqual({ created: 0, updated: 0, skipped: 0, filtered: 0, reactivated: 0, errors: 0 });
+      expect(result).toEqual({ created: 0, updated: 0, skipped: 0, filtered: 0, reactivated: 0, errors: 0, bloomHits: 0, bloomMisses: 0 });
       expect(repo.upsert).not.toHaveBeenCalled();
     });
   });

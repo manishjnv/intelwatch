@@ -125,6 +125,18 @@ export class IOCRepository {
     return this.db.ioc.findUnique({ where: { dedupeHash } });
   }
 
+  /** Fetch dedupe hashes for a tenant in paginated batches (for Bloom filter warm-up) */
+  async findDedupeHashes(tenantId: string, skip: number, take: number): Promise<string[]> {
+    const rows = await this.db.ioc.findMany({
+      where: { tenantId },
+      select: { dedupeHash: true },
+      skip,
+      take,
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((r) => r.dedupeHash);
+  }
+
   /** Fetch feed reliability score from FeedSource table */
   async findFeedReliability(feedSourceId: string): Promise<number | null> {
     const feed = await this.db.feedSource.findUnique({

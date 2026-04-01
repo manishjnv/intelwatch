@@ -49,6 +49,19 @@ export { sleep, retryWithBackoff } from './sleep.js';
 // ── Prometheus metrics ────────────────────────────────────────────
 export { registerMetrics, type MetricsCompatibleApp } from './metrics.js';
 
+// ── Bloom Filter ──────────────────────────────────────────────────
+export {
+  createBloomFilter,
+  murmurhash3,
+  optimalBitCount,
+  optimalHashCount,
+  type BloomFilter,
+  type BloomFilterStats,
+  type BloomRedisClient,
+  type BloomRedisPipeline,
+  type CreateBloomFilterOptions,
+} from './bloom-filter.js';
+
 // ── AI Model Registry ────────────────────────────────────────────
 export {
   MODEL_CATALOG,

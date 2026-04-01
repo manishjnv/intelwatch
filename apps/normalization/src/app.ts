@@ -8,14 +8,17 @@ import { registerMetrics } from '@etip/shared-utils';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
 import { iocRoutes } from './routes/iocs.js';
+import { bloomRoutes } from './routes/bloom.js';
 import { tenantOverlayRoutes } from './routes/tenant-overlay.js';
 import { TenantOverlayService } from './services/tenant-overlay-service.js';
 import type { IOCRepository } from './repository.js';
+import type { BloomManager } from './bloom.js';
 
 export interface BuildAppOptions {
   config: AppConfig;
   repo: IOCRepository;
   prisma?: import('@prisma/client').PrismaClient;
+  bloomManager?: BloomManager;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -65,6 +68,11 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(iocRoutes(repo), { prefix: '/api/v1/iocs' });
+
+  // Bloom filter admin routes (gated — only registered when bloom is enabled)
+  if (opts.bloomManager) {
+    await app.register(bloomRoutes({ bloomManager: opts.bloomManager, repo }), { prefix: '/api/v1/admin/bloom' });
+  }
 
   // Global IOC overlay routes (DECISION-029 Phase B2 — gated by TI_GLOBAL_PROCESSING_ENABLED)
   const overlayService = new TenantOverlayService(opts.prisma ?? (await import('./prisma.js')).prisma);

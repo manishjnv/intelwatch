@@ -6,6 +6,7 @@ import type { NormalizeBatchJob } from './schema.js';
 import { applyQualityFilters } from './filters.js';
 import { getEnrichQueue } from './queue.js';
 import { incrementUnknownType } from './stats-counter.js';
+import type { BloomManager } from './bloom.js';
 
 /** Map shared-normalization IOCType to Prisma IocType enum values */
 function mapIOCType(rawType: string): string {
@@ -313,6 +314,8 @@ export interface NormalizationResult {
   filtered: number;
   reactivated: number;
   errors: number;
+  bloomHits?: number;
+  bloomMisses?: number;
 }
 
 /** Confidence signal breakdown stored in enrichmentData */
@@ -342,16 +345,23 @@ export interface ConfidenceBreakdown {
 export class NormalizationService {
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
   private reliabilityCache = new Map<string, { score: number; cachedAt: number }>();
+  private bloomManager: BloomManager | null = null;
 
   constructor(
     private readonly repo: IOCRepository,
     private readonly logger: pino.Logger,
   ) {}
 
+  /** Set the optional Bloom filter manager for pre-write dedup */
+  setBloomManager(manager: BloomManager): void {
+    this.bloomManager = manager;
+  }
+
   /** Normalize a batch of IOCs from a single article */
   async normalizeBatch(job: NormalizeBatchJob): Promise<NormalizationResult> {
     const result: NormalizationResult = {
       created: 0, updated: 0, skipped: 0, filtered: 0, reactivated: 0, errors: 0,
+      bloomHits: 0, bloomMisses: 0,
     };
     const now = new Date();
 
@@ -392,6 +402,18 @@ export class NormalizationService {
 
         // Step 3: Build dedupe hash
         const dedupeHash = buildDedupeHash(iocType, normalizedValue, job.tenantId);
+
+        // Step 3b: Bloom filter pre-check (optimization — skip enrichment for known IOCs)
+        let bloomHit = false;
+        if (this.bloomManager) {
+          try {
+            bloomHit = await this.bloomManager.check(job.tenantId, dedupeHash);
+            if (bloomHit) { result.bloomHits!++; } else { result.bloomMisses!++; }
+          } catch (err) {
+            // Bloom is optional — failures don't block pipeline
+            this.logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Bloom check failed — proceeding without');
+          }
+        }
 
         // Step 4: Fetch existing IOC for merge + lifecycle logic
         const existing = await this.repo.findByDedupeHash(dedupeHash);
@@ -545,9 +567,26 @@ export class NormalizationService {
           enrichmentData: enrichmentData as object,
         });
 
+        // ── Add to Bloom filter after successful upsert ────────
+        if (this.bloomManager) {
+          try {
+            await this.bloomManager.add(job.tenantId, dedupeHash);
+            // Track false positives: bloom said "probably exists" but IOC was actually new
+            if (bloomHit && !existing) {
+              this.bloomManager.recordFalsePositive();
+            }
+          } catch (err) {
+            this.logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Bloom add failed — non-critical');
+          }
+        }
+
         // ── Queue IOC for AI enrichment (Module 06) ────────────
+        // Bloom optimization: if bloom said "probably exists" AND the IOC was an update
+        // (not new), skip enrichment queue — it was likely already enriched.
+        // Reactivated IOCs always get re-enriched (priority 1).
+        const skipEnrichment = bloomHit && existing && !isReactivation;
         const enrichQueue = getEnrichQueue();
-        if (enrichQueue && upserted.id) {
+        if (enrichQueue && upserted.id && !skipEnrichment) {
           await enrichQueue.add(`enrich-${upserted.id}`, {
             iocId: upserted.id,
             tenantId: job.tenantId,

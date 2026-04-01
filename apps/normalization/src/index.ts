@@ -12,9 +12,11 @@ import { createGlobalEnrichWorker } from './workers/global-enrich-worker.js';
 import { ShodanClient } from './enrichment/shodan-client.js';
 import { GreyNoiseClient } from './enrichment/greynoise-client.js';
 import { configureClassifier } from './service.js';
+import { BloomManager } from './bloom.js';
 import { QUEUES } from '@etip/shared-utils';
 import { Queue } from 'bullmq';
 import { EventEmitter } from 'node:events';
+import Redis from 'ioredis';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -38,13 +40,53 @@ async function main(): Promise<void> {
   createNormalizeQueue();
   createEnrichQueue();
 
-  const app = await buildApp({ config, repo });
+  // ── Bloom Filter Initialization (optional, gated by TI_BLOOM_ENABLED) ──
+  let bloomManager: BloomManager | undefined;
+  if (config.TI_BLOOM_ENABLED) {
+    const redisUrl = new URL(config.TI_REDIS_URL);
+    const redisPwd = decodeURIComponent(redisUrl.password || '');
+    const bloomRedis = new Redis({
+      host: redisUrl.hostname,
+      port: Number(redisUrl.port) || 6379,
+      password: redisPwd || undefined,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      lazyConnect: true,
+    });
+    bloomManager = new BloomManager({
+      redis: bloomRedis as unknown as import('@etip/shared-utils').BloomRedisClient,
+      logger,
+      expectedItems: config.TI_BLOOM_EXPECTED_ITEMS,
+      falsePositiveRate: config.TI_BLOOM_FP_RATE,
+    });
+    logger.info({
+      expectedItems: config.TI_BLOOM_EXPECTED_ITEMS,
+      fpRate: config.TI_BLOOM_FP_RATE,
+      warmOnBoot: config.TI_BLOOM_WARM_ON_BOOT,
+    }, 'Bloom filter: ENABLED');
+  } else {
+    logger.info('Bloom filter: DISABLED');
+  }
+
+  const app = await buildApp({ config, repo, bloomManager });
 
   // Start BullMQ worker to process normalization jobs
-  const worker = createNormalizeWorker({ repo, logger });
+  const worker = createNormalizeWorker({ repo, logger, bloomManager });
 
   // Start lifecycle cron worker (ACTIVE→AGING→EXPIRED→ARCHIVED)
   const lifecycleTask = createLifecycleWorker(repo, logger);
+
+  // ── Bloom Filter Warm-Up on Boot ────────────────────────────────
+  if (bloomManager && config.TI_BLOOM_WARM_ON_BOOT) {
+    // Warm up in the background — don't block server startup
+    const fetchHashes = (tenantId: string, skip: number, take: number) =>
+      repo.findDedupeHashes(tenantId, skip, take);
+
+    // Warm global tenant filter (system tenant)
+    bloomManager.warmUp('00000000-0000-0000-0000-000000000000', fetchHashes).catch((err) => {
+      logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Bloom warm-up failed for system tenant — non-critical');
+    });
+  }
 
   // ── Global Feed Processing Workers (DECISION-029 Phase B2+C) ─────
   const globalWorkerCleanup: (() => Promise<void>)[] = [];
