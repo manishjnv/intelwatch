@@ -7,6 +7,7 @@ function makeEsClient(overrides: Partial<EsIndexClient> = {}): EsIndexClient {
   return {
     ping: vi.fn().mockResolvedValue(true),
     ensureIndex: vi.fn().mockResolvedValue(undefined),
+    ensureTypeIndex: vi.fn().mockResolvedValue(undefined),
     indexDoc: vi.fn().mockResolvedValue(undefined),
     updateDoc: vi.fn().mockResolvedValue(undefined),
     deleteDoc: vi.fn().mockResolvedValue(undefined),
@@ -20,7 +21,12 @@ function makeEsClient(overrides: Partial<EsIndexClient> = {}): EsIndexClient {
       },
     }),
     bulkIndex: vi.fn().mockResolvedValue({ indexed: 0, failed: 0 }),
+    bulkIndexMultiType: vi.fn().mockResolvedValue({ indexed: 0, failed: 0 }),
     countDocs: vi.fn().mockResolvedValue(0),
+    setupIlmPolicy: vi.fn().mockResolvedValue(undefined),
+    setupIndexTemplate: vi.fn().mockResolvedValue(undefined),
+    reindexByQuery: vi.fn().mockResolvedValue({ total: 0 }),
+    getClient: vi.fn(),
     ...overrides,
   } as unknown as EsIndexClient;
 }
@@ -50,34 +56,50 @@ describe('IocSearchService', () => {
 
   // ── search ──────────────────────────────────────────────────────────────────
   describe('search', () => {
-    it('calls es.search with correct index name', async () => {
+    it('uses wildcard pattern for cross-type search (no type filter)', async () => {
       await service.search('tenant-abc', { page: 1, limit: 50 });
       expect(es.search).toHaveBeenCalledWith(
-        'etip_tenant-abc_iocs',
+        'etip_tenant-abc_iocs_*',
         expect.objectContaining({ page: 1, limit: 50 }),
+      );
+    });
+
+    it('targets specific per-type index when type filter is provided', async () => {
+      await service.search('tenant-abc', { type: 'ip', page: 1, limit: 50 });
+      expect(es.search).toHaveBeenCalledWith(
+        'etip_tenant-abc_iocs_ip',
+        expect.objectContaining({ type: 'ip' }),
+      );
+    });
+
+    it('targets hash index for sha256 type filter', async () => {
+      await service.search('tenant-abc', { type: 'sha256', page: 1, limit: 50 });
+      expect(es.search).toHaveBeenCalledWith(
+        'etip_tenant-abc_iocs_hash',
+        expect.objectContaining({ type: 'sha256' }),
+      );
+    });
+
+    it('targets domain index for url type filter', async () => {
+      await service.search('tenant-abc', { type: 'url', page: 1, limit: 50 });
+      expect(es.search).toHaveBeenCalledWith(
+        'etip_tenant-abc_iocs_domain',
+        expect.objectContaining({ type: 'url' }),
       );
     });
 
     it('passes q param to search', async () => {
       await service.search('tenant-abc', { q: 'evil.com', page: 1, limit: 50 });
       expect(es.search).toHaveBeenCalledWith(
-        'etip_tenant-abc_iocs',
+        'etip_tenant-abc_iocs_*',
         expect.objectContaining({ q: 'evil.com' }),
-      );
-    });
-
-    it('passes type filter to search', async () => {
-      await service.search('tenant-abc', { type: 'domain', page: 1, limit: 50 });
-      expect(es.search).toHaveBeenCalledWith(
-        'etip_tenant-abc_iocs',
-        expect.objectContaining({ type: 'domain' }),
       );
     });
 
     it('passes severity filter to search', async () => {
       await service.search('tenant-abc', { severity: 'critical', page: 1, limit: 50 });
       expect(es.search).toHaveBeenCalledWith(
-        'etip_tenant-abc_iocs',
+        'etip_tenant-abc_iocs_*',
         expect.objectContaining({ severity: 'critical' }),
       );
     });
@@ -85,7 +107,7 @@ describe('IocSearchService', () => {
     it('passes tlp filter to search', async () => {
       await service.search('tenant-abc', { tlp: 'RED', page: 1, limit: 50 });
       expect(es.search).toHaveBeenCalledWith(
-        'etip_tenant-abc_iocs',
+        'etip_tenant-abc_iocs_*',
         expect.objectContaining({ tlp: 'RED' }),
       );
     });
@@ -93,7 +115,7 @@ describe('IocSearchService', () => {
     it('passes enriched filter to search', async () => {
       await service.search('tenant-abc', { enriched: true, page: 1, limit: 50 });
       expect(es.search).toHaveBeenCalledWith(
-        'etip_tenant-abc_iocs',
+        'etip_tenant-abc_iocs_*',
         expect.objectContaining({ enriched: true }),
       );
     });
@@ -136,7 +158,7 @@ describe('IocSearchService', () => {
     it('respects pagination (page 2)', async () => {
       await service.search('tenant-abc', { page: 2, limit: 25 });
       expect(es.search).toHaveBeenCalledWith(
-        'etip_tenant-abc_iocs',
+        'etip_tenant-abc_iocs_*',
         expect.objectContaining({ page: 2, limit: 25 }),
       );
     });
@@ -151,17 +173,33 @@ describe('IocSearchService', () => {
 
   // ── getIndexStats ────────────────────────────────────────────────────────────
   describe('getIndexStats', () => {
-    it('calls countDocs with correct index name', async () => {
-      vi.mocked(es.countDocs).mockResolvedValue(42);
+    it('calls countDocs for all 6 per-type indices', async () => {
+      vi.mocked(es.countDocs).mockResolvedValue(10);
       await service.getIndexStats('tenant-abc');
-      expect(es.countDocs).toHaveBeenCalledWith('etip_tenant-abc_iocs');
+      expect(es.countDocs).toHaveBeenCalledTimes(6);
+      expect(es.countDocs).toHaveBeenCalledWith('etip_tenant-abc_iocs_ip');
+      expect(es.countDocs).toHaveBeenCalledWith('etip_tenant-abc_iocs_domain');
+      expect(es.countDocs).toHaveBeenCalledWith('etip_tenant-abc_iocs_hash');
+      expect(es.countDocs).toHaveBeenCalledWith('etip_tenant-abc_iocs_email');
+      expect(es.countDocs).toHaveBeenCalledWith('etip_tenant-abc_iocs_cve');
+      expect(es.countDocs).toHaveBeenCalledWith('etip_tenant-abc_iocs_other');
     });
 
-    it('returns docCount from countDocs', async () => {
-      vi.mocked(es.countDocs).mockResolvedValue(42);
+    it('returns total docCount summed across all indices', async () => {
+      vi.mocked(es.countDocs)
+        .mockResolvedValueOnce(10) // ip
+        .mockResolvedValueOnce(5)  // domain
+        .mockResolvedValueOnce(3)  // hash
+        .mockResolvedValueOnce(1)  // email
+        .mockResolvedValueOnce(2)  // cve
+        .mockResolvedValueOnce(0); // other
       const stats = await service.getIndexStats('tenant-abc');
-      expect(stats.docCount).toBe(42);
-      expect(stats.indexName).toBe('etip_tenant-abc_iocs');
+      expect(stats.docCount).toBe(21);
+    });
+
+    it('returns all 6 index names', async () => {
+      const stats = await service.getIndexStats('tenant-abc');
+      expect(stats.indexNames).toHaveLength(6);
     });
   });
 });

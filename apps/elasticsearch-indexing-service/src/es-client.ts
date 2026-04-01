@@ -4,41 +4,16 @@ import { AppError } from '@etip/shared-utils';
 // Minimal local alias — avoids importing from non-exported ES subpath
 type QueryContainer = Record<string, unknown>;
 import type { IocDocument, ReindexResult } from './schemas.js';
+import { getTypeIndex, getIndexCategory } from './index-naming.js';
+import { buildIndexBody } from './mappings.js';
+import { ILM_POLICY_NAME, ILM_POLICY_BODY, INDEX_TEMPLATE_NAME, buildIndexTemplateBody } from './ilm.js';
 
-// ── Index naming ─────────────────────────────────────────────────────────────
+// ── Legacy index naming (backward compat for migration) ─────────────────────
 
-/** Returns the Elasticsearch index name for a given tenant. */
+/** Returns the legacy single-index name for a given tenant (pre-migration). */
 export function getIndexName(tenantId: string): string {
   return `etip_${tenantId}_iocs`;
 }
-
-// ── IOC index mapping ─────────────────────────────────────────────────────────
-
-const IOC_INDEX_MAPPING = {
-  mappings: {
-    properties: {
-      iocId:       { type: 'keyword' as const },
-      value:       { type: 'text' as const, analyzer: 'standard', fields: { keyword: { type: 'keyword' as const } } },
-      type:        { type: 'keyword' as const },
-      severity:    { type: 'keyword' as const },
-      confidence:  { type: 'integer' as const },
-      tags:        { type: 'text' as const, fields: { keyword: { type: 'keyword' as const } } },
-      firstSeen:   { type: 'date' as const },
-      lastSeen:    { type: 'date' as const },
-      tenantId:    { type: 'keyword' as const },
-      sourceId:    { type: 'keyword' as const },
-      enriched:    { type: 'boolean' as const },
-      tlp:         { type: 'keyword' as const },
-      campaignIds: { type: 'keyword' as const },
-      actorIds:    { type: 'keyword' as const },
-    },
-  },
-  settings: {
-    number_of_shards: 1,
-    number_of_replicas: 0,
-    refresh_interval: '5s',
-  },
-};
 
 // ── Search params + result (internal) ────────────────────────────────────────
 
@@ -98,17 +73,92 @@ export class EsIndexClient {
     }
   }
 
-  /** Create the IOC index for a tenant if it does not already exist. */
+  /** Create the legacy single IOC index for a tenant if it does not already exist. */
   async ensureIndex(tenantId: string): Promise<void> {
     const index = getIndexName(tenantId);
     try {
       const exists = await this.client.indices.exists({ index });
       if (!exists) {
-        await this.client.indices.create({ index, ...IOC_INDEX_MAPPING });
+        await this.client.indices.create({ index, ...buildIndexBody('other') });
       }
     } catch (err) {
       throw new AppError(503, `Failed to ensure ES index for tenant ${tenantId}`, 'ES_INDEX_ENSURE_FAILED', err);
     }
+  }
+
+  /**
+   * Create a per-type IOC index for a tenant if it does not already exist.
+   * Applies the correct category-specific mapping (IP→geo, hash→AV, etc.).
+   */
+  async ensureTypeIndex(tenantId: string, iocType: string): Promise<void> {
+    const category = getIndexCategory(iocType);
+    const index = getTypeIndex(tenantId, iocType);
+    try {
+      const exists = await this.client.indices.exists({ index });
+      if (!exists) {
+        await this.client.indices.create({ index, ...buildIndexBody(category) });
+      }
+    } catch (err) {
+      throw new AppError(503, `Failed to ensure type index ${index}`, 'ES_INDEX_ENSURE_FAILED', err);
+    }
+  }
+
+  /**
+   * Idempotently create/update the ILM policy for IOC indices.
+   * Safe to call on every startup — overwrites if already exists.
+   */
+  async setupIlmPolicy(): Promise<void> {
+    try {
+      await this.client.ilm.putLifecycle({
+        name: ILM_POLICY_NAME,
+        ...ILM_POLICY_BODY,
+      });
+    } catch (err) {
+      throw new AppError(503, 'Failed to setup ILM policy', 'ES_ILM_SETUP_FAILED', err);
+    }
+  }
+
+  /**
+   * Idempotently create/update the composable index template for IOC indices.
+   * Should be called after setupIlmPolicy (template references the policy).
+   */
+  async setupIndexTemplate(): Promise<void> {
+    try {
+      await this.client.indices.putIndexTemplate({
+        name: INDEX_TEMPLATE_NAME,
+        ...buildIndexTemplateBody(),
+      });
+    } catch (err) {
+      throw new AppError(503, 'Failed to setup index template', 'ES_TEMPLATE_SETUP_FAILED', err);
+    }
+  }
+
+  /**
+   * Reindex documents from a source index to a destination index,
+   * optionally filtered by an ES query.
+   * Used by the migration function to move IOCs from the legacy single index
+   * to per-type indices.
+   */
+  async reindexByQuery(
+    source: string,
+    dest: string,
+    query: Record<string, unknown>,
+  ): Promise<{ total: number }> {
+    try {
+      const resp = await this.client.reindex({
+        source: { index: source, query },
+        dest: { index: dest },
+        refresh: true,
+      });
+      return { total: typeof resp.total === 'number' ? resp.total : 0 };
+    } catch (err) {
+      throw new AppError(503, `Reindex from ${source} to ${dest} failed`, 'ES_REINDEX_QUERY_FAILED', err);
+    }
+  }
+
+  /** Expose the raw ES client for advanced operations (migration, etc.). */
+  getClient(): Client {
+    return this.client;
   }
 
   /** Index a single IOC document. */
@@ -178,7 +228,7 @@ export class EsIndexClient {
     }
   }
 
-  /** Bulk index a list of IOC documents. */
+  /** Bulk index a list of IOC documents to a single index. */
   async bulkIndex(index: string, docs: IocDocument[]): Promise<ReindexResult> {
     if (docs.length === 0) return { indexed: 0, failed: 0 };
 
@@ -193,6 +243,28 @@ export class EsIndexClient {
       return { indexed: docs.length - failed, failed };
     } catch (err) {
       throw new AppError(503, 'Elasticsearch bulk index failed', 'ES_BULK_FAILED', err);
+    }
+  }
+
+  /**
+   * Bulk index IOC documents, routing each to its per-type index.
+   * Groups documents by IOC type category, then sends one bulk request
+   * with per-document _index directives.
+   */
+  async bulkIndexMultiType(tenantId: string, docs: IocDocument[]): Promise<ReindexResult> {
+    if (docs.length === 0) return { indexed: 0, failed: 0 };
+
+    const operations = docs.flatMap((doc) => {
+      const idx = getTypeIndex(tenantId, doc.type);
+      return [{ index: { _index: idx, _id: doc.iocId } }, doc];
+    });
+
+    try {
+      const resp = await this.client.bulk({ operations, refresh: 'wait_for' });
+      const failed = resp.items.filter((i: { index?: { error?: unknown } }) => i.index?.error).length;
+      return { indexed: docs.length - failed, failed };
+    } catch (err) {
+      throw new AppError(503, 'Elasticsearch multi-type bulk index failed', 'ES_BULK_FAILED', err);
     }
   }
 

@@ -8,12 +8,18 @@ vi.mock('../src/es-client.js', () => ({
   EsIndexClient: vi.fn(() => ({
     ping: vi.fn().mockResolvedValue(true),
     ensureIndex: vi.fn().mockResolvedValue(undefined),
+    ensureTypeIndex: vi.fn().mockResolvedValue(undefined),
     indexDoc: vi.fn().mockResolvedValue(undefined),
     updateDoc: vi.fn().mockResolvedValue(undefined),
     deleteDoc: vi.fn().mockResolvedValue(undefined),
     search: vi.fn().mockResolvedValue({ total: 0, hits: [], aggregations: {} }),
     bulkIndex: vi.fn().mockResolvedValue({ indexed: 0, failed: 0 }),
+    bulkIndexMultiType: vi.fn().mockResolvedValue({ indexed: 0, failed: 0 }),
     countDocs: vi.fn().mockResolvedValue(0),
+    setupIlmPolicy: vi.fn().mockResolvedValue(undefined),
+    setupIndexTemplate: vi.fn().mockResolvedValue(undefined),
+    reindexByQuery: vi.fn().mockResolvedValue({ total: 0 }),
+    getClient: vi.fn(),
   })),
   getIndexName: vi.fn((t: string) => `etip_${t}_iocs`),
 }));

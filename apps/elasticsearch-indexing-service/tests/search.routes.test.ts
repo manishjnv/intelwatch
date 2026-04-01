@@ -32,19 +32,35 @@ const mockSearchResult = {
 
 const mockSearchService = {
   search: vi.fn().mockResolvedValue(mockSearchResult),
-  getIndexStats: vi.fn().mockResolvedValue({ docCount: 5, indexName: 'etip_tenant-abc_iocs' }),
+  getIndexStats: vi.fn().mockResolvedValue({
+    docCount: 5,
+    indexNames: [
+      'etip_tenant-abc_iocs_ip',
+      'etip_tenant-abc_iocs_domain',
+      'etip_tenant-abc_iocs_hash',
+      'etip_tenant-abc_iocs_email',
+      'etip_tenant-abc_iocs_cve',
+      'etip_tenant-abc_iocs_other',
+    ],
+  }),
 };
 
 vi.mock('../src/es-client.js', () => ({
   EsIndexClient: vi.fn(() => ({
     ping: vi.fn().mockResolvedValue(true),
     ensureIndex: vi.fn(),
+    ensureTypeIndex: vi.fn(),
     indexDoc: vi.fn(),
     updateDoc: vi.fn(),
     deleteDoc: vi.fn(),
     search: vi.fn().mockResolvedValue({ total: 0, hits: [], aggregations: {} }),
     bulkIndex: vi.fn().mockResolvedValue({ indexed: 0, failed: 0 }),
+    bulkIndexMultiType: vi.fn().mockResolvedValue({ indexed: 0, failed: 0 }),
     countDocs: vi.fn().mockResolvedValue(0),
+    setupIlmPolicy: vi.fn().mockResolvedValue(undefined),
+    setupIndexTemplate: vi.fn().mockResolvedValue(undefined),
+    reindexByQuery: vi.fn().mockResolvedValue({ total: 0 }),
+    getClient: vi.fn(),
   })),
   getIndexName: vi.fn((t: string) => `etip_${t}_iocs`),
 }));
@@ -172,7 +188,7 @@ describe('Search Routes', () => {
   });
 
   describe('GET /api/v1/search/iocs/stats', () => {
-    it('returns 200 with docCount and indexName', async () => {
+    it('returns 200 with docCount and indexNames array', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/search/iocs/stats?tenantId=tenant-abc',
@@ -180,7 +196,7 @@ describe('Search Routes', () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(typeof body.data.docCount).toBe('number');
-      expect(typeof body.data.indexName).toBe('string');
+      expect(Array.isArray(body.data.indexNames)).toBe(true);
     });
 
     it('returns 400 when tenantId is missing', async () => {

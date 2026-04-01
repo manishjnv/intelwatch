@@ -1,10 +1,11 @@
 import { AppError } from '@etip/shared-utils';
 import type { EsIndexClient } from './es-client.js';
-import { getIndexName } from './es-client.js';
+import { getTypeIndex } from './index-naming.js';
 import type { IocDocument, ReindexResult } from './schemas.js';
 
 /**
  * High-level IOC indexing operations that wrap EsIndexClient.
+ * Routes all writes to per-type indices based on IOC type.
  * All methods throw AppError on failure.
  */
 export class IocIndexer {
@@ -12,12 +13,13 @@ export class IocIndexer {
 
   /**
    * Index a new IOC document for a tenant.
-   * Creates the tenant index if it does not exist.
+   * Routes to the correct per-type index based on iocType.
+   * Creates the index if it does not exist.
    */
   async indexIOC(tenantId: string, iocId: string, payload: IocDocument): Promise<void> {
-    const index = getIndexName(tenantId);
+    const index = getTypeIndex(tenantId, payload.type);
     try {
-      await this.es.ensureIndex(tenantId);
+      await this.es.ensureTypeIndex(tenantId, payload.type);
       await this.es.indexDoc(index, iocId, payload);
     } catch (err) {
       if (err instanceof AppError) throw err;
@@ -26,13 +28,15 @@ export class IocIndexer {
   }
 
   /**
-   * Update an existing IOC document in the tenant index.
+   * Update an existing IOC document in the correct per-type index.
+   * Requires iocType to route to the correct index.
    * Only the provided fields are updated (partial update).
    */
-  async updateIOC(tenantId: string, iocId: string, payload: Partial<IocDocument>): Promise<void> {
-    const index = getIndexName(tenantId);
+  async updateIOC(tenantId: string, iocId: string, payload: Partial<IocDocument>, iocType?: string): Promise<void> {
+    const type = iocType ?? payload.type ?? 'other';
+    const index = getTypeIndex(tenantId, type);
     try {
-      await this.es.ensureIndex(tenantId);
+      await this.es.ensureTypeIndex(tenantId, type);
       await this.es.updateDoc(index, iocId, payload);
     } catch (err) {
       if (err instanceof AppError) throw err;
@@ -41,10 +45,12 @@ export class IocIndexer {
   }
 
   /**
-   * Delete an IOC document from the tenant index.
+   * Delete an IOC document from the correct per-type index.
+   * Requires iocType to route to the correct index.
    */
-  async deleteIOC(tenantId: string, iocId: string): Promise<void> {
-    const index = getIndexName(tenantId);
+  async deleteIOC(tenantId: string, iocId: string, iocType?: string): Promise<void> {
+    const type = iocType ?? 'other';
+    const index = getTypeIndex(tenantId, type);
     try {
       await this.es.deleteDoc(index, iocId);
     } catch (err) {
@@ -55,13 +61,17 @@ export class IocIndexer {
 
   /**
    * Bulk re-index all provided IOC documents for a tenant.
-   * Creates the index if needed, then performs a bulk operation.
+   * Groups IOCs by type and sends them to their respective per-type indices.
+   * Ensures all required type indices exist before bulk indexing.
    */
   async reindexTenant(tenantId: string, iocs: IocDocument[]): Promise<ReindexResult> {
-    const index = getIndexName(tenantId);
+    if (iocs.length === 0) return { indexed: 0, failed: 0 };
+
+    // Collect unique IOC types to ensure their indices exist
+    const uniqueTypes = [...new Set(iocs.map((ioc) => ioc.type))];
     try {
-      await this.es.ensureIndex(tenantId);
-      return await this.es.bulkIndex(index, iocs);
+      await Promise.all(uniqueTypes.map((t) => this.es.ensureTypeIndex(tenantId, t)));
+      return await this.es.bulkIndexMultiType(tenantId, iocs);
     } catch (err) {
       if (err instanceof AppError) throw err;
       throw new AppError(503, `Failed to reindex tenant ${tenantId}`, 'ES_REINDEX_FAILED', err);

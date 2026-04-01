@@ -86,3 +86,14 @@ export interface ReindexResult {
   indexed: number;
   failed: number;
 }
+
+// ── Migration result ──────────────────────────────────────────────────────────
+
+export interface MigrationResult {
+  tenantId: string;
+  totalMigrated: number;
+  perCategory: Record<string, number>;
+  sourceIndex: string;
+  status: 'completed' | 'skipped';
+  message?: string;
+}

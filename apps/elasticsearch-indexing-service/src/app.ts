@@ -7,6 +7,7 @@ import { errorHandlerPlugin } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health-check.js';
 import { searchRoutes } from './routes/search.js';
 import { reindexRoutes } from './routes/reindex.js';
+import { migrateRoutes } from './routes/migrate.js';
 import { EsIndexClient } from './es-client.js';
 import { IocIndexer } from './ioc-indexer.js';
 import { IocSearchService } from './search-service.js';
@@ -82,10 +83,20 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     }
   });
 
+  // ── ILM + Index Template setup (idempotent — safe to run on every startup) ──
+  try {
+    await esClient.setupIlmPolicy();
+    await esClient.setupIndexTemplate();
+    app.log.info('ILM policy and index template configured');
+  } catch (err) {
+    app.log.warn({ err }, 'ILM/template setup failed — will retry on next restart');
+  }
+
   // ── Routes ───────────────────────────────────────────────────────────────────
   await app.register(healthRoutes({ esClient, worker }));
   await app.register(searchRoutes({ searchService }), { prefix: '/api/v1/search' });
   await app.register(reindexRoutes({ indexer }), { prefix: '/api/v1/search' });
+  await app.register(migrateRoutes({ esClient }), { prefix: '/api/v1/admin' });
 
   // ── Graceful shutdown ────────────────────────────────────────────────────────
   app.addHook('onClose', async () => {

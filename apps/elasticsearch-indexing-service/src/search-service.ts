@@ -1,27 +1,33 @@
 import { AppError } from '@etip/shared-utils';
 import type { EsIndexClient } from './es-client.js';
-import { getIndexName } from './es-client.js';
+import { getTypeIndex, getWildcardIndex, getAllTypeIndices } from './index-naming.js';
 import type { SearchQueryParams, IocSearchResult, AggregationBucket } from './schemas.js';
 
 export interface IndexStats {
   docCount: number;
-  indexName: string;
+  indexNames: string[];
 }
 
 /**
  * High-level IOC search operations backed by Elasticsearch.
- * Converts EsIndexClient results into the canonical IocSearchResult shape.
+ * Uses per-type indices: targets specific index when type filter is provided,
+ * otherwise searches across all types using wildcard pattern.
  */
 export class IocSearchService {
   constructor(private readonly es: EsIndexClient) {}
 
   /**
    * Full-text + faceted search for IOCs belonging to a tenant.
-   * Supports optional filters: q (full-text), type, severity, tlp, enriched.
-   * Returns paginated results with aggregation buckets.
+   *
+   * - When `type` filter is provided, targets the specific per-type index directly
+   *   (faster, avoids scanning irrelevant indices).
+   * - Otherwise, uses wildcard pattern `etip_{tenantId}_iocs_*` for cross-type search.
    */
   async search(tenantId: string, params: Omit<SearchQueryParams, 'tenantId'>): Promise<IocSearchResult> {
-    const index = getIndexName(tenantId);
+    const index = params.type
+      ? getTypeIndex(tenantId, params.type)
+      : getWildcardIndex(tenantId);
+
     try {
       const raw = await this.es.search(index, params);
 
@@ -43,13 +49,14 @@ export class IocSearchService {
   }
 
   /**
-   * Get index statistics for a tenant: document count and index name.
-   * Returns docCount=0 if the index does not exist yet.
+   * Get index statistics for a tenant: total document count across all per-type indices.
+   * Returns docCount=0 if no indices exist yet.
    */
   async getIndexStats(tenantId: string): Promise<IndexStats> {
-    const indexName = getIndexName(tenantId);
-    const docCount = await this.es.countDocs(indexName);
-    return { docCount, indexName };
+    const indexNames = getAllTypeIndices(tenantId);
+    const counts = await Promise.all(indexNames.map((idx) => this.es.countDocs(idx)));
+    const docCount = counts.reduce((sum, c) => sum + c, 0);
+    return { docCount, indexNames };
   }
 }
 
