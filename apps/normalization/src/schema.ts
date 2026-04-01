@@ -36,6 +36,11 @@ export const NormalizeIOCJobSchema = z.object({
     tlp: z.string().optional(),
     severity: z.string().optional(),
     tags: z.array(z.string()).optional(),
+    isKEV: z.boolean().optional(),
+    knownRansomwareCampaignUse: z.string().optional(),
+    epssScore: z.number().optional(),
+    epssPercentile: z.number().optional(),
+    sourceConfidence: z.number().optional(),
   }).optional(),
 });
 export type NormalizeIOCJob = z.infer<typeof NormalizeIOCJobSchema>;
