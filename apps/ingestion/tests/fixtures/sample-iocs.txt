@@ -1,0 +1,11 @@
+# ThreatFox IOC list
+# Updated: 2026-03-20
+
+192.168.1.1
+10.0.0.1
+
+# Another section
+evil.com
+bad-domain.org
+d41d8cd98f00b204e9800998ecf8427e
+

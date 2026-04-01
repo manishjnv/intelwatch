@@ -46,6 +46,9 @@ export function mapFeedTypeToQueue(feedType: string): QueueName {
       return QUEUES.FEED_FETCH_STIX;
     case 'rest_api':
     case 'misp':
+    case 'csv_bulk':
+    case 'plaintext':
+    case 'jsonl':
       return QUEUES.FEED_FETCH_REST;
     default:
       return QUEUES.FEED_FETCH_RSS;

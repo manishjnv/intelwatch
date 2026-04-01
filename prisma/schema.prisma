@@ -226,6 +226,9 @@ enum FeedType {
   json_upload
   webhook
   email_imap
+  csv_bulk
+  plaintext
+  jsonl
   @@map("feed_type_enum")
 }
 

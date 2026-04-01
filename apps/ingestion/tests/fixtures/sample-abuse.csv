@@ -1,0 +1,5 @@
+# abuse.ch URLhaus IOC Feed
+# Columns: id,dateadded,url,url_status,threat,tags,urlhaus_reference,reporter
+"1234","2026-03-20 12:00:00","http://evil.com/malware.exe","online","malware_download","elf,mozi","https://urlhaus.abuse.ch/url/1234/","anonymous"
+"1235","2026-03-20 13:00:00","http://bad-domain.org/payload.bin","offline","malware_download","win,emotet","https://urlhaus.abuse.ch/url/1235/","reporter2"
+"1236","2026-03-21 09:30:00","http://192.168.1.100/dropper.sh","online","malware_download","linux,mirai","https://urlhaus.abuse.ch/url/1236/","reporter3"

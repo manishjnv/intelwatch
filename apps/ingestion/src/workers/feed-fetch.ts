@@ -9,6 +9,7 @@ import { NVDConnector } from '../connectors/nvd.js';
 import { TAXIIConnector } from '../connectors/taxii.js';
 import { RestAPIConnector } from '../connectors/rest-api.js';
 import { MISPConnector, type MISPConnectorResult } from '../connectors/misp.js';
+import { BulkFileConnector } from '../connectors/bulk-file.js';
 import { getConfig } from '../config.js';
 import { ArticlePipeline, type PipelineBatchResult } from './pipeline.js';
 import type { FeedPolicyStore } from '../services/feed-policy-store.js';
@@ -110,6 +111,7 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const taxiiConnector = new TAXIIConnector(logger);
   const restApiConnector = new RestAPIConnector(logger);
   const mispConnector = new MISPConnector(logger);
+  const bulkFileConnector = new BulkFileConnector(logger);
   const pipeline = new ArticlePipeline({
     logger, db,
     anthropicApiKey: config.TI_ANTHROPIC_API_KEY,
@@ -123,7 +125,7 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const maxPerTenant = config.TI_FEED_MAX_CONCURRENT_PER_TENANT;
   const processorDeps = {
     repo, logger, db, policyStore, normalizeQueue, pipeline, config,
-    rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector,
+    rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
   };
 
   /** Shared processor function used by all 4 workers */
@@ -167,36 +169,18 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
     const concurrencyKey = QUEUE_CONCURRENCY_MAP[queueName] as keyof typeof config | undefined;
     const concurrency = concurrencyKey ? (config[concurrencyKey] as number) : 3;
 
-    const worker = new Worker<FeedFetchJobData, FeedFetchResult>(
-      queueName, processJob,
-      { connection: { ...redisConnectionOpts }, concurrency, limiter: { max: 10, duration: 60_000 } },
-    );
-
-    worker.on('failed', (job, err) => {
-      logger.error({ jobId: job?.id, queue: queueName, error: err.message }, 'Feed fetch job failed (BullMQ)');
-    });
-    worker.on('error', (err) => {
-      logger.error({ queue: queueName, error: err.message }, 'Feed fetch worker error');
-    });
-
+    const worker = new Worker<FeedFetchJobData, FeedFetchResult>(queueName, processJob,
+      { connection: { ...redisConnectionOpts }, concurrency, limiter: { max: 10, duration: 60_000 } });
+    worker.on('failed', (job, err) => { logger.error({ jobId: job?.id, queue: queueName, error: err.message }, 'Feed fetch job failed'); });
+    worker.on('error', (err) => { logger.error({ queue: queueName, error: err.message }, 'Feed fetch worker error'); });
     logger.info({ queue: queueName, concurrency }, 'Feed fetch worker started');
     workers.push(worker);
   }
 
-  return {
-    workers,
-    async close() {
-      await Promise.all(workers.map((w) => w.close()));
-      await normalizeQueue.close();
-      await fairnessRedis.quit();
-    },
-  };
-}
-
-/** @deprecated Use createFeedFetchWorkers (plural) instead */
-export function createFeedFetchWorker(deps: FeedFetchWorkerDeps): Worker<FeedFetchJobData, FeedFetchResult> {
-  const result = createFeedFetchWorkers(deps);
-  return result.workers[0]!
+  return { workers, async close() {
+    await Promise.all(workers.map((w) => w.close()));
+    await normalizeQueue.close(); await fairnessRedis.quit();
+  } };
 }
 
 function buildEmptyResult(feedId: string): FeedFetchResult {
@@ -214,12 +198,12 @@ async function executeJobProcessor(
     normalizeQueue: Queue; pipeline: ArticlePipeline; config: import('../config.js').AppConfig;
     rssConnector: RSSConnector; nvdConnector: NVDConnector;
     taxiiConnector: TAXIIConnector; restApiConnector: RestAPIConnector;
-    mispConnector: MISPConnector;
+    mispConnector: MISPConnector; bulkFileConnector: BulkFileConnector;
   },
 ): Promise<FeedFetchResult> {
   const { feedId, tenantId, triggeredBy, jobId } = jobCtx;
   const { repo, logger, db, policyStore, normalizeQueue, pipeline, config,
-    rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector } = deps;
+    rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector } = deps;
 
   logger.info({ feedId, tenantId, triggeredBy, jobId }, 'Processing feed fetch job');
 
@@ -248,8 +232,24 @@ async function executeJobProcessor(
     const fetchResult = await routeToConnector(feed.feedType, {
       url: feedUrl, headers: feedHeaders,
       parseConfig: feed.parseConfig as Record<string, unknown> | null,
-      rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, config,
+      rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector, config,
     });
+
+    // Bulk feed types: skip article pipeline, queue IOCs directly to normalize
+    if (['csv_bulk', 'plaintext', 'jsonl'].includes(feed.feedType)) {
+      const iocs = fetchResult.articles.filter((a) => a.rawMeta.iocValue)
+        .map((a) => ({ rawValue: String(a.rawMeta.iocValue), rawType: a.rawMeta.iocType ? String(a.rawMeta.iocType) : undefined }));
+      if (iocs.length > 0) {
+        await normalizeQueue.add(`normalize-bulk-${crypto.randomUUID()}`,
+          { articleId: crypto.randomUUID(), feedSourceId: feedId, tenantId, feedName: feed.name, iocs }, { priority: 3 });
+        logger.info({ feedId, count: iocs.length }, 'Bulk IOCs queued for normalization');
+      }
+      policyStore?.incrementCount(tenantId, feedId, fetchResult.articles.length);
+      await repo.updateHealth(tenantId, feedId, { lastFetchAt: new Date(), consecutiveFailures: 0, status: 'active',
+        totalItemsIngested: { increment: fetchResult.articles.length } });
+      return { feedId, articlesCount: fetchResult.articles.length, relevantCount: iocs.length, duplicateCount: 0,
+        iocsFound: iocs.length, fetchDurationMs: fetchResult.fetchDurationMs, pipelineDurationMs: 0, totalCostUsd: 0, status: 'success' as const };
+    }
 
     const pipelineResult = await pipeline.processBatch(fetchResult.articles, feedId, feed.name, tenantId, feedAiEnabled);
     await persistArticles(db, pipelineResult, feedId, tenantId);
@@ -288,16 +288,12 @@ async function executeJobProcessor(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const newFailures = feed.consecutiveFailures + 1;
-    await repo.updateHealth(tenantId, feedId, {
-      lastErrorAt: new Date(), lastErrorMessage: message.slice(0, 1000), consecutiveFailures: newFailures,
-      ...(newFailures >= config.TI_MAX_CONSECUTIVE_FAILURES ? { status: 'error', enabled: false } : {}),
-    });
-    logger.error({ feedId, error: message, consecutiveFailures: newFailures }, 'Feed fetch failed');
-    return {
-      feedId, articlesCount: 0, relevantCount: 0, duplicateCount: 0, iocsFound: 0,
-      fetchDurationMs: 0, pipelineDurationMs: 0, totalCostUsd: 0, status: 'failure' as const, error: message,
-    };
+    const failures = feed.consecutiveFailures + 1;
+    await repo.updateHealth(tenantId, feedId, { lastErrorAt: new Date(), lastErrorMessage: message.slice(0, 1000),
+      consecutiveFailures: failures, ...(failures >= config.TI_MAX_CONSECUTIVE_FAILURES ? { status: 'error', enabled: false } : {}) });
+    logger.error({ feedId, error: message, consecutiveFailures: failures }, 'Feed fetch failed');
+    return { feedId, articlesCount: 0, relevantCount: 0, duplicateCount: 0, iocsFound: 0,
+      fetchDurationMs: 0, pipelineDurationMs: 0, totalCostUsd: 0, status: 'failure' as const, error: message };
   }
 }
 
@@ -305,7 +301,7 @@ interface RouteOptions {
   url: string; headers: Record<string, string>; parseConfig: Record<string, unknown> | null;
   rssConnector: RSSConnector; nvdConnector: NVDConnector;
   taxiiConnector: TAXIIConnector; restApiConnector: RestAPIConnector;
-  mispConnector: MISPConnector;
+  mispConnector: MISPConnector; bulkFileConnector: BulkFileConnector;
   config: import('../config.js').AppConfig;
 }
 
@@ -343,6 +339,13 @@ async function routeToConnector(feedType: string, opts: RouteOptions): Promise<C
         limit: (opts.parseConfig?.limit as number) ?? undefined,
       });
     }
+    case 'csv_bulk': case 'plaintext': case 'jsonl': {
+      const fmt = feedType === 'csv_bulk' ? 'csv' : feedType;
+      return opts.bulkFileConnector.fetch({
+        url: opts.url, format: fmt as 'csv' | 'plaintext' | 'jsonl', headers: opts.headers,
+        ...(opts.parseConfig as Record<string, unknown> ?? {}),
+      });
+    }
     default: throw new AppError(400, `Unsupported feed type: ${feedType}`, 'CONNECTOR_UNSUPPORTED');
   }
 }
@@ -374,16 +377,13 @@ async function enqueueIOCsForNormalization(
   for (const article of pipelineResult.articles) {
     if (!article.isCtiRelevant || article.skipped || article.iocResults.length === 0) continue;
     const articleId = crypto.randomUUID();
+    const ext = article.extractionResult;
     const iocs = article.iocResults.map((r) => ({
-      rawValue: r.iocValue, rawType: r.iocType,
-      calibratedConfidence: r.calibratedConfidence, corroborationCount: r.corroborationCount,
+      rawValue: r.iocValue, rawType: r.iocType, calibratedConfidence: r.calibratedConfidence,
+      corroborationCount: r.corroborationCount,
       context: article.iocContexts.find((c) => c.iocValue === r.iocValue)?.context,
-      extractionMeta: article.extractionResult ? {
-        threatActors: article.extractionResult.threatActors,
-        malwareFamilies: article.extractionResult.malwareFamilies,
-        mitreAttack: article.extractionResult.mitreTechniques,
-        tlp: article.extractionResult.tlp,
-      } : undefined,
+      extractionMeta: ext ? { threatActors: ext.threatActors, malwareFamilies: ext.malwareFamilies,
+        mitreAttack: ext.mitreTechniques, tlp: ext.tlp } : undefined,
     }));
     try {
       await normalizeQueue.add(`normalize-${articleId}`,
@@ -391,8 +391,7 @@ async function enqueueIOCsForNormalization(
         { priority: article.triageResult?.priority === 'critical' ? 1 : 3 });
       totalEnqueued += iocs.length;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      logger.error({ articleId, feedId, error: message }, 'Failed to enqueue IOCs for normalization');
+      logger.error({ articleId, feedId, error: (err as Error).message }, 'Failed to enqueue IOCs');
     }
   }
   if (totalEnqueued > 0) logger.info({ feedId, feedName, totalEnqueued }, 'IOCs enqueued for normalization');
