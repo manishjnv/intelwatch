@@ -26,6 +26,10 @@ const EnvSchema = z.object({
   TI_GSB_API_KEY: z.string().default(''),
   /** GSB rate limit: requests per day */
   TI_GSB_RATE_LIMIT_PER_DAY: z.coerce.number().int().default(8000),
+  /** IPinfo.io API token (free: 50k/mo) */
+  TI_IPINFO_TOKEN: z.string().default(''),
+  /** IPinfo rate limit: requests per day (strategy budget: 1200/day) */
+  TI_IPINFO_RATE_LIMIT_PER_DAY: z.coerce.number().int().default(1200),
   /** Worker concurrency for BullMQ enrich queue */
   TI_ENRICHMENT_CONCURRENCY: z.coerce.number().int().min(1).max(5).default(2),
   /** VT rate limit: requests per minute */

@@ -2,7 +2,7 @@
 
 **Full documentation:** [docs/modules/ai-enrichment.md](../../docs/modules/ai-enrichment.md)
 
-Port 3006 | 253 tests | VT + AbuseIPDB + Haiku AI triage → risk scoring → store on IOC
+Port 3006 | 314 tests | VT + AbuseIPDB + Haiku AI + GSB + IPinfo → risk scoring → store on IOC
 
 ## Features
 
@@ -21,6 +21,8 @@ Port 3006 | 253 tests | VT + AbuseIPDB + Haiku AI triage → risk scoring → st
 | Batch API (#13) | batch-enrichment.ts | Anthropic Batch API — 50% cost for 10+ IOCs |
 | Cost Persistence (#14) | cost-persistence.ts | Redis flush/reload for cost data survival |
 | Re-enrichment (#15) | workers/re-enrich-scheduler.ts | Cron for stale IOCs — type-specific TTLs |
+| Google Safe Browsing | providers/google-safe-browsing.ts | GSB v4 — URL/domain/fqdn threat detection |
+| IPinfo.io Geolocation | providers/ipinfo.ts | IP/IPv6 geolocation, ASN, VPN/proxy/Tor detection |
 
 ## API Endpoints
 
@@ -48,3 +50,7 @@ Port 3006 | 253 tests | VT + AbuseIPDB + Haiku AI triage → risk scoring → st
 | TI_BATCH_MIN_SIZE | 10 | Minimum batch size (#13) |
 | TI_REENRICH_INTERVAL_MS | 3600000 | Re-enrichment scan interval (#15) |
 | TI_COST_PERSISTENCE_ENABLED | true | Cost Redis persistence (#14) |
+| TI_GSB_API_KEY | '' | Google Safe Browsing API key |
+| TI_GSB_RATE_LIMIT_PER_DAY | 8000 | GSB daily rate limit |
+| TI_IPINFO_TOKEN | '' | IPinfo.io API token (free: 50k/mo) |
+| TI_IPINFO_RATE_LIMIT_PER_DAY | 1200 | IPinfo daily rate limit (strategy budget) |

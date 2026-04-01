@@ -6,7 +6,8 @@ import type { HaikuTriageProvider } from './providers/haiku-triage.js';
 import type { EnrichmentCostTracker } from './cost-tracker.js';
 import type { EnrichmentCache } from './cache.js';
 import type { GoogleSafeBrowsingProvider } from './providers/google-safe-browsing.js';
-import type { EnrichJob, EnrichmentResult, VTResult, AbuseIPDBResult, HaikuTriageResult, GSBResult, Geolocation } from './schema.js';
+import type { IPinfoProvider } from './providers/ipinfo.js';
+import type { EnrichJob, EnrichmentResult, VTResult, AbuseIPDBResult, HaikuTriageResult, GSBResult, IPinfoResult, Geolocation } from './schema.js';
 import { ruleBasedScore } from './rule-based-scorer.js';
 import { calculateCompositeConfidence } from '@etip/shared-normalization';
 import { computeEnrichmentQuality } from './quality-score.js';
@@ -66,6 +67,7 @@ export class EnrichmentService {
     private readonly cache?: EnrichmentCache,
     private readonly dailyBudgetUsd: number = 5.00,
     private readonly gsbProvider?: GoogleSafeBrowsingProvider | null,
+    private readonly ipinfoProvider?: IPinfoProvider | null,
   ) {}
 
   /** Enrich a single IOC with external API lookups + optional Haiku triage */
@@ -125,6 +127,20 @@ export class EnrichmentService {
       this.costTracker.trackProvider(job.iocId, job.iocType, 'abuseipdb', 0, 0, null, Date.now() - abuseStart);
     }
 
+    // IPinfo.io lookup (ip/ipv6 only — geolocation + ASN, called after AbuseIPDB)
+    let ipinfoResult: IPinfoResult | null = null;
+    if (this.ipinfoProvider?.supports(job.iocType)) {
+      const ipinfoStart = Date.now();
+      try {
+        ipinfoResult = await this.ipinfoProvider.lookup(job.iocType, job.normalizedValue);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`IPinfo: ${msg}`);
+        this.logger.warn({ error: msg, iocId: job.iocId }, 'IPinfo lookup failed');
+      }
+      this.costTracker.trackProvider(job.iocId, job.iocType, 'ipinfo', 0, 0, null, Date.now() - ipinfoStart);
+    }
+
     // Google Safe Browsing lookup (url, domain, fqdn only — supplementary to VT)
     if (this.gsbProvider?.supports(job.iocType)) {
       try {
@@ -161,7 +177,7 @@ export class EnrichmentService {
     }
 
     // Determine status
-    const hasAnyResult = vtResult !== null || abuseResult !== null || haikuResult !== null || gsbResult !== null;
+    const hasAnyResult = vtResult !== null || abuseResult !== null || haikuResult !== null || gsbResult !== null || ipinfoResult !== null;
     const hasAllExternal = (
       (!this.vtProvider.supports(job.iocType) || vtResult !== null) &&
       (!this.abuseProvider.supports(job.iocType) || abuseResult !== null)
@@ -188,7 +204,7 @@ export class EnrichmentService {
     const geolocation = this.extractGeolocation(job.iocType, abuseResult);
 
     const result: EnrichmentResult = {
-      vtResult, abuseipdbResult: abuseResult, haikuResult, gsbResult,
+      vtResult, abuseipdbResult: abuseResult, haikuResult, gsbResult, ipinfoResult,
       enrichedAt: now.toISOString(), enrichmentStatus,
       failureReason: errors.length > 0 ? errors.join('; ') : null,
       externalRiskScore, costBreakdown,

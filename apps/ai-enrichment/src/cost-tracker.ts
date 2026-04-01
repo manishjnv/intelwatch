@@ -7,7 +7,7 @@
  * In-memory per DECISION-013. State lost on restart — acceptable for Phase 2.
  */
 
-export type EnrichmentProvider = 'virustotal' | 'abuseipdb' | 'haiku_triage';
+export type EnrichmentProvider = 'virustotal' | 'abuseipdb' | 'haiku_triage' | 'ipinfo';
 export type ModelTier = 'haiku' | 'sonnet' | 'opus';
 
 export interface ProviderCostRecord {

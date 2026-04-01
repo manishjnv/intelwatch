@@ -99,7 +99,7 @@ export type HaikuTriageResult = z.infer<typeof HaikuTriageResultSchema>;
 
 /** Per-provider cost record */
 export const ProviderCostRecordSchema = z.object({
-  provider: z.enum(['virustotal', 'abuseipdb', 'haiku_triage']),
+  provider: z.enum(['virustotal', 'abuseipdb', 'haiku_triage', 'ipinfo']),
   model: z.enum(['haiku', 'sonnet', 'opus']).nullable(),
   inputTokens: z.number().int().min(0),
   outputTokens: z.number().int().min(0),
@@ -132,6 +132,25 @@ export const GSBResultSchema = z.object({
 });
 export type GSBResult = z.infer<typeof GSBResultSchema>;
 
+/** IPinfo.io geolocation + ASN result */
+export const IPinfoResultSchema = z.object({
+  hostname: z.string().nullable().default(null),
+  city: z.string().default(''),
+  region: z.string().default(''),
+  country: z.string().max(2).default(''),
+  latitude: z.number().default(0),
+  longitude: z.number().default(0),
+  asn: z.string().default(''),
+  orgName: z.string().default(''),
+  postal: z.string().default(''),
+  timezone: z.string().default(''),
+  isVpn: z.boolean().default(false),
+  isProxy: z.boolean().default(false),
+  isTor: z.boolean().default(false),
+  checkedAt: z.string(),
+});
+export type IPinfoResult = z.infer<typeof IPinfoResultSchema>;
+
 /** Geolocation data for IP IOCs (#12) */
 export const GeolocationSchema = z.object({
   countryCode: z.string().max(2).default(''),
@@ -158,6 +177,8 @@ export const EnrichmentResultSchema = z.object({
   geolocation: GeolocationSchema.nullable().default(null),
   /** Google Safe Browsing result (url/domain/fqdn only) */
   gsbResult: GSBResultSchema.nullable().default(null),
+  /** IPinfo.io geolocation + ASN result (ip/ipv6 only) */
+  ipinfoResult: IPinfoResultSchema.nullable().default(null),
 });
 export type EnrichmentResult = z.infer<typeof EnrichmentResultSchema>;
 

@@ -76,3 +76,8 @@ export function createAbuseIPDBRateLimiter(maxPerDay: number, logger: pino.Logge
 export function createGSBRateLimiter(maxPerDay: number, logger: pino.Logger): RateLimiter {
   return new RateLimiter('google-safe-browsing', { maxRequests: maxPerDay, windowMs: 86_400_000 }, logger);
 }
+
+/** Create IPinfo.io rate limiter (default: 1200 req/day — strategy budget from 50k/mo free tier) */
+export function createIPinfoRateLimiter(maxPerDay: number, logger: pino.Logger): RateLimiter {
+  return new RateLimiter('ipinfo', { maxRequests: maxPerDay, windowMs: 86_400_000 }, logger);
+}

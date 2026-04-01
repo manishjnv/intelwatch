@@ -14,7 +14,8 @@ import { CostPersistence } from './cost-persistence.js';
 import { BatchEnrichmentService } from './batch-enrichment.js';
 import { ReEnrichScheduler } from './workers/re-enrich-scheduler.js';
 import { GoogleSafeBrowsingProvider } from './providers/google-safe-browsing.js';
-import { createVTRateLimiter, createAbuseIPDBRateLimiter, createGSBRateLimiter } from './rate-limiter.js';
+import { IPinfoProvider } from './providers/ipinfo.js';
+import { createVTRateLimiter, createAbuseIPDBRateLimiter, createGSBRateLimiter, createIPinfoRateLimiter } from './rate-limiter.js';
 import { createEnrichQueue, closeEnrichQueue, getEnrichQueue, createDownstreamQueues, closeDownstreamQueues } from './queue.js';
 import { createEnrichWorker } from './workers/enrich-worker.js';
 
@@ -40,6 +41,12 @@ async function main(): Promise<void> {
   const gsbLimiter = createGSBRateLimiter(config.TI_GSB_RATE_LIMIT_PER_DAY, logger);
   const gsbProvider = config.TI_GSB_API_KEY
     ? new GoogleSafeBrowsingProvider(config.TI_GSB_API_KEY, gsbLimiter, logger)
+    : null;
+
+  // IPinfo.io (null when API token not configured)
+  const ipinfoLimiter = createIPinfoRateLimiter(config.TI_IPINFO_RATE_LIMIT_PER_DAY, logger);
+  const ipinfoProvider = config.TI_IPINFO_TOKEN
+    ? new IPinfoProvider(config.TI_IPINFO_TOKEN, ipinfoLimiter, logger)
     : null;
 
   // Haiku triage (null when API key not configured)
@@ -78,7 +85,7 @@ async function main(): Promise<void> {
   const repo = new EnrichmentRepository(prisma);
   const service = new EnrichmentService(
     repo, vtProvider, abuseProvider, haikuProvider, costTracker,
-    config.TI_AI_ENABLED, logger, undefined, undefined, gsbProvider,
+    config.TI_AI_ENABLED, logger, undefined, undefined, gsbProvider, ipinfoProvider,
   );
 
   createEnrichQueue();
