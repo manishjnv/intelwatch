@@ -1,6 +1,6 @@
 # Normalization Service
 
-**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 303
+**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 322
 
 ## What It Does
 
@@ -62,6 +62,7 @@ QUEUES.NORMALIZE → Normalize Worker
 | Severity Voting | services/severity-voting.ts | Admiralty-weighted voting (A1=15, F6=0), idempotent per-feed, bulk cast |
 | Community FP | services/community-fp.ts | Per-tenant FP reporting, auto-downgrade >50%, mark FP >75%, confidence reduction |
 | Worker Integration | workers/global-normalize-worker.ts | Corroboration scoring + severity voting + velocity on every IOC upsert |
+| Majestic Million FP | shared-normalization/majestic-million.ts | Top-1M domain whitelist: CSV loader, file cache, URL domain extraction, 'flag' action with confidence penalty |
 
 ## API
 
@@ -94,3 +95,6 @@ QUEUES.NORMALIZE → Normalize Worker
 | TI_GLOBAL_PROCESSING_ENABLED | false | Gate for global normalize/enrich workers + overlay routes |
 | TI_SHODAN_API_KEY | - | Shodan API key (optional, enrichment degrades gracefully) |
 | TI_GREYNOISE_API_KEY | - | GreyNoise API key (optional, enrichment degrades gracefully) |
+| TI_MAJESTIC_ENABLED | true | Enable Majestic Million top-domain whitelist for FP reduction |
+| TI_MAJESTIC_TOP_N | 100000 | How many top domains to load from Majestic Million |
+| TI_MAJESTIC_CONFIDENCE_PENALTY | 30 | Confidence penalty for IOCs matching Majestic Million domains |

@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 132 &middot; 2026-04-01 &middot; S132: IPinfo.io enrichment + per-IOC-type ES indices + ILM lifecycle. 116 ES indexing tests (59 new). 32/32 containers healthy. ~8,238 tests</span>
+  <span class="version">Session 133 &middot; 2026-04-01 &middot; S133: Majestic Million top-domain whitelist for FP reduction. 250 shared-normalization tests (28 new), 322 normalization tests. 32/32 containers healthy. ~8,266 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~8,238</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~8,266</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">132</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">133</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -147,7 +147,7 @@ li strong { color: var(--text-primary); }
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
       <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,526</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 13 Connectors (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX) + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>750</td></tr>
-      <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats + KEV/EPSS severity rules</td><td>303</td></tr>
+      <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats + KEV/EPSS severity rules + Majestic Million FP whitelist</td><td>322</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>314</td></tr>
       <tr><td>ioc-intelligence</td><td>3007</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>15</td><td>119</td></tr>
       <tr><td>threat-actor-intel</td><td>3008</td><td>3</td><td><span class="badge badge-green">Deployed</span></td><td>28</td><td>190</td></tr>
@@ -537,18 +537,17 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 127</span> TAXII 2.1 + Webhook Backoff + Changelog + SDK (S127)</div>
+    <div class="card-title"><span class="badge badge-green">Session 133</span> Majestic Million Top-Domain Whitelist (S133)</div>
     <div class="card-body">
-      <strong>Session 127 (2026-03-31):</strong> Final 4 public API gaps closed (14/14 complete):<br>
-      &bull; <strong>P1-6: TAXII 2.1 Server</strong> — discovery, collections, objects endpoints. Industry-standard threat intel sharing protocol<br>
-      &bull; <strong>P1-9: Webhook Exponential Backoff</strong> — Stripe-style retry (6 attempts) with exponential delays<br>
-      &bull; <strong>P2-11: Changelog Endpoint</strong> — GET /changelog for public API versioning history<br>
-      &bull; <strong>P2-12: SDK Generation Scaffolding</strong> — Script foundation for generating client SDKs from OpenAPI spec<br>
-      &bull; <strong>279 api-gateway tests (was 248)</strong> — 31 new tests. 32/32 containers healthy<br><br>
+      <strong>Session 133 (2026-04-01):</strong> Majestic Million top-domain whitelist for false positive reduction:<br>
+      &bull; <strong>shared-normalization:</strong> CSV loader with 7-day file cache, action:'drop'|'flag' warninglist, Set-based O(1) hostname matching with subdomain traversal, URL domain extraction (defanged URL support). 28 new tests (250 total)<br>
+      &bull; <strong>normalization:</strong> URL domain extraction before warninglist check in global-normalize-worker, configurable confidence penalty for flagged IOCs, possible-false-positive tagging. 322 tests<br>
+      &bull; <strong>Config:</strong> TI_MAJESTIC_ENABLED (default true), TI_MAJESTIC_TOP_N (100K), TI_MAJESTIC_CONFIDENCE_PENALTY (30)<br>
+      &bull; <strong>CI/CD:</strong> Run 23858432026 — all 3 jobs passed. 32/32 containers healthy<br><br>
       <strong>Next session priorities:</strong><br>
       1. <strong>Cyber News Feed strategy</strong> — docs/ETIP_Cyber_News_Feed_Strategy_v1.docx implementation<br>
       2. <strong>IOC Strategy</strong> — docs/ETIP_IOC_Strategy.docx review and implementation<br>
-      3. <strong>Set Shodan/GreyNoise API keys on VPS</strong> — Enrichment currently degraded gracefully<br>
+      3. <strong>Set IPinfo/GSB/Shodan/GreyNoise API keys on VPS</strong> — Enrichment currently degraded gracefully<br>
     </div>
   </div>
 </div>
@@ -556,7 +555,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 132 &middot; 2026-04-01 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 133 &middot; 2026-04-01 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
