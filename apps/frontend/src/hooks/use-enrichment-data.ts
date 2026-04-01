@@ -8,7 +8,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { notifyApiError } from './useApiError'
-import { DEMO_ENRICHMENT_STATS, DEMO_COST_STATS, DEMO_BUDGET } from './demo-data'
+// Demo data imports removed — no fallback to fake data
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -172,13 +172,6 @@ export interface EnrichmentResult {
   } | null
 }
 
-// ─── Demo fallback ──────────────────────────────────────────────
-
-function withFallback<T>(data: T | undefined, isLoading: boolean, fallback: T, hasData: (d: T | undefined) => boolean) {
-  const isDemo = !isLoading && !hasData(data)
-  return { data: isDemo ? fallback : data, isDemo }
-}
-
 // ─── Hooks ──────────────────────────────────────────────────────
 
 /** Enrichment aggregate stats (total/enriched/pending) */
@@ -188,8 +181,7 @@ export function useEnrichmentStats() {
     queryFn: () => api<EnrichmentStats>('/enrichment/stats').catch(err => notifyApiError(err, 'enrichment stats', null)),
     staleTime: 30_000,
   })
-  const fallback = withFallback(result.data, result.isLoading, DEMO_ENRICHMENT_STATS, d => d != null)
-  return { ...result, ...fallback }
+  return { ...result, data: result.data ?? null, isDemo: false }
 }
 
 /** Pending IOCs awaiting enrichment */
@@ -258,8 +250,7 @@ export function useCostStats() {
     queryFn: () => api<CostStats>('/enrichment/cost/stats').catch(err => notifyApiError(err, 'cost stats', null)),
     staleTime: 60_000,
   })
-  const fallback = withFallback(result.data, result.isLoading, DEMO_COST_STATS, d => d != null)
-  return { ...result, ...fallback }
+  return { ...result, data: result.data ?? null, isDemo: false }
 }
 
 /** Per-IOC cost breakdown */
@@ -279,8 +270,7 @@ export function useBudgetStatus() {
     queryFn: () => api<BudgetStatus>('/enrichment/cost/budget').catch(err => notifyApiError(err, 'budget status', null)),
     staleTime: 30_000,
   })
-  const fallback = withFallback(result.data, result.isLoading, DEMO_BUDGET, d => d != null)
-  return { ...result, ...fallback }
+  return { ...result, data: result.data ?? null, isDemo: false }
 }
 
 // ─── Enrichment Source Breakdown ─────────────────────────────────

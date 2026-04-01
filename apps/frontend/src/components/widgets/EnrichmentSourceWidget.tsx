@@ -12,7 +12,7 @@ export function EnrichmentSourceWidget() {
   const navigate = useNavigate()
   const { data, isDemo } = useEnrichmentSourceBreakdown()
 
-  if (!data) return null
+  if (!data || data.avgQuality == null) return null
 
   const circumference = 2 * Math.PI * 28
   const filled = (data.enrichedPercent / 100) * circumference

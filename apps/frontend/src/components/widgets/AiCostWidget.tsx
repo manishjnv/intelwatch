@@ -12,11 +12,11 @@ export function AiCostWidget() {
   const navigate = useNavigate()
   const { data, isDemo } = useAiCostSummary()
 
-  if (!data) return null
+  if (!data || data.totalCost30d == null) return null
 
-  const budgetColor = data.budgetUtilization >= 90
+  const budgetColor = (data.budgetUtilization ?? 0) >= 90
     ? 'bg-sev-critical'
-    : data.budgetUtilization >= 70
+    : (data.budgetUtilization ?? 0) >= 70
       ? 'bg-sev-medium'
       : 'bg-sev-low'
 
