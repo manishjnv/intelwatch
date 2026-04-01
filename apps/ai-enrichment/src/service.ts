@@ -5,7 +5,8 @@ import type { AbuseIPDBProvider } from './providers/abuseipdb.js';
 import type { HaikuTriageProvider } from './providers/haiku-triage.js';
 import type { EnrichmentCostTracker } from './cost-tracker.js';
 import type { EnrichmentCache } from './cache.js';
-import type { EnrichJob, EnrichmentResult, VTResult, AbuseIPDBResult, HaikuTriageResult, Geolocation } from './schema.js';
+import type { GoogleSafeBrowsingProvider } from './providers/google-safe-browsing.js';
+import type { EnrichJob, EnrichmentResult, VTResult, AbuseIPDBResult, HaikuTriageResult, GSBResult, Geolocation } from './schema.js';
 import { ruleBasedScore } from './rule-based-scorer.js';
 import { calculateCompositeConfidence } from '@etip/shared-normalization';
 import { computeEnrichmentQuality } from './quality-score.js';
@@ -64,6 +65,7 @@ export class EnrichmentService {
     private readonly logger: pino.Logger,
     private readonly cache?: EnrichmentCache,
     private readonly dailyBudgetUsd: number = 5.00,
+    private readonly gsbProvider?: GoogleSafeBrowsingProvider | null,
   ) {}
 
   /** Enrich a single IOC with external API lookups + optional Haiku triage */
@@ -73,7 +75,7 @@ export class EnrichmentService {
     if (!this.aiEnabled) {
       this.logger.debug({ iocId: job.iocId }, 'Enrichment disabled (TI_AI_ENABLED=false)');
       return {
-        vtResult: null, abuseipdbResult: null, haikuResult: null,
+        vtResult: null, abuseipdbResult: null, haikuResult: null, gsbResult: null,
         enrichedAt: now.toISOString(), enrichmentStatus: 'skipped',
         failureReason: 'TI_AI_ENABLED is false', externalRiskScore: null, costBreakdown: null,
         enrichmentQuality: null, geolocation: null,
@@ -94,6 +96,7 @@ export class EnrichmentService {
     let vtResult: VTResult | null = null;
     let abuseResult: AbuseIPDBResult | null = null;
     let haikuResult: HaikuTriageResult | null = null;
+    let gsbResult: GSBResult | null = null;
     const errors: string[] = [];
 
     // VirusTotal lookup (IP, domain, hash, URL)
@@ -122,6 +125,17 @@ export class EnrichmentService {
       this.costTracker.trackProvider(job.iocId, job.iocType, 'abuseipdb', 0, 0, null, Date.now() - abuseStart);
     }
 
+    // Google Safe Browsing lookup (url, domain, fqdn only — supplementary to VT)
+    if (this.gsbProvider?.supports(job.iocType)) {
+      try {
+        gsbResult = await this.gsbProvider.lookup(job.iocType, job.normalizedValue);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`GSB: ${msg}`);
+        this.logger.warn({ error: msg, iocId: job.iocId }, 'GSB lookup failed');
+      }
+    }
+
     // #5 Budget Enforcement Gate — check before calling Haiku
     if (this.haikuProvider?.isEnabled()) {
       const budgetAlert = this.costTracker.checkBudgetAlert(job.tenantId, this.dailyBudgetUsd);
@@ -147,7 +161,7 @@ export class EnrichmentService {
     }
 
     // Determine status
-    const hasAnyResult = vtResult !== null || abuseResult !== null || haikuResult !== null;
+    const hasAnyResult = vtResult !== null || abuseResult !== null || haikuResult !== null || gsbResult !== null;
     const hasAllExternal = (
       (!this.vtProvider.supports(job.iocType) || vtResult !== null) &&
       (!this.abuseProvider.supports(job.iocType) || abuseResult !== null)
@@ -174,7 +188,7 @@ export class EnrichmentService {
     const geolocation = this.extractGeolocation(job.iocType, abuseResult);
 
     const result: EnrichmentResult = {
-      vtResult, abuseipdbResult: abuseResult, haikuResult,
+      vtResult, abuseipdbResult: abuseResult, haikuResult, gsbResult,
       enrichedAt: now.toISOString(), enrichmentStatus,
       failureReason: errors.length > 0 ? errors.join('; ') : null,
       externalRiskScore, costBreakdown,

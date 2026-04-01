@@ -22,6 +22,10 @@ const EnvSchema = z.object({
   TI_VIRUSTOTAL_API_KEY: z.string().default(''),
   /** AbuseIPDB API key (free tier: 1000 req/day) */
   TI_ABUSEIPDB_API_KEY: z.string().default(''),
+  /** Google Safe Browsing API key (free: 10k/day, budget: 8k/day) */
+  TI_GSB_API_KEY: z.string().default(''),
+  /** GSB rate limit: requests per day */
+  TI_GSB_RATE_LIMIT_PER_DAY: z.coerce.number().int().default(8000),
   /** Worker concurrency for BullMQ enrich queue */
   TI_ENRICHMENT_CONCURRENCY: z.coerce.number().int().min(1).max(5).default(2),
   /** VT rate limit: requests per minute */

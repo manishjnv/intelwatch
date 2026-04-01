@@ -71,3 +71,8 @@ export function createVTRateLimiter(maxPerMin: number, logger: pino.Logger): Rat
 export function createAbuseIPDBRateLimiter(maxPerDay: number, logger: pino.Logger): RateLimiter {
   return new RateLimiter('abuseipdb', { maxRequests: maxPerDay, windowMs: 86_400_000 }, logger);
 }
+
+/** Create Google Safe Browsing rate limiter (default: 8000 req/day) */
+export function createGSBRateLimiter(maxPerDay: number, logger: pino.Logger): RateLimiter {
+  return new RateLimiter('google-safe-browsing', { maxRequests: maxPerDay, windowMs: 86_400_000 }, logger);
+}

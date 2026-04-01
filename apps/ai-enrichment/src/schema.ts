@@ -117,6 +117,21 @@ export const CostBreakdownSchema = z.object({
   providerCount: z.number().int().min(0),
 });
 
+/** Google Safe Browsing threat match */
+export const GSBThreatSchema = z.object({
+  type: z.string(),
+  platform: z.string(),
+});
+export type GSBThreat = z.infer<typeof GSBThreatSchema>;
+
+/** Google Safe Browsing lookup result */
+export const GSBResultSchema = z.object({
+  safe: z.boolean(),
+  threats: z.array(GSBThreatSchema).default([]),
+  checkedAt: z.string(),
+});
+export type GSBResult = z.infer<typeof GSBResultSchema>;
+
 /** Geolocation data for IP IOCs (#12) */
 export const GeolocationSchema = z.object({
   countryCode: z.string().max(2).default(''),
@@ -141,6 +156,8 @@ export const EnrichmentResultSchema = z.object({
   enrichmentQuality: z.number().int().min(0).max(100).nullable().default(null),
   /** #12 Geolocation data (IP/IPv6 only) */
   geolocation: GeolocationSchema.nullable().default(null),
+  /** Google Safe Browsing result (url/domain/fqdn only) */
+  gsbResult: GSBResultSchema.nullable().default(null),
 });
 export type EnrichmentResult = z.infer<typeof EnrichmentResultSchema>;
 
