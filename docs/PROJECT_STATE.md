@@ -1,6 +1,6 @@
 # ETIP Project State
-**Last updated:** 2026-03-31 (update at end of EVERY session via /session-end)
-**Session counter:** 127 — S127: TAXII 2.1 server, webhook exponential backoff, changelog endpoint, SDK generation scaffolding. 279 api-gateway tests. 32/32 containers healthy.
+**Last updated:** 2026-04-01 (update at end of EVERY session via /session-end)
+**Session counter:** 128 — S128: BulkFileConnector (CSV, plaintext, JSONL) for ingestion service. 3 new feed types, HTTP download + gzip decompression, bulk IOC pipeline bypass. 667 ingestion tests (was 602). 32/32 containers healthy.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -11,7 +11,7 @@
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
-| etip_ingestion | ✅ Running | 0.7.0 | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + **Session 93: GlobalPipelineOrchestrator + pipeline routes + fetch→normalize wiring**. 602 tests. |
+| etip_ingestion | ✅ Running | 0.8.0 | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **all 6 connectors** (RSS, NVD, STIX/TAXII, REST, MISP, **Bulk File**) + **Session 128: BulkFileConnector (CSV/plaintext/JSONL), bulk IOC bypass**. 667 tests. |
 | etip_normalization | ✅ Running | 0.3.0 | 2026-03-27 | IOC upsert + 18 accuracy improvements + G2/G4b + **Session 93: GlobalIocStatsService** + **Session 97: corroboration engine, severity voting, community FP, 6 new routes**. 315 tests. |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
@@ -51,7 +51,7 @@
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-31 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,526 tests. **Session 123c (S123c):** Merged Pipeline Monitor + Pipeline Health into unified Pipeline sub-tab (System tab). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-03-27 | Feed pipeline + 11 modules + policies + AC-2 + **all 5 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 96:** GlobalCache (Redis caching layer). 629 tests. |
+| ingestion | 2 | ✅ Deployed | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **all 6 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 128:** BulkFileConnector (CSV/plaintext/JSONL), bulk IOC pipeline bypass, 3 new feed types. 667 tests. |
 | normalization | 2 | ✅ Deployed | 2026-03-27 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 96:** Fuzzy dedupe in global worker, batch normalizer. 256 tests. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-123b.
-- **Last session outcome:** Session 123b (2026-03-31). **S123: Unified Feeds view + Settings/System refactor.** Merged "Confidence Model" + "Platform Preferences" into single "Confidence & Preferences" widget-card in Settings. Moved news_feed model assignments from Settings to SystemTab Feed Config sub-tab. Extracted SettingsTab.tsx (974 lines) into 5 files all under 400 lines. Extracted PipelinePanel + BackupsPanel from SystemTab for 400-line compliance. Frontend-only change, no backend/API changes. 21 tests passing. Commits 954d43e, af36e3b.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-128.
+- **Last session outcome:** Session 128 (2026-04-01). **S128: BulkFileConnector for ingestion service.** New connector supporting CSV, plaintext, JSONL bulk IOC import via HTTP. Gzip decompression. Bulk IOCs bypass article pipeline — queue directly to normalize. 3 new Prisma FeedType enum values (csv_bulk, plaintext, jsonl). 29 new tests (667 ingestion total). csv-parse dependency added. Commit b1461ab. CI/CD passed, 32/32 containers healthy, Prisma schema in sync.
 - **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
-- **Next tasks:** (1) Continue Command Center v2.1 — remaining features. (2) Set Shodan/GreyNoise API keys on VPS. (3) Cyber news feed strategy implementation.
+- **Next tasks:** (1) Cyber news feed strategy implementation. (2) IOC strategy implementation. (3) Set Shodan/GreyNoise API keys on VPS.
 
 ## Deployment Log
 
@@ -256,6 +256,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 125 | 2026-03-31 | etip_api redeployed (S125 public API improvements) | ✅ All 32 healthy | 1130361 | Rate limit headers, SSRF fix, delta sync, bulk IOC lookup, stats endpoint. 7/14 industry gaps fixed. |
 | 126 | 2026-03-31 | etip_api redeployed (S126 OpenAPI + enrichment + key rotation) | ✅ All 32 healthy | 11c8319, cd41d80 | OpenAPI/Swagger docs at /api/v1/public/docs (P0-1). Enrichment metadata ?include=enrichment (P1-8). API key rotation POST /api-keys/rotate with 24h grace (P1-7). 248 api-gateway tests (was 130). RCA: .map(toPublicIoc) type mismatch fixed. |
 | 127 | 2026-03-31 | etip_api redeployed (S127 TAXII 2.1 + webhook backoff + changelog + SDK) | ✅ All 32 healthy | — | TAXII 2.1 server (discovery/collections/objects), webhook Stripe-style exponential backoff (6 attempts), GET /changelog endpoint, SDK generation scaffolding. 279 api-gateway tests (was 248). All 14/14 public API gaps complete. |
+| 128 | 2026-04-01 | etip_ingestion redeployed (S128 BulkFileConnector) | ✅ All 32 healthy | b1461ab | BulkFileConnector: CSV/plaintext/JSONL bulk IOC import via HTTP. Gzip decompression. Bulk IOCs bypass article pipeline → queue directly to normalize. 3 new feed types (csv_bulk, plaintext, jsonl). csv-parse dependency. 667 ingestion tests (was 602). Prisma schema in sync. |
 
 ## E2E Verification Results (Session 13)
 

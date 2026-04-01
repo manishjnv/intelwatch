@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-12%20command%20center%20v2.1-00ff88)
-![Tests](https://img.shields.io/badge/tests-7743%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-8015%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
@@ -17,7 +17,7 @@
 | Shared packages (types, utils, cache, auth, audit, normalization, enrichment) | ✅ Deployed | 355 |
 | API Gateway (Fastify, tiered rate limiting, error alerting, gzip compression) | ✅ Live on VPS | 187 |
 | User Service (register, login, refresh, SSO, MFA, email verification, break-glass) | ✅ Live on VPS | 174 |
-| Ingestion Service (RSS + NVD + STIX/TAXII + REST_API, 11 pipeline modules, scheduler retry, global fetch workers, Redis caching) | ✅ Live on VPS | 629 |
+| Ingestion Service (RSS + NVD + STIX/TAXII + REST_API + MISP + Bulk File, 11 pipeline modules, scheduler retry, global fetch workers, Redis caching) | ✅ Live on VPS | 667 |
 | Normalization Service (18 accuracy improvements, global normalize/enrich, tenant overlay, fuzzy dedupe, batch processing, corroboration, severity voting, community FP) | ✅ Live on VPS | 315 |
 | AI Enrichment Service (VT + AbuseIPDB + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 253 |
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
