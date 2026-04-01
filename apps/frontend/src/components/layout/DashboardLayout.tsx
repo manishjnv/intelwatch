@@ -12,7 +12,7 @@ import { useThemeStore } from '@/stores/theme-store'
 import { useLogout } from '@/hooks/use-auth'
 import { useDashboardStats } from '@/hooks/use-intel-data'
 import { cn } from '@/lib/utils'
-import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
+import { MODULES } from '@/config/modules'
 import {
   Search, LogOut, Menu, X, Sun, Moon, Lock,
 } from 'lucide-react'
@@ -176,8 +176,6 @@ export function DashboardLayout() {
           {NAV_ITEMS.map(item => {
             const isActive    = location.pathname === item.path
             const isFuture    = item.phase > 0
-            const phaseColor  = getPhaseColor(item.phase)
-            const phaseBg     = getPhaseBgColor(item.phase)
             const Icon        = item.icon
             const featureKey  = ROUTE_FEATURE_MAP[item.path]
             const isGated     = featureKey ? !(featureLimits.find(f => f.featureKey === featureKey)?.enabled ?? true) : false
@@ -200,14 +198,7 @@ export function DashboardLayout() {
                 {!collapsed && isGated && (
                   <Lock className="ml-auto w-3 h-3 text-text-muted shrink-0" data-testid={`lock-${featureKey}`} />
                 )}
-                {!collapsed && !isGated && isFuture && (
-                  <span className={cn(
-                    'ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-                    phaseBg, phaseColor,
-                  )}>
-                    P{item.phase}
-                  </span>
-                )}
+                {/* Phase badges removed — internal dev labels, not customer-facing */}
               </NavLink>
             )
           })}
