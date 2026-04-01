@@ -11,7 +11,7 @@
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
-| etip_ingestion | ✅ Running | 0.10.0 | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** (RSS, NVD, STIX/TAXII, REST, MISP, Bulk File, ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, **OTX**) + **Session 130: OTX connector, test fix, deploy**. 750 tests. |
+| etip_ingestion | ✅ Running | 0.10.0 | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** (RSS, NVD, STIX/TAXII, REST, MISP, Bulk File, ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, **OTX**) + **Session 130: OTX connector, test fix, deploy**. 770 tests. |
 | etip_normalization | ✅ Running | 0.3.2 | 2026-04-01 | IOC upsert + 18 accuracy improvements + G2/G4b + **Session 93: GlobalIocStatsService** + **Session 97: corroboration engine, severity voting, community FP, 6 new routes** + **Session 129: KEV/EPSS severity rules, extractionMeta schema** + **Session 130: deployed**. 303 tests. |
 | etip_enrichment | ✅ Running | 0.3.0 | 2026-03-22 | VT + AbuseIPDB + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
@@ -51,7 +51,7 @@
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
 | frontend | 1 | ✅ UI FROZEN | 2026-03-31 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,526 tests. **Session 123c (S123c):** Merged Pipeline Monitor + Pipeline Health into unified Pipeline sub-tab (System tab). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-03-24 | Port 3020. Module 20. Phase 7. BullMQ worker (etip-ioc-indexed, prefix etip), ES client (ping/ensureIndex/indexDoc/search/bulkIndex), multi-tenant index pattern (etip_{tenantId}_iocs), full-text + faceted search, aggregations. 57 tests. Deployed: docker-compose + deploy.yml + nginx /api/v1/search. RCA #42 fixed. |
-| ingestion | 2 | ✅ Deployed | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 129-130:** 7 new connectors (ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, OTX). 750 tests. |
+| ingestion | 2 | ✅ Deployed | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 129-130:** 7 new connectors (ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, OTX). 770 tests. |
 | normalization | 2 | ✅ Deployed | 2026-04-01 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 129-130:** KEV/EPSS auto-severity + confidence bonus, extractionMeta schema. 303 tests. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-03-22 | Port 3006. VT + AbuseIPDB + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 253 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
@@ -143,8 +143,8 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-129.
-- **Last session outcome:** Session 129 (2026-04-01). **S129: 6 abuse.ch/CISA/EPSS feed connectors.** ThreatFox (POST JSON), URLhaus (CSV bulk), MalwareBazaar (POST form), Feodo Tracker (CSV bulk), CISA KEV (JSON + delta cursor), FIRST EPSS (CSV + gzip). KEV/EPSS confidence bonus + severity rules in normalization. extractionMeta Zod schema extended (isKEV, epssScore, epssPercentile, knownRansomwareCampaignUse, sourceConfidence). 83 new ingestion tests (750 total), 303 normalization tests. Commits d529ff5, 65e08b1, 102ed38. CI/CD passed, 32/32 containers healthy.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-130.
+- **Last session outcome:** Session 130 (2026-04-01). **S130: OTX connector + test fix + deploy.** Added OTX AlienVault connector (13th connector) with delta cursor (modifiedSince). Fixed executeJobProcessor missing cisaKevConnector/firstEpssConnector in deps destructuring (runtime ReferenceError). Deployed ingestion + normalization to VPS. Prisma schema pushed (cisa_kev, first_epss FeedType enum). 32/32 containers healthy.
 - **Known issues:** Shodan/GreyNoise API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
 - **Next tasks:** (1) Cyber news feed strategy implementation. (2) IOC strategy implementation. (3) Set Shodan/GreyNoise API keys on VPS.
 
@@ -258,6 +258,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 127 | 2026-03-31 | etip_api redeployed (S127 TAXII 2.1 + webhook backoff + changelog + SDK) | ✅ All 32 healthy | — | TAXII 2.1 server (discovery/collections/objects), webhook Stripe-style exponential backoff (6 attempts), GET /changelog endpoint, SDK generation scaffolding. 279 api-gateway tests (was 248). All 14/14 public API gaps complete. |
 | 128 | 2026-04-01 | etip_ingestion redeployed (S128 BulkFileConnector) | ✅ All 32 healthy | b1461ab | BulkFileConnector: CSV/plaintext/JSONL bulk IOC import via HTTP. Gzip decompression. Bulk IOCs bypass article pipeline → queue directly to normalize. 3 new feed types (csv_bulk, plaintext, jsonl). csv-parse dependency. 667 ingestion tests (was 602). Prisma schema in sync. |
 | 129 | 2026-04-01 | etip_ingestion + etip_normalization redeployed (S129 abuse.ch/CISA/EPSS connectors) | ✅ All 32 healthy | d529ff5, 65e08b1, 102ed38 | 6 new connectors: ThreatFox, URLhaus, MalwareBazaar, Feodo Tracker, CISA KEV (delta cursor), FIRST EPSS (gzip). KEV/EPSS severity rules in normalization. extractionMeta Zod schema extended. 750 ingestion tests (was 667), 303 normalization tests. |
+| 130 | 2026-04-01 | etip_ingestion + etip_normalization redeployed (S130 OTX + test fix) | ✅ All 32 healthy | — | OTX AlienVault connector (13th). Fixed executeJobProcessor deps. Prisma db push (cisa_kev, first_epss enum). |
 
 ## E2E Verification Results (Session 13)
 

@@ -9,7 +9,7 @@ Fetches threat intelligence from RSS feeds, processes articles through an 11-mod
 ## Pipeline
 
 ```
-Feed Source (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/CISA-KEV/EPSS) → Scheduler (cron 5min sync)
+Feed Source (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/CISA-KEV/EPSS/OTX) → Scheduler (cron 5min sync)
   → Feed Fetch Worker (BullMQ)
   → Triage (rule-based + optional Haiku AI)
   → IOC Extraction (regex + optional Sonnet AI)
@@ -38,6 +38,7 @@ Feed Source (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/C
 | Feodo Connector | connectors/feodo.ts | abuse.ch Feodo Tracker CSV bulk download. Botnet C2 IPs with port extraction (int), malware family. sourceConfidence 0.95. |
 | CISA KEV Connector | connectors/cisa-kev.ts | CISA Known Exploited Vulnerabilities JSON. Delta cursor (lastDateAdded in parseConfig). isKEV + knownRansomwareCampaignUse flags. |
 | FIRST EPSS Connector | connectors/first-epss.ts | FIRST EPSS CSV with gzip support. minEpssScore threshold filter. epssScore + epssPercentile in rawMeta. |
+| OTX Connector | connectors/otx.ts | AlienVault OTX Pulse API. Delta cursor (modifiedSince). Paginated API with maxPages limit. |
 | Scheduler | workers/scheduler.ts | node-cron feed sync every 5 min, per-feed exponential backoff (30s→5min), circuit breaker for customization-client |
 | Feed Fetch Worker | workers/feed-fetch.ts | BullMQ worker: fetch → pipeline → persist |
 | Pipeline | workers/pipeline.ts | 5-stage article processing |
