@@ -46,25 +46,25 @@ describe('EnrichmentPage', () => {
     })
   })
 
-  it('renders budget gauge after demo data loads', async () => {
+  it('does not render budget gauge without API data (demo removed)', async () => {
     render(<EnrichmentPage />)
     await waitFor(() => {
-      expect(screen.getByText('Budget Usage')).toBeTruthy()
+      expect(screen.queryByText('Budget Usage')).toBeNull()
     })
   })
 
-  it('renders cost charts after demo data loads', async () => {
+  it('does not render cost charts without API data (demo removed)', async () => {
     render(<EnrichmentPage />)
     await waitFor(() => {
-      expect(screen.getByText('Cost by Provider')).toBeTruthy()
-      expect(screen.getByText('Cost by IOC Type')).toBeTruthy()
+      expect(screen.queryByText('Cost by Provider')).toBeNull()
+      expect(screen.queryByText('Cost by IOC Type')).toBeNull()
     })
   })
 
-  it('shows demo banner when using fallback data', async () => {
+  it('does not show demo banner (demo fallbacks removed)', async () => {
     render(<EnrichmentPage />)
     await waitFor(() => {
-      expect(screen.getByText('Demo')).toBeTruthy()
+      expect(screen.queryByText('Demo')).toBeNull()
     })
   })
 

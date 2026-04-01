@@ -74,20 +74,8 @@ describe('SearchBar', () => {
     expect(screen.getByTestId('search-dropdown')).toBeInTheDocument()
   })
 
-  it('shows save button when query present', () => {
+  it('does not show save button (saved search removed)', () => {
     render(<SearchBar {...defaultProps} query="test query" />)
-    expect(screen.getByTestId('search-save-btn')).toBeInTheDocument()
-  })
-
-  it('saved search restores query', () => {
-    // First save a search
-    localStorage.setItem('etip-search-saved', JSON.stringify([
-      { name: 'My Search', query: 'cobalt strike', createdAt: '2026-03-27' },
-    ]))
-    render(<SearchBar {...defaultProps} />)
-    fireEvent.focus(screen.getByTestId('search-input'))
-    const savedBtn = screen.getByText('My Search')
-    fireEvent.click(savedBtn)
-    expect(defaultProps.onQueryChange).toHaveBeenCalledWith('cobalt strike')
+    expect(screen.queryByTestId('search-save-btn')).not.toBeInTheDocument()
   })
 })

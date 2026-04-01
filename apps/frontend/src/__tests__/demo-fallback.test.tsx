@@ -111,11 +111,10 @@ describe('DashboardPage demo banner', () => {
     mockUseIOCStats.mockReturnValue({ data: LIVE_STATS, isDemo: false })
   })
 
-  it('shows demo banner when useDashboardStats returns isDemo=true', () => {
+  it('does not show demo banner (demo fallbacks removed)', () => {
     mockUseDashboardStats.mockReturnValue({ data: LIVE_DASHBOARD, isDemo: true })
     render(<DashboardPage />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
-    expect(screen.getByText('Demo data — connect backend for live intel')).toBeInTheDocument()
+    expect(screen.queryByText('Demo data — connect backend for live intel')).not.toBeInTheDocument()
   })
 
   it('hides demo banner when useDashboardStats returns isDemo=false', () => {
@@ -130,11 +129,10 @@ describe('DashboardPage demo banner', () => {
     expect(screen.queryByText('Demo data — connect backend for live intel')).not.toBeInTheDocument()
   })
 
-  it('demo banner uses accent color token (not hardcoded)', () => {
+  it('does not render demo badge (demo fallbacks removed)', () => {
     mockUseDashboardStats.mockReturnValue({ data: LIVE_DASHBOARD, isDemo: true })
-    const { container } = render(<DashboardPage />)
-    const badge = container.querySelector('.bg-accent\\/10')
-    expect(badge).toBeInTheDocument()
+    render(<DashboardPage />)
+    expect(screen.queryByText('Demo')).not.toBeInTheDocument()
   })
 
   it('renders heatmap even in demo mode', () => {
@@ -170,11 +168,10 @@ describe('IocListPage demo banner', () => {
     mockUseIOCStats.mockReturnValue({ data: LIVE_STATS, isDemo: false })
   })
 
-  it('shows demo banner when useIOCs returns isDemo=true', () => {
+  it('does not show demo banner (demo fallbacks removed)', () => {
     mockUseIOCs.mockReturnValue({ data: LIVE_IOCS, isLoading: false, isDemo: true })
     render(<IocListPage />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
-    expect(screen.getByText('Demo data — connect backend for live intel')).toBeInTheDocument()
+    expect(screen.queryByText('Demo data — connect backend for live intel')).not.toBeInTheDocument()
   })
 
   it('hides demo banner when useIOCs returns isDemo=false', () => {
@@ -213,10 +210,9 @@ describe('IocListPage demo banner', () => {
     expect(screen.getByTestId('split-pane')).toBeInTheDocument()
   })
 
-  it('demo banner has accessible text for screen readers', () => {
+  it('does not render demo text (demo fallbacks removed)', () => {
     mockUseIOCs.mockReturnValue({ data: LIVE_IOCS, isLoading: false, isDemo: true })
     render(<IocListPage />)
-    const banner = screen.getByText('Demo data — connect backend for live intel')
-    expect(banner).toBeVisible()
+    expect(screen.queryByText('Demo data — connect backend for live intel')).not.toBeInTheDocument()
   })
 })
