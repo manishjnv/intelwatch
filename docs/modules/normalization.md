@@ -1,6 +1,6 @@
 # Normalization Service
 
-**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 315
+**Port:** 3005 | **Queue:** etip-normalize | **Status:** ✅ Deployed | **Tests:** 303
 
 ## What It Does
 
