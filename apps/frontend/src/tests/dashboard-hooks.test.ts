@@ -30,11 +30,10 @@ describe('useEnrichmentSourceBreakdown', () => {
   afterEach(() => { vi.restoreAllMocks() })
 
   it('fetches from /analytics/enrichment-quality endpoint', async () => {
+    // api() already unwraps json.data, so mock returns the inner object directly
     const apiData = {
-      data: {
-        avgQuality: 80, enrichedCount: 100, unenrichedCount: 20,
-        enrichedPercent: 83, bySource: { Shodan: { success: 80, total: 100, rate: 80 } },
-      },
+      avgQuality: 80, enrichedCount: 100, unenrichedCount: 20,
+      enrichedPercent: 83, bySource: { Shodan: { success: 80, total: 100, rate: 80 } },
     }
     mockApi.mockResolvedValueOnce(apiData)
 
@@ -63,13 +62,12 @@ describe('useAiCostSummary', () => {
   afterEach(() => { vi.restoreAllMocks() })
 
   it('fetches from /analytics/cost-tracking endpoint', async () => {
+    // api() already unwraps json.data, so mock returns the inner object directly
     const apiData = {
-      data: {
-        totalCost30d: 20, previousCost30d: 18, deltaPercent: 11,
-        budgetMonthly: 100, budgetUtilization: 20,
-        byModel: { Haiku: 5, Sonnet: 15 },
-        costPerArticle: 0.03, costPerIoc: 0.06,
-      },
+      totalCost30d: 20, previousCost30d: 18, deltaPercent: 11,
+      budgetMonthly: 100, budgetUtilization: 20,
+      byModel: { Haiku: 5, Sonnet: 15 },
+      costPerArticle: 0.03, costPerIoc: 0.06,
     }
     mockApi.mockResolvedValueOnce(apiData)
 

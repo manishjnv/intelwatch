@@ -316,10 +316,10 @@ const DEMO_ENRICHMENT_SOURCES: EnrichmentSourceData = {
 export function useEnrichmentSourceBreakdown() {
   const result = useQuery({
     queryKey: ['enrichment-source-breakdown'],
-    queryFn: () => api<{ data: EnrichmentSourceData }>('/analytics/enrichment-quality').catch(() => null),
+    queryFn: () => api<EnrichmentSourceData>('/analytics/enrichment-quality').catch(() => null),
     staleTime: 300_000,
   })
-  const data = result.data?.data
+  const data = result.data
   const isDemo = !result.isLoading && data == null
   return { ...result, data: isDemo ? DEMO_ENRICHMENT_SOURCES : data, isDemo }
 }
@@ -352,10 +352,10 @@ const DEMO_AI_COST_SUMMARY: AiCostSummary = {
 export function useAiCostSummary() {
   const result = useQuery({
     queryKey: ['ai-cost-summary'],
-    queryFn: () => api<{ data: AiCostSummary }>('/analytics/cost-tracking').catch(() => null),
+    queryFn: () => api<AiCostSummary>('/analytics/cost-tracking').catch(() => null),
     staleTime: 300_000,
   })
-  const data = result.data?.data
+  const data = result.data
   const isDemo = !result.isLoading && data == null
   return { ...result, data: isDemo ? DEMO_AI_COST_SUMMARY : data, isDemo }
 }
@@ -382,10 +382,10 @@ const DEMO_ENRICHMENT_QUALITY: EnrichmentQuality = {
 export function useEnrichmentQuality() {
   const result = useQuery({
     queryKey: ['enrichment-quality'],
-    queryFn: () => api<{ data: EnrichmentQuality }>('/analytics/enrichment-quality').catch(() => null),
+    queryFn: () => api<EnrichmentQuality>('/analytics/enrichment-quality').catch(() => null),
     staleTime: 300_000,
   })
-  const data = result.data?.data
+  const data = result.data
   const isDemo = !result.isLoading && data == null
   return { ...result, data: isDemo ? DEMO_ENRICHMENT_QUALITY : data, isDemo }
 }

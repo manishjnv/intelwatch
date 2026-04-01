@@ -166,8 +166,22 @@ export function onQuotaExceeded(listener: QuotaListener) {
 
 /**
  * Attempt to refresh the access token using the stored refresh token.
+ * Uses a mutex so concurrent 401 handlers share one refresh call
+ * instead of racing and invalidating each other's tokens.
  */
+let _refreshPromise: Promise<boolean> | null = null;
+
 async function attemptRefresh(): Promise<boolean> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = doRefresh();
+  try {
+    return await _refreshPromise;
+  } finally {
+    _refreshPromise = null;
+  }
+}
+
+async function doRefresh(): Promise<boolean> {
   const { refreshToken, setTokens } = useAuthStore.getState();
   if (!refreshToken) return false;
 

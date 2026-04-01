@@ -7,6 +7,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth-store'
 import { notifyApiError } from './useApiError'
 import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS, DEMO_FEEDS_RESPONSE, DEMO_ACTORS_RESPONSE, DEMO_MALWARE_RESPONSE, DEMO_VULNS_RESPONSE } from './demo-data'
 import type { EnrichmentStats } from './use-enrichment-data'
@@ -331,18 +332,32 @@ export function useDashboardStats() {
       // Aggregate from multiple services - fail gracefully per service
       const [iocStats, feedStats, enrichStats] = await Promise.allSettled([
         api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number> }>('/iocs/stats'),
-        api<ListResponse<FeedRecord>>('/feeds?limit=1'),
+        // Direct fetch: api() strips pagination from list responses, we need pagination.total
+        (async () => {
+          const { accessToken, user } = useAuthStore.getState()
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+          if (user?.tenantId) {
+            headers['x-tenant-id'] = user.tenantId
+            headers['x-user-id'] = user.id
+            headers['x-user-role'] = user.role
+          }
+          const res = await fetch('/api/v1/feeds?limit=1', { headers })
+          if (!res.ok) return 0
+          const json = await res.json()
+          return json.pagination?.total ?? 0
+        })(),
         api<EnrichmentStats>('/enrichment/stats'),
       ])
 
       const ioc = iocStats.status === 'fulfilled' ? iocStats.value : null
-      const feeds = feedStats.status === 'fulfilled' ? feedStats.value : null
+      const feedCount = feedStats.status === 'fulfilled' ? feedStats.value as number : 0
       const enrich = enrichStats.status === 'fulfilled' ? enrichStats.value : null
 
       return {
         totalIOCs: ioc?.total ?? 0,
         criticalIOCs: ioc?.bySeverity?.['critical'] ?? 0,
-        activeFeeds: feeds?.total ?? 0,
+        activeFeeds: feedCount,
         enrichedToday: enrich?.enrichedToday ?? 0,
         lastIngestTime: 'Live',
       }
