@@ -14,6 +14,8 @@ import { ThreatFoxConnector } from '../connectors/threatfox.js';
 import { URLhausConnector } from '../connectors/urlhaus.js';
 import { MalwareBazaarConnector } from '../connectors/malwarebazaar.js';
 import { FeodoConnector } from '../connectors/feodo.js';
+import { CisaKevConnector } from '../connectors/cisa-kev.js';
+import { FirstEpssConnector } from '../connectors/first-epss.js';
 import { getConfig } from '../config.js';
 import { ArticlePipeline, type PipelineBatchResult } from './pipeline.js';
 import type { FeedPolicyStore } from '../services/feed-policy-store.js';
@@ -120,6 +122,8 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const urlhausConnector = new URLhausConnector(logger);
   const malwareBazaarConnector = new MalwareBazaarConnector(logger);
   const feodoConnector = new FeodoConnector(logger);
+  const cisaKevConnector = new CisaKevConnector(logger);
+  const firstEpssConnector = new FirstEpssConnector(logger);
   const pipeline = new ArticlePipeline({
     logger, db,
     anthropicApiKey: config.TI_ANTHROPIC_API_KEY,
@@ -135,6 +139,7 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
     repo, logger, db, policyStore, normalizeQueue, pipeline, config,
     rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
     threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector,
+    cisaKevConnector, firstEpssConnector,
   };
 
   /** Shared processor function used by all 4 workers */
@@ -210,12 +215,14 @@ async function executeJobProcessor(
     mispConnector: MISPConnector; bulkFileConnector: BulkFileConnector;
     threatFoxConnector: ThreatFoxConnector; urlhausConnector: URLhausConnector;
     malwareBazaarConnector: MalwareBazaarConnector; feodoConnector: FeodoConnector;
+    cisaKevConnector: CisaKevConnector; firstEpssConnector: FirstEpssConnector;
   },
 ): Promise<FeedFetchResult> {
   const { feedId, tenantId, triggeredBy, jobId } = jobCtx;
   const { repo, logger, db, policyStore, normalizeQueue, pipeline, config,
     rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
-    threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector } = deps;
+    threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector,
+    cisaKevConnector, firstEpssConnector } = deps;
 
   logger.info({ feedId, tenantId, triggeredBy, jobId }, 'Processing feed fetch job');
 
@@ -245,13 +252,18 @@ async function executeJobProcessor(
       url: feedUrl, headers: feedHeaders,
       parseConfig: feed.parseConfig as Record<string, unknown> | null,
       rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
-      threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector, config,
+      threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector,
+      cisaKevConnector, firstEpssConnector, config,
     });
 
     // Bulk feed types: skip article pipeline, queue IOCs directly to normalize
-    if (['csv_bulk', 'plaintext', 'jsonl', 'threatfox', 'urlhaus', 'malwarebazaar', 'feodo'].includes(feed.feedType)) {
+    if (['csv_bulk', 'plaintext', 'jsonl', 'threatfox', 'urlhaus', 'malwarebazaar', 'feodo', 'cisa_kev', 'first_epss'].includes(feed.feedType)) {
       const iocs = fetchResult.articles.filter((a) => a.rawMeta.iocValue)
-        .map((a) => ({ rawValue: String(a.rawMeta.iocValue), rawType: a.rawMeta.iocType ? String(a.rawMeta.iocType) : undefined }));
+        .map((a) => ({
+          rawValue: String(a.rawMeta.iocValue),
+          rawType: a.rawMeta.iocType ? String(a.rawMeta.iocType) : undefined,
+          extractionMeta: buildBulkExtractionMeta(a.rawMeta),
+        }));
       if (iocs.length > 0) {
         await normalizeQueue.add(`normalize-bulk-${crypto.randomUUID()}`,
           { articleId: crypto.randomUUID(), feedSourceId: feedId, tenantId, feedName: feed.name, iocs }, { priority: 3 });
@@ -260,6 +272,23 @@ async function executeJobProcessor(
       policyStore?.incrementCount(tenantId, feedId, fetchResult.articles.length);
       await repo.updateHealth(tenantId, feedId, { lastFetchAt: new Date(), consecutiveFailures: 0, status: 'active',
         totalItemsIngested: { increment: fetchResult.articles.length } });
+
+      // CISA KEV delta cursor: save latest dateAdded for next incremental fetch
+      if (feed.feedType === 'cisa_kev' && fetchResult.articles.length > 0) {
+        const latestDateAdded = fetchResult.articles
+          .map((a) => a.rawMeta.dateAdded as string)
+          .filter(Boolean)
+          .sort()
+          .pop();
+        if (latestDateAdded) {
+          const existingConfig = (feed.parseConfig as Record<string, unknown>) ?? {};
+          await repo.update(tenantId, feedId, {
+            parseConfig: { ...existingConfig, lastDateAdded: latestDateAdded },
+          });
+          logger.info({ feedId, cursor: latestDateAdded }, 'CISA KEV delta cursor saved');
+        }
+      }
+
       return { feedId, articlesCount: fetchResult.articles.length, relevantCount: iocs.length, duplicateCount: 0,
         iocsFound: iocs.length, fetchDurationMs: fetchResult.fetchDurationMs, pipelineDurationMs: 0, totalCostUsd: 0, status: 'success' as const };
     }
@@ -317,6 +346,7 @@ interface RouteOptions {
   mispConnector: MISPConnector; bulkFileConnector: BulkFileConnector;
   threatFoxConnector: ThreatFoxConnector; urlhausConnector: URLhausConnector;
   malwareBazaarConnector: MalwareBazaarConnector; feodoConnector: FeodoConnector;
+  cisaKevConnector: CisaKevConnector; firstEpssConnector: FirstEpssConnector;
   config: import('../config.js').AppConfig;
 }
 
@@ -380,6 +410,17 @@ async function routeToConnector(feedType: string, opts: RouteOptions): Promise<C
       url: opts.url || ((opts.parseConfig?.url as string) ?? undefined),
       maxItems: (opts.parseConfig?.maxItems as number) ?? undefined,
     });
+    case 'cisa_kev': return opts.cisaKevConnector.fetch({
+      url: opts.url || ((opts.parseConfig?.url as string) ?? undefined),
+      lastDateAdded: (opts.parseConfig?.lastDateAdded as string) ?? undefined,
+      maxItems: (opts.parseConfig?.maxItems as number) ?? undefined,
+    });
+    case 'first_epss': return opts.firstEpssConnector.fetch({
+      url: opts.url || ((opts.parseConfig?.url as string) ?? undefined),
+      minEpssScore: (opts.parseConfig?.minEpssScore as number) ?? undefined,
+      maxItems: (opts.parseConfig?.maxItems as number) ?? undefined,
+      gzip: (opts.parseConfig?.gzip as boolean) ?? undefined,
+    });
     default: throw new AppError(400, `Unsupported feed type: ${feedType}`, 'CONNECTOR_UNSUPPORTED');
   }
 }
@@ -429,4 +470,34 @@ async function enqueueIOCsForNormalization(
     }
   }
   if (totalEnqueued > 0) logger.info({ feedId, feedName, totalEnqueued }, 'IOCs enqueued for normalization');
+}
+
+/**
+ * Build extractionMeta from bulk feed rawMeta for KEV/EPSS enrichment.
+ * Passes through vulnerability-related metadata so normalization can
+ * apply confidence bonuses and auto-severity rules.
+ */
+function buildBulkExtractionMeta(rawMeta: Record<string, unknown>): Record<string, unknown> | undefined {
+  const meta: Record<string, unknown> = {};
+  let hasFields = false;
+
+  if (rawMeta.isKEV === true) {
+    meta.isKEV = true;
+    hasFields = true;
+  }
+  if (rawMeta.knownRansomwareCampaignUse != null) {
+    meta.knownRansomwareCampaignUse = rawMeta.knownRansomwareCampaignUse;
+    hasFields = true;
+  }
+  if (rawMeta.epssScore != null) {
+    meta.epssScore = rawMeta.epssScore;
+    meta.epssPercentile = rawMeta.epssPercentile;
+    hasFields = true;
+  }
+  if (rawMeta.sourceConfidence != null) {
+    meta.sourceConfidence = rawMeta.sourceConfidence;
+    hasFields = true;
+  }
+
+  return hasFields ? meta : undefined;
 }

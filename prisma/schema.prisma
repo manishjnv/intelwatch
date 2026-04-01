@@ -229,6 +229,8 @@ enum FeedType {
   csv_bulk
   plaintext
   jsonl
+  cisa_kev
+  first_epss
   @@map("feed_type_enum")
 }
 

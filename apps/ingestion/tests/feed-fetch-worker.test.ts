@@ -77,6 +77,16 @@ vi.mock('../src/connectors/rest-api.js', () => ({
     fetch: vi.fn().mockResolvedValue({ articles: [], fetchDurationMs: 0, feedTitle: null, feedDescription: null }),
   })),
 }));
+vi.mock('../src/connectors/cisa-kev.js', () => ({
+  CisaKevConnector: vi.fn().mockImplementation(() => ({
+    fetch: vi.fn().mockResolvedValue({ articles: [], fetchDurationMs: 0, feedTitle: null, feedDescription: null }),
+  })),
+}));
+vi.mock('../src/connectors/first-epss.js', () => ({
+  FirstEpssConnector: vi.fn().mockImplementation(() => ({
+    fetch: vi.fn().mockResolvedValue({ articles: [], fetchDurationMs: 0, feedTitle: null, feedDescription: null }),
+  })),
+}));
 
 import { createFeedFetchWorkers, type FeedFetchJobData } from '../src/workers/feed-fetch.js';
 import { Worker } from 'bullmq';

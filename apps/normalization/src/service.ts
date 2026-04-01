@@ -95,11 +95,15 @@ interface AutoSeverityInput {
   mitreAttack: string[];
   corroborationCount: number;
   explicitSeverity?: string;
+  /** True if CVE is in CISA Known Exploited Vulnerabilities catalog */
+  isKEV?: boolean;
+  /** EPSS exploitation probability score (0.0–1.0) */
+  epssScore?: number;
 }
 
 /**
  * Auto-classify severity from extraction context.
- * Priority: explicit > ransomware > nation-state > MITRE high-impact > corroboration > type default.
+ * Priority: explicit > KEV+EPSS > ransomware > KEV-only > nation-state > MITRE high-impact > corroboration > type default.
  */
 export function classifySeverity(input: AutoSeverityInput): string {
   // If extraction provided an explicit severity, trust it
@@ -107,10 +111,18 @@ export function classifySeverity(input: AutoSeverityInput): string {
     return mapSeverity(input.explicitSeverity);
   }
 
+  // CISA KEV + EPSS > 0.5 → auto CRITICAL (actively exploited + high probability)
+  if (input.isKEV && input.epssScore != null && input.epssScore > 0.5) {
+    return 'critical';
+  }
+
   // Ransomware family → CRITICAL
   for (const family of input.malwareFamilies) {
     if (RANSOMWARE_FAMILIES.has(family.toLowerCase())) return 'critical';
   }
+
+  // CISA KEV alone → at least HIGH (government-confirmed exploitation)
+  if (input.isKEV) return 'high';
 
   // Nation-state / APT actor → HIGH (minimum)
   for (const actor of input.threatActors) {
@@ -320,6 +332,11 @@ export interface ConfidenceBreakdown {
   sightingTimestamps: SightingTimestamp[];
   autoSeverityReason?: string;
   confidenceHistory?: Array<{ date: string; score: number; source: string }>;
+  kevBonus?: number;
+  epssBonus?: number;
+  isKEV?: boolean;
+  epssScore?: number;
+  epssPercentile?: number;
 }
 
 export class NormalizationService {
@@ -418,6 +435,8 @@ export class NormalizationService {
           mitreAttack: allMitre,
           corroborationCount: independentSourceCount,
           explicitSeverity: meta.severity,
+          isKEV: meta.isKEV === true,
+          epssScore: typeof meta.epssScore === 'number' ? meta.epssScore : undefined,
         });
         // ── Improvement C3: Severity only escalates, never downgrades ──
         const severity = existing
@@ -437,7 +456,19 @@ export class NormalizationService {
           ? Math.min(100, Math.round(confidenceResult.score * 1.2))
           : confidenceResult.score;
         const penalizedScore = Math.round(baseScore * batchMultiplier);
-        const finalConfidence = clampConfidence(penalizedScore, iocType);
+        const clampedConfidence = clampConfidence(penalizedScore, iocType);
+
+        // ── KEV/EPSS confidence bonus (stacks with existing scoring) ──
+        let kevEpssBonus = 0;
+        if (meta.isKEV === true) kevEpssBonus += 20;
+        if (typeof meta.epssPercentile === 'number') {
+          if (meta.epssPercentile > 0.9) kevEpssBonus += 15;
+          else if (meta.epssPercentile > 0.7) kevEpssBonus += 10;
+          else if (meta.epssPercentile > 0.5) kevEpssBonus += 5;
+        }
+        const finalConfidence = kevEpssBonus > 0
+          ? clampConfidence(clampedConfidence + kevEpssBonus, iocType)
+          : clampedConfidence;
 
         // ── Store confidence breakdown in enrichmentData ───────────
         const bounds = CONFIDENCE_BOUNDS[iocType] ?? { floor: 0, ceiling: 100 };
@@ -475,6 +506,13 @@ export class NormalizationService {
           sightingTimestamps,
           confidenceHistory,
           ...(isReactivation ? { autoSeverityReason: 'reactivated_ioc_confidence_boost_1.2x' } : {}),
+          ...(kevEpssBonus > 0 ? {
+            kevBonus: meta.isKEV === true ? 20 : 0,
+            epssBonus: kevEpssBonus - (meta.isKEV === true ? 20 : 0),
+            isKEV: meta.isKEV === true || undefined,
+            epssScore: typeof meta.epssScore === 'number' ? meta.epssScore : undefined,
+            epssPercentile: typeof meta.epssPercentile === 'number' ? meta.epssPercentile : undefined,
+          } : {}),
         };
 
         // Merge arrays

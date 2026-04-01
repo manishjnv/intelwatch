@@ -49,6 +49,8 @@ export function mapFeedTypeToQueue(feedType: string): QueueName {
     case 'csv_bulk':
     case 'plaintext':
     case 'jsonl':
+    case 'cisa_kev':
+    case 'first_epss':
       return QUEUES.FEED_FETCH_REST;
     default:
       return QUEUES.FEED_FETCH_RSS;

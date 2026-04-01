@@ -117,3 +117,48 @@ describe('classifySeverity (Improvement #6: Auto-severity classification)', () =
     })).toBe('critical');
   });
 });
+
+describe('classifySeverity — CISA KEV + EPSS auto-severity', () => {
+  const base = {
+    iocType: 'cve' as const,
+    threatActors: [] as string[],
+    malwareFamilies: [] as string[],
+    mitreAttack: [] as string[],
+    corroborationCount: 0,
+  };
+
+  it('KEV + EPSS > 0.5 → CRITICAL', () => {
+    expect(classifySeverity({ ...base, isKEV: true, epssScore: 0.8 })).toBe('critical');
+    expect(classifySeverity({ ...base, isKEV: true, epssScore: 0.51 })).toBe('critical');
+  });
+
+  it('KEV + EPSS = 0.5 does NOT trigger CRITICAL (must exceed 0.5)', () => {
+    expect(classifySeverity({ ...base, isKEV: true, epssScore: 0.5 })).toBe('high');
+  });
+
+  it('KEV alone → HIGH', () => {
+    expect(classifySeverity({ ...base, isKEV: true })).toBe('high');
+    expect(classifySeverity({ ...base, isKEV: true, epssScore: 0.3 })).toBe('high');
+  });
+
+  it('EPSS without KEV → no escalation (uses type default)', () => {
+    expect(classifySeverity({ ...base, epssScore: 0.95 })).toBe('medium'); // CVE default
+    expect(classifySeverity({ ...base, isKEV: false, epssScore: 0.8 })).toBe('medium');
+  });
+
+  it('KEV + EPSS > 0.5 takes priority over ransomware (both CRITICAL)', () => {
+    expect(classifySeverity({
+      ...base, isKEV: true, epssScore: 0.9, malwareFamilies: ['LockBit'],
+    })).toBe('critical');
+  });
+
+  it('explicit severity overrides KEV+EPSS', () => {
+    expect(classifySeverity({
+      ...base, isKEV: true, epssScore: 0.9, explicitSeverity: 'high',
+    })).toBe('high');
+  });
+
+  it('KEV is falsy when not set (defaults to no escalation)', () => {
+    expect(classifySeverity({ ...base })).toBe('medium'); // CVE type default
+  });
+});
