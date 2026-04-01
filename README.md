@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-12%20command%20center%20v2.1-00ff88)
-![Tests](https://img.shields.io/badge/tests-8118%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-8154%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://ti.intelwatch.in/health
@@ -19,7 +19,7 @@
 | User Service (register, login, refresh, SSO, MFA, email verification, break-glass) | ✅ Live on VPS | 174 |
 | Ingestion Service (13 connectors: RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX, 11 pipeline modules, scheduler retry, global fetch workers) | ✅ Live on VPS | 770 |
 | Normalization Service (18 accuracy improvements, KEV/EPSS auto-severity, confidence bonus, global normalize/enrich, tenant overlay, fuzzy dedupe, corroboration, severity voting) | ✅ Live on VPS | 303 |
-| AI Enrichment Service (VT + AbuseIPDB + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 253 |
+| AI Enrichment Service (VT + AbuseIPDB + GSB + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 289 |
 | IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |

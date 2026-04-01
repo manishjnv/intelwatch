@@ -1,10 +1,10 @@
 # AI Enrichment Service
 
-**Port:** 3006 | **Queue:** etip-enrich-realtime | **Status:** ✅ Deployed | **Tests:** 189
+**Port:** 3006 | **Queue:** etip-enrich-realtime | **Status:** ✅ Deployed | **Tests:** 289
 
 ## What It Does
 
-Receives IOCs from normalization, enriches with VirusTotal, AbuseIPDB, and Haiku AI triage. Computes weighted risk score (backward-compatible: 2-provider or 4-component with AI). Tracks per-IOC enrichment cost with full provider breakdown. Stores results on IOC record. Graceful degradation when providers fail or AI is disabled. Redis enrichment cache with type-specific TTLs. Budget enforcement gate with rule-based fallback. Confidence feedback loop wires AI score back into composite confidence formula.
+Receives IOCs from normalization, enriches with VirusTotal, AbuseIPDB, Google Safe Browsing, and Haiku AI triage. Computes weighted risk score (backward-compatible: 2-provider or 4-component with AI). Tracks per-IOC enrichment cost with full provider breakdown. Stores results on IOC record. Graceful degradation when providers fail or AI is disabled. Redis enrichment cache with type-specific TTLs. Budget enforcement gate with rule-based fallback. Confidence feedback loop wires AI score back into composite confidence formula.
 
 ## Pipeline
 
@@ -14,6 +14,7 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
   → Check Redis cache (type-specific TTL) → return cached if hit (#6)
   → VirusTotal lookup (IP/domain/hash/URL — 4/min rate limit) → track cost ($0)
   → AbuseIPDB lookup (IP only — 1000/day rate limit) → track cost ($0)
+  → Google Safe Browsing lookup (url/domain/fqdn — 8000/day, batch 500 URLs/call)
   → Budget gate check (#5):
       ≥100% budget → skip Haiku, use rule-based scorer ($0)
       ≥90% budget → use rule-based scorer ($0)
@@ -43,13 +44,14 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
 |---------|------|-------------|
 | VirusTotal Provider | providers/virustotal.ts | VT API v3 — detection rate, tags, analysis date |
 | AbuseIPDB Provider | providers/abuseipdb.ts | Abuse score, reports, ISP, country, Tor flag |
+| Google Safe Browsing Provider | providers/google-safe-browsing.ts | GSB Lookup API v4 — malware/phishing/unwanted software verdicts for URLs and domains. Batch support (up to 500 URLs per call). 8,000/day budget. |
 | Haiku Triage Provider | providers/haiku-triage.ts | Claude Haiku IOC classifier — structured output with evidence chain, MITRE mapping, FP detection, malware/actor extraction, recommended actions. Prompt injection defense via shared-enrichment sanitizer. |
 | Cost Tracker | cost-tracker.ts | Per-IOC per-provider cost tracking. Aggregate stats with headline. Tenant budget alerts. |
 | Rule-Based Scorer | rule-based-scorer.ts | Fallback scorer when budget >= 90%. Deterministic VT+AbuseIPDB scoring, CDN FP detection, $0 cost. (#5) |
 | Enrichment Cache | cache.ts | Redis cache with type-specific TTLs: hash=7d, IP=1h, domain=24h, URL=12h, CVE=12h. (#6) |
 | Rate Limiter | rate-limiter.ts | Sliding-window per provider (configurable) |
 | Enrich Worker | workers/enrich-worker.ts | BullMQ consumer with job validation |
-| Enrichment Service | service.ts | 3-provider pipeline, budget gate, risk scoring, confidence feedback loop, cache integration, cost tracking |
+| Enrichment Service | service.ts | 4-provider pipeline (VT → AbuseIPDB → GSB → Haiku), budget gate, risk scoring, confidence feedback loop, cache integration, cost tracking |
 | Repository | repository.ts | updateEnrichment, updateConfidence, findPending, getStats |
 
 ## Accuracy Improvements (Session 22)
@@ -78,6 +80,8 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
 |----------|--------|
 | TI_AI_ENABLED=false | `skipped` — no API calls, no DB update |
 | VT API key empty | VT skipped, AbuseIPDB + Haiku run if applicable |
+| GSB API key empty | GSB skipped, VT + AbuseIPDB + Haiku run normally |
+| GSB returns 429 | GSB null, enrichment continues without GSB verdict |
 | Haiku API key empty | Haiku skipped, VT + AbuseIPDB run (backward compat scoring) |
 | VT returns 429 | VT null, status `partial` |
 | Haiku API error | Returns null, pipeline continues with 2-provider scoring |
@@ -116,3 +120,5 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
 | TI_ENRICHMENT_CONCURRENCY | 2 | Worker concurrency |
 | TI_VT_RATE_LIMIT_PER_MIN | 4 | VT rate limit |
 | TI_ABUSEIPDB_RATE_LIMIT_PER_DAY | 1000 | AbuseIPDB rate limit |
+| TI_GSB_API_KEY | (empty) | Google Safe Browsing API key |
+| TI_GSB_RATE_LIMIT_PER_DAY | 8000 | GSB rate limit (API calls/day) |
