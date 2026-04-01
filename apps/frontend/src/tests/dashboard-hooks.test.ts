@@ -45,15 +45,14 @@ describe('useEnrichmentSourceBreakdown', () => {
     expect(result.current.isDemo).toBe(false)
   })
 
-  it('returns demo fallback when API fails', async () => {
+  it('returns null when API fails (no demo fallback)', async () => {
     mockApi.mockRejectedValueOnce(new Error('Network error'))
 
     const { result } = renderHook(() => useEnrichmentSourceBreakdown(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.isDemo).toBe(true)
-    expect(result.current.data?.avgQuality).toBe(72)
-    expect(result.current.data?.bySource).toHaveProperty('Shodan')
+    expect(result.current.isDemo).toBe(false)
+    expect(result.current.data).toBeNull()
   })
 })
 
@@ -79,29 +78,13 @@ describe('useAiCostSummary', () => {
     expect(result.current.isDemo).toBe(false)
   })
 
-  it('returns demo fallback when API fails', async () => {
+  it('returns null when API fails (no demo fallback)', async () => {
     mockApi.mockRejectedValueOnce(new Error('Network error'))
 
     const { result } = renderHook(() => useAiCostSummary(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.isDemo).toBe(true)
-    expect(result.current.data?.totalCost30d).toBe(12.50)
-    expect(result.current.data?.byModel).toHaveProperty('Haiku')
-  })
-
-  it('returns correct data shapes', async () => {
-    mockApi.mockRejectedValueOnce(new Error('fail'))
-
-    const { result } = renderHook(() => useAiCostSummary(), { wrapper: createWrapper() })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    const d = result.current.data!
-    expect(typeof d.totalCost30d).toBe('number')
-    expect(typeof d.deltaPercent).toBe('number')
-    expect(typeof d.budgetUtilization).toBe('number')
-    expect(typeof d.costPerArticle).toBe('number')
-    expect(typeof d.costPerIoc).toBe('number')
-    expect(typeof d.byModel).toBe('object')
+    expect(result.current.isDemo).toBe(false)
+    expect(result.current.data).toBeNull()
   })
 })

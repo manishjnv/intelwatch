@@ -3,16 +3,10 @@
  * @description Full-featured search input with recent searches, syntax hints, and saved searches.
  */
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Search, X, HelpCircle, Bookmark, Clock, Loader2 } from 'lucide-react'
+import { Search, X, HelpCircle, Clock, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────
-
-interface SavedSearch {
-  name: string
-  query: string
-  createdAt: string
-}
 
 interface SearchBarProps {
   query: string
@@ -24,7 +18,6 @@ interface SearchBarProps {
 // ─── LocalStorage helpers ────────────────────────────────────
 
 const RECENT_KEY = 'etip-search-recent'
-const SAVED_KEY = 'etip-search-saved'
 const MAX_RECENT = 10
 
 function getRecent(): string[] {
@@ -36,22 +29,6 @@ function addRecent(q: string) {
   const recent = getRecent().filter(r => r !== q)
   recent.unshift(q)
   localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)))
-}
-
-function getSaved(): SavedSearch[] {
-  try { return JSON.parse(localStorage.getItem(SAVED_KEY) ?? '[]') }
-  catch { return [] }
-}
-
-function addSaved(name: string, query: string) {
-  const saved = getSaved().filter(s => s.name !== name)
-  saved.unshift({ name, query, createdAt: new Date().toISOString() })
-  localStorage.setItem(SAVED_KEY, JSON.stringify(saved))
-}
-
-function removeSaved(name: string) {
-  const saved = getSaved().filter(s => s.name !== name)
-  localStorage.setItem(SAVED_KEY, JSON.stringify(saved))
 }
 
 // ─── Search syntax hints ─────────────────────────────────────
@@ -71,13 +48,10 @@ const SEVERITY_HINTS = ['critical', 'high', 'medium', 'low']
 export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchBarProps) {
   const [showDropdown, setShowDropdown] = useState(false)
   const [showSyntax, setShowSyntax] = useState(false)
-  const [showSaveInput, setShowSaveInput] = useState(false)
-  const [saveName, setSaveName] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const recentSearches = getRecent()
-  const savedSearches = getSaved()
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -125,14 +99,6 @@ export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchB
     return []
   })()
 
-  const handleSave = () => {
-    if (saveName.trim() && query.trim()) {
-      addSaved(saveName.trim(), query.trim())
-      setSaveName('')
-      setShowSaveInput(false)
-    }
-  }
-
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Input */}
@@ -176,16 +142,6 @@ export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchB
           >
             <HelpCircle className="w-4 h-4" />
           </button>
-          {query.trim() && (
-            <button
-              onClick={() => setShowSaveInput(!showSaveInput)}
-              className="p-1.5 text-text-muted hover:text-text-primary transition-colors rounded-md hover:bg-bg-hover"
-              title="Save search"
-              data-testid="search-save-btn"
-            >
-              <Bookmark className="w-4 h-4" />
-            </button>
-          )}
         </div>
       </div>
 
@@ -209,24 +165,8 @@ export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchB
         </div>
       )}
 
-      {/* Save input */}
-      {showSaveInput && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-bg-elevated border border-border rounded-lg p-3 shadow-lg z-50 flex gap-2" data-testid="save-search-input">
-          <input
-            type="text"
-            value={saveName}
-            onChange={e => setSaveName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSave()}
-            placeholder="Name this search…"
-            className="flex-1 text-xs bg-bg-base border border-border rounded-md px-2.5 py-1.5 text-text-primary focus:outline-none focus:border-accent"
-            autoFocus
-          />
-          <button onClick={handleSave} className="text-xs bg-accent text-white px-3 py-1.5 rounded-md hover:bg-accent/90">Save</button>
-        </div>
-      )}
-
-      {/* Dropdown: recent + saved + suggestions */}
-      {showDropdown && !showSyntax && !showSaveInput && (recentSearches.length > 0 || savedSearches.length > 0 || suggestions.length > 0) && (
+      {/* Dropdown: recent + suggestions */}
+      {showDropdown && !showSyntax && (recentSearches.length > 0 || suggestions.length > 0) && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border rounded-lg shadow-lg z-50 max-h-72 overflow-y-auto" data-testid="search-dropdown">
           {/* Suggestions */}
           {suggestions.length > 0 && (
@@ -261,31 +201,6 @@ export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchB
             </div>
           )}
 
-          {/* Saved */}
-          {savedSearches.length > 0 && (
-            <div className="p-2">
-              <p className="text-[10px] text-text-muted uppercase tracking-wider px-2 pb-1">Saved</p>
-              {savedSearches.map(s => (
-                <div key={s.name} className="flex items-center gap-1">
-                  <button
-                    onClick={() => { onQueryChange(s.query); setShowDropdown(false) }}
-                    className="flex-1 text-left text-xs text-text-primary px-2 py-1.5 rounded hover:bg-bg-hover transition-colors flex items-center gap-2"
-                  >
-                    <Bookmark className="w-3 h-3 text-accent shrink-0" />
-                    <span className="truncate">{s.name}</span>
-                    <span className="text-text-muted ml-auto text-[10px] shrink-0">{s.query}</span>
-                  </button>
-                  <button
-                    onClick={() => { removeSaved(s.name); setShowDropdown(false) }}
-                    className="p-1 text-text-muted hover:text-sev-critical transition-colors"
-                    title="Delete saved search"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>

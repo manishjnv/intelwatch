@@ -299,18 +299,7 @@ export interface EnrichmentSourceData {
   bySource: Record<string, SourceBreakdown>
 }
 
-const DEMO_ENRICHMENT_SOURCES: EnrichmentSourceData = {
-  avgQuality: 72,
-  enrichedCount: 840,
-  unenrichedCount: 160,
-  enrichedPercent: 84,
-  bySource: {
-    Shodan: { success: 620, total: 840, rate: 74 },
-    GreyNoise: { success: 510, total: 840, rate: 61 },
-    EPSS: { success: 380, total: 420, rate: 90 },
-    Warninglist: { success: 780, total: 840, rate: 93 },
-  },
-}
+// Demo fallback removed — no fake data
 
 /** Enrichment source breakdown for dashboard widget */
 export function useEnrichmentSourceBreakdown() {
@@ -319,9 +308,7 @@ export function useEnrichmentSourceBreakdown() {
     queryFn: () => api<EnrichmentSourceData>('/analytics/enrichment-quality').catch(() => null),
     staleTime: 300_000,
   })
-  const data = result.data
-  const isDemo = !result.isLoading && data == null
-  return { ...result, data: isDemo ? DEMO_ENRICHMENT_SOURCES : data, isDemo }
+  return { ...result, data: result.data ?? null, isDemo: false }
 }
 
 // ─── AI Cost Summary ─────────────────────────────────────────────
@@ -337,16 +324,7 @@ export interface AiCostSummary {
   costPerIoc: number
 }
 
-const DEMO_AI_COST_SUMMARY: AiCostSummary = {
-  totalCost30d: 12.50,
-  previousCost30d: 14.20,
-  deltaPercent: -12,
-  budgetMonthly: 50.00,
-  budgetUtilization: 25,
-  byModel: { Haiku: 3.20, Sonnet: 9.30 },
-  costPerArticle: 0.02,
-  costPerIoc: 0.04,
-}
+// Demo fallback removed — no fake data
 
 /** 30-day AI cost summary for dashboard widget */
 export function useAiCostSummary() {
@@ -355,9 +333,7 @@ export function useAiCostSummary() {
     queryFn: () => api<AiCostSummary>('/analytics/cost-tracking').catch(() => null),
     staleTime: 300_000,
   })
-  const data = result.data
-  const isDemo = !result.isLoading && data == null
-  return { ...result, data: isDemo ? DEMO_AI_COST_SUMMARY : data, isDemo }
+  return { ...result, data: result.data ?? null, isDemo: false }
 }
 
 // ─── Enrichment Quality (from analytics service) ────────────────
@@ -373,10 +349,7 @@ export interface EnrichmentQuality {
   lowPct: number
 }
 
-const DEMO_ENRICHMENT_QUALITY: EnrichmentQuality = {
-  total: 1000, highConfidence: 360, mediumConfidence: 180, lowConfidence: 60,
-  pendingEnrichment: 400, highPct: 36, mediumPct: 18, lowPct: 6,
-}
+// Demo fallback removed — no fake data
 
 /** Confidence tier breakdown — sourced from analytics aggregator (5-min cache) */
 export function useEnrichmentQuality() {
@@ -385,7 +358,5 @@ export function useEnrichmentQuality() {
     queryFn: () => api<EnrichmentQuality>('/analytics/enrichment-quality').catch(() => null),
     staleTime: 300_000,
   })
-  const data = result.data
-  const isDemo = !result.isLoading && data == null
-  return { ...result, data: isDemo ? DEMO_ENRICHMENT_QUALITY : data, isDemo }
+  return { ...result, data: result.data ?? null, isDemo: false }
 }

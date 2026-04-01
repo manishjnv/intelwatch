@@ -165,6 +165,37 @@ export function onQuotaExceeded(listener: QuotaListener) {
 }
 
 /**
+ * Like api(), but returns the full JSON body (not just json.data).
+ * Useful for list endpoints where pagination metadata lives outside .data.
+ */
+export async function apiRaw<T>(path: string): Promise<T | null> {
+  const { accessToken, user } = useAuthStore.getState();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+  if (user?.tenantId) {
+    headers['x-tenant-id'] = user.tenantId;
+    headers['x-user-id'] = user.id;
+    headers['x-user-role'] = user.role;
+  }
+
+  try {
+    const fullUrl = `${API_BASE}${path}`;
+    let res = await fetch(fullUrl, { headers });
+    if (res.status === 401) {
+      const refreshed = await attemptRefresh();
+      if (refreshed) {
+        headers['Authorization'] = `Bearer ${useAuthStore.getState().accessToken}`;
+        res = await fetch(fullUrl, { headers });
+      }
+    }
+    if (!res.ok) return null;
+    return await res.json() as T;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Attempt to refresh the access token using the stored refresh token.
  * Uses a mutex so concurrent 401 handlers share one refresh call
  * instead of racing and invalidating each other's tokens.

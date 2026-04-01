@@ -5,11 +5,10 @@
  * Malware (:3009/malware), Vulnerabilities (:3010/vulnerabilities).
  * All queries go through nginx → backend services.
  */
-import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import { useAuthStore } from '@/stores/auth-store'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { api, apiRaw } from '@/lib/api'
 import { notifyApiError } from './useApiError'
-import { DEMO_IOCS_RESPONSE, DEMO_IOC_STATS, DEMO_DASHBOARD_STATS, DEMO_FEEDS_RESPONSE, DEMO_ACTORS_RESPONSE, DEMO_MALWARE_RESPONSE, DEMO_VULNS_RESPONSE } from './demo-data'
+// Demo data imports removed — no fallback to fake data
 import type { EnrichmentStats } from './use-enrichment-data'
 
 // ─── Generic list response shape ──────────────────────────────────
@@ -39,16 +38,6 @@ function buildQuery(params: QueryParams): string {
 
 // ─── Demo fallback helper ───────────────────────────────────────
 
-/** Wraps a query result: if the API errored or returned empty, substitute demo data */
-function withDemoFallback<T>(
-  result: UseQueryResult<T>,
-  demoData: T,
-  hasData: (d: T | undefined) => boolean,
-) {
-  const isDemo = !result.isLoading && !hasData(result.data)
-  return { ...result, data: isDemo ? demoData : result.data, isDemo }
-}
-
 // ─── IOC types ──────────────────────────────────────────────────
 
 export interface IOCRecord {
@@ -68,7 +57,7 @@ export function useIOCs(params: QueryParams = {}) {
     queryFn: () => api<ListResponse<IOCRecord>>(`/iocs${query}`).then(r => r ?? empty).catch(err => notifyApiError(err, 'IOCs', empty)),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_IOCS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
+  return { ...result, isDemo: false }
 }
 
 export function useIOCStats() {
@@ -78,7 +67,7 @@ export function useIOCStats() {
     queryFn: () => api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number>; byLifecycle: Record<string, number> }>('/iocs/stats').catch(() => empty),
     staleTime: 5 * 60_000,
   })
-  return withDemoFallback(result, DEMO_IOC_STATS, d => (d?.total ?? 0) > 0)
+  return { ...result, isDemo: false }
 }
 
 // ─── IOC Pivot + Timeline hooks ──────────────────────────────────
@@ -134,7 +123,7 @@ export function useFeeds(params: QueryParams = {}) {
     queryFn: () => api<ListResponse<FeedRecord>>(`/feeds${query}`).then(r => r ?? empty).catch(err => notifyApiError(err, 'feeds', empty)),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_FEEDS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
+  return { ...result, isDemo: false }
 }
 
 // ─── Feed Quota ─────────────────────────────────────────────────
@@ -245,7 +234,7 @@ export function useActors(params: QueryParams = {}) {
     queryFn: () => api<ListResponse<ActorRecord>>(`/actors${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_ACTORS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
+  return { ...result, isDemo: false }
 }
 
 // ─── Malware types ──────────────────────────────────────────────
@@ -265,7 +254,7 @@ export function useMalware(params: QueryParams = {}) {
     queryFn: () => api<ListResponse<MalwareRecord>>(`/malware${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_MALWARE_RESPONSE, d => (d?.data?.length ?? 0) > 0)
+  return { ...result, isDemo: false }
 }
 
 // ─── Actor/Malware detail + linked IOC hooks ────────────────────
@@ -320,7 +309,7 @@ export function useVulnerabilities(params: QueryParams = {}) {
     queryFn: () => api<ListResponse<VulnRecord>>(`/vulnerabilities${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_VULNS_RESPONSE, d => (d?.data?.length ?? 0) > 0)
+  return { ...result, isDemo: false }
 }
 
 // ─── Dashboard stats ────────────────────────────────────────────
@@ -332,39 +321,26 @@ export function useDashboardStats() {
       // Aggregate from multiple services - fail gracefully per service
       const [iocStats, feedStats, enrichStats] = await Promise.allSettled([
         api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number> }>('/iocs/stats'),
-        // Direct fetch: api() strips pagination from list responses, we need pagination.total
-        (async () => {
-          const { accessToken, user } = useAuthStore.getState()
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-          if (user?.tenantId) {
-            headers['x-tenant-id'] = user.tenantId
-            headers['x-user-id'] = user.id
-            headers['x-user-role'] = user.role
-          }
-          const res = await fetch('/api/v1/feeds?limit=1', { headers })
-          if (!res.ok) return 0
-          const json = await res.json()
-          return json.pagination?.total ?? 0
-        })(),
+        // apiRaw returns full JSON (inc. pagination) with auth + 401 retry
+        apiRaw<{ pagination: { total: number } }>('/feeds?limit=1'),
         api<EnrichmentStats>('/enrichment/stats'),
       ])
 
       const ioc = iocStats.status === 'fulfilled' ? iocStats.value : null
-      const feedCount = feedStats.status === 'fulfilled' ? feedStats.value as number : 0
+      const feedRaw = feedStats.status === 'fulfilled' ? feedStats.value : null
       const enrich = enrichStats.status === 'fulfilled' ? enrichStats.value : null
 
       return {
         totalIOCs: ioc?.total ?? 0,
         criticalIOCs: ioc?.bySeverity?.['critical'] ?? 0,
-        activeFeeds: feedCount,
+        activeFeeds: feedRaw?.pagination?.total ?? 0,
         enrichedToday: enrich?.enrichedToday ?? 0,
         lastIngestTime: 'Live',
       }
     },
     staleTime: 30_000,
   })
-  return withDemoFallback(result, DEMO_DASHBOARD_STATS, d => (d?.totalIOCs ?? 0) > 0)
+  return { ...result, isDemo: false }
 }
 
 /** G3b: IOC lifecycle state transitions */

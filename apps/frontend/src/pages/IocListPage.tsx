@@ -276,13 +276,6 @@ export function IocListPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect backend for live intel</span>
-        </div>
-      )}
-
       <FilterBar
         searchValue={search}
         onSearchChange={(v) => { setSearch(v); setPage(1) }}
