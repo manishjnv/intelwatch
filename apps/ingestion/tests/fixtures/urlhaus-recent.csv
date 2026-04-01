@@ -1,0 +1,6 @@
+# URLhaus Bulk Download — Recent URLs (last 30 days)
+# Reference: https://urlhaus.abuse.ch
+# Fields: id,dateadded,url,url_status,last_online,threat,tags,urlhaus_link,reporter
+"123456","2026-03-30 10:15:00","http://evil.example.com/malware.exe","online","2026-03-30","malware_download","emotet","https://urlhaus.abuse.ch/url/123456","abuse_ch"
+"123457","2026-03-29 18:42:00","http://bad.example.org/dropper.dll","offline","2026-03-29","malware_download","qakbot,dll","https://urlhaus.abuse.ch/url/123457","anonymous"
+"123458","2026-03-28 07:30:00","https://phish.example.net/login.php","online","2026-03-30","malware_download","heodo","https://urlhaus.abuse.ch/url/123458","reporter1"

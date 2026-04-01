@@ -1,0 +1,59 @@
+{
+  "query_status": "ok",
+  "data": [
+    {
+      "id": "1100001",
+      "ioc": "http://evil.example.com/payload.exe",
+      "ioc_type": "url",
+      "ioc_type_desc": "URL that distributes malware",
+      "threat_type": "payload_delivery",
+      "threat_type_desc": "Indicator that identifies a malware distribution site",
+      "malware": "win.emotet",
+      "malware_printable": "Emotet",
+      "malware_alias": ["Heodo", "Geodo"],
+      "malware_malpedia": "https://malpedia.caad.fkie.fraunhofer.de/details/win.emotet",
+      "confidence_level": 75,
+      "first_seen": "2026-03-30 12:00:00 UTC",
+      "last_seen": null,
+      "reporter": "abuse_ch",
+      "reference": "https://urlhaus.abuse.ch/url/123456",
+      "tags": ["emotet", "epoch5", "loader"]
+    },
+    {
+      "id": "1100002",
+      "ioc": "185.220.101.34:8080",
+      "ioc_type": "ip:port",
+      "ioc_type_desc": "IP address and port number",
+      "threat_type": "botnet_cc",
+      "threat_type_desc": "Indicator that identifies a botnet command&control server",
+      "malware": "win.qakbot",
+      "malware_printable": "QakBot",
+      "malware_alias": ["QBot", "Pinkslipbot"],
+      "malware_malpedia": "https://malpedia.caad.fkie.fraunhofer.de/details/win.qakbot",
+      "confidence_level": 90,
+      "first_seen": "2026-03-30 13:00:00 UTC",
+      "last_seen": "2026-03-31 08:00:00 UTC",
+      "reporter": "abuse_ch",
+      "reference": null,
+      "tags": ["qakbot", "c2"]
+    },
+    {
+      "id": "1100003",
+      "ioc": "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
+      "ioc_type": "sha256_hash",
+      "ioc_type_desc": "SHA256 hash",
+      "threat_type": "payload",
+      "threat_type_desc": "Indicator that identifies a malware payload",
+      "malware": "win.trickbot",
+      "malware_printable": "TrickBot",
+      "malware_alias": ["Trickster"],
+      "malware_malpedia": "https://malpedia.caad.fkie.fraunhofer.de/details/win.trickbot",
+      "confidence_level": 100,
+      "first_seen": "2026-03-29 09:15:00 UTC",
+      "last_seen": "2026-03-30 22:00:00 UTC",
+      "reporter": "virustracker",
+      "reference": "https://example.com/analysis/trickbot-sample",
+      "tags": ["trickbot", "banking"]
+    }
+  ]
+}

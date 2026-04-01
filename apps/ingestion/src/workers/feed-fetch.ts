@@ -10,6 +10,10 @@ import { TAXIIConnector } from '../connectors/taxii.js';
 import { RestAPIConnector } from '../connectors/rest-api.js';
 import { MISPConnector, type MISPConnectorResult } from '../connectors/misp.js';
 import { BulkFileConnector } from '../connectors/bulk-file.js';
+import { ThreatFoxConnector } from '../connectors/threatfox.js';
+import { URLhausConnector } from '../connectors/urlhaus.js';
+import { MalwareBazaarConnector } from '../connectors/malwarebazaar.js';
+import { FeodoConnector } from '../connectors/feodo.js';
 import { getConfig } from '../config.js';
 import { ArticlePipeline, type PipelineBatchResult } from './pipeline.js';
 import type { FeedPolicyStore } from '../services/feed-policy-store.js';
@@ -112,6 +116,10 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const restApiConnector = new RestAPIConnector(logger);
   const mispConnector = new MISPConnector(logger);
   const bulkFileConnector = new BulkFileConnector(logger);
+  const threatFoxConnector = new ThreatFoxConnector(logger);
+  const urlhausConnector = new URLhausConnector(logger);
+  const malwareBazaarConnector = new MalwareBazaarConnector(logger);
+  const feodoConnector = new FeodoConnector(logger);
   const pipeline = new ArticlePipeline({
     logger, db,
     anthropicApiKey: config.TI_ANTHROPIC_API_KEY,
@@ -126,6 +134,7 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const processorDeps = {
     repo, logger, db, policyStore, normalizeQueue, pipeline, config,
     rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
+    threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector,
   };
 
   /** Shared processor function used by all 4 workers */
@@ -199,11 +208,14 @@ async function executeJobProcessor(
     rssConnector: RSSConnector; nvdConnector: NVDConnector;
     taxiiConnector: TAXIIConnector; restApiConnector: RestAPIConnector;
     mispConnector: MISPConnector; bulkFileConnector: BulkFileConnector;
+    threatFoxConnector: ThreatFoxConnector; urlhausConnector: URLhausConnector;
+    malwareBazaarConnector: MalwareBazaarConnector; feodoConnector: FeodoConnector;
   },
 ): Promise<FeedFetchResult> {
   const { feedId, tenantId, triggeredBy, jobId } = jobCtx;
   const { repo, logger, db, policyStore, normalizeQueue, pipeline, config,
-    rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector } = deps;
+    rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
+    threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector } = deps;
 
   logger.info({ feedId, tenantId, triggeredBy, jobId }, 'Processing feed fetch job');
 
@@ -232,11 +244,12 @@ async function executeJobProcessor(
     const fetchResult = await routeToConnector(feed.feedType, {
       url: feedUrl, headers: feedHeaders,
       parseConfig: feed.parseConfig as Record<string, unknown> | null,
-      rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector, config,
+      rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
+      threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector, config,
     });
 
     // Bulk feed types: skip article pipeline, queue IOCs directly to normalize
-    if (['csv_bulk', 'plaintext', 'jsonl'].includes(feed.feedType)) {
+    if (['csv_bulk', 'plaintext', 'jsonl', 'threatfox', 'urlhaus', 'malwarebazaar', 'feodo'].includes(feed.feedType)) {
       const iocs = fetchResult.articles.filter((a) => a.rawMeta.iocValue)
         .map((a) => ({ rawValue: String(a.rawMeta.iocValue), rawType: a.rawMeta.iocType ? String(a.rawMeta.iocType) : undefined }));
       if (iocs.length > 0) {
@@ -302,6 +315,8 @@ interface RouteOptions {
   rssConnector: RSSConnector; nvdConnector: NVDConnector;
   taxiiConnector: TAXIIConnector; restApiConnector: RestAPIConnector;
   mispConnector: MISPConnector; bulkFileConnector: BulkFileConnector;
+  threatFoxConnector: ThreatFoxConnector; urlhausConnector: URLhausConnector;
+  malwareBazaarConnector: MalwareBazaarConnector; feodoConnector: FeodoConnector;
   config: import('../config.js').AppConfig;
 }
 
@@ -346,6 +361,25 @@ async function routeToConnector(feedType: string, opts: RouteOptions): Promise<C
         ...(opts.parseConfig as Record<string, unknown> ?? {}),
       });
     }
+    case 'threatfox': return opts.threatFoxConnector.fetch({
+      apiUrl: opts.url || ((opts.parseConfig?.apiUrl as string) ?? undefined),
+      days: (opts.parseConfig?.days as number) ?? undefined,
+      maxItems: (opts.parseConfig?.maxItems as number) ?? undefined,
+    });
+    case 'urlhaus': return opts.urlhausConnector.fetch({
+      url: opts.url || ((opts.parseConfig?.url as string) ?? undefined),
+      maxItems: (opts.parseConfig?.maxItems as number) ?? undefined,
+    });
+    case 'malwarebazaar': return opts.malwareBazaarConnector.fetch({
+      apiUrl: opts.url || ((opts.parseConfig?.apiUrl as string) ?? undefined),
+      query: (opts.parseConfig?.query as string) ?? undefined,
+      selector: (opts.parseConfig?.selector as string) ?? undefined,
+      maxItems: (opts.parseConfig?.maxItems as number) ?? undefined,
+    });
+    case 'feodo': return opts.feodoConnector.fetch({
+      url: opts.url || ((opts.parseConfig?.url as string) ?? undefined),
+      maxItems: (opts.parseConfig?.maxItems as number) ?? undefined,
+    });
     default: throw new AppError(400, `Unsupported feed type: ${feedType}`, 'CONNECTOR_UNSUPPORTED');
   }
 }
