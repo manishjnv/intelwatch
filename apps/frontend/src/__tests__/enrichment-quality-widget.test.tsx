@@ -1,25 +1,13 @@
 /**
- * Tests for EnrichmentQualityWidget + useEnrichmentQuality hook integration.
+ * Verifies EnrichmentQualityWidget was removed from DashboardPage.
+ * The widget showed internal enrichment metrics — not customer-facing.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@/test/test-utils'
 import { DashboardPage } from '@/pages/DashboardPage'
 
-// ─── Mock hooks ─────────────────────────────────────────────────
-
-const mockUseEnrichmentQuality = vi.fn()
-
-vi.mock('@/hooks/use-enrichment-data', () => ({
-  useCostStats:                 () => ({ data: null }),
-  useEnrichmentStats:           () => ({ data: null }),
-  useEnrichmentQuality:         () => mockUseEnrichmentQuality(),
-  useEnrichmentSourceBreakdown: () => ({ data: null, isDemo: false }),
-  useAiCostSummary:             () => ({ data: null, isDemo: false }),
-}))
-
 vi.mock('@/hooks/use-intel-data', () => ({
-  useDashboardStats: () => ({ data: null, isDemo: true }),
-  useIOCs: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true }),
+  useDashboardStats: () => ({ data: null, isDemo: false }),
 }))
 
 vi.mock('@/stores/auth-store', () => ({
@@ -27,54 +15,17 @@ vi.mock('@/stores/auth-store', () => ({
     selector({ user: { displayName: 'Analyst', email: 'a@b.com' }, tenant: { name: 'ACME' }, accessToken: 'tok' }),
   ),
 }))
-vi.mock('@/stores/theme-store', () => ({ useThemeStore: vi.fn(() => ({ theme: 'dark' })) }))
-vi.mock('@/stores/sidebar-store', () => ({ useSidebarStore: vi.fn(() => ({ isOpen: true, toggle: vi.fn() })) }))
 
-// Stub heavy viz components
 vi.mock('@/components/viz/SeverityHeatmap',    () => ({ SeverityHeatmap:    () => null }))
 vi.mock('@/components/viz/ParallaxCard',       () => ({ ParallaxCard:       ({ children }: { children: React.ReactNode }) => <>{children}</> }))
-vi.mock('@/components/viz/ThreatTimeline',     () => ({ ThreatTimeline:     () => null, generateStubEvents: () => [] }))
+vi.mock('@/components/viz/ThreatTimeline',     () => ({ ThreatTimeline:     () => null }))
 vi.mock('@/components/viz/AmbientBackground',  () => ({ AmbientBackground:  () => null }))
 
 import React from 'react'
 
-// ─── Tests ──────────────────────────────────────────────────────
-
-describe('EnrichmentQualityWidget', () => {
-  beforeEach(() => { vi.clearAllMocks() })
-
-  it('renders high/medium/low confidence values from mock data', () => {
-    mockUseEnrichmentQuality.mockReturnValue({
-      data: {
-        total: 1000, highConfidence: 360, mediumConfidence: 180, lowConfidence: 60,
-        pendingEnrichment: 400, highPct: 36, mediumPct: 18, lowPct: 6,
-      },
-      isDemo: false,
-    })
+describe('EnrichmentQualityWidget removed from Dashboard', () => {
+  it('does not render enrichment quality widget (internal admin scope)', () => {
     render(<DashboardPage />)
-    const widget = screen.getByTestId('enrichment-quality-widget')
-    expect(widget).toBeInTheDocument()
-    expect(widget.textContent).toContain('360')
-    expect(widget.textContent).toContain('180')
-    expect(widget.textContent).toContain('60')
-  })
-
-  it('shows pending enrichment count', () => {
-    mockUseEnrichmentQuality.mockReturnValue({
-      data: {
-        total: 500, highConfidence: 180, mediumConfidence: 90, lowConfidence: 30,
-        pendingEnrichment: 200, highPct: 36, mediumPct: 18, lowPct: 6,
-      },
-      isDemo: false,
-    })
-    render(<DashboardPage />)
-    expect(screen.getByTestId('enrichment-quality-widget').textContent).toContain('200')
-    expect(screen.getByTestId('enrichment-quality-widget').textContent).toContain('pending')
-  })
-
-  it('renders nothing when data is null (zero/empty state)', () => {
-    mockUseEnrichmentQuality.mockReturnValue({ data: null, isDemo: true })
-    render(<DashboardPage />)
-    expect(screen.queryByTestId('enrichment-quality-widget')).toBeNull()
+    expect(screen.queryByTestId('enrichment-quality-widget')).not.toBeInTheDocument()
   })
 })
