@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 132 &middot; 2026-04-01 &middot; S132: IPinfo.io IP geolocation &amp; ASN enrichment provider. 314 ai-enrichment tests. 32/32 containers healthy. ~8,179 tests</span>
+  <span class="version">Session 132 &middot; 2026-04-01 &middot; S132: IPinfo.io enrichment + per-IOC-type ES indices + ILM lifecycle. 116 ES indexing tests (59 new). 32/32 containers healthy. ~8,238 tests</span>
 </div>
 </div>
 
@@ -89,7 +89,7 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~8,179</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~8,238</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
     <div class="stat-card"><div class="stat-value">132</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
@@ -163,7 +163,7 @@ li strong { color: var(--text-primary); }
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>241</td></tr>
       <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28 (PlanStore Prisma-backed)</td><td>174</td></tr>
       <tr><td>admin-ops</td><td>3022</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>35 (+feed-usage)</td><td>195</td></tr>
-      <tr><td>elasticsearch-indexing</td><td>3020</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>3</td><td>116</td></tr>
+      <tr><td>elasticsearch-indexing</td><td>3020</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>5 (+migration +ILM)</td><td>116</td></tr>
       <tr><td>reporting</td><td>3021</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>25</td><td>217</td></tr>
       <tr><td><strong>alerting</strong></td><td>3023</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>35 + Global IOC Alert Handler</td><td>322</td></tr>
       <tr><td><strong>analytics</strong></td><td>3024</td><td>7</td><td><span class="badge badge-green">Deployed</span></td><td>15 (+D1+S101)</td><td>93</td></tr>
