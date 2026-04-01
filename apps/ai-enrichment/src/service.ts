@@ -77,7 +77,7 @@ export class EnrichmentService {
     if (!this.aiEnabled) {
       this.logger.debug({ iocId: job.iocId }, 'Enrichment disabled (TI_AI_ENABLED=false)');
       return {
-        vtResult: null, abuseipdbResult: null, haikuResult: null, gsbResult: null,
+        vtResult: null, abuseipdbResult: null, haikuResult: null, gsbResult: null, ipinfoResult: null,
         enrichedAt: now.toISOString(), enrichmentStatus: 'skipped',
         failureReason: 'TI_AI_ENABLED is false', externalRiskScore: null, costBreakdown: null,
         enrichmentQuality: null, geolocation: null,
