@@ -270,6 +270,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 139 | 2026-04-02 | etip_frontend + etip_normalization redeployed (S139 IOC Tier 1) | ✅ All 32 healthy | e67e169, d5e2204 | IOC Intelligence Tier 1: IocStatsCards (6 mini-cards), Enrichment Status column, Corroboration badge. Normalization response envelope fix. 1,627 frontend tests (+12). CI run 23896075406 green. |
 | 140 | 2026-04-02 | etip_frontend redeployed (S140 IOC Tier 2) | ✅ All 32 healthy | 3643bf7 | IOC Intelligence Tier 2: Multi-select bulk actions, Create IOC modal, Right-click context menu, Saved filter presets. IocListPage refactored 399→245 lines (6 extractions). 16 new files. 1,659 frontend tests (+32). CI run 23898205818 green. |
 | 141 | 2026-04-02 | etip_frontend redeployed (S141 IOC Tier 3) | ✅ All 32 healthy | e9a071c, d179a22 | IOC Intelligence Tier 3 (Best-in-Class): Confidence decay chart, MITRE ATT&CK badges, risk propagation banner, IOC compare panel, inline enrichment expansion. DataTable expandable rows. 7 new + 12 modified files. 1,708 frontend tests (+49). CI run 23903961558 green. |
+| 141b | 2026-04-02 | etip_ingestion redeployed (OTX connector commit) | ✅ All 32 healthy | d592482 | OTX connector wired into feed-fetch worker (was deployed S130, never committed). Prisma: otx FeedType enum. Delta cursor. 770 ingestion tests. CI run 23905660133 green (deploy retried — SSH broken pipe on first attempt). |
 
 ## E2E Verification Results (Session 13)
 
