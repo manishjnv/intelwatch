@@ -150,10 +150,11 @@ describe('GeoThreatWidget', () => {
       geography: { country: 'India', region: 'Asia' },
     }
     render(<GeoThreatWidget profile={profile} />)
-    const indiaRow = screen.getByTestId('geo-row-india')
-    expect(indiaRow).toBeInTheDocument()
-    // Highlighted row gets ring class
-    expect(indiaRow.className).toContain('ring-1')
+    // Dot-map should render with SVG circles (India gets a dot via COUNTRY_GEO)
+    const dotMap = screen.getByTestId('geo-dot-map')
+    expect(dotMap).toBeInTheDocument()
+    // Top 5 legend is visible
+    expect(screen.getByTestId('geo-legend')).toBeInTheDocument()
   })
 
   it('does not highlight when profile country does not match', () => {
@@ -165,8 +166,8 @@ describe('GeoThreatWidget', () => {
       geography: { country: 'Germany', region: 'Europe' },
     }
     render(<GeoThreatWidget profile={profile} />)
-    const chinaRow = screen.getByTestId('geo-row-china')
-    expect(chinaRow.className).not.toContain('ring-1')
+    // China should be in top 5 legend without highlight ring
+    expect(screen.getByText('China')).toBeInTheDocument()
   })
 
   it('shows Demo badge when isDemo is true', () => {
@@ -177,11 +178,11 @@ describe('GeoThreatWidget', () => {
     mockAnalytics.isDemo = origDemo
   })
 
-  it('renders country flag emojis', () => {
+  it('renders country names in legend', () => {
     render(<GeoThreatWidget profile={null} />)
-    // China flag label
-    const chinaRow = screen.getByTestId('geo-row-china')
-    expect(chinaRow).toBeInTheDocument()
+    // Top 5 countries should appear in the legend
+    expect(screen.getByText('China')).toBeInTheDocument()
+    expect(screen.getByText('Russia')).toBeInTheDocument()
   })
 })
 
@@ -239,10 +240,10 @@ describe('DashboardPage — full widget grid', () => {
     expect(screen.queryByTestId('profile-match-widget')).not.toBeInTheDocument()
   })
 
-  it('GeoThreatWidget highlights India when profile geography matches', () => {
+  it('GeoThreatWidget renders dot-map when profile geography is set', () => {
     render(<DashboardPage />)
-    const indiaRow = screen.getByTestId('geo-row-india')
-    expect(indiaRow.className).toContain('ring-1')
+    expect(screen.getByTestId('geo-dot-map')).toBeInTheDocument()
+    expect(screen.getByTestId('geo-legend')).toBeInTheDocument()
   })
 })
 
