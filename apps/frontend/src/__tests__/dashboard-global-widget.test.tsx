@@ -6,7 +6,7 @@
  * - Click navigates to /global-monitoring
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@/test/test-utils'
+import { render, screen, fireEvent, within } from '@/test/test-utils'
 
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -89,9 +89,10 @@ describe('DashboardPage — Global Pipeline Widget', () => {
 
   it('shows correct stats from pipeline health', () => {
     render(<DashboardPage />)
-    expect(screen.getByText('1,240')).toBeTruthy()
-    expect(screen.getByText('580')).toBeTruthy()
-    expect(screen.getByText('420')).toBeTruthy()
+    const widget = within(screen.getByTestId('global-pipeline-widget'))
+    expect(widget.getByText('1,240')).toBeTruthy()
+    expect(widget.getByText('580')).toBeTruthy()
+    expect(widget.getByText('420')).toBeTruthy()
   })
 
   it('clicking widget navigates to /global-monitoring', () => {
