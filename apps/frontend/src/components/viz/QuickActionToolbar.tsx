@@ -1,40 +1,44 @@
 /**
  * @module components/viz/QuickActionToolbar
  * @description Floating bottom toolbar — appears on row selection with
- * bulk actions. Framer Motion slide-up. P1-9.
+ * bulk actions. Framer Motion slide-up. P1-9. Tier 2: lifecycle, tag, export format, re-enrich.
  */
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download, Tag, GitCompare, Archive, X } from 'lucide-react'
+import { Download, Tag, RefreshCw, Archive, X, ChevronDown } from 'lucide-react'
+import { LIFECYCLE_STATES } from '@/components/ioc/ioc-constants'
 
 interface QuickActionToolbarProps {
   selectedCount: number
   onExport?: () => void
+  onBulkExport?: (format: 'csv' | 'json' | 'stix') => void
   onTag?: () => void
+  onBulkTag?: (tag: string) => void
   onCompare?: () => void
   onArchive?: () => void
+  onLifecycleChange?: (state: string) => void
+  onReEnrich?: () => void
   onClear?: () => void
-}
-
-interface ActionButton {
-  icon: React.ReactNode
-  label: string
-  onClick?: () => void
 }
 
 export function QuickActionToolbar({
   selectedCount,
   onExport,
-  onTag,
-  onCompare,
+  onBulkExport,
+  onBulkTag,
   onArchive,
+  onLifecycleChange,
+  onReEnrich,
   onClear,
 }: QuickActionToolbarProps) {
-  const actions: ActionButton[] = [
-    { icon: <Download className="w-3.5 h-3.5" />, label: 'Export', onClick: onExport },
-    { icon: <Tag className="w-3.5 h-3.5" />, label: 'Tag', onClick: onTag },
-    { icon: <GitCompare className="w-3.5 h-3.5" />, label: 'Compare', onClick: onCompare },
-    { icon: <Archive className="w-3.5 h-3.5" />, label: 'Archive', onClick: onArchive },
-  ]
+  const [tagInput, setTagInput] = useState('')
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [showLifecycleMenu, setShowLifecycleMenu] = useState(false)
+
+  const handleTagSubmit = () => {
+    const trimmed = tagInput.trim()
+    if (trimmed && onBulkTag) { onBulkTag(trimmed); setTagInput('') }
+  }
 
   return (
     <AnimatePresence>
@@ -56,30 +60,95 @@ export function QuickActionToolbar({
 
           <div className="w-px h-5 bg-border mx-1" />
 
-          {/* Action buttons */}
-          {actions.map(action => (
+          {/* Lifecycle dropdown */}
+          {selectedCount >= 2 && onLifecycleChange && (
+            <div className="relative">
+              <button
+                onClick={() => { setShowLifecycleMenu(s => !s); setShowExportMenu(false) }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+                title="Change lifecycle" data-testid="action-lifecycle"
+              >
+                <ChevronDown className="w-3 h-3" />
+                <span className="hidden sm:inline">Lifecycle</span>
+              </button>
+              {showLifecycleMenu && (
+                <div className="absolute bottom-full mb-1 left-0 bg-bg-secondary border border-border rounded-lg shadow-lg z-20 py-1 w-28" data-testid="lifecycle-menu">
+                  {LIFECYCLE_STATES.map(s => (
+                    <button key={s} onClick={() => { onLifecycleChange(s); setShowLifecycleMenu(false) }}
+                      className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover capitalize">{s}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tag input */}
+          {selectedCount >= 2 && onBulkTag && (
+            <div className="flex items-center gap-1">
+              <Tag className="w-3.5 h-3.5 text-text-muted" />
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleTagSubmit()}
+                placeholder="Add tag…"
+                className="w-20 sm:w-24 px-1.5 py-1 text-[10px] rounded bg-bg-secondary border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent/50"
+                data-testid="bulk-tag-input"
+              />
+            </div>
+          )}
+
+          {/* Export dropdown */}
+          <div className="relative">
             <button
-              key={action.label}
-              onClick={action.onClick}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-text-secondary
-                hover:text-text-primary hover:bg-bg-hover transition-colors"
-              title={action.label}
-              data-testid={`action-${action.label.toLowerCase()}`}
+              onClick={() => { if (onBulkExport) { setShowExportMenu(s => !s); setShowLifecycleMenu(false) } else { onExport?.() } }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+              title="Export" data-testid="action-export"
             >
-              {action.icon}
-              <span className="hidden sm:inline">{action.label}</span>
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export</span>
             </button>
-          ))}
+            {showExportMenu && onBulkExport && (
+              <div className="absolute bottom-full mb-1 left-0 bg-bg-secondary border border-border rounded-lg shadow-lg z-20 py-1 w-28" data-testid="export-format-menu">
+                {(['csv', 'json', 'stix'] as const).map(fmt => (
+                  <button key={fmt} onClick={() => { onBulkExport(fmt); setShowExportMenu(false) }}
+                    className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover uppercase">{fmt}</button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Re-enrich */}
+          {selectedCount >= 2 && onReEnrich && (
+            <button
+              onClick={onReEnrich}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+              title="Re-enrich selected" data-testid="action-re-enrich"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Re-enrich</span>
+            </button>
+          )}
+
+          {/* Archive */}
+          {onArchive && (
+            <button
+              onClick={onArchive}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+              title="Archive" data-testid="action-archive"
+            >
+              <Archive className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Archive</span>
+            </button>
+          )}
 
           <div className="w-px h-5 bg-border mx-1" />
 
           {/* Clear selection */}
           <button
             onClick={onClear}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-text-muted
-              hover:text-text-primary hover:bg-bg-hover transition-colors"
-            title="Clear selection"
-            data-testid="action-clear"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+            title="Clear selection" data-testid="action-clear"
           >
             <X className="w-3.5 h-3.5" />
           </button>

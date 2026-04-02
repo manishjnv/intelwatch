@@ -1,96 +1,32 @@
 /**
  * @module pages/IocListPage
- * @description IOC Intelligence list page — shows all IOCs with EntityChip,
- * SeverityBadge, density-adaptive table, severity row tinting.
- * P0-3: Inline entity hover preview. P0-5: Radial confidence gauge.
+ * @description IOC Intelligence list page — Tier 1 stats + Tier 2 bulk actions,
+ * context menu, create modal, saved filter presets.
  */
-import { useState, useMemo } from 'react'
-import { cn } from '@/lib/utils'
-import { useIOCs, useIOCStats, type IOCRecord } from '@/hooks/use-intel-data'
+import { useState, useMemo, useCallback, type MouseEvent } from 'react'
+import { useIOCs, useIOCStats, useUpdateIOCLifecycle, type IOCRecord } from '@/hooks/use-intel-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { DataTable, type Column, type Density } from '@/components/data/DataTable'
+import { useMultiSelect } from '@/hooks/use-multi-select'
+import { DataTable, type Density } from '@/components/data/DataTable'
 import { TableSkeleton } from '@/components/data/TableSkeleton'
-import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
+import { FilterBar } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
-import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { toast, ToastContainer } from '@/components/ui/Toast'
-import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
-import { EntityPreview } from '@/components/viz/EntityPreview'
 import { SplitPane } from '@/components/viz/SplitPane'
 import { QuickActionToolbar } from '@/components/viz/QuickActionToolbar'
 import { IocStatsCards } from '@/components/ioc/IocStatsCards'
+import { IOC_FILTERS } from '@/components/ioc/ioc-constants'
+import { getIocColumns } from '@/components/ioc/ioc-columns'
+import { CreateIocModal } from '@/components/ioc/CreateIocModal'
+import { IocContextMenu } from '@/components/ioc/IocContextMenu'
+import { SavedFilterPresets } from '@/components/ioc/SavedFilterPresets'
+import { exportCsv, exportJson, exportStix } from '@/utils/ioc-export'
 import { useEnrichmentStats } from '@/hooks/use-enrichment-data'
-import { Download, CheckCircle2, Clock, CircleDot } from 'lucide-react'
-import { IocDetailPanel } from './IocDetailPanel'
 import { useCampaigns, type Campaign } from '@/hooks/use-campaigns'
 import { CampaignPanel } from '@/components/campaigns/CampaignPanel'
-
-const IOC_FILTERS: FilterOption[] = [
-  { key: 'iocType', label: 'Type', options: [
-    { value: 'ip', label: 'IP' }, { value: 'domain', label: 'Domain' },
-    { value: 'url', label: 'URL' }, { value: 'hash_sha256', label: 'SHA-256' },
-    { value: 'hash_md5', label: 'MD5' }, { value: 'cve', label: 'CVE' },
-    { value: 'email', label: 'Email' },
-  ]},
-  { key: 'severity', label: 'Severity', options: [
-    { value: 'critical', label: 'Critical' }, { value: 'high', label: 'High' },
-    { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' },
-    { value: 'info', label: 'Info' },
-  ]},
-  { key: 'lifecycle', label: 'Lifecycle', options: [
-    { value: 'new', label: 'New' }, { value: 'active', label: 'Active' },
-    { value: 'aging', label: 'Aging' }, { value: 'expired', label: 'Expired' },
-  ]},
-  { key: 'source', label: 'Source', options: [
-    { value: 'global', label: 'Global' }, { value: 'private', label: 'Private' },
-  ]},
-  { key: 'hasCampaign', label: 'Campaign', options: [
-    { value: 'true', label: 'Campaign IOCs only' },
-  ]},
-]
-
-/** P0-5: Radial confidence gauge (SVG arc) */
-function ConfidenceGauge({ value }: { value: number }) {
-  const r = 14, cx = 18, cy = 18, stroke = 3
-  const circumference = 2 * Math.PI * r
-  const offset = circumference - (value / 100) * circumference
-  const color = value >= 70 ? 'var(--sev-low)' : value >= 40 ? 'var(--sev-medium)' : 'var(--sev-critical)'
-
-  return (
-    <div className="inline-flex items-center gap-1.5 group/gauge" title={`Confidence: ${value}%`}>
-      <svg width="36" height="36" viewBox="0 0 36 36" className="transition-transform group-hover/gauge:scale-125">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
-        <circle
-          cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={stroke}
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          strokeLinecap="round" transform={`rotate(-90 ${cx} ${cy})`}
-          className="transition-all duration-700"
-        />
-        <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
-          fill="var(--text-primary)" fontSize="9" fontWeight="600">
-          {value}
-        </text>
-      </svg>
-    </div>
-  )
-}
-
-function toChipType(iocType: string): string {
-  if (iocType === 'hash_sha256') return 'file_hash_sha256'
-  if (iocType === 'hash_sha1') return 'file_hash_sha1'
-  if (iocType === 'hash_md5') return 'file_hash_md5'
-  return iocType
-}
-
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return '—'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const days = Math.floor(diff / 86400000)
-  if (days === 0) return 'Today'
-  if (days === 1) return '1d ago'
-  if (days < 30) return `${days}d ago`
-  return `${Math.floor(days / 30)}mo ago`
-}
+import { IocDetailPanel } from './IocDetailPanel'
+import { Download, Plus } from 'lucide-react'
+import type { FilterPreset } from '@/hooks/use-filter-presets'
 
 export function IocListPage() {
   const [page, setPage] = useState(1)
@@ -101,6 +37,9 @@ export function IocListPage() {
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null)
+  const [showExport, setShowExport] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{ ioc: IOCRecord; pos: { x: number; y: number } } | null>(null)
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -114,6 +53,8 @@ export function IocListPage() {
   const { data: stats } = useIOCStats()
   const { data: enrichmentStats } = useEnrichmentStats()
   const { data: campaignData } = useCampaigns({ limit: 50 })
+  const lifecycleMutation = useUpdateIOCLifecycle()
+
   const campaignMap = useMemo(() => {
     const map = new Map<string, Campaign>()
     ;(campaignData?.data ?? []).forEach(c => map.set(c.id, c))
@@ -141,27 +82,8 @@ export function IocListPage() {
     })
   }, [data, isDemo, sortBy, sortOrder, search, filters])
 
-  const [showExport, setShowExport] = useState(false)
-  const dl = (name: string, content: string, type: string, msg: string) => {
-    const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(new Blob([content], { type })); a.click()
-    toast(msg, 'success'); setShowExport(false)
-  }
-  const exportCsv = () => {
-    const hdr = 'type,value,severity,confidence,lifecycle,firstSeen,lastSeen,tags'
-    const body = rows.map(r => [r.iocType, r.normalizedValue, r.severity, r.confidence, r.lifecycle, r.firstSeen ?? '', r.lastSeen ?? '', r.tags.join(';')].map(v => `"${v}"`).join(',')).join('\n')
-    dl('iocs.csv', hdr + '\n' + body, 'text/csv', 'Exported CSV')
-  }
-  const exportJson = () => dl('iocs.json', JSON.stringify(rows, null, 2), 'application/json', 'Exported JSON')
-  const exportStix = () => {
-    const bundle = { type: 'bundle', id: `bundle--${crypto.randomUUID()}`, objects: rows.map(r => ({
-      type: 'indicator', id: `indicator--${r.id}`, created: r.firstSeen ?? new Date().toISOString(),
-      modified: r.lastSeen ?? new Date().toISOString(), name: r.normalizedValue,
-      pattern: `[${r.iocType}:value = '${r.normalizedValue}']`, pattern_type: 'stix',
-      confidence: r.confidence, labels: [r.severity, r.lifecycle],
-    }))}
-    dl('iocs-stix.json', JSON.stringify(bundle, null, 2), 'application/json', 'Exported STIX 2.1 bundle')
-  }
-
+  const rowIds = useMemo(() => rows.map(r => r.id), [rows])
+  const { selectedIds, toggle, selectAllOnPage, clear: clearSelection, selectAllState } = useMultiSelect(rowIds)
   const selectedRecord = useMemo(() => rows.find(r => r.id === selectedId) ?? null, [rows, selectedId])
 
   const handleSort = (key: string) => {
@@ -169,144 +91,57 @@ export function IocListPage() {
     else { setSortBy(key); setSortOrder('desc') }
   }
 
-  const columns: Column<IOCRecord>[] = [
-    {
-      key: 'normalizedValue', label: 'Value', sortable: true, width: '24%',
-      render: (row) => (
-        <EntityPreview type={row.iocType} value={row.normalizedValue} severity={row.severity} confidence={row.confidence} firstSeen={row.firstSeen} lastSeen={row.lastSeen} tags={row.tags}>
-          <EntityChip type={toChipType(row.iocType) as any} value={row.normalizedValue} />
-        </EntityPreview>
-      ),
-    },
-    {
-      key: 'corroboration', label: 'Corrob.', width: '5%',
-      render: (row) => {
-        const count = row.corroborationCount ?? 0
-        if (count <= 1) return null
-        return (
-          <span
-            data-testid="corroboration-badge"
-            title={`Seen by ${count} feeds`}
-            className={cn(
-              'text-[10px] px-1.5 py-0.5 rounded-full font-medium tabular-nums',
-              count >= 3 ? 'bg-accent/10 text-accent' : 'bg-bg-elevated text-text-muted',
-            )}
-          >
-            &times;{count}
-          </span>
-        )
-      },
-    },
-    {
-      key: 'iocType', label: 'Type', sortable: true, width: '7%',
-      render: (row) => (
-        <span className="text-text-muted uppercase text-[10px] font-mono">{row.iocType}</span>
-      ),
-    },
-    {
-      key: 'severity', label: 'Severity', sortable: true, width: '9%',
-      render: (row, d) => <SeverityBadge severity={row.severity.toUpperCase() as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'} showDot={d !== 'ultra-dense'} />,
-    },
-    {
-      key: 'confidence', label: 'Conf', sortable: true, width: '7%',
-      render: (row, d) => d === 'ultra-dense'
-        ? <span className="tabular-nums">{row.confidence}</span>
-        : <ConfidenceGauge value={row.confidence} />,
-    },
-    {
-      key: 'source', label: 'Source', width: '6%',
-      render: (row) => {
-        const src = (row as any).source === 'global' ? 'global' : 'private'
-        return (
-          <span className={cn(
-            'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-            src === 'global' ? 'bg-blue-400/10 text-blue-400' : 'bg-text-muted/10 text-text-muted',
-          )}>
-            {src === 'global' ? 'Global' : 'Private'}
-          </span>
-        )
-      },
-    },
-    {
-      key: 'lifecycle', label: 'Status', sortable: true, width: '7%',
-      render: (row) => {
-        const colors: Record<string, string> = {
-          new: 'text-accent bg-accent/10', active: 'text-sev-low bg-sev-low/10',
-          aging: 'text-sev-medium bg-sev-medium/10', expired: 'text-text-muted bg-bg-elevated',
-        }
-        return (
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${colors[row.lifecycle] ?? 'text-text-muted'}`}>
-            {row.lifecycle}
-          </span>
-        )
-      },
-    },
-    {
-      key: 'tlp', label: 'TLP', width: '5%',
-      render: (row) => {
-        const colors: Record<string, string> = { red: 'text-sev-critical', amber: 'text-sev-medium', green: 'text-sev-low', white: 'text-text-muted' }
-        return <span className={`text-[10px] uppercase font-medium ${colors[row.tlp] ?? ''}`}>{row.tlp}</span>
-      },
-    },
-    {
-      key: 'tags', label: 'Tags', width: '10%',
-      render: (row, d) => {
-        if (d === 'ultra-dense') return <span className="text-text-muted">{row.tags.length || '—'}</span>
-        return (
-          <div className="flex flex-wrap gap-0.5 max-w-[200px]">
-            {row.tags.slice(0, 3).map(t => (
-              <span key={t} className="text-[10px] px-1 py-0.5 rounded bg-bg-elevated text-text-secondary truncate max-w-[80px]">{t}</span>
-            ))}
-            {row.tags.length > 3 && <span className="text-[10px] text-text-muted">+{row.tags.length - 3}</span>}
-          </div>
-        )
-      },
-    },
-    {
-      key: 'enrichmentStatus', label: 'Enriched', width: '5%',
-      render: (row) => {
-        const hasAi = row.aiConfidence != null && row.aiConfidence > 0
-        const hasFeed = row.feedReliability != null && row.feedReliability > 0
-        if (hasAi) return (
-          <span className="inline-flex items-center gap-1 text-[10px] text-sev-low" title="AI enrichment complete — click row for details">
-            <CheckCircle2 className="w-3 h-3" />Enriched
-          </span>
-        )
-        if (hasFeed) return (
-          <span className="inline-flex items-center gap-1 text-[10px] text-sev-medium" title="Feed data available — AI enrichment pending">
-            <CircleDot className="w-3 h-3" />Partial
-          </span>
-        )
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] text-text-muted" title="Awaiting enrichment">
-            <Clock className="w-3 h-3" />Pending
-          </span>
-        )
-      },
-    },
-    {
-      key: 'lastSeen', label: 'Last Seen', sortable: true, width: '9%',
-      render: (row) => <span className="text-text-muted tabular-nums">{timeAgo(row.lastSeen)}</span>,
-    },
-    {
-      key: 'campaignId', label: 'Campaign', width: '6%',
-      render: (row) => {
-        if (!row.campaignId) return null
-        const camp = campaignMap.get(row.campaignId)
-        const label = camp?.name ?? row.campaignId
-        return (
-          <button
-            onClick={(e) => { e.stopPropagation(); setExpandedCampaignId(row.campaignId === expandedCampaignId ? null : row.campaignId!) }}
-            className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-400/10 text-purple-400 font-medium truncate max-w-[80px] block hover:bg-purple-400/20 transition-colors"
-            title={label}
-            data-testid="campaign-badge"
-          >
-            {label.length > 12 ? label.slice(0, 12) + '…' : label}
-          </button>
-        )
-      },
-    },
-  ]
+  const columns = useMemo(() => getIocColumns({
+    campaignMap,
+    expandedCampaignId,
+    onCampaignClick: (id) => setExpandedCampaignId(id || null),
+  }), [campaignMap, expandedCampaignId])
+
+  // Bulk actions
+  const selectedRows = useMemo(() => rows.filter(r => selectedIds.has(r.id)), [rows, selectedIds])
+
+  const handleBulkExport = useCallback((format: 'csv' | 'json' | 'stix') => {
+    const target = selectedRows.length > 0 ? selectedRows : rows
+    if (format === 'csv') exportCsv(target)
+    else if (format === 'json') exportJson(target)
+    else exportStix(target)
+    toast(`Exported ${target.length} IOCs as ${format.toUpperCase()}`, 'success')
+  }, [selectedRows, rows])
+
+  const handleBulkLifecycle = useCallback((state: string) => {
+    selectedIds.forEach(id => lifecycleMutation.mutate({ iocId: id, state }))
+    toast(`Lifecycle → ${state} for ${selectedIds.size} IOCs`, 'success')
+    clearSelection()
+  }, [selectedIds, lifecycleMutation, clearSelection])
+
+  const handleBulkTag = useCallback((tag: string) => {
+    // Stub — bulk tag not wired to backend yet
+    toast(`Tag "${tag}" applied to ${selectedIds.size} IOCs (backend pending)`, 'info')
+  }, [selectedIds])
+
+  const handleReEnrich = useCallback(() => {
+    toast(`Re-enrichment queued for ${selectedIds.size} IOCs (backend pending)`, 'info')
+  }, [selectedIds])
+
+  const handleContextMenu = useCallback((row: IOCRecord, event: MouseEvent) => {
+    setContextMenu({ ioc: row, pos: { x: event.clientX, y: event.clientY } })
+  }, [])
+
+  const handleLifecycleFromContext = useCallback((iocId: string, state: string) => {
+    lifecycleMutation.mutate({ iocId, state })
+    toast(`Lifecycle → ${state}`, 'success')
+  }, [lifecycleMutation])
+
+  const handleLoadPreset = useCallback((preset: FilterPreset) => {
+    setFilters(preset.filters)
+    setSortBy(preset.sortBy)
+    setSortOrder(preset.sortOrder)
+    if (preset.search !== undefined) setSearch(preset.search)
+    setPage(1)
+  }, [])
+
+  // Single-export dropdown
+  const dl = (fn: () => void) => { fn(); setShowExport(false) }
 
   return (
     <div className="flex flex-col h-full">
@@ -319,6 +154,12 @@ export function IocListPage() {
         onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1) }}
       >
         <div className="flex items-center gap-2 sm:gap-3 ml-auto text-[10px] sm:text-xs shrink-0">
+          <SavedFilterPresets currentFilters={filters} currentSortBy={sortBy}
+            currentSortOrder={sortOrder} currentSearch={search} onLoadPreset={handleLoadPreset} />
+          <button onClick={() => setShowCreateModal(true)} data-testid="add-ioc-btn"
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-accent/30 text-accent hover:bg-accent/10 transition-colors">
+            <Plus className="w-3 h-3" />IOC
+          </button>
           <div className="relative">
             <button onClick={() => setShowExport(s => !s)} data-testid="export-iocs-btn"
               className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-border text-text-muted hover:text-accent hover:border-accent/30 transition-colors">
@@ -326,9 +167,9 @@ export function IocListPage() {
             </button>
             {showExport && (
               <div className="absolute right-0 top-full mt-1 bg-bg-secondary border border-border rounded-lg shadow-lg z-20 py-1 w-36" data-testid="export-dropdown">
-                <button onClick={exportCsv} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">CSV</button>
-                <button onClick={exportJson} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">JSON</button>
-                <button onClick={exportStix} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">STIX 2.1 Bundle</button>
+                <button onClick={() => dl(() => exportCsv(rows))} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">CSV</button>
+                <button onClick={() => dl(() => exportJson(rows))} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">JSON</button>
+                <button onClick={() => dl(() => exportStix(rows))} className="w-full text-left px-3 py-1.5 text-[10px] text-text-primary hover:bg-bg-hover">STIX 2.1 Bundle</button>
               </div>
             )}
           </div>
@@ -348,34 +189,26 @@ export function IocListPage() {
           <TableSkeleton rows={10} columns={columns.length} />
         ) : (
           <DataTable
-            columns={columns}
-            data={rows}
-            loading={false}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSort={handleSort}
-            rowKey={(r) => r.id}
-            density={density}
+            columns={columns} data={rows} loading={false}
+            sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
+            rowKey={(r) => r.id} density={density}
             severityField={(r) => r.severity}
             selectedId={selectedId}
-            onRowClick={(r) => {
-              setSelectedId(r.id === selectedId ? null : r.id)
-            }}
+            onRowClick={(r) => setSelectedId(r.id === selectedId ? null : r.id)}
+            selectable selectedIds={selectedIds}
+            onSelectToggle={toggle}
+            onSelectAllPage={() => selectAllOnPage(rowIds)}
+            selectAllState={selectAllState(rowIds)}
+            onRowContextMenu={handleContextMenu}
             emptyMessage="No IOCs found. Activate a feed to start ingesting threat intelligence."
           />
         )}
-        right={selectedRecord ? (
-          <IocDetailPanel record={selectedRecord} isDemo={isDemo} />
-        ) : null}
+        right={selectedRecord ? <IocDetailPanel record={selectedRecord} isDemo={isDemo} /> : null}
         showRight={!!selectedId}
       />
 
-      <Pagination
-        page={page} limit={50} total={isDemo ? rows.length : (data?.total ?? 0)}
-        onPageChange={setPage}
-        density={density}
-        onDensityChange={setDensity}
-      />
+      <Pagination page={page} limit={50} total={isDemo ? rows.length : (data?.total ?? 0)}
+        onPageChange={setPage} density={density} onDensityChange={setDensity} />
 
       {/* Campaign detail overlay */}
       {expandedCampaignId && campaignMap.has(expandedCampaignId) && (
@@ -388,9 +221,23 @@ export function IocListPage() {
         </div>
       )}
 
+      {/* Context menu */}
+      <IocContextMenu
+        ioc={contextMenu?.ioc ?? null} position={contextMenu?.pos ?? null}
+        onClose={() => setContextMenu(null)} onLifecycleChange={handleLifecycleFromContext}
+      />
+
+      {/* Create IOC modal */}
+      <CreateIocModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
+
+      {/* Bulk action toolbar */}
       <QuickActionToolbar
-        selectedCount={selectedId ? 1 : 0}
-        onClear={() => setSelectedId(null)}
+        selectedCount={selectedIds.size || (selectedId ? 1 : 0)}
+        onBulkExport={handleBulkExport}
+        onBulkTag={handleBulkTag}
+        onLifecycleChange={handleBulkLifecycle}
+        onReEnrich={handleReEnrich}
+        onClear={() => { clearSelection(); setSelectedId(null) }}
       />
       <ToastContainer />
     </div>

@@ -57,6 +57,7 @@ const MOCK_IOCS = [
 vi.mock('@/hooks/use-intel-data', () => ({
   useIOCs: () => ({ data: { data: MOCK_IOCS, total: MOCK_IOCS.length, page: 1, limit: 50 }, isLoading: false, isDemo: false }),
   useIOCStats: () => ({ data: MOCK_IOC_STATS }),
+  useUpdateIOCLifecycle: () => ({ mutate: vi.fn() }),
   useDashboardStats: () => ({ data: { totalIOCs: 880, activeFeeds: 12, criticalIOCs: 42, enrichedToday: 45 } }),
 }))
 
@@ -88,8 +89,28 @@ vi.mock('@/components/viz/SplitPane', () => ({
   SplitPane: ({ left }: { left: React.ReactNode }) => <div data-testid="split-pane">{left}</div>,
 }))
 
+vi.mock('@/hooks/use-multi-select', () => ({
+  useMultiSelect: () => ({ selectedIds: new Set(), toggle: vi.fn(), selectAllOnPage: vi.fn(), clear: vi.fn(), isSelected: () => false, selectAllState: () => false }),
+}))
+
+vi.mock('@/hooks/use-filter-presets', () => ({
+  useFilterPresets: () => ({ presets: [], savePreset: vi.fn(), deletePreset: vi.fn() }),
+}))
+
 vi.mock('@/components/viz/QuickActionToolbar', () => ({
   QuickActionToolbar: () => null,
+}))
+
+vi.mock('@/components/ioc/CreateIocModal', () => ({
+  CreateIocModal: () => null,
+}))
+
+vi.mock('@/components/ioc/IocContextMenu', () => ({
+  IocContextMenu: () => null,
+}))
+
+vi.mock('@/components/ioc/SavedFilterPresets', () => ({
+  SavedFilterPresets: () => null,
 }))
 
 vi.mock('@/components/ui/Toast', () => ({

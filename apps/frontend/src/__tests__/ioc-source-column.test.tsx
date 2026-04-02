@@ -13,6 +13,7 @@ const mockUseIOCStats = vi.fn()
 vi.mock('@/hooks/use-intel-data', () => ({
   useIOCs: (...args: any[]) => mockUseIOCs(...args),
   useIOCStats: (...args: any[]) => mockUseIOCStats(...args),
+  useUpdateIOCLifecycle: () => ({ mutate: vi.fn() }),
   useDashboardStats: vi.fn(() => ({ data: null })),
 }))
 
@@ -34,10 +35,29 @@ vi.mock('@etip/shared-ui/components/SeverityBadge', () => ({
 }))
 
 vi.mock('@/stores/auth-store', () => ({
-  useAuthStore: vi.fn((sel: any) => sel({ user: { role: 'analyst' }, tenant: { name: 'T' }, accessToken: 't' })),
+  useAuthStore: vi.fn((sel: any) => sel({ user: { role: 'analyst', tenantId: 'test' }, tenant: { name: 'T' }, accessToken: 't' })),
 }))
 vi.mock('@/stores/theme-store', () => ({ useThemeStore: vi.fn(() => ({ theme: 'dark', toggleTheme: vi.fn() })) }))
 vi.mock('@/hooks/use-auth', () => ({ useLogout: vi.fn(() => ({ mutate: vi.fn() })) }))
+vi.mock('@/hooks/use-multi-select', () => ({
+  useMultiSelect: () => ({ selectedIds: new Set(), toggle: vi.fn(), selectAllOnPage: vi.fn(), clear: vi.fn(), isSelected: () => false, selectAllState: () => false }),
+}))
+vi.mock('@/hooks/use-filter-presets', () => ({
+  useFilterPresets: () => ({ presets: [], savePreset: vi.fn(), deletePreset: vi.fn() }),
+}))
+vi.mock('@/hooks/use-campaigns', () => ({ useCampaigns: () => ({ data: { data: [] } }) }))
+vi.mock('@/hooks/use-enrichment-data', () => ({ useEnrichmentStats: () => ({ data: null }) }))
+vi.mock('@/hooks/useDebouncedValue', () => ({ useDebouncedValue: (v: string) => v }))
+vi.mock('@/components/ioc/IocStatsCards', () => ({ IocStatsCards: () => <div data-testid="ioc-stats-cards" /> }))
+vi.mock('@/components/ioc/CreateIocModal', () => ({ CreateIocModal: () => null }))
+vi.mock('@/components/ioc/IocContextMenu', () => ({ IocContextMenu: () => null }))
+vi.mock('@/components/ioc/SavedFilterPresets', () => ({ SavedFilterPresets: () => null }))
+vi.mock('@/components/campaigns/CampaignPanel', () => ({ CampaignPanel: () => null }))
+vi.mock('@/components/ui/Toast', () => ({ toast: vi.fn(), ToastContainer: () => null }))
+vi.mock('@/components/data/Pagination', () => ({ Pagination: () => <div /> }))
+vi.mock('@/components/data/TableSkeleton', () => ({ TableSkeleton: () => <div /> }))
+vi.mock('@/pages/IocDetailPanel', () => ({ IocDetailPanel: () => null }))
+vi.mock('@/components/viz/QuickActionToolbar', () => ({ QuickActionToolbar: () => null }))
 
 import { IocListPage } from '@/pages/IocListPage'
 

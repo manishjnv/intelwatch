@@ -169,11 +169,9 @@ describe('QuickActionToolbar', () => {
     expect(screen.getByTestId('selection-count')).toHaveTextContent('5 selected')
   })
 
-  it('renders 4 action buttons', () => {
-    render(<QuickActionToolbar selectedCount={1} />)
+  it('renders export and archive action buttons', () => {
+    render(<QuickActionToolbar selectedCount={1} onArchive={() => {}} />)
     expect(screen.getByTestId('action-export')).toBeInTheDocument()
-    expect(screen.getByTestId('action-tag')).toBeInTheDocument()
-    expect(screen.getByTestId('action-compare')).toBeInTheDocument()
     expect(screen.getByTestId('action-archive')).toBeInTheDocument()
   })
 
@@ -191,11 +189,10 @@ describe('QuickActionToolbar', () => {
     expect(onClear).toHaveBeenCalledOnce()
   })
 
-  it('calls onTag when tag clicked', () => {
-    const onTag = vi.fn()
-    render(<QuickActionToolbar selectedCount={1} onTag={onTag} />)
-    fireEvent.click(screen.getByTestId('action-tag'))
-    expect(onTag).toHaveBeenCalledOnce()
+  it('shows lifecycle and tag bulk actions when 2+ selected', () => {
+    render(<QuickActionToolbar selectedCount={2} onLifecycleChange={() => {}} onBulkTag={() => {}} />)
+    expect(screen.getByTestId('action-lifecycle')).toBeInTheDocument()
+    expect(screen.getByTestId('bulk-tag-input')).toBeInTheDocument()
   })
 
   it('calls onArchive when archive clicked', () => {

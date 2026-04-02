@@ -63,6 +63,17 @@ vi.mock('@/components/viz/SplitPane',          () => ({ SplitPane:          ({ l
 vi.mock('@/components/viz/QuickActionToolbar', () => ({ QuickActionToolbar: () => <div /> }))
 vi.mock('@/components/viz/SparklineCell',      () => ({ SparklineCell: () => <span />, generateStubTrend: () => [] }))
 vi.mock('@/pages/IocDetailPanel',              () => ({ IocDetailPanel: () => <div data-testid="ioc-detail-panel" /> }))
+vi.mock('@/hooks/use-multi-select', () => ({
+  useMultiSelect: () => ({ selectedIds: new Set(), toggle: vi.fn(), selectAllOnPage: vi.fn(), clear: vi.fn(), isSelected: () => false, selectAllState: () => false }),
+}))
+vi.mock('@/hooks/use-filter-presets', () => ({
+  useFilterPresets: () => ({ presets: [], savePreset: vi.fn(), deletePreset: vi.fn() }),
+}))
+vi.mock('@/hooks/use-campaigns', () => ({ useCampaigns: () => ({ data: { data: [] } }) }))
+vi.mock('@/components/ioc/CreateIocModal', () => ({ CreateIocModal: () => null }))
+vi.mock('@/components/ioc/IocContextMenu', () => ({ IocContextMenu: () => null }))
+vi.mock('@/components/ioc/SavedFilterPresets', () => ({ SavedFilterPresets: () => null }))
+vi.mock('@/components/campaigns/CampaignPanel', () => ({ CampaignPanel: () => null }))
 
 import { IocListPage } from '@/pages/IocListPage'
 

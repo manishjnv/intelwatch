@@ -18,7 +18,12 @@ vi.mock('@/hooks/use-intel-data', () => ({
     data: { data: [{ id: 'm1', name: 'Emotet', aliases: [], malwareType: 'trojan', platforms: ['Windows'], capabilities: ['keylogging'], confidence: 75, tlp: 'amber', tags: [], active: true, firstSeen: null, lastSeen: null }], total: 1, page: 1, limit: 50 },
     isLoading: false, isDemo: false,
   }),
+  useUpdateIOCLifecycle: () => ({ mutate: vi.fn(), isPending: false }),
   useDashboardStats: () => ({ data: { totalIOCs: 100, criticalIOCs: 5, activeFeeds: 10, enrichedToday: 50 }, isDemo: false }),
+}))
+
+vi.mock('@/hooks/use-enrichment-data', () => ({
+  useEnrichmentStats: () => ({ data: { total: 100, enriched: 80, pending: 15, failed: 5 } }),
 }))
 
 vi.mock('@/hooks/use-campaigns', () => ({
@@ -81,12 +86,17 @@ vi.mock('@/components/ui/Toast', () => ({
   toast: vi.fn(),
   ToastContainer: () => null,
 }))
+vi.mock('@/hooks/use-multi-select', () => ({
+  useMultiSelect: () => ({ selectedIds: new Set(), toggle: vi.fn(), selectAllOnPage: vi.fn(), clear: vi.fn(), isSelected: () => false, selectAllState: () => false }),
+}))
+vi.mock('@/hooks/use-filter-presets', () => ({
+  useFilterPresets: () => ({ presets: [], savePreset: vi.fn(), deletePreset: vi.fn() }),
+}))
+vi.mock('@/components/ioc/CreateIocModal', () => ({ CreateIocModal: () => null }))
+vi.mock('@/components/ioc/IocContextMenu', () => ({ IocContextMenu: () => null }))
+vi.mock('@/components/ioc/SavedFilterPresets', () => ({ SavedFilterPresets: () => null }))
 vi.mock('@/components/viz/QuickActionToolbar', () => ({
   QuickActionToolbar: () => null,
-}))
-vi.mock('@/components/viz/SparklineCell', () => ({
-  SparklineCell: () => <span>~</span>,
-  generateStubTrend: () => [1, 2, 3],
 }))
 vi.mock('@/components/viz/EntityPreview', () => ({
   EntityPreview: ({ children }: any) => children,

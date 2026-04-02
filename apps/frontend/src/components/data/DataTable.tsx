@@ -4,7 +4,7 @@
  * 3D row lift on select, and keyboard navigation (j/k/Enter/Esc).
  * P0-4: Density-adaptive. P2-12: Keyboard-first navigation.
  */
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, type MouseEvent } from 'react'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SkeletonBlock } from '@etip/shared-ui/components/SkeletonBlock'
@@ -33,6 +33,18 @@ export interface DataTableProps<T> {
   severityField?: (row: T) => string | undefined
   emptyMessage?: string
   selectedId?: string | null
+  /** Enable multi-select checkboxes */
+  selectable?: boolean
+  /** Set of selected row IDs (controlled) */
+  selectedIds?: Set<string>
+  /** Checkbox toggle — (id, rowIndex, shiftKey) */
+  onSelectToggle?: (id: string, idx: number, shiftKey: boolean) => void
+  /** Header checkbox — select/deselect all on page */
+  onSelectAllPage?: () => void
+  /** Header checkbox state */
+  selectAllState?: boolean | 'indeterminate'
+  /** Right-click handler on row */
+  onRowContextMenu?: (row: T, event: MouseEvent) => void
 }
 
 const DENSITY_HEIGHT: Record<Density, string> = {
@@ -58,9 +70,19 @@ export function DataTable<T>({
   columns, data, loading, sortBy, sortOrder, onSort,
   onRowClick, rowKey, density = 'compact', severityField,
   emptyMessage = 'No data found', selectedId,
+  selectable, selectedIds, onSelectToggle, onSelectAllPage, selectAllState,
+  onRowContextMenu,
 }: DataTableProps<T>) {
   const [focusIdx, setFocusIdx] = useState(-1)
   const tableRef = useRef<HTMLDivElement>(null)
+  const headerCheckboxRef = useRef<HTMLInputElement>(null)
+
+  // Sync indeterminate state on header checkbox
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = selectAllState === 'indeterminate'
+    }
+  }, [selectAllState])
 
   // P2-12: Keyboard navigation (j/k/Enter/Esc)
   useEffect(() => {
@@ -109,6 +131,18 @@ export function DataTable<T>({
       <table className="w-full">
         <thead>
           <tr className="border-b border-border bg-bg-secondary/50">
+            {selectable && (
+              <th className="px-2 py-2 w-8">
+                <input
+                  ref={headerCheckboxRef}
+                  type="checkbox"
+                  checked={selectAllState === true}
+                  onChange={() => onSelectAllPage?.()}
+                  className="accent-[var(--accent)] w-3.5 h-3.5 cursor-pointer"
+                  data-testid="select-all-checkbox"
+                />
+              </th>
+            )}
             {columns.map(col => (
               <th
                 key={col.key}
@@ -135,10 +169,13 @@ export function DataTable<T>({
             const isSelected = selectedId === id
             const isFocused = focusIdx === idx
 
+            const isMultiSelected = selectable && selectedIds?.has(id)
+
             return (
               <tr
                 key={id}
                 onClick={() => onRowClick?.(row)}
+                onContextMenu={(e) => { if (onRowContextMenu) { e.preventDefault(); onRowContextMenu(row, e) } }}
                 className={cn(
                   DENSITY_HEIGHT[density],
                   DENSITY_TEXT[density],
@@ -146,9 +183,22 @@ export function DataTable<T>({
                   tint,
                   onRowClick && 'cursor-pointer hover:bg-bg-hover',
                   isSelected && 'bg-accent/10 border-accent/30 -translate-y-px shadow-sm',
+                  isMultiSelected && !isSelected && 'bg-accent/5',
                   isFocused && 'ring-1 ring-accent/40 ring-inset',
                 )}
               >
+                {selectable && (
+                  <td className="px-2 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={!!isMultiSelected}
+                      onChange={(e) => { e.stopPropagation(); onSelectToggle?.(id, idx, (e.nativeEvent as any).shiftKey ?? false) }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="accent-[var(--accent)] w-3.5 h-3.5 cursor-pointer"
+                      data-testid={`row-checkbox-${id}`}
+                    />
+                  </td>
+                )}
                 {columns.map(col => (
                   <td key={col.key} className="px-3 whitespace-nowrap text-text-primary">
                     {col.render(row, density)}
