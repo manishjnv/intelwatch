@@ -27,6 +27,7 @@ vi.mock('@/hooks/useDebouncedValue', () => ({
 
 vi.mock('@/hooks/use-enrichment-data', () => ({
   useIOCEnrichment: vi.fn(() => ({ data: null })),
+  useEnrichmentStats: vi.fn(() => ({ data: { total: 3, enriched: 2, pending: 1, failed: 0 } })),
 }))
 
 vi.mock('@/hooks/use-phase4-data', () => ({

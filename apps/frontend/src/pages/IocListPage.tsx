@@ -18,8 +18,9 @@ import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { EntityPreview } from '@/components/viz/EntityPreview'
 import { SplitPane } from '@/components/viz/SplitPane'
 import { QuickActionToolbar } from '@/components/viz/QuickActionToolbar'
-import { SparklineCell, generateStubTrend } from '@/components/viz/SparklineCell'
-import { Download } from 'lucide-react'
+import { IocStatsCards } from '@/components/ioc/IocStatsCards'
+import { useEnrichmentStats } from '@/hooks/use-enrichment-data'
+import { Download, CheckCircle2, Clock, CircleDot } from 'lucide-react'
 import { IocDetailPanel } from './IocDetailPanel'
 import { useCampaigns, type Campaign } from '@/hooks/use-campaigns'
 import { CampaignPanel } from '@/components/campaigns/CampaignPanel'
@@ -111,6 +112,7 @@ export function IocListPage() {
 
   const { data, isLoading, isDemo } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
+  const { data: enrichmentStats } = useEnrichmentStats()
   const { data: campaignData } = useCampaigns({ limit: 50 })
   const campaignMap = useMemo(() => {
     const map = new Map<string, Campaign>()
@@ -140,19 +142,16 @@ export function IocListPage() {
   }, [data, isDemo, sortBy, sortOrder, search, filters])
 
   const [showExport, setShowExport] = useState(false)
-
+  const dl = (name: string, content: string, type: string, msg: string) => {
+    const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(new Blob([content], { type })); a.click()
+    toast(msg, 'success'); setShowExport(false)
+  }
   const exportCsv = () => {
-    const header = 'type,value,severity,confidence,lifecycle,firstSeen,lastSeen,tags'
-    const csvRows = rows.map(r => [r.iocType, r.normalizedValue, r.severity, r.confidence, r.lifecycle, r.firstSeen ?? '', r.lastSeen ?? '', r.tags.join(';')].map(v => `"${v}"`).join(','))
-    const blob = new Blob([header + '\n' + csvRows.join('\n')], { type: 'text/csv' })
-    const a = document.createElement('a'); a.download = 'iocs.csv'; a.href = URL.createObjectURL(blob); a.click()
-    toast('Exported CSV', 'success'); setShowExport(false)
+    const hdr = 'type,value,severity,confidence,lifecycle,firstSeen,lastSeen,tags'
+    const body = rows.map(r => [r.iocType, r.normalizedValue, r.severity, r.confidence, r.lifecycle, r.firstSeen ?? '', r.lastSeen ?? '', r.tags.join(';')].map(v => `"${v}"`).join(',')).join('\n')
+    dl('iocs.csv', hdr + '\n' + body, 'text/csv', 'Exported CSV')
   }
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a'); a.download = 'iocs.json'; a.href = URL.createObjectURL(blob); a.click()
-    toast('Exported JSON', 'success'); setShowExport(false)
-  }
+  const exportJson = () => dl('iocs.json', JSON.stringify(rows, null, 2), 'application/json', 'Exported JSON')
   const exportStix = () => {
     const bundle = { type: 'bundle', id: `bundle--${crypto.randomUUID()}`, objects: rows.map(r => ({
       type: 'indicator', id: `indicator--${r.id}`, created: r.firstSeen ?? new Date().toISOString(),
@@ -160,9 +159,7 @@ export function IocListPage() {
       pattern: `[${r.iocType}:value = '${r.normalizedValue}']`, pattern_type: 'stix',
       confidence: r.confidence, labels: [r.severity, r.lifecycle],
     }))}
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a'); a.download = 'iocs-stix.json'; a.href = URL.createObjectURL(blob); a.click()
-    toast('Exported STIX 2.1 bundle', 'success'); setShowExport(false)
+    dl('iocs-stix.json', JSON.stringify(bundle, null, 2), 'application/json', 'Exported STIX 2.1 bundle')
   }
 
   const selectedRecord = useMemo(() => rows.find(r => r.id === selectedId) ?? null, [rows, selectedId])
@@ -174,7 +171,7 @@ export function IocListPage() {
 
   const columns: Column<IOCRecord>[] = [
     {
-      key: 'normalizedValue', label: 'Value', sortable: true, width: '26%',
+      key: 'normalizedValue', label: 'Value', sortable: true, width: '24%',
       render: (row) => (
         <EntityPreview type={row.iocType} value={row.normalizedValue} severity={row.severity} confidence={row.confidence} firstSeen={row.firstSeen} lastSeen={row.lastSeen} tags={row.tags}>
           <EntityChip type={toChipType(row.iocType) as any} value={row.normalizedValue} />
@@ -182,23 +179,42 @@ export function IocListPage() {
       ),
     },
     {
-      key: 'iocType', label: 'Type', sortable: true, width: '8%',
+      key: 'corroboration', label: 'Corrob.', width: '5%',
+      render: (row) => {
+        const count = row.corroborationCount ?? 0
+        if (count <= 1) return null
+        return (
+          <span
+            data-testid="corroboration-badge"
+            title={`Seen by ${count} feeds`}
+            className={cn(
+              'text-[10px] px-1.5 py-0.5 rounded-full font-medium tabular-nums',
+              count >= 3 ? 'bg-accent/10 text-accent' : 'bg-bg-elevated text-text-muted',
+            )}
+          >
+            &times;{count}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'iocType', label: 'Type', sortable: true, width: '7%',
       render: (row) => (
         <span className="text-text-muted uppercase text-[10px] font-mono">{row.iocType}</span>
       ),
     },
     {
-      key: 'severity', label: 'Severity', sortable: true, width: '10%',
+      key: 'severity', label: 'Severity', sortable: true, width: '9%',
       render: (row, d) => <SeverityBadge severity={row.severity.toUpperCase() as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'} showDot={d !== 'ultra-dense'} />,
     },
     {
-      key: 'confidence', label: 'Conf', sortable: true, width: '8%',
+      key: 'confidence', label: 'Conf', sortable: true, width: '7%',
       render: (row, d) => d === 'ultra-dense'
         ? <span className="tabular-nums">{row.confidence}</span>
         : <ConfidenceGauge value={row.confidence} />,
     },
     {
-      key: 'source', label: 'Source', width: '7%',
+      key: 'source', label: 'Source', width: '6%',
       render: (row) => {
         const src = (row as any).source === 'global' ? 'global' : 'private'
         return (
@@ -212,7 +228,7 @@ export function IocListPage() {
       },
     },
     {
-      key: 'lifecycle', label: 'Status', sortable: true, width: '8%',
+      key: 'lifecycle', label: 'Status', sortable: true, width: '7%',
       render: (row) => {
         const colors: Record<string, string> = {
           new: 'text-accent bg-accent/10', active: 'text-sev-low bg-sev-low/10',
@@ -226,14 +242,14 @@ export function IocListPage() {
       },
     },
     {
-      key: 'tlp', label: 'TLP', width: '6%',
+      key: 'tlp', label: 'TLP', width: '5%',
       render: (row) => {
         const colors: Record<string, string> = { red: 'text-sev-critical', amber: 'text-sev-medium', green: 'text-sev-low', white: 'text-text-muted' }
         return <span className={`text-[10px] uppercase font-medium ${colors[row.tlp] ?? ''}`}>{row.tlp}</span>
       },
     },
     {
-      key: 'tags', label: 'Tags', width: '15%',
+      key: 'tags', label: 'Tags', width: '10%',
       render: (row, d) => {
         if (d === 'ultra-dense') return <span className="text-text-muted">{row.tags.length || '—'}</span>
         return (
@@ -247,15 +263,33 @@ export function IocListPage() {
       },
     },
     {
-      key: 'trend', label: 'Trend', width: '6%',
-      render: (row, d) => d === 'ultra-dense' ? null : <SparklineCell data={generateStubTrend(row.id)} />,
+      key: 'enrichmentStatus', label: 'Enriched', width: '5%',
+      render: (row) => {
+        const hasAi = row.aiConfidence != null && row.aiConfidence > 0
+        const hasFeed = row.feedReliability != null && row.feedReliability > 0
+        if (hasAi) return (
+          <span className="inline-flex items-center gap-1 text-[10px] text-sev-low" title="AI enrichment complete — click row for details">
+            <CheckCircle2 className="w-3 h-3" />Enriched
+          </span>
+        )
+        if (hasFeed) return (
+          <span className="inline-flex items-center gap-1 text-[10px] text-sev-medium" title="Feed data available — AI enrichment pending">
+            <CircleDot className="w-3 h-3" />Partial
+          </span>
+        )
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] text-text-muted" title="Awaiting enrichment">
+            <Clock className="w-3 h-3" />Pending
+          </span>
+        )
+      },
     },
     {
-      key: 'lastSeen', label: 'Last Seen', sortable: true, width: '10%',
+      key: 'lastSeen', label: 'Last Seen', sortable: true, width: '9%',
       render: (row) => <span className="text-text-muted tabular-nums">{timeAgo(row.lastSeen)}</span>,
     },
     {
-      key: 'campaignId', label: 'Campaign', width: '8%',
+      key: 'campaignId', label: 'Campaign', width: '6%',
       render: (row) => {
         if (!row.campaignId) return null
         const camp = campaignMap.get(row.campaignId)
@@ -299,11 +333,14 @@ export function IocListPage() {
             )}
           </div>
           <span className="text-text-muted">IOCs <span className="text-text-primary font-medium">{stats?.total?.toLocaleString() ?? '—'}</span></span>
-          <span className="text-text-muted">Critical <span className="text-sev-critical font-medium">{(stats?.bySeverity as Record<string, number> | undefined)?.['critical'] ?? 0}</span></span>
-          <span className="text-text-muted">Active <span className="text-sev-low font-medium">{(stats?.byLifecycle as Record<string, number> | undefined)?.['active'] ?? 0}</span></span>
-          <span className="text-text-muted">New <span className="text-accent font-medium">{(stats?.byLifecycle as Record<string, number> | undefined)?.['new'] ?? 0}</span></span>
         </div>
       </FilterBar>
+
+      <IocStatsCards
+        stats={stats as { total: number; byType: Record<string, number>; bySeverity: Record<string, number>; byLifecycle: Record<string, number> } | null}
+        enrichmentStats={enrichmentStats as { total: number; enriched: number; pending: number; failed: number } | null}
+        feedCount={12}
+      />
 
       <SplitPane
         onCloseRight={() => setSelectedId(null)}

@@ -17,10 +17,12 @@ export function iocRoutes(repo: IOCRepository) {
       const result = await repo.findMany(user.tenantId, query);
 
       return reply.send({
-        data: result.data,
-        total: result.total,
-        page: query.page,
-        limit: query.limit,
+        data: {
+          data: result.data,
+          total: result.total,
+          page: query.page,
+          limit: query.limit,
+        },
       });
     });
 

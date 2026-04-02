@@ -45,6 +45,10 @@ vi.mock('@/hooks/use-auth', () => ({
   useLogout: vi.fn(() => ({ mutate: vi.fn() })),
 }))
 
+vi.mock('@/hooks/use-enrichment-data', () => ({
+  useEnrichmentStats: vi.fn(() => ({ data: { total: 1, enriched: 0, pending: 1, failed: 0 } })),
+}))
+
 vi.mock('@etip/shared-ui/components/EntityChip', () => ({
   EntityChip: ({ value }: any) => <span data-testid="entity-chip">{value}</span>,
 }))
@@ -188,10 +192,10 @@ describe('IocListPage demo banner', () => {
     expect(screen.getByTestId('entity-chip')).toBeInTheDocument()
   })
 
-  it('renders sparklines in demo mode', () => {
+  it('renders enrichment status column in demo mode', () => {
     mockUseIOCs.mockReturnValue({ data: LIVE_IOCS, isLoading: false, isDemo: true })
     render(<IocListPage />)
-    expect(screen.getAllByTestId('sparkline').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Pending')).toBeInTheDocument()
   })
 
   it('renders entity preview triggers in demo mode', () => {

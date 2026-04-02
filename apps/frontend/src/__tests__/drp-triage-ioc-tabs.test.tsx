@@ -30,6 +30,7 @@ vi.mock('@/hooks/use-enrichment-data', () => ({
   useIOCEnrichment: () => ({ data: null }),
   useIOCCost: () => ({ data: null }),
   useTriggerEnrichment: () => ({ mutate: vi.fn(), isPending: false }),
+  useEnrichmentStats: () => ({ data: { total: 10, enriched: 8, pending: 2, failed: 0 } }),
 }))
 
 vi.mock('@etip/shared-ui/components/SeverityBadge', () => ({

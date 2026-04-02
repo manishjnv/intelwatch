@@ -105,6 +105,10 @@ vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
   CompactStat: ({ label }: any) => <span data-testid={`stat-${label}`}>{label}</span>,
 }))
 
+vi.mock('@/hooks/use-enrichment-data', () => ({
+  useEnrichmentStats: vi.fn(() => ({ data: { total: 301, enriched: 250, pending: 40, failed: 11 } })),
+}))
+
 vi.mock('@etip/shared-ui/components/EntityChip', () => ({
   EntityChip: ({ value }: any) => <span data-testid="entity-chip">{value}</span>,
 }))
@@ -142,10 +146,9 @@ describe('IocListPage integration', () => {
     expect(screen.getByTestId('split-pane')).toBeInTheDocument()
   })
 
-  it('renders sparkline cells in table', () => {
+  it('renders enrichment status column in table', () => {
     render(<IocListPage />)
-    const sparklines = screen.getAllByTestId('sparkline')
-    expect(sparklines.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Enriched')).toBeInTheDocument()
   })
 
   it('renders entity preview triggers wrapping EntityChip', () => {
@@ -165,15 +168,15 @@ describe('IocListPage integration', () => {
     expect(screen.queryByTestId('quick-action-toolbar')).not.toBeInTheDocument()
   })
 
-  it('renders inline stats in filter bar', () => {
+  it('renders IOC stats cards section', () => {
     render(<IocListPage />)
-    expect(screen.getByText(/Critical/)).toBeInTheDocument()
-    expect(screen.getByText(/Active/)).toBeInTheDocument()
+    expect(screen.getByTestId('ioc-stats-cards')).toBeInTheDocument()
   })
 
-  it('shows Trend column header', () => {
+  it('shows Enriched column header and Corrob. column header', () => {
     render(<IocListPage />)
-    expect(screen.getByText('Trend')).toBeInTheDocument()
+    expect(screen.getByText('Enriched')).toBeInTheDocument()
+    expect(screen.getByText('Corrob.')).toBeInTheDocument()
   })
 
   it('renders severity badges', () => {

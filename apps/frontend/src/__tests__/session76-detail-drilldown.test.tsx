@@ -33,6 +33,7 @@ vi.mock('@/hooks/use-enrichment-data', () => ({
   useIOCEnrichment: (...args: any[]) => mockUseIOCEnrichment(...args),
   useIOCCost: () => ({ data: null }),
   useTriggerEnrichment: () => ({ mutate: vi.fn(), isPending: false }),
+  useEnrichmentStats: () => ({ data: { total: 10, enriched: 8, pending: 2, failed: 0 } }),
 }))
 
 vi.mock('@/hooks/use-phase4-data', () => ({
