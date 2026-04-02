@@ -74,7 +74,6 @@ describe('DashboardPage — org-aware modes', () => {
     render(<DashboardPage />)
     expect(screen.getByTestId('recent-ioc-widget-mock')).toBeInTheDocument()
     expect(screen.getByTestId('ioc-trend-widget-mock')).toBeInTheDocument()
-    expect(screen.getByTestId('feed-health-widget-mock')).toBeInTheDocument()
     expect(screen.getByTestId('top-actors-widget-mock')).toBeInTheDocument()
     expect(screen.getByTestId('top-cves-widget-mock')).toBeInTheDocument()
     expect(screen.getByTestId('recent-alerts-widget-mock')).toBeInTheDocument()

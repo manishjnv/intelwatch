@@ -378,111 +378,12 @@ describe('GeoThreatWidget (S138 dot-map)', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════
-// FeedValueWidget
-// ═══════════════════════════════════════════════════════════════════
-
-import { FeedValueWidget } from '@/components/widgets/FeedValueWidget'
-
-describe('FeedValueWidget', () => {
-  it('renders with testid and shows feed names', () => {
-    render(<FeedValueWidget />)
-    expect(screen.getByTestId('feed-value-widget')).toBeInTheDocument()
-    expect(screen.getByText('AlienVault OTX')).toBeInTheDocument()
-    expect(screen.getByText('Abuse.ch URLhaus')).toBeInTheDocument()
-  })
-
-  it('ranks feeds by composite score and shows top 5', () => {
-    render(<FeedValueWidget />)
-    const widget = screen.getByTestId('feed-value-widget')
-    const feedNames = Array.from(widget.querySelectorAll('.truncate'))
-      .map(el => el.textContent?.trim())
-      .filter(Boolean)
-    // Should show 5 feeds
-    expect(feedNames.length).toBe(5)
-    // Top-scoring feeds should appear
-    expect(feedNames).toContain('AlienVault OTX')
-    expect(feedNames).toContain('Abuse.ch URLhaus')
-  })
-
-  it('shows score numbers', () => {
-    render(<FeedValueWidget />)
-    const widget = screen.getByTestId('feed-value-widget')
-    const scores = widget.querySelectorAll('.tabular-nums')
-    expect(scores.length).toBeGreaterThan(0)
-  })
-
-  it('falls back to demo data when feedHealth is empty', () => {
-    const original = mockAnalytics.feedHealth
-    mockAnalytics.feedHealth = []
-    render(<FeedValueWidget />)
-    // Demo fallback data should render
-    expect(screen.getByTestId('feed-value-widget')).toBeInTheDocument()
-    expect(screen.getByText('CISA KEV')).toBeInTheDocument()
-    mockAnalytics.feedHealth = original
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════
-// QuickActionsBar
-// ═══════════════════════════════════════════════════════════════════
-
-import { QuickActionsBar } from '@/components/dashboard/QuickActionsBar'
-
-const MOCK_SUMMARY = { totalIocs: 4287, totalAlerts: 247, totalFeeds: 12, avgConfidence: 72 }
-
-describe('QuickActionsBar', () => {
-  it('renders all action buttons', () => {
-    render(<QuickActionsBar summary={MOCK_SUMMARY} />)
-    expect(screen.getByTestId('quick-actions-bar')).toBeInTheDocument()
-    expect(screen.getByTestId('action-export')).toBeInTheDocument()
-    expect(screen.getByTestId('action-share')).toBeInTheDocument()
-    expect(screen.getByTestId('action-refresh')).toBeInTheDocument()
-  })
-
-  it('renders date range presets', () => {
-    render(<QuickActionsBar summary={MOCK_SUMMARY} />)
-    expect(screen.getByTestId('range-24h')).toBeInTheDocument()
-    expect(screen.getByTestId('range-7d')).toBeInTheDocument()
-    expect(screen.getByTestId('range-30d')).toBeInTheDocument()
-    expect(screen.getByTestId('range-90d')).toBeInTheDocument()
-  })
-
-  it('calls setPreset when date range button is clicked', () => {
-    render(<QuickActionsBar summary={MOCK_SUMMARY} />)
-    fireEvent.click(screen.getByTestId('range-30d'))
-    expect(mockAnalytics.setPreset).toHaveBeenCalledWith('30d')
-  })
-
-  it('calls refetch when Refresh is clicked', () => {
-    render(<QuickActionsBar summary={MOCK_SUMMARY} />)
-    fireEvent.click(screen.getByTestId('action-refresh'))
-    expect(mockRefetch).toHaveBeenCalled()
-  })
-
-  it('highlights the active date range preset', () => {
-    render(<QuickActionsBar summary={MOCK_SUMMARY} />)
-    const active = screen.getByTestId('range-7d')
-    expect(active.className).toContain('bg-accent')
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════
 // DashboardPage integration — all features wired
 // ═══════════════════════════════════════════════════════════════════
 
 import { DashboardPage } from '@/pages/DashboardPage'
 
 describe('DashboardPage (S138 integration)', () => {
-  it('renders QuickActionsBar', () => {
-    render(<DashboardPage />)
-    expect(screen.getByTestId('quick-actions-bar')).toBeInTheDocument()
-  })
-
-  it('renders FeedValueWidget in the grid', () => {
-    render(<DashboardPage />)
-    expect(screen.getByTestId('feed-value-widget')).toBeInTheDocument()
-  })
-
   it('renders GeoThreatWidget with dot-map', () => {
     render(<DashboardPage />)
     expect(screen.getByTestId('geo-dot-map')).toBeInTheDocument()
@@ -493,5 +394,16 @@ describe('DashboardPage (S138 integration)', () => {
     expect(screen.getByTestId('recent-ioc-widget')).toBeInTheDocument()
     // Freshness labels should be present
     expect(screen.getByText(/\d+m ago/)).toBeInTheDocument()
+  })
+
+  it('does not render FeedHealthWidget or FeedValueWidget (admin scope)', () => {
+    render(<DashboardPage />)
+    expect(screen.queryByTestId('feed-health-widget')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('feed-value-widget')).not.toBeInTheDocument()
+  })
+
+  it('does not render QuickActionsBar (removed)', () => {
+    render(<DashboardPage />)
+    expect(screen.queryByTestId('quick-actions-bar')).not.toBeInTheDocument()
   })
 })

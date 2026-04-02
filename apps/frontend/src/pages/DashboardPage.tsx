@@ -8,7 +8,6 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useDashboardStats } from '@/hooks/use-intel-data'
 import { useDashboardMode } from '@/hooks/use-dashboard-mode'
 import { useDashboardView } from '@/hooks/use-dashboard-view'
-import { useAnalyticsDashboard } from '@/hooks/use-analytics-dashboard'
 import { InvestigationDrawerProvider } from '@/hooks/use-investigation-drawer'
 import { Settings, BarChart3, LineChart } from 'lucide-react'
 
@@ -21,8 +20,6 @@ import { AmbientBackground } from '@/components/viz/AmbientBackground'
 import { ThreatLandscapeBanner } from '@/components/widgets/ThreatLandscapeBanner'
 import { RecentIocWidget } from '@/components/widgets/RecentIocWidget'
 import { IocTrendWidget } from '@/components/widgets/IocTrendWidget'
-import { FeedHealthWidget } from '@/components/widgets/FeedHealthWidget'
-import { FeedValueWidget } from '@/components/widgets/FeedValueWidget'
 import { TopActorsWidget } from '@/components/widgets/TopActorsWidget'
 import { TopCvesWidget } from '@/components/widgets/TopCvesWidget'
 import { RecentAlertsWidget } from '@/components/widgets/RecentAlertsWidget'
@@ -34,7 +31,6 @@ import { ThreatBriefingWidget } from '@/components/widgets/ThreatBriefingWidget'
 import { AttackTechniqueWidget } from '@/components/widgets/AttackTechniqueWidget'
 import { ExecSummaryCards } from '@/components/widgets/ExecSummaryCards'
 import { InvestigationDrawer } from '@/components/investigation/InvestigationDrawer'
-import { QuickActionsBar } from '@/components/dashboard/QuickActionsBar'
 
 /* ------------------------------------------------------------------ */
 /* Org Profile CTA — shown when no profile set (not super admin)       */
@@ -72,7 +68,6 @@ export function DashboardPage() {
   const { data: liveStats } = useDashboardStats()
   const { mode, profile } = useDashboardMode()
   const { view, toggleView } = useDashboardView()
-  const { summary } = useAnalyticsDashboard()
 
   // Format plan tier for display
   const planLabel = tenant?.plan
@@ -118,9 +113,6 @@ export function DashboardPage() {
         {mode === 'org-aware' && profile && <ThreatLandscapeBanner profile={profile} />}
         {mode === 'global' && <OrgProfileCta />}
 
-        {/* Quick Actions Bar */}
-        <QuickActionsBar summary={summary} />
-
         {/* Daily Briefing — shown in both views */}
         <ThreatBriefingWidget profile={profile} />
 
@@ -138,8 +130,6 @@ export function DashboardPage() {
               <ThreatScoreWidget profile={profile} />
               <RecentIocWidget />
               <IocTrendWidget />
-              <FeedHealthWidget />
-              <FeedValueWidget />
               <TopActorsWidget profile={profile} />
               <TopCvesWidget />
               <RecentAlertsWidget />
