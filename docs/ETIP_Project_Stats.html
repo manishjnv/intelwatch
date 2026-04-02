@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 136 &middot; 2026-04-02 &middot; S136 (3/3): Dashboard redesign COMPLETE. 9 widgets, GeoThreatWidget, Command Center org-profile wiring. 32/32 containers healthy. ~8,300 tests</span>
+  <span class="version">Session 137 &middot; 2026-04-02 &middot; S137: Dashboard cleanup — removed feature cards, pipeline widget; added empty states; fixed CTA navigation. 32/32 containers healthy. ~8,300 tests</span>
 </div>
 </div>
 
@@ -91,7 +91,7 @@ li strong { color: var(--text-primary); }
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
     <div class="stat-card"><div class="stat-value">~8,300</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">136</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">137</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass + public API (TAXII 2.1, webhooks, changelog, SDK)</td><td>279</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Org-Aware Dashboard (9 widgets, 3-mode, geo threat, profile match) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,560</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Org-Aware Dashboard (9 widgets, 3-mode, empty states, geo threat, profile match) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,542</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 13 Connectors (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX) + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>750</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats + KEV/EPSS severity rules + Majestic Million FP whitelist</td><td>322</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>314</td></tr>
@@ -537,17 +537,17 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 134</span> Org-Aware Dashboard Redesign (S134 — 1/3)</div>
+    <div class="card-title"><span class="badge badge-green">Session 137</span> Dashboard Cleanup Complete — Next: Cyber News / IOC Strategy</div>
     <div class="card-body">
-      <strong>Session 134 (2026-04-02):</strong> Dashboard redesign Session 1 of 3 — org-profile-aware customer dashboard:<br>
-      &bull; <strong>New stores:</strong> org-profile-store (Zustand + localStorage persist), use-dashboard-mode hook (3 modes: org-aware/global/super-admin)<br>
-      &bull; <strong>4 widgets:</strong> RecentIocWidget, IocTrendWidget (7d sparkline), FeedHealthWidget (reliability bars), TopActorsWidget (org-relevance sorting)<br>
-      &bull; <strong>Conditional rendering:</strong> ThreatLandscapeBanner (org-aware mode), OrgProfileCta (global/new users), neither (super-admin)<br>
-      &bull; <strong>Cleanup:</strong> Removed PageStatsBar (duplicate of TopStatsBar), Phase badges from feature cards, enrichment admin widgets<br>
-      &bull; <strong>Tests:</strong> 25 dashboard tests updated across 3 test files<br><br>
+      <strong>Session 137 (2026-04-02):</strong> Dashboard cleanup — customer-facing polish:<br>
+      &bull; <strong>Removed:</strong> DashboardFeatureCards (duplicated sidebar), GlobalPipelineWidget (admin scope), "Manage Feeds" quick action (admin scope)<br>
+      &bull; <strong>Empty states:</strong> All 9 widgets now show fallback text when data is empty (never return null)<br>
+      &bull; <strong>Fixed:</strong> OrgProfileCta "Personalize" button → /command-center#settings (was going to overview)<br>
+      &bull; <strong>DashboardPage.tsx:</strong> 149 lines — clean, lean, customer-facing<br><br>
+      <strong>Dashboard redesign complete (S134-S137):</strong> 9 widgets, 3-mode rendering, org-profile E2E, empty states, no admin leaks.<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Dashboard Session 2:</strong> TopCvesWidget, RecentAlertsWidget, SeverityTrendWidget, ProfileMatchWidget, SeverityHeatmap org-awareness<br>
-      2. <strong>Dashboard Session 3:</strong> GeoThreatWidget, Command Center org-profile wiring, integration tests<br>
+      1. <strong>Cyber News Feed Strategy</strong> — implementation per docs/ETIP_Cyber_News_Feed_Strategy_v1.docx<br>
+      2. <strong>IOC Strategy</strong> — implementation per docs/ETIP_IOC_Strategy.docx<br>
       3. <strong>Set IPinfo/GSB/Shodan/GreyNoise API keys on VPS</strong> — Enrichment currently degraded gracefully<br>
     </div>
   </div>
@@ -556,7 +556,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 136 &middot; 2026-04-02 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 137 &middot; 2026-04-02 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 
