@@ -1,10 +1,13 @@
 /**
  * @module components/widgets/RecentIocWidget
- * Shows the 5 most recently ingested IOCs with severity badges.
+ * Shows the 5 most recently ingested IOCs with severity badges,
+ * freshness indicators, and click-to-investigate.
  */
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useIOCs } from '@/hooks/use-intel-data'
+import { useInvestigationDrawer } from '@/hooks/use-investigation-drawer'
+import { getFreshness } from '@/lib/freshness'
 import { ArrowRight, Shield } from 'lucide-react'
 
 const SEV_DOT: Record<string, string> = {
@@ -19,6 +22,7 @@ const TYPE_SHORT: Record<string, string> = {
 
 export function RecentIocWidget() {
   const navigate = useNavigate()
+  const { open } = useInvestigationDrawer()
   const { data } = useIOCs({ limit: 5, sortBy: 'createdAt' })
   const iocs = data?.data ?? []
 
@@ -38,16 +42,37 @@ export function RecentIocWidget() {
         <p className="text-[10px] text-text-muted py-2">No IOCs ingested yet</p>
       ) : (
       <div className="space-y-1.5">
-        {iocs.map(ioc => (
-          <div key={ioc.id} className="flex items-center gap-2">
+        {iocs.map(ioc => {
+          const fresh = getFreshness(ioc.lastSeen ?? ioc.firstSeen)
+          return (
+          <div
+            key={ioc.id}
+            data-testid={`ioc-row-${ioc.id}`}
+            className="flex items-center gap-2 hover:bg-bg-elevated rounded px-1 -mx-1 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation()
+              open({
+                value: ioc.normalizedValue, type: ioc.iocType,
+                severity: ioc.severity, confidence: ioc.confidence,
+                corroboration: ioc.corroborationCount,
+                lastSeen: ioc.lastSeen, createdAt: ioc.firstSeen,
+              })
+            }}
+          >
             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', SEV_DOT[ioc.severity] ?? 'bg-text-muted')} />
             <span className="text-[10px] text-text-muted w-7 shrink-0">{TYPE_SHORT[ioc.iocType] ?? ioc.iocType}</span>
             <span className="text-xs text-text-secondary font-mono truncate flex-1">{ioc.normalizedValue}</span>
-            <span className="text-[10px] text-text-muted tabular-nums shrink-0">
-              {ioc.confidence}%
+            <span className={cn(
+              'w-1.5 h-1.5 rounded-full shrink-0',
+              fresh.dot,
+              fresh.pulse && 'animate-pulse',
+            )} title={fresh.label} />
+            <span className="text-[10px] text-text-muted tabular-nums shrink-0 w-10 text-right">
+              {fresh.label}
             </span>
           </div>
-        ))}
+          )
+        })}
       </div>
       )}
     </div>

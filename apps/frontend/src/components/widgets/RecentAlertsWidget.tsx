@@ -56,6 +56,11 @@ export function RecentAlertsWidget() {
       <div className="flex items-center gap-2 mb-3">
         <Bell className="w-3.5 h-3.5 text-red-400" />
         <span className="text-xs font-medium text-text-primary">Recent Alerts</span>
+        {alerts.length > 0 && (
+          <span className="text-[10px] px-1 rounded-full bg-red-500/10 text-red-400">
+            {alerts.reduce((s, a) => s + a.count, 0)}
+          </span>
+        )}
         {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>

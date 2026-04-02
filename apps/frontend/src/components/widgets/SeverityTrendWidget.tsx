@@ -67,6 +67,20 @@ export function SeverityTrendWidget() {
             <MiniSparkline values={s.values} width={60} height={14} color={s.color} />
             <span className="text-[10px] tabular-nums text-text-muted ml-auto shrink-0">
               {s.total.toLocaleString()}
+              {s.values.length >= 2 && (() => {
+                const delta = s.values[s.values.length - 1] - s.values[s.values.length - 2]
+                if (delta === 0) return null
+                const isNeg = delta < 0
+                return (
+                  <span className={`ml-1 px-1 rounded-full text-[9px] ${
+                    s.key === 'critical' || s.key === 'high'
+                      ? (isNeg ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400')
+                      : (isNeg ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400')
+                  }`}>
+                    {isNeg ? '' : '+'}{delta}
+                  </span>
+                )
+              })()}
             </span>
           </div>
         ))}

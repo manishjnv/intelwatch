@@ -39,6 +39,11 @@ export function FeedHealthWidget() {
         {totalCount > 0 && (
           <span className="text-[10px] text-text-muted ml-auto mr-1">
             {healthyCount}/{totalCount} healthy
+            {healthyCount > 0 && (
+              <span className="ml-1 px-1 rounded-full bg-green-500/10 text-green-400 text-[9px]">
+                +{healthyCount}
+              </span>
+            )}
           </span>
         )}
         {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}

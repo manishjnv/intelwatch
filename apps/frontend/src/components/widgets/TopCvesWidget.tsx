@@ -5,6 +5,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAnalyticsDashboard } from '@/hooks/use-analytics-dashboard'
+import { useInvestigationDrawer } from '@/hooks/use-investigation-drawer'
 import { ArrowRight, ShieldAlert, AlertTriangle } from 'lucide-react'
 
 /** KEV CVE IDs commonly tracked — used as heuristic when backend lacks KEV flag */
@@ -26,6 +27,7 @@ function severityColor(sev: string): string {
 
 export function TopCvesWidget() {
   const navigate = useNavigate()
+  const { open } = useInvestigationDrawer()
   const { topCves, isDemo } = useAnalyticsDashboard()
 
   const cves = useMemo(() =>
@@ -53,7 +55,14 @@ export function TopCvesWidget() {
       ) : (
       <div className="space-y-1.5">
         {cves.map(cve => (
-          <div key={cve.id} className="flex items-center gap-2">
+          <div
+            key={cve.id}
+            className="flex items-center gap-2 hover:bg-bg-elevated rounded px-1 -mx-1 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation()
+              open({ value: cve.id, type: 'cve', severity: cve.severity })
+            }}
+          >
             <span className="text-xs font-mono text-text-secondary truncate w-28 shrink-0">
               {cve.id}
             </span>
