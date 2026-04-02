@@ -62,13 +62,33 @@ function getCellBg(severity: string, intensity: number): string {
   return (SEVERITY_COLOR[severity] ?? 'rgba(100,116,139,VAR)').replace('VAR', alpha)
 }
 
-interface SeverityHeatmapProps {
-  className?: string
+/** IOC types that are more relevant when a profile is set (based on common org attack surfaces) */
+const PROFILE_RELEVANT_TYPES: Record<string, string[]> = {
+  Finance: ['ip', 'domain', 'email'],
+  Healthcare: ['ip', 'domain', 'cve'],
+  Government: ['ip', 'domain', 'hash_sha256'],
+  Energy: ['ip', 'cve', 'domain'],
+  Telecom: ['ip', 'domain', 'url'],
+  Technology: ['domain', 'hash_sha256', 'cve'],
+  Retail: ['url', 'domain', 'email'],
+  Manufacturing: ['ip', 'cve', 'domain'],
+  Education: ['email', 'domain', 'url'],
+  Defense: ['ip', 'hash_sha256', 'domain'],
 }
 
-export function SeverityHeatmap({ className }: SeverityHeatmapProps) {
+interface SeverityHeatmapProps {
+  className?: string
+  /** When set, highlights cells for IOC types relevant to the org profile industry */
+  profile?: { industry: string } | null
+}
+
+export function SeverityHeatmap({ className, profile }: SeverityHeatmapProps) {
   const { data: stats } = useIOCStats()
   const cells = useMemo(() => buildHeatmapData(stats), [stats])
+  const relevantTypes = useMemo(() => {
+    if (!profile?.industry) return new Set<string>()
+    return new Set(PROFILE_RELEVANT_TYPES[profile.industry] ?? [])
+  }, [profile])
 
   if (cells.length === 0) {
     return (
@@ -80,9 +100,16 @@ export function SeverityHeatmap({ className }: SeverityHeatmapProps) {
 
   return (
     <div className={cn('rounded-lg border border-border bg-bg-secondary/30 p-4', className)} data-testid="severity-heatmap">
-      <h3 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">
-        IOC Severity Distribution
-      </h3>
+      <div className="flex items-center gap-2 mb-3">
+        <h3 className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+          IOC Severity Distribution
+        </h3>
+        {relevantTypes.size > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent" data-testid="heatmap-profile-hint">
+            Profile highlighted
+          </span>
+        )}
+      </div>
 
       {/* Header row */}
       <div className="grid gap-1" style={{ gridTemplateColumns: `80px repeat(${SEVERITY_LEVELS.length}, 1fr)` }}>
@@ -101,10 +128,14 @@ export function SeverityHeatmap({ className }: SeverityHeatmapProps) {
             </div>
             {SEVERITY_LEVELS.map(sev => {
               const cell = cells.find(c => c.type === type && c.severity === sev)
+              const isRelevant = relevantTypes.has(type)
               return (
                 <motion.div
                   key={`${type}-${sev}`}
-                  className="rounded-md flex items-center justify-center h-9 text-[10px] font-mono tabular-nums cursor-default border border-transparent"
+                  className={cn(
+                    'rounded-md flex items-center justify-center h-9 text-[10px] font-mono tabular-nums cursor-default border',
+                    isRelevant ? 'border-accent/40 ring-1 ring-accent/20' : 'border-transparent',
+                  )}
                   style={{
                     backgroundColor: getCellBg(sev, cell?.intensity ?? 0),
                     transformStyle: 'preserve-3d',

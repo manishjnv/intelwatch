@@ -29,6 +29,10 @@ import { RecentIocWidget } from '@/components/widgets/RecentIocWidget'
 import { IocTrendWidget } from '@/components/widgets/IocTrendWidget'
 import { FeedHealthWidget } from '@/components/widgets/FeedHealthWidget'
 import { TopActorsWidget } from '@/components/widgets/TopActorsWidget'
+import { TopCvesWidget } from '@/components/widgets/TopCvesWidget'
+import { RecentAlertsWidget } from '@/components/widgets/RecentAlertsWidget'
+import { SeverityTrendWidget } from '@/components/widgets/SeverityTrendWidget'
+import { ProfileMatchWidget } from '@/components/widgets/ProfileMatchWidget'
 
 // Locked imports from shared-ui
 import { IntelCard } from '@etip/shared-ui/components/IntelCard'
@@ -256,8 +260,8 @@ export function DashboardPage() {
         {/* Global Pipeline */}
         <GlobalPipelineWidget />
 
-        {/* Severity Heatmap */}
-        <SeverityHeatmap className="mb-6" />
+        {/* Severity Heatmap — profile-aware highlighting */}
+        <SeverityHeatmap className="mb-6" profile={profile} />
 
         {/* Widget grid — responsive 1/2/3/4 cols */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
@@ -265,6 +269,10 @@ export function DashboardPage() {
           <IocTrendWidget />
           <FeedHealthWidget />
           <TopActorsWidget profile={profile} />
+          <TopCvesWidget />
+          <RecentAlertsWidget />
+          <SeverityTrendWidget />
+          {mode === 'org-aware' && <ProfileMatchWidget profile={profile} />}
         </div>
 
         {/* Feature cards */}

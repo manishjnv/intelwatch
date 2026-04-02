@@ -42,6 +42,10 @@ vi.mock('@/components/widgets/RecentIocWidget', () => ({ RecentIocWidget: () => 
 vi.mock('@/components/widgets/IocTrendWidget', () => ({ IocTrendWidget: () => <div data-testid="ioc-trend-widget-mock" /> }))
 vi.mock('@/components/widgets/FeedHealthWidget', () => ({ FeedHealthWidget: () => <div data-testid="feed-health-widget-mock" /> }))
 vi.mock('@/components/widgets/TopActorsWidget', () => ({ TopActorsWidget: () => <div data-testid="top-actors-widget-mock" /> }))
+vi.mock('@/components/widgets/TopCvesWidget', () => ({ TopCvesWidget: () => <div data-testid="top-cves-widget-mock" /> }))
+vi.mock('@/components/widgets/RecentAlertsWidget', () => ({ RecentAlertsWidget: () => <div data-testid="recent-alerts-widget-mock" /> }))
+vi.mock('@/components/widgets/SeverityTrendWidget', () => ({ SeverityTrendWidget: () => <div data-testid="severity-trend-widget-mock" /> }))
+vi.mock('@/components/widgets/ProfileMatchWidget', () => ({ ProfileMatchWidget: ({ profile }: any) => profile ? <div data-testid="profile-match-widget-mock" /> : null }))
 
 // ─── Dashboard mode mock (overridden per test) ─────────────────
 
@@ -79,6 +83,21 @@ describe('DashboardPage — org-aware modes', () => {
     expect(screen.getByTestId('ioc-trend-widget-mock')).toBeInTheDocument()
     expect(screen.getByTestId('feed-health-widget-mock')).toBeInTheDocument()
     expect(screen.getByTestId('top-actors-widget-mock')).toBeInTheDocument()
+    expect(screen.getByTestId('top-cves-widget-mock')).toBeInTheDocument()
+    expect(screen.getByTestId('recent-alerts-widget-mock')).toBeInTheDocument()
+    expect(screen.getByTestId('severity-trend-widget-mock')).toBeInTheDocument()
+  })
+
+  it('shows profile match widget only in org-aware mode', () => {
+    mockUseDashboardMode.mockReturnValue({ mode: 'org-aware', profile: { industry: 'Technology' } })
+    render(<DashboardPage />)
+    expect(screen.getByTestId('profile-match-widget-mock')).toBeInTheDocument()
+  })
+
+  it('hides profile match widget in global mode', () => {
+    mockUseDashboardMode.mockReturnValue({ mode: 'global', profile: null })
+    render(<DashboardPage />)
+    expect(screen.queryByTestId('profile-match-widget-mock')).not.toBeInTheDocument()
   })
 
   it('renders core elements (heatmap, timeline)', () => {
