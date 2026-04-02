@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 138 &middot; 2026-04-02 &middot; S138: Dashboard Phase 2 — Investigation Drawer, Geo dot-map, freshness indicators. Removed admin-scope widgets. 32/32 containers healthy. ~8,300 tests</span>
+  <span class="version">Session 139 &middot; 2026-04-02 &middot; S139: IOC Intelligence Tier 1 — IocStatsCards, Enrichment Status column, Corroboration badge. 32/32 containers healthy. ~8,370 tests</span>
 </div>
 </div>
 
@@ -89,9 +89,9 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">~8,300</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">~8,370</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">138</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">139</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass + public API (TAXII 2.1, webhooks, changelog, SDK)</td><td>279</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Org-Aware Dashboard (9 widgets, 3-mode, Investigation Drawer, Geo dot-map, freshness indicators) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,615</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Org-Aware Dashboard (9 widgets) + IOC Tier 1 (Stats Cards, Enrichment Column, Corroboration Badge) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,627</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 13 Connectors (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX) + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>750</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats + KEV/EPSS severity rules + Majestic Million FP whitelist</td><td>322</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>314</td></tr>
@@ -537,15 +537,14 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 138</span> Dashboard Phase 2 Complete — Next: Cyber News / IOC Strategy</div>
+    <div class="card-title"><span class="badge badge-green">Session 139</span> IOC Intelligence Tier 1 Complete — Next: Cyber News / IOC Strategy</div>
     <div class="card-body">
-      <strong>Session 138 (2026-04-02):</strong> Dashboard Intelligence Upgrade Phase 2:<br>
-      &bull; <strong>Investigation Drawer:</strong> Click any IOC → slide-over with enrichment summary, related actors, timestamps, corroboration, action buttons. Framer Motion animation.<br>
-      &bull; <strong>Geo Dot-Map:</strong> SVG world map with 25 country coordinates, color intensity by IOC count, org country pulse animation, hover tooltip.<br>
-      &bull; <strong>Freshness Indicators:</strong> Color-coded dots + relative timestamps on IOC rows (green pulse → yellow → orange → red "stale").<br>
-      &bull; <strong>Cleanup:</strong> Removed FeedHealthWidget, FeedValueWidget, QuickActionsBar (admin scope / duplicated functionality).<br>
-      &bull; <strong>Dashboard:</strong> 9 focused analyst widgets. 1,615 frontend tests (95 files).<br><br>
-      <strong>Dashboard intelligence complete (S134-S138):</strong> 9 widgets, 3-mode rendering, click-to-investigate, geo visualization, freshness tracking.<br><br>
+      <strong>Session 139 (2026-04-02):</strong> IOC Intelligence Page — Tier 1 Enhancements:<br>
+      &bull; <strong>IocStatsCards:</strong> 6 collapsible mini-cards (Total IOCs, By Type, By Severity, By Lifecycle, Top Sources, Enrichment Coverage %). Responsive grid, localStorage collapse persistence.<br>
+      &bull; <strong>Enrichment Status Column:</strong> Heuristic badge (Enriched/Partial/Pending) from aiConfidence/feedReliability presence. Replaced Trend/sparkline column.<br>
+      &bull; <strong>Corroboration Badge:</strong> &times;N pill when corroborationCount &gt; 1, blue accent for &ge;3 feeds.<br>
+      &bull; <strong>Normalization Fix:</strong> Response envelope (data.data shape) for frontend api() helper.<br>
+      &bull; <strong>Tests:</strong> 12 new tests, 1,627 frontend tests (96 files). CI run 23896075406 green.<br><br>
       <strong>Next session priorities:</strong><br>
       1. <strong>Cyber News Feed Strategy</strong> — implementation per docs/ETIP_Cyber_News_Feed_Strategy_v1.docx<br>
       2. <strong>IOC Strategy</strong> — implementation per docs/ETIP_IOC_Strategy.docx<br>
@@ -557,7 +556,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 138 &middot; 2026-04-02 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 139 &middot; 2026-04-02 &middot; Generated by Claude Opus 4.6
   </div>
 </div>
 

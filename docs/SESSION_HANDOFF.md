@@ -1,63 +1,58 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-04-02
-**Session:** 138
-**Session Summary:** S138: Dashboard Intelligence Upgrade Phase 2 — Investigation Drawer (click-to-enrich), Geo dot-map (SVG), freshness indicators. Removed admin-scope widgets (FeedHealth, FeedValue, QuickActionsBar). 9 analyst widgets. 1,615 frontend tests. Deployed.
+**Session:** 139
+**Session Summary:** S139: IOC Intelligence Tier 1 — IocStatsCards (6 collapsible mini-cards), Enrichment Status column, Corroboration badge. Normalization response envelope fix. 1,627 frontend tests. Deployed.
 
-## Changes Made
+## ✅ Changes Made
 | Commit | Files | Description |
 |--------|-------|-------------|
-| 16478c1 | 19 | feat: Dashboard Phase 2 — InvestigationDrawer, GeoThreatWidget dot-map, FeedValueWidget, QuickActionsBar, freshness utility, all S137/S138 widgets + tests |
-| 5e287ff | 1 | fix: update S136 tests — geo-row → geo-dot-map testids |
-| 57c240c | 3 | fix: remove FeedHealth, FeedValue, QuickActionsBar from dashboard — admin scope cleanup |
+| e67e169 | 9 | feat: IOC Intelligence Tier 1 — stats cards, enrichment column, corroboration badge |
+| d5e2204 | 1 | fix: remove unused variable in ioc-tier1 test — lint error |
 
-## Files / Documents Affected
+## 📁 Files / Documents Affected
 
 ### New Files
 | File | Purpose |
 |------|---------|
-| `src/lib/freshness.ts` | `getFreshness()` utility — 5-tier age indicator (just-now/hours/days/weeks/stale) |
-| `src/hooks/use-investigation-drawer.ts` | React context + state for drawer open/close/payload. Graceful NOOP fallback without provider. |
-| `src/components/investigation/InvestigationDrawer.tsx` | Slide-over panel: enrichment summary, related actors, timestamps, corroboration, action buttons |
-| `src/components/widgets/FeedValueWidget.tsx` | Feed quality ranking (created then removed from dashboard — kept as component for Command Center use) |
-| `src/components/dashboard/QuickActionsBar.tsx` | Export/Share/Refresh/DateRange (created then removed from dashboard — kept as component) |
-| `src/__tests__/dashboard-s138.test.tsx` | 27 tests for all S138 features |
+| `src/components/ioc/IocStatsCards.tsx` | 6 collapsible IOC stats mini-cards (Total, By Type, By Severity, By Lifecycle, Sources, Enrichment Coverage %). Responsive grid, localStorage persistence. |
+| `src/__tests__/ioc-tier1.test.tsx` | 12 tests for IocStatsCards + IocListPage enrichment/corroboration columns |
 
 ### Modified Files
 | File | Changes |
 |------|---------|
-| `src/components/widgets/RecentIocWidget.tsx` | Added freshness dots + relative timestamps, click-to-investigate drawer |
-| `src/components/widgets/ThreatScoreWidget.tsx` | Added click-to-investigate drawer on IOC rows |
-| `src/components/widgets/TopCvesWidget.tsx` | Added click-to-investigate drawer on CVE rows |
-| `src/components/widgets/GeoThreatWidget.tsx` | Replaced bar chart with SVG dot-map (25 countries, color intensity, org pulse, hover tooltip) |
-| `src/pages/DashboardPage.tsx` | Added InvestigationDrawerProvider + InvestigationDrawer. Removed FeedHealth/FeedValue/QuickActionsBar. |
-| `src/__tests__/dashboard-s136.test.tsx` | Updated geo tests from geo-row testids to geo-dot-map/geo-legend |
-| `src/__tests__/dashboard-org-aware.test.tsx` | Removed feed-health-widget-mock assertion |
+| `src/pages/IocListPage.tsx` | Added IocStatsCards, Enrichment Status column (replaced Trend/sparkline), Corroboration badge column, simplified FilterBar inline stats, rebalanced column widths. 398 lines. |
+| `src/__tests__/integration-pages.test.tsx` | Added useEnrichmentStats mock, replaced sparkline/trend tests with enrichment/corrob tests |
+| `src/__tests__/demo-fallback.test.tsx` | Added useEnrichmentStats mock, replaced sparkline test with enrichment status test |
+| `src/__tests__/ioc-actions.test.tsx` | Added useEnrichmentStats to use-enrichment-data mock |
+| `src/__tests__/drp-triage-ioc-tabs.test.tsx` | Added useEnrichmentStats to use-enrichment-data mock |
+| `src/__tests__/session76-detail-drilldown.test.tsx` | Added useEnrichmentStats to use-enrichment-data mock |
+| `apps/normalization/src/routes/iocs.ts` | Fixed response envelope: `{ data: { data, total, page, limit } }` for frontend api() helper |
 
-## Decisions & Rationale
-- No formal DECISION entry. Key choices: (1) Dot-map over country-path SVG (lighter, no d3-geo). (2) Investigation drawer hook uses NOOP fallback instead of throwing when no provider — widgets render standalone in tests. (3) Removed FeedHealth/FeedValue/QuickActionsBar per user review — admin scope, duplicated functionality.
+## 🔧 Decisions & Rationale
+- No formal DECISION entry. Key choices: (1) Heuristic enrichment status from IOCRecord.aiConfidence/feedReliability presence instead of N+1 API calls per row. (2) Replaced Trend/sparkline column (stub data) with Enrichment Status column. (3) Corroboration badge threshold: ×N visible only when count > 1, blue accent at ≥3.
 
-## E2E / Deploy Verification Results
-- CI run 23890451261: green (9m12s) — S138 Phase 2 features
-- CI run 23891843411: green (8m49s) — cleanup commit
-- VPS: `etip_frontend` Up, healthy
-- 95/95 test files, 1,615 tests passing, 0 failures
+## 🧪 E2E / Deploy Verification Results
+- CI run 23896075406: green (all 3 stages — Test, Docker Build, Deploy to VPS)
+- First CI run failed on lint (unused variable in ioc-tier1.test.tsx:208) — fixed in d5e2204
+- 96/96 test files, 1,627 tests passing, 0 failures
+- VPS: `etip_frontend` + `etip_normalization` healthy
 
-## Open Items / Next Steps
+## ⚠️ Open Items / Next Steps
 **Immediate:**
 1. Set TI_IPINFO_TOKEN + TI_GSB_API_KEY on VPS to activate IPinfo and GSB
 2. Cyber news feed strategy implementation (per docs/ETIP_Cyber_News_Feed_Strategy_v1.docx)
 3. IOC strategy implementation (per docs/ETIP_IOC_Strategy.docx)
 
 **Deferred:**
-- Wire FeedValueWidget into Command Center (admin view) instead of dashboard
 - Wire real enrichment API to InvestigationDrawer (currently uses demo data)
-- ProfileMatchWidget not wired to investigation drawer
+- Wire FeedValueWidget into Command Center (admin view)
+- IOC Tier 2 enhancements: per-provider enrichment icons in table (requires bulk enrichment endpoint)
 
-## How to Resume
+## 🔁 How to Resume
 ```
 /session-start
-Working on: [next module]. Do not modify: apps/frontend (dashboard stable).
+Working on: [next module]. Do not modify: apps/frontend (IOC page stable).
 ```
 
-Dashboard is stable with 9 analyst widgets + investigation drawer. Next work should focus on cyber news feed strategy or IOC strategy per the docs.
+IOC Intelligence page has stats cards + enrichment + corroboration columns. Next work should focus on cyber news feed strategy or IOC strategy per the docs.

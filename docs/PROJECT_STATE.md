@@ -1,18 +1,18 @@
 # ETIP Project State
 **Last updated:** 2026-04-02 (update at end of EVERY session via /session-end)
-**Session counter:** 138 — S138: Dashboard Intelligence Upgrade Phase 2. Investigation Drawer (click-to-enrich), Geo dot-map (SVG), freshness indicators, then cleanup: removed FeedHealth/FeedValue/QuickActionsBar (admin scope). 9 analyst widgets. 1,615 tests. Deployed.
+**Session counter:** 139 — S139: IOC Intelligence Tier 1 — IocStatsCards (6 collapsible mini-cards), Enrichment Status column (heuristic green/amber/gray), Corroboration badge (×N feeds). Normalization response envelope fix. 1,627 frontend tests. Deployed.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.2.3 | 2026-03-31 | Health check passing. **Session 127:** TAXII 2.1 (discovery/collections/objects), webhook Stripe-style backoff (6 attempts), GET /changelog, SDK scaffolding. 279 tests. |
-| etip_frontend | ✅ Running | 0.21.0 | 2026-04-02 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 138:** Dashboard Phase 2 — Investigation Drawer (click-to-enrich), Geo dot-map (SVG), freshness indicators. Removed FeedHealth/FeedValue/QuickActionsBar (admin scope). 9 analyst widgets. 1,615 tests. |
+| etip_frontend | ✅ Running | 0.22.0 | 2026-04-02 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 139:** IOC Tier 1 — IocStatsCards (6 collapsible mini-cards), Enrichment Status column, Corroboration badge. 1,627 tests. |
 | etip_es_indexing | ✅ Deployed | 0.2.0 | 2026-04-01 | Port 3020. Module 20. Elasticsearch IOC indexing. 116 tests. Per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete). BullMQ worker + full-text search + aggregations. RCA #42 fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
 | etip_ingestion | ✅ Running | 0.10.0 | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** (RSS, NVD, STIX/TAXII, REST, MISP, Bulk File, ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, **OTX**) + **Session 130: OTX connector, test fix, deploy**. 770 tests. |
-| etip_normalization | ✅ Running | 0.3.3 | 2026-04-01 | IOC upsert + 18 accuracy improvements + G2/G4b + **Session 133: Majestic Million FP whitelist, URL domain extraction for warninglist check, confidence penalty for flagged IOCs**. 322 tests. |
+| etip_normalization | ✅ Running | 0.3.4 | 2026-04-02 | IOC upsert + 18 accuracy improvements + G2/G4b + **Session 139: Response envelope fix (data.data shape)**. 322 tests. |
 | etip_enrichment | ✅ Running | 0.5.0 | 2026-04-01 | VT + AbuseIPDB + GSB + **IPinfo.io** + Haiku AI triage. 15/15 accuracy improvements. 5 endpoints + batch API. Prompt caching, cost persistence, re-enrichment scheduler. **Session 132:** IPinfo.io provider (ip/ipv6, geo+ASN+VPN, 1.2k/day). 314 tests. |
 | etip_ioc_intelligence | ✅ Running | 0.1.0 | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. PUT /:id/lifecycle added (P0-4): LIFECYCLE_TRANSITIONS FSM (watchlisted state), transitionLifecycle(), FP propagation. |
 | etip_threat_actor_intel | ✅ Running | 0.1.0 | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements |
@@ -49,10 +49,10 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
-| frontend | 1 | ✅ UI FROZEN | 2026-04-02 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,615 tests. **Session 138:** Dashboard Phase 2 — InvestigationDrawer (click IOC → enrichment/actors/corroboration slide-over), GeoThreatWidget dot-map (SVG, 25 countries), freshness indicators (RecentIocWidget). Removed FeedHealth/FeedValue/QuickActionsBar from dashboard (admin scope). 9 analyst widgets. |
+| frontend | 1 | ✅ UI FROZEN | 2026-04-02 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,627 tests. **Session 139:** IOC Intelligence Tier 1 — IocStatsCards (6 collapsible mini-cards: total/type/severity/lifecycle/sources/enrichment%), Enrichment Status column (heuristic from aiConfidence/feedReliability), Corroboration badge (×N feeds). |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-04-01 | Port 3020. Module 20. Phase 7. BullMQ worker, ES client, per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete), type-specific mappings, migration route. 116 tests. RCA #42 fixed. **Session 132:** per-type indices + ILM. |
 | ingestion | 2 | ✅ Deployed | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 129-130:** 7 new connectors (ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, OTX). 770 tests. |
-| normalization | 2 | ✅ Deployed | 2026-04-01 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 133:** Majestic Million integration in global-normalize-worker, URL domain extraction for warninglist check, confidence penalty for flagged IOCs. 322 tests. |
+| normalization | 2 | ✅ Deployed | 2026-04-02 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 139:** Response envelope fix (data.data shape for frontend api() helper). 322 tests. |
 | ai-enrichment | 2 | ✅ Deployed | 2026-04-01 | Port 3006. VT + AbuseIPDB + GSB + **IPinfo.io** + Haiku AI triage. Cost transparency (3 endpoints) + batch API (2 endpoints). 314 tests. Differentiator A+ COMPLETE (15/15 accuracy improvements). STIX labels, quality score, prompt caching, geo, batch, persistence, scheduler. **Session 132:** IPinfo.io provider (ip/ipv6, geo+ASN+VPN/proxy/Tor, 1.2k/day). |
 | ioc-intelligence | 3 | ✅ Deployed | 2026-03-25 | Port 3007. 16 endpoints, 13 accuracy improvements, 138 tests. Campaign detection, multi-dimensional search. P0-4: PUT /:id/lifecycle — LIFECYCLE_TRANSITIONS FSM with watchlisted state, transitionLifecycle() service method (409 on invalid transition), FP propagation. |
 | threat-actor-intel | 3 | ✅ Deployed | 2026-03-21 | Port 3008. 28 endpoints, 15 accuracy improvements, 190 tests. CRUD + profiles + IOC linkage + MITRE + search + export. |
@@ -143,8 +143,8 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-138.
-- **Last session outcome:** Session 138 (2026-04-02). **S138: Dashboard Intelligence Upgrade Phase 2.** Built 5 features: (1) InvestigationDrawer — click IOC in RecentIoc/ThreatScore/TopCves → slide-over with enrichment summary, related actors, timestamps, corroboration, action buttons. Framer Motion animation. (2) GeoThreatWidget dot-map — SVG with 25 country coordinates, color intensity, org country pulse, hover tooltip. (3) FeedValueWidget — feed quality ranking by composite score. (4) Freshness indicators — getFreshness() utility + RecentIocWidget integration. (5) QuickActionsBar — export/share/refresh/date-range. Then cleanup per user review: removed FeedHealth, FeedValue, QuickActionsBar from dashboard (admin scope, duplicated functionality). Dashboard: 9 focused analyst widgets. Commits: 16478c1, 5e287ff, 57c240c. CI runs 23890451261, 23891843411 green. Deployed. 1,615 frontend tests (95 files).
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-139.
+- **Last session outcome:** Session 139 (2026-04-02). **S139: IOC Intelligence Page — Tier 1 Enhancements.** 3 features: (1) IocStatsCards — 6 collapsible mini-cards (Total IOCs, By Type, By Severity, By Lifecycle, Top Sources, Enrichment Coverage %). Responsive grid, localStorage collapse persistence. (2) Enrichment Status column — heuristic badge (Enriched/Partial/Pending) from aiConfidence/feedReliability presence. Replaced Trend/sparkline column. (3) Corroboration badge — "×N" pill when corroborationCount > 1, blue accent for ≥3 feeds. Also fixed normalization response envelope (data.data shape). Commits: e67e169, d5e2204. CI run 23896075406 green. Deployed. 1,627 frontend tests (96 files, 12 new).
 - **Known issues:** Shodan/GreyNoise/GSB/IPinfo API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts). InvestigationDrawer uses demo enrichment data (no real enrichment API calls from frontend).
 - **Next tasks:** (1) Set TI_IPINFO_TOKEN + TI_GSB_API_KEY on VPS to activate IPinfo and GSB. (2) Cyber news feed strategy implementation. (3) IOC strategy implementation. (4) Set Shodan/GreyNoise API keys on VPS.
 
@@ -267,6 +267,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 136 | 2026-04-02 | etip_frontend redeployed (S136 dashboard 3/3 COMPLETE) | ✅ All 32 healthy | 165299b | GeoThreatWidget (9th widget), Command Center org-profile wiring, 16 new tests. Dashboard redesign COMPLETE. CI run 23879964450. |
 | 137 | 2026-04-02 | etip_frontend redeployed (S137 dashboard cleanup) | ✅ All 32 healthy | 3db69bb, 7b3b60c | Dashboard cleanup: removed feature cards, pipeline widget, manage feeds. Added empty states to all 9 widgets. CI run 23888124049. |
 | 138 | 2026-04-02 | etip_frontend redeployed (S138 dashboard Phase 2) | ✅ All 32 healthy | 16478c1, 5e287ff, 57c240c | Dashboard Phase 2: InvestigationDrawer, Geo dot-map, freshness indicators. Cleanup: removed FeedHealth/FeedValue/QuickActionsBar. 1,615 tests. CI runs 23890451261, 23891843411. |
+| 139 | 2026-04-02 | etip_frontend + etip_normalization redeployed (S139 IOC Tier 1) | ✅ All 32 healthy | e67e169, d5e2204 | IOC Intelligence Tier 1: IocStatsCards (6 mini-cards), Enrichment Status column, Corroboration badge. Normalization response envelope fix. 1,627 frontend tests (+12). CI run 23896075406 green. |
 
 ## E2E Verification Results (Session 13)
 
