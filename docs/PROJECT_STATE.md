@@ -1,12 +1,12 @@
 # ETIP Project State
-**Last updated:** 2026-04-01 (update at end of EVERY session via /session-end)
-**Session counter:** 133 — S133: Majestic Million top-domain whitelist for FP reduction. action:'drop'|'flag' warninglist, Set-based O(1) hostname matching, URL domain extraction. 250 shared-normalization tests (28 new), 322 normalization tests. Deployed. 32/32 containers healthy.
+**Last updated:** 2026-04-02 (update at end of EVERY session via /session-end)
+**Session counter:** 134 — S134 (1/3): Org-aware dashboard redesign. Removed PageStatsBar/Phase badges. Added org-profile-store (Zustand+localStorage), use-dashboard-mode hook (3 modes: org-aware/global/super-admin), 4 widgets (RecentIoc, IocTrend, FeedHealth, TopActors), ThreatLandscapeBanner, OrgProfileCta. Conditional rendering by mode. 25 dashboard tests updated. Deployed.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.2.3 | 2026-03-31 | Health check passing. **Session 127:** TAXII 2.1 (discovery/collections/objects), webhook Stripe-style backoff (6 attempts), GET /changelog, SDK scaffolding. 279 tests. |
-| etip_frontend | ✅ Running | 0.18.0 | 2026-03-31 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 123c (S123c):** Merged Pipeline Monitor + Pipeline Health into unified Pipeline sub-tab (System tab). 1,526 tests. |
+| etip_frontend | ✅ Running | 0.19.0 | 2026-04-02 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 134 (S134):** Org-aware dashboard with 4 widgets, 3-mode rendering, org-profile store. 1,526 tests. |
 | etip_es_indexing | ✅ Deployed | 0.2.0 | 2026-04-01 | Port 3020. Module 20. Elasticsearch IOC indexing. 116 tests. Per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete). BullMQ worker + full-text search + aggregations. RCA #42 fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
-| frontend | 1 | ✅ UI FROZEN | 2026-03-31 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,526 tests. **Session 123c (S123c):** Merged Pipeline Monitor + Pipeline Health into unified Pipeline sub-tab (System tab). |
+| frontend | 1 | ✅ UI FROZEN | 2026-04-02 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,526 tests. **Session 134 (S134):** Org-aware dashboard redesign (1/3). 4 widgets, 3-mode conditional rendering, org-profile store. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-04-01 | Port 3020. Module 20. Phase 7. BullMQ worker, ES client, per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete), type-specific mappings, migration route. 116 tests. RCA #42 fixed. **Session 132:** per-type indices + ILM. |
 | ingestion | 2 | ✅ Deployed | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 129-130:** 7 new connectors (ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, OTX). 770 tests. |
 | normalization | 2 | ✅ Deployed | 2026-04-01 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 133:** Majestic Million integration in global-normalize-worker, URL domain extraction for warninglist check, confidence penalty for flagged IOCs. 322 tests. |
