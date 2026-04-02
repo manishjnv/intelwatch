@@ -231,6 +231,7 @@ enum FeedType {
   jsonl
   cisa_kev
   first_epss
+  otx
   @@map("feed_type_enum")
 }
 

@@ -1,0 +1,185 @@
+{
+  "results": [
+    {
+      "id": "6614a1b2c3d4e5f6a7b8c9d0",
+      "name": "APT29 Cozy Bear Campaign - March 2026",
+      "description": "Phishing campaign targeting government agencies using WellMess malware. Indicators extracted from multiple honeypots and community submissions.",
+      "author_name": "AlienVault",
+      "created": "2026-03-28T10:00:00.000Z",
+      "modified": "2026-03-29T14:30:00.000Z",
+      "tags": ["apt29", "cozy-bear", "phishing", "government"],
+      "targeted_countries": ["US", "GB", "DE"],
+      "malware_families": ["WellMess", "WellMail"],
+      "attack_ids": [
+        {"id": "T1566", "name": "Phishing", "display_name": "T1566 - Phishing"},
+        {"id": "T1071", "name": "Application Layer Protocol", "display_name": "T1071 - Application Layer Protocol"}
+      ],
+      "references": ["https://example.com/apt29-report"],
+      "indicators": [
+        {
+          "id": 100001,
+          "type": "FileHash-MD5",
+          "indicator": "d41d8cd98f00b204e9800998ecf8427e",
+          "title": "WellMess dropper MD5",
+          "description": "MD5 hash of WellMess dropper binary",
+          "created": "2026-03-28T10:05:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100002,
+          "type": "FileHash-SHA1",
+          "indicator": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "title": "WellMess SHA1",
+          "description": "SHA1 of WellMess payload",
+          "created": "2026-03-28T10:06:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100003,
+          "type": "FileHash-SHA256",
+          "indicator": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "title": "WellMess SHA256",
+          "description": "SHA256 of WellMess payload",
+          "created": "2026-03-28T10:07:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100004,
+          "type": "IPv4",
+          "indicator": "203.0.113.42",
+          "title": "C2 server IP",
+          "description": "Command and control server for WellMess",
+          "created": "2026-03-28T10:08:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100005,
+          "type": "IPv6",
+          "indicator": "2001:db8::dead:beef",
+          "title": "Secondary C2 IPv6",
+          "description": "Secondary C2 endpoint",
+          "created": "2026-03-28T10:09:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100006,
+          "type": "domain",
+          "indicator": "malware-c2.example.com",
+          "title": "C2 domain",
+          "description": "Domain used for C2 communication",
+          "created": "2026-03-28T10:10:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100007,
+          "type": "hostname",
+          "indicator": "cdn.malware-c2.example.com",
+          "title": "C2 hostname",
+          "description": "CDN hostname for payload delivery",
+          "created": "2026-03-28T10:11:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100008,
+          "type": "URL",
+          "indicator": "https://malware-c2.example.com/payload.exe",
+          "title": "Payload delivery URL",
+          "description": "URL serving WellMess dropper",
+          "created": "2026-03-28T10:12:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100009,
+          "type": "email",
+          "indicator": "phish@evil-domain.example.com",
+          "title": "Phishing sender",
+          "description": "Email address used in phishing campaign",
+          "created": "2026-03-28T10:13:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100010,
+          "type": "CVE",
+          "indicator": "CVE-2026-1234",
+          "title": "Exploited CVE",
+          "description": "CVE exploited in initial access",
+          "created": "2026-03-28T10:14:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100011,
+          "type": "YARA",
+          "indicator": "rule WellMess { strings: $a = \"wellmess\" condition: $a }",
+          "title": "WellMess YARA rule",
+          "description": "Detection rule for WellMess",
+          "created": "2026-03-28T10:15:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100012,
+          "type": "Mutex",
+          "indicator": "Global\\WellMessMutex",
+          "title": "WellMess mutex",
+          "description": "Mutex created by WellMess",
+          "created": "2026-03-28T10:16:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 100013,
+          "type": "FileHash-MD5",
+          "indicator": "098f6bcd4621d373cade4e832627b4f6",
+          "title": "WellMail dropper MD5",
+          "description": "MD5 hash of WellMail companion tool",
+          "created": "2026-03-28T10:17:00.000Z",
+          "is_active": 0
+        }
+      ]
+    },
+    {
+      "id": "6614b2c3d4e5f6a7b8c9d0e1",
+      "name": "Emotet Resurgence - Q1 2026",
+      "description": "New Emotet campaign distributing via Excel macros.",
+      "author_name": "ThreatHunter42",
+      "created": "2026-03-25T08:00:00.000Z",
+      "modified": "2026-03-26T12:00:00.000Z",
+      "tags": ["emotet", "banking-trojan", "macro"],
+      "targeted_countries": [],
+      "malware_families": ["Emotet"],
+      "attack_ids": [
+        {"id": "T1204", "name": "User Execution", "display_name": "T1204 - User Execution"}
+      ],
+      "references": [],
+      "indicators": [
+        {
+          "id": 200001,
+          "type": "IPv4",
+          "indicator": "198.51.100.99",
+          "title": "Emotet C2",
+          "description": "Emotet command and control",
+          "created": "2026-03-25T08:05:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 200002,
+          "type": "URL",
+          "indicator": "http://198.51.100.99/emotet/download",
+          "title": "Emotet payload URL",
+          "description": "Payload distribution URL",
+          "created": "2026-03-25T08:06:00.000Z",
+          "is_active": 1
+        },
+        {
+          "id": 200003,
+          "type": "FileHash-SHA256",
+          "indicator": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+          "title": "Emotet binary SHA256",
+          "description": "SHA256 of Emotet dropper",
+          "created": "2026-03-25T08:07:00.000Z",
+          "is_active": 1
+        }
+      ]
+    }
+  ],
+  "count": 2,
+  "next": "https://otx.alienvault.com/api/v1/pulses/subscribed?page=2&limit=50"
+}

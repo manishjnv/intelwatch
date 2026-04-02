@@ -16,6 +16,7 @@ import { MalwareBazaarConnector } from '../connectors/malwarebazaar.js';
 import { FeodoConnector } from '../connectors/feodo.js';
 import { CisaKevConnector } from '../connectors/cisa-kev.js';
 import { FirstEpssConnector } from '../connectors/first-epss.js';
+import { OTXConnector } from '../connectors/otx.js';
 import { getConfig } from '../config.js';
 import { ArticlePipeline, type PipelineBatchResult } from './pipeline.js';
 import type { FeedPolicyStore } from '../services/feed-policy-store.js';
@@ -124,6 +125,7 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
   const feodoConnector = new FeodoConnector(logger);
   const cisaKevConnector = new CisaKevConnector(logger);
   const firstEpssConnector = new FirstEpssConnector(logger);
+  const otxConnector = new OTXConnector(logger);
   const pipeline = new ArticlePipeline({
     logger, db,
     anthropicApiKey: config.TI_ANTHROPIC_API_KEY,
@@ -139,7 +141,7 @@ export function createFeedFetchWorkers(deps: FeedFetchWorkerDeps): FeedFetchWork
     repo, logger, db, policyStore, normalizeQueue, pipeline, config,
     rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
     threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector,
-    cisaKevConnector, firstEpssConnector,
+    cisaKevConnector, firstEpssConnector, otxConnector,
   };
 
   /** Shared processor function used by all 4 workers */
@@ -216,13 +218,14 @@ async function executeJobProcessor(
     threatFoxConnector: ThreatFoxConnector; urlhausConnector: URLhausConnector;
     malwareBazaarConnector: MalwareBazaarConnector; feodoConnector: FeodoConnector;
     cisaKevConnector: CisaKevConnector; firstEpssConnector: FirstEpssConnector;
+    otxConnector: OTXConnector;
   },
 ): Promise<FeedFetchResult> {
   const { feedId, tenantId, triggeredBy, jobId } = jobCtx;
   const { repo, logger, db, policyStore, normalizeQueue, pipeline, config,
     rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
     threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector,
-    cisaKevConnector, firstEpssConnector } = deps;
+    cisaKevConnector, firstEpssConnector, otxConnector } = deps;
 
   logger.info({ feedId, tenantId, triggeredBy, jobId }, 'Processing feed fetch job');
 
@@ -253,11 +256,11 @@ async function executeJobProcessor(
       parseConfig: feed.parseConfig as Record<string, unknown> | null,
       rssConnector, nvdConnector, taxiiConnector, restApiConnector, mispConnector, bulkFileConnector,
       threatFoxConnector, urlhausConnector, malwareBazaarConnector, feodoConnector,
-      cisaKevConnector, firstEpssConnector, config,
+      cisaKevConnector, firstEpssConnector, otxConnector, config,
     });
 
     // Bulk feed types: skip article pipeline, queue IOCs directly to normalize
-    if (['csv_bulk', 'plaintext', 'jsonl', 'threatfox', 'urlhaus', 'malwarebazaar', 'feodo', 'cisa_kev', 'first_epss'].includes(feed.feedType)) {
+    if (['csv_bulk', 'plaintext', 'jsonl', 'threatfox', 'urlhaus', 'malwarebazaar', 'feodo', 'cisa_kev', 'first_epss', 'otx'].includes(feed.feedType)) {
       const iocs = fetchResult.articles.filter((a) => a.rawMeta.iocValue)
         .map((a) => ({
           rawValue: String(a.rawMeta.iocValue),
@@ -286,6 +289,18 @@ async function executeJobProcessor(
             parseConfig: { ...existingConfig, lastDateAdded: latestDateAdded },
           });
           logger.info({ feedId, cursor: latestDateAdded }, 'CISA KEV delta cursor saved');
+        }
+      }
+
+      // OTX delta cursor: save latest modified timestamp for next incremental fetch
+      if (feed.feedType === 'otx') {
+        const otxResult = fetchResult as ConnectorResult & { latestModified?: string };
+        if (otxResult.latestModified) {
+          const existingConfig = (feed.parseConfig as Record<string, unknown>) ?? {};
+          await repo.update(tenantId, feedId, {
+            parseConfig: { ...existingConfig, modifiedSince: otxResult.latestModified },
+          });
+          logger.info({ feedId, cursor: otxResult.latestModified }, 'OTX delta cursor saved');
         }
       }
 
@@ -347,6 +362,7 @@ interface RouteOptions {
   threatFoxConnector: ThreatFoxConnector; urlhausConnector: URLhausConnector;
   malwareBazaarConnector: MalwareBazaarConnector; feodoConnector: FeodoConnector;
   cisaKevConnector: CisaKevConnector; firstEpssConnector: FirstEpssConnector;
+  otxConnector: OTXConnector;
   config: import('../config.js').AppConfig;
 }
 
@@ -420,6 +436,11 @@ async function routeToConnector(feedType: string, opts: RouteOptions): Promise<C
       minEpssScore: (opts.parseConfig?.minEpssScore as number) ?? undefined,
       maxItems: (opts.parseConfig?.maxItems as number) ?? undefined,
       gzip: (opts.parseConfig?.gzip as boolean) ?? undefined,
+    });
+    case 'otx': return opts.otxConnector.fetch({
+      apiKey: opts.config.TI_OTX_API_KEY ?? (opts.parseConfig?.apiKey as string) ?? undefined,
+      modifiedSince: (opts.parseConfig?.modifiedSince as string) ?? undefined,
+      maxPages: (opts.parseConfig?.maxPages as number) ?? undefined,
     });
     default: throw new AppError(400, `Unsupported feed type: ${feedType}`, 'CONNECTOR_UNSUPPORTED');
   }
@@ -496,6 +517,24 @@ function buildBulkExtractionMeta(rawMeta: Record<string, unknown>): Record<strin
   }
   if (rawMeta.sourceConfidence != null) {
     meta.sourceConfidence = rawMeta.sourceConfidence;
+    hasFields = true;
+  }
+  // OTX Pulse context
+  if (rawMeta.pulseId != null) {
+    meta.pulseId = rawMeta.pulseId;
+    meta.pulseName = rawMeta.pulseName;
+    hasFields = true;
+  }
+  if (Array.isArray(rawMeta.malwareFamilies) && rawMeta.malwareFamilies.length > 0) {
+    meta.malwareFamilies = rawMeta.malwareFamilies;
+    hasFields = true;
+  }
+  if (Array.isArray(rawMeta.mitreAttack) && rawMeta.mitreAttack.length > 0) {
+    meta.mitreAttack = rawMeta.mitreAttack;
+    hasFields = true;
+  }
+  if (Array.isArray(rawMeta.tags) && rawMeta.tags.length > 0) {
+    meta.tags = rawMeta.tags;
     hasFields = true;
   }
 
