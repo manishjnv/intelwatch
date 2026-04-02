@@ -10,6 +10,9 @@ import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { EnrichmentDetailPanel } from '@/components/viz/EnrichmentDetailPanel'
 import { IOCDetailBack } from '@/components/viz/FlipDetailCard'
 import { ConfidenceBreakdown } from '@/components/viz/ConfidenceBreakdown'
+import { ConfidenceDecayChart } from '@/components/ioc/ConfidenceDecayChart'
+import { RiskPropagationBanner } from '@/components/ioc/RiskPropagationBanner'
+import { MitreDetailSection } from '@/components/ioc/MitreDetailSection'
 import { useIOCPivot, useIOCTimeline, useUpdateIOCLifecycle, type IOCRecord, type IOCPivotResult, type IOCTimelineEvent } from '@/hooks/use-intel-data'
 import { useIOCEnrichment } from '@/hooks/use-enrichment-data'
 import { useNodeNeighbors } from '@/hooks/use-phase4-data'
@@ -122,8 +125,15 @@ export function IocDetailPanel({ record, isDemo }: IocDetailPanelProps) {
         </div>
       </div>
 
-      <div className="shrink-0 px-3 py-2">
+      <div className="shrink-0 px-3 py-2 space-y-2">
         <ConfidenceBreakdown record={record} isDemo={isDemo} />
+        <ConfidenceDecayChart
+          confidence={record.confidence}
+          iocType={record.iocType}
+          firstSeen={record.firstSeen}
+          timelineEvents={(timelineData as IOCTimelineEvent[]) ?? []}
+        />
+        <RiskPropagationBanner timelineEvents={(timelineData as IOCTimelineEvent[]) ?? []} />
       </div>
 
       {/* Tab bar */}
@@ -154,12 +164,16 @@ export function IocDetailPanel({ record, isDemo }: IocDetailPanelProps) {
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto">
         {detailTab === 'enrichment' && (
-          <EnrichmentDetailPanel
-            iocId={record.id}
-            iocType={record.iocType}
-            enrichment={enrichmentData ?? null}
-            className="p-3"
-          />
+          <div className="p-3 space-y-3">
+            {(enrichmentData as any)?.haikuResult?.mitreTechniques?.length > 0 && (
+              <MitreDetailSection techniques={(enrichmentData as any).haikuResult.mitreTechniques} />
+            )}
+            <EnrichmentDetailPanel
+              iocId={record.id}
+              iocType={record.iocType}
+              enrichment={enrichmentData ?? null}
+            />
+          </div>
         )}
         {detailTab === 'details' && (
           <IOCDetailBack

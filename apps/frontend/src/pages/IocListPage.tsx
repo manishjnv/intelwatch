@@ -4,6 +4,7 @@
  * context menu, create modal, saved filter presets.
  */
 import { useState, useMemo, useCallback, type MouseEvent } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useIOCs, useIOCStats, useUpdateIOCLifecycle, type IOCRecord } from '@/hooks/use-intel-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useMultiSelect } from '@/hooks/use-multi-select'
@@ -19,6 +20,8 @@ import { IOC_FILTERS } from '@/components/ioc/ioc-constants'
 import { getIocColumns } from '@/components/ioc/ioc-columns'
 import { CreateIocModal } from '@/components/ioc/CreateIocModal'
 import { IocContextMenu } from '@/components/ioc/IocContextMenu'
+import { IocComparePanel } from '@/components/ioc/IocComparePanel'
+import { InlineEnrichmentRow } from '@/components/ioc/InlineEnrichmentRow'
 import { SavedFilterPresets } from '@/components/ioc/SavedFilterPresets'
 import { exportCsv, exportJson, exportStix } from '@/utils/ioc-export'
 import { useEnrichmentStats } from '@/hooks/use-enrichment-data'
@@ -40,6 +43,9 @@ export function IocListPage() {
   const [showExport, setShowExport] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ ioc: IOCRecord; pos: { x: number; y: number } } | null>(null)
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
+  const [showCompare, setShowCompare] = useState(false)
+  const queryClient = useQueryClient()
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -91,11 +97,23 @@ export function IocListPage() {
     else { setSortBy(key); setSortOrder('desc') }
   }
 
+  // Build MITRE technique map from cached enrichment data (progressive — fills as user views IOCs)
+  const mitreMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const r of rows) {
+      const cached = queryClient.getQueryData<any>(['enrichment-ioc', r.id])
+      const techniques = cached?.haikuResult?.mitreTechniques ?? cached?.mitreTechniques
+      if (Array.isArray(techniques) && techniques.length > 0) map.set(r.id, techniques)
+    }
+    return map
+  }, [rows, queryClient])
+
   const columns = useMemo(() => getIocColumns({
     campaignMap,
     expandedCampaignId,
     onCampaignClick: (id) => setExpandedCampaignId(id || null),
-  }), [campaignMap, expandedCampaignId])
+    mitreMap,
+  }), [campaignMap, expandedCampaignId, mitreMap])
 
   // Bulk actions
   const selectedRows = useMemo(() => rows.filter(r => selectedIds.has(r.id)), [rows, selectedIds])
@@ -122,6 +140,15 @@ export function IocListPage() {
   const handleReEnrich = useCallback(() => {
     toast(`Re-enrichment queued for ${selectedIds.size} IOCs (backend pending)`, 'info')
   }, [selectedIds])
+
+  const handleCompare = useCallback(() => {
+    if (selectedIds.size >= 2 && selectedIds.size <= 3) setShowCompare(true)
+  }, [selectedIds])
+
+  const handleExpandRow = useCallback((id: string | null) => {
+    setExpandedRowId(id)
+    if (id) queryClient.prefetchQuery({ queryKey: ['enrichment-ioc', id], queryFn: () => Promise.resolve(null) })
+  }, [queryClient])
 
   const handleContextMenu = useCallback((row: IOCRecord, event: MouseEvent) => {
     setContextMenu({ ioc: row, pos: { x: event.clientX, y: event.clientY } })
@@ -200,6 +227,20 @@ export function IocListPage() {
             onSelectAllPage={() => selectAllOnPage(rowIds)}
             selectAllState={selectAllState(rowIds)}
             onRowContextMenu={handleContextMenu}
+            expandableRow={(r) => {
+              const cached = queryClient.getQueryData<any>(['enrichment-ioc', r.id])
+              return <InlineEnrichmentRow enrichment={cached ? {
+                vtDetections: cached.vtResult?.positives ?? cached.vtDetections,
+                vtTotal: cached.vtResult?.total ?? cached.vtTotal,
+                abuseipdbScore: cached.abuseipdbResult?.abuseConfidenceScore ?? cached.abuseipdbScore,
+                country: cached.geolocation?.country ?? cached.country,
+                countryCode: cached.geolocation?.countryCode ?? cached.countryCode,
+                severity: cached.haikuResult?.severity ?? cached.severity,
+                riskVerdict: cached.haikuResult?.summary ?? cached.riskVerdict,
+              } : null} isLoading={false} />
+            }}
+            expandedRowId={expandedRowId}
+            onExpandRow={handleExpandRow}
             emptyMessage="No IOCs found. Activate a feed to start ingesting threat intelligence."
           />
         )}
@@ -235,10 +276,16 @@ export function IocListPage() {
         selectedCount={selectedIds.size || (selectedId ? 1 : 0)}
         onBulkExport={handleBulkExport}
         onBulkTag={handleBulkTag}
+        onCompare={handleCompare}
         onLifecycleChange={handleBulkLifecycle}
         onReEnrich={handleReEnrich}
         onClear={() => { clearSelection(); setSelectedId(null) }}
       />
+
+      {/* IOC Compare Panel (Feature 4) */}
+      {showCompare && selectedRows.length >= 2 && (
+        <IocComparePanel records={selectedRows.slice(0, 3)} onClose={() => setShowCompare(false)} />
+      )}
       <ToastContainer />
     </div>
   )

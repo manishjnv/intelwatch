@@ -5,7 +5,7 @@
  */
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download, Tag, RefreshCw, Archive, X, ChevronDown } from 'lucide-react'
+import { Download, Tag, RefreshCw, Archive, X, ChevronDown, Columns } from 'lucide-react'
 import { LIFECYCLE_STATES } from '@/components/ioc/ioc-constants'
 
 interface QuickActionToolbarProps {
@@ -26,6 +26,7 @@ export function QuickActionToolbar({
   onExport,
   onBulkExport,
   onBulkTag,
+  onCompare,
   onArchive,
   onLifecycleChange,
   onReEnrich,
@@ -57,6 +58,18 @@ export function QuickActionToolbar({
           <span className="text-xs font-medium text-accent tabular-nums mr-2" data-testid="selection-count">
             {selectedCount} selected
           </span>
+
+          {/* Compare (2-3 selected) */}
+          {selectedCount >= 2 && selectedCount <= 3 && onCompare && (
+            <button
+              onClick={onCompare}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-accent hover:bg-accent/10 transition-colors font-medium"
+              title="Compare selected IOCs" data-testid="action-compare"
+            >
+              <Columns className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Compare</span>
+            </button>
+          )}
 
           <div className="w-px h-5 bg-border mx-1" />
 

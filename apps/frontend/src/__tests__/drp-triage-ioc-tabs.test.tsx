@@ -4,7 +4,7 @@
  * 2. IocListPage pivot + timeline tabs
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@/test/test-utils'
+import { render, screen, fireEvent, within } from '@/test/test-utils'
 
 // ═══════════════════════════════════════════════════════════════
 // Part 1: DRP Triage Tests
@@ -243,10 +243,11 @@ describe('IocListPage — Timeline Tab', () => {
     render(<IocListPage />)
     fireEvent.click(screen.getByText('185.220.101.34'))
     fireEvent.click(screen.getByText('Timeline'))
-    expect(screen.getByTestId('ioc-timeline-tab')).toBeTruthy()
-    expect(screen.getByText('First observed in RSS feed')).toBeTruthy()
-    expect(screen.getByText('GeoIP enrichment: Russia')).toBeTruthy()
-    expect(screen.getByText('Sighted in DarkWeb dump')).toBeTruthy()
+    const tab = screen.getByTestId('ioc-timeline-tab')
+    expect(tab).toBeTruthy()
+    expect(within(tab).getByText('First observed in RSS feed')).toBeTruthy()
+    expect(within(tab).getByText('GeoIP enrichment: Russia')).toBeTruthy()
+    expect(within(tab).getByText('Sighted in DarkWeb dump')).toBeTruthy()
   })
 
   it('shows event type badges', () => {

@@ -11,6 +11,7 @@ import { EntityChip } from '@etip/shared-ui/components/EntityChip'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { EntityPreview } from '@/components/viz/EntityPreview'
 import { ConfidenceGauge } from './ConfidenceGauge'
+import { MitreBadgeCell } from './MitreBadgeCell'
 import { toChipType, timeAgo } from './ioc-utils'
 import { CheckCircle2, Clock, CircleDot } from 'lucide-react'
 
@@ -18,11 +19,13 @@ interface ColumnDeps {
   campaignMap: Map<string, Campaign>
   expandedCampaignId: string | null
   onCampaignClick: (id: string) => void
+  /** Map of iocId → MITRE technique IDs (from cached enrichment data) */
+  mitreMap?: Map<string, string[]>
 }
 
 /** Build IOC column definitions with external dependencies injected. */
 export function getIocColumns(deps: ColumnDeps): Column<IOCRecord>[] {
-  const { campaignMap, expandedCampaignId, onCampaignClick } = deps
+  const { campaignMap, expandedCampaignId, onCampaignClick, mitreMap } = deps
 
   return [
     {
@@ -70,7 +73,7 @@ export function getIocColumns(deps: ColumnDeps): Column<IOCRecord>[] {
         : <ConfidenceGauge value={row.confidence} />,
     },
     {
-      key: 'source', label: 'Source', width: '6%',
+      key: 'source', label: 'Source', width: '5%',
       render: (row: IOCRecord) => {
         const src = (row as any).source === 'global' ? 'global' : 'private'
         return (
@@ -81,6 +84,13 @@ export function getIocColumns(deps: ColumnDeps): Column<IOCRecord>[] {
             {src === 'global' ? 'Global' : 'Private'}
           </span>
         )
+      },
+    },
+    {
+      key: 'mitreTechniques', label: 'TTPs', width: '6%',
+      render: (row: IOCRecord, d: Density) => {
+        const techniques = mitreMap?.get(row.id) ?? []
+        return techniques.length > 0 ? <MitreBadgeCell techniques={techniques} density={d} /> : null
       },
     },
     {

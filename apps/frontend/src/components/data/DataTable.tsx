@@ -4,8 +4,9 @@
  * 3D row lift on select, and keyboard navigation (j/k/Enter/Esc).
  * P0-4: Density-adaptive. P2-12: Keyboard-first navigation.
  */
-import { useState, useCallback, useEffect, useRef, type MouseEvent } from 'react'
-import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import React, { useState, useCallback, useEffect, useRef, type MouseEvent } from 'react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { SkeletonBlock } from '@etip/shared-ui/components/SkeletonBlock'
 
@@ -45,6 +46,12 @@ export interface DataTableProps<T> {
   selectAllState?: boolean | 'indeterminate'
   /** Right-click handler on row */
   onRowContextMenu?: (row: T, event: MouseEvent) => void
+  /** Render expandable row content (accordion — one at a time) */
+  expandableRow?: (row: T) => React.ReactNode
+  /** Currently expanded row ID (controlled) */
+  expandedRowId?: string | null
+  /** Callback when expand chevron is clicked */
+  onExpandRow?: (id: string | null) => void
 }
 
 const DENSITY_HEIGHT: Record<Density, string> = {
@@ -71,7 +78,7 @@ export function DataTable<T>({
   onRowClick, rowKey, density = 'compact', severityField,
   emptyMessage = 'No data found', selectedId,
   selectable, selectedIds, onSelectToggle, onSelectAllPage, selectAllState,
-  onRowContextMenu,
+  onRowContextMenu, expandableRow, expandedRowId, onExpandRow,
 }: DataTableProps<T>) {
   const [focusIdx, setFocusIdx] = useState(-1)
   const tableRef = useRef<HTMLDivElement>(null)
@@ -131,6 +138,7 @@ export function DataTable<T>({
       <table className="w-full">
         <thead>
           <tr className="border-b border-border bg-bg-secondary/50">
+            {expandableRow && <th className="w-8" />}
             {selectable && (
               <th className="px-2 py-2 w-8">
                 <input
@@ -171,40 +179,74 @@ export function DataTable<T>({
 
             const isMultiSelected = selectable && selectedIds?.has(id)
 
+            const isExpanded = expandableRow && expandedRowId === id
+            const totalCols = columns.length + (selectable ? 1 : 0) + (expandableRow ? 1 : 0)
+
             return (
-              <tr
-                key={id}
-                onClick={() => onRowClick?.(row)}
-                onContextMenu={(e) => { if (onRowContextMenu) { e.preventDefault(); onRowContextMenu(row, e) } }}
-                className={cn(
-                  DENSITY_HEIGHT[density],
-                  DENSITY_TEXT[density],
-                  'border-b border-border/50 transition-all duration-150',
-                  tint,
-                  onRowClick && 'cursor-pointer hover:bg-bg-hover',
-                  isSelected && 'bg-accent/10 border-accent/30 -translate-y-px shadow-sm',
-                  isMultiSelected && !isSelected && 'bg-accent/5',
-                  isFocused && 'ring-1 ring-accent/40 ring-inset',
-                )}
-              >
-                {selectable && (
-                  <td className="px-2 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={!!isMultiSelected}
-                      onChange={(e) => { e.stopPropagation(); onSelectToggle?.(id, idx, (e.nativeEvent as any).shiftKey ?? false) }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="accent-[var(--accent)] w-3.5 h-3.5 cursor-pointer"
-                      data-testid={`row-checkbox-${id}`}
-                    />
-                  </td>
-                )}
-                {columns.map(col => (
-                  <td key={col.key} className="px-3 whitespace-nowrap text-text-primary">
-                    {col.render(row, density)}
-                  </td>
-                ))}
-              </tr>
+              <React.Fragment key={id}>
+                <tr
+                  onClick={() => onRowClick?.(row)}
+                  onContextMenu={(e) => { if (onRowContextMenu) { e.preventDefault(); onRowContextMenu(row, e) } }}
+                  className={cn(
+                    DENSITY_HEIGHT[density],
+                    DENSITY_TEXT[density],
+                    'border-b border-border/50 transition-all duration-150',
+                    tint,
+                    onRowClick && 'cursor-pointer hover:bg-bg-hover',
+                    isSelected && 'bg-accent/10 border-accent/30 -translate-y-px shadow-sm',
+                    isMultiSelected && !isSelected && 'bg-accent/5',
+                    isFocused && 'ring-1 ring-accent/40 ring-inset',
+                  )}
+                >
+                  {expandableRow && (
+                    <td className="px-1 whitespace-nowrap">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onExpandRow?.(isExpanded ? null : id) }}
+                        className="p-0.5 rounded hover:bg-bg-hover text-text-muted transition-transform"
+                        data-testid={`expand-chevron-${id}`}
+                      >
+                        <motion.span animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }} className="block">
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </motion.span>
+                      </button>
+                    </td>
+                  )}
+                  {selectable && (
+                    <td className="px-2 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={!!isMultiSelected}
+                        onChange={(e) => { e.stopPropagation(); onSelectToggle?.(id, idx, (e.nativeEvent as any).shiftKey ?? false) }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="accent-[var(--accent)] w-3.5 h-3.5 cursor-pointer"
+                        data-testid={`row-checkbox-${id}`}
+                      />
+                    </td>
+                  )}
+                  {columns.map(col => (
+                    <td key={col.key} className="px-3 whitespace-nowrap text-text-primary">
+                      {col.render(row, density)}
+                    </td>
+                  ))}
+                </tr>
+                <AnimatePresence>
+                  {isExpanded && (
+                    <tr data-testid={`expanded-row-${id}`}>
+                      <td colSpan={totalCols}>
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          {expandableRow(row)}
+                        </motion.div>
+                      </td>
+                    </tr>
+                  )}
+                </AnimatePresence>
+              </React.Fragment>
             )
           })}
         </tbody>
