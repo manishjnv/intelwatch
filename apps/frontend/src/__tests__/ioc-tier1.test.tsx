@@ -205,7 +205,6 @@ describe('IocListPage — Tier 1 enhancements', () => {
 
   it('renders enrichment column with correct badges', () => {
     render(<IocListPage />)
-    const table = screen.getByTestId('ioc-data-table')
     // ioc-1 has aiConfidence → enriched
     const row1 = screen.getByTestId('ioc-row-ioc-1')
     expect(row1).toHaveTextContent('Enriched')
