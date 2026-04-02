@@ -23,8 +23,6 @@ export function TopActorsWidget({ profile }: { profile: OrgProfile | null }) {
     return sorted.slice(0, 5)
   }, [topActors, profile])
 
-  if (actors.length === 0) return null
-
   const maxCount = Math.max(...actors.map(a => a.iocCount), 1)
 
   return (
@@ -40,6 +38,9 @@ export function TopActorsWidget({ profile }: { profile: OrgProfile | null }) {
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 
+      {actors.length === 0 ? (
+        <p className="text-[10px] text-text-muted py-2">No threat actors tracked yet</p>
+      ) : (
       <div className="space-y-1.5">
         {actors.map(actor => (
           <div key={actor.name} className="flex items-center gap-2">
@@ -56,6 +57,7 @@ export function TopActorsWidget({ profile }: { profile: OrgProfile | null }) {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

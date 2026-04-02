@@ -35,8 +35,6 @@ export function TopCvesWidget() {
     [topCves],
   )
 
-  if (cves.length === 0) return null
-
   return (
     <div
       data-testid="top-cves-widget"
@@ -50,6 +48,9 @@ export function TopCvesWidget() {
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 
+      {cves.length === 0 ? (
+        <p className="text-[10px] text-text-muted py-2">No CVEs tracked yet</p>
+      ) : (
       <div className="space-y-1.5">
         {cves.map(cve => (
           <div key={cve.id} className="flex items-center gap-2">
@@ -68,6 +69,7 @@ export function TopCvesWidget() {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

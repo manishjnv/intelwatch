@@ -79,14 +79,6 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useDashboardStats: () => ({ data: { criticalIOCs: 5 } }),
 }))
 
-vi.mock('@/hooks/use-global-catalog', () => ({
-  useGlobalPipelineHealth: () => ({ data: null, isDemo: true }),
-}))
-
-vi.mock('@/hooks/use-feature-limits', () => ({
-  useFeatureLimits: () => ({ features: [] }),
-}))
-
 vi.mock('@/components/command-center/charts', () => ({
   MiniSparkline: ({ values }: { values: number[] }) => (
     <span data-testid="mini-sparkline">{values.length} points</span>
@@ -99,20 +91,6 @@ vi.mock('@/components/viz/AmbientBackground', () => ({
 
 vi.mock('@/components/viz/ThreatTimeline', () => ({
   ThreatTimeline: () => <div data-testid="threat-timeline" />,
-}))
-
-vi.mock('@/components/viz/ParallaxCard', () => ({
-  ParallaxCard: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('@etip/shared-ui/components/IntelCard', () => ({
-  IntelCard: ({ children, ...props }: { children: React.ReactNode; onClick?: () => void; className?: string }) => (
-    <div data-testid="intel-card" {...props}>{children}</div>
-  ),
-}))
-
-vi.mock('@etip/shared-ui/components/TooltipHelp', () => ({
-  TooltipHelp: () => null,
 }))
 
 // ─── Org profile store mock ──────────────────────────────────
@@ -140,12 +118,6 @@ vi.mock('@/stores/auth-store', () => ({
 let mockMode: 'org-aware' | 'global' | 'super-admin' = 'global'
 vi.mock('@/hooks/use-dashboard-mode', () => ({
   useDashboardMode: () => ({ mode: mockMode, profile: mockStoreProfile }),
-}))
-
-// ─── Config mocks ─────────────────────────────────────────────
-
-vi.mock('@/config/modules', () => ({
-  MODULES: [],
 }))
 
 // ═══════════════════════════════════════════════════════════════

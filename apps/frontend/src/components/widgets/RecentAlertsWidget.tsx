@@ -47,8 +47,6 @@ export function RecentAlertsWidget() {
       }))
   }, [alertTrend])
 
-  if (alerts.length === 0 && (summary.totalAlerts ?? 0) === 0) return null
-
   return (
     <div
       data-testid="recent-alerts-widget"

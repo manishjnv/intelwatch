@@ -45,18 +45,6 @@ vi.mock('@/hooks/use-auth', () => ({
   useLogout: vi.fn(() => ({ mutate: vi.fn() })),
 }))
 
-vi.mock('@/config/modules', () => ({
-  MODULES: [
-    { id: 'ioc', title: 'IOC Intelligence', route: '/iocs', phase: 3, color: 'text-blue-400', icon: () => null, description: 'Test module', helpText: 'Help' },
-  ],
-  getPhaseColor: () => 'text-blue-400',
-  getPhaseBgColor: () => 'bg-blue-500/10',
-}))
-
-vi.mock('@etip/shared-ui/components/IntelCard', () => ({
-  IntelCard: ({ children, ...props }: any) => <div data-testid="intel-card" {...props}>{children}</div>,
-}))
-
 vi.mock('@etip/shared-ui/components/EntityChip', () => ({
   EntityChip: ({ value }: any) => <span data-testid="entity-chip">{value}</span>,
 }))
@@ -65,7 +53,6 @@ vi.mock('@etip/shared-ui/components/SeverityBadge', () => ({
   SeverityBadge: ({ severity }: any) => <span data-testid="severity-badge">{severity}</span>,
 }))
 
-vi.mock('@etip/shared-ui/components/TooltipHelp', () => ({ TooltipHelp: () => null }))
 vi.mock('@etip/shared-ui/components/InlineHelp', () => ({ InlineHelp: () => null }))
 vi.mock('@etip/shared-ui/components/SkeletonBlock', () => ({ SkeletonBlock: () => <div data-testid="skeleton" /> }))
 
@@ -78,6 +65,11 @@ vi.mock('@/components/widgets/RecentIocWidget', () => ({ RecentIocWidget: () => 
 vi.mock('@/components/widgets/IocTrendWidget', () => ({ IocTrendWidget: () => null }))
 vi.mock('@/components/widgets/FeedHealthWidget', () => ({ FeedHealthWidget: () => null }))
 vi.mock('@/components/widgets/TopActorsWidget', () => ({ TopActorsWidget: () => null }))
+vi.mock('@/components/widgets/TopCvesWidget', () => ({ TopCvesWidget: () => null }))
+vi.mock('@/components/widgets/RecentAlertsWidget', () => ({ RecentAlertsWidget: () => null }))
+vi.mock('@/components/widgets/SeverityTrendWidget', () => ({ SeverityTrendWidget: () => null }))
+vi.mock('@/components/widgets/ProfileMatchWidget', () => ({ ProfileMatchWidget: () => null }))
+vi.mock('@/components/widgets/GeoThreatWidget', () => ({ GeoThreatWidget: () => null }))
 
 import { DashboardPage } from '@/pages/DashboardPage'
 import { IocListPage } from '@/pages/IocListPage'

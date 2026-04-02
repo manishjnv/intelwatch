@@ -22,8 +22,6 @@ export function RecentIocWidget() {
   const { data } = useIOCs({ limit: 5, sortBy: 'createdAt' })
   const iocs = data?.data ?? []
 
-  if (iocs.length === 0) return null
-
   return (
     <div
       data-testid="recent-ioc-widget"
@@ -36,6 +34,9 @@ export function RecentIocWidget() {
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 
+      {iocs.length === 0 ? (
+        <p className="text-[10px] text-text-muted py-2">No IOCs ingested yet</p>
+      ) : (
       <div className="space-y-1.5">
         {iocs.map(ioc => (
           <div key={ioc.id} className="flex items-center gap-2">
@@ -48,6 +49,7 @@ export function RecentIocWidget() {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

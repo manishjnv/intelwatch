@@ -21,17 +21,9 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useDashboardStats: () => ({ data: { totalIOCs: 25, activeFeeds: 5, enrichedToday: 10, criticalIOCs: 3 }, isDemo: false }),
 }))
 
-vi.mock('@/hooks/use-global-catalog', () => ({
-  useGlobalPipelineHealth: () => ({
-    data: { pipeline: { articlesProcessed24h: 100, iocsCreated24h: 50, iocsEnriched24h: 30, avgNormalizeLatencyMs: 120 } },
-    isDemo: false,
-  }),
-}))
-
 // ─── Mock viz/widget components ────────────────────────────────
 
 vi.mock('@/components/viz/SeverityHeatmap', () => ({ SeverityHeatmap: () => <div data-testid="severity-heatmap-mock" /> }))
-vi.mock('@/components/viz/ParallaxCard', () => ({ ParallaxCard: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }))
 vi.mock('@/components/viz/ThreatTimeline', () => ({ ThreatTimeline: () => <div data-testid="threat-timeline-mock" /> }))
 vi.mock('@/components/viz/AmbientBackground', () => ({ AmbientBackground: () => null }))
 
@@ -46,6 +38,7 @@ vi.mock('@/components/widgets/TopCvesWidget', () => ({ TopCvesWidget: () => <div
 vi.mock('@/components/widgets/RecentAlertsWidget', () => ({ RecentAlertsWidget: () => <div data-testid="recent-alerts-widget-mock" /> }))
 vi.mock('@/components/widgets/SeverityTrendWidget', () => ({ SeverityTrendWidget: () => <div data-testid="severity-trend-widget-mock" /> }))
 vi.mock('@/components/widgets/ProfileMatchWidget', () => ({ ProfileMatchWidget: ({ profile }: any) => profile ? <div data-testid="profile-match-widget-mock" /> : null }))
+vi.mock('@/components/widgets/GeoThreatWidget', () => ({ GeoThreatWidget: () => <div data-testid="geo-threat-widget-mock" /> }))
 
 // ─── Dashboard mode mock (overridden per test) ─────────────────
 

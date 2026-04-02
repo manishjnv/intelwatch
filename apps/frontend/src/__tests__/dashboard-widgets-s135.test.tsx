@@ -113,11 +113,12 @@ describe('TopCvesWidget', () => {
     expect(screen.getByText('HIGH')).toBeInTheDocument()
   })
 
-  it('returns null when no CVE data', () => {
+  it('shows empty state when no CVE data', () => {
     const orig = mockAnalytics.topCves
     mockAnalytics.topCves = []
     render(<TopCvesWidget />)
-    expect(screen.queryByTestId('top-cves-widget')).not.toBeInTheDocument()
+    expect(screen.getByTestId('top-cves-widget')).toBeInTheDocument()
+    expect(screen.getByText('No CVEs tracked yet')).toBeInTheDocument()
     mockAnalytics.topCves = orig
   })
 })
@@ -139,13 +140,14 @@ describe('RecentAlertsWidget', () => {
     expect(widget).toBeInTheDocument()
   })
 
-  it('returns null when no alerts and totalAlerts is 0', () => {
+  it('shows empty state when no alerts and totalAlerts is 0', () => {
     const origTrend = mockAnalytics.alertTrend
     const origSummary = { ...mockAnalytics.summary }
     mockAnalytics.alertTrend = []
     mockAnalytics.summary = { ...mockAnalytics.summary, totalAlerts: 0 }
     render(<RecentAlertsWidget />)
-    expect(screen.queryByTestId('recent-alerts-widget')).not.toBeInTheDocument()
+    expect(screen.getByTestId('recent-alerts-widget')).toBeInTheDocument()
+    expect(screen.getByText('No recent alerts')).toBeInTheDocument()
     mockAnalytics.alertTrend = origTrend
     mockAnalytics.summary = origSummary
   })
@@ -175,11 +177,12 @@ describe('SeverityTrendWidget', () => {
     expect(sparklines.length).toBe(4)
   })
 
-  it('returns null when insufficient trend data', () => {
+  it('shows empty state when insufficient trend data', () => {
     const orig = mockAnalytics.iocTrend
     mockAnalytics.iocTrend = [{ date: '2026-04-01', count: 10 }]
     render(<SeverityTrendWidget />)
-    expect(screen.queryByTestId('severity-trend-widget')).not.toBeInTheDocument()
+    expect(screen.getByTestId('severity-trend-widget')).toBeInTheDocument()
+    expect(screen.getByText('Not enough data for trend')).toBeInTheDocument()
     mockAnalytics.iocTrend = orig
   })
 })

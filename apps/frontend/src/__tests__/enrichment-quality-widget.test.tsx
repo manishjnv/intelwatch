@@ -21,7 +21,6 @@ vi.mock('@/hooks/use-dashboard-mode', () => ({
 }))
 
 vi.mock('@/components/viz/SeverityHeatmap',    () => ({ SeverityHeatmap:    () => null }))
-vi.mock('@/components/viz/ParallaxCard',       () => ({ ParallaxCard:       ({ children }: { children: React.ReactNode }) => <>{children}</> }))
 vi.mock('@/components/viz/ThreatTimeline',     () => ({ ThreatTimeline:     () => null }))
 vi.mock('@/components/viz/AmbientBackground',  () => ({ AmbientBackground:  () => null }))
 vi.mock('@/components/widgets/ThreatLandscapeBanner', () => ({ ThreatLandscapeBanner: () => null }))
@@ -29,6 +28,11 @@ vi.mock('@/components/widgets/RecentIocWidget', () => ({ RecentIocWidget: () => 
 vi.mock('@/components/widgets/IocTrendWidget', () => ({ IocTrendWidget: () => null }))
 vi.mock('@/components/widgets/FeedHealthWidget', () => ({ FeedHealthWidget: () => null }))
 vi.mock('@/components/widgets/TopActorsWidget', () => ({ TopActorsWidget: () => null }))
+vi.mock('@/components/widgets/TopCvesWidget', () => ({ TopCvesWidget: () => null }))
+vi.mock('@/components/widgets/RecentAlertsWidget', () => ({ RecentAlertsWidget: () => null }))
+vi.mock('@/components/widgets/SeverityTrendWidget', () => ({ SeverityTrendWidget: () => null }))
+vi.mock('@/components/widgets/ProfileMatchWidget', () => ({ ProfileMatchWidget: () => null }))
+vi.mock('@/components/widgets/GeoThreatWidget', () => ({ GeoThreatWidget: () => null }))
 
 import React from 'react'
 

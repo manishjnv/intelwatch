@@ -43,8 +43,6 @@ export function SeverityTrendWidget() {
     })
   }, [iocTrend, iocBySeverity])
 
-  if (iocTrend.length < 2) return null
-
   return (
     <div
       data-testid="severity-trend-widget"
@@ -58,6 +56,9 @@ export function SeverityTrendWidget() {
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 
+      {iocTrend.length < 2 ? (
+        <p className="text-[10px] text-text-muted py-2">Not enough data for trend</p>
+      ) : (
       <div className="space-y-1.5">
         {series.map(s => (
           <div key={s.key} className="flex items-center gap-2">
@@ -70,6 +71,7 @@ export function SeverityTrendWidget() {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

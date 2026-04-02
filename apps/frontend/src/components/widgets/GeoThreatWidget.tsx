@@ -54,8 +54,6 @@ export function GeoThreatWidget({ profile }: { profile: OrgProfile | null }) {
     })).slice(0, 8)
   }, [topActors])
 
-  if (countries.length === 0) return null
-
   const maxCount = Math.max(...countries.map(c => c.iocCount), 1)
   const profileCountry = profile?.geography?.country ?? ''
 
@@ -72,6 +70,9 @@ export function GeoThreatWidget({ profile }: { profile: OrgProfile | null }) {
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 
+      {countries.length === 0 ? (
+        <p className="text-[10px] text-text-muted py-2">No geographic data available</p>
+      ) : (
       <div className="space-y-1.5">
         {countries.map(c => {
           const isHighlighted = profileCountry.toLowerCase() === c.country.toLowerCase()
@@ -106,6 +107,7 @@ export function GeoThreatWidget({ profile }: { profile: OrgProfile | null }) {
           )
         })}
       </div>
+      )}
     </div>
   )
 }
