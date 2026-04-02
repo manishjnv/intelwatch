@@ -1,5 +1,5 @@
 /** Tenant-admin settings view — org profile, quality, alerts, notifications, onboarding, upgrade. */
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import type { useCommandCenter } from '@/hooks/use-command-center'
 import type {
@@ -9,6 +9,7 @@ import type {
 import {
   INDUSTRIES, BUSINESS_RISKS, ORG_SIZES, TECH_STACK_OPTIONS, DEMO_ORG_PROFILE,
 } from '@/types/org-profile'
+import { useOrgProfileStore } from '@/stores/org-profile-store'
 import {
   CheckCircle, Shield, Building2, AlertTriangle, Rocket, TrendingUp,
   ChevronRight, Clock, Mail, Volume2, VolumeX, Check, Circle,
@@ -33,7 +34,19 @@ export function TenantSettings({ data }: { data: ReturnType<typeof useCommandCen
   const plan = data.tenantPlan
   const isFree = plan === 'free'
 
-  const [orgProfile, setOrgProfile] = useState<OrgProfile>(DEMO_ORG_PROFILE)
+  const storeProfile = useOrgProfileStore(s => s.profile)
+  const setStoreProfile = useOrgProfileStore(s => s.setProfile)
+  const [orgProfile, setOrgProfileLocal] = useState<OrgProfile>(storeProfile ?? DEMO_ORG_PROFILE)
+
+  /** Update local state AND persist to org-profile store (localStorage). */
+  const setOrgProfile = useCallback((updater: OrgProfile | ((prev: OrgProfile) => OrgProfile)) => {
+    setOrgProfileLocal(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      setStoreProfile(next)
+      return next
+    })
+  }, [setStoreProfile])
+
   const [sensitivity, setSensitivity] = useState<AlertSensitivity>('balanced')
   const [notifications, setNotifications] = useState<NotificationPrefs>({
     digestFrequency: 'daily', realTimeAlerts: true, quietHoursStart: '22:00', quietHoursEnd: '07:00',

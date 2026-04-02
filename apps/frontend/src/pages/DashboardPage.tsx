@@ -33,6 +33,7 @@ import { TopCvesWidget } from '@/components/widgets/TopCvesWidget'
 import { RecentAlertsWidget } from '@/components/widgets/RecentAlertsWidget'
 import { SeverityTrendWidget } from '@/components/widgets/SeverityTrendWidget'
 import { ProfileMatchWidget } from '@/components/widgets/ProfileMatchWidget'
+import { GeoThreatWidget } from '@/components/widgets/GeoThreatWidget'
 
 // Locked imports from shared-ui
 import { IntelCard } from '@etip/shared-ui/components/IntelCard'
@@ -272,6 +273,7 @@ export function DashboardPage() {
           <TopCvesWidget />
           <RecentAlertsWidget />
           <SeverityTrendWidget />
+          <GeoThreatWidget profile={profile} />
           {mode === 'org-aware' && <ProfileMatchWidget profile={profile} />}
         </div>
 
