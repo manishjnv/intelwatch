@@ -16,10 +16,19 @@ vi.mock('@/stores/auth-store', () => ({
   ),
 }))
 
+vi.mock('@/hooks/use-dashboard-mode', () => ({
+  useDashboardMode: () => ({ mode: 'global', profile: null }),
+}))
+
 vi.mock('@/components/viz/SeverityHeatmap',    () => ({ SeverityHeatmap:    () => null }))
 vi.mock('@/components/viz/ParallaxCard',       () => ({ ParallaxCard:       ({ children }: { children: React.ReactNode }) => <>{children}</> }))
 vi.mock('@/components/viz/ThreatTimeline',     () => ({ ThreatTimeline:     () => null }))
 vi.mock('@/components/viz/AmbientBackground',  () => ({ AmbientBackground:  () => null }))
+vi.mock('@/components/widgets/ThreatLandscapeBanner', () => ({ ThreatLandscapeBanner: () => null }))
+vi.mock('@/components/widgets/RecentIocWidget', () => ({ RecentIocWidget: () => null }))
+vi.mock('@/components/widgets/IocTrendWidget', () => ({ IocTrendWidget: () => null }))
+vi.mock('@/components/widgets/FeedHealthWidget', () => ({ FeedHealthWidget: () => null }))
+vi.mock('@/components/widgets/TopActorsWidget', () => ({ TopActorsWidget: () => null }))
 
 import React from 'react'
 

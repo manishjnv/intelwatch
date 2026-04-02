@@ -57,11 +57,6 @@ vi.mock('@etip/shared-ui/components/IntelCard', () => ({
   IntelCard: ({ children, ...props }: any) => <div data-testid="intel-card" {...props}>{children}</div>,
 }))
 
-vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
-  PageStatsBar: ({ children }: any) => <div data-testid="page-stats-bar">{children}</div>,
-  CompactStat: ({ label }: any) => <span data-testid={`stat-${label}`}>{label}</span>,
-}))
-
 vi.mock('@etip/shared-ui/components/EntityChip', () => ({
   EntityChip: ({ value }: any) => <span data-testid="entity-chip">{value}</span>,
 }))
@@ -73,6 +68,16 @@ vi.mock('@etip/shared-ui/components/SeverityBadge', () => ({
 vi.mock('@etip/shared-ui/components/TooltipHelp', () => ({ TooltipHelp: () => null }))
 vi.mock('@etip/shared-ui/components/InlineHelp', () => ({ InlineHelp: () => null }))
 vi.mock('@etip/shared-ui/components/SkeletonBlock', () => ({ SkeletonBlock: () => <div data-testid="skeleton" /> }))
+
+// Dashboard widget + mode mocks
+vi.mock('@/hooks/use-dashboard-mode', () => ({
+  useDashboardMode: () => ({ mode: 'global', profile: null }),
+}))
+vi.mock('@/components/widgets/ThreatLandscapeBanner', () => ({ ThreatLandscapeBanner: () => null }))
+vi.mock('@/components/widgets/RecentIocWidget', () => ({ RecentIocWidget: () => null }))
+vi.mock('@/components/widgets/IocTrendWidget', () => ({ IocTrendWidget: () => null }))
+vi.mock('@/components/widgets/FeedHealthWidget', () => ({ FeedHealthWidget: () => null }))
+vi.mock('@/components/widgets/TopActorsWidget', () => ({ TopActorsWidget: () => null }))
 
 import { DashboardPage } from '@/pages/DashboardPage'
 import { IocListPage } from '@/pages/IocListPage'
@@ -149,14 +154,13 @@ describe('DashboardPage demo banner', () => {
     expect(screen.getByTestId('threat-timeline')).toBeInTheDocument()
   })
 
-  it('stats bar shows values from demo dashboard stats', () => {
+  it('renders welcome header with user name', () => {
     mockUseDashboardStats.mockReturnValue({
       data: { totalIOCs: 25, criticalIOCs: 5, activeFeeds: 4, enrichedToday: 12, lastIngestTime: 'Demo' },
       isDemo: true,
     })
     render(<DashboardPage />)
-    expect(screen.getByTestId('stat-Total IOCs')).toBeInTheDocument()
-    expect(screen.getByTestId('stat-Critical IOCs')).toBeInTheDocument()
+    expect(screen.getByText(/Welcome back/)).toBeInTheDocument()
   })
 })
 

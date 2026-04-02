@@ -1,32 +1,37 @@
 /**
  * @module pages/DashboardPage
- * @description Dashboard overview — uses design-locked IntelCard (3D hover)
- * and PageStatsBar + CompactStat from shared-ui.
+ * @description Dashboard overview — org-aware widgets, severity heatmap,
+ * feature cards, and threat timeline.
  *
  * Locked components used:
  *   - IntelCard (Framer Motion 3D hover — UI_DESIGN_LOCK.md)
- *   - PageStatsBar + CompactStat (py-2, bg-bg-elevated/50 — UI_DESIGN_LOCK.md)
  *   - TooltipHelp (20-UI-UX mandate)
  */
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
-import { useCountUp } from '@/hooks/use-count-up'
 import { MODULES } from '@/config/modules'
 import { useDashboardStats } from '@/hooks/use-intel-data'
-import { ArrowRight, Search, Activity, Shield, Globe, Lock } from 'lucide-react'
+import { useDashboardMode } from '@/hooks/use-dashboard-mode'
+import { ArrowRight, Search, Activity, Shield, Globe, Lock, Settings } from 'lucide-react'
 import { useFeatureLimits, type FeatureKey } from '@/hooks/use-feature-limits'
 import { useGlobalPipelineHealth } from '@/hooks/use-global-catalog'
 
-// UI improvements (#2, #13, #14, #15)
+// Viz components
 import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'
 import { ParallaxCard } from '@/components/viz/ParallaxCard'
 import { ThreatTimeline } from '@/components/viz/ThreatTimeline'
 import { AmbientBackground } from '@/components/viz/AmbientBackground'
 
-// ⛔ LOCKED imports from shared-ui
+// Dashboard widgets
+import { ThreatLandscapeBanner } from '@/components/widgets/ThreatLandscapeBanner'
+import { RecentIocWidget } from '@/components/widgets/RecentIocWidget'
+import { IocTrendWidget } from '@/components/widgets/IocTrendWidget'
+import { FeedHealthWidget } from '@/components/widgets/FeedHealthWidget'
+import { TopActorsWidget } from '@/components/widgets/TopActorsWidget'
+
+// Locked imports from shared-ui
 import { IntelCard } from '@etip/shared-ui/components/IntelCard'
-import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
 
 /* ------------------------------------------------------------------ */
@@ -36,7 +41,7 @@ interface QuickAction {
   label: string
   icon: React.ReactNode
   route?: string
-  action?: string // 'search' triggers Cmd+K
+  action?: string
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -44,29 +49,6 @@ const QUICK_ACTIONS: QuickAction[] = [
   { label: 'Manage Feeds', icon: <Activity className="w-3.5 h-3.5" />, route: '/command-center' },
   { label: 'Search Intel', icon: <Search className="w-3.5 h-3.5" />, action: 'search' },
 ]
-
-/* ------------------------------------------------------------------ */
-/* Animated stat display                                               */
-/* ------------------------------------------------------------------ */
-function AnimatedStat({ label, value, route, color }: {
-  label: string; value: number | string; route?: string; color?: string
-}) {
-  const numeric = typeof value === 'number' ? value : 0
-  const animated = useCountUp(numeric)
-  const display = typeof value === 'number' ? String(animated) : value
-  const navigate = useNavigate()
-
-  const inner = <CompactStat label={label} value={display} color={color} />
-
-  if (route) {
-    return (
-      <button onClick={() => navigate(route)} className="hover:opacity-80 transition-opacity cursor-pointer">
-        {inner}
-      </button>
-    )
-  }
-  return inner
-}
 
 /* ------------------------------------------------------------------ */
 /* Phase opacity for visual hierarchy                                  */
@@ -124,6 +106,33 @@ function GlobalPipelineWidget() {
           <span className="text-sm font-semibold text-text-primary tabular-nums">{pipeline?.avgNormalizeLatencyMs ?? 0}ms</span>
         </div>
       </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Org Profile CTA — shown when no profile set (not super admin)       */
+/* ------------------------------------------------------------------ */
+function OrgProfileCta() {
+  const navigate = useNavigate()
+  return (
+    <div
+      data-testid="org-profile-cta"
+      className="p-4 bg-accent/5 border border-accent/20 rounded-lg mb-6 flex items-center gap-4"
+    >
+      <Settings className="w-8 h-8 text-accent shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-text-primary">Personalize your dashboard</p>
+        <p className="text-xs text-text-muted mt-0.5">
+          Set your org profile to see threats relevant to your industry, tech stack, and risk areas.
+        </p>
+      </div>
+      <button
+        onClick={() => navigate('/command-center')}
+        className="px-3 py-1.5 rounded-md bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors shrink-0"
+      >
+        Set Up Profile
+      </button>
     </div>
   )
 }
@@ -196,6 +205,7 @@ export function DashboardPage() {
   const tenant = useAuthStore((s) => s.tenant)
   const navigate = useNavigate()
   const { data: liveStats } = useDashboardStats()
+  const { mode, profile } = useDashboardMode()
 
   // Trigger Cmd+K search
   const triggerSearch = () => {
@@ -209,16 +219,7 @@ export function DashboardPage() {
 
   return (
     <div className="relative">
-      {/* #15: Ambient background — dynamic pulse based on threat level */}
       <AmbientBackground threatLevel={threatLevel} />
-
-      {/* ⛔ LOCKED: PageStatsBar — py-2, bg-bg-elevated/50, text-xs (UI_DESIGN_LOCK.md) */}
-      <PageStatsBar>
-        <AnimatedStat label="Total IOCs" value={liveStats?.totalIOCs ?? '—'} route="/iocs" />
-        <AnimatedStat label="Active Feeds" value={liveStats?.activeFeeds ?? '—'} route="/feeds" />
-        <AnimatedStat label="Enriched Today" value={liveStats?.enrichedToday ?? '—'} route="/iocs" />
-        <AnimatedStat label="Critical IOCs" value={liveStats?.criticalIOCs ?? '—'} route="/iocs" color="text-sev-critical" />
-      </PageStatsBar>
 
       <div className="relative z-10 p-4 sm:p-6">
         {/* Welcome header + quick actions */}
@@ -230,7 +231,6 @@ export function DashboardPage() {
             {tenant?.name ?? 'Your organization'} &bull; Free tier
           </p>
 
-          {/* Quick action pills */}
           <div className="flex flex-wrap items-center gap-2 mt-3">
             {QUICK_ACTIONS.map((qa) => (
               <button
@@ -249,17 +249,28 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Global Pipeline widget (DECISION-029) */}
+        {/* Conditional: Threat Landscape banner or Org Profile CTA */}
+        {mode === 'org-aware' && profile && <ThreatLandscapeBanner profile={profile} />}
+        {mode === 'global' && <OrgProfileCta />}
+
+        {/* Global Pipeline */}
         <GlobalPipelineWidget />
 
-        {/* #2: Severity Heatmap Grid */}
+        {/* Severity Heatmap */}
         <SeverityHeatmap className="mb-6" />
 
-        {/* Feature cards grid — ⛔ LOCKED: IntelCard with Framer Motion 3D hover, WRAPPED with #13 ParallaxCard */}
+        {/* Widget grid — responsive 1/2/3/4 cols */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
+          <RecentIocWidget />
+          <IocTrendWidget />
+          <FeedHealthWidget />
+          <TopActorsWidget profile={profile} />
+        </div>
+
+        {/* Feature cards */}
         <DashboardFeatureCards navigate={navigate} />
 
-
-        {/* #14: Threat Timeline */}
+        {/* Threat Timeline */}
         <ThreatTimeline className="mt-6" />
       </div>
     </div>
