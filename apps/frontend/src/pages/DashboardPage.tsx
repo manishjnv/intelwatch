@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import { useCountUp } from '@/hooks/use-count-up'
-import { MODULES, getPhaseColor, getPhaseBgColor } from '@/config/modules'
+import { MODULES } from '@/config/modules'
 import { useDashboardStats } from '@/hooks/use-intel-data'
 import { ArrowRight, Search, Activity, Shield, Globe, Lock } from 'lucide-react'
 import { useFeatureLimits, type FeatureKey } from '@/hooks/use-feature-limits'
@@ -41,7 +41,7 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { label: 'View IOCs', icon: <Shield className="w-3.5 h-3.5" />, route: '/iocs' },
-  { label: 'Manage Feeds', icon: <Activity className="w-3.5 h-3.5" />, route: '/feeds' },
+  { label: 'Manage Feeds', icon: <Activity className="w-3.5 h-3.5" />, route: '/command-center' },
   { label: 'Search Intel', icon: <Search className="w-3.5 h-3.5" />, action: 'search' },
 ]
 
@@ -149,8 +149,6 @@ function DashboardFeatureCards({ navigate }: { navigate: (path: string) => void 
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {MODULES.map((mod) => {
         const Icon = mod.icon
-        const phaseColor = getPhaseColor(mod.phase)
-        const phaseBg = getPhaseBgColor(mod.phase)
         const featureKey = DASHBOARD_FEATURE_MAP[mod.route]
         const isGated = featureKey ? !(features.find(f => f.featureKey === featureKey)?.enabled ?? true) : false
 
@@ -175,17 +173,9 @@ function DashboardFeatureCards({ navigate }: { navigate: (path: string) => void 
                 <Icon size={20} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1">
-                    <h3 className="text-sm font-medium text-[var(--text-primary)] truncate">{mod.title}</h3>
-                    <TooltipHelp message={mod.helpText} size={3} />
-                  </div>
-                  <span className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium',
-                    phaseBg, phaseColor,
-                  )}>
-                    Phase {mod.phase}
-                  </span>
+                <div className="flex items-center gap-1">
+                  <h3 className="text-sm font-medium text-[var(--text-primary)] truncate">{mod.title}</h3>
+                  <TooltipHelp message={mod.helpText} size={3} />
                 </div>
                 <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">{mod.description}</p>
               </div>
