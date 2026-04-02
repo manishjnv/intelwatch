@@ -6,7 +6,7 @@
  */
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { computeDecayCurve, buildEventMarkers, halfLifeLabel, type CurvePoint, type EventMarker } from '@/utils/confidence-decay'
+import { computeDecayCurve, buildEventMarkers, halfLifeLabel } from '@/utils/confidence-decay'
 import type { IOCTimelineEvent } from '@/hooks/use-intel-data'
 
 interface ConfidenceDecayChartProps {
