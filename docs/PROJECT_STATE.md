@@ -1,12 +1,12 @@
 # ETIP Project State
 **Last updated:** 2026-04-02 (update at end of EVERY session via /session-end)
-**Session counter:** 134 — S134 (1/3): Org-aware dashboard redesign. Removed PageStatsBar/Phase badges. Added org-profile-store (Zustand+localStorage), use-dashboard-mode hook (3 modes: org-aware/global/super-admin), 4 widgets (RecentIoc, IocTrend, FeedHealth, TopActors), ThreatLandscapeBanner, OrgProfileCta. Conditional rendering by mode. 25 dashboard tests updated. Deployed.
+**Session counter:** 136 — S136 (3/3): Dashboard redesign COMPLETE. GeoThreatWidget (9th widget, country bar chart, org-aware highlighting). Command Center TenantSettings wired to useOrgProfileStore (E2E persistence). 16 new tests. All 9 user-selected widgets in grid. Deployed.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.2.3 | 2026-03-31 | Health check passing. **Session 127:** TAXII 2.1 (discovery/collections/objects), webhook Stripe-style backoff (6 attempts), GET /changelog, SDK scaffolding. 279 tests. |
-| etip_frontend | ✅ Running | 0.19.0 | 2026-04-02 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 134 (S134):** Org-aware dashboard with 4 widgets, 3-mode rendering, org-profile store. 1,526 tests. |
+| etip_frontend | ✅ Running | 0.20.0 | 2026-04-02 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 136 (S136):** Dashboard redesign 3/3 COMPLETE. 9 widgets, GeoThreatWidget, Command Center org-profile wiring. 1,542 tests. |
 | etip_es_indexing | ✅ Deployed | 0.2.0 | 2026-04-01 | Port 3020. Module 20. Elasticsearch IOC indexing. 116 tests. Per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete). BullMQ worker + full-text search + aggregations. RCA #42 fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
-| frontend | 1 | ✅ UI FROZEN | 2026-04-02 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,526 tests. **Session 134 (S134):** Org-aware dashboard redesign (1/3). 4 widgets, 3-mode conditional rendering, org-profile store. |
+| frontend | 1 | ✅ UI FROZEN | 2026-04-02 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,542 tests. **Session 136 (S136):** Dashboard redesign 3/3 COMPLETE. 9 widgets (RecentIoc, IocTrend, FeedHealth, TopActors, TopCves, RecentAlerts, SeverityTrend, GeoThreat, ProfileMatch), org-profile E2E wiring, 3-mode conditional rendering. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-04-01 | Port 3020. Module 20. Phase 7. BullMQ worker, ES client, per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete), type-specific mappings, migration route. 116 tests. RCA #42 fixed. **Session 132:** per-type indices + ILM. |
 | ingestion | 2 | ✅ Deployed | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 129-130:** 7 new connectors (ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, OTX). 770 tests. |
 | normalization | 2 | ✅ Deployed | 2026-04-01 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 133:** Majestic Million integration in global-normalize-worker, URL domain extraction for warninglist check, confidence penalty for flagged IOCs. 322 tests. |
@@ -143,8 +143,8 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-133.
-- **Last session outcome:** Session 133 (2026-04-01). **S133: Majestic Million top-domain whitelist for FP reduction.** (1) `packages/shared-normalization`: Majestic Million CSV loader with file cache, `action:'drop'|'flag'` warninglist field, Set-based O(1) hostname matching with subdomain traversal, URL domain extraction. 28 new tests (250 total). (2) `apps/normalization`: URL domain extraction before warninglist check in global-normalize-worker, confidence penalty for flagged IOCs, `possible-false-positive` tagging. 322 tests. (3) Config: TI_MAJESTIC_ENABLED, TI_MAJESTIC_TOP_N, TI_MAJESTIC_CONFIDENCE_PENALTY env vars. Commit b3e0244. Deployed. 32/32 containers healthy.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-136.
+- **Last session outcome:** Session 136 (2026-04-02). **S136: Dashboard redesign session 3/3 COMPLETE.** (1) `GeoThreatWidget.tsx` (108 lines): Country horizontal bar chart, top 8 countries, flag emojis, org-aware highlighting (profile.geography.country match). (2) `DashboardPage.tsx`: GeoThreatWidget wired as 9th widget in grid. (3) `TenantSettings.tsx`: Replaced local useState with useOrgProfileStore — form changes now persist to localStorage, enabling E2E flow (form → store → useDashboardMode → widget highlighting). (4) 16 new tests in `dashboard-s136.test.tsx`. Commit 165299b. CI run 23879964450 green. Deployed. 32/32 containers healthy.
 - **Known issues:** Shodan/GreyNoise/GSB/IPinfo API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts).
 - **Next tasks:** (1) Set TI_IPINFO_TOKEN + TI_GSB_API_KEY on VPS to activate IPinfo and GSB. (2) Cyber news feed strategy implementation. (3) IOC strategy implementation. (4) Set Shodan/GreyNoise API keys on VPS.
 
@@ -262,6 +262,9 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 131 | 2026-04-01 | etip_enrichment redeployed (S131 Google Safe Browsing) | ✅ All 33 healthy | 1c51d87 | GSB v4 provider for url/domain/fqdn. 8k/day rate limit, batch 500 URLs/call. 289 ai-enrichment tests. |
 | 132 | 2026-04-01 | etip_enrichment redeployed (S132 IPinfo.io + ES indices) | ✅ All 32 healthy | 6a394be, 5147007, 5fc6f8a | IPinfo.io provider (ip/ipv6, 314 tests). Per-IOC-type ES indices + ILM lifecycle (116 tests). |
 | 133 | 2026-04-01 | etip_normalization redeployed (S133 Majestic Million whitelist) | ✅ All 32 healthy | b3e0244 | Majestic Million top-domain whitelist for FP reduction. action:'drop'|'flag' warninglist, Set-based O(1) hostname matching, URL domain extraction. 250 shared-normalization tests (28 new), 322 normalization tests. |
+| 134 | 2026-04-02 | etip_frontend redeployed (S134 dashboard 1/3) | ✅ All 32 healthy | a72a2b2 | Org-aware dashboard: 4 widgets, 3-mode rendering, org-profile store. 1,526 frontend tests. |
+| 135 | 2026-04-02 | etip_frontend redeployed (S135 dashboard 2/3) | ✅ All 32 healthy | d1c033b | 5 more widgets + SeverityHeatmap org-awareness. |
+| 136 | 2026-04-02 | etip_frontend redeployed (S136 dashboard 3/3 COMPLETE) | ✅ All 32 healthy | 165299b | GeoThreatWidget (9th widget), Command Center org-profile wiring, 16 new tests. Dashboard redesign COMPLETE. CI run 23879964450. |
 
 ## E2E Verification Results (Session 13)
 
