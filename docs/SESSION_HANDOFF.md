@@ -1,86 +1,63 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-04-02
-**Session:** 136
-**Session Summary:** S136: Dashboard redesign session 3/3 COMPLETE. GeoThreatWidget (9th widget), Command Center org-profile wiring to useOrgProfileStore, 16 integration tests. All 9 user-selected widgets in grid. Deployed.
+**Session:** 138
+**Session Summary:** S138: Dashboard Intelligence Upgrade Phase 2 — Investigation Drawer (click-to-enrich), Geo dot-map (SVG), freshness indicators. Removed admin-scope widgets (FeedHealth, FeedValue, QuickActionsBar). 9 analyst widgets. 1,615 frontend tests. Deployed.
 
-## ✅ Changes Made
+## Changes Made
+| Commit | Files | Description |
+|--------|-------|-------------|
+| 16478c1 | 19 | feat: Dashboard Phase 2 — InvestigationDrawer, GeoThreatWidget dot-map, FeedValueWidget, QuickActionsBar, freshness utility, all S137/S138 widgets + tests |
+| 5e287ff | 1 | fix: update S136 tests — geo-row → geo-dot-map testids |
+| 57c240c | 3 | fix: remove FeedHealth, FeedValue, QuickActionsBar from dashboard — admin scope cleanup |
 
-- `165299b` — feat: GeoThreatWidget + Command Center org-profile wiring + 16 tests (S136) — 4 files, 466 insertions, 2 deletions
-
-## 📁 Files / Documents Affected
+## Files / Documents Affected
 
 ### New Files
-
 | File | Purpose |
 |------|---------|
-| apps/frontend/src/components/widgets/GeoThreatWidget.tsx | Country horizontal bar chart — top 8 countries by IOC count, flag emojis, org-aware highlighting (profile.geography.country match), demo geo data scaled to topActors (108 lines) |
-| apps/frontend/src/__tests__/dashboard-s136.test.tsx | 16 integration tests: GeoThreatWidget (6), DashboardPage full grid (5), TenantSettings store wiring (5) (332 lines) |
+| `src/lib/freshness.ts` | `getFreshness()` utility — 5-tier age indicator (just-now/hours/days/weeks/stale) |
+| `src/hooks/use-investigation-drawer.ts` | React context + state for drawer open/close/payload. Graceful NOOP fallback without provider. |
+| `src/components/investigation/InvestigationDrawer.tsx` | Slide-over panel: enrichment summary, related actors, timestamps, corroboration, action buttons |
+| `src/components/widgets/FeedValueWidget.tsx` | Feed quality ranking (created then removed from dashboard — kept as component for Command Center use) |
+| `src/components/dashboard/QuickActionsBar.tsx` | Export/Share/Refresh/DateRange (created then removed from dashboard — kept as component) |
+| `src/__tests__/dashboard-s138.test.tsx` | 27 tests for all S138 features |
 
 ### Modified Files
+| File | Changes |
+|------|---------|
+| `src/components/widgets/RecentIocWidget.tsx` | Added freshness dots + relative timestamps, click-to-investigate drawer |
+| `src/components/widgets/ThreatScoreWidget.tsx` | Added click-to-investigate drawer on IOC rows |
+| `src/components/widgets/TopCvesWidget.tsx` | Added click-to-investigate drawer on CVE rows |
+| `src/components/widgets/GeoThreatWidget.tsx` | Replaced bar chart with SVG dot-map (25 countries, color intensity, org pulse, hover tooltip) |
+| `src/pages/DashboardPage.tsx` | Added InvestigationDrawerProvider + InvestigationDrawer. Removed FeedHealth/FeedValue/QuickActionsBar. |
+| `src/__tests__/dashboard-s136.test.tsx` | Updated geo tests from geo-row testids to geo-dot-map/geo-legend |
+| `src/__tests__/dashboard-org-aware.test.tsx` | Removed feed-health-widget-mock assertion |
 
-| File | Change |
-|------|--------|
-| apps/frontend/src/pages/DashboardPage.tsx | +GeoThreatWidget import, +GeoThreatWidget in widget grid between SeverityTrend and ProfileMatch |
-| apps/frontend/src/components/command-center/TenantSettings.tsx | Replaced local `useState<OrgProfile>` with `useOrgProfileStore` — form changes now persist to localStorage via Zustand store, enabling E2E flow: form → store → useDashboardMode() → org-aware widgets |
+## Decisions & Rationale
+- No formal DECISION entry. Key choices: (1) Dot-map over country-path SVG (lighter, no d3-geo). (2) Investigation drawer hook uses NOOP fallback instead of throwing when no provider — widgets render standalone in tests. (3) Removed FeedHealth/FeedValue/QuickActionsBar per user review — admin scope, duplicated functionality.
 
-## 🔧 Decisions & Rationale
+## E2E / Deploy Verification Results
+- CI run 23890451261: green (9m12s) — S138 Phase 2 features
+- CI run 23891843411: green (8m49s) — cleanup commit
+- VPS: `etip_frontend` Up, healthy
+- 95/95 test files, 1,615 tests passing, 0 failures
 
-No new architectural decisions. Followed existing widget pattern (S134 TopActorsWidget). Geo data uses demo mapping (no country field on TopActor type) — consistent with demo fallback approach across all widgets.
+## Open Items / Next Steps
+**Immediate:**
+1. Set TI_IPINFO_TOKEN + TI_GSB_API_KEY on VPS to activate IPinfo and GSB
+2. Cyber news feed strategy implementation (per docs/ETIP_Cyber_News_Feed_Strategy_v1.docx)
+3. IOC strategy implementation (per docs/ETIP_IOC_Strategy.docx)
 
-## 🧪 E2E / Deploy Verification Results
+**Deferred:**
+- Wire FeedValueWidget into Command Center (admin view) instead of dashboard
+- Wire real enrichment API to InvestigationDrawer (currently uses demo data)
+- ProfileMatchWidget not wired to investigation drawer
 
+## How to Resume
 ```
-CI/CD: Run 23879964450 — ✅ All 3 jobs passed
-  - Test, Type-check, Lint & Audit: ✅
-  - Build & Push Docker Images: ✅
-  - Deploy to VPS: ✅
-
-Frontend tests: 42 dashboard tests passing (16 new S136 + 19 S135 + 7 S134, 0 regressions)
-TypeScript: 0 new errors (pre-existing in other test files unchanged)
-All 32/32 containers healthy on VPS
+/session-start
+Working on: [next module]. Do not modify: apps/frontend (dashboard stable).
 ```
 
-## ⚠️ Open Items / Next Steps
-
-### Immediate
-
-1. **Set TI_IPINFO_TOKEN on VPS** — activate IPinfo.io geolocation enrichment
-2. **Set TI_GSB_API_KEY on VPS** — activate Google Safe Browsing
-3. **Cyber news feed strategy** — docs/ETIP_Cyber_News_Feed_Strategy_v1.docx
-4. **IOC strategy implementation** — docs/ETIP_IOC_Strategy.docx
-
-### Deferred
-
-5. Set Shodan/GreyNoise API keys on VPS (enrichment degrades gracefully)
-6. Wire fuzzyDedupeHash column in Prisma schema
-7. Fix vitest alias caching for @etip/shared-normalization
-8. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts)
-9. Add real geo data to TopActor type when backend supports country field
-
-## 🔁 How to Resume
-
-```
-Session 137: Continue with Cyber News Feed strategy or IOC Strategy
-
-Read docs/PROJECT_STATE.md, docs/SESSION_HANDOFF.md
-
-Session 136: Dashboard redesign 3/3 COMPLETE.
-- GeoThreatWidget: country bar chart, org-aware, 108 lines
-- TenantSettings: wired to useOrgProfileStore (E2E persistence)
-- 9 widgets in dashboard grid: RecentIoc, IocTrend, FeedHealth, TopActors,
-  TopCves, RecentAlerts, SeverityTrend, GeoThreat, ProfileMatch
-- Org-profile E2E: TenantSettings form → store → useDashboardMode → widgets
-- 16 new tests, 0 regressions, deployed
-
-Frozen modules: shared-types, shared-utils, shared-auth, shared-cache, shared-audit,
-  shared-normalization, shared-enrichment, shared-ui, api-gateway, user-service,
-  frontend, ingestion, normalization, ai-enrichment
-
-Module -> skill file map:
-  ai-enrichment -> skills/06-AI-ENRICHMENT.md
-  ingestion -> skills/04-INGESTION.md
-  normalization -> skills/05-NORMALIZATION.md
-  frontend -> skills/20-UI-UX.md
-  testing -> skills/02-TESTING.md
-```
+Dashboard is stable with 9 analyst widgets + investigation drawer. Next work should focus on cyber news feed strategy or IOC strategy per the docs.
