@@ -1,6 +1,6 @@
 # ETIP Project State
 **Last updated:** 2026-04-03 (update at end of EVERY session via /session-end)
-**Session counter:** 143 — S143: Search page best-in-class — card/table view toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu. 77 new tests. 1,785 frontend tests. Deployed.
+**Session counter:** 144 — S144: Fix IOC list sorting/filtering — query param mismatch (sortBy→sort, q→search), removed unsupported sortable columns. Deployed.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
-| frontend | 1 | ✅ UI FROZEN | 2026-04-03 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,785 tests. **Session 143:** Search page best-in-class — card/table view toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu. 77 new tests. |
+| frontend | 1 | ✅ UI FROZEN | 2026-04-03 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,785 tests. **Session 144:** Fix IOC list sort/filter params (sortBy→sort, q→search) + remove 4 unsupported sortable columns. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-04-01 | Port 3020. Module 20. Phase 7. BullMQ worker, ES client, per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete), type-specific mappings, migration route. 116 tests. RCA #42 fixed. **Session 132:** per-type indices + ILM. |
 | ingestion | 2 | ✅ Deployed | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 129-130:** 7 new connectors (ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, OTX). 770 tests. |
 | normalization | 2 | ✅ Deployed | 2026-04-02 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 139:** Response envelope fix (data.data shape for frontend api() helper). 322 tests. |
@@ -143,10 +143,10 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-143.
-- **Last session outcome:** Session 143 (2026-04-03). **S143: Search Page Best-in-Class.** Brought /search to feature parity with /iocs while adding search-specific differentiators. 11 new files, 9 modified, 77 new tests. Features: (1) Card/table view toggle (ViewToggle.tsx). (2) SearchStatsBar — "X results in Yms" + type distribution mini-bar + severity dots. (3) SearchResultCard — card-view layout with highlights, severity, confidence, tags. (4) BulkSearchModal — paste 10-100 IOCs, found vs not-found analysis, export gaps. (5) SavedSearches — named presets, 3 defaults, save/delete/share via URL. (6) SearchHistoryPanel — last 20 searches with timestamps, localStorage. (7) SearchSyntaxHelper — enhanced syntax reference popover. (8) Multi-select with QuickActionToolbar integration. (9) Right-click IocContextMenu. (10) Expandable inline enrichment rows. (11) Term highlighting in table and card views. (12) Keyboard navigation in SearchBar (ArrowUp/Down/Enter/Esc). Commits: 34e826f (feat) + e1bf588 (docs). CI run 23929720929 green. Deployed. 1,785 frontend tests (109 files, +77 new).
-- **Known issues:** Shodan/GreyNoise/GSB/IPinfo API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts). InvestigationDrawer uses demo enrichment data. POST /api/v1/iocs does NOT exist (Create IOC modal is stubbed). Bulk re-enrichment endpoint not built. MITRE badges show only for IOCs with cached enrichment data (progressive fill). BulkSearchModal found/not-found requires ES backend to fully function.
-- **Next tasks:** (1) Set TI_IPINFO_TOKEN + TI_GSB_API_KEY on VPS to activate IPinfo and GSB. (2) Cyber news feed strategy implementation. (3) IOC strategy implementation. (4) POST /api/v1/iocs backend endpoint for manual IOC submission. (5) Bulk re-enrichment backend endpoint.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-144.
+- **Last session outcome:** Session 144 (2026-04-03). **S144: IOC List Sort/Filter Bugfix.** Fixed 3 bugs preventing IOC list page sorting and filtering from working: (1) sortBy/sortOrder→sort/order param rename (backend expects sort/order, Zod silently defaulted). (2) q→search param rename for text search. (3) Removed sortable flag from 4 columns backend doesn't support (normalizedValue, corroborationCount, iocType, lifecycle). Commits: d517ea0 (fix). CI run 23929832680 green. Deployed.
+- **Known issues:** Shodan/GreyNoise/GSB/IPinfo API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts). InvestigationDrawer uses demo enrichment data. POST /api/v1/iocs does NOT exist (Create IOC modal is stubbed). Bulk re-enrichment endpoint not built. MITRE badges show only for IOCs with cached enrichment data (progressive fill). BulkSearchModal found/not-found requires ES backend to fully function. IOC list `source` filter (Global/Private) has no backend support — only works in demo mode. IOC list `hasCampaign` filter has no backend support — only works in demo mode.
+- **Next tasks:** (1) Set TI_IPINFO_TOKEN + TI_GSB_API_KEY on VPS to activate IPinfo and GSB. (2) Cyber news feed strategy implementation. (3) IOC strategy implementation. (4) POST /api/v1/iocs backend endpoint for manual IOC submission. (5) Bulk re-enrichment backend endpoint. (6) Add `source` and `hasCampaign` filter support to ioc-intelligence backend schema.
 
 ## Deployment Log
 
@@ -272,6 +272,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 141 | 2026-04-02 | etip_frontend redeployed (S141 IOC Tier 3) | ✅ All 32 healthy | e9a071c, d179a22 | IOC Intelligence Tier 3 (Best-in-Class): Confidence decay chart, MITRE ATT&CK badges, risk propagation banner, IOC compare panel, inline enrichment expansion. DataTable expandable rows. 7 new + 12 modified files. 1,708 frontend tests (+49). CI run 23903961558 green. |
 | 141b | 2026-04-02 | etip_ingestion redeployed (OTX connector commit) | ✅ All 32 healthy | d592482 | OTX connector wired into feed-fetch worker (was deployed S130, never committed). Prisma: otx FeedType enum. Delta cursor. 770 ingestion tests. CI run 23905660133 green (deploy retried — SSH broken pipe on first attempt). |
 | 143 | 2026-04-03 | etip_frontend redeployed (S143 Search page best-in-class) | ✅ All 32 healthy | 34e826f | Search page best-in-class — card view, bulk search, saved presets, multi-select, highlights. 1,785 frontend tests (+77). |
+| 144 | 2026-04-03 | etip_frontend redeployed (S144 IOC sort/filter fix) | ✅ All 32 healthy | d517ea0 | Fix IOC list sorting (sortBy→sort, sortOrder→order) + search (q→search) + remove 4 unsupported sortable columns. |
 
 ## E2E Verification Results (Session 13)
 
