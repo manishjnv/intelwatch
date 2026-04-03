@@ -50,8 +50,8 @@ export function IocListPage() {
   const debouncedSearch = useDebouncedValue(search, 300)
 
   const queryParams = useMemo(() => ({
-    page, limit: 50, sortBy, sortOrder,
-    ...(debouncedSearch ? { q: debouncedSearch } : {}),
+    page, limit: 50, sort: sortBy, order: sortOrder,
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
     ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
   }), [page, debouncedSearch, sortBy, sortOrder, filters])
 

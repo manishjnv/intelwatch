@@ -29,7 +29,7 @@ export function getIocColumns(deps: ColumnDeps): Column<IOCRecord>[] {
 
   return [
     {
-      key: 'normalizedValue', label: 'Value', sortable: true, width: '24%',
+      key: 'normalizedValue', label: 'Value', width: '24%',
       render: (row: IOCRecord) => (
         <EntityPreview type={row.iocType} value={row.normalizedValue} severity={row.severity}
           confidence={row.confidence} firstSeen={row.firstSeen} lastSeen={row.lastSeen} tags={row.tags}>
@@ -38,7 +38,7 @@ export function getIocColumns(deps: ColumnDeps): Column<IOCRecord>[] {
       ),
     },
     {
-      key: 'corroborationCount', label: 'Corrob.', sortable: true, width: '5%',
+      key: 'corroborationCount', label: 'Corrob.', width: '5%',
       render: (row: IOCRecord) => {
         const count = row.corroborationCount ?? 0
         if (count <= 1) return null
@@ -55,7 +55,7 @@ export function getIocColumns(deps: ColumnDeps): Column<IOCRecord>[] {
       },
     },
     {
-      key: 'iocType', label: 'Type', sortable: true, width: '7%',
+      key: 'iocType', label: 'Type', width: '7%',
       render: (row: IOCRecord) => (
         <span className="text-text-muted uppercase text-[10px] font-mono">{row.iocType}</span>
       ),
@@ -94,7 +94,7 @@ export function getIocColumns(deps: ColumnDeps): Column<IOCRecord>[] {
       },
     },
     {
-      key: 'lifecycle', label: 'Lifecycle', sortable: true, width: '7%',
+      key: 'lifecycle', label: 'Lifecycle', width: '7%',
       render: (row: IOCRecord) => {
         const colors: Record<string, string> = {
           new: 'text-accent bg-accent/10', active: 'text-sev-low bg-sev-low/10',
