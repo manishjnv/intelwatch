@@ -1,12 +1,12 @@
 # ETIP Project State
-**Last updated:** 2026-04-02 (update at end of EVERY session via /session-end)
-**Session counter:** 142 — S142: IOC Intelligence Tier 3 — 5 differentiator features (confidence decay chart, MITRE badges, risk propagation banner, IOC compare panel, inline enrichment expansion). 12 new files, 7 modified, 81 new tests. 1,708 frontend tests. Deployed.
+**Last updated:** 2026-04-03 (update at end of EVERY session via /session-end)
+**Session counter:** 143 — S143: Search page best-in-class — card/table view toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu. 77 new tests. 1,785 frontend tests. Deployed.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
 |---------|--------|---------|-------------|-------|
 | etip_api | ✅ Running | 0.2.3 | 2026-03-31 | Health check passing. **Session 127:** TAXII 2.1 (discovery/collections/objects), webhook Stripe-style backoff (6 attempts), GET /changelog, SDK scaffolding. 279 tests. |
-| etip_frontend | ✅ Running | 0.24.0 | 2026-04-02 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 142:** IOC Tier 3 — Confidence decay chart, MITRE badges, risk propagation banner, IOC compare panel, inline enrichment expansion. 1,708 tests. |
+| etip_frontend | ✅ Running | 0.24.0 | 2026-04-03 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 143:** Search page best-in-class — card/table toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu. 1,785 tests. |
 | etip_es_indexing | ✅ Deployed | 0.2.0 | 2026-04-01 | Port 3020. Module 20. Elasticsearch IOC indexing. 116 tests. Per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete). BullMQ worker + full-text search + aggregations. RCA #42 fixed. |
 | etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
@@ -49,7 +49,7 @@
 | shared-enrichment | 1 | ✅ Deployed | 2026-03-15 | None |
 | shared-ui | 1 | ✅ Deployed | 2026-03-15 | None |
 | user-service | 1 | ✅ Deployed | 2026-03-30 | **Session 118 (I-22):** Break-glass emergency account — BreakGlassService (login/status/audit/rotatePassword/forceTerminate), break-glass-repository, normal login exclusion, non-renewable session guard. 15 new tests (136 user-service total). |
-| frontend | 1 | ✅ UI FROZEN | 2026-04-02 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,708 tests. **Session 142:** IOC Tier 3 — Confidence decay chart (SVG, DECISION-015 rates), MITRE ATT&CK badges (table+detail), Risk propagation banner, IOC compare panel (2-3 column diff), Inline enrichment expansion (DataTable expandable rows). 12 new components, 81 new tests. |
+| frontend | 1 | ✅ UI FROZEN | 2026-04-03 | **24 data pages + Command Center (10 tabs SA / 7 TA)**. 1,785 tests. **Session 143:** Search page best-in-class — card/table view toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu. 77 new tests. |
 | elasticsearch-indexing-service | 7 | ✅ Deployed | 2026-04-01 | Port 3020. Module 20. Phase 7. BullMQ worker, ES client, per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete), type-specific mappings, migration route. 116 tests. RCA #42 fixed. **Session 132:** per-type indices + ILM. |
 | ingestion | 2 | ✅ Deployed | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** + P3-4 queue lanes + P3-7 tenant fairness. **Session 129-130:** 7 new connectors (ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, OTX). 770 tests. |
 | normalization | 2 | ✅ Deployed | 2026-04-02 | Port 3005. 18 accuracy improvements + G2/G4b + P2-1. **Session 139:** Response envelope fix (data.data shape for frontend api() helper). 322 tests. |
@@ -271,6 +271,7 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 | 140 | 2026-04-02 | etip_frontend redeployed (S140 IOC Tier 2) | ✅ All 32 healthy | 3643bf7 | IOC Intelligence Tier 2: Multi-select bulk actions, Create IOC modal, Right-click context menu, Saved filter presets. IocListPage refactored 399→245 lines (6 extractions). 16 new files. 1,659 frontend tests (+32). CI run 23898205818 green. |
 | 141 | 2026-04-02 | etip_frontend redeployed (S141 IOC Tier 3) | ✅ All 32 healthy | e9a071c, d179a22 | IOC Intelligence Tier 3 (Best-in-Class): Confidence decay chart, MITRE ATT&CK badges, risk propagation banner, IOC compare panel, inline enrichment expansion. DataTable expandable rows. 7 new + 12 modified files. 1,708 frontend tests (+49). CI run 23903961558 green. |
 | 141b | 2026-04-02 | etip_ingestion redeployed (OTX connector commit) | ✅ All 32 healthy | d592482 | OTX connector wired into feed-fetch worker (was deployed S130, never committed). Prisma: otx FeedType enum. Delta cursor. 770 ingestion tests. CI run 23905660133 green (deploy retried — SSH broken pipe on first attempt). |
+| 143 | 2026-04-03 | etip_frontend redeployed (S143 Search page best-in-class) | ✅ All 32 healthy | 34e826f | Search page best-in-class — card view, bulk search, saved presets, multi-select, highlights. 1,785 frontend tests (+77). |
 
 ## E2E Verification Results (Session 13)
 

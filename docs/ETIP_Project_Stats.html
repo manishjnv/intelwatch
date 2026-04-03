@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 142 &middot; 2026-04-02 &middot; S142: IOC Intelligence Tier 3 — Confidence decay chart, MITRE badges, Risk propagation, IOC compare, Inline expansion. 32/32 containers healthy. ~8,450 tests</span>
+  <span class="version">Session 143 &middot; 2026-04-03 &middot; S143: Search page best-in-class — card/table view toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu. 32/32 containers healthy. ~8,527 tests</span>
 </div>
 </div>
 
@@ -91,7 +91,7 @@ li strong { color: var(--text-primary); }
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
     <div class="stat-card"><div class="stat-value">~8,450</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">142</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">143</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass + public API (TAXII 2.1, webhooks, changelog, SDK)</td><td>279</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Org-Aware Dashboard (9 widgets) + IOC Tier 1-3 (Stats, Enrichment, Corroboration, Multi-select, Create, Context Menu, Presets, Decay Chart, MITRE Badges, Risk Propagation, Compare, Inline Expansion) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,708</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Org-Aware Dashboard (9 widgets) + IOC Tier 1-3 (Stats, Enrichment, Corroboration, Multi-select, Create, Context Menu, Presets, Decay Chart, MITRE Badges, Risk Propagation, Compare, Inline Expansion) + Search Page (card/table toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu) + MFA + Sessions + FeatureGate + Access Review + Compliance + Offboarding + Break-Glass + SSO Config</td><td>1,785</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 13 Connectors (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX) + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>750</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats + KEV/EPSS severity rules + Majestic Million FP whitelist</td><td>322</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch)</td><td>314</td></tr>
@@ -537,20 +537,20 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 141</span> IOC Intelligence Tier 1+2+3 COMPLETE — Next: Cyber News / IOC Strategy</div>
+    <div class="card-title"><span class="badge badge-green">Session 143</span> Search Page Best-in-Class COMPLETE — Next: Session 144 TBD</div>
     <div class="card-body">
-      <strong>Session 141 (2026-04-02):</strong> IOC Intelligence Page — Tier 3 (Best-in-Class):<br>
-      &bull; <strong>Confidence Decay Chart:</strong> Animated SVG line chart with exponential decay per DECISION-015, type-specific half-lives (IP 14d, hash 693d), event markers.<br>
-      &bull; <strong>MITRE ATT&amp;CK TTP Badges:</strong> Compact technique IDs color-coded by tactic (14 tactic colors, 25 technique catalog), MitreDetailSection in detail panel.<br>
-      &bull; <strong>Risk Propagation Banner:</strong> Animated amber banner showing correlation events per DECISION-020, dismissible.<br>
-      &bull; <strong>IOC Quick Compare:</strong> Full-screen modal comparing 2-3 IOCs side-by-side, diff highlighting on differing fields.<br>
-      &bull; <strong>Expandable Inline Enrichment:</strong> Accordion rows showing VT ratio, AbuseIPDB score, geo flag, risk verdict. DataTable enhanced.<br>
-      &bull; <strong>Tests:</strong> 49 new tests, 1,708 frontend tests (106 files). CI run 23903961558 green.<br><br>
-      <strong>IOC Page Status:</strong> Tier 1 (stats, enrichment, corroboration) + Tier 2 (multi-select, create, context menu, presets) + Tier 3 (decay, MITRE, propagation, compare, expand) = <strong>COMPLETE</strong>.<br><br>
+      <strong>Session 143 (2026-04-03):</strong> Search Page — Best-in-Class:<br>
+      &bull; <strong>Card / Table View Toggle:</strong> Switch between card grid and compact table layouts with persisted preference.<br>
+      &bull; <strong>Bulk IOC Search:</strong> Paste or upload multiple IOC values for batch lookup across all types.<br>
+      &bull; <strong>Saved Presets:</strong> Save, name, and reload search filter combinations with one click.<br>
+      &bull; <strong>Search History:</strong> Recent searches stored locally with quick-replay, timestamped entries.<br>
+      &bull; <strong>Multi-Select:</strong> Checkbox-based row/card selection with bulk action toolbar (export, tag, dismiss).<br>
+      &bull; <strong>Term Highlights:</strong> Query terms highlighted inline within result snippets and field values.<br>
+      &bull; <strong>Expandable Rows:</strong> Inline accordion expansion showing enrichment details, MITRE tags, and geo data without navigation.<br>
+      &bull; <strong>Context Menu:</strong> Right-click / long-press menu for copy, investigate, pivot, and quick-actions per result.<br>
+      &bull; <strong>Tests:</strong> 77 new tests, 1,785 frontend tests total.<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Cyber News Feed Strategy</strong> — implementation per docs/ETIP_Cyber_News_Feed_Strategy_v1.docx<br>
-      2. <strong>IOC Strategy</strong> — implementation per docs/ETIP_IOC_Strategy.docx<br>
-      3. <strong>Set IPinfo/GSB/Shodan/GreyNoise API keys on VPS</strong> — Enrichment currently degraded gracefully<br>
+      1. <strong>Session 144: TBD</strong><br>
     </div>
   </div>
 </div>
@@ -558,7 +558,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 141 &middot; 2026-04-02 &middot; Generated by Claude Opus 4.6
+    ETIP v5.0 &middot; Session 143 &middot; 2026-04-03 &middot; Generated by Claude Sonnet 4.6
   </div>
 </div>
 
