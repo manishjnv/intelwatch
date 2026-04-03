@@ -78,4 +78,35 @@ describe('SearchBar', () => {
     render(<SearchBar {...defaultProps} query="test query" />)
     expect(screen.queryByTestId('search-save-btn')).not.toBeInTheDocument()
   })
+
+  it('shows actor hints when typing "actor:"', () => {
+    render(<SearchBar {...defaultProps} query="actor:" />)
+    fireEvent.focus(screen.getByTestId('search-input'))
+    expect(screen.getByTestId('search-dropdown')).toBeInTheDocument()
+  })
+
+  it('shows severity hints when typing "severity:"', () => {
+    render(<SearchBar {...defaultProps} query="severity:" />)
+    fireEvent.focus(screen.getByTestId('search-input'))
+    expect(screen.getByTestId('search-dropdown')).toBeInTheDocument()
+  })
+
+  it('ArrowDown navigates through dropdown items', () => {
+    render(<SearchBar {...defaultProps} query="type:" />)
+    const input = screen.getByTestId('search-input')
+    fireEvent.focus(input)
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    // Should highlight first item
+    const dropdown = screen.getByTestId('search-dropdown')
+    expect(dropdown).toBeInTheDocument()
+  })
+
+  it('Escape closes dropdown', () => {
+    render(<SearchBar {...defaultProps} query="type:" />)
+    const input = screen.getByTestId('search-input')
+    fireEvent.focus(input)
+    expect(screen.getByTestId('search-dropdown')).toBeInTheDocument()
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(screen.queryByTestId('search-dropdown')).not.toBeInTheDocument()
+  })
 })

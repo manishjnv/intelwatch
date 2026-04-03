@@ -196,6 +196,9 @@ export function useEsSearch() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tenantId = useAuthStore(s => s.user?.tenantId)
 
+  // Selection state for multi-select
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
   // Restore state from URL on mount
   const [query, setQueryState] = useState(searchParams.get('q') ?? '')
   const [filters, setFiltersState] = useState<EsSearchFilters>(() => filtersFromParams(searchParams))
@@ -292,7 +295,7 @@ export function useEsSearch() {
   }, [hasApiData, apiData])
 
   const isDemo = !result.isLoading && !hasApiData && !result.isError
-  const searchTimeMs = hasApiData ? 0 : 0 // ES doesn't return took in current response
+  const searchTimeMs = hasApiData ? (apiData as any)?.took ?? 0 : 0
 
   // Public setters
   const setQuery = useCallback((q: string) => {
@@ -431,6 +434,35 @@ export function useEsSearch() {
     return demoFiltered.slice(start, start + pageSize)
   }, [isDemo, demoFiltered, page, pageSize])
 
+  // ─── Selection ──────────────────────────────────────────────
+
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
+
+  const toggleSelectAll = useCallback(() => {
+    const allResults = isDemo ? demoPaginated : results
+    setSelectedIds(prev => {
+      if (prev.size === allResults.length) return new Set()
+      return new Set(allResults.map(r => r.id))
+    })
+  }, [isDemo, demoPaginated, results])
+
+  const bulkSearch = useCallback((values: string[]) => {
+    const joined = values.join(' OR ')
+    setQueryState(joined)
+    setFiltersState(prev => ({ ...prev, page: 1 }))
+  }, [])
+
   return {
     // Query state
     query,
@@ -456,5 +488,14 @@ export function useEsSearch() {
     // Actions
     clearAll,
     exportResults,
+
+    // Selection
+    selectedIds,
+    toggleSelection,
+    clearSelection,
+    toggleSelectAll,
+
+    // Bulk search
+    bulkSearch,
   }
 }

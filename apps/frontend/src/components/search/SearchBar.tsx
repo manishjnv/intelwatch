@@ -37,17 +37,24 @@ const SYNTAX_HINTS = [
   { prefix: 'type:', example: 'type:ip', desc: 'Filter by IOC type' },
   { prefix: 'severity:', example: 'severity:critical', desc: 'Filter by severity' },
   { prefix: 'tag:', example: 'tag:malware', desc: 'Filter by tag' },
+  { prefix: 'actor:', example: 'actor:APT29', desc: 'Filter by threat actor' },
+  { prefix: 'campaign:', example: 'campaign:SolarWinds', desc: 'Filter by campaign' },
+  { prefix: 'confidence:', example: 'confidence:>80', desc: 'Confidence threshold' },
+  { prefix: 'seen:', example: 'seen:7d', desc: 'Last seen within N days' },
   { prefix: '"…"', example: '"exact phrase"', desc: 'Exact phrase match' },
 ]
 
 const TYPE_HINTS = ['ip', 'domain', 'url', 'hash_sha256', 'hash_md5', 'cve', 'email']
 const SEVERITY_HINTS = ['critical', 'high', 'medium', 'low']
+const ACTOR_HINTS = ['APT28', 'APT29', 'Lazarus', 'Sandworm', 'FIN7']
+const CAMPAIGN_HINTS = ['SolarWinds', 'Log4Shell', 'MOVEit']
 
 // ─── Component ───────────────────────────────────────────────
 
 export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchBarProps) {
   const [showDropdown, setShowDropdown] = useState(false)
   const [showSyntax, setShowSyntax] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -87,17 +94,44 @@ export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchB
     onSearch()
   }, [query, onSearch])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSubmit()
-  }, [handleSubmit])
-
   // Compute suggestions based on current input
   const suggestions = (() => {
     const q = query.toLowerCase()
     if (q.endsWith('type:')) return TYPE_HINTS.map(t => `type:${t}`)
     if (q.endsWith('severity:')) return SEVERITY_HINTS.map(s => `severity:${s}`)
+    if (q.endsWith('actor:')) return ACTOR_HINTS.map(a => `actor:${a}`)
+    if (q.endsWith('campaign:')) return CAMPAIGN_HINTS.map(c => `campaign:${c}`)
+    if (q.endsWith('confidence:')) return ['confidence:>80', 'confidence:>50', 'confidence:<30']
+    if (q.endsWith('seen:')) return ['seen:24h', 'seen:7d', 'seen:30d']
     return []
   })()
+
+  // Total interactive items in dropdown (suggestions + recent)
+  const allItems = suggestions.length > 0
+    ? suggestions
+    : recentSearches.slice(0, 5)
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      if (activeIdx >= 0 && activeIdx < allItems.length) {
+        onQueryChange(allItems[activeIdx]!)
+        setShowDropdown(false)
+        setActiveIdx(-1)
+      } else {
+        handleSubmit()
+      }
+    } else if (e.key === 'Escape') {
+      setShowDropdown(false)
+      setActiveIdx(-1)
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIdx(prev => (prev + 1) % Math.max(allItems.length, 1))
+      setShowDropdown(true)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIdx(prev => (prev - 1 + Math.max(allItems.length, 1)) % Math.max(allItems.length, 1))
+    }
+  }, [handleSubmit, activeIdx, allItems, onQueryChange])
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -172,11 +206,15 @@ export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchB
           {suggestions.length > 0 && (
             <div className="p-2 border-b border-border">
               <p className="text-[10px] text-text-muted uppercase tracking-wider px-2 pb-1">Suggestions</p>
-              {suggestions.map(s => (
+              {suggestions.map((s, idx) => (
                 <button
                   key={s}
-                  onClick={() => { onQueryChange(s); setShowDropdown(false) }}
-                  className="w-full text-left text-xs text-text-primary px-2 py-1.5 rounded hover:bg-bg-hover transition-colors font-mono"
+                  onClick={() => { onQueryChange(s); setShowDropdown(false); setActiveIdx(-1) }}
+                  className={cn(
+                    'w-full text-left text-xs text-text-primary px-2 py-1.5 rounded transition-colors font-mono',
+                    idx === activeIdx ? 'bg-accent/15 text-accent' : 'hover:bg-bg-hover',
+                  )}
+                  data-testid="suggestion-item"
                 >
                   {s}
                 </button>
@@ -188,11 +226,14 @@ export function SearchBar({ query, onQueryChange, onSearch, isLoading }: SearchB
           {recentSearches.length > 0 && suggestions.length === 0 && (
             <div className="p-2 border-b border-border">
               <p className="text-[10px] text-text-muted uppercase tracking-wider px-2 pb-1">Recent</p>
-              {recentSearches.slice(0, 5).map(r => (
+              {recentSearches.slice(0, 5).map((r, idx) => (
                 <button
                   key={r}
-                  onClick={() => { onQueryChange(r); handleSubmit(); setShowDropdown(false) }}
-                  className="w-full text-left text-xs text-text-primary px-2 py-1.5 rounded hover:bg-bg-hover transition-colors flex items-center gap-2"
+                  onClick={() => { onQueryChange(r); handleSubmit(); setShowDropdown(false); setActiveIdx(-1) }}
+                  className={cn(
+                    'w-full text-left text-xs text-text-primary px-2 py-1.5 rounded transition-colors flex items-center gap-2',
+                    idx === activeIdx ? 'bg-accent/15 text-accent' : 'hover:bg-bg-hover',
+                  )}
                 >
                   <Clock className="w-3 h-3 text-text-muted shrink-0" />
                   <span className="truncate">{r}</span>

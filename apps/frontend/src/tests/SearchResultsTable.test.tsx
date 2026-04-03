@@ -36,9 +36,16 @@ const defaultProps = {
   page: 1,
   pageSize: 50,
   sortBy: 'relevance',
+  query: '',
+  selectedIds: new Set<string>(),
+  expandedId: null as string | null,
   onSort: vi.fn(),
   onPageChange: vi.fn(),
   onRowClick: vi.fn(),
+  onToggleSelect: vi.fn(),
+  onToggleSelectAll: vi.fn(),
+  onExpandRow: vi.fn(),
+  onContextMenu: vi.fn(),
   searchTimeMs: 15,
 }
 
@@ -98,7 +105,7 @@ describe('SearchResultsTable', () => {
   it('clicking row triggers onRowClick with correct ID', () => {
     render(<SearchResultsTable {...defaultProps} />)
     const rows = screen.getAllByTestId('search-result-row')
-    fireEvent.click(rows[0])
+    fireEvent.click(rows[0]!)
     expect(defaultProps.onRowClick).toHaveBeenCalledWith('r1')
   })
 
@@ -117,5 +124,61 @@ describe('SearchResultsTable', () => {
     render(<SearchResultsTable {...defaultProps} />)
     const copyButtons = screen.getAllByTestId('copy-value')
     expect(copyButtons.length).toBe(3)
+  })
+
+  it('renders select-all checkbox', () => {
+    render(<SearchResultsTable {...defaultProps} />)
+    expect(screen.getByTestId('select-all-checkbox')).toBeInTheDocument()
+  })
+
+  it('renders row checkboxes', () => {
+    render(<SearchResultsTable {...defaultProps} />)
+    expect(screen.getAllByTestId('row-checkbox')).toHaveLength(3)
+  })
+
+  it('toggles row selection on checkbox click', () => {
+    const onToggleSelect = vi.fn()
+    render(<SearchResultsTable {...defaultProps} onToggleSelect={onToggleSelect} />)
+    fireEvent.click(screen.getAllByTestId('row-checkbox')[0]!)
+    expect(onToggleSelect).toHaveBeenCalledWith('r1')
+  })
+
+  it('renders expand buttons', () => {
+    render(<SearchResultsTable {...defaultProps} />)
+    expect(screen.getAllByTestId('expand-row-btn')).toHaveLength(3)
+  })
+
+  it('calls onExpandRow when expand button clicked', () => {
+    const onExpandRow = vi.fn()
+    render(<SearchResultsTable {...defaultProps} onExpandRow={onExpandRow} />)
+    fireEvent.click(screen.getAllByTestId('expand-row-btn')[0]!)
+    expect(onExpandRow).toHaveBeenCalledWith('r1')
+  })
+
+  it('shows expanded row content', () => {
+    render(<SearchResultsTable {...defaultProps} expandedId="r1"
+      renderExpandedRow={(r) => <div data-testid="test-expanded">{r.value}</div>} />)
+    expect(screen.getByTestId('expanded-enrichment')).toBeInTheDocument()
+    expect(screen.getByTestId('test-expanded')).toHaveTextContent('185.220.101.34')
+  })
+
+  it('highlights matched terms when query provided', () => {
+    render(<SearchResultsTable {...defaultProps} query="185.220" />)
+    const marks = screen.getAllByText('185.220')
+    expect(marks.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('triggers onContextMenu on right-click', () => {
+    const onContextMenu = vi.fn()
+    render(<SearchResultsTable {...defaultProps} onContextMenu={onContextMenu} />)
+    const rows = screen.getAllByTestId('search-result-row')
+    fireEvent.contextMenu(rows[0]!)
+    expect(onContextMenu).toHaveBeenCalled()
+  })
+
+  it('shows enrichment status icons', () => {
+    render(<SearchResultsTable {...defaultProps} />)
+    expect(screen.getAllByText('Yes').length).toBeGreaterThanOrEqual(1) // r1, r3 enriched
+    expect(screen.getAllByText('No').length).toBeGreaterThanOrEqual(1)  // r2 not enriched
   })
 })

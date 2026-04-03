@@ -18,6 +18,10 @@ vi.mock('@/stores/auth-store', () => ({
     selector ? selector({ user: { tenantId: 'test-tenant' } }) : ({ user: { tenantId: 'test-tenant' } }),
 }))
 
+vi.mock('@etip/shared-ui/components/SeverityBadge', () => ({
+  SeverityBadge: ({ severity }: { severity: string }) => <span data-testid="severity-badge">{severity}</span>,
+}))
+
 vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({
   PageStatsBar: ({ children }: { children: React.ReactNode }) => <div data-testid="page-stats-bar">{children}</div>,
   CompactStat: ({ label, value }: { label: string; value: string }) => <span data-testid={`stat-${label.toLowerCase()}`}>{value}</span>,
@@ -31,6 +35,30 @@ vi.mock('@/components/viz/SplitPane', () => ({
   SplitPane: ({ left, right, showRight }: { left: React.ReactNode; right: React.ReactNode; showRight: boolean }) => (
     <div data-testid="split-pane">{left}{showRight && right}</div>
   ),
+}))
+
+vi.mock('@/components/ioc/IocContextMenu', () => ({
+  IocContextMenu: ({ ioc, position }: { ioc: unknown; position: unknown }) => (
+    ioc && position ? <div data-testid="context-menu">Context Menu</div> : null
+  ),
+}))
+
+vi.mock('@/components/viz/QuickActionToolbar', () => ({
+  QuickActionToolbar: ({ selectedCount }: { selectedCount: number }) => (
+    selectedCount > 0 ? <div data-testid="quick-action-toolbar">{selectedCount} selected</div> : null
+  ),
+}))
+
+vi.mock('@/components/ioc/IocComparePanel', () => ({
+  IocComparePanel: ({ records }: { records: unknown[] }) => <div data-testid="compare-panel">{records.length} IOCs</div>,
+}))
+
+vi.mock('@/components/ioc/InlineEnrichmentRow', () => ({
+  InlineEnrichmentRow: () => <div data-testid="inline-enrichment">Enrichment Row</div>,
+}))
+
+vi.mock('@/components/ui/Toast', () => ({
+  toast: vi.fn(),
 }))
 
 import { SearchPage } from '@/pages/SearchPage'
@@ -58,6 +86,11 @@ const DEFAULT_HOOK = {
   searchTimeMs: 0,
   clearAll: vi.fn(),
   exportResults: vi.fn(),
+  selectedIds: new Set<string>(),
+  toggleSelection: vi.fn(),
+  clearSelection: vi.fn(),
+  toggleSelectAll: vi.fn(),
+  bulkSearch: vi.fn(),
 }
 
 // ─── Tests ──────────────────────────────────────────────────
@@ -66,6 +99,7 @@ describe('SearchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseEsSearch.mockReturnValue(DEFAULT_HOOK)
+    localStorage.clear()
   })
 
   it('renders SearchBar, sidebar, and toolbar', () => {
@@ -106,10 +140,10 @@ describe('SearchPage', () => {
     expect(exportResults).toHaveBeenCalledWith('csv')
   })
 
-  it('shows demo banner when isDemo', () => {
+  it('shows demo indicator when isDemo', () => {
     mockUseEsSearch.mockReturnValue({ ...DEFAULT_HOOK, isDemo: true, results: DEMO_ES_RESULTS, totalCount: 20 })
     render(<SearchPage />)
-    expect(screen.getByText(/ES unavailable/)).toBeInTheDocument()
+    expect(screen.getByText('demo')).toBeInTheDocument()
   })
 
   it('renders results table when results exist', () => {

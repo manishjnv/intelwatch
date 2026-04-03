@@ -103,6 +103,23 @@ vi.mock('@/components/viz/QuickActionToolbar', () => ({
   QuickActionToolbar: () => null,
 }))
 
+vi.mock('@/components/ioc/IocContextMenu', () => ({
+  IocContextMenu: () => null,
+}))
+
+vi.mock('@/components/ioc/IocComparePanel', () => ({
+  IocComparePanel: () => null,
+}))
+
+vi.mock('@/components/ioc/InlineEnrichmentRow', () => ({
+  InlineEnrichmentRow: () => null,
+}))
+
+vi.mock('@/components/ui/Toast', () => ({
+  toast: vi.fn(),
+  ToastContainer: () => <div data-testid="toast-container" />,
+}))
+
 vi.mock('@/components/viz/SparklineCell', () => ({
   SparklineCell: () => <span>~</span>,
   generateStubTrend: () => [1, 2, 3],
@@ -249,6 +266,8 @@ describe('SearchPage drill-down', () => {
       facets: { byType: [], bySeverity: [], byTlp: [] },
       isLoading: false, isDemo: false, error: null, searchTimeMs: 5,
       clearAll: vi.fn(), exportResults: vi.fn(),
+      selectedIds: new Set(), toggleSelection: vi.fn(), clearSelection: vi.fn(),
+      toggleSelectAll: vi.fn(), bulkSearch: vi.fn(),
     })
   })
 

@@ -6,9 +6,11 @@ import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import {
   Globe, Link2, Fingerprint, Shield, ExternalLink, Mail,
-  ArrowUpDown, ArrowUp, ArrowDown, Copy, Check, ChevronRight,
+  ArrowUpDown, ArrowUp, ArrowDown, Copy, Check, ChevronRight, ChevronDown,
+  CheckCircle2, Clock,
 } from 'lucide-react'
 import { Pagination } from '@/components/data/Pagination'
+import { highlightMatches } from '@/utils/search-helpers'
 import type { EsSearchResult } from '@/hooks/use-es-search'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -19,11 +21,19 @@ interface SearchResultsTableProps {
   page: number
   pageSize: number
   sortBy: string
+  query: string
+  selectedIds: Set<string>
+  expandedId: string | null
   onSort: (col: string) => void
   onPageChange: (page: number) => void
   onRowClick: (id: string) => void
+  onToggleSelect: (id: string) => void
+  onToggleSelectAll: () => void
+  onExpandRow: (id: string | null) => void
+  onContextMenu: (e: React.MouseEvent, id: string) => void
   searchTimeMs: number
   isLoading?: boolean
+  renderExpandedRow?: (result: EsSearchResult) => React.ReactNode
 }
 
 // ─── Constants ───────────────────────────────────────────────
@@ -104,10 +114,13 @@ function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | '
 // ─── Component ───────────────────────────────────────────────
 
 export function SearchResultsTable({
-  results, totalCount, page, pageSize, sortBy, onSort, onPageChange, onRowClick, searchTimeMs, isLoading,
+  results, totalCount, page, pageSize, sortBy, query, selectedIds, expandedId,
+  onSort, onPageChange, onRowClick, onToggleSelect, onToggleSelectAll, onExpandRow,
+  onContextMenu, searchTimeMs, isLoading, renderExpandedRow,
 }: SearchResultsTableProps) {
   const sortCol = sortBy.replace(/_(?:asc|desc)$/, '')
   const sortDir = sortBy.endsWith('_asc') ? 'asc' as const : 'desc' as const
+  const allSelected = results.length > 0 && selectedIds.size === results.length
 
   const handleHeaderClick = (key: string) => {
     if (sortCol === key) {
@@ -149,6 +162,13 @@ export function SearchResultsTable({
 
       {/* Table header */}
       <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary/50 border border-border rounded-t-lg text-[10px] uppercase tracking-wider text-text-muted font-medium">
+        {/* Checkbox */}
+        <div className="w-6 shrink-0">
+          <input type="checkbox" checked={allSelected} onChange={onToggleSelectAll}
+            className="w-3.5 h-3.5 accent-accent rounded cursor-pointer" data-testid="select-all-checkbox" />
+        </div>
+        {/* Expand spacer */}
+        <div className="w-6 shrink-0" />
         {COLUMNS.map(col => (
           <div
             key={col.key}
@@ -160,82 +180,123 @@ export function SearchResultsTable({
             {col.sortable && <SortIcon active={sortCol === col.key} direction={sortDir} />}
           </div>
         ))}
+        <div className="w-16 hidden sm:flex">Enriched</div>
         <div className="w-8" /> {/* Actions spacer */}
       </div>
 
       {/* Rows */}
       <div className="border-x border-b border-border rounded-b-lg divide-y divide-border-subtle">
-        {results.map(r => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => onRowClick(r.id)}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-bg-hover transition-colors group/row"
-            data-testid="search-result-row"
-          >
-            {/* Type icon */}
-            <div className="w-16 flex items-center gap-1.5 text-text-muted text-xs shrink-0">
-              {TYPE_ICONS[r.iocType] ?? <Shield className="w-3.5 h-3.5" />}
-              <span className="text-[10px] uppercase">{r.iocType.replace('hash_', '')}</span>
-            </div>
+        {results.map(r => {
+          const isSelected = selectedIds.has(r.id)
+          const isExpanded = expandedId === r.id
+          const highlights = highlightMatches(r.value, query)
 
-            {/* Value */}
-            <div className="flex-1 min-w-0 flex items-center gap-1">
-              <span className="text-xs text-text-primary font-mono truncate" title={r.value}>
-                {r.value}
-              </span>
-              <CopyButton text={r.value} />
-            </div>
+          return (
+            <div key={r.id}>
+              <div
+                onClick={() => onRowClick(r.id)}
+                onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, r.id) }}
+                className={cn(
+                  'w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-bg-hover transition-colors group/row cursor-pointer',
+                  isSelected && 'bg-accent/5',
+                )}
+                data-testid="search-result-row"
+              >
+                {/* Checkbox */}
+                <div className="w-6 shrink-0" onClick={e => e.stopPropagation()}>
+                  <input type="checkbox" checked={isSelected} onChange={() => onToggleSelect(r.id)}
+                    className="w-3.5 h-3.5 accent-accent rounded cursor-pointer" data-testid="row-checkbox" />
+                </div>
 
-            {/* Severity */}
-            <div className="w-24 shrink-0">
-              <span className={cn('text-[10px] px-2 py-0.5 rounded-full border capitalize font-medium', SEVERITY_STYLES[r.severity] ?? 'text-text-muted')}>
-                {r.severity}
-              </span>
-            </div>
+                {/* Expand button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onExpandRow(isExpanded ? null : r.id) }}
+                  className="w-6 shrink-0 flex items-center justify-center text-text-muted hover:text-text-primary"
+                  data-testid="expand-row-btn"
+                >
+                  {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </button>
 
-            {/* Confidence */}
-            <div className="w-16 shrink-0">
-              <span className={cn('text-xs font-medium tabular-nums', CONFIDENCE_COLOR(r.confidence))}>
-                {r.confidence}%
-              </span>
-            </div>
+                {/* Type icon */}
+                <div className="w-16 flex items-center gap-1.5 text-text-muted text-xs shrink-0">
+                  {TYPE_ICONS[r.iocType] ?? <Shield className="w-3.5 h-3.5" />}
+                  <span className="text-[10px] uppercase">{r.iocType.replace('hash_', '')}</span>
+                </div>
 
-            {/* TLP */}
-            <div className="w-20 shrink-0">
-              <span className="text-[10px] text-text-muted uppercase">
-                TLP:{r.tlp}
-              </span>
-            </div>
+                {/* Value with highlight */}
+                <div className="flex-1 min-w-0 flex items-center gap-1">
+                  <span className="text-xs text-text-primary font-mono truncate" title={r.value}>
+                    {highlights.map((part) =>
+                      typeof part === 'string' ? part : (
+                        <mark key={part.key} className="bg-accent/20 text-accent rounded px-0.5">{part.match}</mark>
+                      )
+                    )}
+                  </span>
+                  <CopyButton text={r.value} />
+                </div>
 
-            {/* Tags */}
-            <div className="w-40 hidden lg:flex items-center gap-1 shrink-0 overflow-hidden">
-              {r.tags.slice(0, 3).map(t => (
-                <span key={t} className="text-[10px] bg-bg-elevated border border-border-subtle rounded px-1.5 py-0.5 text-text-muted truncate max-w-[80px]">
-                  {t}
-                </span>
-              ))}
-              {r.tags.length > 3 && (
-                <span className="text-[10px] text-text-muted">+{r.tags.length - 3}</span>
+                {/* Severity */}
+                <div className="w-24 shrink-0">
+                  <span className={cn('text-[10px] px-2 py-0.5 rounded-full border capitalize font-medium', SEVERITY_STYLES[r.severity] ?? 'text-text-muted')}>
+                    {r.severity}
+                  </span>
+                </div>
+
+                {/* Confidence */}
+                <div className="w-16 shrink-0">
+                  <span className={cn('text-xs font-medium tabular-nums', CONFIDENCE_COLOR(r.confidence))}>
+                    {r.confidence}%
+                  </span>
+                </div>
+
+                {/* TLP */}
+                <div className="w-20 shrink-0">
+                  <span className="text-[10px] text-text-muted uppercase">TLP:{r.tlp}</span>
+                </div>
+
+                {/* Tags */}
+                <div className="w-40 hidden lg:flex items-center gap-1 shrink-0 overflow-hidden">
+                  {r.tags.slice(0, 3).map(t => (
+                    <span key={t} className="text-[10px] bg-bg-elevated border border-border-subtle rounded px-1.5 py-0.5 text-text-muted truncate max-w-[80px]">
+                      {t}
+                    </span>
+                  ))}
+                  {r.tags.length > 3 && <span className="text-[10px] text-text-muted">+{r.tags.length - 3}</span>}
+                </div>
+
+                {/* First Seen */}
+                <div className="w-24 hidden xl:flex text-[11px] text-text-muted tabular-nums shrink-0">
+                  {relativeTime(r.firstSeen)}
+                </div>
+
+                {/* Last Seen */}
+                <div className="w-24 hidden md:flex text-[11px] text-text-muted tabular-nums shrink-0">
+                  {relativeTime(r.lastSeen)}
+                </div>
+
+                {/* Enrichment status */}
+                <div className="w-16 hidden sm:flex shrink-0">
+                  {r.enriched
+                    ? <span className="inline-flex items-center gap-0.5 text-[10px] text-sev-low"><CheckCircle2 className="w-3 h-3" />Yes</span>
+                    : <span className="inline-flex items-center gap-0.5 text-[10px] text-text-muted"><Clock className="w-3 h-3" />No</span>
+                  }
+                </div>
+
+                {/* Action arrow */}
+                <div className="w-8 flex justify-end shrink-0">
+                  <ChevronRight className="w-4 h-4 text-text-muted opacity-0 group-hover/row:opacity-100 transition-opacity" />
+                </div>
+              </div>
+
+              {/* Expanded enrichment row */}
+              {isExpanded && renderExpandedRow && (
+                <div data-testid="expanded-enrichment">
+                  {renderExpandedRow(r)}
+                </div>
               )}
             </div>
-
-            {/* First Seen */}
-            <div className="w-24 hidden xl:flex text-[11px] text-text-muted tabular-nums shrink-0">
-              {relativeTime(r.firstSeen)}
-            </div>
-
-            {/* Last Seen */}
-            <div className="w-24 hidden md:flex text-[11px] text-text-muted tabular-nums shrink-0">
-              {relativeTime(r.lastSeen)}
-            </div>
-
-            {/* Action arrow */}
-            <div className="w-8 flex justify-end shrink-0">
-              <ChevronRight className="w-4 h-4 text-text-muted opacity-0 group-hover/row:opacity-100 transition-opacity" />
-            </div>
-          </button>
-        ))}
+          )
+        })}
       </div>
 
       {/* Pagination */}
