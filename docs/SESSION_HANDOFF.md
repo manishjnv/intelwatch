@@ -1,28 +1,31 @@
 # SESSION HANDOFF DOCUMENT
-**Date:** 2026-04-03
-**Session:** 144
-**Session Summary:** S144: Fix IOC Intelligence list page sorting and filtering — query param mismatch with backend schema. Deployed.
+**Date:** 2026-04-06
+**Session:** 145
+**Session Summary:** Codex CLI setup, parallel execution workflow, rate-limit fallback protocol. Tooling-only — no code changes.
 
 ## ✅ Changes Made
 | Commit | Files | Description |
 |--------|-------|-------------|
-| d517ea0 | 2 | fix: IOC list sorting and search — align query params with backend schema |
+| (none) | 0 | Tooling session — no code commits |
 
 ## 📁 Files / Documents Affected
 
-### Modified Files (2)
+### New Files (1)
+| File | Purpose |
+|------|---------|
+| `memory/reference_codex_parallel.md` | Codex parallel execution guide + rate-limit fallback protocol |
+
+### Modified Files (1)
 | File | Changes |
 |------|---------|
-| `apps/frontend/src/pages/IocListPage.tsx` | queryParams: sortBy→sort, sortOrder→order, q→search |
-| `apps/frontend/src/components/ioc/ioc-columns.tsx` | Removed `sortable: true` from normalizedValue, corroborationCount, iocType, lifecycle columns |
+| `memory/MEMORY.md` | Added pointer to reference_codex_parallel.md |
 
 ## 🔧 Decisions & Rationale
-- No formal DECISION entry. Root cause: frontend param names didn't match backend Zod schema. Zod `.default()` silently fell back to `sort=lastSeen&order=desc` on every request, making sort clicks appear non-functional. Same issue for search (`q` vs `search`). Removed sortable from 4 columns that backend schema doesn't support (only allows: firstSeen, lastSeen, confidence, severity, createdAt).
+- No formal DECISION entry. Codex CLI (v0.118.0) verified and authenticated via ChatGPT Go plan (manishjnvk@gmail.com). Established workflow: delegate tests, reviews, research, diagnosis to Codex in parallel while Claude handles primary implementation. Rate-limit fallback: if Codex hits limits, Claude absorbs all tasks — no session interruption.
 
 ## 🧪 E2E / Deploy Verification Results
-- CI run 23929832680: ✅ green (Test → Docker Build → Deploy to VPS → E2E smoke)
-- All existing tests passing, 0 failures
-- VPS: etip_frontend rebuilt + restarted
+- No deployment this session
+- No tests run (tooling-only)
 
 ## ⚠️ Open Items / Next Steps
 **Immediate:**
@@ -45,4 +48,4 @@
 Working on: [next module]. Do not modify: apps/frontend (IOC page + Search page stable).
 ```
 
-IOC page sorting now works for: severity, confidence, lastSeen. Filters work for: iocType, severity, lifecycle. Search works via `search` param. Source and Campaign filters are frontend-only (demo mode).
+Codex is ready for parallel task delegation via `/codex:rescue`. Memory file `reference_codex_parallel.md` has the full workflow guide.

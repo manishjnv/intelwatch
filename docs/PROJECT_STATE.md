@@ -1,6 +1,6 @@
 # ETIP Project State
-**Last updated:** 2026-04-03 (update at end of EVERY session via /session-end)
-**Session counter:** 144 — S144: Fix IOC list sorting/filtering — query param mismatch (sortBy→sort, q→search), removed unsupported sortable columns. Deployed.
+**Last updated:** 2026-04-06 (update at end of EVERY session via /session-end)
+**Session counter:** 145 — S145: Codex CLI setup + parallel execution workflow. Tooling-only session, no code changes.
 
 ## Deployment Status
 | Service | Status | Version | Last Deploy | Notes |
@@ -143,8 +143,8 @@ caching-service      → shared-types, shared-utils, shared-auth, ioredis, minio
 
 ## Work In Progress
 
-- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-144.
-- **Last session outcome:** Session 144 (2026-04-03). **S144: IOC List Sort/Filter Bugfix.** Fixed 3 bugs preventing IOC list page sorting and filtering from working: (1) sortBy/sortOrder→sort/order param rename (backend expects sort/order, Zod silently defaulted). (2) q→search param rename for text search. (3) Removed sortable flag from 4 columns backend doesn't support (normalizedValue, corroborationCount, iocType, lifecycle). Commits: d517ea0 (fix). CI run 23929832680 green. Deployed.
+- **Current phase:** Phase 12 — Command Center v2.1 (Protection & Hardening). Sessions 111-145.
+- **Last session outcome:** Session 145 (2026-04-06). **S145: Codex CLI Setup & Parallel Execution Workflow.** Tooling-only session — no code changes, no deployment. Verified Codex CLI v0.118.0 authenticated (manishjnvk@gmail.com, ChatGPT Go plan). Created parallel execution guide in memory (reference_codex_parallel.md). Analyzed 30-day dev intensity (598 commits, 20 active days, 323K lines added). Established rate-limit fallback protocol: if Codex hits limits, Claude absorbs all tasks seamlessly.
 - **Known issues:** Shodan/GreyNoise/GSB/IPinfo API keys not set on VPS (enrichment degrades gracefully). Alert fan-out uses in-memory tenant registry. 2 pre-existing test files fail (batch-normalizer, fuzzy-dedupe-integration) due to vitest alias caching. 1 pre-existing flaky test in shared-auth (password.test.ts unique salts). InvestigationDrawer uses demo enrichment data. POST /api/v1/iocs does NOT exist (Create IOC modal is stubbed). Bulk re-enrichment endpoint not built. MITRE badges show only for IOCs with cached enrichment data (progressive fill). BulkSearchModal found/not-found requires ES backend to fully function. IOC list `source` filter (Global/Private) has no backend support — only works in demo mode. IOC list `hasCampaign` filter has no backend support — only works in demo mode.
 - **Next tasks:** (1) Set TI_IPINFO_TOKEN + TI_GSB_API_KEY on VPS to activate IPinfo and GSB. (2) Cyber news feed strategy implementation. (3) IOC strategy implementation. (4) POST /api/v1/iocs backend endpoint for manual IOC submission. (5) Bulk re-enrichment backend endpoint. (6) Add `source` and `hasCampaign` filter support to ioc-intelligence backend schema.
 
