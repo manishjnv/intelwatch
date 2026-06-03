@@ -83,7 +83,7 @@ async function buildIntegrationApp(): Promise<FastifyInstance> {
 
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cors, {
-    origin: ['https://intelwatch.in', 'https://ti.intelwatch.in', 'http://localhost:3002'],
+    origin: ['https://intelwatch.in', 'http://localhost:3002'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Service-Token'],
