@@ -11,8 +11,8 @@ Post-deployment verification. Run after CI/CD completes.
 
 ## 2. ETIP Health
 ```
-curl -sf https://ti.intelwatch.in/health
-curl -sf https://ti.intelwatch.in/ready
+curl -sf https://intelwatch.in/health
+curl -sf https://intelwatch.in/ready
 ```
 
 ## 3. Live Site Verification (CRITICAL)

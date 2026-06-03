@@ -4,7 +4,7 @@ DECISION-029 Phase F | Last updated: 2026-03-27
 
 ## Monitoring
 
-- **Dashboard**: https://ti.intelwatch.in/global-monitoring
+- **Dashboard**: https://intelwatch.in/global-monitoring
 - **Health script**: `npx tsx scripts/check-global-pipeline.ts`
 - **Prometheus**: `/metrics` on all services (23 scrape targets)
 - **Redis stats**: `global:stats:*` keys (articles-created-24h, iocs-created-24h, etc.)
@@ -106,7 +106,7 @@ DECISION-029 Phase F | Last updated: 2026-03-27
 
 ## Grafana Dashboards
 
-Access: <https://ti.intelwatch.in/grafana/> (proxied via nginx `/grafana/` location)
+Access: <https://intelwatch.in/grafana/> (proxied via nginx `/grafana/` location)
 Default login: admin / (from `TI_GRAFANA_PASSWORD` env, default `etip-admin`)
 Datasource: Prometheus (auto-provisioned, `etip-prometheus` UID)
 

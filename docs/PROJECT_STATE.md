@@ -8,7 +8,7 @@
 | etip_api | ✅ Running | 0.2.3 | 2026-03-31 | Health check passing. **Session 127:** TAXII 2.1 (discovery/collections/objects), webhook Stripe-style backoff (6 attempts), GET /changelog, SDK scaffolding. 279 tests. |
 | etip_frontend | ✅ Running | 0.24.0 | 2026-04-03 | Dashboard + 20 data pages + Command Center (10 tabs SA / 7 TA). **Session 143:** Search page best-in-class — card/table toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu. 1,785 tests. |
 | etip_es_indexing | ✅ Deployed | 0.2.0 | 2026-04-01 | Port 3020. Module 20. Elasticsearch IOC indexing. 116 tests. Per-IOC-type indices (ip/domain/hash/email/cve/other) + ILM lifecycle (hot→warm→cold→delete). BullMQ worker + full-text search + aggregations. RCA #42 fixed. |
-| etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for ti.intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
+| etip_nginx | ✅ Running | - | 2026-03-25 | Reverse proxy for intelwatch.in. Routes: graph(3012), correlation(3013), hunting(3014), drp(3011), es-indexing(3020), reporting(3021), alerting(3023), analytics(3024), caching(3025). |
 | etip_postgres | ✅ Running | 16 | 2026-03-15 | Schema migrated, RLS enabled |
 | etip_redis | ✅ Running | 7 | 2026-03-15 | Cache + BullMQ queues |
 | etip_ingestion | ✅ Running | 0.10.0 | 2026-04-01 | Feed pipeline + 11 modules + policies + AC-2 + **13 connectors** (RSS, NVD, STIX/TAXII, REST, MISP, Bulk File, ThreatFox, URLhaus, MalwareBazaar, Feodo, CISA KEV, FIRST EPSS, **OTX**) + **Session 130: OTX connector, test fix, deploy**. 770 tests. |
@@ -289,9 +289,9 @@ All endpoints verified: /feeds, /articles, /iocs, /iocs/stats, /enrichment/stats
 ## Environment Notes
 - VPS: 187.127.138.93 (KVM4), 16GB RAM, 200GB NVMe, 4 vCPU, daily Docker cleanup cron active
 - CI/CD: GitHub Actions deploy.yml → VPS, last run green
-- Caddy: routing ti.intelwatch.in → etip_nginx
+- Caddy: routing intelwatch.in → etip_nginx
 - SSH: Port 22 filtered, use GitHub Actions vps-cmd.yml or Cloudflare Tunnel
 - API keys configured: TI_VIRUSTOTAL_API_KEY (free, 4/min), TI_ABUSEIPDB_API_KEY (free, 1000/day), TI_AI_ENABLED=true
 - MFA/Break-glass configured: TI_MFA_ENCRYPTION_KEY, TI_BREAK_GLASS_EMAIL/PASSWORD/OTP_SECRET, TI_SUPER_ADMIN_EMAIL/PASSWORD — wired to etip_api + etip_user_management
 - DB: RLS enabled on 19 tables, tenant_admin delete guard trigger active, 4 plan definitions seeded, break-glass super_admin seeded
-- Grafana: <https://ti.intelwatch.in/grafana/> (default: admin / TI_GRAFANA_PASSWORD env). 6 dashboards auto-provisioned (service-health, pipeline-queues, api-gateway, pipeline-overview, ai-cost-tracking, feed-health)
+- Grafana: <https://intelwatch.in/grafana/> (default: admin / TI_GRAFANA_PASSWORD env). 6 dashboards auto-provisioned (service-health, pipeline-queues, api-gateway, pipeline-overview, ai-cost-tracking, feed-health)

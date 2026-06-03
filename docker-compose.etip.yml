@@ -238,7 +238,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -292,7 +292,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -348,7 +348,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -398,7 +398,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -448,7 +448,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -492,7 +492,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -536,7 +536,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -580,7 +580,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -649,7 +649,7 @@ services:
       TI_JWT_ACCESS_EXPIRY: ${TI_JWT_ACCESS_EXPIRY:-900}
       TI_JWT_REFRESH_EXPIRY: ${TI_JWT_REFRESH_EXPIRY:-604800}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -695,7 +695,7 @@ services:
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_JWT_REFRESH_SECRET: ${TI_JWT_SECRET}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -738,7 +738,7 @@ services:
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_JWT_REFRESH_SECRET: ${TI_JWT_SECRET}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -780,7 +780,7 @@ services:
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_JWT_REFRESH_SECRET: ${TI_JWT_SECRET}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -822,7 +822,7 @@ services:
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_JWT_REFRESH_SECRET: ${TI_JWT_SECRET}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -865,7 +865,7 @@ services:
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_JWT_REFRESH_SECRET: ${TI_JWT_SECRET}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -909,7 +909,7 @@ services:
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -948,7 +948,7 @@ services:
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -985,7 +985,7 @@ services:
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -1025,13 +1025,13 @@ services:
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
       TI_RESEND_API_KEY: ${TI_RESEND_API_KEY:-}
       TI_FROM_EMAIL: ${TI_FROM_EMAIL:-IntelWatch ETIP <noreply@intelwatch.in>}
-      TI_PLATFORM_URL: ${TI_PLATFORM_URL:-https://ti.intelwatch.in}
+      TI_PLATFORM_URL: ${TI_PLATFORM_URL:-https://intelwatch.in}
     ports:
       - "3022:3022"
     depends_on:
@@ -1069,7 +1069,7 @@ services:
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-500}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -1109,7 +1109,7 @@ services:
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -1147,7 +1147,7 @@ services:
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -1187,7 +1187,7 @@ services:
       TI_SERVICE_HOST: 0.0.0.0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -1223,7 +1223,7 @@ services:
       TI_SERVICE_HOST: 0.0.0.0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
-      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://ti.intelwatch.in}
+      TI_CORS_ORIGINS: ${TI_CORS_ORIGINS:-https://intelwatch.in,https://ti.intelwatch.in}
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
@@ -1323,7 +1323,7 @@ services:
       retries: 3
     networks:
       - etip_network
-      - caddy_network  # Caddy reverse proxy (ti.intelwatch.in → etip_nginx:80)
+      - caddy_network  # Caddy reverse proxy (intelwatch.in → etip_nginx:80)
     deploy:
       resources:
         limits:

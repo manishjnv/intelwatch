@@ -197,19 +197,19 @@ The following security-critical paths are completely untested:
 
 ## STEP 4 — Production Smoke Tests
 
-Run these curl commands against `https://ti.intelwatch.in` to verify the live API:
+Run these curl commands against `https://intelwatch.in` to verify the live API:
 
 ```bash
 # ── 1. Health check ──
-curl -s https://ti.intelwatch.in/health | jq .
+curl -s https://intelwatch.in/health | jq .
 # Expected: {"status":"ok","service":"api-gateway",...}
 
 # ── 2. Ready check ──
-curl -s https://ti.intelwatch.in/ready | jq .
+curl -s https://intelwatch.in/ready | jq .
 # Expected: {"status":"ok","checks":{"server":"ok"}}
 
 # ── 3. Register new user ──
-curl -s -X POST https://ti.intelwatch.in/api/v1/auth/register \
+curl -s -X POST https://intelwatch.in/api/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{
     "email":"audit-test-'$(date +%s)'@test.com",
@@ -223,7 +223,7 @@ curl -s -X POST https://ti.intelwatch.in/api/v1/auth/register \
 # Save: export REFRESH_TOKEN=<refreshToken>
 
 # ── 4. Login ──
-curl -s -X POST https://ti.intelwatch.in/api/v1/auth/login \
+curl -s -X POST https://intelwatch.in/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{
     "email":"<use email from step 3>",
@@ -232,56 +232,56 @@ curl -s -X POST https://ti.intelwatch.in/api/v1/auth/login \
 # Expected: 200 with accessToken, refreshToken, user
 
 # ── 5. Get profile (authenticated) ──
-curl -s https://ti.intelwatch.in/api/v1/auth/me \
+curl -s https://intelwatch.in/api/v1/auth/me \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 # Expected: 200 with user data (no passwordHash or mfaSecret)
 
 # ── 6. Refresh tokens ──
-curl -s -X POST https://ti.intelwatch.in/api/v1/auth/refresh \
+curl -s -X POST https://intelwatch.in/api/v1/auth/refresh \
   -H 'Content-Type: application/json' \
   -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}" | jq .
 # Expected: 200 with NEW accessToken, refreshToken, expiresIn
 # Save: export ACCESS_TOKEN=<new accessToken>
 
 # ── 7. Test 401 on protected endpoint (no token) ──
-curl -s https://ti.intelwatch.in/api/v1/auth/me | jq .
+curl -s https://intelwatch.in/api/v1/auth/me | jq .
 # Expected: 401 {"error":{"code":"UNAUTHORIZED",...}}
 
 # ── 8. Test 401 with invalid token ──
-curl -s https://ti.intelwatch.in/api/v1/auth/me \
+curl -s https://intelwatch.in/api/v1/auth/me \
   -H 'Authorization: Bearer invalid.jwt.token' | jq .
 # Expected: 401 {"error":{"code":"INVALID_TOKEN",...}}
 
 # ── 9. Test validation error (bad email) ──
-curl -s -X POST https://ti.intelwatch.in/api/v1/auth/register \
+curl -s -X POST https://intelwatch.in/api/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"email":"not-email","password":"short","displayName":"","tenantName":"","tenantSlug":"!!!"}' | jq .
 # Expected: 400 with VALIDATION_ERROR
 
 # ── 10. Logout ──
-curl -s -X POST https://ti.intelwatch.in/api/v1/auth/logout \
+curl -s -X POST https://intelwatch.in/api/v1/auth/logout \
   -H "Authorization: Bearer $ACCESS_TOKEN" -w "\n%{http_code}"
 # Expected: 204
 
 # ── 11. Verify logout invalidated session ──
-curl -s https://ti.intelwatch.in/api/v1/auth/me \
+curl -s https://intelwatch.in/api/v1/auth/me \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 # Expected: 200 (access token still valid until 15min expiry)
 # Note: JWT is stateless — logout revokes the session (refresh), not the access token
 
 # ── 12. Test rate limiting (rapid requests) ──
 for i in $(seq 1 105); do
-  curl -s -o /dev/null -w "%{http_code} " https://ti.intelwatch.in/health
+  curl -s -o /dev/null -w "%{http_code} " https://intelwatch.in/health
 done
 echo ""
 # Expected: most 200s, then 429s after ~100 requests within 60s window
 
 # ── 13. 404 for unknown route ──
-curl -s https://ti.intelwatch.in/api/v1/nonexistent | jq .
+curl -s https://intelwatch.in/api/v1/nonexistent | jq .
 # Expected: 404 {"error":{"code":"NOT_FOUND",...}}
 
 # ── 14. Landing page serves correctly ──
-curl -s https://ti.intelwatch.in/ | grep -c 'bg-mesh\|radar-ring\|scanline\|corner-tl'
+curl -s https://intelwatch.in/ | grep -c 'bg-mesh\|radar-ring\|scanline\|corner-tl'
 # Expected: >= 4 (design elements present)
 ```
 

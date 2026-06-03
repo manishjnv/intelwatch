@@ -16,8 +16,7 @@
 
 ### Two sites on same VPS
 ```
-intelwatch.in      → ti-platform-* containers (NEVER TOUCH)
-ti.intelwatch.in   → etip_* containers (our project)
+intelwatch.in   → etip_* containers (our project, migrated from intelwatch.in)
 ```
 **Rule**: NEVER modify non-etip_ containers, configs, or files.
 
@@ -210,7 +209,7 @@ make build          # Docker build API + frontend images
 make docker-test    # build + start + wait-healthy (60s poll) + status
 make pre-push       # check + docker-test (FULL gate — MANDATORY)
 make push           # pre-push + git commit + push
-make verify         # Production smoke test (ti.intelwatch.in)
+make verify         # Production smoke test (intelwatch.in)
 make logs-errors    # Error logs from all containers (last 3 min)
 make status         # docker compose ps
 make stats          # Container CPU/memory usage
@@ -248,7 +247,7 @@ Optional with defaults:
 ```
 TI_NODE_ENV=production  TI_API_PORT=3001        TI_API_HOST=0.0.0.0
 TI_JWT_ISSUER=intelwatch-etip                   TI_JWT_ACCESS_EXPIRY=900
-TI_JWT_REFRESH_EXPIRY=604800                    TI_CORS_ORIGINS=https://ti.intelwatch.in
+TI_JWT_REFRESH_EXPIRY=604800                    TI_CORS_ORIGINS=https://intelwatch.in
 TI_RATE_LIMIT_WINDOW_MS=60000                   TI_RATE_LIMIT_MAX_REQUESTS=100
 TI_LOG_LEVEL=info
 ```
@@ -260,7 +259,7 @@ TI_LOG_LEVEL=info
 - **Prometheus**: `etip_prometheus:9190` (internal, 30d retention)
 - **Grafana**: `etip_grafana:3101` (internal, provisioned dashboards)
 - **Health endpoint**: `GET /health` on API gateway (required, returns JSON with status + uptime)
-- **Production smoke test**: `curl -sf https://ti.intelwatch.in/health`
+- **Production smoke test**: `curl -sf https://intelwatch.in/health`
 
 ---
 

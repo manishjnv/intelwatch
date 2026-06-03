@@ -14,7 +14,7 @@ const ConfigSchema = z.object({
   TI_LOG_LEVEL: z.string().default('info'),
   TI_RESEND_API_KEY: z.string().default(''),
   TI_FROM_EMAIL: z.string().default('IntelWatch ETIP <noreply@intelwatch.in>'),
-  TI_PLATFORM_URL: z.string().default('https://ti.intelwatch.in'),
+  TI_PLATFORM_URL: z.string().default('https://intelwatch.in'),
 });
 
 export type AdminConfig = z.infer<typeof ConfigSchema>;

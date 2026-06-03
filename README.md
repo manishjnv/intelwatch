@@ -6,7 +6,7 @@
 ![Tests](https://img.shields.io/badge/tests-8450%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
-**Live API**: https://ti.intelwatch.in/health
+**Live API**: https://intelwatch.in/health
 
 ---
 
@@ -46,21 +46,21 @@
 
 ```bash
 # Health
-curl https://ti.intelwatch.in/health
+curl https://intelwatch.in/health
 # → {"status":"ok","service":"api-gateway","version":"1.0.0","uptime":...}
 
 # Register
-curl -X POST https://ti.intelwatch.in/api/v1/auth/register \
+curl -X POST https://intelwatch.in/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com","password":"YourSecurePass12!","displayName":"Your Name","tenantName":"Your Org","tenantSlug":"your-org"}'
 
 # Login
-curl -X POST https://ti.intelwatch.in/api/v1/auth/login \
+curl -X POST https://intelwatch.in/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com","password":"YourSecurePass12!"}'
 
 # Profile (with token from login)
-curl -H "Authorization: Bearer <accessToken>" https://ti.intelwatch.in/api/v1/auth/me
+curl -H "Authorization: Bearer <accessToken>" https://intelwatch.in/api/v1/auth/me
 ```
 
 ## Architecture

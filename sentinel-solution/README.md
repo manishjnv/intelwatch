@@ -1,6 +1,6 @@
 # IntelWatch ETIP — Microsoft Sentinel Solution
 
-Integrates [IntelWatch ETIP](https://ti.intelwatch.in) enterprise threat intelligence with Microsoft Sentinel for automated IOC ingestion, detection, and proactive threat hunting.
+Integrates [IntelWatch ETIP](https://intelwatch.in) enterprise threat intelligence with Microsoft Sentinel for automated IOC ingestion, detection, and proactive threat hunting.
 
 ## Components
 
@@ -81,7 +81,7 @@ func azure functionapp publish <your-function-app-name>
 
 | Variable | Description |
 |----------|-------------|
-| `ETIP_API_BASE_URL` | `https://ti.intelwatch.in/api/v1/public` |
+| `ETIP_API_BASE_URL` | `https://intelwatch.in/api/v1/public` |
 | `ETIP_API_KEY` | Your ETIP API key |
 | `AZURE_TENANT_ID` | Azure AD tenant ID |
 | `AZURE_CLIENT_ID` | App registration client ID |
@@ -149,6 +149,6 @@ Sentinel:
 
 ## Support
 
-- **ETIP Platform**: https://ti.intelwatch.in
+- **ETIP Platform**: https://intelwatch.in
 - **Documentation**: See `data-connector/README.md` for detailed setup
 - **Issues**: Open an issue in the repository

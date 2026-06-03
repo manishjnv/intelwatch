@@ -75,7 +75,7 @@ In the Azure Function App, go to **Configuration > Application settings** and ad
 
 | Variable                       | Description                                                             | Required |
 | ------------------------------ | ----------------------------------------------------------------------- | -------- |
-| `ETIP_API_BASE_URL`            | ETIP API base URL (default: `https://ti.intelwatch.in/api/v1/public`)   | Yes      |
+| `ETIP_API_BASE_URL`            | ETIP API base URL (default: `https://intelwatch.in/api/v1/public`)   | Yes      |
 | `ETIP_API_KEY`                 | Your ETIP API key (starts with `etip_`)                                 | Yes      |
 | `AZURE_TENANT_ID`              | Microsoft Entra tenant ID                                               | Yes      |
 | `AZURE_CLIENT_ID`              | App registration client ID                                              | Yes      |
@@ -146,7 +146,7 @@ The function will run on the configured timer schedule. To trigger manually duri
 
 ### No IOCs appearing in Sentinel
 
-- Verify the ETIP API key is valid: test with `curl -H "X-API-Key: etip_..." https://ti.intelwatch.in/api/v1/public/stats`
+- Verify the ETIP API key is valid: test with `curl -H "X-API-Key: etip_..." https://intelwatch.in/api/v1/public/stats`
 - Check that the App Registration has `ThreatIndicators.ReadWrite.OwnedBy` permission with admin consent
 - Review function invocation logs for specific error messages
 

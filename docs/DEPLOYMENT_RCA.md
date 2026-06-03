@@ -101,7 +101,7 @@
 - Test Docker build locally before pushing: `docker build -t etip-test .`
 
 ### Issue 12: 502 Bad Gateway — race condition in docker compose up
-**Error**: `https://ti.intelwatch.in/` returned HTTP 502 after deploy completed. All containers reported as "started" but `etip_nginx` couldn't connect to `etip_frontend` or `etip_api` backends.
+**Error**: `https://intelwatch.in/` returned HTTP 502 after deploy completed. All containers reported as "started" but `etip_nginx` couldn't connect to `etip_frontend` or `etip_api` backends.
 **Root Cause**: `docker compose up -d` starts all services simultaneously. The `etip_nginx` container started before `etip_api` and `etip_frontend` were healthy. Nginx upstream resolution failed because the backend containers hadn't bound to their ports yet. Additionally, the Caddy → nginx network reconnection was happening before nginx itself was fully operational.
 **Fix**: Rewrote the deploy script with sequential startup: (1) start postgres + redis, wait 10s, (2) start API, wait for `/health` (12 retries × 10s), (3) start frontend, wait 5s, (4) start nginx, (5) reconnect to Caddy network, (6) start remaining services (ES, Neo4j, MinIO, Prometheus, Grafana).
 **Commit**: `160ec6b`
@@ -115,7 +115,7 @@
 ---
 
 ### Issue 13: Frontend container built without `packages/shared-ui/` — stale image served
-**Error**: Live site at `ti.intelwatch.in` shows old landing page with no CTA buttons, no DashboardPage working.
+**Error**: Live site at `intelwatch.in` shows old landing page with no CTA buttons, no DashboardPage working.
 **Root Cause**: `Dockerfile.frontend` only copied `apps/frontend/` but never `packages/shared-ui/`. Vite's alias `'@etip/shared-ui' → '../../packages/shared-ui/src'` resolves to a path that didn't exist in the Docker build context. The build ran but imported from a path that didn't exist. The live container was running a stale image from before `@etip/shared-ui` was added as a dependency.
 **Fix**: Added `COPY packages/shared-ui/package.json packages/shared-ui/` before the `pnpm install` step. Added `COPY packages/shared-ui/ packages/shared-ui/` after the install step so Vite can resolve the source alias at build time.
 **Commit**: fix: copy shared-ui into frontend Docker build context — ref DEPLOYMENT_RCA.md
@@ -188,9 +188,9 @@ Post-Push (CI/CD handles automatically):
 - [ ] Frontend check /login → 200 (React HTML)
 
 Post-Deploy Verification:
-- [ ] curl https://ti.intelwatch.in/health → 200 (API)
-- [ ] curl https://ti.intelwatch.in/login → React HTML (contains "vite", "module")
-- [ ] curl https://ti.intelwatch.in/api/v1/auth/register → 400 (validates body)
+- [ ] curl https://intelwatch.in/health → 200 (API)
+- [ ] curl https://intelwatch.in/login → React HTML (contains "vite", "module")
+- [ ] curl https://intelwatch.in/api/v1/auth/register → 400 (validates body)
 - [ ] All 10 containers running (docker compose ps)
 ```
 
@@ -236,7 +236,7 @@ CMD ["node", "apps/api-gateway/dist/index.js"]  # NOT tsx
 ```
 Internet → Caddy (ti-platform-caddy-1, ports 80/443)
   ├── intelwatch.in     → ti-platform-* containers (NEVER TOUCH)
-  └── ti.intelwatch.in  → etip_nginx:80 (via ti-platform_default network)
+  └── intelwatch.in  → etip_nginx:80 (via ti-platform_default network)
         ├── /health, /ready     → etip_api:3001
         ├── /api/v1/*           → etip_api:3001
         ├── /ws/                → etip_api:3001 (upgrade)
@@ -371,7 +371,7 @@ VPS Deploy (automated):
 ```
 Internet → Caddy (ti-platform-caddy-1, ports 80/443)
   ├── intelwatch.in     → ti-platform-* containers (NEVER TOUCH)
-  └── ti.intelwatch.in  → etip_nginx:80 (via caddy_network / ti-platform_default)
+  └── intelwatch.in  → etip_nginx:80 (via caddy_network / ti-platform_default)
         ├── /health, /ready     → etip_api:3001
         ├── /api/v1/*           → etip_api:3001
         ├── /ws/                → etip_api:3001 (upgrade)

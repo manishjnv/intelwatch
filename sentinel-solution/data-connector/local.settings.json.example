@@ -3,7 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "ETIP_API_BASE_URL": "https://ti.intelwatch.in/api/v1/public",
+    "ETIP_API_BASE_URL": "https://intelwatch.in/api/v1/public",
     "ETIP_API_KEY": "etip_your_api_key_here",
     "AZURE_TENANT_ID": "your-tenant-id",
     "AZURE_CLIENT_ID": "your-client-id",

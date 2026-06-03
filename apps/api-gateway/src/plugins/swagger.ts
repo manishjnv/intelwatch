@@ -15,7 +15,7 @@ export async function registerSwagger(app: FastifyInstance): Promise<void> {
         description:
           'Enterprise Threat Intelligence Platform — public REST API for IOC consumption, feed browsing, webhook subscriptions, and key management.',
         version: '1.0.0',
-        contact: { name: 'IntelWatch', url: 'https://ti.intelwatch.in' },
+        contact: { name: 'IntelWatch', url: 'https://intelwatch.in' },
       },
       servers: [
         { url: '/api/v1/public', description: 'Public API (relative)' },

@@ -74,7 +74,7 @@ export async function sendInviteEmail(params: InviteEmailParams): Promise<void> 
     <!-- Footer -->
     <div style="padding:16px 32px;border-top:1px solid #1e293b;text-align:center;">
       <p style="color:#475569;font-size:11px;margin:0;">
-        &copy; ${new Date().getFullYear()} IntelWatch &middot; ti.intelwatch.in
+        &copy; ${new Date().getFullYear()} IntelWatch &middot; intelwatch.in
       </p>
     </div>
   </div>

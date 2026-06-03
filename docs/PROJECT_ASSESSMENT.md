@@ -19,7 +19,7 @@ ETIP IntelWatch is an Enterprise Threat Intelligence Platform built on a modern 
 | **Product** | AI-powered threat intelligence platform for mid-market security teams |
 | **Stack** | Node 20, Fastify 4, Prisma 5, React 18, TypeScript (strict), Zod |
 | **Architecture** | pnpm monorepo, 20+ microservices, Docker containers on VPS |
-| **Production URL** | ti.intelwatch.in |
+| **Production URL** | intelwatch.in |
 | **Codebase** | 41,000 lines of source across 336 TypeScript files |
 | **Test Suite** | 1,528 tests passing across 17 packages |
 | **Infrastructure** | 18 Docker containers, sequential startup, health check retries |
@@ -232,4 +232,4 @@ Current State (Session 19)
 ---
 
 *Report generated March 21, 2026*
-*ETIP IntelWatch — ti.intelwatch.in*
+*ETIP IntelWatch — intelwatch.in*

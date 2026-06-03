@@ -288,7 +288,7 @@ describe('API Gateway', () => {
     it('returns Access-Control-Allow-Origin for allowed origin', async () => {
       const corsApp = Fastify({ logger: false });
       await corsApp.register(cors, {
-        origin: ['https://ti.intelwatch.in'],
+        origin: ['https://intelwatch.in'],
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Service-Token'],
@@ -299,11 +299,11 @@ describe('API Gateway', () => {
       const res = await corsApp.inject({
         method: 'GET',
         url: '/test/cors',
-        headers: { origin: 'https://ti.intelwatch.in' },
+        headers: { origin: 'https://intelwatch.in' },
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.headers['access-control-allow-origin']).toBe('https://ti.intelwatch.in');
+      expect(res.headers['access-control-allow-origin']).toBe('https://intelwatch.in');
       expect(res.headers['access-control-allow-credentials']).toBe('true');
 
       await corsApp.close();
@@ -312,7 +312,7 @@ describe('API Gateway', () => {
     it('handles OPTIONS preflight with correct headers', async () => {
       const corsApp = Fastify({ logger: false });
       await corsApp.register(cors, {
-        origin: ['https://ti.intelwatch.in'],
+        origin: ['https://intelwatch.in'],
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
@@ -324,14 +324,14 @@ describe('API Gateway', () => {
         method: 'OPTIONS',
         url: '/test/cors',
         headers: {
-          origin: 'https://ti.intelwatch.in',
+          origin: 'https://intelwatch.in',
           'access-control-request-method': 'POST',
           'access-control-request-headers': 'Authorization',
         },
       });
 
       expect(res.statusCode).toBe(204);
-      expect(res.headers['access-control-allow-origin']).toBe('https://ti.intelwatch.in');
+      expect(res.headers['access-control-allow-origin']).toBe('https://intelwatch.in');
       expect(res.headers['access-control-allow-methods']).toBeDefined();
 
       await corsApp.close();

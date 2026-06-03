@@ -13,7 +13,7 @@
     },
     "support": {
       "tier": "Community",
-      "link": "https://ti.intelwatch.in"
+      "link": "https://intelwatch.in"
     },
     "source": {
       "kind": "Solution",
@@ -41,7 +41,7 @@
     },
     "etipApiBaseUrl": {
       "type": "string",
-      "defaultValue": "https://ti.intelwatch.in/api/v1/public",
+      "defaultValue": "https://intelwatch.in/api/v1/public",
       "metadata": {
         "description": "ETIP API base URL"
       }

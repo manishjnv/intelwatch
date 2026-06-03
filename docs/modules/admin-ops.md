@@ -79,7 +79,7 @@ Platform administration service for ETIP. System health monitoring, maintenance 
 | `TI_JWT_SECRET` | required | JWT verification (min 32 chars) |
 | `TI_SERVICE_JWT_SECRET` | required | Service-to-service JWT (min 16 chars) |
 | `TI_REDIS_URL` | required | Redis connection URL |
-| `TI_CORS_ORIGINS` | `https://ti.intelwatch.in` | Allowed CORS origins |
+| `TI_CORS_ORIGINS` | `https://intelwatch.in` | Allowed CORS origins |
 | `TI_RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window |
 | `TI_RATE_LIMIT_MAX` | `200` | Max requests per window |
 | `TI_LOG_LEVEL` | `info` | Pino log level |

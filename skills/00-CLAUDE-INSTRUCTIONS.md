@@ -236,8 +236,7 @@ When asked to deploy/push, use:
 - Secrets stored in: .claude/settings.local.json (gitignored) and .claude/secrets/ (gitignored)
 ⚠️ Existing site running — never touch non-etip_ containers.
 VPS CRITICAL: Two sites exist on the same VPS.
-intelwatch.in = existing live site — NEVER modify it or its containers, nginx config, or files.
-ti.intelwatch.in = ETIP project — all work goes here only.
+intelwatch.in = ETIP project — all work goes here only. (Migrated from intelwatch.in)
 VPS SSH: Uses Cloudflare Tunnel (`ssh.intelwatch.in`). Both `deploy.yml` and `vps-cmd.yml` install `cloudflared` and use `ProxyCommand cloudflared access ssh --hostname %h`. NEVER use direct IP:22 (port filtered by hosting provider). Tunnel ID: `6e263591-9abd-446b-a980-aab7a84a0b44`. Health recovery cron runs every 5min to auto-restart stopped containers.
 
 ## PRE-PUSH CHECKLIST (every git push to master)
@@ -278,8 +277,8 @@ docker logs etip_api --since=3m 2>&1 | grep -Ei "error|fatal" | tail -10
 ```
 
 # 3. Live smoke test
-curl -sf https://ti.intelwatch.in/health → 200
-curl -sf https://ti.intelwatch.in/login  → 200
+curl -sf https://intelwatch.in/health → 200
+curl -sf https://intelwatch.in/login  → 200
 
 # 4. Verdict table
 | CI/CD | VPS commit | Containers | /health | /ready | Errors | Verdict |

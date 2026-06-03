@@ -71,10 +71,8 @@ If unsure about impact, scope, or correctness: STOP. Do not write code.
 
 ## VPS Safety — CRITICAL
 Production VPS: 187.127.138.93 (srv1536443.hstgr.cloud) — Hostinger KVM4, 4 vCPU, 16GB RAM, 200GB NVMe, Mumbai
-- `ti.intelwatch.in` = ETIP → etip_* containers → our project
-- `intelwatch.in` = old live site on old VPS (72.61.227.64, KVM2 8GB) → ti-platform-* containers
-Old VPS (72.61.227.64): cloudflared DISABLED, KVM2 locked 18mo. Do NOT deploy there.
-NEVER modify non-etip_ containers, nginx configs, or files belonging to intelwatch.in.
+- `intelwatch.in` = ETIP → etip_* containers → our project (migrated from ti.intelwatch.in)
+Old VPS (72.61.227.64): decommissioned, KVM2 locked 18mo. Do NOT deploy there.
 
 ## VPS SSH Access
 
