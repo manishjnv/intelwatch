@@ -37,3 +37,15 @@ scrape_configs:
           - 'etip_caching:3025'
         labels:
           env: 'production'
+
+  # Shared VPS: dhanradar stack is scraped by this Prometheus (added on VPS 2026-06-11).
+  # Kept in git because deploy.yml does `git reset --hard` on the VPS.
+  - job_name: dhanradar
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - dhanradar-fastapi:8000
+        labels:
+          env: production
+          app: dhanradar

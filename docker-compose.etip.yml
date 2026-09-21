@@ -100,7 +100,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
 
   # ─── Neo4j 5 — Knowledge Graph ──────────────────────────────────
   etip_neo4j:
@@ -110,13 +110,15 @@ services:
     environment:
       - NEO4J_AUTH=neo4j/${TI_NEO4J_PASSWORD:?TI_NEO4J_PASSWORD is required}
       - NEO4J_PLUGINS=["apoc"]
-      - NEO4J_server_memory_heap_initial__size=256m
-      - NEO4J_server_memory_heap_max__size=512m
-      - NEO4J_server_memory_pagecache_size=128m
+      - NEO4J_server_memory_heap_initial__size=512m
+      - NEO4J_server_memory_heap_max__size=768m
+      - NEO4J_server_memory_pagecache_size=512m
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
     ports:
       - "${TI_NEO4J_HTTP_PORT:-7475}:7474"
       - "${TI_NEO4J_BOLT_PORT:-7688}:7687"
+    tmpfs:
+      - /tmp:size=512M
     volumes:
       - etip_neo4j_data:/data
       - etip_neo4j_logs:/logs
@@ -131,7 +133,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M
+          memory: 2G
 
   # ─── MinIO — S3-Compatible Object Storage ───────────────────────
   etip_minio:
