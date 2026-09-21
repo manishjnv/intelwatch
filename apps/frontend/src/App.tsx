@@ -8,32 +8,35 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LandingPage } from '@/pages/LandingPage'; // ⛔ DESIGN LOCKED — see UI_DESIGN_LOCK.md
-import { LoginPage } from '@/pages/LoginPage';
-import { RegisterPage } from '@/pages/RegisterPage';
-import { DashboardPage } from '@/pages/DashboardPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
-import { IocListPage } from '@/pages/IocListPage';
-import { ThreatActorListPage } from '@/pages/ThreatActorListPage';
-import { MalwareListPage } from '@/pages/MalwareListPage';
-import { VulnerabilityListPage } from '@/pages/VulnerabilityListPage';
-import { CommandCenterPage } from '@/pages/CommandCenterPage';
-import { DRPDashboardPage } from '@/pages/DRPDashboardPage';
-import { CorrelationPage } from '@/pages/CorrelationPage';
-import { HuntingWorkbenchPage } from '@/pages/HuntingWorkbenchPage';
-import { SearchPage } from '@/pages/SearchPage';
-import { MfaChallengePage } from '@/pages/MfaChallengePage';
-import { MfaSetupRequiredPage } from '@/pages/MfaSetupRequiredPage';
-import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
 import { FeatureGate } from '@/components/FeatureGate';
-import { ClientOnboardingPage } from '@/pages/ClientOnboardingPage';
 
 
-// Lazy-loaded — D3 (~190KB) splits into its own chunk, only fetched on /graph navigation
-const ThreatGraphPage = React.lazy(() =>
-  import('@/pages/ThreatGraphPage').then(m => ({ default: m.ThreatGraphPage }))
-)
+// Everything except the landing page is lazy-loaded, so `/` ships only landing code
+// (LCP / Core Web Vitals). ThreatGraphPage additionally isolates D3 (~190KB).
+const DashboardLayout = React.lazy(() => import('@/components/layout/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
+const LoginPage = React.lazy(() => import('@/pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const RegisterPage = React.lazy(() => import('@/pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const DashboardPage = React.lazy(() => import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const IocListPage = React.lazy(() => import('@/pages/IocListPage').then(m => ({ default: m.IocListPage })));
+const ThreatActorListPage = React.lazy(() => import('@/pages/ThreatActorListPage').then(m => ({ default: m.ThreatActorListPage })));
+const MalwareListPage = React.lazy(() => import('@/pages/MalwareListPage').then(m => ({ default: m.MalwareListPage })));
+const VulnerabilityListPage = React.lazy(() => import('@/pages/VulnerabilityListPage').then(m => ({ default: m.VulnerabilityListPage })));
+const CommandCenterPage = React.lazy(() => import('@/pages/CommandCenterPage').then(m => ({ default: m.CommandCenterPage })));
+const DRPDashboardPage = React.lazy(() => import('@/pages/DRPDashboardPage').then(m => ({ default: m.DRPDashboardPage })));
+const CorrelationPage = React.lazy(() => import('@/pages/CorrelationPage').then(m => ({ default: m.CorrelationPage })));
+const HuntingWorkbenchPage = React.lazy(() => import('@/pages/HuntingWorkbenchPage').then(m => ({ default: m.HuntingWorkbenchPage })));
+const SearchPage = React.lazy(() => import('@/pages/SearchPage').then(m => ({ default: m.SearchPage })));
+const MfaChallengePage = React.lazy(() => import('@/pages/MfaChallengePage').then(m => ({ default: m.MfaChallengePage })));
+const MfaSetupRequiredPage = React.lazy(() => import('@/pages/MfaSetupRequiredPage').then(m => ({ default: m.MfaSetupRequiredPage })));
+const VerifyEmailPage = React.lazy(() => import('@/pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
+const ClientOnboardingPage = React.lazy(() => import('@/pages/ClientOnboardingPage').then(m => ({ default: m.ClientOnboardingPage })));
+const ThreatGraphPage = React.lazy(() => import('@/pages/ThreatGraphPage').then(m => ({ default: m.ThreatGraphPage })));
+
+const PageSpinner = (
+  <div className="flex h-full min-h-[50vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand" /></div>
+);
 
 /** Catches render errors and displays them instead of blank page */
 class ErrorBoundary extends React.Component<
@@ -59,6 +62,7 @@ class ErrorBoundary extends React.Component<
 export function App() {
   return (
     <ErrorBoundary>
+      <React.Suspense fallback={PageSpinner}>
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
@@ -77,13 +81,7 @@ export function App() {
             <Route path="/threat-actors" element={<FeatureGate feature="threat_actors"><ThreatActorListPage /></FeatureGate>} />
             <Route path="/malware" element={<FeatureGate feature="malware_intel"><MalwareListPage /></FeatureGate>} />
             <Route path="/vulnerabilities" element={<FeatureGate feature="vulnerability_intel"><VulnerabilityListPage /></FeatureGate>} />
-            <Route path="/graph" element={
-              <FeatureGate feature="graph_exploration">
-                <React.Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand" /></div>}>
-                  <ThreatGraphPage />
-                </React.Suspense>
-              </FeatureGate>
-            } />
+            <Route path="/graph" element={<FeatureGate feature="graph_exploration"><ThreatGraphPage /></FeatureGate>} />
             <Route path="/hunting" element={<FeatureGate feature="threat_hunting"><HuntingWorkbenchPage /></FeatureGate>} />
             <Route path="/drp" element={<FeatureGate feature="digital_risk_protection"><DRPDashboardPage /></FeatureGate>} />
             <Route path="/correlation" element={<FeatureGate feature="correlation_engine"><CorrelationPage /></FeatureGate>} />
@@ -113,6 +111,7 @@ export function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </React.Suspense>
     </ErrorBoundary>
   );
 }

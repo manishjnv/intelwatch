@@ -14,11 +14,53 @@
     <!-- Theme color (dark default, updated by JS for light mode) -->
     <meta name="theme-color" content="#07090e" />
 
-    <!-- Open Graph -->
-    <meta property="og:title" content="IntelWatch ETIP" />
-    <meta property="og:description" content="Enterprise Threat Intelligence Platform" />
+    <link rel="canonical" href="https://intelwatch.in/" />
+
+    <!-- Open Graph / Twitter (absolute URLs, PNG: SVG previews are not rendered by most platforms) -->
+    <meta property="og:site_name" content="IntelWatch" />
+    <meta property="og:title" content="IntelWatch — Threat Intelligence Platform" />
+    <meta property="og:description" content="Monitor, analyze, and respond to cyber threats: IOC search, CVE intelligence with EPSS and KEV, threat actors, threat graph and digital risk protection." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/brand/logo-mark.svg" />
+    <meta property="og:url" content="https://intelwatch.in/" />
+    <meta property="og:image" content="https://intelwatch.in/brand/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="IntelWatch — Threat Intelligence Platform" />
+    <meta name="twitter:description" content="IOC search, CVE intelligence with EPSS and KEV, threat actors, threat graph and digital risk protection." />
+    <meta name="twitter:image" content="https://intelwatch.in/brand/og-image.png" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://intelwatch.in/#org",
+          "name": "IntelWatch",
+          "url": "https://intelwatch.in/",
+          "logo": "https://intelwatch.in/brand/og-image.png"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://intelwatch.in/#website",
+          "url": "https://intelwatch.in/",
+          "name": "IntelWatch",
+          "publisher": { "@id": "https://intelwatch.in/#org" }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "IntelWatch ETIP",
+          "applicationCategory": "SecurityApplication",
+          "operatingSystem": "Web",
+          "url": "https://intelwatch.in/",
+          "description": "Enterprise threat intelligence platform: IOC search, CVE intelligence with EPSS and KEV, threat actors, malware, threat graph, digital risk protection and threat hunting.",
+          "publisher": { "@id": "https://intelwatch.in/#org" },
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR", "description": "Free tier" }
+        }
+      ]
+    }
+    </script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
