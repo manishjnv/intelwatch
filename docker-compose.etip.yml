@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: ${TI_POSTGRES_PASSWORD:?TI_POSTGRES_PASSWORD is required}
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     ports:
-      - "${TI_POSTGRES_PORT:-5433}:5432"
+      - "127.0.0.1:${TI_POSTGRES_PORT:-5433}:5432"
     volumes:
       - etip_postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -49,7 +49,7 @@ services:
         --appendonly yes
         --appendfsync everysec
     ports:
-      - "${TI_REDIS_PORT:-6380}:6379"
+      - "127.0.0.1:${TI_REDIS_PORT:-6380}:6379"
     volumes:
       - etip_redis_data:/data
     healthcheck:
@@ -86,7 +86,7 @@ services:
         soft: 65536
         hard: 65536
     ports:
-      - "${TI_ELASTICSEARCH_PORT:-9201}:9200"
+      - "127.0.0.1:${TI_ELASTICSEARCH_PORT:-9201}:9200"
     volumes:
       - etip_elasticsearch_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -115,8 +115,8 @@ services:
       - NEO4J_server_memory_pagecache_size=512m
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
     ports:
-      - "${TI_NEO4J_HTTP_PORT:-7475}:7474"
-      - "${TI_NEO4J_BOLT_PORT:-7688}:7687"
+      - "127.0.0.1:${TI_NEO4J_HTTP_PORT:-7475}:7474"
+      - "127.0.0.1:${TI_NEO4J_BOLT_PORT:-7688}:7687"
     tmpfs:
       - /tmp:size=512M
     volumes:
@@ -145,8 +145,8 @@ services:
       MINIO_ROOT_USER: ${TI_MINIO_ACCESS_KEY:-etip_minio_admin}
       MINIO_ROOT_PASSWORD: ${TI_MINIO_SECRET_KEY:?TI_MINIO_SECRET_KEY is required}
     ports:
-      - "${TI_MINIO_API_PORT:-9001}:9000"
-      - "${TI_MINIO_CONSOLE_PORT:-9002}:9001"
+      - "127.0.0.1:${TI_MINIO_API_PORT:-9001}:9000"
+      - "127.0.0.1:${TI_MINIO_CONSOLE_PORT:-9002}:9001"
     volumes:
       - etip_minio_data:/data
     healthcheck:
@@ -173,7 +173,7 @@ services:
       - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
     ports:
-      - "${TI_PROMETHEUS_PORT:-9190}:9090"
+      - "127.0.0.1:${TI_PROMETHEUS_PORT:-9190}:9090"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - etip_prometheus_data:/prometheus
@@ -201,7 +201,7 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_UID=etip-service-health
     ports:
-      - "${TI_GRAFANA_PORT:-3101}:3000"
+      - "127.0.0.1:${TI_GRAFANA_PORT:-3101}:3000"
     volumes:
       - etip_grafana_data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -253,7 +253,7 @@ services:
       TI_ADMIN_SERVICE_URL: http://etip_admin:3022
       TI_TURNSTILE_SECRET: ${TI_TURNSTILE_SECRET:-}
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -361,7 +361,7 @@ services:
       TI_SHODAN_API_KEY: ${TI_SHODAN_API_KEY:-}
       TI_GREYNOISE_API_KEY: ${TI_GREYNOISE_API_KEY:-}
     ports:
-      - "3005:3005"
+      - "127.0.0.1:3005:3005"
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -411,7 +411,7 @@ services:
       TI_VT_RATE_LIMIT_PER_MIN: ${TI_VT_RATE_LIMIT_PER_MIN:-4}
       TI_ABUSEIPDB_RATE_LIMIT_PER_DAY: ${TI_ABUSEIPDB_RATE_LIMIT_PER_DAY:-1000}
     ports:
-      - "3006:3006"
+      - "127.0.0.1:3006:3006"
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -455,7 +455,7 @@ services:
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
     ports:
-      - "3007:3007"
+      - "127.0.0.1:3007:3007"
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -499,7 +499,7 @@ services:
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
     ports:
-      - "3008:3008"
+      - "127.0.0.1:3008:3008"
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -543,7 +543,7 @@ services:
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
     ports:
-      - "3009:3009"
+      - "127.0.0.1:3009:3009"
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -587,7 +587,7 @@ services:
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
     ports:
-      - "3010:3010"
+      - "127.0.0.1:3010:3010"
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -659,7 +659,7 @@ services:
       TI_GRAPH_PROPAGATION_DECAY: ${TI_GRAPH_PROPAGATION_DECAY:-0.7}
       TI_GRAPH_WORKER_CONCURRENCY: ${TI_GRAPH_WORKER_CONCURRENCY:-5}
     ports:
-      - "3012:3012"
+      - "127.0.0.1:3012:3012"
     depends_on:
       etip_postgres:
         condition: service_healthy
@@ -706,7 +706,7 @@ services:
       TI_GRAPH_SERVICE_URL: http://etip_threat_graph:3012
       TI_CORRELATION_GRAPH_SYNC_ENABLED: ${TI_CORRELATION_GRAPH_SYNC_ENABLED:-true}
     ports:
-      - "3013:3013"
+      - "127.0.0.1:3013:3013"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -748,7 +748,7 @@ services:
       TI_CORRELATION_SERVICE_URL: http://etip_correlation:3013
       TI_HUNT_CORRELATION_ENABLED: ${TI_HUNT_CORRELATION_ENABLED:-true}
     ports:
-      - "3014:3014"
+      - "127.0.0.1:3014:3014"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -790,7 +790,7 @@ services:
       TI_DRP_GRAPH_SYNC_ENABLED: ${TI_DRP_GRAPH_SYNC_ENABLED:-false}
       TI_DRP_MAX_ASSETS_PER_TENANT: ${TI_DRP_MAX_ASSETS_PER_TENANT:-100}
     ports:
-      - "3011:3011"
+      - "127.0.0.1:3011:3011"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -832,7 +832,7 @@ services:
       TI_GRAPH_SERVICE_URL: http://etip_threat_graph:3012
       TI_CORRELATION_SERVICE_URL: http://etip_correlation:3013
     ports:
-      - "3015:3015"
+      - "127.0.0.1:3015:3015"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -878,7 +878,7 @@ services:
       TI_BREAK_GLASS_PASSWORD: ${TI_BREAK_GLASS_PASSWORD:-}
       TI_BREAK_GLASS_OTP_SECRET: ${TI_BREAK_GLASS_OTP_SECRET:-}
     ports:
-      - "3016:3016"
+      - "127.0.0.1:3016:3016"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -917,7 +917,7 @@ services:
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
       TI_COST_STAGE2_FACTOR: ${TI_COST_STAGE2_FACTOR:-0.2}
     ports:
-      - "3017:3017"
+      - "127.0.0.1:3017:3017"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -955,7 +955,7 @@ services:
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
     ports:
-      - "3018:3018"
+      - "127.0.0.1:3018:3018"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -995,7 +995,7 @@ services:
       TI_RAZORPAY_KEY_SECRET: ${TI_RAZORPAY_KEY_SECRET:-placeholder_secret_32_chars_padded}
       TI_RAZORPAY_WEBHOOK_SECRET: ${TI_RAZORPAY_WEBHOOK_SECRET:-placeholder_webhook_32_chars_pad!}
     ports:
-      - "3019:3019"
+      - "127.0.0.1:3019:3019"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -1035,7 +1035,7 @@ services:
       TI_FROM_EMAIL: ${TI_FROM_EMAIL:-IntelWatch ETIP <noreply@intelwatch.in>}
       TI_PLATFORM_URL: ${TI_PLATFORM_URL:-https://intelwatch.in}
     ports:
-      - "3022:3022"
+      - "127.0.0.1:3022:3022"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -1076,7 +1076,7 @@ services:
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-500}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
     ports:
-      - "3020:3020"
+      - "127.0.0.1:3020:3020"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -1116,7 +1116,7 @@ services:
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
     ports:
-      - "3021:3021"
+      - "127.0.0.1:3021:3021"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -1157,7 +1157,7 @@ services:
       TI_GLOBAL_PROCESSING_ENABLED: ${TI_GLOBAL_PROCESSING_ENABLED:-false}
       TI_DEFAULT_TENANT_ID: ${TI_DEFAULT_TENANT_ID:-default-tenant}
     ports:
-      - "3023:3023"
+      - "127.0.0.1:3023:3023"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -1194,7 +1194,7 @@ services:
       TI_RATE_LIMIT_MAX: ${TI_RATE_LIMIT_MAX_REQUESTS:-200}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
     ports:
-      - "3024:3024"
+      - "127.0.0.1:3024:3024"
     depends_on:
       etip_api:
         condition: service_healthy
@@ -1238,7 +1238,7 @@ services:
       TI_ARCHIVE_CRON: "0 2 * * *"
       TI_CACHE_WARM_CRON: "*/30 * * * *"
     ports:
-      - "3025:3025"
+      - "127.0.0.1:3025:3025"
     depends_on:
       etip_redis:
         condition: service_healthy
@@ -1263,8 +1263,8 @@ services:
     container_name: etip_nginx
     restart: unless-stopped
     ports:
-      - "${TI_NGINX_HTTP_PORT:-8080}:80"
-      - "${TI_NGINX_HTTPS_PORT:-8443}:443"
+      - "127.0.0.1:${TI_NGINX_HTTP_PORT:-8080}:80"
+      - "127.0.0.1:${TI_NGINX_HTTPS_PORT:-8443}:443"
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
