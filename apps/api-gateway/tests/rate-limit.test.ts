@@ -2,12 +2,28 @@
  * @module api-gateway/tests/rate-limit
  * @description Tests for rate limiting middleware:
  *   - 429 + RATE_LIMIT_EXCEEDED shape after limit is hit
- *   - x-tenant-id header used as key (not IP)
+ *   - key = verified-token tenant, else CF-Connecting-IP / req.ip (never raw x-tenant-id — S147)
  *   - /health and /ready bypass rate limiting
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
+import { loadJwtConfig, signAccessToken } from '@etip/shared-auth';
+import { rateLimitKey } from '../src/plugins/rate-limit-key.js';
+
+loadJwtConfig({
+  TI_JWT_SECRET: 'test-secret-key-at-least-32-characters-long!!',
+  TI_JWT_ISSUER: 'test-issuer',
+  TI_JWT_ACCESS_EXPIRY: '900',
+  TI_JWT_REFRESH_EXPIRY: '604800',
+});
+const tokenFor = (tenantId: string) =>
+  signAccessToken({
+    userId: '33333333-3333-4333-8333-333333333333', tenantId, email: 'u@acme.com',
+    role: 'analyst', sessionId: '44444444-4444-4444-8444-444444444444',
+  });
+const TENANT_A = '11111111-1111-4111-8111-111111111111';
+const TENANT_B = '22222222-2222-4222-8222-222222222222';
 
 /** Build a minimal Fastify app with the same rate-limit config as app.ts */
 async function buildTestApp(max = 2): Promise<FastifyInstance> {
@@ -17,8 +33,7 @@ async function buildTestApp(max = 2): Promise<FastifyInstance> {
     global: true,
     max,
     timeWindow: '1 minute',
-    keyGenerator: (req) =>
-      (req.headers['x-tenant-id'] as string) ?? req.ip,
+    keyGenerator: rateLimitKey,
     errorResponseBuilder: (_req, context) => ({
       statusCode: 429,
       error: {
@@ -69,16 +84,37 @@ describe('Rate limiting middleware', () => {
     expect(body.error.retryAfter).toBeDefined();
   });
 
-  it('uses x-tenant-id header as rate-limit key (different tenants have separate quotas)', async () => {
-    // Tenant A exhausts its quota
-    await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'x-tenant-id': 'tenant-A' } });
-    await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'x-tenant-id': 'tenant-A' } });
-    const rA3 = await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'x-tenant-id': 'tenant-A' } });
+  it('keys authenticated requests by the verified token tenant (separate quotas per tenant)', async () => {
+    const a = { authorization: `Bearer ${tokenFor(TENANT_A)}` };
+    await app.inject({ method: 'GET', url: '/api/v1/test', headers: a });
+    await app.inject({ method: 'GET', url: '/api/v1/test', headers: a });
+    const rA3 = await app.inject({ method: 'GET', url: '/api/v1/test', headers: a });
     expect(rA3.statusCode).toBe(429);
 
-    // Tenant B is unaffected — separate key
-    const rB1 = await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'x-tenant-id': 'tenant-B' } });
+    const rB1 = await app.inject({ method: 'GET', url: '/api/v1/test', headers: { authorization: `Bearer ${tokenFor(TENANT_B)}` } });
     expect(rB1.statusCode).toBe(200);
+  });
+
+  it('a spoofed x-tenant-id does NOT create a fresh bucket (S147)', async () => {
+    await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'x-tenant-id': 'r1' } });
+    await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'x-tenant-id': 'r2' } });
+    const r3 = await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'x-tenant-id': 'r3' } });
+    expect(r3.statusCode).toBe(429);
+  });
+
+  it('anonymous clients are keyed by CF-Connecting-IP', async () => {
+    const ip1 = { 'cf-connecting-ip': '203.0.113.1' };
+    await app.inject({ method: 'GET', url: '/api/v1/test', headers: ip1 });
+    await app.inject({ method: 'GET', url: '/api/v1/test', headers: ip1 });
+    expect((await app.inject({ method: 'GET', url: '/api/v1/test', headers: ip1 })).statusCode).toBe(429);
+    expect((await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'cf-connecting-ip': '203.0.113.2' } })).statusCode).toBe(200);
+  });
+
+  it('an invalid token falls back to the IP bucket', async () => {
+    const bad = { authorization: 'Bearer forged.token.value', 'cf-connecting-ip': '203.0.113.9' };
+    await app.inject({ method: 'GET', url: '/api/v1/test', headers: bad });
+    await app.inject({ method: 'GET', url: '/api/v1/test', headers: bad });
+    expect((await app.inject({ method: 'GET', url: '/api/v1/test', headers: { 'cf-connecting-ip': '203.0.113.9' } })).statusCode).toBe(429);
   });
 
   it('/health bypasses rate limiting regardless of request count', async () => {

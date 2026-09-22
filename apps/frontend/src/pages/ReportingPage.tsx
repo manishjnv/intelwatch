@@ -7,6 +7,8 @@
  */
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { apiDownload } from '@/lib/api'
+import { toast } from '@/components/ui/Toast'
 import {
   useReports, useReportStats, useReportTemplates, useReportSchedules,
   useReportComparison, useCreateReport, useCloneReport, useBulkDeleteReports,
@@ -284,7 +286,8 @@ export function ReportingPage() {
   }
 
   const handleDownload = (id: string) => {
-    window.open(`/api/v1/reports/${id}/download`, '_blank')
+    // Authenticated fetch: a plain window.open() carries no Authorization header (S147)
+    apiDownload(`/reports/${id}/download`, `report-${id}`).catch(() => toast('Failed to download report', 'error'))
   }
 
   // Schedule selection for bulk toggle

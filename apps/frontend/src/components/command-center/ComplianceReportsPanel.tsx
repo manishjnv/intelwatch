@@ -14,6 +14,7 @@ import {
 } from '@/hooks/use-compliance-reports'
 import { useUsers } from '@/hooks/use-phase5-data'
 import { toast } from '@/components/ui/Toast'
+import { apiDownload } from '@/lib/api'
 import {
   Download, Eye, Trash2, Plus, X, Loader2,
   Shield, CheckCircle, XCircle,
@@ -454,7 +455,7 @@ export function ComplianceReportsList() {
                       {report.status === 'completed' && (
                         <>
                           <button onClick={() => setViewReport(report)} className="p-1 rounded hover:bg-bg-elevated text-text-muted hover:text-accent" title="View" data-testid={`view-btn-${report.id}`}><Eye className="w-3.5 h-3.5" /></button>
-                          <a href={`/api/v1/admin/compliance/reports/${report.id}`} download className="p-1 rounded hover:bg-bg-elevated text-text-muted hover:text-accent" title="Download"><Download className="w-3.5 h-3.5" /></a>
+                          <button type="button" onClick={() => apiDownload(`/admin/compliance/reports/${report.id}`, `compliance-report-${report.id}.json`).catch(() => toast('Failed to download report', 'error'))} className="p-1 rounded hover:bg-bg-elevated text-text-muted hover:text-accent" title="Download" aria-label="Download report" data-testid={`download-btn-${report.id}`}><Download className="w-3.5 h-3.5" /></button>
                         </>
                       )}
                       <button onClick={() => setDeleteConfirm(report.id)} className="p-1 rounded hover:bg-bg-elevated text-text-muted hover:text-sev-critical" title="Delete" data-testid={`delete-btn-${report.id}`}><Trash2 className="w-3.5 h-3.5" /></button>
@@ -545,9 +546,9 @@ export function DsarPanel() {
                   <td className="py-2 px-2 text-text-muted tabular-nums">{fmtSize(exp.sizeBytes)}</td>
                   <td className="py-2 px-2">
                     {exp.status === 'completed' && (
-                      <a href={`/api/v1/settings/compliance/dsar/${exp.id}`} download className="p-1 rounded hover:bg-bg-elevated text-text-muted hover:text-accent" title="Download">
+                      <button type="button" onClick={() => apiDownload(`/settings/compliance/dsar/${exp.id}`, `dsar-export-${exp.id}.json`).catch(() => toast('Failed to download export', 'error'))} className="p-1 rounded hover:bg-bg-elevated text-text-muted hover:text-accent" title="Download" aria-label="Download export" data-testid={`dsar-download-btn-${exp.id}`}>
                         <Download className="w-3.5 h-3.5" />
-                      </a>
+                      </button>
                     )}
                   </td>
                 </tr>
