@@ -20,6 +20,8 @@ export interface PlanDef {
   cta: 'select' | 'contact'
 }
 
+// Monthly list prices (DECISION S147): must match billing-service plan-store and prisma plan
+// seeds. Annual = 12 × the discounted monthly rate shown in saveLabel.
 export const PLANS: PlanDef[] = [
   {
     id: 'free', name: 'Free', price: 0, priceLabel: 'Free',
@@ -31,8 +33,8 @@ export const PLANS: PlanDef[] = [
     cta: 'select',
   },
   {
-    id: 'starter', name: 'Starter', price: 7999, priceLabel: '₹7,999',
-    saveLabel: 'Save 20% vs monthly',
+    id: 'starter', name: 'Starter', price: 9999, priceLabel: '₹9,999',
+    saveLabel: '₹7,999/mo billed annually · save 20%',
     stats: { seats: '10', iocLimit: '50K', apiCalls: '100K/mo', storage: '10 GB' },
     features: [
       'Up to 10 users', '100K API calls / month', '50K IOC limit',
@@ -42,8 +44,8 @@ export const PLANS: PlanDef[] = [
     cta: 'select',
   },
   {
-    id: 'pro', name: 'Teams', price: 14999, priceLabel: '₹14,999',
-    saveLabel: 'Save 21% vs monthly', popular: true,
+    id: 'pro', name: 'Teams', price: 18999, priceLabel: '₹18,999',
+    saveLabel: '₹14,999/mo billed annually · save 21%', popular: true,
     stats: { seats: '25', iocLimit: '250K', apiCalls: '250K/mo', storage: '50 GB' },
     features: [
       'Up to 25 users', '250K API calls / month', '250K IOC limit',
@@ -53,8 +55,8 @@ export const PLANS: PlanDef[] = [
     cta: 'select',
   },
   {
-    id: 'enterprise', name: 'Enterprise', price: 39999, priceLabel: '₹39,999',
-    saveLabel: 'Save 20% vs monthly',
+    id: 'enterprise', name: 'Enterprise', price: 49999, priceLabel: '₹49,999',
+    saveLabel: '₹39,999/mo billed annually · save 20%',
     stats: { seats: 'Unlimited', iocLimit: '∞', apiCalls: '∞/mo', storage: 'Custom' },
     features: [
       'Unlimited users', 'Unlimited API calls', 'Unlimited IOCs',
