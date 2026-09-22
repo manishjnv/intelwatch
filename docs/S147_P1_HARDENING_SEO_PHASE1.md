@@ -1,7 +1,7 @@
 # S147 — P1: VPS Hardening + SEO Phase 1 + CI Unblock
 
 **Date:** 2026-09-23 · **PR:** #20 (`feat/vps-hardening-seo-phase1` → `master`)
-**Status:** Reviewed, CI green (run 35648974471), **waiting for owner merge**. Not yet deployed.
+**Status:** ✅ **Deployed and verified 2026-09-23.** Merged as `9d7bf50`; CI/CD run 35779554466 green (test → images → deploy).
 **Rollback tag:** `safe-point-2026-09-22-vps-seo` · VPS file backup: `/root/backup-20260922`
 
 ## 1. What ships
@@ -50,7 +50,7 @@ Every `ports:` entry changes from `"HOST:CONTAINER"` to `"127.0.0.1:HOST:CONTAIN
 | CI | PASS | PR run 35648974471 green in 4m43s |
 | Adversarial sign-off | Note only | This is a hardening-direction change and adds no new attack surface, so it was scaled down per the playbook. SEO Phase 3 (new unauthenticated routes) will need the full adversarial review |
 
-**Not verified yet:** neither nginx config has been loaded by a real nginx. The local docker test was declined in S146. Section 3 step 2 covers this.
+**Verified at deploy (§4):** both nginx configs pass `nginx -t` on the VPS. They were first loaded there, because the local docker test was declined in S146.
 
 ## 3. Deploy and verify
 1. Merge PR #20. The push to master triggers `deploy.yml`, which runs tests and then deploys to the VPS. Watch the run: `env -u GH_TOKEN gh run watch`.
@@ -76,5 +76,26 @@ Every `ports:` entry changes from `"HOST:CONTAINER"` to `"127.0.0.1:HOST:CONTAIN
 
 4. **Rollback:** on the VPS, `git reset --hard safe-point-2026-09-22-vps-seo`, restore from `/root/backup-20260922`, then `docker compose -p etip -f docker-compose.etip.yml up -d`. For the repo, revert the merge commit.
 
-## 4. Results
-_To be filled in after deploy: CI run ID, container health count, grid results._
+## 4. Results (2026-09-23)
+**Deploy:** PR #20 merged (`9d7bf50`), triggering run 35779554466: Test/Type-check/Lint/Audit ✅, Build & Push Images ✅, Deploy to VPS ✅. Master CI is green again for the first time since June. The VPS is on `9d7bf50`.
+
+**VPS (read-only, via Cloudflare tunnel):**
+| Check | Result |
+|---|---|
+| `docker exec etip_nginx nginx -t` | ✅ syntax ok, test successful. First real load of the new headers config |
+| `docker exec etip_frontend nginx -t` | ✅ syntax ok, test successful. First real load of `apps/frontend/nginx.conf` |
+| etip containers | ✅ **32/32 healthy**, 0 other |
+| Non-loopback TCP listeners | ✅ only `sshd :22` (IPv4 + IPv6). `127.0.0.54:53` is the systemd-resolved stub on loopback. The 33 service ports are no longer reachable from outside |
+
+**Live grid (`https://intelwatch.in`):**
+| # | Request | Result |
+|---|---|---|
+| 1 | `/robots.txt` | ✅ 200 `text/plain` |
+| 2 | `/sitemap.xml` | ✅ 200 `text/xml` |
+| 3 | `/definitely-not-a-page` | ✅ **404** `text/html` |
+| 4 | `/llms.txt` | ✅ 404 |
+| 5 | `/dashboard`, `/login` | ✅ 200 + `X-Robots-Tag: noindex, nofollow` |
+| 6 | `/` | ✅ 200, no X-Robots-Tag. `nosniff`, `SAMEORIGIN`, `strict-origin-when-cross-origin`, `HSTS max-age=31536000` and `Permissions-Policy` all present |
+| 7 | `/health`, `/api/v1/health` | ✅ `noindex, nofollow` (the second is a 404 JSON; no such route, but the header applies) |
+
+**New issues:** none. The rollback tag `safe-point-2026-09-22-vps-seo` is kept until (a) is verified.
