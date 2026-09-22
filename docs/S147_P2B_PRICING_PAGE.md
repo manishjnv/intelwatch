@@ -1,7 +1,7 @@
 # S147 — P2(b): Public `/pricing` page + price alignment (SEO plan 2.2)
 
 **Date:** 2026-09-23 · **Branch:** `feat/seo-phase2b-pricing` (stacked on `feat/seo-phase2a-prerender`)
-**Status:** Implemented and tested locally. **Deploys after 2(a) (PR #21) is live and verified.**
+**Status:** ✅ **Deployed and verified 2026-09-23** (PR #22, `249bcaf`). Later changed by DECISION-031: every paid plan is "Contact sales" and all trial copy is removed. Live: `/pricing` 200, JSON-LD offers, 0 "trial" mentions, in sitemap.
 **Module:** frontend only. Billing, seeds and charge amounts are unchanged.
 **Decision:** DECISION-030 (docs/DECISIONS_LOG.md)
 
