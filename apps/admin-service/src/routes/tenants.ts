@@ -5,7 +5,6 @@ import {
   CreateTenantSchema,
   SuspendTenantSchema,
   ChangePlanSchema,
-  ExtendTrialSchema,
   type CreateTenantDto,
 } from '../schemas/admin.js';
 import { validate } from '../utils/validate.js';
@@ -108,21 +107,6 @@ export function tenantRoutes(deps: TenantRouteDeps) {
         } catch (err) {
           if (err instanceof AppError) throw err;
           throw new AppError(500, 'Failed to change plan', 'PLAN_CHANGE_ERROR');
-        }
-      },
-    );
-
-    /** PUT /:id/extend-trial — extend a tenant's trial period. */
-    app.put(
-      '/:id/extend-trial',
-      async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const body = validate(ExtendTrialSchema, req.body);
-        try {
-          const tenant = tenantStore.extendTrial(req.params.id, body.days);
-          return reply.send({ data: tenant });
-        } catch (err) {
-          if (err instanceof AppError) throw err;
-          throw new AppError(500, 'Failed to extend trial', 'TRIAL_EXTEND_ERROR');
         }
       },
     );

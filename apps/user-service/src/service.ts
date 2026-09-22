@@ -60,34 +60,17 @@ export class UserService {
     const existingUser = await repo.findUserByEmailAnyStatus(input.email);
     if (existingUser) throw new AppError(409, 'Email already registered — please sign in instead', 'EMAIL_ALREADY_REGISTERED');
 
-    // Domain-level trial abuse guard: block if same email domain already has a paid/trialing tenant
-    const plan = input.plan ?? 'free';
-    if (plan !== 'free') {
-      const emailDomain = input.email.split('@')[1]?.toLowerCase();
-      if (emailDomain) {
-        const domainTenant = await repo.findTrialingTenantByEmailDomain(emailDomain);
-        if (domainTenant) {
-          throw new AppError(409,
-            `Your organization (${domainTenant.name}) already has an active subscription. Contact your admin for access.`,
-            'DOMAIN_TRIAL_EXISTS',
-          );
-        }
-      }
-    }
+    // DECISION-031 (S147): no trials and no self-serve paid signup. Every registration is a
+    // Free tenant; paid plans are set up by sales. `input.plan` is accepted for backward
+    // compatibility but ignored. (This also removes the old email-domain "trial abuse"
+    // guard, which blocked public-mail users and exposed other tenants' names.)
+    const plan = 'free' as const;
 
     const passwordHash = await hashPassword(input.password);
 
     const tenant = await repo.createTenant({ name: input.tenantName, slug: input.tenantSlug, plan });
 
-    // Create subscription with 7-day trial for paid plans
-    const isTrial = plan !== 'free';
-    const trialEndsAt = isTrial ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : undefined;
-    await repo.createTenantSubscription({
-      tenantId: tenant.id,
-      plan,
-      status: isTrial ? 'trialing' : 'active',
-      trialEndsAt,
-    });
+    await repo.createTenantSubscription({ tenantId: tenant.id, plan, status: 'active' });
 
     const user = await repo.createUser({
       tenantId: tenant.id, email: input.email, displayName: input.displayName,
