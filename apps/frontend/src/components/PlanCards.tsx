@@ -7,65 +7,10 @@ import { cn } from '@/lib/utils'
 import { Check, Loader2, Crown } from 'lucide-react'
 
 // ─── Plan Definitions ─────────────────────────────────────
-
-export interface PlanDef {
-  id: string
-  name: string
-  price: number
-  priceLabel: string
-  saveLabel?: string
-  popular?: boolean
-  stats: { seats: string; iocLimit: string; apiCalls: string; storage: string }
-  features: string[]
-  cta: 'select' | 'contact'
-}
-
-// Monthly list prices (DECISION S147): must match billing-service plan-store and prisma plan
-// seeds. Annual = 12 × the discounted monthly rate shown in saveLabel.
-export const PLANS: PlanDef[] = [
-  {
-    id: 'free', name: 'Free', price: 0, priceLabel: 'Free',
-    stats: { seats: '2', iocLimit: '10K', apiCalls: '10K/mo', storage: '1 GB' },
-    features: [
-      'Up to 2 users', '10K API calls / month', '10K IOC limit',
-      '1 GB storage', 'RSS + STIX feeds', 'Basic IOC search', 'Community support',
-    ],
-    cta: 'select',
-  },
-  {
-    id: 'starter', name: 'Starter', price: 9999, priceLabel: '₹9,999',
-    saveLabel: '₹7,999/mo billed annually · save 20%',
-    stats: { seats: '10', iocLimit: '50K', apiCalls: '100K/mo', storage: '10 GB' },
-    features: [
-      'Up to 10 users', '100K API calls / month', '50K IOC limit',
-      '10 GB storage', 'All feed types', 'AI enrichment (Haiku)',
-      'SIEM integration (1)', 'Email support',
-    ],
-    cta: 'select',
-  },
-  {
-    id: 'pro', name: 'Teams', price: 18999, priceLabel: '₹18,999',
-    saveLabel: '₹14,999/mo billed annually · save 21%', popular: true,
-    stats: { seats: '25', iocLimit: '250K', apiCalls: '250K/mo', storage: '50 GB' },
-    features: [
-      'Up to 25 users', '250K API calls / month', '250K IOC limit',
-      '50 GB storage', 'All feed types', 'AI enrichment (Haiku)',
-      'Threat Graph (read-only)', 'SIEM integrations (3)', 'Priority email support',
-    ],
-    cta: 'select',
-  },
-  {
-    id: 'enterprise', name: 'Enterprise', price: 49999, priceLabel: '₹49,999',
-    saveLabel: '₹39,999/mo billed annually · save 20%',
-    stats: { seats: 'Unlimited', iocLimit: '∞', apiCalls: '∞/mo', storage: 'Custom' },
-    features: [
-      'Unlimited users', 'Unlimited API calls', 'Unlimited IOCs',
-      'Custom storage', 'AI enrichment (Opus)', 'Full platform access',
-      'Custom integrations', 'Dedicated SLA', 'On-prem option', '24/7 dedicated support',
-    ],
-    cta: 'contact',
-  },
-]
+// Data lives in @/data/plans (shared with /pricing). Re-exported for existing imports.
+import { PLANS, type PlanDef } from '@/data/plans'
+export { PLANS }
+export type { PlanDef }
 
 // ─── Plan Cards Grid ──────────────────────────────────────
 

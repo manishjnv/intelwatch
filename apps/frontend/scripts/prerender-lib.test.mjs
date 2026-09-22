@@ -1,7 +1,7 @@
 // Run: node --test apps/frontend/scripts/   (outside vitest — vitest.config.ts only includes src/)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeStyleBlocks, escapeAttr, injectHead, injectRoot, outputPathFor } from './prerender-lib.mjs';
+import { decodeStyleBlocks, escapeAttr, injectHead, injectRoot, jsonLdScript, outputPathFor } from './prerender-lib.mjs';
 
 const TEMPLATE = `<!doctype html><html><head>
 <title>Old</title>
@@ -69,4 +69,19 @@ test('outputPathFor maps routes to dist files', () => {
 
 test('escapeAttr escapes quotes, angle brackets and ampersands', () => {
   assert.equal(escapeAttr(`<"&">`), '&lt;&quot;&amp;&quot;&gt;');
+});
+
+test('injectHead adds route JSON-LD before </head> only when present', () => {
+  const withLd = injectHead(TEMPLATE, { path: '/p', title: 't', description: 'd', jsonLd: { '@type': 'Thing', name: 'x' } }, 'u');
+  assert.match(withLd, /<script type="application\/ld\+json" data-route-jsonld>\{"@type":"Thing","name":"x"\}<\/script>\s*<\/head>/);
+  const without = injectHead(TEMPLATE, { path: '/p', title: 't', description: 'd' }, 'u');
+  assert.doesNotMatch(without, /data-route-jsonld/);
+});
+
+test('jsonLdScript cannot be closed by string values and round-trips', () => {
+  const evil = { name: '</script><img src=x onerror=alert(1)>' };
+  const tag = jsonLdScript(evil);
+  const body = tag.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+  assert.equal(body.includes('<'), false);
+  assert.deepEqual(JSON.parse(body), evil);
 });

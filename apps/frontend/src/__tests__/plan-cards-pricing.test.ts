@@ -33,6 +33,7 @@ describe('PlanCards pricing', () => {
         expect(plan.saveLabel).toContain(`${inr(e.annualPerMonth)}/mo billed annually`)
         const pct = Math.round((1 - e.annualPerMonth / e.monthly) * 100)
         expect(plan.saveLabel).toContain(`save ${pct}%`)
+        expect(plan.priceAnnual).toBe(e.annualPerMonth)
       })
     }
   }

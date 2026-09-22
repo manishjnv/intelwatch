@@ -44,7 +44,16 @@ export function injectHead(template, meta, canonical) {
   html = replaceMetaContent(html, 'property', 'og:url', canonical);
   html = replaceMetaContent(html, 'name', 'twitter:title', socialTitle);
   html = replaceMetaContent(html, 'name', 'twitter:description', socialDescription);
+  if (meta.jsonLd) {
+    html = replaceOnce(html, /<\/head>/, () => `${jsonLdScript(meta.jsonLd)}\n  </head>`, '</head>');
+  }
   return html;
+}
+
+/** Route JSON-LD tag; `<` is escaped so no string value can close the script element. */
+export function jsonLdScript(data) {
+  const json = JSON.stringify(data).replace(/</g, '\\u003c');
+  return `<script type="application/ld+json" data-route-jsonld>${json}</script>`;
 }
 
 /** Places rendered app markup inside the empty #root. */

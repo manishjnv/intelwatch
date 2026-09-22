@@ -33,6 +33,7 @@ const MfaChallengePage = React.lazy(() => import('@/pages/MfaChallengePage').the
 const MfaSetupRequiredPage = React.lazy(() => import('@/pages/MfaSetupRequiredPage').then(m => ({ default: m.MfaSetupRequiredPage })));
 const VerifyEmailPage = React.lazy(() => import('@/pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
 const ClientOnboardingPage = React.lazy(() => import('@/pages/ClientOnboardingPage').then(m => ({ default: m.ClientOnboardingPage })));
+const PricingPage = React.lazy(() => import('@/pages/PricingPage').then(m => ({ default: m.PricingPage })));
 const ThreatGraphPage = React.lazy(() => import('@/pages/ThreatGraphPage').then(m => ({ default: m.ThreatGraphPage })));
 
 const PageSpinner = (
@@ -79,6 +80,8 @@ export function App() {
         <Route path="/auth/mfa-setup-required" element={<MfaSetupRequiredPage />} />
         <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
         <Route path="/onboard/invite" element={<ClientOnboardingPage />} />
+        {/* Public marketing pages — prerendered, see src/seo/public-routes.ts */}
+        <Route path="/pricing" element={<PricingPage />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
