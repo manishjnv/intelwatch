@@ -6,7 +6,8 @@
  * Session 123e: Feeds tab absorbed into System tab — /feeds + /global-catalog → #system.
  */
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { LandingPage } from '@/pages/LandingPage'; // ⛔ DESIGN LOCKED — see UI_DESIGN_LOCK.md
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -59,9 +60,16 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+/** Syncs <head> meta with the current route (renders nothing). */
+function RouteMeta() {
+  usePageMeta(useLocation().pathname);
+  return null;
+}
+
 export function App() {
   return (
     <ErrorBoundary>
+      <RouteMeta />
       <React.Suspense fallback={PageSpinner}>
       <Routes>
         {/* Public routes */}

@@ -29,8 +29,13 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 COPY apps/frontend/   apps/frontend/
 COPY packages/shared-ui/ packages/shared-ui/
 
-# Build: skip tsc type-check in Docker (CI handles it), run Vite only
-RUN cd apps/frontend && npx vite build
+# Build: skip tsc type-check in Docker (CI handles it), run Vite only.
+# Then prerender public routes (SEO plan 2.1): SSR bundle → static HTML per route in dist/.
+# No headless browser — React renderToPipeableStream, so the node:20-slim stage stays lean.
+RUN cd apps/frontend && npx vite build \
+    && npx vite build --ssr src/entry-server.tsx --outDir dist-ssr \
+    && node --test scripts/ \
+    && node scripts/prerender.mjs
 
 # ── Stage 2: Serve via nginx ──────────────────────────────────
 FROM nginx:1.27-alpine AS production

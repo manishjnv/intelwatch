@@ -15,12 +15,21 @@ const queryClient = new QueryClient({
   },
 });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const tree = (
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <App />
       </BrowserRouter>
     </QueryClientProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
+
+// Public pages ship prerendered markup (scripts/prerender.mjs) — hydrate it instead of
+// replacing it. The SPA shell (index.html) has an empty #root and takes the createRoot path.
+const rootEl = document.getElementById('root')!;
+if (rootEl.hasChildNodes()) {
+  ReactDOM.hydrateRoot(rootEl, tree);
+} else {
+  ReactDOM.createRoot(rootEl).render(tree);
+}
