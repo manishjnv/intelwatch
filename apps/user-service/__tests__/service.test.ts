@@ -108,6 +108,45 @@ describe('UserService', () => {
       expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'USER_REGISTERED' }) }));
     });
 
+    it('DECISION-031: always creates a Free, active tenant — requested paid/enterprise plan is ignored, no trial', async () => {
+      vi.mocked(prisma.tenant.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.tenant.create).mockResolvedValue(mockTenant as never);
+      vi.mocked(prisma.user.create).mockResolvedValue({ ...mockUser, active: false, emailVerified: false } as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(mockUser as never);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+      for (const plan of ['enterprise', 'pro', 'starter'] as const) {
+        vi.mocked(prisma.tenant.create).mockClear();
+        vi.mocked(prisma.tenantSubscription.create).mockClear();
+        await service.register({
+          email: `${plan}@gmail.com`, password: 'SecurePassword123!', displayName: 'X',
+          tenantName: 'X Corp', tenantSlug: `x-${plan}`, ipAddress: '127.0.0.1', userAgent: 't', plan,
+        });
+        expect(prisma.tenant.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ plan: 'free' }) }));
+        const sub = vi.mocked(prisma.tenantSubscription.create).mock.calls[0]![0] as { data: Record<string, unknown> };
+        expect(sub.data).toMatchObject({ plan: 'free', status: 'active', trialEndsAt: null });
+      }
+    });
+
+    it('DECISION-031: public-mail users are never blocked by another tenant on the same domain', async () => {
+      vi.mocked(prisma.tenant.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.tenant.create).mockResolvedValue(mockTenant as never);
+      vi.mocked(prisma.user.create).mockResolvedValue({ ...mockUser, active: false, emailVerified: false } as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(mockUser as never);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+      await expect(service.register({
+        email: 'second@gmail.com', password: 'SecurePassword123!', displayName: 'Y',
+        tenantName: 'Y Corp', tenantSlug: 'y-corp', ipAddress: '127.0.0.1', userAgent: 't', plan: 'starter',
+      })).resolves.toBeDefined();
+      // The only user lookup is the duplicate-email check — no domain scan
+      expect(vi.mocked(prisma.user.findFirst).mock.calls.every(
+        ([args]) => !JSON.stringify(args ?? {}).includes('endsWith'),
+      )).toBe(true);
+    });
+
     it('#84: rejects duplicate tenant slug', async () => {
       vi.mocked(prisma.tenant.findUnique).mockResolvedValue(mockTenant as never);
       await expect(service.register({ email: 'new@user.com', password: 'SecurePassword123!', displayName: 'New User', tenantName: 'ACME Corp', tenantSlug: 'acme-corp', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Tenant slug already taken');

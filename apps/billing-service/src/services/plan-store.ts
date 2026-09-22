@@ -35,7 +35,6 @@ export interface PlanDefinition {
   priceInr: number;        // monthly, 0 = free
   priceUsd: number;        // monthly, 0 = free
   razorpayPlanId: string;  // Razorpay plan id (set in production)
-  trialDays: number;
   limits: PlanLimits;
   features: PlanFeatures;
   description: string;
@@ -73,7 +72,6 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
     priceInr: 0,
     priceUsd: 0,
     razorpayPlanId: '',
-    trialDays: 0,
     description: 'For individual analysts and evaluation.',
     popular: false,
     limits: {
@@ -103,7 +101,6 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
     priceInr: 9999,
     priceUsd: 119,
     razorpayPlanId: process.env['TI_RAZORPAY_PLAN_STARTER'] ?? 'plan_starter',
-    trialDays: 14,
     description: 'For small security teams (up to 10 users).',
     popular: false,
     limits: {
@@ -133,7 +130,6 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
     priceInr: 18999,
     priceUsd: 229,
     razorpayPlanId: process.env['TI_RAZORPAY_PLAN_TEAMS'] ?? 'plan_teams',
-    trialDays: 14,
     description: 'For professional SOC teams (up to 50 users).',
     popular: true,
     limits: {
@@ -163,7 +159,6 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
     priceInr: 49999,
     priceUsd: 599,
     razorpayPlanId: process.env['TI_RAZORPAY_PLAN_ENTERPRISE'] ?? 'plan_enterprise',
-    trialDays: 30,
     description: 'Unlimited everything with custom pricing and SLA.',
     popular: false,
     limits: {

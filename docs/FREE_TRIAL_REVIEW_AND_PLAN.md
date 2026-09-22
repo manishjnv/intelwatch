@@ -1,6 +1,8 @@
 # Free Trial — Review and Plan
 
-**Date:** 2026-09-23 (S147) · **Type:** review + proposal. **No trial code has been changed.**
+**Date:** 2026-09-23 (S147) · **Type:** review + proposal.
+
+> **Superseded the same day by DECISION-031: no trials at all.** The owner chose "Free + sales-led paid" over the reverse trial proposed below. What shipped: signup always creates Free; paid plans go to Contact sales everywhere; Extend Trial and the dead `trialDays` field are removed; super admins set plans with `POST /api/v1/billing/upgrade` (docs/runbooks/SET_TENANT_PLAN.md). Phase 5 was a no-op: a read-only VPS check found zero trialing tenants. The findings in §3 remain accurate as a record of the pre-S147 state.
 **Scope:** user-service (signup), billing-service, api-gateway billing routes, admin-service, frontend billing UI.
 **Related:** DECISION-030 (pricing), docs/S147_P2B_PRICING_PAGE.md. Security items **S-1…S-3** came out of this review and are tracked privately with the owner until fixed; the repo is public, so details stay out of it.
 
