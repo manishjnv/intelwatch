@@ -60,7 +60,7 @@ describe('PricingPage', () => {
 
   it('answers billing questions with verified facts', () => {
     renderPage()
-    for (const q of ['Do prices include GST?', 'Is there a free trial?', 'How do I pay?', 'How does annual billing work?', 'Can I upgrade later?']) {
+    for (const q of ['Do prices include GST?', 'Is there a free trial?', 'How do I pay?', 'How does annual billing work?', 'Can I change plans later?']) {
       expect(screen.getByText(q)).toBeInTheDocument()
     }
     expect(screen.getByText(/7-day trial when you sign up/)).toBeInTheDocument()

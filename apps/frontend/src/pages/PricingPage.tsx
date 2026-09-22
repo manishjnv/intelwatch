@@ -108,8 +108,8 @@ const FAQ: { q: string; a: string }[] = [
     a: `Annual plans cost up to ${MAX_SAVINGS}% less than monthly and are invoiced by our team. Email ${SALES_EMAIL} to switch.`,
   },
   {
-    q: 'Can I upgrade later?',
-    a: 'Yes. Upgrade any time from Billing & Plans inside IntelWatch.',
+    q: 'Can I change plans later?',
+    a: `Yes. Email ${SALES_EMAIL} and we will move your workspace to the new plan.`,
   },
 ]
 
