@@ -61,7 +61,6 @@ const MAINT_STATUS_COLORS: Record<string, string> = {
 const TENANT_STATUS_COLORS: Record<string, string> = {
   active:    'text-sev-low bg-sev-low/10',
   suspended: 'text-sev-critical bg-sev-critical/10',
-  trial:     'text-accent bg-accent/10',
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -712,9 +711,7 @@ export function AdminOpsPage() {
                 <span className={cn('px-2 py-0.5 rounded-full', TENANT_STATUS_COLORS['active']!)}>
                   {tenantList.filter(t => t.status === 'active').length} active
                 </span>
-                <span className={cn('px-2 py-0.5 rounded-full', TENANT_STATUS_COLORS['trial']!)}>
-                  {tenantList.filter(t => t.status === 'trial').length} trial
-                </span>
+                
                 {tenantList.filter(t => t.status === 'suspended').length > 0 && (
                   <span className={cn('px-2 py-0.5 rounded-full', TENANT_STATUS_COLORS['suspended']!)}>
                     {tenantList.filter(t => t.status === 'suspended').length} suspended

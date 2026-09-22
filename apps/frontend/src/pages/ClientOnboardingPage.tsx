@@ -9,6 +9,7 @@ import { useState, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Shield, Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
 import { PlanCards, PLANS } from '@/components/PlanCards'
+import { salesMailto } from '@/data/plans'
 import { TurnstileWidget } from '@/components/TurnstileWidget'
 
 export function ClientOnboardingPage() {
@@ -77,8 +78,10 @@ export function ClientOnboardingPage() {
   }
 
   async function handleSelectPlan(planId: string) {
-    if (planId === 'enterprise') {
-      window.open('mailto:sales@intelwatch.in?subject=Enterprise Plan Inquiry', '_blank')
+    // DECISION-031: only Free is self-serve; paid plans are set up by sales (no trial)
+    if (planId !== 'free') {
+      const name = PLANS.find(p => p.id === planId)?.name ?? planId
+      window.open(salesMailto(`${name} Plan Inquiry`), '_blank')
       return
     }
     setSelectedPlan(planId)

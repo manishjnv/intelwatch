@@ -60,6 +60,15 @@ describe('applyPageMeta', () => {
     expect(meta('meta[name="twitter:description"]')).toBe('Plans')
   })
 
+  it('adds route JSON-LD and removes it on routes without one', () => {
+    applyPageMeta({ path: '/pricing', title: 'P', description: 'd', jsonLd: { '@type': 'Thing' } }, '/pricing')
+    const tags = document.head.querySelectorAll('script[data-route-jsonld]')
+    expect(tags).toHaveLength(1)
+    expect(JSON.parse(tags[0]!.textContent!)).toEqual({ '@type': 'Thing' })
+    applyPageMeta({ path: '/', title: 'H', description: 'd' }, '/')
+    expect(document.head.querySelectorAll('script[data-route-jsonld]')).toHaveLength(0)
+  })
+
   it('updates existing tags in place without duplicating them', () => {
     applyPageMeta({ path: '/a', title: 'A', description: 'a' }, '/a')
     applyPageMeta({ path: '/b', title: 'B', description: 'b', socialTitle: 'SB' }, '/b')

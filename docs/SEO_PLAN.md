@@ -125,4 +125,4 @@ Targets are planning estimates, not forecasts; recalibrate after first 8 weeks o
 2. api-gateway (Tier 1 frozen) **may take additive public routes** for Phase 3.1/3.2 — approved.
 3. UI-frozen frontend **may take new marketing pages** (additive) — approved. LandingPage.tsx itself stays design-locked.
 4. AI crawlers — **block all** (see §3).
-5. Pricing page — **INR only**. Note: plan prices differ between docs (₹9,999/18,999/49,999) and `PlanCards.tsx` (₹7,999/14,999/39,999); settle the real numbers before building `/pricing` or adding priced Offers to JSON-LD (today only the free tier is in JSON-LD).
+5. Pricing page — **INR only**. **Settled S147 (DECISION-030):** monthly list prices ₹9,999 / ₹18,999 / ₹49,999. The ₹7,999 / ₹14,999 / ₹39,999 figures are the annual-billing per-month rate, shown as secondary text.

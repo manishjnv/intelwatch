@@ -6,6 +6,8 @@
  * they are noindexed by apps/frontend/nginx.conf.
  */
 
+import { PLANS, annualSavingsPercent, formatInr } from '@/data/plans';
+
 export const SITE_URL = 'https://intelwatch.in';
 
 export interface PublicRouteMeta {
@@ -19,6 +21,39 @@ export interface PublicRouteMeta {
   socialTitle?: string;
   /** og:/twitter: description — defaults to description. */
   socialDescription?: string;
+  /** Route-specific JSON-LD (the site-wide @graph stays in index.html). */
+  jsonLd?: Record<string, unknown>;
+}
+
+const paid = PLANS.filter((p) => p.price > 0);
+const maxSavings = Math.max(...paid.map(annualSavingsPercent));
+
+/** SoftwareApplication with one Offer per plan; monthly list price, excl. GST (DECISION-030). */
+function pricingJsonLd(): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'IntelWatch ETIP',
+    applicationCategory: 'SecurityApplication',
+    operatingSystem: 'Web',
+    url: `${SITE_URL}/pricing`,
+    offers: PLANS.map((p) => ({
+      '@type': 'Offer',
+      name: p.name,
+      price: String(p.price),
+      priceCurrency: 'INR',
+      url: `${SITE_URL}/pricing`,
+      ...(p.price > 0 && {
+        priceSpecification: {
+          '@type': 'UnitPriceSpecification',
+          price: String(p.price),
+          priceCurrency: 'INR',
+          unitCode: 'MON',
+          valueAddedTaxIncluded: false,
+        },
+      }),
+    })),
+  };
 }
 
 export const PUBLIC_ROUTES: readonly PublicRouteMeta[] = [
@@ -28,6 +63,12 @@ export const PUBLIC_ROUTES: readonly PublicRouteMeta[] = [
     description: 'Enterprise Threat Intelligence Platform — Monitor, analyze, and respond to cyber threats with AI-powered intelligence.',
     socialTitle: 'IntelWatch — Threat Intelligence Platform',
     socialDescription: 'Monitor, analyze, and respond to cyber threats: IOC search, CVE intelligence with EPSS and KEV, threat actors, threat graph and digital risk protection.',
+  },
+  {
+    path: '/pricing',
+    title: 'Pricing — IntelWatch Threat Intelligence Platform',
+    description: `INR pricing: Free plan, ${paid.map((p) => `${p.name} ${formatInr(p.price)}/mo`).join(', ')}. Annual billing saves up to ${maxSavings}%. Excl. GST.`,
+    jsonLd: pricingJsonLd(),
   },
 ];
 

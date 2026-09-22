@@ -5,10 +5,12 @@ export interface PrerenderRouteMeta {
   description: string;
   socialTitle?: string;
   socialDescription?: string;
+  jsonLd?: Record<string, unknown>;
 }
 export function escapeAttr(value: unknown): string;
 export function escapeText(value: unknown): string;
 export function injectHead(template: string, meta: PrerenderRouteMeta, canonical: string): string;
 export function injectRoot(template: string, appHtml: string): string;
 export function decodeStyleBlocks(html: string): string;
+export function jsonLdScript(data: unknown): string;
 export function outputPathFor(routePath: string): string;

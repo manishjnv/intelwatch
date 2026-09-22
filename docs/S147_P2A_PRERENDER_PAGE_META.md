@@ -1,7 +1,7 @@
 # S147 — P2(a): Prerender Pipeline + Per-Route Page Meta (SEO plan 2.1)
 
 **Date:** 2026-09-23 · **Branch:** `feat/seo-phase2a-prerender` (stacked on `feat/vps-hardening-seo-phase1`)
-**Status:** Implemented and tested locally. **Deploys only after P1 (PR #20) is live and verified.**
+**Status:** ✅ **Deployed and verified 2026-09-23.** PR #21 merged as `9708a3c`; CI/CD run 35782468154 green (test → images → deploy).
 **Module:** frontend only. No backend or shared-package changes.
 
 ## 1. Goal
@@ -85,3 +85,17 @@ docker exec etip_frontend nginx -t
 
 ## 9. Rollback
 Revert the branch merge commit. Because `location = /` falls back to `index.html`, even an image without `home.html` keeps serving `/`.
+
+## 10. Live results (2026-09-23)
+| Check | Result |
+|---|---|
+| `docker exec etip_frontend nginx -t` | ✅ test successful |
+| etip containers | ✅ 32/32 healthy; VPS on `9708a3c` |
+| `/` body contains prerendered landing (`lp-title`) | ✅ present (CSS rule + h1) |
+| `/` landing CSS decoded | ✅ `font-family: 'SF Pro Display'` present, 0 `&#x27;` left |
+| `/` headers | ✅ 200, `Cache-Control: no-cache`, no X-Robots-Tag |
+| `/dashboard` | ✅ empty shell (no landing markup), `X-Robots-Tag: noindex, nofollow` |
+| `/home.html` | ✅ 404 (no duplicate URL) |
+| Unknown path | ✅ 404 |
+| Browser console hydration check | ⏳ Owner to confirm (F12 on https://intelwatch.in; expect no hydration or "did not match" errors) |
+

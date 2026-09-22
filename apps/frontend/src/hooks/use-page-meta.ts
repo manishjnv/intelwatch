@@ -27,6 +27,17 @@ function setCanonical(doc: Document, href: string): void {
   el.setAttribute('href', href);
 }
 
+/** Replaces the route-specific JSON-LD script (prerender writes the same tag). */
+function setRouteJsonLd(doc: Document, jsonLd: Record<string, unknown> | undefined): void {
+  doc.head.querySelectorAll('script[data-route-jsonld]').forEach((el) => el.remove());
+  if (!jsonLd) return;
+  const el = doc.createElement('script');
+  el.type = 'application/ld+json';
+  el.setAttribute('data-route-jsonld', '');
+  el.textContent = JSON.stringify(jsonLd);
+  doc.head.appendChild(el);
+}
+
 /** Applies route meta to the document head. Exported for tests. */
 export function applyPageMeta(meta: PublicRouteMeta, path: string, doc: Document = document): void {
   const url = canonicalUrl(path);
@@ -40,6 +51,7 @@ export function applyPageMeta(meta: PublicRouteMeta, path: string, doc: Document
   setMeta(doc, 'property', 'og:url', url);
   setMeta(doc, 'name', 'twitter:title', socialTitle);
   setMeta(doc, 'name', 'twitter:description', socialDescription);
+  setRouteJsonLd(doc, meta.jsonLd);
 }
 
 /** Public routes get their own meta; app routes (noindexed) fall back to site defaults. */
