@@ -6,12 +6,12 @@
  */
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
+import { salesMailto } from '@/data/plans'
 import { PillSwitcher, type PillItem } from './PillSwitcher'
 import type { useCommandCenter } from '@/hooks/use-command-center'
 import {
   useUsageMeters, useCurrentSubscription,
   usePaymentHistory, useApplyCoupon,
-  useUpgradePlan,
   type PaymentRecord,
 } from '@/hooks/use-phase6-data'
 import { usePlanLimits, type PlanTierConfig } from '@/hooks/use-plan-limits'
@@ -313,7 +313,6 @@ function InvoicesPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 function PlansUpgradePanel() {
   const sub = useCurrentSubscription()
-  const upgrade = useUpgradePlan()
   const currentPlan = sub.data?.planName ?? 'Free'
 
   const planList: { name: string; price: number; features: Record<string, string> }[] = [
@@ -369,14 +368,19 @@ function PlansUpgradePanel() {
               {isCurrent ? (
                 <div className="text-center text-xs text-text-muted py-2">Your current plan</div>
               ) : p.name === 'Enterprise' ? (
-                <button className="w-full py-2 rounded-lg bg-violet-500/20 text-violet-400 text-xs font-medium hover:bg-violet-500/30 transition-colors">
+                <button
+                  className="w-full py-2 rounded-lg bg-violet-500/20 text-violet-400 text-xs font-medium hover:bg-violet-500/30 transition-colors"
+                  onClick={() => window.open(salesMailto('Enterprise Plan Inquiry'), '_blank')}
+                  data-testid="contact-sales-enterprise"
+                >
                   Contact Sales
                 </button>
               ) : isHigher ? (
                 <button
                   className="w-full py-2 rounded-lg bg-accent text-bg-primary text-xs font-semibold hover:bg-accent/90 transition-colors"
-                  onClick={() => upgrade.mutate({ planId: p.name.toLowerCase(), billingCycle: 'monthly' })}
+                  onClick={() => window.open(salesMailto(`Upgrade to ${p.name}`), '_blank')}
                   data-testid={`upgrade-${p.name.toLowerCase()}`}
+                  title="Opens an email to our sales team"
                 >
                   Upgrade to {p.name}
                 </button>

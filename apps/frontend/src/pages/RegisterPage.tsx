@@ -1,13 +1,14 @@
 /**
  * @module pages/RegisterPage
  * @description Self-service registration: Step 1 = account details, Step 2 = plan selection.
- * After selecting a plan, creates account with 7-day trial (paid) or active (free).
+ * Free creates an active account; paid plans open an email to sales (DECISION-031, no trial).
  */
 import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Shield, Eye, EyeOff, ArrowRight, Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
-import { PlanCards } from '@/components/PlanCards'
+import { PlanCards, PLANS } from '@/components/PlanCards'
+import { salesMailto } from '@/data/plans'
 import { TurnstileWidget } from '@/components/TurnstileWidget'
 
 export function RegisterPage() {
@@ -44,8 +45,10 @@ export function RegisterPage() {
   }
 
   async function handleSelectPlan(planId: string) {
-    if (planId === 'enterprise') {
-      window.open('mailto:sales@intelwatch.in?subject=Enterprise Plan Inquiry', '_blank')
+    // DECISION-031: only Free is self-serve; paid plans are set up by sales (no trial)
+    if (planId !== 'free') {
+      const name = PLANS.find(p => p.id === planId)?.name ?? planId
+      window.open(salesMailto(`${name} Plan Inquiry`), '_blank')
       return
     }
     setSelectedPlan(planId)

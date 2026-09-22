@@ -1,15 +1,14 @@
 /**
  * @module pages/PricingPage
  * @description Public /pricing (SEO plan 2.2, DECISION-030). Prerendered by scripts/prerender.mjs.
- * Monthly/annual toggle. Self-serve checkout bills monthly only (billing-service /checkout
- * charges priceInr), so annual and Enterprise CTAs go to sales — never a signup that would
- * silently bill monthly. Every FAQ answer is backed by code (see docs/S147_P2B_PRICING_PAGE.md).
+ * Monthly/annual toggle. DECISION-031: Free is the only self-serve plan and there is no trial;
+ * every paid plan (monthly or annual) is set up and invoiced by sales. Every FAQ answer is backed by code (see docs/S147_P2B_PRICING_PAGE.md).
  */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { PublicLayout, focusRing } from '@/components/public/PublicLayout'
-import { GST_RATE_PERCENT, PLANS, SALES_EMAIL, annualSavingsPercent, formatInr, type PlanDef } from '@/data/plans'
+import { GST_RATE_PERCENT, PLANS, SALES_EMAIL, annualSavingsPercent, formatInr, salesMailto, type PlanDef } from '@/data/plans'
 import { cn } from '@/lib/utils'
 
 type Cycle = 'monthly' | 'annual'
@@ -20,10 +19,6 @@ const ctaBase = cn(
   'inline-flex h-10 w-full items-center justify-center rounded-md text-sm font-medium transition-colors',
   focusRing,
 )
-
-function salesHref(subject: string): string {
-  return `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(subject)}`
-}
 
 function PlanCard({ plan, cycle }: { plan: PlanDef; cycle: Cycle }) {
   const isFree = plan.price === 0
@@ -63,7 +58,7 @@ function PlanCard({ plan, cycle }: { plan: PlanDef; cycle: Cycle }) {
       <div className="mt-5">
         {viaSales ? (
           <a
-            href={salesHref(`${plan.name} plan${annual ? ' — annual billing' : ''}`)}
+            href={salesMailto(`${plan.name} plan${annual ? ' — annual billing' : ''}`)}
             className={cn(ctaBase, primary ? 'bg-accent text-white hover:bg-accent-hover' : 'border border-border hover:bg-bg-elevated')}
           >
             Contact sales
@@ -96,8 +91,8 @@ const FAQ: { q: string; a: string }[] = [
     a: `No. ${GST_RATE_PERCENT}% GST is added to each invoice, and every paid invoice comes with a GST receipt.`,
   },
   {
-    q: 'Is there a free trial?',
-    a: 'Paid plans start with a 7-day trial when you sign up. The Free plan has no time limit.',
+    q: 'How do I get a paid plan?',
+    a: `Start on the Free plan, then email ${SALES_EMAIL}. We set up Starter, Teams or Enterprise and invoice you.`,
   },
   {
     q: 'How do I pay?',
@@ -121,7 +116,7 @@ export function PricingPage() {
       <section className="mx-auto max-w-6xl px-4 pb-8 pt-12 text-center sm:px-6 sm:pt-16">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Threat intelligence pricing in INR</h1>
         <p className="mx-auto mt-3 max-w-xl text-sm text-text-secondary">
-          Start free. Paid plans include a 7-day trial. Prices exclude {GST_RATE_PERCENT}% GST.
+          Start free. Paid plans are set up by our team. Prices exclude {GST_RATE_PERCENT}% GST.
         </p>
 
         <div role="group" aria-label="Billing period" className="mt-6 inline-flex rounded-lg border border-border bg-bg-primary p-1">
@@ -142,9 +137,6 @@ export function PricingPage() {
             </button>
           ))}
         </div>
-        <p aria-live="polite" className="mt-3 min-h-4 text-xs text-text-muted">
-          {cycle === 'annual' ? 'Annual plans are invoiced by our team. Monthly plans are self-serve.' : ''}
-        </p>
       </section>
 
       <section aria-label="Plans" className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">

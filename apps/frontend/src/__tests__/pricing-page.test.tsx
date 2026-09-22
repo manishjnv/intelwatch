@@ -29,13 +29,19 @@ describe('PricingPage', () => {
     expect(within(card('Starter')).getByText(/Billed monthly · \+ 18% GST/)).toBeInTheDocument()
   })
 
-  it('self-serve plans link to signup, Enterprise to sales', () => {
+  it('only Free is self-serve; every paid plan goes to sales (DECISION-031)', () => {
     renderPage()
-    for (const name of ['Free', 'Starter', 'Teams']) {
-      expect(within(card(name)).getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/register')
+    expect(within(card('Free')).getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/register')
+    for (const name of ['Starter', 'Teams', 'Enterprise']) {
+      const sales = within(card(name)).getByRole('link', { name: 'Contact sales' })
+      expect(sales.getAttribute('href')).toBe(`mailto:sales@intelwatch.in?subject=${encodeURIComponent(`${name} plan`)}`)
+      expect(within(card(name)).queryByRole('link', { name: 'Get started' })).toBeNull()
     }
-    const sales = within(card('Enterprise')).getByRole('link', { name: 'Contact sales' })
-    expect(sales.getAttribute('href')).toMatch(/^mailto:sales@intelwatch\.in\?subject=Enterprise%20plan$/)
+  })
+
+  it('never mentions a trial', () => {
+    const { container } = renderPage()
+    expect(container.textContent ?? '').not.toMatch(/trial/i)
   })
 
   it('annual toggle shows discounted per-month price, yearly total and routes to sales', () => {
@@ -55,15 +61,14 @@ describe('PricingPage', () => {
     expect(cta.getAttribute('href')).toContain(encodeURIComponent('Starter plan — annual billing'))
     // Free stays self-serve and unpriced
     expect(within(card('Free')).getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/register')
-    expect(screen.getByText(/Annual plans are invoiced by our team/)).toBeInTheDocument()
   })
 
   it('answers billing questions with verified facts', () => {
     renderPage()
-    for (const q of ['Do prices include GST?', 'Is there a free trial?', 'How do I pay?', 'How does annual billing work?', 'Can I change plans later?']) {
+    for (const q of ['Do prices include GST?', 'How do I get a paid plan?', 'How do I pay?', 'How does annual billing work?', 'Can I change plans later?']) {
       expect(screen.getByText(q)).toBeInTheDocument()
     }
-    expect(screen.getByText(/7-day trial when you sign up/)).toBeInTheDocument()
+    expect(screen.getByText(/Start on the Free plan, then email sales@intelwatch\.in/)).toBeInTheDocument()
     expect(screen.getByText(/Razorpay: credit or debit card, UPI/)).toBeInTheDocument()
   })
 

@@ -7,10 +7,11 @@
  */
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { salesMailto } from '@/data/plans'
 import {
   useBillingPlans, useUsageMeters, useCurrentSubscription,
   usePaymentHistory, useBillingStats, useApplyCoupon,
-  useUpgradePlan, useCancelSubscription,
+  useCancelSubscription,
   type BillingPlan, type PaymentRecord,
 } from '@/hooks/use-phase6-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
@@ -349,7 +350,7 @@ function UpgradeModal({ targetPlanId, plans, billingCycle, onConfirm, onClose, i
                 : 'bg-sev-high/20 text-sev-high border border-sev-high/40 hover:bg-sev-high/30 disabled:opacity-50',
             )}
           >
-            {isLoading ? 'Processing…' : `Confirm ${isUpgrade ? 'Upgrade' : 'Downgrade'}`}
+            {isLoading ? 'Processing…' : 'Contact sales'}
           </button>
         </div>
       </div>
@@ -513,18 +514,17 @@ export function BillingPage() {
   const { data: subscription } = useCurrentSubscription()
   const { data: payments } = usePaymentHistory()
   const { data: stats } = useBillingStats()
-  const upgradeMutation = useUpgradePlan()
   const cancelMutation = useCancelSubscription()
 
   const currentPlanId = subscription?.planId ?? 'free'
   const paymentList = payments?.data ?? []
 
+  // DECISION-031: plan changes are sales-led (no self-serve checkout yet)
   const handleUpgradeConfirm = () => {
     if (!upgradeTarget) return
-    upgradeMutation.mutate(
-      { planId: upgradeTarget, billingCycle },
-      { onSuccess: () => setUpgradeTarget(null) },
-    )
+    const name = plans.find(p => p.id === upgradeTarget)?.name ?? upgradeTarget
+    window.open(salesMailto(`Change plan to ${name} (${billingCycle})`), '_blank')
+    setUpgradeTarget(null)
   }
 
   const handleCancelConfirm = () => {
@@ -744,7 +744,7 @@ export function BillingPage() {
           billingCycle={billingCycle}
           onConfirm={handleUpgradeConfirm}
           onClose={() => setUpgradeTarget(null)}
-          isLoading={upgradeMutation.isPending}
+          isLoading={false}
         />
       )}
       {showCancelModal && (

@@ -31,7 +31,7 @@ export function PlanCards({ onSelectPlan, selectedPlan, isSubmitting, orgName, e
         <p className="text-sm text-text-muted mt-1">
           Select the plan that fits <strong className="text-text-primary">{orgName}</strong>
         </p>
-        <p className="text-xs text-accent mt-1">All paid plans include a 7-day free trial</p>
+        <p className="text-xs text-accent mt-1">Free is self-serve. Paid plans are set up by our sales team.</p>
       </div>
 
       {error && (

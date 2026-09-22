@@ -23,6 +23,11 @@ export interface PlanDef {
 }
 
 export const SALES_EMAIL = 'sales@intelwatch.in'
+
+/** mailto: link to sales (DECISION-031: Free is self-serve, every paid plan is sales-led). */
+export function salesMailto(subject: string): string {
+  return `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(subject)}`
+}
 export const GST_RATE_PERCENT = 18
 
 /** ₹ with Indian digit grouping (₹1,79,988). Deterministic on server and client. */
@@ -54,7 +59,7 @@ export const PLANS: PlanDef[] = [
       '10 GB storage', 'All feed types', 'AI enrichment (Haiku)',
       'SIEM integration (1)', 'Email support',
     ],
-    cta: 'select',
+    cta: 'contact',
   },
   {
     id: 'pro', name: 'Teams', price: 18999, priceAnnual: 14999, priceLabel: '₹18,999',
@@ -65,7 +70,7 @@ export const PLANS: PlanDef[] = [
       '50 GB storage', 'All feed types', 'AI enrichment (Haiku)',
       'Threat Graph (read-only)', 'SIEM integrations (3)', 'Priority email support',
     ],
-    cta: 'select',
+    cta: 'contact',
   },
   {
     id: 'enterprise', name: 'Enterprise', price: 49999, priceAnnual: 39999, priceLabel: '₹49,999',
