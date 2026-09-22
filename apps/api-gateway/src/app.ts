@@ -13,6 +13,8 @@ import { registerQuotaEnforcement } from './plugins/quota-enforcement.js';
 import { registerRls } from './plugins/rls.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
+import { authVerifyRoutes } from './routes/auth-verify.js';
+import { rateLimitKey } from './plugins/rate-limit-key.js';
 import { planRoutes } from './routes/plans.js';
 import { overrideRoutes } from './routes/overrides.js';
 import { usageRoutes } from './routes/usage.js';
@@ -85,8 +87,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     global: true,
     max: resolveRateLimit,
     timeWindow: config.TI_RATE_LIMIT_WINDOW_MS,
-    keyGenerator: (req) =>
-      (req.headers['x-tenant-id'] as string) ?? req.ip,
+    // Verified-token tenant or client IP — never the raw x-tenant-id header (S147)
+    keyGenerator: rateLimitKey,
     errorResponseBuilder: (_req, context) => ({
       statusCode: 429,
       error: {
@@ -120,6 +122,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  // S147: nginx auth_request target for direct-to-service locations (see docker/nginx/conf.d/service-auth.inc)
+  await app.register(authVerifyRoutes, { prefix: '/api/v1/auth' });
   await app.register(planRoutes, { prefix: '/api/v1/admin/plans' });
   await app.register(overrideRoutes, { prefix: '/api/v1/admin/tenants' });
   await app.register(errorAlertingRoutes, { prefix: '/api/v1/gateway' });

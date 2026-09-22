@@ -196,6 +196,42 @@ export async function apiRaw<T>(path: string): Promise<T | null> {
 }
 
 /**
+ * Authenticated file download (S147). Plain <a href="/api/v1/..."> / window.open() send no
+ * Authorization header, and every API route now requires one (nginx auth_request), so file
+ * downloads fetch with auth like api() and save the blob. Throws ApiError on failure.
+ * @param path Path relative to /api/v1 (e.g. `/reports/123/download`).
+ * @param fallbackName Used when the response has no Content-Disposition filename.
+ */
+export async function apiDownload(path: string, fallbackName: string): Promise<void> {
+  const buildHeaders = (): Record<string, string> => {
+    const { accessToken, user } = useAuthStore.getState();
+    const h: Record<string, string> = {};
+    if (accessToken) h['Authorization'] = `Bearer ${accessToken}`;
+    if (user?.tenantId) h['x-tenant-id'] = user.tenantId;
+    return h;
+  };
+  const fullUrl = `${API_BASE}${path}`;
+  let res = await fetch(fullUrl, { headers: buildHeaders() });
+  if (res.status === 401 && (await attemptRefresh())) {
+    res = await fetch(fullUrl, { headers: buildHeaders() });
+  }
+  if (!res.ok) throw new ApiError(res.status, 'DOWNLOAD_FAILED', `Download failed (${res.status})`);
+
+  const disposition = res.headers.get('content-disposition') ?? '';
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+  const filename = match?.[1] ? decodeURIComponent(match[1]) : fallbackName;
+
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
  * Attempt to refresh the access token using the stored refresh token.
  * Uses a mutex so concurrent 401 handlers share one refresh call
  * instead of racing and invalidating each other's tokens.
