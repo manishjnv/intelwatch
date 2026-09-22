@@ -84,10 +84,16 @@ describe('OffboardingPanel', () => {
   })
 
   it('shows purge countdown for non-purged entries', () => {
-    render(<OffboardingPanel />)
-    // Both offboarding and archived entries show purge countdown
-    const countdowns = screen.getAllByText(/Purges in \d+ day/)
-    expect(countdowns.length).toBeGreaterThanOrEqual(1)
+    // Fixture purge dates are fixed (May 2026) — pin "now" before them or the countdown disappears
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-04-01T00:00:00Z') })
+    try {
+      render(<OffboardingPanel />)
+      // Both offboarding and archived entries show purge countdown
+      const countdowns = screen.getAllByText(/Purges in \d+ day/)
+      expect(countdowns.length).toBeGreaterThanOrEqual(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('shows cancel button for offboarding and archived, hidden for purged', () => {
