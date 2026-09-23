@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
 import {
   DEMO_BILLING_PLANS, DEMO_USAGE_METERS, DEMO_CURRENT_SUBSCRIPTION,
@@ -136,7 +137,7 @@ export function usePaymentHistory(page = 1) {
   const empty: ListResponse<PaymentRecord> = { data: [], total: 0, page, limit: 20 }
   const result = useQuery({
     queryKey: ['billing-invoices', page],
-    queryFn: () => api<ListResponse<PaymentRecord>>(`/billing/invoices?page=${page}&limit=20`).catch(() => empty),
+    queryFn: () => apiList<PaymentRecord>(`/billing/invoices?page=${page}&limit=20`).catch(() => empty),
     staleTime: 120_000,
   })
   return withDemoFallback(
@@ -213,7 +214,7 @@ export function useMaintenanceWindows() {
   const empty: ListResponse<MaintenanceWindow> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['admin-maintenance'],
-    queryFn: () => api<ListResponse<MaintenanceWindow>>('/admin/maintenance').catch(() => empty),
+    queryFn: () => apiList<MaintenanceWindow>('/admin/maintenance').catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(
@@ -252,7 +253,7 @@ export function useAdminTenants() {
   const empty: ListResponse<TenantRecord> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['admin-tenants'],
-    queryFn: () => api<ListResponse<TenantRecord>>('/admin/tenants').catch(() => empty),
+    queryFn: () => apiList<TenantRecord>('/admin/tenants').catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(
@@ -292,7 +293,7 @@ export function useAdminAuditLog(page = 1) {
   const empty: ListResponse<AdminAuditEntry> = { data: [], total: 0, page, limit: 50 }
   const result = useQuery({
     queryKey: ['admin-audit', page],
-    queryFn: () => api<ListResponse<AdminAuditEntry>>(`/admin/audit?page=${page}&limit=50`).catch(() => empty),
+    queryFn: () => apiList<AdminAuditEntry>(`/admin/audit?page=${page}&limit=50`).catch(() => empty),
     staleTime: 30_000,
   })
   return withDemoFallback(

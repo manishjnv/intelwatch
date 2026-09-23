@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
 import {
   DEMO_DRP_ALERTS, DEMO_DRP_ALERT_STATS, DEMO_DRP_ASSETS, DEMO_DRP_ASSET_STATS,
@@ -65,7 +66,7 @@ export function useDRPAssets(params: QueryParams = {}) {
   const empty: ListResponse<DRPAsset> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['drp-assets', params],
-    queryFn: () => api<ListResponse<DRPAsset>>(`/drp/assets${query}`).catch(() => empty),
+    queryFn: () => apiList<DRPAsset>(`/drp/assets${query}`).catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -89,7 +90,7 @@ export function useDRPAlerts(params: QueryParams = {}) {
   const empty: ListResponse<DRPAlert> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['drp-alerts', params],
-    queryFn: () => api<ListResponse<DRPAlert>>(`/drp/alerts${query}`).catch(err => notifyApiError(err, 'DRP alerts', empty)),
+    queryFn: () => apiList<DRPAlert>(`/drp/alerts${query}`).catch(err => notifyApiError(err, 'DRP alerts', empty)),
     staleTime: 30_000,
   })
   return withDemoFallback(result,
@@ -288,7 +289,7 @@ export function useCorrelations(params: QueryParams = {}) {
   const empty: ListResponse<CorrelationResult> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['correlations', params],
-    queryFn: () => api<ListResponse<CorrelationResult>>(`/correlations${query}`).catch(err => notifyApiError(err, 'correlations', empty)),
+    queryFn: () => apiList<CorrelationResult>(`/correlations${query}`).catch(err => notifyApiError(err, 'correlations', empty)),
     staleTime: 30_000,
   })
   return withDemoFallback(result,
@@ -310,7 +311,7 @@ export function useCorrelationStats() {
 export function useCampaigns() {
   const result = useQuery({
     queryKey: ['campaigns'],
-    queryFn: () => api<ListResponse<CampaignCluster>>('/correlations/campaigns').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<CampaignCluster>('/correlations/campaigns').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -368,7 +369,7 @@ export function useHuntSessions(params: QueryParams = {}) {
   const empty: ListResponse<HuntSession> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['hunt-sessions', params],
-    queryFn: () => api<ListResponse<HuntSession>>(`/hunts${query}`).catch(() => empty),
+    queryFn: () => apiList<HuntSession>(`/hunts${query}`).catch(() => empty),
     staleTime: 30_000,
   })
   return withDemoFallback(result,
@@ -390,7 +391,7 @@ export function useHuntStats() {
 export function useHuntHypotheses(huntId: string | null) {
   const result = useQuery({
     queryKey: ['hunt-hypotheses', huntId],
-    queryFn: () => api<ListResponse<HuntHypothesis>>(`/hunts/${huntId}/hypotheses`).catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<HuntHypothesis>(`/hunts/${huntId}/hypotheses`).catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
     enabled: !!huntId,
     staleTime: 30_000,
   })
@@ -404,7 +405,7 @@ export function useHuntHypotheses(huntId: string | null) {
 export function useHuntEvidence(huntId: string | null) {
   const result = useQuery({
     queryKey: ['hunt-evidence', huntId],
-    queryFn: () => api<ListResponse<HuntEvidence>>(`/hunts/${huntId}/evidence`).catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<HuntEvidence>(`/hunts/${huntId}/evidence`).catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
     enabled: !!huntId,
     staleTime: 30_000,
   })
