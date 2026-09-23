@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
 import {
   DEMO_SIEM_INTEGRATIONS, DEMO_WEBHOOKS, DEMO_TICKETING,
@@ -68,7 +69,7 @@ export function useSIEMIntegrations() {
   const empty: ListResponse<SIEMIntegration> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['siem-integrations'],
-    queryFn: () => api<ListResponse<SIEMIntegration>>('/integrations/siem').catch(err => notifyApiError(err, 'SIEM integrations', empty)),
+    queryFn: () => apiList<SIEMIntegration>('/integrations/siem').catch(err => notifyApiError(err, 'SIEM integrations', empty)),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -81,7 +82,7 @@ export function useWebhooks() {
   const empty: ListResponse<WebhookConfig> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['webhooks'],
-    queryFn: () => api<ListResponse<WebhookConfig>>('/integrations/webhooks').catch(() => empty),
+    queryFn: () => apiList<WebhookConfig>('/integrations/webhooks').catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -94,7 +95,7 @@ export function useTicketingIntegrations() {
   const empty: ListResponse<TicketingIntegration> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['ticketing-integrations'],
-    queryFn: () => api<ListResponse<TicketingIntegration>>('/integrations/ticketing').catch(() => empty),
+    queryFn: () => apiList<TicketingIntegration>('/integrations?type=ticketing').catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -107,7 +108,7 @@ export function useSTIXCollections() {
   const empty: ListResponse<STIXCollection> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['stix-collections'],
-    queryFn: () => api<ListResponse<STIXCollection>>('/integrations/stix').catch(() => empty),
+    queryFn: () => apiList<STIXCollection>('/integrations/stix').catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -120,7 +121,7 @@ export function useBulkExports() {
   const empty: ListResponse<BulkExport> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['bulk-exports'],
-    queryFn: () => api<ListResponse<BulkExport>>('/integrations/exports').catch(() => empty),
+    queryFn: () => apiList<BulkExport>('/integrations/exports').catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -197,7 +198,7 @@ export function useUsers(params: QueryParams = {}) {
   const empty: ListResponse<UserRecord> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['users', params],
-    queryFn: () => api<ListResponse<UserRecord>>(`/users${query}`).catch(err => notifyApiError(err, 'users', empty)),
+    queryFn: () => apiList<UserRecord>(`/users${query}`).catch(err => notifyApiError(err, 'users', empty)),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -210,7 +211,7 @@ export function useTeams() {
   const empty: ListResponse<TeamRecord> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['teams'],
-    queryFn: () => api<ListResponse<TeamRecord>>('/users/teams').catch(() => empty),
+    queryFn: () => apiList<TeamRecord>('/users/teams').catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -223,7 +224,7 @@ export function useRoles() {
   const empty: ListResponse<RoleRecord> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['roles'],
-    queryFn: () => api<ListResponse<RoleRecord>>('/users/roles').catch(() => empty),
+    queryFn: () => apiList<RoleRecord>('/users/roles').catch(() => empty),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
@@ -236,7 +237,7 @@ export function useSessions() {
   const empty: ListResponse<SessionRecord> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['user-sessions'],
-    queryFn: () => api<ListResponse<SessionRecord>>('/users/sessions').catch(() => empty),
+    queryFn: () => apiList<SessionRecord>('/users/sessions').catch(() => empty),
     staleTime: 30_000,
   })
   return withDemoFallback(result,
@@ -250,7 +251,7 @@ export function useAuditLog(params: QueryParams = {}) {
   const empty: ListResponse<AuditLogEntry> = { data: [], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['audit-log', params],
-    queryFn: () => api<ListResponse<AuditLogEntry>>(`/users/audit${query}`).catch(() => empty),
+    queryFn: () => apiList<AuditLogEntry>(`/users/audit${query}`).catch(() => empty),
     staleTime: 30_000,
   })
   return withDemoFallback(result,

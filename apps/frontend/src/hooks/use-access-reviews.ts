@@ -7,6 +7,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { useAuthStore } from '@/stores/auth-store'
 import { notifyApiError } from './useApiError'
 
@@ -121,7 +122,7 @@ export function useAccessReviews(filters: ReviewFilters = {}) {
   const result = useQuery({
     queryKey: ['access-reviews', isSuperAdmin, filters],
     queryFn: () =>
-      api<ListResponse<AccessReview>>(`${basePath}${query}`)
+      apiList<AccessReview>(`${basePath}${query}`)
         .catch(err => notifyApiError(err, 'access reviews', empty)),
     staleTime: 60_000,
   })

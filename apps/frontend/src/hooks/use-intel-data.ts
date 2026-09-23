@@ -7,6 +7,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, apiRaw } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
 // Demo data imports removed — no fallback to fake data
 import type { EnrichmentStats } from './use-enrichment-data'
@@ -54,7 +55,7 @@ export function useIOCs(params: QueryParams = {}) {
   const empty = { data: [] as IOCRecord[], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['iocs', params],
-    queryFn: () => api<ListResponse<IOCRecord>>(`/iocs${query}`).then(r => r ?? empty).catch(err => notifyApiError(err, 'IOCs', empty)),
+    queryFn: () => apiList<IOCRecord>(`/iocs${query}`).then(r => r ?? empty).catch(err => notifyApiError(err, 'IOCs', empty)),
     staleTime: 60_000,
   })
   return { ...result, isDemo: false }
@@ -165,7 +166,7 @@ export function useFeeds(params: QueryParams = {}) {
   const empty = { data: [] as FeedRecord[], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['feeds', params],
-    queryFn: () => api<ListResponse<FeedRecord>>(`/feeds${query}`).then(r => r ?? empty).catch(err => notifyApiError(err, 'feeds', empty)),
+    queryFn: () => apiList<FeedRecord>(`/feeds${query}`).then(r => r ?? empty).catch(err => notifyApiError(err, 'feeds', empty)),
     staleTime: 60_000,
   })
   return { ...result, isDemo: false }
@@ -276,7 +277,7 @@ export function useActors(params: QueryParams = {}) {
   const empty = { data: [] as ActorRecord[], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['actors', params],
-    queryFn: () => api<ListResponse<ActorRecord>>(`/actors${query}`).then(r => r ?? empty).catch(() => empty),
+    queryFn: () => apiList<ActorRecord>(`/actors${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
   return { ...result, isDemo: false }
@@ -296,7 +297,7 @@ export function useMalware(params: QueryParams = {}) {
   const empty = { data: [] as MalwareRecord[], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['malware', params],
-    queryFn: () => api<ListResponse<MalwareRecord>>(`/malware${query}`).then(r => r ?? empty).catch(() => empty),
+    queryFn: () => apiList<MalwareRecord>(`/malware${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
   return { ...result, isDemo: false }
@@ -317,7 +318,7 @@ export function useActorLinkedIOCs(id: string | null) {
   return useQuery({
     queryKey: ['actor-iocs', id],
     queryFn: () => id
-      ? api<ListResponse<LinkedIOC>>(`/actors/${id}/iocs?limit=10`).then(r => r?.data ?? []).catch(() => [])
+      ? apiList<LinkedIOC>(`/actors/${id}/iocs?limit=10`).then(r => r?.data ?? []).catch(() => [])
       : ([] as LinkedIOC[]),
     enabled: !!id,
     staleTime: 60_000,
@@ -328,7 +329,7 @@ export function useMalwareLinkedIOCs(id: string | null) {
   return useQuery({
     queryKey: ['malware-iocs', id],
     queryFn: () => id
-      ? api<ListResponse<LinkedIOC>>(`/malware/${id}/iocs?limit=10`).then(r => r?.data ?? []).catch(() => [])
+      ? apiList<LinkedIOC>(`/malware/${id}/iocs?limit=10`).then(r => r?.data ?? []).catch(() => [])
       : ([] as LinkedIOC[]),
     enabled: !!id,
     staleTime: 60_000,
@@ -351,7 +352,7 @@ export function useVulnerabilities(params: QueryParams = {}) {
   const empty = { data: [] as VulnRecord[], total: 0, page: 1, limit: 50 }
   const result = useQuery({
     queryKey: ['vulnerabilities', params],
-    queryFn: () => api<ListResponse<VulnRecord>>(`/vulnerabilities${query}`).then(r => r ?? empty).catch(() => empty),
+    queryFn: () => apiList<VulnRecord>(`/vulnerabilities${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
   return { ...result, isDemo: false }

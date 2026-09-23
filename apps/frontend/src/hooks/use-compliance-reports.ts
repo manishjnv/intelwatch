@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -151,7 +152,7 @@ export function useComplianceReports(filters: ReportFilters = {}) {
   const result = useQuery({
     queryKey: ['compliance-reports', filters],
     queryFn: () =>
-      api<ListResponse<ComplianceReport>>(`/admin/compliance/reports${query}`)
+      apiList<ComplianceReport>(`/admin/compliance/reports${query}`)
         .catch(err => notifyApiError(err, 'compliance reports', empty)),
     staleTime: 60_000,
   })
@@ -214,7 +215,7 @@ export function useDsarExports() {
   const result = useQuery({
     queryKey: ['dsar-exports'],
     queryFn: () =>
-      api<ListResponse<DsarExport>>('/settings/compliance/dsar')
+      apiList<DsarExport>('/settings/compliance/dsar')
         .catch(err => notifyApiError(err, 'DSAR exports', empty)),
     staleTime: 60_000,
   })

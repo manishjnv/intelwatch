@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
 import {
   DEMO_REPORTS, DEMO_SCHEDULES, DEMO_TEMPLATES, DEMO_REPORT_STATS, DEMO_COMPARISON,
@@ -45,7 +46,7 @@ export function useReports(page = 1, type?: ReportType, status?: string) {
   const empty: ListResponse<Report> = { data: [], total: 0, page, limit: 50 }
   const result = useQuery({
     queryKey: ['reports', page, type, status],
-    queryFn: () => api<ListResponse<Report>>(`/reports?${params}`).catch(err => notifyApiError(err, 'reports', empty)),
+    queryFn: () => apiList<Report>(`/reports?${params}`).catch(err => notifyApiError(err, 'reports', empty)),
     staleTime: 30_000,
   })
   return withDemoFallback(

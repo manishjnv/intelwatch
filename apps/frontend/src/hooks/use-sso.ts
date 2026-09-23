@@ -64,7 +64,8 @@ export function useSsoConfig() {
   const result = useQuery({
     queryKey: ['sso-config'],
     queryFn: () =>
-      api<SsoConfig>('/settings/sso')
+      // SSO lives in user-management-service under /api/v1/users (S147; /settings/sso 404'd)
+      api<SsoConfig>('/users/sso')
         .catch(err => notifyApiError(err, 'SSO config', null)),
     staleTime: 60_000,
   })
@@ -78,7 +79,7 @@ export function useSaveSsoConfig() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (config: Partial<SsoConfig>) =>
-      api<SsoConfig>('/settings/sso', { method: 'PUT', body: config }),
+      api<SsoConfig>(`/users/sso/${config.provider ?? 'saml'}`, { method: 'PUT', body: config }),
     onSuccess: () => {
       toast('SSO configuration saved.', 'success')
       void qc.invalidateQueries({ queryKey: ['sso-config'] })
@@ -94,7 +95,7 @@ export function useDeleteSsoConfig() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      api('/settings/sso', { method: 'DELETE' }),
+      api('/users/sso', { method: 'DELETE' }),
     onSuccess: () => {
       toast('SSO configuration removed.', 'success')
       void qc.invalidateQueries({ queryKey: ['sso-config'] })
@@ -109,7 +110,7 @@ export function useDeleteSsoConfig() {
 export function useTestSsoConnection() {
   return useMutation({
     mutationFn: () =>
-      api<SsoTestResult>('/settings/sso/test', { method: 'POST' }),
+      api<SsoTestResult>('/users/sso/test', { method: 'POST' }),
     onSuccess: (data) => {
       if (data?.success) {
         toast('Connection successful.', 'success')
