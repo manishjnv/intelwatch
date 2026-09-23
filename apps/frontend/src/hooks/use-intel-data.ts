@@ -86,11 +86,56 @@ export interface IOCTimelineEvent {
   source?: string
 }
 
+type RelatedRow = { id?: string; iocType?: string; normalizedValue?: string; severity?: string }
+interface IOCPivotApi {
+  byFeed?: RelatedRow[]; byThreatActor?: RelatedRow[]; byMalware?: RelatedRow[]; bySubnet?: RelatedRow[]
+}
+
+/** ioc-intelligence returns related IOCs grouped by reason; the UI wants one tagged list (S147). */
+export function toPivotResult(p: IOCPivotApi | null | undefined): IOCPivotResult {
+  const groups: [RelatedRow[] | undefined, string][] = [
+    [p?.byThreatActor, 'shared threat actor'], [p?.byMalware, 'shared malware'],
+    [p?.byFeed, 'same feed'], [p?.bySubnet, 'same subnet'],
+  ]
+  const seen = new Set<string>()
+  const relatedIOCs: IOCPivotResult['relatedIOCs'] = []
+  for (const [rows, relationship] of groups) {
+    for (const r of rows ?? []) {
+      if (!r?.id || seen.has(r.id)) continue
+      seen.add(r.id)
+      relatedIOCs.push({
+        id: r.id, iocType: r.iocType ?? 'unknown', normalizedValue: r.normalizedValue ?? '',
+        severity: r.severity ?? 'info', relationship,
+      })
+    }
+  }
+  return { relatedIOCs, actors: [], malware: [], campaigns: [] }
+}
+
+type TimelineApiEvent = { timestamp: string; type: string; details?: Record<string, unknown> }
+const TIMELINE_TYPE: Record<string, IOCTimelineEvent['eventType']> = {
+  first_seen: 'first_seen', last_seen: 'sighting', enriched: 'enrichment', confidence_change: 'severity_change',
+}
+
+/** ioc-intelligence timeline events use {type, details}; the UI renders {eventType, summary} (S147). */
+export function toTimelineEvents(r: { events?: TimelineApiEvent[] } | null | undefined): IOCTimelineEvent[] {
+  return (r?.events ?? []).map((e) => {
+    const d = e.details ?? {}
+    const summary =
+      e.type === 'confidence_change' ? `Confidence ${String(d['score'] ?? '')}${d['source'] ? ` (${String(d['source'])})` : ''}`
+      : e.type === 'enriched' ? `Enriched (${String(d['status'] ?? 'unknown')})`
+      : e.type === 'first_seen' ? `First seen${d['severity'] ? ` · ${String(d['severity'])}` : ''}`
+      : e.type === 'last_seen' ? `Last seen${d['lifecycle'] ? ` · ${String(d['lifecycle'])}` : ''}`
+      : e.type.replace(/_/g, ' ')
+    return { timestamp: e.timestamp, eventType: TIMELINE_TYPE[e.type] ?? 'sighting', summary, source: d['source'] ? String(d['source']) : undefined }
+  })
+}
+
 export function useIOCPivot(iocId: string | null) {
   const empty: IOCPivotResult = { relatedIOCs: [], actors: [], malware: [], campaigns: [] }
   return useQuery({
     queryKey: ['ioc-pivot', iocId],
-    queryFn: () => api<IOCPivotResult>(`/iocs/${iocId}/pivot`).catch(() => empty),
+    queryFn: () => api<IOCPivotApi>(`/ioc/${iocId}/pivot`).then(toPivotResult).catch(() => empty),
     enabled: !!iocId,
     staleTime: 60_000,
   })
@@ -99,7 +144,7 @@ export function useIOCPivot(iocId: string | null) {
 export function useIOCTimeline(iocId: string | null) {
   return useQuery({
     queryKey: ['ioc-timeline', iocId],
-    queryFn: () => api<{ events: IOCTimelineEvent[] }>(`/iocs/${iocId}/timeline`).then(r => r?.events ?? []).catch(() => [] as IOCTimelineEvent[]),
+    queryFn: () => api<{ events?: TimelineApiEvent[] }>(`/ioc/${iocId}/timeline`).then(toTimelineEvents).catch(() => [] as IOCTimelineEvent[]),
     enabled: !!iocId,
     staleTime: 60_000,
   })

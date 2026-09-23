@@ -3,6 +3,7 @@
  * @description Free-to-paid plan upgrade/downgrade + plan listing (I-14).
  * POST /upgrade — switch tenant plan with downgrade protection.
  * GET  /plans   — list public plans for billing page.
+ * GET  /subscription — the tenant's real current plan (S147; replaces demo fallback).
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
@@ -197,6 +198,46 @@ export async function billingUpgradeRoutes(app: FastifyInstance): Promise<void> 
           currentPlan: targetPlan,
           changedAt: new Date().toISOString(),
           isUpgrade: targetIdx > currentIdx,
+        },
+      });
+    },
+  );
+
+  /**
+   * GET /subscription — Current plan for the Billing & Plans UI (shape: CurrentSubscription).
+   * Source of truth is tenants.plan (+ tenant_subscriptions when present). DECISION-031: no
+   * trials, billing cycle is handled by sales, so cycle is reported as monthly.
+   * The UI and billing-service key the Teams plan as 'teams'; the DB enum calls it 'pro'.
+   */
+  app.get(
+    '/subscription',
+    { preHandler: tenantMember },
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      const { tenantId } = getUser(req);
+      const [tenant, sub] = await Promise.all([
+        prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } }),
+        prisma.tenantSubscription.findUnique({
+          where: { tenantId },
+          select: { status: true, currentPeriodEnd: true },
+        }),
+      ]);
+      if (!tenant) throw new AppError(404, 'Tenant not found', 'TENANT_NOT_FOUND');
+
+      const dbPlan = tenant.plan as string;
+      const planDef = await findPlanByPlanId(dbPlan);
+      const status = sub?.status === 'cancelled' ? 'canceled' : (sub?.status ?? 'active');
+
+      return reply.status(200).send({
+        data: {
+          planId: dbPlan === 'pro' ? 'teams' : dbPlan,
+          planName: planDef?.name ?? dbPlan,
+          status,
+          billingCycle: 'monthly',
+          currentPeriodEnd: sub?.currentPeriodEnd ? sub.currentPeriodEnd.toISOString() : '',
+          cancelAtPeriodEnd: false,
+          trialEnd: null,
+          couponApplied: null,
+          discountPercent: 0,
         },
       });
     },
