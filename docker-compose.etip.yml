@@ -906,6 +906,8 @@ services:
     command: ["node", "apps/customization/dist/index.js"]
     environment:
       TI_NODE_ENV: ${TI_NODE_ENV:-production}
+      # S147: Prisma-backed stores/queries (billing subscriptions, Command Center stats)
+      TI_DATABASE_URL: postgresql://${TI_POSTGRES_USER:-etip_user}:${TI_POSTGRES_PASSWORD}@etip_postgres:5432/${TI_POSTGRES_DB:-etip}?schema=public
       TI_CUSTOMIZATION_PORT: 3017
       TI_CUSTOMIZATION_HOST: 0.0.0.0
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
@@ -982,6 +984,8 @@ services:
     command: ["node", "apps/billing-service/dist/index.js"]
     environment:
       TI_NODE_ENV: ${TI_NODE_ENV:-production}
+      # S147: Prisma-backed stores/queries (billing subscriptions, Command Center stats)
+      TI_DATABASE_URL: postgresql://${TI_POSTGRES_USER:-etip_user}:${TI_POSTGRES_PASSWORD}@etip_postgres:5432/${TI_POSTGRES_DB:-etip}?schema=public
       TI_BILLING_PORT: 3019
       TI_BILLING_HOST: 0.0.0.0
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0

@@ -29,10 +29,16 @@ import { CrossAlertCorrelation } from './services/cross-correlation.js';
 import { CertStreamMonitor } from './services/certstream-monitor.js';
 import { DomainEnricher } from './services/domain-enricher.js';
 import { buildApp } from './app.js';
+import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env as Record<string, string | undefined>);
   const logger = initLogger(config.TI_LOG_LEVEL);
+
+  // Auth secrets — routes use `authenticate`; without this every request 500s
+  // with "JWT not configured" (S147).
+  loadJwtConfig(process.env as Record<string, string | undefined>);
+  loadServiceJwtSecret(process.env as Record<string, string | undefined>);
 
   // In-memory store (DECISION-013)
   const store = new DRPStore();
