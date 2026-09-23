@@ -14,6 +14,7 @@ const { mockPrisma, authState, mockRedis, mockPlanCache, mockUsageCounter, mockP
     },
     tenantSubscription: {
       upsert: vi.fn(),
+      findUnique: vi.fn(),
     },
     user: {
       count: vi.fn(),
@@ -302,5 +303,48 @@ describe('Billing Upgrade API', () => {
       expect(plan.features[0].featureKey).toBe('ioc_management');
       expect(plan.features[0].enabled).toBe(true);
     });
+  });
+});
+
+// ─── S147: GET /subscription — real current plan ─────────────────
+describe('GET /api/v1/billing/subscription', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    authState.user = { sub: 'u-1', userId: 'u-1', email: 'a@acme.com', role: 'tenant_admin', tenantId: 't-1' };
+    app = await buildTestApp();
+  });
+
+  it('returns the tenant plan from the DB, not demo data', async () => {
+    mockPrisma.tenant.findUnique.mockResolvedValue({ plan: 'free' });
+    mockPrisma.tenantSubscription.findUnique.mockResolvedValue(null);
+    mockPlanRepo.findPlanByPlanId.mockResolvedValue({ planId: 'free', name: 'Free' });
+
+    const res = await app.inject({ method: 'GET', url: '/api/v1/billing/subscription' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({
+      planId: 'free', planName: 'Free', status: 'active', billingCycle: 'monthly',
+      currentPeriodEnd: '', cancelAtPeriodEnd: false, trialEnd: null, couponApplied: null, discountPercent: 0,
+    });
+    expect(mockPrisma.tenant.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 't-1' } }));
+  });
+
+  it("maps the DB 'pro' plan to the UI's 'teams' and reports subscription status/period", async () => {
+    mockPrisma.tenant.findUnique.mockResolvedValue({ plan: 'pro' });
+    mockPrisma.tenantSubscription.findUnique.mockResolvedValue({ status: 'cancelled', currentPeriodEnd: new Date('2026-10-01T00:00:00Z') });
+    mockPlanRepo.findPlanByPlanId.mockResolvedValue({ planId: 'pro', name: 'Teams' });
+
+    const body = (await app.inject({ method: 'GET', url: '/api/v1/billing/subscription' })).json().data;
+    expect(body.planId).toBe('teams');
+    expect(body.planName).toBe('Teams');
+    expect(body.status).toBe('canceled');
+    expect(body.currentPeriodEnd).toBe('2026-10-01T00:00:00.000Z');
+  });
+
+  it('404 when the tenant does not exist', async () => {
+    mockPrisma.tenant.findUnique.mockResolvedValue(null);
+    mockPrisma.tenantSubscription.findUnique.mockResolvedValue(null);
+    const res = await app.inject({ method: 'GET', url: '/api/v1/billing/subscription' });
+    expect(res.statusCode).toBe(404);
   });
 });

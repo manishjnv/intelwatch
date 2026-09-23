@@ -105,8 +105,9 @@ export function useFeatureLimits() {
   const result = useQuery({
     queryKey: ['feature-limits'],
     queryFn: () =>
-      api<{ data: FeatureLimitEntry[] }>('/billing/limits')
-        .then(r => r?.data ?? empty)
+      // api() already unwraps { data } — the old `r?.data` was always undefined (S147)
+      api<FeatureLimitEntry[]>('/billing/limits')
+        .then(r => (Array.isArray(r) ? r : empty))
         .catch(err => notifyApiError(err, 'feature limits', DEMO_LIMITS)),
     staleTime: 5 * 60_000,
   })
