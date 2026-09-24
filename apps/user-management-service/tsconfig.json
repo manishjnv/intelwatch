@@ -8,7 +8,8 @@
   "references": [
     { "path": "../../packages/shared-types" },
     { "path": "../../packages/shared-utils" },
-    { "path": "../../packages/shared-auth" }
+    { "path": "../../packages/shared-auth" },
+    { "path": "../../packages/shared-cache" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "tests"]

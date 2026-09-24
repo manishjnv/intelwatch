@@ -7,6 +7,7 @@
 import { createHash } from 'crypto';
 import type { PrismaClient } from '@prisma/client';
 import type { AuditLogger } from './audit-logger.js';
+import type { ExternalPurger } from './external-purge.js';
 
 export interface PurgeResult {
   tenantId: string;
@@ -22,6 +23,7 @@ export interface PurgeResult {
 export async function runPurgeCheck(
   prisma: PrismaClient,
   auditLogger: AuditLogger,
+  externalPurger?: ExternalPurger,
 ): Promise<PurgeResult[]> {
   const now = new Date();
 
@@ -36,7 +38,7 @@ export async function runPurgeCheck(
   const results: PurgeResult[] = [];
 
   for (const tenant of tenantsDue) {
-    const result = await purgeTenant(tenant.id, tenant.archiveHash, prisma, auditLogger);
+    const result = await purgeTenant(tenant.id, tenant.archiveHash, prisma, auditLogger, externalPurger);
     results.push(result);
   }
 
@@ -52,6 +54,7 @@ async function purgeTenant(
   existingArchiveHash: string | null,
   prisma: PrismaClient,
   auditLogger: AuditLogger,
+  externalPurger?: ExternalPurger,
 ): Promise<PurgeResult> {
   const deletedCounts: Record<string, number> = {};
 
@@ -114,17 +117,16 @@ async function purgeTenant(
   const userResult = await prisma.user.deleteMany({ where: { tenantId } });
   deletedCounts['users'] = userResult.count;
 
-  // Stub: Neo4j graph node deletion
-  // TODO(integration): call graph-service DELETE /api/v1/graph/tenant/:tenantId
-  console.log(`[offboarding-purge] Would delete Neo4j nodes for tenant ${tenantId}`);
-
-  // Stub: Elasticsearch index deletion
-  // TODO(integration): call es-indexing-service DELETE /api/v1/search/index/etip_${tenantId}_*
-  console.log(`[offboarding-purge] Would delete ES indices etip_${tenantId}_*`);
-
-  // Stub: Redis key cleanup
-  // TODO(integration): SCAN and DEL plan_cache:${tenantId}:* and quota:${tenantId}:*
-  console.log(`[offboarding-purge] Would delete Redis keys for tenant ${tenantId}`);
+  // Purge non-Postgres datastores: Neo4j graph, Elasticsearch indices, Redis cache.
+  // Best-effort and isolated — a failure is recorded but never blocks the PG purge below.
+  const externalErrors: string[] = [];
+  if (externalPurger) {
+    const external = await externalPurger.purge(tenantId);
+    deletedCounts['graphNodes'] = external.graphNodesDeleted;
+    deletedCounts['esIndices'] = external.esIndicesDeleted;
+    deletedCounts['cacheKeys'] = external.redisKeysDeleted;
+    externalErrors.push(...external.errors);
+  }
 
   // Update tenant to purged status (or delete entirely)
   await prisma.tenant.update({
@@ -142,6 +144,7 @@ async function purgeTenant(
       deletedCounts,
       archiveHash: existingArchiveHash,
       verificationHash,
+      ...(externalErrors.length > 0 ? { externalPurgeErrors: externalErrors } : {}),
     },
   });
 
