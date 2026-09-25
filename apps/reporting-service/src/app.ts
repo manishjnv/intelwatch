@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import { errorHandlerPlugin } from './plugins/error-handler.js';
+import { enforceTenant } from './plugins/tenant-guard.js';
 import { healthRoutes } from './routes/health.js';
 import { reportRoutes, type ReportRouteDeps } from './routes/reports.js';
 import { scheduleRoutes, type ScheduleRouteDeps } from './routes/schedules.js';
@@ -52,6 +53,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(sensible);
   await registerMetrics(app, 'reporting-service');
   await app.register(errorHandlerPlugin);
+  // U1–U3: tenant comes from the nginx-verified x-tenant-id header, not the query/body
+  app.addHook('preHandler', async (req) => { enforceTenant(req); });
 
   // Request lifecycle hooks
   app.addHook('onRequest', async (req) => {
