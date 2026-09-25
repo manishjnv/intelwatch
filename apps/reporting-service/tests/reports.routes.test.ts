@@ -394,3 +394,57 @@ describe('Report Routes', () => {
     });
   });
 });
+
+// U3 (roadmap STEP_00B): tenant comes from the nginx-verified x-tenant-id header.
+describe('Report Routes — tenant guard', () => {
+  let app: FastifyInstance;
+  let reportStore: ReportStore;
+  let scheduleStore: ScheduleStore;
+
+  beforeEach(async () => {
+    reportStore = new ReportStore();
+    scheduleStore = new ScheduleStore();
+    const templateStore = new TemplateStore();
+    app = await buildApp({
+      config,
+      reportDeps: { reportStore, reportWorker: new StubReportWorker(reportStore, templateStore) as any },
+      scheduleDeps: { scheduleStore },
+      templateDeps: { templateStore },
+      statsDeps: { reportStore, scheduleStore },
+    });
+  });
+
+  afterEach(async () => {
+    scheduleStore.stopAll();
+    await app.close();
+  });
+
+  it('rejects listing another tenant\'s reports', async () => {
+    const res = await app.inject({
+      method: 'GET', url: '/api/v1/reports?tenantId=tenant-b',
+      headers: { 'x-tenant-id': 'tenant-a', 'x-user-role': 'analyst' },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('creates reports in the header tenant and lists only those', async () => {
+    const headers = { 'x-tenant-id': 'tenant-a', 'x-user-role': 'analyst' };
+    const created = await app.inject({ method: 'POST', url: '/api/v1/reports', headers, payload: { type: 'daily' } });
+    expect(created.statusCode).toBe(201);
+    const other = await app.inject({
+      method: 'GET', url: '/api/v1/reports',
+      headers: { 'x-tenant-id': 'tenant-b', 'x-user-role': 'analyst' },
+    });
+    expect(other.statusCode).toBe(200);
+    expect(JSON.parse(other.body).data).toHaveLength(0);
+  });
+
+  it('rejects creating a report for another tenant', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/reports',
+      headers: { 'x-tenant-id': 'tenant-a', 'x-user-role': 'analyst' },
+      payload: { type: 'daily', tenantId: 'tenant-b' },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});

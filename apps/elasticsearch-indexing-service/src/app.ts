@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import { errorHandlerPlugin } from './plugins/error-handler.js';
+import { enforceTenant } from './plugins/tenant-guard.js';
 import { healthRoutes } from './routes/health-check.js';
 import { searchRoutes } from './routes/search.js';
 import { reindexRoutes } from './routes/reindex.js';
@@ -67,6 +68,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(sensible);
   await registerMetrics(app, 'es-indexing-service');
   await app.register(errorHandlerPlugin);
+  // U1–U3: tenant comes from the nginx-verified x-tenant-id header, not the query/body
+  app.addHook('preHandler', async (req) => { enforceTenant(req); });
 
   // ── Request lifecycle hooks ──────────────────────────────────────────────────
   app.addHook('onRequest', async (req) => {

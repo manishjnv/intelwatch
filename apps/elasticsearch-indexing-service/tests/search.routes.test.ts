@@ -205,3 +205,52 @@ describe('Search Routes', () => {
     });
   });
 });
+
+// U1 (roadmap STEP_00B): tenant comes from the nginx-verified x-tenant-id header.
+describe('Search Routes — tenant guard', () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = await buildApp({ config });
+    vi.mocked(mockSearchService.search).mockClear();
+    vi.mocked(mockSearchService.search).mockResolvedValue(mockSearchResult);
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('rejects a query tenantId that differs from the authenticated tenant', async () => {
+    const res = await app.inject({
+      method: 'GET', url: '/api/v1/search/iocs?tenantId=tenant-other',
+      headers: { 'x-tenant-id': 'tenant-abc', 'x-user-role': 'analyst' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(mockSearchService.search).not.toHaveBeenCalled();
+  });
+
+  it('rejects cross-tenant /iocs/stats', async () => {
+    const res = await app.inject({
+      method: 'GET', url: '/api/v1/search/iocs/stats?tenantId=tenant-other',
+      headers: { 'x-tenant-id': 'tenant-abc', 'x-user-role': 'analyst' },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('fills tenantId from the header when omitted', async () => {
+    const res = await app.inject({
+      method: 'GET', url: '/api/v1/search/iocs',
+      headers: { 'x-tenant-id': 'tenant-abc', 'x-user-role': 'analyst' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(vi.mocked(mockSearchService.search).mock.calls[0]?.[0]).toBe('tenant-abc');
+  });
+
+  it('allows super_admin to choose a tenant', async () => {
+    const res = await app.inject({
+      method: 'GET', url: '/api/v1/search/iocs?tenantId=tenant-other',
+      headers: { 'x-tenant-id': 'tenant-abc', 'x-user-role': 'super_admin' },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+});

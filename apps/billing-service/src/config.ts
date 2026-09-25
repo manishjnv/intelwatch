@@ -16,7 +16,26 @@ const ConfigSchema = z.object({
   TI_RAZORPAY_KEY_ID: z.string().min(1).default('rzp_test_placeholder'),
   TI_RAZORPAY_KEY_SECRET: z.string().min(16).default('placeholder_secret_32_chars_padded'),
   TI_RAZORPAY_WEBHOOK_SECRET: z.string().min(16).default('placeholder_webhook_32_chars_pad!'),
-});
+  /** Razorpay is deferred (DECISION-031, sales-led). Unset: off in production, on elsewhere. */
+  TI_RAZORPAY_ENABLED: z.enum(['true', 'false']).optional(),
+}).refine(
+  (c) => !(c.TI_NODE_ENV === 'production' && c.TI_RAZORPAY_ENABLED === 'true' && hasPlaceholderKeys(c)),
+  { message: 'TI_RAZORPAY_ENABLED=true needs real Razorpay keys (placeholders found)', path: ['TI_RAZORPAY_ENABLED'] },
+);
+
+/** True when any Razorpay key still holds a placeholder default. */
+export function hasPlaceholderKeys(c: { TI_RAZORPAY_KEY_ID: string; TI_RAZORPAY_KEY_SECRET: string; TI_RAZORPAY_WEBHOOK_SECRET: string }): boolean {
+  return [c.TI_RAZORPAY_KEY_ID, c.TI_RAZORPAY_KEY_SECRET, c.TI_RAZORPAY_WEBHOOK_SECRET].some((v) => /placeholder/i.test(v));
+}
+
+/**
+ * Whether Razorpay payment routes (webhooks, checkout, subscription create/cancel) are live.
+ * Roadmap STEP_00B U5: off in production until the owner enables self-serve payments.
+ */
+export function paymentsEnabled(c: { TI_NODE_ENV: string; TI_RAZORPAY_ENABLED?: 'true' | 'false' }): boolean {
+  if (c.TI_RAZORPAY_ENABLED) return c.TI_RAZORPAY_ENABLED === 'true';
+  return c.TI_NODE_ENV !== 'production';
+}
 
 export type BillingConfig = z.infer<typeof ConfigSchema>;
 

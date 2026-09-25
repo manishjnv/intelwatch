@@ -44,8 +44,8 @@ services:
     command: >
       redis-server
         --requirepass ${TI_REDIS_PASSWORD:?TI_REDIS_PASSWORD is required}
-        --maxmemory 256mb
-        --maxmemory-policy allkeys-lru
+        --maxmemory 1gb
+        --maxmemory-policy noeviction
         --appendonly yes
         --appendfsync everysec
     ports:
@@ -60,10 +60,12 @@ services:
       start_period: 10s
     networks:
       - etip_network
+    # STEP_00B U7: BullMQ needs noeviction (allkeys-lru was silently dropping jobs/config keys).
+    # Container limit must stay above maxmemory (1gb) + overhead.
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 1280M
 
   # ─── Elasticsearch 8 — IOC Search, Full-Text, Analytics ─────────
   etip_elasticsearch:
@@ -831,6 +833,8 @@ services:
       TI_IOC_SERVICE_URL: http://etip_ioc_intelligence:3007
       TI_GRAPH_SERVICE_URL: http://etip_threat_graph:3012
       TI_CORRELATION_SERVICE_URL: http://etip_correlation:3013
+      # STEP_00B U4: must be set in .env (openssl rand -hex 32); production refuses the dev default
+      TI_INTEGRATION_ENCRYPTION_KEY: ${TI_INTEGRATION_ENCRYPTION_KEY:-}
     ports:
       - "127.0.0.1:3015:3015"
     depends_on:

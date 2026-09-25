@@ -14,6 +14,7 @@ import type { TicketingService } from '../services/ticketing-service.js';
 import type { HealthDashboard } from '../services/health-dashboard.js';
 import type { IntegrationRateLimiter } from '../services/rate-limiter.js';
 import type { WebhookRetryEngine } from '../services/webhook-retry.js';
+import { maskSecrets, restoreMaskedSecrets } from '../utils/secret-mask.js';
 
 export interface IntegrationRouteDeps {
   store: IntegrationStore;
@@ -55,14 +56,14 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       const tenantId = getTenant(req);
       const input = CreateIntegrationSchema.parse(req.body);
       const integration = store.createIntegration(tenantId, input);
-      return reply.status(201).send({ data: integration });
+      return reply.status(201).send({ data: maskSecrets(integration) });
     });
 
     app.get('/', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = IntegrationQuerySchema.parse(req.query);
       const result = store.listIntegrations(tenantId, query);
-      return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
+      return reply.send({ data: maskSecrets(result.data), total: result.total, page: query.page, limit: query.limit });
     });
 
     app.get('/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
@@ -70,16 +71,18 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
       if (!integration) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
-      return reply.send({ data: integration });
+      return reply.send({ data: maskSecrets(integration) });
     });
 
     app.put('/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const input = UpdateIntegrationSchema.parse(req.body);
+      const existing = store.getIntegration(id, tenantId);
+      if (!existing) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
+      const input = restoreMaskedSecrets(UpdateIntegrationSchema.parse(req.body), existing);
       const updated = store.updateIntegration(id, tenantId, input);
       if (!updated) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
-      return reply.send({ data: updated });
+      return reply.send({ data: maskSecrets(updated) });
     });
 
     app.delete('/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { AppError } from '@etip/shared-utils';
 
+/** Dev-only default. Production refuses to start with it (roadmap STEP_00B U4). */
+export const DEV_ENCRYPTION_KEY = 'etip-dev-encryption-key-change-me!';
+
 const ConfigSchema = z.object({
   TI_NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   TI_INTEGRATION_PORT: z.coerce.number().int().min(1).max(65535).default(3015),
@@ -27,8 +30,11 @@ const ConfigSchema = z.object({
   // STIX/TAXII
   TI_INTEGRATION_TAXII_PAGE_SIZE: z.coerce.number().int().min(10).max(500).default(100),
 
-  // Credential encryption
-  TI_INTEGRATION_ENCRYPTION_KEY: z.string().min(32).default('etip-dev-encryption-key-change-me!'),
+  // Credential encryption. Empty string (compose `${VAR:-}`) counts as unset.
+  TI_INTEGRATION_ENCRYPTION_KEY: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().min(32).default(DEV_ENCRYPTION_KEY),
+  ),
 
   // Rate limiter
   TI_INTEGRATION_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(60),
@@ -37,7 +43,10 @@ const ConfigSchema = z.object({
   TI_IOC_SERVICE_URL: z.string().default('http://localhost:3007'),
   TI_GRAPH_SERVICE_URL: z.string().default('http://localhost:3012'),
   TI_CORRELATION_SERVICE_URL: z.string().default('http://localhost:3013'),
-});
+}).refine(
+  (c) => c.TI_NODE_ENV !== 'production' || c.TI_INTEGRATION_ENCRYPTION_KEY !== DEV_ENCRYPTION_KEY,
+  { message: 'must be set to a real key in production (not the dev default)', path: ['TI_INTEGRATION_ENCRYPTION_KEY'] },
+);
 
 export type IntegrationConfig = z.infer<typeof ConfigSchema>;
 
