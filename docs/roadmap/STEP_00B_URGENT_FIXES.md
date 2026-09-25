@@ -12,7 +12,7 @@
 | U2 🔒 | Same pattern | `apps/alerting-service/src/routes/alerts.ts:29,148` | Cross-tenant alert read | Same fix |
 | U3 🔒 | Same pattern | `apps/reporting-service/src/routes/reports.ts:38` | Cross-tenant report read | Same fix |
 | U4 🔒 | Integration credentials encryption key uses the dev default. `TI_INTEGRATION_ENCRYPTION_KEY` is **not** in `docker-compose.etip.yml` | `apps/integration-service/src/config.ts:31` | Stored SIEM/ticketing secrets protected by a key that is in the repo. Also creds are stored in plain text and `GET /integrations/:id` returns them | Add the env var (VPS `.env`), refuse to start in production with the default, mask secrets in GET responses. Encrypt-at-rest in Step 3 |
-| U5 🔒 | Razorpay key/secret/webhook-secret have placeholder defaults | `apps/billing-service/src/config.ts:16-18`, compose ~998-1000 | If the VPS `.env` doesn't override them, webhooks can be forged | **Check the VPS `.env` now.** Refuse to start in production with placeholders |
+| U5 | Razorpay is **deferred by decision** (DECISION-031: sales-led; live keys deferred post-launch). But the webhook route `/api/v1/billing/webhooks/razorpay` is still reachable, and the key/secret defaults are placeholders | `apps/billing-service/src/config.ts:16-18`, compose ~998-1000 | Low today (nothing applies a plan from the webhook yet), but a forged event could write billing records | While deferred: return 404/503 from the webhook + checkout routes unless real keys are configured (`TI_RAZORPAY_ENABLED=false` default). Real fix comes with the self-serve checkout (PARALLEL_REVENUE_GROWTH) |
 | U6 🔒 | Grafana is reachable from the internet and has a default admin password if `TI_GRAFANA_PASSWORD` is unset | `docker/nginx/conf.d/default.conf:642`, compose | Metrics + dashboards exposed | Put `/grafana/` behind the same auth (or Cloudflare Access), require the password env var |
 | U7 | Redis runs `--maxmemory 256mb --maxmemory-policy allkeys-lru` | `docker-compose.etip.yml:45-48` | Under memory pressure Redis silently evicts BullMQ jobs and Redis-JSON config (DECISION-027) | `noeviction` + a larger limit (e.g. 1–2 GB, box has 16 GB). Add a Redis memory alert (Step 8) |
 | U8 | No database backups (no `pg_dump` anywhere). Admin "BackupStore" is an in-memory list | repo-wide | One disk failure = everything lost | Daily `pg_dump` + Neo4j dump + MinIO/ES snapshot to off-box storage, 7/30-day retention, one restore drill (details in STEP_01) |
@@ -25,12 +25,12 @@
 
 | S | Module | Items | Size |
 |---|---|---|---|
-| 0B-1 | ops (VPS `.env` check, compose, nginx) 🔒 | U5 check, U4 env var, U6, U7 | S |
+| 0B-1 | ops (compose, nginx, VPS `.env` status check) 🔒 | U4 env var, U6, U7 | S |
 | 0B-2 | elasticsearch-indexing-service 🔒 | U1 | S |
 | 0B-3 | alerting-service 🔒 | U2 | S |
 | 0B-4 | reporting-service 🔒 | U3 | S |
 | 0B-5 | integration-service 🔒 | U4 code side (refuse default, mask secrets) | S |
-| 0B-6 | billing-service 🔒 | U5 code side (refuse placeholders) | S |
+| 0B-6 | billing-service | U5: disable webhook/checkout routes while Razorpay is deferred | S |
 | 0B-7 | frontend | U12 | S |
 | 0B-8 | ingestion | U11 | S |
 | — | ops | U8, U9, U10 are done in Step 1 (S149) | — |

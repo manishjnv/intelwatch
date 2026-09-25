@@ -34,7 +34,7 @@
 | W16 | CI deploy sometimes fails with `websocket: bad handshake` (Cloudflare tunnel SSH); fixed today by a manual re-run | S147 notes | Phase 0 |
 | W17 | Demo annual prices in `use-plan-builder.ts` (99,999 / 189,999 / 499,999) differ from the seeds | DECISION-030 note | Phase 2 |
 | W18 🔒 | Cross-tenant reads: es-indexing search, alerting and reporting take `tenantId` from the query string with no JWT check | `search.ts:19-31`, `alerts.ts:29`, `reports.ts:38` | Step 0B |
-| W19 🔒 | Secrets with repo defaults: integration encryption key (not set in compose), Razorpay keys; Grafana public with default password | STEP_00B U4–U6 | Step 0B |
+| W19 🔒 | Secrets with repo defaults: integration encryption key (not set in compose); Grafana public with default password. Razorpay placeholders are expected (deferred, DECISION-031) but the webhook route should be off until live | STEP_00B U4–U6 | Step 0B |
 | W20 | Redis `allkeys-lru` 256 MB can evict BullMQ jobs and Redis-JSON config | compose:45-48 | Step 0B |
 | W21 | Deploy: schema push after restart and failures ignored; no `concurrency:`; docs-only merges redeploy | deploy.yml:192,197 | Step 1 |
 | W22 | Global MISP + REST workers share one queue → REST feeds auto-disabled (global mode only) | ingestion scheduler:26-28 | Step 0B |
@@ -43,7 +43,7 @@
 | W25 | RLS is not applied anywhere: `withRls` never called; 6 tenant tables have no policy; policies were applied by hand | STEP_04 | Step 4 |
 | W26 | Service-to-service JWT never verified (`verifyServiceToken` unused); hunting→graph pivot calls a route that doesn't exist | STEP_10 | Step 4/10 |
 | W27 | 4 connectors unusable (threatfox, urlhaus, malwarebazaar, feodo missing from API + DB enum); 6 DB types rejected by API | STEP_09 | Step 9 |
-| W28 | Razorpay path broken end to end (webhook signs re-serialised JSON, no invoice, `teams` vs `pro` plan id) | PARALLEL_REVENUE_GROWTH | Parallel track |
+| W28 | (Deferred by decision) Razorpay path broken end to end (webhook signs re-serialised JSON, no invoice, `teams` vs `pro` plan id) | PARALLEL_REVENUE_GROWTH | Parallel track |
 | W29 | `TI_AI_ENABLED=false` also switches off free VT/AbuseIPDB lookups; `TI_IOC_INDEX_ENABLED="false"` reads as true | ai-enrichment | Steps 2, 5 |
 | W30 | Hard-coded old model IDs and stale prices (~15 places) | ai-enrichment, customization | Step 10 |
 
