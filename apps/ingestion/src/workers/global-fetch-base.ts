@@ -52,6 +52,17 @@ export interface GlobalFetchWorkerDeps {
 
 const MAX_CONSECUTIVE_FAILURES = 5;
 
+/**
+ * Connector to use for a job. The REST and MISP workers both consume FEED_FETCH_GLOBAL_REST
+ * (see global-feed-scheduler FEED_TYPE_TO_QUEUE), so whichever worker picks up the job must use
+ * the feed's own connector. Before this, ~half of REST jobs ran through the MISP connector,
+ * failed, and auto-disabled the feed after 5 failures (roadmap STEP_00B U11).
+ */
+export function resolveConnectorType(workerType: GlobalConnectorType, feedType: string): GlobalConnectorType {
+  if (workerType !== 'rest' && workerType !== 'misp') return workerType;
+  return feedType === 'misp' ? 'misp' : 'rest';
+}
+
 export interface GlobalFetchWorkerResult {
   worker: Worker<GlobalFetchJobData, GlobalFetchResult>;
   close(): Promise<void>;
@@ -110,8 +121,11 @@ export function createGlobalFetchWorker(
       return { globalFeedId, articlesInserted: 0, articlesSkipped: 0, status: 'skipped' };
     }
 
+    // REST and MISP workers share FEED_FETCH_GLOBAL_REST, so pick the connector from the feed (U11)
+    const connectorType = resolveConnectorType(config.connectorType, entry.feedType);
+
     // 2. Rate limit check
-    const rateLimitKey = `global-${config.connectorType}-${globalFeedId}-lastfetch`;
+    const rateLimitKey = `global-${connectorType}-${globalFeedId}-lastfetch`;
     const lastFetch = await rateLimitRedis.get(rateLimitKey);
     if (lastFetch) {
       const elapsed = Date.now() - parseInt(lastFetch, 10);
@@ -124,7 +138,7 @@ export function createGlobalFetchWorker(
 
     try {
       // 3. Fetch via connector
-      const fetchResult = await routeToConnector(config.connectorType, entry, connectors);
+      const fetchResult = await routeToConnector(connectorType, entry, connectors);
 
       // 4. Dedupe + insert
       let inserted = 0;

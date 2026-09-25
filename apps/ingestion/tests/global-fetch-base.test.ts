@@ -257,3 +257,22 @@ describe('createGlobalFetchWorker', () => {
     expect(mockRedisInstance.quit).toHaveBeenCalled();
   });
 });
+
+// Roadmap STEP_00B U11: REST and MISP workers share one queue.
+import { resolveConnectorType } from '../src/workers/global-fetch-base.js';
+
+describe('resolveConnectorType', () => {
+  it('uses the MISP connector only for MISP feeds, whichever shared-queue worker takes the job', () => {
+    expect(resolveConnectorType('misp', 'rest_api')).toBe('rest');
+    expect(resolveConnectorType('misp', 'rest')).toBe('rest');
+    expect(resolveConnectorType('misp', 'misp')).toBe('misp');
+    expect(resolveConnectorType('rest', 'misp')).toBe('misp');
+    expect(resolveConnectorType('rest', 'rest_api')).toBe('rest');
+  });
+
+  it('leaves workers on their own queues unchanged', () => {
+    expect(resolveConnectorType('rss', 'rss')).toBe('rss');
+    expect(resolveConnectorType('nvd', 'nvd')).toBe('nvd');
+    expect(resolveConnectorType('stix', 'taxii')).toBe('stix');
+  });
+});
