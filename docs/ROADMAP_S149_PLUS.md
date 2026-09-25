@@ -33,6 +33,19 @@
 | W15 | No tested backup/restore and no failover: one VPS, one Postgres | single KVM4 | Phase 0 (backups) / later (failover) |
 | W16 | CI deploy sometimes fails with `websocket: bad handshake` (Cloudflare tunnel SSH); fixed today by a manual re-run | S147 notes | Phase 0 |
 | W17 | Demo annual prices in `use-plan-builder.ts` (99,999 / 189,999 / 499,999) differ from the seeds | DECISION-030 note | Phase 2 |
+| W18 🔒 | Cross-tenant reads: es-indexing search, alerting and reporting take `tenantId` from the query string with no JWT check | `search.ts:19-31`, `alerts.ts:29`, `reports.ts:38` | Step 0B |
+| W19 🔒 | Secrets with repo defaults: integration encryption key (not set in compose), Razorpay keys; Grafana public with default password | STEP_00B U4–U6 | Step 0B |
+| W20 | Redis `allkeys-lru` 256 MB can evict BullMQ jobs and Redis-JSON config | compose:45-48 | Step 0B |
+| W21 | Deploy: schema push after restart and failures ignored; no `concurrency:`; docs-only merges redeploy | deploy.yml:192,197 | Step 1 |
+| W22 | Global MISP + REST workers share one queue → REST feeds auto-disabled (global mode only) | ingestion scheduler:26-28 | Step 0B |
+| W23 | Fake data in the backend: every report uses hard-coded numbers (`data-aggregator.ts`); 7 DRP engines use `Math.random`; caching archives upload `sample-*` records | reporting, drp, caching | Steps 3, 5, before F7 |
+| W24 | More in-memory stores: **reporting** (reports, schedules, templates), user-management teams/roles/MFA policy, global AI config, customization BYOK | STEP_03 | Step 3 |
+| W25 | RLS is not applied anywhere: `withRls` never called; 6 tenant tables have no policy; policies were applied by hand | STEP_04 | Step 4 |
+| W26 | Service-to-service JWT never verified (`verifyServiceToken` unused); hunting→graph pivot calls a route that doesn't exist | STEP_10 | Step 4/10 |
+| W27 | 4 connectors unusable (threatfox, urlhaus, malwarebazaar, feodo missing from API + DB enum); 6 DB types rejected by API | STEP_09 | Step 9 |
+| W28 | Razorpay path broken end to end (webhook signs re-serialised JSON, no invoice, `teams` vs `pro` plan id) | PARALLEL_REVENUE_GROWTH | Parallel track |
+| W29 | `TI_AI_ENABLED=false` also switches off free VT/AbuseIPDB lookups; `TI_IOC_INDEX_ENABLED="false"` reads as true | ai-enrichment | Steps 2, 5 |
+| W30 | Hard-coded old model IDs and stale prices (~15 places) | ai-enrichment, customization | Step 10 |
 
 ## 3. Implementation order (master sequence)
 
@@ -41,8 +54,9 @@ Build in this order. **Don't start a step until the step before it is green in p
 | Step | What | Architecture piece (§6) | Why here |
 |---|---|---|---|
 | 0 | **Dev workflow:** one `git worktree` per Claude session, only one session deploys at a time, a review/test subagent before push | Dev: one module per session | Costs nothing, and prevents the S148 two-sessions-one-tree mess for every step after it |
+| 0B | **Urgent fixes (STEP_00B):** cross-tenant reads, default secrets, Grafana, Redis eviction, MISP/REST queue, fake MFA secret | Security base | Real data leaks and silent data loss. Small, isolated, and must land before search is filled (step 2) |
 | 1 | **Stay up:** uptime alert, safer deploy + retry for SSH flake, cleanup cron, backup + restore drill (S149) | Ops base | Nothing else matters while the site can be down for 46 h unnoticed |
-| 2 | **Search works:** index at normalization + backfill (S150–153) | Pipeline workers own indexing | Core product promise. Copilot and hunting (steps 10–13) need a working index |
+| 2 | **Search works:** index at normalization + backfill + ⌘K fix (7 sessions, see STEP_02) | Pipeline workers own indexing | Core product promise. Copilot and hunting (steps 10–13) need a working index |
 | 3 | **No data in memory:** alerting, integration, DRP, hunting, caching archives, analytics trends, onboarding readiness → Postgres/Redis (S154–159b) | Rule: stateless processes | Required **before** merging processes (step 7). Stateless services can be moved or restarted safely |
 | 4 | **Least-privilege DB role + real RLS** (S160) 🔒 | Tenant isolation at the DB | Must exist before AI agents (step 10) can query data on a tenant's behalf |
 | 5 | **Honest UI + missing endpoints + auto-enrich critical IOCs** (S161–166) | One API/error pattern | Users (and you) can trust what they see. Needed before selling |
@@ -54,7 +68,7 @@ Build in this order. **Don't start a step until the step before it is green in p
 | 11 | **F1 AI Copilot** (read-only Q&A with citations) | Agent layer, read tools | Safest first agent (no actions), biggest market gap |
 | 12 | **F2 Detection rules** (Sigma/YARA/KQL/SPL) + SIEM push | Agent tool + integration plug-in | Uses copilot tools. High SOC value |
 | 13 | **F3 Playbooks** (trigger → conditions → actions, with approval) + **F4 Retro-hunt** | Agent actions + workers | Needs step 8 (monitoring) and step 10 (approval flow) |
-| 14 | **F5 Sandbox, F6 ATT&CK heatmap, F7 Vendor risk, F8 India feeds, F9 Browser extension** | Plug-ins + frontend | Each is small once steps 9–10 exist. Pick by customer demand |
+| 14 | **F5 Sandbox, F6 ATT&CK heatmap, F7 Vendor risk (make DRP engines real first — W23), F8 India feeds, F9 Browser extension** | Plug-ins + frontend | Each is small once steps 9–10 exist. Pick by customer demand |
 | ∥ | **Parallel track (any time after step 1):** SEO pages, weekly threat brief; Razorpay checkout after step 5 (needs a new DECISION) | — | Growth doesn't depend on the architecture work, but paid signup needs an honest UI first |
 
 **In one line:** stabilise → make data correct and persistent → make the UI truthful → simplify the runtime → add plug-in and agent foundations → then build competitor features on top.
@@ -76,7 +90,8 @@ Build in this order. **Don't start a step until the step before it is green in p
 |---|---|---|---|
 | 154 | alerting-service | Prisma models + repos for rules, channels, alerts, escalation policies, maintenance windows (dual-mode store pattern from billing) | L → 2 |
 | 156 | integration-service | Prisma for integrations, webhook deliveries + DLQ, tickets, export schedules. Encrypt stored credentials | L → 2 |
-| 158 | drp-service | Prisma for monitored assets + findings | M |
+| 158 | drp-service | Prisma for monitored assets + findings (store used by 20 files) | L → 2 |
+| 158b | reporting-service | Persist reports, schedules, templates; replace hard-coded report data with real aggregation (W23, W24) | L → 2 |
 | 159 | hunting-service | Redis JSON via `@etip/shared-persistence` for hunts, saved queries, evidence | M |
 | 159b | caching-service / analytics-service / onboarding | Persist archive manifests (Postgres), trend snapshots and module-readiness (Redis JSON) (W14). One module per session | S each |
 | 160 | prisma / ops 🔒 | Least-privilege app role (no superuser, no BYPASSRLS); test RLS per tenant; keep a migration role for deploys | M |
