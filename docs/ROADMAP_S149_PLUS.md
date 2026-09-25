@@ -29,17 +29,21 @@
 | W11 | 39 source files over the 400-line limit | `wc -l` | Phase 3 (as touched) |
 | W12 | No self-serve payment; every paid plan is set by hand | DECISION-031 | Phase 4 |
 | W13 | Enrichment is idle (AI off by default), so IOCs have no verdicts | "Enriched today 0" | Phase 2 |
+| W14 | More in-memory state: **caching-service** archive manifests (MinIO archive index — restore may break after restart), **analytics** trend snapshots, **onboarding** module-readiness | `new Map<` in `archive-store.ts`, `trend-calculator.ts`, `module-readiness.ts` | Phase 1 |
+| W15 | No tested backup/restore and no failover: one VPS, one Postgres | single KVM4 | Phase 0 (backups) / later (failover) |
+| W16 | CI deploy sometimes fails with `websocket: bad handshake` (Cloudflare tunnel SSH); fixed today by a manual re-run | S147 notes | Phase 0 |
+| W17 | Demo annual prices in `use-plan-builder.ts` (99,999 / 189,999 / 499,999) differ from the seeds | DECISION-030 note | Phase 2 |
 
 ## 3. Implementation order (master sequence)
 
-Build in this order. **Don't start a step until the step before it is green in production.** The reason for each position is in the "Why here" column. Session-level detail is in §4.
+Build in this order. **Don't start a step until the step before it is green in production.** The reason for each position is in the "Why here" column. Session-level detail is in §4. **Implementation specs** (flow, backend, frontend, data model, tests, acceptance, rollback) for each step are in `docs/roadmap/` — start each session by reading the matching `STEP_XX_*.md`.
 
 | Step | What | Architecture piece (§6) | Why here |
 |---|---|---|---|
 | 0 | **Dev workflow:** one `git worktree` per Claude session, only one session deploys at a time, a review/test subagent before push | Dev: one module per session | Costs nothing, and prevents the S148 two-sessions-one-tree mess for every step after it |
-| 1 | **Stay up:** uptime alert, safer deploy, cleanup cron (S149) | Ops base | Nothing else matters while the site can be down for 46 h unnoticed |
+| 1 | **Stay up:** uptime alert, safer deploy + retry for SSH flake, cleanup cron, backup + restore drill (S149) | Ops base | Nothing else matters while the site can be down for 46 h unnoticed |
 | 2 | **Search works:** index at normalization + backfill (S150–153) | Pipeline workers own indexing | Core product promise. Copilot and hunting (steps 10–13) need a working index |
-| 3 | **No data in memory:** alerting, integration, DRP, hunting → Postgres/Redis (S154–159) | Rule: stateless processes | Required **before** merging processes (step 7). Stateless services can be moved or restarted safely |
+| 3 | **No data in memory:** alerting, integration, DRP, hunting, caching archives, analytics trends, onboarding readiness → Postgres/Redis (S154–159b) | Rule: stateless processes | Required **before** merging processes (step 7). Stateless services can be moved or restarted safely |
 | 4 | **Least-privilege DB role + real RLS** (S160) 🔒 | Tenant isolation at the DB | Must exist before AI agents (step 10) can query data on a tenant's behalf |
 | 5 | **Honest UI + missing endpoints + auto-enrich critical IOCs** (S161–166) | One API/error pattern | Users (and you) can trust what they see. Needed before selling |
 | 6 | **Cleanup:** delete 11 empty folders; accept or reject DECISION-032 (S167–168) | Decision gate | A clean map before moving things around |
@@ -60,7 +64,7 @@ Build in this order. **Don't start a step until the step before it is green in p
 ### Phase 0 — Stay up, and search that works (S149–S153)
 | S | Module | Task | Size |
 |---|---|---|---|
-| 149 | ops (`.github/workflows`, `scripts/`) | External uptime check (UptimeRobot or Cloudflare health check → email/Telegram) on `/` and `/api/v1/health`. Deploy step: run the VPS side under `setsid nohup`, SSH `ServerAliveInterval=15`, then `compose up -d` a second time as a final check. Install the docker-cleanup cron. Verify `health-recovery.sh` is `-rwx` on the VPS | M |
+| 149 | ops (`.github/workflows`, `scripts/`) | External uptime check (UptimeRobot or Cloudflare health check → email/Telegram) on `/` and `/api/v1/health`. Deploy step: run the VPS side under `setsid nohup`, SSH `ServerAliveInterval=15`, then `compose up -d` a second time as a final check. Install the docker-cleanup cron. Verify `health-recovery.sh` is `-rwx` on the VPS. Retry wrapper for the tunnel-SSH `bad handshake` flake (W16). Check backups exist for Postgres/Neo4j/ES/MinIO and do one restore drill (W15) | M |
 | — | owner | Click through the logged-in app: dashboard, IOCs, Command Center, billing, reports | — |
 | 150 | normalization | Decide global vs tenant index (write a DECISION). After each IOC upsert, enqueue `IOC_INDEX {action:'index', payload: IocDocument}` with a deterministic jobId | M |
 | 151 | elasticsearch-indexing-service | `update` on a missing doc upserts (or logs and skips); tests | S |
@@ -74,6 +78,7 @@ Build in this order. **Don't start a step until the step before it is green in p
 | 156 | integration-service | Prisma for integrations, webhook deliveries + DLQ, tickets, export schedules. Encrypt stored credentials | L → 2 |
 | 158 | drp-service | Prisma for monitored assets + findings | M |
 | 159 | hunting-service | Redis JSON via `@etip/shared-persistence` for hunts, saved queries, evidence | M |
+| 159b | caching-service / analytics-service / onboarding | Persist archive manifests (Postgres), trend snapshots and module-readiness (Redis JSON) (W14). One module per session | S each |
 | 160 | prisma / ops 🔒 | Least-privilege app role (no superuser, no BYPASSRLS); test RLS per tenant; keep a migration role for deploys | M |
 
 Rule from now on: **no business data in memory.** Maps are allowed only for caches, rate limits and short buffers.
@@ -86,6 +91,7 @@ Rule from now on: **no business data in memory.** Maps are allowed only for cach
 | 163 | frontend | Fix the remaining wrong paths/shapes: MFA policy, ticketing create, AI global config shape | S |
 | 164 | ai-enrichment | `GET /enrichment/ioc/:id`. Auto-enrich **critical/high** IOCs by default with a daily cost cap (W13) | M |
 | 165 | threat-graph | Graph overview endpoint (top entities/clusters) for the graph landing page | S |
+| 165b | frontend | Align demo annual prices in `use-plan-builder.ts` with the seeds (W17) — fold into S161 if that session touches it | S |
 | 166 | admin-service | Command Center "Clients" reads real tenants (via user-service/billing APIs), not the in-memory registry | M |
 
 ### Phase 3 — Simpler runtime (S167+) — needs an owner decision; do before Phase 5 adds new modules
@@ -95,6 +101,7 @@ Rule from now on: **no business data in memory.** Maps are allowed only for cach
 | 168 | docs | **DECISION-032 (proposed): consolidate the runtime into ~7 deployables** (see §6). Design + pilot plan | S |
 | 169+ | per group | Pilot: host 3 small services (analytics, caching, admin) as Fastify plugins in one process. Measure RAM + deploy time. Roll out group by group only if the pilot is clean | M each |
 | ongoing | any | Split files >400 lines when a session touches them | — |
+| later | ops | Failover: second VPS or managed Postgres, once there are paying customers (W15) | L |
 | later | ops | Grafana alert rules → email/Telegram. Request-ID tracing across services (OpenTelemetry later) | M |
 
 ### Phase 4 — Revenue + growth (parallel track)
