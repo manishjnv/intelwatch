@@ -26,7 +26,7 @@
 |---|---|---|
 | U1 es-indexing, U2 alerting, U3 reporting (tenant guard) | ✅ code + tests | 8802d20, 165ac99 |
 | U4 integration key refuse-default + secret masking + compose var | ✅ code + tests | 08e5255 |
-| U5 Razorpay routes closed in production | ✅ code + tests | bd3d544 |
+| U5 Razorpay routes closed in production | ✅ code + tests (gate matches routed path, not raw URL — review fix) | bd3d544, pending |
 | U6 Grafana health endpoint hidden | ✅ nginx | 2d3e6e0 |
 | U7 Redis noeviction + 1gb (container 1280M) | ✅ compose | 2d3e6e0 |
 | U8 backup script (`scripts/etip-backup.sh`, 100755) | ✅ script; cron install on VPS pending | c6c604e |

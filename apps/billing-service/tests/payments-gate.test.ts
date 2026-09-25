@@ -41,6 +41,10 @@ describe('payment routes when disabled', () => {
     '/api/v1/billing/checkout',
     '/api/v1/billing/subscriptions',
     '/api/v1/billing/subscriptions/cancel',
+    // percent-encoded paths: the router decodes these, so the gate must too
+    '/api/v1/billing/che%63kout',
+    '/api/v1/billing/webhooks/r%61zorpay',
+    '/api/v1/billing/subscriptions/c%61ncel',
   ])('POST %s → 503 PAYMENTS_DISABLED', async (url) => {
     const app = await build();
     const res = await app.inject({ method: 'POST', url, payload: {} });

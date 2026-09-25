@@ -83,7 +83,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   if (!paymentsEnabled(config)) {
     const paymentRoute = /^\/api\/v1\/billing\/(webhooks\/|checkout$|subscriptions(\/cancel)?$)/;
     app.addHook('onRequest', async (req, reply) => {
-      const path = req.url.split('?')[0] ?? '';
+      // Match the routed pattern, not raw req.url: the router decodes %xx, so che%63kout hits /checkout
+      const path = req.routeOptions.url ?? '';
       if (req.method === 'POST' && paymentRoute.test(path)) {
         return reply.status(503).send({
           error: { code: 'PAYMENTS_DISABLED', message: 'Online payments are not enabled. Contact sales to change your plan.' },
