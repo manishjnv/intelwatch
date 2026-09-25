@@ -30,7 +30,32 @@
 | W12 | No self-serve payment; every paid plan is set by hand | DECISION-031 | Phase 4 |
 | W13 | Enrichment is idle (AI off by default), so IOCs have no verdicts | "Enriched today 0" | Phase 2 |
 
-## 3. Session plan
+## 3. Implementation order (master sequence)
+
+Build in this order. **Don't start a step until the step before it is green in production.** The reason for each position is in the "Why here" column. Session-level detail is in §4.
+
+| Step | What | Architecture piece (§6) | Why here |
+|---|---|---|---|
+| 0 | **Dev workflow:** one `git worktree` per Claude session, only one session deploys at a time, a review/test subagent before push | Dev: one module per session | Costs nothing, and prevents the S148 two-sessions-one-tree mess for every step after it |
+| 1 | **Stay up:** uptime alert, safer deploy, cleanup cron (S149) | Ops base | Nothing else matters while the site can be down for 46 h unnoticed |
+| 2 | **Search works:** index at normalization + backfill (S150–153) | Pipeline workers own indexing | Core product promise. Copilot and hunting (steps 10–13) need a working index |
+| 3 | **No data in memory:** alerting, integration, DRP, hunting → Postgres/Redis (S154–159) | Rule: stateless processes | Required **before** merging processes (step 7). Stateless services can be moved or restarted safely |
+| 4 | **Least-privilege DB role + real RLS** (S160) 🔒 | Tenant isolation at the DB | Must exist before AI agents (step 10) can query data on a tenant's behalf |
+| 5 | **Honest UI + missing endpoints + auto-enrich critical IOCs** (S161–166) | One API/error pattern | Users (and you) can trust what they see. Needed before selling |
+| 6 | **Cleanup:** delete 11 empty folders; accept or reject DECISION-032 (S167–168) | Decision gate | A clean map before moving things around |
+| 7 | **Consolidate the runtime:** pilot 3 small services in one process, then roll out group by group to ~7 deployables (S169+) | Modular core + workers | Do it **before** adding new modules, so steps 9–14 land in the new layout rather than as 3 more containers |
+| 8 | **Observability:** Grafana alerts, request-ID across services | Ops | Fewer processes = easier to watch. Needed before autonomous agent actions |
+| 9 | **Connector plugin interface** (fetch / map / health) in ingestion + integration | Plug-in connectors (OpenCTI model) | Makes new feeds (CERT-In) and new tools (sandbox, SIEM push) small plug-ins instead of services |
+| 10 | **Agent foundation:** one `agent-service` with a tool layer over existing APIs, tenant-scoped auth, cost cap, audit log, human approval for actions | AI agent layer | One base for all AI features. Build it once |
+| 11 | **F1 AI Copilot** (read-only Q&A with citations) | Agent layer, read tools | Safest first agent (no actions), biggest market gap |
+| 12 | **F2 Detection rules** (Sigma/YARA/KQL/SPL) + SIEM push | Agent tool + integration plug-in | Uses copilot tools. High SOC value |
+| 13 | **F3 Playbooks** (trigger → conditions → actions, with approval) + **F4 Retro-hunt** | Agent actions + workers | Needs step 8 (monitoring) and step 10 (approval flow) |
+| 14 | **F5 Sandbox, F6 ATT&CK heatmap, F7 Vendor risk, F8 India feeds, F9 Browser extension** | Plug-ins + frontend | Each is small once steps 9–10 exist. Pick by customer demand |
+| ∥ | **Parallel track (any time after step 1):** SEO pages, weekly threat brief; Razorpay checkout after step 5 (needs a new DECISION) | — | Growth doesn't depend on the architecture work, but paid signup needs an honest UI first |
+
+**In one line:** stabilise → make data correct and persistent → make the UI truthful → simplify the runtime → add plug-in and agent foundations → then build competitor features on top.
+
+## 4. Session plan
 
 ### Phase 0 — Stay up, and search that works (S149–S153)
 | S | Module | Task | Size |
@@ -63,11 +88,11 @@ Rule from now on: **no business data in memory.** Maps are allowed only for cach
 | 165 | threat-graph | Graph overview endpoint (top entities/clusters) for the graph landing page | S |
 | 166 | admin-service | Command Center "Clients" reads real tenants (via user-service/billing APIs), not the in-memory registry | M |
 
-### Phase 3 — Simpler runtime (S167+) — needs an owner decision first
+### Phase 3 — Simpler runtime (S167+) — needs an owner decision; do before Phase 5 adds new modules
 | S | Module | Task | Size |
 |---|---|---|---|
 | 167 | chore | Delete the 11 empty `apps/` folders. Update PROJECT_STATE module table | S |
-| 168 | docs | **DECISION-032 (proposed): consolidate the runtime into ~7 deployables** (see §5). Design + pilot plan | S |
+| 168 | docs | **DECISION-032 (proposed): consolidate the runtime into ~7 deployables** (see §6). Design + pilot plan | S |
 | 169+ | per group | Pilot: host 3 small services (analytics, caching, admin) as Fastify plugins in one process. Measure RAM + deploy time. Roll out group by group only if the pilot is clean | M each |
 | ongoing | any | Split files >400 lines when a session touches them | — |
 | later | ops | Grafana alert rules → email/Telegram. Request-ID tracing across services (OpenTelemetry later) | M |
@@ -79,7 +104,7 @@ Rule from now on: **no business data in memory.** Maps are allowed only for cach
 | frontend / vulnerability-intel | SEO_PLAN Phase 2.2–2.4 (feature pages, glossary) then Phase 3 (public CVE pages, free tools) |
 | reporting-service | Weekly India + global threat brief from pipeline data (for SEO and customers) |
 
-### Phase 5 — Competitor gaps (after Phases 0–2 are green)
+### Phase 5 — Competitor gaps (after Phase 3 + agent foundation — see §3 steps 9–14)
 Ordered by value to a mid-market SOC ÷ effort.
 
 | # | Feature | Who has it | Module | Size |
@@ -94,7 +119,7 @@ Ordered by value to a mid-market SOC ÷ effort.
 | F8 | **India focus**: CERT-In advisories feed, DPDP/RBI mapping in reports | Cyble, CloudSEK (partly) | ingestion + reporting | M |
 | F9 | **Browser extension**: highlight IOCs/CVEs on any web page and show the ETIP verdict | Recorded Future, ThreatConnect | new package | M |
 
-## 4. Better implementation of existing features
+## 5. Better implementation of existing features
 
 - **Indexing:** index at normalization time. Enrichment only *updates* the doc. Search should not depend on AI being on.
 - **Enrichment:** tiered. Free sources for everything, paid APIs + AI only for high/critical, and a per-tenant daily budget (Command Center already tracks cost).
@@ -103,7 +128,7 @@ Ordered by value to a mid-market SOC ÷ effort.
 - **Frontend:** one `apiList()` / error-state pattern everywhere. No silent fallback.
 - **Connectors:** treat each feed/integration as a small plugin with a common interface (fetch, map, health) inside ingestion/integration, not as a new service.
 
-## 5. Architecture direction (DECISION-032 proposal — not yet accepted)
+## 6. Architecture direction (DECISION-032 proposal — not yet accepted)
 
 **Problem:** 23 services, each ~one feature, on one VPS with one developer. Every service adds a container, a port, a healthcheck, an nginx route and a failure point.
 
@@ -122,7 +147,7 @@ Ordered by value to a mid-market SOC ÷ effort.
 
 DECISION-026 (one backend image) and DECISION-028 (CI-built images) make this cheap: same image, fewer `command:` entries.
 
-## 6. "Build each feature as its own agent?" — recommendation
+## 7. "Build each feature as its own agent?" — recommendation
 
 | Meaning | Verdict | Why |
 |---|---|---|
