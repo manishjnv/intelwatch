@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import { errorHandlerPlugin } from './plugins/error-handler.js';
+import { paymentsEnabled } from './config.js';
 import { healthRoutes } from './routes/health.js';
 import { planRoutes, type PlanRouteDeps } from './routes/plans.js';
 import { usageRoutes, type UsageRouteDeps } from './routes/usage.js';
@@ -76,6 +77,20 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
       );
     }
   });
+
+  // ─── Razorpay gate (STEP_00B U5, DECISION-031) ─────────────────
+  // Payments are sales-led for now; keep the routes that call Razorpay closed in production.
+  if (!paymentsEnabled(config)) {
+    const paymentRoute = /^\/api\/v1\/billing\/(webhooks\/|checkout$|subscriptions(\/cancel)?$)/;
+    app.addHook('onRequest', async (req, reply) => {
+      const path = req.url.split('?')[0] ?? '';
+      if (req.method === 'POST' && paymentRoute.test(path)) {
+        return reply.status(503).send({
+          error: { code: 'PAYMENTS_DISABLED', message: 'Online payments are not enabled. Contact sales to change your plan.' },
+        });
+      }
+    });
+  }
 
   // ─── Health routes (no prefix) ────────────────────────────────
   await app.register(healthRoutes);
