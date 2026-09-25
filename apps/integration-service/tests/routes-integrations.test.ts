@@ -217,3 +217,45 @@ describe('Integration CRUD Routes', () => {
     expect(res.json().data).toHaveLength(1);
   });
 });
+
+// Roadmap STEP_00B U4: secrets are never returned by the API.
+describe('Integration routes — secret masking', () => {
+  let app: FastifyInstance;
+  let store: IntegrationStore;
+  const AUTH = { authorization: 'Bearer valid-token' };
+
+  beforeAll(async () => {
+    store = new IntegrationStore();
+    const fieldMapper = new FieldMapper();
+    app = await buildApp({
+      config: TEST_CONFIG,
+      routeDeps: { store, siemAdapter: new SiemAdapter(store, fieldMapper, TEST_CONFIG), ticketingService: new TicketingService(store, fieldMapper) },
+    });
+    await app.ready();
+  });
+
+  afterAll(async () => { await app.close(); });
+
+  it('masks the SIEM token on create, get and list, and keeps it on a masked PUT', async () => {
+    const created = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: AUTH,
+      payload: { name: 'S', type: 'splunk_hec', triggers: ['alert.created'],
+        siemConfig: { type: 'splunk_hec', url: 'https://splunk.example.com', token: 'super-secret-token' } },
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().data.id;
+    expect(created.body).not.toContain('super-secret-token');
+
+    const got = await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}`, headers: AUTH });
+    expect(got.json().data.siemConfig.token).toBe('********');
+    const list = await app.inject({ method: 'GET', url: '/api/v1/integrations', headers: AUTH });
+    expect(list.body).not.toContain('super-secret-token');
+
+    const put = await app.inject({
+      method: 'PUT', url: `/api/v1/integrations/${id}`, headers: AUTH,
+      payload: { name: 'S2', siemConfig: got.json().data.siemConfig },
+    });
+    expect(put.statusCode).toBe(200);
+    expect(store.getIntegration(id, 'tenant-1')?.siemConfig?.token).toBe('super-secret-token');
+  });
+});

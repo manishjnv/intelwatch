@@ -831,6 +831,8 @@ services:
       TI_IOC_SERVICE_URL: http://etip_ioc_intelligence:3007
       TI_GRAPH_SERVICE_URL: http://etip_threat_graph:3012
       TI_CORRELATION_SERVICE_URL: http://etip_correlation:3013
+      # STEP_00B U4: must be set in .env (openssl rand -hex 32); production refuses the dev default
+      TI_INTEGRATION_ENCRYPTION_KEY: ${TI_INTEGRATION_ENCRYPTION_KEY:-}
     ports:
       - "127.0.0.1:3015:3015"
     depends_on:
