@@ -1320,9 +1320,15 @@ importers:
 
   apps/user-management-service:
     dependencies:
+      '@elastic/elasticsearch':
+        specifier: ^8.16.0
+        version: 8.19.1
       '@etip/shared-auth':
         specifier: workspace:*
         version: link:../../packages/shared-auth
+      '@etip/shared-cache':
+        specifier: workspace:*
+        version: link:../../packages/shared-cache
       '@etip/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -1344,6 +1350,12 @@ importers:
       fastify:
         specifier: ^4.28.1
         version: 4.29.1
+      ioredis:
+        specifier: ^5.4.0
+        version: 5.10.0
+      neo4j-driver:
+        specifier: ^5.27.0
+        version: 5.28.3
       pino:
         specifier: ^9.6.0
         version: 9.14.0
