@@ -18,6 +18,7 @@ Master plan and order: `docs/ROADMAP_S149_PLUS.md` §3. **Start each session by 
 | 10 | STEP_10_AGENT_FOUNDATION.md | agent-service: tools, delegated auth, cost cap, audit, approvals, evals |
 | 11–13 | STEP_11_13_COPILOT_RULES_PLAYBOOKS.md | Copilot, Sigma/YARA/KQL/SPL rules, playbooks, retro-hunt |
 | 14 | STEP_14_MORE_FEATURES.md | Sandbox, ATT&CK heatmap, vendor risk, India focus, browser extension |
+| — | **VPS_CHECKS_PROMPT.md** | Read-only VPS checks to paste into Claude Code in VS Code (cloud sessions can't SSH) |
 | ∥ | PARALLEL_REVENUE_GROWTH.md | Razorpay self-serve, SEO status, weekly threat brief |
 
 Specs were written from the code on 2026-09-25. Line numbers drift, so re-check before editing.
