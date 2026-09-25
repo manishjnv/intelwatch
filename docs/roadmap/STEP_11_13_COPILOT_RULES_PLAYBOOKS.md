@@ -288,7 +288,7 @@ model PlaybookRun {
 |---|---|---|
 | SIEM query APIs | **None.** integration-service only pushes (Splunk HEC, Sentinel Data Collector, Elastic `_doc`). HEC tokens and the Sentinel shared key **cannot run searches** | `siem-adapter.ts` |
 | New-IOC signal | normalization IOC list supports `severity` + `sortBy=createdAt`; normalization pushes critical global IOCs to `etip-alert-evaluate` | `apps/normalization/src/schema.ts:63-70`, `workers/global-enrich-worker.ts:183` |
-| Hunting | hunts, evidence, timeline exist (in memory until S159); no ES client; no BullMQ dependency | `apps/hunting-service/src/*`, `package.json` |
+| Hunting | hunts, evidence, timeline exist (in memory until S159); no ES client; `bullmq` is already a dependency but unused | `apps/hunting-service/src/*`, `package.json` |
 
 **Flow.**
 ```
@@ -306,7 +306,7 @@ worker:
   6. cursor saved; cost = SIEM query count (per-tenant cap 24 jobs/day by default)
 ```
 
-**Backend changes.** integration-service: `services/siem-query-adapter.ts` (3 backends, timeouts, result cap 1 000 rows), new encrypted **query credentials** on the integration (`SiemQueryConfig`: Splunk REST URL + token with `search` capability; Azure tenant/client/secret + workspace ID; Elastic URL + read API key), `routes/internal.ts` query endpoint (service-token guarded) and `POST /api/v1/integrations/:id/query-test`. hunting-service: add `bullmq`; `services/retrohunt-scheduler.ts`, `workers/retrohunt-worker.ts`, `routes/retrohunt.ts`. Shared (ask): `QUEUES.RETROHUNT`, event `retrohunt.hit`.
+**Backend changes.** integration-service: `services/siem-query-adapter.ts` (3 backends, timeouts, result cap 1 000 rows), new encrypted **query credentials** on the integration (`SiemQueryConfig`: Splunk REST URL + token with `search` capability; Azure tenant/client/secret + workspace ID; Elastic URL + read API key), `routes/internal.ts` query endpoint (service-token guarded) and `POST /api/v1/integrations/:id/query-test`. hunting-service (already lists `bullmq`): `services/retrohunt-scheduler.ts`, `workers/retrohunt-worker.ts`, `routes/retrohunt.ts`. Shared (ask): `QUEUES.RETROHUNT`, event `retrohunt.hit`.
 
 **Data model.**
 ```prisma
