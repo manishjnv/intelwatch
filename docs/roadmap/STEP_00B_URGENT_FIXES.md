@@ -18,7 +18,7 @@
 ### 0B-0: VPS actions, done by the owner from VS Code (not a code session)
 1. Take the first backup (`pg_dump` + Neo4j dump) and copy it off the box.
 2. Fix the production secrets listed in the private baseline file (rotate / set). Expect users to have to log in again.
-3. Redis: `CONFIG SET maxmemory-policy noeviction` and `maxmemory 1gb` at runtime. The compose change follows in 0B-1.
+3. Redis: done by the 0B deploy (compose: noeviction, 1gb, container 1280M). Do **not** set maxmemory 1gb at runtime first: the old container limit is 300M.
 
 ### Progress (S149, branch `claude/beautiful-allen-nd42lg`, not yet deployed)
 
