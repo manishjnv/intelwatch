@@ -1,84 +1,69 @@
 # SESSION HANDOFF DOCUMENT
-**Date:** 2026-09-22
-**Session:** 146
-**Session Summary:** Project review + SEO research/plan. VPS stabilised (ES/Neo4j memory fix deployed, 32/32 healthy). Found and fixed the test that kept CI red since June. VPS hardening + SEO Phase 1 are committed on a feature branch and NOT yet deployed.
+**Date:** 2026-09-25
+**Session:** 148
+**Session Summary:** Project review and a status check found intelwatch.in down for ~46 h. `etip_nginx` was stuck in `Created` after the #30 deploy's SSH drop, and the auto-recovery cron couldn't run because its script wasn't executable. Fixed live on the VPS; the permanent fix is in PR #31 (open, not merged).
 
 ## ✅ Changes Made
-| Commit | Branch | Files | Description |
-|--------|--------|-------|-------------|
-| a22aa9e | master (pushed, **live on VPS**) | 2 | ES 1G→2G, Neo4j 768M→2G + heap 512m/768m + pagecache 512m, Neo4j tmpfs /tmp, dhanradar Prometheus job brought into git |
-| 0a210fb | feat/vps-hardening-seo-phase1 | 1 | Pin clock in offboarding purge-countdown test — **this is what unblocks CI** |
-| 2ac97a5 | feat/vps-hardening-seo-phase1 | 2 | All 33 published ports → `127.0.0.1:`; outer nginx security headers + `X-Robots-Tag: noindex` on api/grafana/health/ready/ws |
-| cfce906 | feat/vps-hardening-seo-phase1 | 7 | SEO Phase 1: robots.txt, sitemap.xml, og-image.png, index.html meta + JSON-LD, apps/frontend/nginx.conf (true 404 + noindex), Dockerfile.frontend COPY, App.tsx lazy routes |
-| (this commit) | feat/vps-hardening-seo-phase1 | docs | SEO_PLAN.md + session-end docs |
+| Commit | Files | Description |
+|---|---|---|
+| `8c73723` (PR #31, branch `docs/rca-nginx-created-outage`) | 4 | `scripts/health-recovery.sh` + `scripts/docker-cleanup.sh` mode 100644 → 100755; RCA row "Session 148"; new `docs/S148_NGINX_OUTAGE.md` |
+| session-end commit (same branch) | 4–5 | PROJECT_STATE (S148), this handoff, ETIP_Project_Stats.html, RCA |
+
+**Live VPS changes (not via git):** `docker compose -f docker-compose.etip.yml up -d etip_nginx`; `chmod +x scripts/health-recovery.sh scripts/docker-cleanup.sh`; ran `health-recovery.sh` once (exit 0).
+
+**Outside the repo:** global `~/.claude/CLAUDE.md` gained a "Pre-commit checklist" (save all → detailed doc in docs/ → RCA for bug fixes) and a "Reporting format" (grouped summary → next tasks → token/model line).
 
 ## 📁 Files / Documents Affected
-**New:** `docs/SEO_PLAN.md`, `apps/frontend/nginx.conf`, `apps/frontend/public/robots.txt`, `apps/frontend/public/sitemap.xml`, `apps/frontend/public/brand/og-image.png`
+**New**
+| File | Purpose |
+|---|---|
+| docs/S148_NGINX_OUTAGE.md | Incident write-up: timeline, root cause, fix, verify commands, rollback, follow-ups |
 
-**Modified:** `docker-compose.etip.yml`, `docker/prometheus/prometheus.yml`, `docker/nginx/conf.d/default.conf`, `Dockerfile.frontend`, `apps/frontend/index.html`, `apps/frontend/src/App.tsx`, `apps/frontend/src/__tests__/offboarding-panel.test.tsx`, `docs/PROJECT_STATE.md`, `docs/DEPLOYMENT_RCA.md`, `docs/ETIP_Project_Stats.html`
-
-**Outside the repo (global Claude skills):** installed `~/.claude/skills/full-output-enforcement`; added section 5 "Marketing and landing pages" to `~/.claude/skills/ui-design-workflow/SKILL.md` (adapted from leonxlnx/taste-skill, MIT).
-
-**Untracked, deliberately not committed:** 6 strategy/test `.docx` files in docs/, `scripts/generate-ioc-test-plan.py`, `setup-breakglass.sh` (check for secrets first), `.claude/settings.json` local edits.
+**Modified**
+| File | Change |
+|---|---|
+| scripts/health-recovery.sh, scripts/docker-cleanup.sh | exec bit only (content unchanged) |
+| docs/DEPLOYMENT_RCA.md | "Session 148" row |
+| docs/PROJECT_STATE.md | S148 counter, WIP rewrite, deployment log row 148 |
+| docs/SESSION_HANDOFF.md | this file |
+| docs/ETIP_Project_Stats.html | session 148 header/footer + card |
 
 ## 🔧 Decisions & Rationale
-No DECISION-NNN entry. Owner decisions recorded for the SEO work (see docs/SEO_PLAN.md §8):
-- api-gateway (Tier 1) may take **additive public routes** for CVE pages / free tools.
-- UI-frozen frontend may take **new marketing pages** (additive).
-- **All AI crawlers blocked** in robots.txt (training, search and assistant fetchers). llms.txt therefore skipped.
-- Pricing page: **INR only**.
-- Rendering strategy: build-time prerender of public routes + server-rendered HTML from Fastify for programmatic pages; no framework migration.
-- Hardening: loopback port binding instead of ufw — Docker bypasses ufw for published ports, and with loopback binding only sshd:22 (key-only) listens publicly.
+None (no DECISION entries). The exec-bit fix is ops hygiene, not architecture.
 
 ## 🧪 E2E / Deploy Verification Results
 ```
-Before:  etip_elasticsearch unhealthy  restarts=353     oomkilled=true  limit=1G
-         etip_neo4j         unhealthy  restarts=404378                  limit=768M
-         etip_es_indexing   unhealthy
-After:   etip_elasticsearch healthy    restarts=0   mem 1.25G / 2G
-         etip_neo4j         healthy    restarts=0   mem 1.05G / 2G
-         etip_es_indexing, etip_threat_graph restarted → healthy
-         `docker ps | grep etip_ | grep -v healthy` → empty (32/32)
-Host:    disk 60G/193G (32%), RAM 15G total, ~3G available after the change
-VPS git: fd750ce → a22aa9e (fast-forward, by hand). Backup: /root/backup-20260922
-External port scan (IPv4): only 22 open; 3001/5433/6380/9201/7475/7688/9001/9190/3101/8080 closed at provider edge
-CI:      run 35647503124 on a22aa9e FAILED at "Run tests" — frontend offboarding-panel test (1 of 1,787). Fix is 0a210fb.
-Local:   vite build OK — landing entry chunk 263.6 kB (84.3 kB gzip); tsc clean outside pre-existing test-file type errors
-NOT verified: apps/frontend/nginx.conf and outer nginx edits have never been loaded by a real nginx.
+before:  https://intelwatch.in/ → 502 (Server: cloudflare)
+VPS:     etip_nginx  Created      (31 other etip_* Up, cloudflared active)
+log:     ionice: failed to execute /opt/intelwatch/scripts/health-recovery.sh: Permission denied   (×20,361)
+after:   etip_nginx  Up (healthy); nginx -t → syntax is ok / test is successful
+         /index.html 200 · /pricing 200 · /login 200 · /api/v1/iocs 401 (nginx auth_request)
+         spoofed x-tenant-id / x-user-role without token → 401 on iocs, actors, graph, archive
+         /api/v1/billing/webhooks/razorpay → 401 WEBHOOK_SIGNATURE_MISSING (reaches billing, correct)
+         health-recovery.sh manual run → exit 0
 ```
+Tests: not run. No source code changed (file modes + docs only).
 
 ## ⚠️ Open Items / Next Steps
 **Immediate**
-1. Push branch + PR → CI must go green on the branch (proves 0a210fb). Then merge to master → auto-deploy.
-2. Right after deploy, on the VPS: `docker exec etip_nginx nginx -t`, `docker exec etip_frontend nginx -t`, then the curl grid:
-   - `/robots.txt` → 200 `text/plain`; `/sitemap.xml` → 200 xml
-   - `/definitely-not-a-page` → **404**; `/llms.txt` → 404
-   - `/dashboard`, `/login` → 200 with `X-Robots-Tag: noindex, nofollow`
-   - `/` → 200, no X-Robots-Tag, security headers present
-   - `/api/v1/...` → `X-Robots-Tag: noindex, nofollow`
-   - `ss -tlnp | grep -v 127.0.0.1` on VPS → only sshd
-   - https://intelwatch.in loads through the tunnel (cloudflared → `localhost:8080`, now IPv4 loopback only)
-3. Rollback if needed: local `git reset --hard safe-point-2026-09-22-vps-seo`; VPS `cp /root/backup-20260922/* ` back + `docker compose -p etip -f docker-compose.etip.yml up -d`.
-4. Off-repo: Google Search Console + Bing Webmaster verification, submit sitemap, Cloudflare www→apex redirect, check Cloudflare AI-bot / managed robots.txt settings.
+1. **Merge PR #31 before any other deploy.** Until it lands, a deploy's `git reset --hard` resets the script to non-executable. After the merge, verify `ls -l /opt/intelwatch/scripts/health-recovery.sh` shows `-rwx`.
+2. **External uptime alert**, e.g. UptimeRobot or a Cloudflare health check on `/` that emails the owner. This is the gap that let the outage run 46 h.
+3. **Deploy resilience:** run the VPS side of deploy.yml under `setsid`/`nohup` and add `ServerAliveInterval` to the SSH step.
+4. Owner click-through of the logged-in app (carried from S147).
 
 **Deferred**
-- Self-hosted fonts (SEO plan 1.3) — not done; Google Fonts still render-blocking.
-- ufw — skipped on purpose (see decisions). Disk-usage alert — needs a notification channel.
-- Compose Grafana password default fallback; GitHub Actions v4→v5 bump; 26 test files with literal dates.
-- SEO Phases 2–4 (docs/SEO_PLAN.md). Phase 3 adds unauthenticated routes → adversarial review before push.
+- Install the Docker cleanup cron on KVM4. It's missing, but disk is at 22 %, so it isn't urgent.
+- Offboarding purge TODOs (`apps/user-management-service/src/services/offboarding-purge-worker.ts:118-126`): graph, ES and cache data aren't deleted.
+- S147 follow-ups in docs/S147_APP_WIRING_FOLLOWUPS.md (search index, demo-fallback UX, missing endpoints, least-privilege DB role).
+- 20 source files over 400 lines (largest: ingestion `connectors/misp.ts` 859, `AdminOpsPage.tsx` 809, `BillingPage.tsx` 759).
+
+**Process note:** two Claude sessions (`intelwatch-9c`, `intelwatch-e2`) ran on the same working tree in S148. Use `git worktree add` per session, and let only one session deploy at a time.
 
 ## 🔁 How to Resume
 ```
 /session-start
-Working on: infra + frontend (SEO Phase 1 deploy). Branch feat/vps-hardening-seo-phase1.
-Do not modify: backend services, shared-* packages.
-Task: get CI green on the branch, merge to master, watch deploy, run the verification grid
-in docs/SESSION_HANDOFF.md, then start SEO Phase 2 per docs/SEO_PLAN.md.
-Note: use `env -u GH_TOKEN gh ...` and `env -u GH_TOKEN git push` — the GH_TOKEN env var in this shell is invalid.
+Working on: ops (PR #31 merge + uptime alert). Do not modify: frozen shared-* packages, api-gateway structure.
+First: env -u GH_TOKEN gh pr view 31 → merge if green → watch deploy → verify health-recovery.sh is -rwx on the VPS.
+Then: uptime alert, then deploy.yml resilience (setsid + ServerAliveInterval).
 ```
-
-## Agent utilization
-- Opus (main, Fable 5.1): review, SEO plan, VPS diagnosis + manual deploy, all code edits (small, hot-cache), session docs.
-- Sonnet: 4 research/analysis subagents — competitor SEO scan · keyword research · SPA technical SEO · taste-skill gap inventory — reworked: N (all four).
-- Haiku: n/a — no bulk sweeps needed.
-- codex:rescue: n/a — not run. 2ac97a5 is security-adjacent (port binding, headers); it is a restriction-only change, but get a Sonnet/codex adversarial pass before merging to master.
+Phase: 13 (production hardening + SEO). Plan docs: docs/SEO_PLAN.md, docs/S147_APP_WIRING_FOLLOWUPS.md, docs/S148_NGINX_OUTAGE.md.
