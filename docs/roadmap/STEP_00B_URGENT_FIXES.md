@@ -20,16 +20,16 @@
 2. Fix the production secrets listed in the private baseline file (rotate / set). Expect users to have to log in again.
 3. Redis: done by the 0B deploy (compose: noeviction, 1gb, container 1280M). Do **not** set maxmemory 1gb at runtime first: the old container limit is 300M.
 
-### Progress (S149, branch `claude/beautiful-allen-nd42lg`, not yet deployed)
+### Progress (S149 — deployed 2026-09-25, PR #35 → d3d4c01)
 
 | Item | Status | Commit |
 |---|---|---|
 | U1 es-indexing, U2 alerting, U3 reporting (tenant guard) | ✅ code + tests | 8802d20, 165ac99 |
 | U4 integration key refuse-default + secret masking + compose var | ✅ code + tests | 08e5255 |
-| U5 Razorpay routes closed in production | ✅ code + tests (gate matches routed path, not raw URL — review fix) | bd3d544, pending |
+| U5 Razorpay routes closed in production | ✅ code + tests (gate matches routed path, not raw URL — review fix) | bd3d544, 5c33b36 |
 | U6 Grafana health endpoint hidden | ✅ nginx | 2d3e6e0 |
 | U7 Redis noeviction + 1gb (container 1280M) | ✅ compose | 2d3e6e0 |
-| U8 backup script (`scripts/etip-backup.sh`, 100755) | ✅ script; cron install on VPS pending | c6c604e |
+| U8 backup script (`scripts/etip-backup.sh`, 100755) | ✅ script + cron installed (02:30 UTC); off-box copy manual to `E:\code\IntelWatch\backups\etip` | c6c604e |
 | U9 schema push before restart | ⏳ Step 1 (S149b) | — |
 | U10 deploy concurrency + docs paths-ignore | ✅ workflow | 2d3e6e0 |
 | U11 REST/MISP connector by feed type | ✅ code + tests | 841774e |

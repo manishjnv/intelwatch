@@ -7,6 +7,12 @@ Read-only checks run from Claude Code (VS Code) over the Cloudflare tunnel, per 
 
 > **Public repo note.** Section A1 (secret status) is **withheld** from this file because the repo is public and the findings are unfixed. The full A1 table is in a local, git-excluded file on the owner's machine (`docs/VPS_BASELINE_2026-09-25.PRIVATE.md`). Summary for planning: **Step 0B-1 (secrets) is needed — at least one item is not production-grade.** Add the details here after the fix is deployed.
 
+## Update — 0B deploy done 2026-09-25
+
+Step 0B deployed (PR #35 → `d3d4c01`, 32/32 healthy). Now fixed on the VPS: U1–U3 (cross-tenant → 403), U4 (integration key set, secrets masked), U5 (payment routes 503), U6 (`/grafana/api/health` 404), U7 (Redis `noeviction`, 1 GB, 0 evictions), U8 (nightly backup cron, see below), U10, U11, U12. A1 secret findings are fixed (login secrets rotated), but the details stay out of this public file. Still open: U9 (Step 1), Elasticsearch index gap (Step 2), RLS / roles (Step 4).
+
+**Backups:** VPS keeps 7 days in `/var/backups/etip` (cron 02:30 UTC, `scripts/etip-backup.sh`; Postgres ≈2.1 GB + Redis ≈0.5 GB per night). Off-box copies are manual for now, to the owner's machine at `E:\code\IntelWatch\backups\etip` (git-ignored; never commit dumps). Automating off-box copies is part of Step 1.
+
 ## H. Summary
 
 | Area | Status | Maps to |
