@@ -98,3 +98,7 @@ Handles plan management, usage metering, Razorpay billing, invoice generation, a
 - **Grace period:** 72 hours after plan limit exceeded before hard cutoff.
 - **Webhooks:** HMAC-SHA256 verified using `timingSafeEqual` before any processing.
 - **Alert thresholds:** Iterate [100, 90, 80] — only highest crossing returned per metric.
+
+## S149 changes (Step 0B)
+- **Payment gate:** in production, POST webhooks/*, /checkout, /subscriptions, /subscriptions/cancel → 503 `PAYMENTS_DISABLED` (DECISION-031, Razorpay deferred). Matches the decoded route (`req.routeOptions.url`), so percent-encoded paths are blocked too.
+- Config: `TI_RAZORPAY_ENABLED` (unset = off in production, on in dev/test; `true` in production refuses placeholder keys). Tests: `tests/payments-gate.test.ts`.

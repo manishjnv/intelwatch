@@ -1,69 +1,95 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-09-25
-**Session:** 148
-**Session Summary:** Project review and a status check found intelwatch.in down for ~46 h. `etip_nginx` was stuck in `Created` after the #30 deploy's SSH drop, and the auto-recovery cron couldn't run because its script wasn't executable. Fixed live on the VPS; the permanent fix is in PR #31 (open, not merged).
+**Session:** 149
+**Session Summary:** Full project review, which produced a roadmap and implementation-ready specs for every step. A read-only VPS baseline found live security and data-safety problems, and the **Step 0B urgent fixes** went through a PR and were deployed (PR #35 → `d3d4c01`, 32/32 healthy). Work was split between the cloud session (code, docs, tests) and Claude Code in VS Code (VPS access: backup, secrets, merge, verify).
 
 ## ✅ Changes Made
-| Commit | Files | Description |
-|---|---|---|
-| `8c73723` (PR #31, branch `docs/rca-nginx-created-outage`) | 4 | `scripts/health-recovery.sh` + `scripts/docker-cleanup.sh` mode 100644 → 100755; RCA row "Session 148"; new `docs/S148_NGINX_OUTAGE.md` |
-| session-end commit (same branch) | 4–5 | PROJECT_STATE (S148), this handoff, ETIP_Project_Stats.html, RCA |
-
-**Live VPS changes (not via git):** `docker compose -f docker-compose.etip.yml up -d etip_nginx`; `chmod +x scripts/health-recovery.sh scripts/docker-cleanup.sh`; ran `health-recovery.sh` once (exit 0).
-
-**Outside the repo:** global `~/.claude/CLAUDE.md` gained a "Pre-commit checklist" (save all → detailed doc in docs/ → RCA for bug fixes) and a "Reporting format" (grouped summary → next tasks → token/model line).
+| Commit | Description |
+|---|---|
+| 46e7305, b297401, d43977f | Roadmap `docs/ROADMAP_S149_PLUS.md`: weak points, master sequence, competitor gaps, architecture proposal |
+| f1b4f90, 0d9b500, 2e1e483, f21b12f, 237e326 | Spec files `docs/roadmap/STEP_00…STEP_14`, PARALLEL_REVENUE_GROWTH (written by 6 parallel research agents, key claims re-checked in code) |
+| d3f7a93, 3d5d392 | Step 0B urgent-fix spec + index; Razorpay marked deferred (DECISION-031) |
+| 2584270, af17c29, 260d119 | VPS baseline prompt + results (public file; secret status only in the owner's private local file) |
+| 8802d20 | alerting-service tenant guard (U2) |
+| 165ac99 | reporting + es-indexing tenant guard (U1, U3) |
+| 08e5255 | integration-service: refuse dev key in production, mask secrets, compose env var (U4) |
+| bd3d544, 5c33b36 | billing-service: Razorpay routes 503 in production; gate matches decoded route (U5 + review fix) |
+| 841774e | ingestion: REST/MISP shared queue picks connector by feed type (U11) |
+| aedb57a | frontend: MFA setup has no demo-secret fallback (U12) |
+| 2d3e6e0 | ops: Redis noeviction 1gb / 1280M, Grafana /api/health 404, deploy concurrency + docs paths-ignore (U6, U7, U10) |
+| c6c604e | `scripts/etip-backup.sh` (100755), nightly pg_dump + Redis copy, 7-day retention (U8) |
+| edffdd1, 9c72d7a | Step 0B progress table + VS Code deploy prompt |
+| d3d4c01 | Merge PR #35 → deployed |
+| 1e33b7a | Post-deploy docs (deployment log, RCA, stats, baseline) |
+| (this commit) | Session-end: PROJECT_STATE S149, this handoff, module docs |
 
 ## 📁 Files / Documents Affected
 **New**
 | File | Purpose |
 |---|---|
-| docs/S148_NGINX_OUTAGE.md | Incident write-up: timeline, root cause, fix, verify commands, rollback, follow-ups |
+| docs/ROADMAP_S149_PLUS.md | Master plan: status, weak points W1–W30, master sequence §3, sessions §4, architecture §6–7 |
+| docs/roadmap/README.md | Index of all specs (read the matching spec at session start) |
+| docs/roadmap/STEP_00_DEV_WORKFLOW.md … STEP_14_MORE_FEATURES.md | One implementation spec per step (flow, backend, frontend, data model, tests, acceptance, rollback, sessions, owner decisions) |
+| docs/roadmap/STEP_00B_URGENT_FIXES.md | U1–U12 with the progress table |
+| docs/roadmap/PARALLEL_REVENUE_GROWTH.md | Razorpay self-serve (deferred), SEO status, weekly brief |
+| docs/roadmap/VPS_CHECKS_PROMPT.md, VPS_DEPLOY_0B_PROMPT.md | Prompts for Claude Code in VS Code (cloud sessions can't SSH) |
+| docs/VPS_BASELINE_2026-09-25.md | Live VPS baseline (no secrets) |
+| apps/*/src/plugins/tenant-guard.ts (alerting, reporting, es-indexing) | Tenant from the nginx-verified `x-tenant-id`; mismatch → 403 |
+| apps/integration-service/src/utils/secret-mask.ts | Mask secrets in responses, restore on masked PUT |
+| scripts/etip-backup.sh | Nightly backup |
 
-**Modified**
-| File | Change |
-|---|---|
-| scripts/health-recovery.sh, scripts/docker-cleanup.sh | exec bit only (content unchanged) |
-| docs/DEPLOYMENT_RCA.md | "Session 148" row |
-| docs/PROJECT_STATE.md | S148 counter, WIP rewrite, deployment log row 148 |
-| docs/SESSION_HANDOFF.md | this file |
-| docs/ETIP_Project_Stats.html | session 148 header/footer + card |
+**Modified:** alerting/reporting/es-indexing `app.ts`, integration `config.ts` + `routes/integrations.ts`, billing `config.ts` + `app.ts`, ingestion `workers/global-fetch-base.ts`, frontend `hooks/use-mfa.ts`, `docker-compose.etip.yml`, `docker/nginx/conf.d/default.conf`, `.github/workflows/deploy.yml`, docs/PROJECT_STATE.md, docs/DEPLOYMENT_RCA.md, docs/ETIP_Project_Stats.html, docs/modules/*.md.
+
+**New env vars:** `TI_INTEGRATION_ENCRYPTION_KEY` (integration; required in production), `TI_RAZORPAY_ENABLED` (billing; unset = off in production, and it refuses placeholder keys when set to true).
 
 ## 🔧 Decisions & Rationale
-None (no DECISION entries). The exec-bit fix is ops hygiene, not architecture.
+No DECISION entries accepted. **Proposed (owner to decide):**
+- DECISION-032: consolidate the runtime into ~7 deployables (STEP_07). Baseline: the 26 Node services use only ~1.2 GiB in total, so the gain is fewer moving parts, not RAM.
+- DECISION-033: search indexes tenant IOCs only for now, with one shared global index later (STEP_02).
+
+Other rationale:
+- **Tenant guard reads the header, not the JWT.** nginx already verifies the JWT and overwrites `x-tenant-id`, and service ports are loopback-only. Calls without the header (internal Docker traffic) are unchanged. super_admin may choose a tenant.
+- **Razorpay is closed, not fixed.** DECISION-031 keeps payments sales-led. The full checkout fix is in PARALLEL_REVENUE_GROWTH.
 
 ## 🧪 E2E / Deploy Verification Results
 ```
-before:  https://intelwatch.in/ → 502 (Server: cloudflare)
-VPS:     etip_nginx  Created      (31 other etip_* Up, cloudflared active)
-log:     ionice: failed to execute /opt/intelwatch/scripts/health-recovery.sh: Permission denied   (×20,361)
-after:   etip_nginx  Up (healthy); nginx -t → syntax is ok / test is successful
-         /index.html 200 · /pricing 200 · /login 200 · /api/v1/iocs 401 (nginx auth_request)
-         spoofed x-tenant-id / x-user-role without token → 401 on iocs, actors, graph, archive
-         /api/v1/billing/webhooks/razorpay → 401 WEBHOOK_SIGNATURE_MISSING (reaches billing, correct)
-         health-recovery.sh manual run → exit 0
+Deploy: PR #35 → d3d4c01, CI/CD run 36159365105 green, no SSH drop
+Containers: 32/32 healthy; nginx -t ok
+Redis: maxmemory-policy noeviction, maxmemory 1gb, evicted_keys 0 after deploy
+etip_integration: healthy, no CONFIG_INVALID
+Cross-tenant (direct to service with x-tenant-id): alerts/reports/search → 403 other tenant, 200 own
+Razorpay POST routes (incl. %-encoded) → 503 PAYMENTS_DISABLED
+/grafana/api/health → 404
+Backup: pre-deploy pg_dump 2.16 GB (checksum-verified off-box copy); cron 02:30 UTC; manual run 2.1 GB pg + 478 MB redis
+Baseline before fix: ES 0 docs vs 12,010 IOCs (6,035 failed index jobs); 1,420 Redis keys evicted; no backups
 ```
-Tests: not run. No source code changed (file modes + docs only).
 
 ## ⚠️ Open Items / Next Steps
 **Immediate**
-1. **Merge PR #31 before any other deploy.** Until it lands, a deploy's `git reset --hard` resets the script to non-executable. After the merge, verify `ls -l /opt/intelwatch/scripts/health-recovery.sh` shows `-rwx`.
-2. **External uptime alert**, e.g. UptimeRobot or a Cloudflare health check on `/` that emails the owner. This is the gap that let the outage run 46 h.
-3. **Deploy resilience:** run the VPS side of deploy.yml under `setsid`/`nohup` and add `ServerAliveInterval` to the SSH step.
-4. Owner click-through of the logged-in app (carried from S147).
+1. Owner: run one end-to-end cross-tenant check with a real browser token through nginx (expect 403).
+2. **Step 1** (docs/roadmap/STEP_01_STAY_UP.md):
+   - SSH keepalive + retry, detached VPS deploy
+   - schema push **before** restart, fail on error, `pg_dump` before push (U9)
+   - health-recovery "ok" log line
+   - `.gitignore` for `backups/`
+   - uptime monitor
+3. **Step 2** search (7 sessions). Needs DECISION-033 first.
 
 **Deferred**
-- Install the Docker cleanup cron on KVM4. It's missing, but disk is at 22 %, so it isn't urgent.
-- Offboarding purge TODOs (`apps/user-management-service/src/services/offboarding-purge-worker.ts:118-126`): graph, ES and cache data aren't deleted.
-- S147 follow-ups in docs/S147_APP_WIRING_FOLLOWUPS.md (search index, demo-fallback UX, missing endpoints, least-privilege DB role).
-- 20 source files over 400 lines (largest: ingestion `connectors/misp.ts` 859, `AdminOpsPage.tsx` 809, `BillingPage.tsx` 759).
+- `/:id` tenant checks in alerting/reporting: Step 3.
+- Feature-limits demo fallback: Step 5 (UI is frozen; a change could lock paying users out).
+- Automated off-box backups: Step 1 owner decision (target: S3 / Hostinger / second machine).
 
-**Process note:** two Claude sessions (`intelwatch-9c`, `intelwatch-e2`) ran on the same working tree in S148. Use `git worktree add` per session, and let only one session deploy at a time.
+**Process**
+- Cloud sessions have no SSH. All VPS work goes through Claude Code in VS Code using the prompts in `docs/roadmap/`.
+- Use one git worktree per session.
+- The repo is **public**: never commit unfixed secret details.
 
 ## 🔁 How to Resume
+Paste into a new session:
+```text
+Run /session-start. Then read docs/ROADMAP_S149_PLUS.md §3 and docs/roadmap/README.md.
+Working on Step 1 (docs/roadmap/STEP_01_STAY_UP.md). Branch from latest master.
+Code + tests here; give me a VS Code prompt for anything that needs the VPS.
 ```
-/session-start
-Working on: ops (PR #31 merge + uptime alert). Do not modify: frozen shared-* packages, api-gateway structure.
-First: env -u GH_TOKEN gh pr view 31 → merge if green → watch deploy → verify health-recovery.sh is -rwx on the VPS.
-Then: uptime alert, then deploy.yml resilience (setsid + ServerAliveInterval).
-```
-Phase: 13 (production hardening + SEO). Plan docs: docs/SEO_PLAN.md, docs/S147_APP_WIRING_FOLLOWUPS.md, docs/S148_NGINX_OUTAGE.md.
+Order: 0B ✅ → **1 stay up** → 2 search → 3 persistence → 4 DB roles/RLS → 5 honest UI → 6 cleanup → 7 consolidate → 8 observability → 9 connector SDK → 10 agent foundation → 11–13 copilot/rules/playbooks → 14 more features. SEO/revenue run in parallel.

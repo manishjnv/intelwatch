@@ -72,3 +72,7 @@ BullMQ worker consumes `etip:ioc-indexed` events from normalization pipeline and
 - [x] Add COPY apps/elasticsearch-indexing-service/package.json to Dockerfile deps stage
 - [x] Verify TI_ES_URL and TI_REDIS_URL set in VPS .env
 - [x] RCA #42: BullMQ colon restriction fixed (dash replacement)
+
+## S149 changes (Step 0B)
+- **Tenant guard** on `/api/v1/search/iocs` and `/iocs/stats` (was: tenantId from the query string, no auth). Tests in `tests/search.routes.test.ts`.
+- Index is still empty (ES 0 vs 12,010 IOCs); the fix is Step 2 (`docs/roadmap/STEP_02_SEARCH_INDEX.md`).

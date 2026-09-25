@@ -67,3 +67,7 @@ Request → Zod validate → ReportStore.create(pending)
 Cron Schedule → ScheduleStore callback → create report → enqueue
 RetentionCron → hourly purgeExpired() → removes expired reports from memory
 ```
+
+## S149 changes (Step 0B)
+- **Tenant guard** (same file/behaviour as alerting-service, `src/plugins/tenant-guard.ts`). Tests in `tests/reports.routes.test.ts` (tenant guard block).
+- Known gaps: reports use hard-coded aggregator data, and store/schedules are in memory (Step 3, roadmap W23/W24).

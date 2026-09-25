@@ -76,3 +76,7 @@ Real-time alert rule engine with notification channels, escalation policies, and
 ## Queue
 
 Consumes: `QUEUES.ALERT_EVALUATE` (`etip-alert-evaluate`)
+
+## S149 changes (Step 0B)
+- **Tenant guard** (`src/plugins/tenant-guard.ts`, preHandler): when nginx sends `x-tenant-id`, a query/body/param `tenantId` that differs → 403 `TENANT_MISMATCH`; a missing one is filled from the header. super_admin may choose a tenant. Calls without the header (internal Docker traffic) are unchanged. Tests: `tests/tenant-guard.test.ts`.
+- Known gap: `/:id` routes don't check the tenant (random UUIDs). Fixed with Step 3 persistence.

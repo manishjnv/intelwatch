@@ -93,3 +93,6 @@ Feed Source (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/C
 | TI_TAXII_USER | (optional) | TAXII basic auth username |
 | TI_TAXII_PASSWORD | (optional) | TAXII basic auth password |
 | TI_GLOBAL_PROCESSING_ENABLED | false | Enable global feed processing (DECISION-029) |
+
+## S149 changes (Step 0B)
+- **U11 fix:** REST and MISP global workers share `FEED_FETCH_GLOBAL_REST`; `resolveConnectorType()` in `workers/global-fetch-base.ts` picks the connector from `entry.feedType` (was the worker's type, so REST feeds failed and auto-disabled). Global processing is ON in production.
