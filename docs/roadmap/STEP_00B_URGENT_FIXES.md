@@ -20,6 +20,24 @@
 2. Fix the production secrets listed in the private baseline file (rotate / set). Expect users to have to log in again.
 3. Redis: `CONFIG SET maxmemory-policy noeviction` and `maxmemory 1gb` at runtime. The compose change follows in 0B-1.
 
+### Progress (S149, branch `claude/beautiful-allen-nd42lg`, not yet deployed)
+
+| Item | Status | Commit |
+|---|---|---|
+| U1 es-indexing, U2 alerting, U3 reporting (tenant guard) | ✅ code + tests | 8802d20, 165ac99 |
+| U4 integration key refuse-default + secret masking + compose var | ✅ code + tests | 08e5255 |
+| U5 Razorpay routes closed in production | ✅ code + tests | bd3d544 |
+| U6 Grafana health endpoint hidden | ✅ nginx | 2d3e6e0 |
+| U7 Redis noeviction + 1gb (container 1280M) | ✅ compose | 2d3e6e0 |
+| U8 backup script (`scripts/etip-backup.sh`, 100755) | ✅ script; cron install on VPS pending | c6c604e |
+| U9 schema push before restart | ⏳ Step 1 (S149b) | — |
+| U10 deploy concurrency + docs paths-ignore | ✅ workflow | 2d3e6e0 |
+| U11 REST/MISP connector by feed type | ✅ code + tests | 841774e |
+| U12 MFA demo secret removed | ✅ code + tests (feature-limits fallback left for Step 5) | aedb57a |
+| Follow-up | alerting/reporting routes that fetch by `:id` don't check the tenant (IDs are random UUIDs; fix with Step 3 persistence) | — |
+
+**Deploy order matters:** `TI_INTEGRATION_ENCRYPTION_KEY` must be in the VPS `.env` **before** this branch is merged, or `etip_integration` will refuse to start.
+
 ## 1. Findings (all checked in code, 2026-09-25)
 
 | # | Problem | Where | Impact | Fix |
