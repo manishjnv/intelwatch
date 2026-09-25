@@ -1,7 +1,8 @@
 # Step 1 — Stay up: outside alert, safer deploy, cron jobs
 
 **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 1, §4 S149 · **Module:** ops (`.github/workflows/`, `scripts/`) · **Size:** M (1 session + owner setup)
-**Status:** spec, not started. Written 2026-09-25. All claims checked against the repo on that date. VPS state (crontab, file modes) cannot be read from the repo — those items say "verify on VPS".
+**Status:** implemented on branch `claude/step1-stay-up` 2026-09-26 (S150), pending deploy. Written 2026-09-25. All claims checked against the repo on that date. VPS state (crontab, file modes) cannot be read from the repo — those items say "verify on VPS".
+**Deploy doc:** `docs/S150_STEP1_STAY_UP.md` — what changed per file, how to verify, rollback.
 
 ---
 

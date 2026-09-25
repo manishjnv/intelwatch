@@ -66,3 +66,8 @@ openapi.json
 .claude/settings.local.json
 .claude/.session_*
 .claude/secrets/
+
+# Local-only: VPS backups and private reports
+backups/
+*.PRIVATE.md
+.deploy.env
