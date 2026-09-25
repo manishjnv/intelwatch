@@ -11,15 +11,15 @@ import type {
   MfaChallengeInput, MfaChallengeResponse, BackupCodesResponse,
   MfaEnforcement,
 } from '@/types/auth-security'
-import { DEMO_MFA_SETUP, DEMO_ENFORCEMENT } from './security-demo-data'
+import { DEMO_ENFORCEMENT } from './security-demo-data'
 
 // ─── MFA Setup (generate secret + QR) ─────────────────────────
 
 export function useMfaSetup() {
   return useMutation<MfaSetupResponse, ApiError>({
-    mutationFn: () =>
-      api<MfaSetupResponse>('/auth/mfa/setup', { method: 'POST' })
-        .catch(() => DEMO_MFA_SETUP),
+    // No demo fallback: a fake secret/QR can never verify (roadmap STEP_00B U12).
+    // MfaSetupWizard shows its error state instead.
+    mutationFn: () => api<MfaSetupResponse>('/auth/mfa/setup', { method: 'POST' }),
   })
 }
 
