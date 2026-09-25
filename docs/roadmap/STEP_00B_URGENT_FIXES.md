@@ -4,6 +4,22 @@
 
 **Rule:** one module per session, 🔒 adversarial review before push, `make pre-push`. Most of these are **S** (1–2 files).
 
+## 0. Live status from the VPS baseline (2026-09-25, `docs/VPS_BASELINE_2026-09-25.md`)
+
+- **Secrets (U4 and others):** action needed. Details are kept off the public repo (owner's private baseline file). Do session 0B-0 first.
+- **U6 Grafana:** dashboards need login (302). Only `/grafana/api/health` is anonymous (shows the version). **Downgraded to low.**
+- **U7 Redis:** confirmed. `allkeys-lru`, 256 MB, **1,420 keys already evicted.**
+- **U8 backups:** confirmed. **None** for Postgres, Neo4j, ES or MinIO.
+- **U11 MISP/REST queue:** **live.** Global processing is on in production.
+- **Step 2:** confirmed. 12,010 IOCs in Postgres, 0 in ES, 6,035 failed index jobs since at least 2026-07-11.
+- **Step 4:** confirmed. Only `etip_user` (superuser + BYPASSRLS), used by all 17 app connections. 6 of 25 tenant tables have no RLS.
+- **In memory (Step 3):** confirmed. There are no tables for alerts, integrations, reports, DRP or backups.
+
+### 0B-0: VPS actions, done by the owner from VS Code (not a code session)
+1. Take the first backup (`pg_dump` + Neo4j dump) and copy it off the box.
+2. Fix the production secrets listed in the private baseline file (rotate / set). Expect users to have to log in again.
+3. Redis: `CONFIG SET maxmemory-policy noeviction` and `maxmemory 1gb` at runtime. The compose change follows in 0B-1.
+
 ## 1. Findings (all checked in code, 2026-09-25)
 
 | # | Problem | Where | Impact | Fix |
