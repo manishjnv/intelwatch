@@ -5,6 +5,23 @@ allowed-tools: Read, Bash(git:*), Agent
 
 Initialize a development session. Execute every step below without skipping.
 
+## 0a. Workspace check (one folder, one session — no worktrees)
+
+Owner decision (2026-09-26): one working folder, `E:\code\IntelWatch`. No git worktrees. One Claude session at a time in this folder.
+
+Run in one batch: `git rev-parse --show-toplevel`, `git status -sb`, `git worktree list`.
+
+**STOP** (do not touch anything, ask the owner) if:
+- The working tree has uncommitted changes AND those changes don't look like this session's own in-progress work (e.g. you don't recognize them from earlier in this conversation) — tell the owner: "another session may be running in this folder; check before I proceed."
+- The current branch is one this session didn't create and has uncommitted changes on it.
+
+**Warn** (do not stop) if `git worktree list` shows more than one entry — the owner rule is one folder, no worktrees; flag it and suggest `git worktree remove` on any stale ones.
+
+Otherwise:
+- If on `master` and the task is docs-only, staying on `master` is fine (docs commits can go straight to master).
+- If on `master` and the task involves code, tell the user the branch you will create before editing, e.g. `git switch -c s159/normalization-index`, then create it.
+- Optional: if already on a branch matching `s<NNN>/…`, you may read the session number from it — don't guess if it doesn't match, just ask.
+
 ## 0. Context digest (delegate — do NOT read these with the main model)
 In your FIRST message, in parallel with `git fetch && git status`, launch ONE `Agent` call with `model: "haiku"` (use `"sonnet"` if the task is cross-module), read-only, returning a facts-only digest (< 600 words, file:line refs) of:
 1. `docs/PROJECT_STATE.md` — phase, deployed/WIP modules, next task, blockers

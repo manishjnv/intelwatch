@@ -1,7 +1,13 @@
-# Step 0 — Dev workflow: one worktree per session, one deployer, review before push
+# Step 0 — Dev workflow: one folder + branch per task, one deployer, review before push
 
 **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 0 · **Module:** dev tooling (`.claude/`, `.github/workflows/deploy.yml` concurrency only) · **Size:** M (1 session)
-**Status:** partial — see progress below. Written 2026-09-25. All claims checked against the repo on that date.
+**Status:** done (worktree part dropped by owner). One-deployer, reviewer subagent, `/review` + `/session-end` fixes, and LF `.gitattributes` for `*.sh` are done and stay. All §11 acceptance checks pass except the `git ls-files -s` mode bit, which the orchestrator sets at commit time, and the worktree-list check which no longer applies.
+
+## Owner decision (2026-09-26)
+
+**ONE working folder, `E:\code\IntelWatch`. NO git worktrees, no `E:\code\IntelWatch-wt`. One Claude session at a time.** Each task: from up-to-date `master`, `git switch -c sNNN/<short-task>` → commits → push → PR → the single deployer merges one PR at a time → `git switch master && git pull`. Docs-only commits may go straight to `master` (`deploy.yml` `paths-ignore: docs/**, **/*.md`).
+
+This replaces the worktree-per-session design below (§1 rule 1–3, §4 flow diagram, §7 copy-paste steps, `scripts/new-worktree.sh`, and the worktree checks in `/session-start` §0a / `/session-end` §10b) — those items are **dropped by owner decision 2026-09-26 (one folder, serial sessions)**. Everything else in this doc (one-deployer rule, reviewer subagent, `/review` fix, LF `.gitattributes` for `*.sh`) stands as originally designed.
 
 ## Progress (2026-09-26)
 
@@ -10,22 +16,24 @@ Done:
 - Deploy `concurrency:` + `paths-ignore: docs/**, **/*.md` (Step 0B U10, commit 2d3e6e0)
 - `/session-start` step 0 delegates the context digest to a Haiku/Sonnet agent (S150, commits a34ace8, eb9884e)
 - Review before push is being practiced ad hoc (S149, S150 used a Sonnet adversarial review), but not yet formalised as tooling here
-
-Not done:
-
-- Worktree-per-session tooling (only the main checkout exists)
-- Single-deployer rule formalised
 - ✅ (2026-09-26) `/session-end` step 10 now `git push -u origin HEAD` + `gh pr create` when not on `master` (docs-only on master still allowed — paths-ignored); noreply author built in
 - ✅ (2026-09-26) `/review` now uses `git diff --stat origin/master...HEAD`
+- **dropped by owner decision 2026-09-26 (one folder, serial sessions)** — `/session-start` step 0a is now a workspace check (uncommitted-changes / stray-worktree guard) instead of a worktree requirement
+- **dropped by owner decision 2026-09-26 (one folder, serial sessions)** — `/session-end` step 10b is now "after merge: `git switch master && git pull --ff-only`, delete the local branch" instead of worktree removal
+- ✅ (2026-09-26, S158) `.claude/agents/etip-reviewer.md` created — read-only Sonnet subagent, PASS/FAIL gate before push
+- **dropped by owner decision 2026-09-26 (one folder, serial sessions)** — `scripts/new-worktree.sh` deleted; no worktree helper needed
+- ✅ (2026-09-26, S158) `CLAUDE.md` updated: Session Protocol step 0 is now the one-folder/one-session/branch-per-task rule, "9 steps" → "12 steps" fixed, one-deployer rule in Git section
+
+Not done: none — see §14 for the owner decisions this session applied (§14 superseded by the 2026-09-26 one-folder decision recorded at the top of this doc).
 
 ---
 
 ## 1. Goal
 
-- Every Claude session works in its **own git worktree** on its **own branch**. No two sessions share a working tree.
-- **Only one change reaches production at a time.** One PR is merged to `master`, its CI/CD run goes green, then the next.
-- A **review/test subagent** checks every branch before it is pushed.
-- `/session-start` and `/session-end` know about worktrees and branches.
+- ~~Every Claude session works in its own git worktree on its own branch.~~ **dropped by owner decision 2026-09-26** — one folder (`E:\code\IntelWatch`), one session at a time, branch per task instead.
+- **Only one change reaches production at a time.** One PR is merged to `master`, its CI/CD run goes green, then the next. (kept)
+- A **review/test subagent** checks every branch before it is pushed. (kept)
+- `/session-start` and `/session-end` know about branches and do a workspace safety check (no worktree awareness needed).
 
 ## 2. Why now
 
@@ -49,9 +57,10 @@ Not done:
 | Gitignored Claude files | `.claude/settings.local.json` and `.claude/secrets/` hold secrets (DECISION-010). They are gitignored, so a **new worktree does not have them** | `.gitignore` lines 66–68; DECISIONS_LOG DECISION-010 |
 | Hooks | `validate-command.mjs` blocks `ssh root@` and `scp`, so sessions cannot touch the VPS directly — only through GitHub workflows | `.claude/hooks/validate-command.mjs` "VPS access" block |
 
-## 4. Flow
+## 4. Flow (superseded — see owner decision at top of doc; kept for history)
 
 ```
+[worktree-per-session flow — dropped by owner decision 2026-09-26 (one folder, serial sessions)]
  main checkout (E:\code\IntelWatch)          stays on master, clean. Used only to create worktrees.
         │
         ├── git worktree add ..\IntelWatch-wt\s150-normalization  -b s150/normalization-index  origin/master
@@ -64,16 +73,20 @@ Not done:
         │         └─ git worktree remove  (after merge)
         │
         └── git worktree add ..\IntelWatch-wt\seo-2c  -b seo/2c-feature-pages  origin/master   (parallel, another module)
+```
 
+**Current flow (owner decision 2026-09-26):** one folder `E:\code\IntelWatch`, one session at a time. `git switch -c sNNN/<task>` from up-to-date master → plan → TDD → code → reviewer subagent → `/session-end` (push branch, open PR) → deployer merges → next session `git switch master && git pull` and deletes the local branch.
+
+```
  Merge queue (one at a time, done by the owner or the one "deployer" session):
    PR A merged → CI/CD run → deploy green → /deploy-check → post-deploy docs → next PR rebased → merged …
 ```
 
 ## 5. Rules (plain English)
 
-1. **One session = one worktree = one branch = one module.** Branch name: `s<NNN>/<module>-<short-task>`, e.g. `s150/normalization-index`.
-2. **Never work in the main checkout.** It stays on `master` and clean.
-3. **The session number is fixed when the worktree is created**, from the roadmap §4 table. Two parallel sessions never both read "148" and both call themselves 149.
+1. **dropped by owner decision 2026-09-26** — ~~one session = one worktree = one branch = one module~~. Now: one folder (`E:\code\IntelWatch`), one session at a time, one branch per task, `git switch -c sNNN/<short-task>` from up-to-date master.
+2. **dropped by owner decision 2026-09-26** — ~~never work in the main checkout~~. Now: `E:\code\IntelWatch` IS the only working folder; work there directly, on a task branch (or master for docs-only).
+3. **dropped by owner decision 2026-09-26** — session numbering is no longer tied to worktree creation; pick the next free `sNNN` when branching.
 4. **Only one deployer.** Only one PR is merged into `master` at a time. The next merge waits until the previous CI/CD run is green **and** `/deploy-check` passed.
 5. **Only one `make docker-test` at a time** on a machine (fixed container names and ports). Before running it: `docker ps --filter name=etip_` must be empty, or belong to your own run.
 6. **Review subagent before every push.** A FAIL blocks the push.
@@ -93,44 +106,41 @@ None.
 | `.claude/commands/review.md` | Line 10: `main..HEAD` → `origin/master...HEAD` |
 | `.claude/agents/etip-reviewer.md` (new) | Subagent definition. Tools: Read, Grep, Glob, Bash (read-only git + `pnpm --filter <module> test` + `pnpm exec tsc -b tsconfig.build.json`). Steps: (1) run the `/review` checklist on `git diff origin/master...HEAD`, (2) run the `/rca-check` checklist, (3) run tests + typecheck for the touched module, (4) check every changed file is inside the declared module, (5) check no file over 400 lines was made longer. Output: `PASS` or `FAIL` + list. It must not edit files |
 | `.github/workflows/deploy.yml` | Add at top level: `concurrency: { group: etip-master-deploy, cancel-in-progress: false }` so push runs never overlap (build-images and deploy both). Add `paths-ignore: ['docs/**', '**/*.md']` under `on.push` so docs-only merges don't redeploy. PRs still run tests |
-| `CLAUDE.md` | Session Protocol: add "0. Create a worktree (see docs/roadmap/STEP_00_DEV_WORKFLOW.md)". Fix "9 steps" → "12 steps". **Needs owner OK** (CLAUDE.md is project law) |
-| `scripts/new-worktree.sh` (new, optional) | Small helper: `git fetch`, `git worktree add`, copy `.claude/settings.local.json` + `.claude/secrets/`, `pnpm install --frozen-lockfile`, `prisma generate`. Commit with mode 100755 (`git update-index --chmod=+x`, see RCA S148) |
+| `CLAUDE.md` | Session Protocol step 0: **dropped by owner decision 2026-09-26** the worktree line; replaced with the one-folder/one-session/branch-per-task rule. Fix "9 steps" → "12 steps" (kept) |
+| `scripts/new-worktree.sh` | **dropped by owner decision 2026-09-26** — deleted; no worktree helper needed under the one-folder model |
 
 ### Frontend
 None.
 
-## 7. How to run a session (copy-paste)
+## 7. How to run a session (copy-paste) — updated for owner decision 2026-09-26
 
-Windows (Git Bash) paths shown; the owner's checkout is `E:\code\IntelWatch` (from `.claude/settings.json` memory path).
+Windows (Git Bash) paths shown; the owner's checkout is `E:\code\IntelWatch` — the only working folder, no worktrees.
 
 ```bash
-# 1. From the main checkout — create the worktree
+# 1. In the one working folder — start from up-to-date master, branch per task
 cd /e/code/IntelWatch
-git fetch origin
-git worktree add ../IntelWatch-wt/s150-normalization -b s150/normalization-index origin/master
+git switch master && git pull --ff-only
+git switch -c s159/normalization-index
 
-# 2. Bring gitignored Claude files (DECISION-010)
-cp .claude/settings.local.json ../IntelWatch-wt/s150-normalization/.claude/ 2>/dev/null
-cp -r .claude/secrets ../IntelWatch-wt/s150-normalization/.claude/ 2>/dev/null
-
-# 3. Install (pnpm store is shared, so this is fast)
-cd ../IntelWatch-wt/s150-normalization
+# 2. Install if lockfile/schema changed
 pnpm install --frozen-lockfile
 pnpm exec prisma generate --schema=prisma/schema.prisma
 
-# 4. Start Claude in the worktree
+# 3. Start Claude in this folder
 claude          # then: /session-start  → module: normalization
 ```
 
 Inside the session:
 
 ```text
-/session-start            → declares scope, confirms branch s150/normalization-index
+/session-start            → declares scope, confirms branch s159/normalization-index
 (plan mode for 3+ files)  → TDD → code
 "Run the etip-reviewer subagent on this branch"   → must say PASS
-/pre-push                 → make pre-push (only one docker-test on the machine at a time)
+/pre-push                 → make pre-push
 /session-end              → docs updated on the branch, branch pushed, PR opened
 ```
+
+(The old worktree-per-session copy-paste — `git worktree add ../IntelWatch-wt/...`, copying `.claude/settings.local.json` into a second folder, `git worktree remove` — is **dropped by owner decision 2026-09-26**. `.claude/settings.local.json` and `.claude/secrets/` already live in the one folder; nothing to copy.)
 
 Deployer (owner, or one named session), one PR at a time:
 
@@ -141,15 +151,14 @@ gh run watch                             # wait for deploy job green
 # then /deploy-check and the post-deploy doc update (CLAUDE.md checklist)
 ```
 
-Clean up:
+Clean up (next session in the one folder, after merge):
 
 ```bash
-cd /e/code/IntelWatch
-git worktree remove ../IntelWatch-wt/s150-normalization
-git worktree prune
+git switch master && git pull --ff-only
+git branch -d s159/normalization-index
 ```
 
-If your Claude Code version has a built-in worktree option (`claude --worktree` / the EnterWorktree tool), you may use it instead of step 1. Still do steps 2–3.
+(`dropped by owner decision 2026-09-26`: no worktree to remove, no `EnterWorktree` tool use — one folder only.)
 
 ## 8. Handling shared docs (conflicts)
 
@@ -169,7 +178,7 @@ None.
 
 | Test | How |
 |---|---|
-| Session-start refuses master | Open Claude in the main checkout, run `/session-start` → it must stop with "not in a worktree" |
+| Session-start flags a dirty/stray workspace | With uncommitted changes not from this session, or a stray branch, run `/session-start` → it must stop and warn "another session may be running in this folder" (**dropped**: the old "must be in a worktree" check) |
 | Reviewer catches scope leak | On a scratch branch, touch one file in another module → subagent says FAIL and names the file |
 | Reviewer catches failing test | Break one assertion → FAIL |
 | Concurrency | Push two small commits to master 30 s apart (or re-run) → second run shows "waiting / pending" in Actions, not running in parallel |
@@ -178,14 +187,14 @@ None.
 ## 11. Acceptance checks
 
 ```bash
-git worktree list                                   # main + one line per active session
-grep -n "worktree" .claude/commands/session-start.md # step 0 present
+git worktree list                                   # main only — no worktree entries (owner decision 2026-09-26)
+grep -n "workspace check" .claude/commands/session-start.md # step 0a present
 grep -n "git push origin master" .claude/commands/session-end.md   # → no output
 grep -n "origin/master...HEAD" .claude/commands/review.md          # → 1 line
 test -f .claude/agents/etip-reviewer.md && echo ok
 grep -n "concurrency:" -A2 .github/workflows/deploy.yml            # group etip-master-deploy
 grep -n "paths-ignore" -A3 .github/workflows/deploy.yml
-git ls-files -s scripts/new-worktree.sh             # 100755 if the helper is added
+test -f scripts/new-worktree.sh && echo "should not exist"         # dropped, expect no output
 ```
 
 ## 12. Rollback
@@ -202,13 +211,13 @@ git ls-files -s scripts/new-worktree.sh             # 100755 if the helper is ad
 
 Note: `deploy.yml` is also touched in Step 1. Do Step 0 first and merge it, then start Step 1 from the new `master`.
 
-## 14. Owner decisions needed
+## 14. Owner decisions (settled 2026-09-26, applied in S158)
 
-1. OK to edit `CLAUDE.md` (Session Protocol + "12 steps")?
-2. Who is the deployer: always the owner, or one named Claude session per day?
-3. Per-session handoff files (`docs/handoffs/S<NNN>.md`) — yes or no?
-4. Docs-only merges: skip deploy (`paths-ignore`)? Recommended yes. Side effect: `ETIP_Project_Stats.html` changes also won't deploy — it is not served by the app, so no impact.
-5. Merge style: squash (one commit per session) — recommended.
+1. **CLAUDE.md edit** — OK. Applied: Session Protocol step 0 (worktree rule), "9 steps" → "12 steps" fix, one-deployer line in Git section.
+2. **Deployer** — the owner, or the one session the owner names for that day. Only one PR merged at a time; the next merge waits until the previous PR's CI/CD deploy is green and `/deploy-check` passes.
+3. **Per-session handoff files** — **no**. Keep the single `SESSION_HANDOFF.md` (overwritten each session-end, as today). Not adopting the `docs/handoffs/S<NNN>.md` split from §8.
+4. **Docs-only merges skip deploy** — yes, already implemented via `paths-ignore` (see Progress above).
+5. **Merge style** — unchanged (not mandating squash); whatever the deployer already does.
 
 ## 15. Risks
 

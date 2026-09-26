@@ -5,12 +5,13 @@ Monorepo: pnpm workspaces. 20+ microservices in /apps, shared packages in /packa
 Tech: Node 20, Fastify 4, Prisma 5, React 18, TypeScript strict, Zod validation.
 
 ## Session Protocol (MANDATORY)
+0. **One folder, one session:** work only in `E:\code\IntelWatch`; no git worktrees; one Claude session at a time; branch per task; one deployer merges one PR at a time (docs/roadmap/STEP_00_DEV_WORKFLOW.md)
 1. Run /session-start — loads state, decisions, git status, last session handoff
    - Its step 0 MUST delegate the read of docs (state, handoff, decisions, RCA, roadmap + STEP spec, newest S1xx doc) + newest `session*.md` memory + `reference_external_services.md` to ONE Haiku/Sonnet agent → digest. Even without /session-start, do this in the first message. Never claim something is "not set up" before the digest confirms it.
    - At /session-end: put must-not-miss facts on the MEMORY.md index line, and update `reference_external_services.md` when any external service (UptimeRobot, Telegram, crons, GitHub settings) changes.
 2. Declare scope: "Working on {module}. Do not modify: {list}"
 3. For 3+ file changes: use plan mode (Shift+Tab) before coding
-4. Run /session-end before closing — updates ALL handoff documents (9 steps)
+4. Run /session-end before closing — updates ALL handoff documents (12 steps)
    - If user says "bye", "done", "close", "end session" → run /session-end FIRST
    - NEVER close without running /session-end — next session depends on it
 
@@ -133,6 +134,7 @@ The HTML is the live dashboard — stale stats = stakeholders see wrong platform
 ## Git
 Push to master with /pre-push checks. Feature branches for risky or cross-module work.
 Commit format: "feat|fix|chore|docs: [description]"
+One deployer merges one PR at a time — the next merge waits until the previous PR's CI/CD deploy is green and `/deploy-check` passes.
 
 ## Env Vars
 All prefixed with `TI_`. Secrets in .env only, never committed.
