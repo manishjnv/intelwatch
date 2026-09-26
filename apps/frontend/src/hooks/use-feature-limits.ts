@@ -103,8 +103,9 @@ export function useFeatureLimits() {
 
 /**
  * Check if a feature is enabled for the current tenant's plan.
- * ponytail: lock only on an explicit enabled:false; on error/unknown let the page
- * load — the API still enforces (matches sidebar, DashboardLayout.tsx:169). Owner approved.
+ * ponytail: lock only on an explicit enabled:false; on error/unknown let the page load
+ * (matches sidebar, DashboardLayout.tsx:169). Seeded plans list every key explicitly,
+ * so the default only applies on a fetch error or an unseeded plan. Owner approved.
  */
 export function useFeatureEnabled(featureKey: FeatureKey): boolean {
   const { features } = useFeatureLimits()

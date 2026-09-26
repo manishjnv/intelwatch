@@ -26,9 +26,10 @@ Step 5 will reuse.
 
 ## Owner decision recorded here — FeatureGate (option A)
 FeatureGate wraps core routes (`/iocs`, `/search`, graph, hunting, DRP, correlation). A page is locked only when
-`/billing/limits` says `enabled:false` for that feature. On an error or a missing entry the page loads and the
-API still enforces. This matches the sidebar (`DashboardLayout.tsx:169`, `?? true`). Rejected option B (fail closed)
-would put an Upgrade wall on the IOC page during any billing-limits outage.
+`/billing/limits` says `enabled:false` for that feature. On an error or a missing entry the page loads. This matches
+the sidebar (`DashboardLayout.tsx:169`, `?? true`). Seeded plans (`prisma/seeds/plan-definitions.ts`) list every
+feature key explicitly, so the default only applies on a fetch error or an unseeded plan — no seeded plan gains access.
+Rejected option B (fail closed) would put an Upgrade wall on the IOC page during any billing-limits outage.
 
 ## Tests
 New: `query-state-view`, `use-sessions-no-demo`, `use-mfa-enforcement`, `use-feature-limits-no-demo`,
