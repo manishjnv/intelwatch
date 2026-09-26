@@ -1,9 +1,22 @@
 ---
 description: Load full project context for a new development session. Run this FIRST.
-allowed-tools: Read, Bash(git:*)
+allowed-tools: Read, Bash(git:*), Agent
 ---
 
 Initialize a development session. Execute every step below without skipping.
+
+## 0. Context digest (delegate — do NOT read these with the main model)
+In your FIRST message, in parallel with `git fetch && git status`, launch ONE `Agent` call with `model: "haiku"` (use `"sonnet"` if the task is cross-module), read-only, returning a facts-only digest (< 600 words, file:line refs) of:
+1. `docs/PROJECT_STATE.md` — phase, deployed/WIP modules, next task, blockers
+2. `docs/SESSION_HANDOFF.md` — last session's work, open items, resume prompt
+3. `docs/DECISIONS_LOG.md` — last 5 decisions
+4. `docs/DEPLOYMENT_RCA.md` — total count, last 3 entries, entries relevant to the stated task
+5. `docs/ROADMAP_S149_PLUS.md` §3, `docs/roadmap/README.md`, and the Status line of every `docs/roadmap/STEP_*.md`
+6. Newest `docs/S1*_*.md` session doc and `docs/runbooks/*.md` (titles + key facts)
+7. Newest `session*.md` and `reference_external_services.md` in `C:/Users/manis/.claude/projects/e--code-IntelWatch/memory/` (live UptimeRobot / Telegram / VPS cron state)
+8. `CLAUDE.md`, `docs/CLAUDE.md`, `skills/00-CLAUDE-INSTRUCTIONS.md` — only rules that changed or are easy to miss
+
+Steps 1–4b below are then satisfied by the digest. Read a file directly only when the digest flags it as central to today's task (e.g. the current STEP spec). Never say something "isn't set up" or "isn't known" until the digest or a grep of `docs/` + memory confirms it.
 
 ## 1. Load Core Rules (always)
 Read these files in order — they are the non-negotiable foundation:

@@ -17,9 +17,6 @@
       "Read(//c/Users/manis/.claude/projects/e--code-IntelWatch/memory/**)"
     ],
     "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./secrets/**)",
       "Write(./docker-compose.yml)",
       "Write(./docker-compose.yaml)",
       "Bash(rm -rf:*)",
