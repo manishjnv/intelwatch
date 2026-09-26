@@ -72,6 +72,7 @@ IOC Intelligence :3007 → reads IOCs, provides analyst CRUD/search/pivot/export
 | D1 | Provenance export | Full confidence breakdown (feed/corroboration/AI/decay) in export | Yes |
 | D2 | Export profiles | high_fidelity (≥80), monitoring (≥40), research (all) presets | Yes |
 | D3 | Timeline | Confidence history + lifecycle events (from Chunk 1) | Partial |
+| S157 | Search-index sync | Create, update, revoke (soft-delete), bulk, and lifecycle-transition all send an `IOC_INDEX` job (full doc for create/update, `action:'delete'` on hard-delete paths). Bulk `updateMany` re-reads the affected ids and `addBulk`s | Yes |
 
 ## Config
 | Env Var | Default | Purpose |
@@ -82,3 +83,4 @@ IOC Intelligence :3007 → reads IOCs, provides analyst CRUD/search/pivot/export
 | TI_REDIS_URL | - | Redis connection |
 | TI_JWT_SECRET | - | JWT signing secret |
 | TI_SERVICE_JWT_SECRET | - | Service-to-service JWT |
+| TI_IOC_INDEX_ENABLED | true | S157: gate for search-index sync on analyst writes |

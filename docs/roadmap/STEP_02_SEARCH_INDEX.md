@@ -1,6 +1,6 @@
 # Step 2 — Search works (IOC index at normalization + backfill)
 
-**Written:** 2026-09-25 · **Status:** in progress — S151–S155 deployed (PR #38–#40); S156 ⌘K + S157 ioc-intelligence done (PR #41); remaining: run the backfill on production and verify ES count = DB count · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 2, §4 Phase 0 (S150–S153) · **Source:** docs/S147_APP_WIRING_FOLLOWUPS.md Follow-up A
+**Written:** 2026-09-25 · **Status:** ✅ all 7 sessions (S151–S157) deployed (PRs #38–#41). Production backfill run 2026-09-26 (12,093 IOCs enqueued across 10 tenants, dryRun-verified first). **Remaining:** ES count = DB count per tenant not yet verified (worker drains ~1 doc/s, ~3h) — carried to S160. · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 2, §4 Phase 0 (S150–S153) · **Source:** docs/S147_APP_WIRING_FOLLOWUPS.md Follow-up A
 **Rules:** one module per session (CLAUDE.md scope lock). S = 1–2 files, M = 3–5 files (plan mode). 🔒 = security-adjacent, needs an adversarial review before push.
 
 All file paths and line numbers below were checked against the code on 2026-09-25. Production numbers (0 ES docs, 5,934 IOCs) come from the S147 notes (2026-09-23). They were not measured again for this spec.

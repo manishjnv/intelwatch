@@ -15,16 +15,16 @@
 | Component | Status | Tests |
 |-----------|--------|-------|
 | Shared packages (types, utils, cache, auth, audit, normalization, enrichment) | ✅ Deployed | 401 |
-| API Gateway (Fastify, tiered rate limiting, error alerting, gzip compression) | ✅ Live on VPS | 187 |
+| API Gateway (Fastify, tiered rate limiting, error alerting, gzip compression, super-admin search backfill) | ✅ Live on VPS | 307 |
 | User Service (register, login, refresh, SSO, MFA, email verification, break-glass) | ✅ Live on VPS | 174 |
 | Ingestion Service (13 connectors: RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX, 11 pipeline modules, scheduler retry, global fetch workers) | ✅ Live on VPS | 770 |
-| Normalization Service (18 accuracy improvements, KEV/EPSS auto-severity, confidence bonus, global normalize/enrich, tenant overlay, fuzzy dedupe, corroboration, severity voting, Majestic Million FP whitelist) | ✅ Live on VPS | 322 |
-| AI Enrichment Service (VT + AbuseIPDB + GSB + IPinfo.io + Haiku AI + Cost Transparency + 15 Accuracy Improvements) | ✅ Live on VPS | 314 |
-| IOC Intelligence Service (CRUD, search, pivot, campaigns) | ✅ Live on VPS | 119 |
+| Normalization Service (18 accuracy improvements, KEV/EPSS auto-severity, confidence bonus, global normalize/enrich, tenant overlay, fuzzy dedupe, corroboration, severity voting, Majestic Million FP whitelist, search-index producer) | ✅ Live on VPS | 328 |
+| AI Enrichment Service (VT + AbuseIPDB + GSB + IPinfo.io + Haiku AI + Cost Transparency + 15 Accuracy Improvements + search-index producer) | ✅ Live on VPS | 329 |
+| IOC Intelligence Service (CRUD, search, pivot, campaigns, search-index sync) | ✅ Live on VPS | 148 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements, EPSS live API) | ✅ Live on VPS | 131 |
-| Frontend (React 18 + Vite, 20 data pages, 21 viz components, demo fallbacks all 5 entity types + reporting + alerting + analytics, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons, feed health indicators, request dedup, org-aware dashboard 9 widgets, IOC Intelligence best-in-class, Search page best-in-class) | ✅ Live on VPS | 1,785 |
+| Frontend (React 18 + Vite, 20 data pages, 21 viz components, demo fallbacks all 5 entity types + reporting + alerting + analytics, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons, feed health indicators, request dedup, org-aware dashboard 9 widgets, IOC Intelligence best-in-class, Search page best-in-class, real ⌘K search, 0 tsc errors) | ✅ Live on VPS | 1,789 |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |
@@ -37,7 +37,7 @@
 | Admin Ops Service (system health, maintenance, backup/restore, tenant admin, audit, 28 endpoints) | ✅ Built | 147 |
 | CI/CD (test → build → deploy) | ✅ Auto-deploy | — |
 | E2E Pipeline (feed → ingest → normalize → enrich) | ✅ Verified | — |
-| Elasticsearch IOC Indexing Service (BullMQ worker, per-IOC-type indices, ILM lifecycle, full-text search, multi-tenant) | ✅ Deployed | 116 |
+| Elasticsearch IOC Indexing Service (BullMQ worker, per-IOC-type indices, ILM lifecycle, full-text search, multi-tenant, shared IOC search-index contract) | ✅ Deployed | 166 |
 | Reporting Service (5 report types, BullMQ worker, cron scheduling, template engine, 25 endpoints) | ✅ Deployed | 217 |
 | Infrastructure (30 Docker containers) | ✅ All healthy | — |
 | **Phase 9 — Global Processing (DECISION-029 COMPLETE)** | **30/30 modules** | **~6,516** |

@@ -63,6 +63,7 @@ QUEUES.NORMALIZE → Normalize Worker
 | Community FP | services/community-fp.ts | Per-tenant FP reporting, auto-downgrade >50%, mark FP >75%, confidence reduction |
 | Worker Integration | workers/global-normalize-worker.ts | Corroboration scoring + severity voting + velocity on every IOC upsert |
 | Majestic Million FP | shared-normalization/majestic-million.ts | Top-1M domain whitelist: CSV loader, file cache, URL domain extraction, 'flag' action with confidence penalty |
+| Search-index producer (S153) | queue.ts, service.ts | After every tenant `ioc.upsert`, fire-and-forget enqueue of an `IOC_INDEX` `action:'index'` job (shared `toIocDocument()` payload, versioned jobId) to `packages/shared-utils/src/search-index.ts`'s queue. Sent even when the enrich job is skipped (bloom hit) |
 
 ## API
 
@@ -96,5 +97,6 @@ QUEUES.NORMALIZE → Normalize Worker
 | TI_SHODAN_API_KEY | - | Shodan API key (optional, enrichment degrades gracefully) |
 | TI_GREYNOISE_API_KEY | - | GreyNoise API key (optional, enrichment degrades gracefully) |
 | TI_MAJESTIC_ENABLED | true | Enable Majestic Million top-domain whitelist for FP reduction |
+| TI_IOC_INDEX_ENABLED | true | S153: gate for the search-index producer (enum+transform pattern, not `z.coerce.boolean()`) |
 | TI_MAJESTIC_TOP_N | 100000 | How many top domains to load from Majestic Million |
 | TI_MAJESTIC_CONFIDENCE_PENALTY | 30 | Confidence penalty for IOCs matching Majestic Million domains |

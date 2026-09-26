@@ -53,6 +53,7 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
 | Enrich Worker | workers/enrich-worker.ts | BullMQ consumer with job validation |
 | Enrichment Service | service.ts | 4-provider pipeline (VT → AbuseIPDB → GSB → Haiku), budget gate, risk scoring, confidence feedback loop, cache integration, cost tracking |
 | Repository | repository.ts | updateEnrichment, updateConfidence, findPending, getStats |
+| Search-index producer (S154) | workers/enrich-worker.ts | After enrichment, sends `IOC_INDEX` job `action:'update'` with `iocType` + partial `IocDocument` payload (enriched fields only). JobId `ioc-update-<iocId>-<enrichedAtMs>` so retries dedupe and later enrichments aren't dropped (old fixed jobId collided with 6,118 legacy failed jobs) |
 
 ## Accuracy Improvements (Session 22)
 
@@ -113,6 +114,7 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
 | TI_AI_ENABLED | false | Master switch for all enrichment |
 | TI_VIRUSTOTAL_API_KEY | (empty) | VT API key |
 | TI_ABUSEIPDB_API_KEY | (empty) | AbuseIPDB key |
+| TI_IOC_INDEX_ENABLED | true | S154: gate for producing `IOC_INDEX` update jobs after enrichment. Fixed a `z.coerce.boolean()` bug where the string `"false"` parsed as `true` (enum+transform pattern now) |
 | TI_ANTHROPIC_API_KEY | (empty) | Anthropic API key for Haiku triage |
 | TI_HAIKU_MODEL | claude-haiku-4-5-20251001 | Haiku model ID |
 | TI_ENRICHMENT_DAILY_BUDGET_USD | 5.00 | Daily cost budget per tenant (0 = unlimited) |

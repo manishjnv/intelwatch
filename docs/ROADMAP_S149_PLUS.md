@@ -77,6 +77,8 @@ Build in this order. **Don't start a step until the step before it is green in p
 
 _Renumbered 2026-09-26 (S150): Step 1 took S150; Step 2 expanded to 7 sessions (S151–S157); later sessions shifted +4._
 
+**⚠️ Numbering note (2026-09-26, S158/S159):** S158 and S159 below were consumed by unplanned work — S158 by Step 0 dev-workflow tooling (PR #42, later superseded by DECISION-034) and S159 by a frontend `tsc` cleanup (PR #43) — not by the Phase 1 persistence sessions this table lists under those numbers. Phase 1's own detail file (`docs/roadmap/STEP_03_PERSISTENCE.md`) already used a *different* numbering (S154–S159, with S158a/S158b, S159b–e) than this table does (S158/S160/S162/S162b/S163/S163b/S164) before today — that mismatch predates this session and is not fixed here (it needs both files reconciled together, which is out of scope for a docs-only session). **The next never-used session number is S160.** Per the owner's 2026-09-26 decision, the immediate queue is: S160 (verify ES=DB, `docs/roadmap/STEP_02_SEARCH_INDEX.md` §9) → S161a/S161b (Step 5 Honest UI — its own file, `STEP_05_HONEST_UI.md`, is already internally consistent and unaffected by this collision) → S166–S170 (Step 5 continued) → the Phase 1 persistence sessions below (still labelled S158/S160/S162/S162b/S163/S163b/S164 pending the reconciliation above) → S160a–m (Step 4 DB role/RLS, `STEP_04_DB_ROLE_RLS.md`) → Step 10+.
+
 ### Phase 0 — Stay up, and search that works (S149–S157)
 | S | Module | Task | Size |
 |---|---|---|---|
