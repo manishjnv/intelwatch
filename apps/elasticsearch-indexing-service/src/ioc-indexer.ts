@@ -45,14 +45,12 @@ export class IocIndexer {
   }
 
   /**
-   * Delete an IOC document from the correct per-type index.
-   * Requires iocType to route to the correct index.
+   * Delete an IOC document by id across ALL of the tenant's per-type indices
+   * (the job doesn't reliably know the IOC's type, e.g. after a hard delete).
    */
-  async deleteIOC(tenantId: string, iocId: string, iocType?: string): Promise<void> {
-    const type = iocType ?? 'other';
-    const index = getTypeIndex(tenantId, type);
+  async deleteIOC(tenantId: string, iocId: string): Promise<void> {
     try {
-      await this.es.deleteDoc(index, iocId);
+      await this.es.deleteByIds(tenantId, [iocId]);
     } catch (err) {
       if (err instanceof AppError) throw err;
       throw new AppError(503, `Failed to delete IOC ${iocId}`, 'ES_DELETE_FAILED', err);

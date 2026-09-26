@@ -11,6 +11,7 @@ function makeEsClient(): EsIndexClient {
     indexDoc: vi.fn().mockResolvedValue(undefined),
     updateDoc: vi.fn().mockResolvedValue(undefined),
     deleteDoc: vi.fn().mockResolvedValue(undefined),
+    deleteByIds: vi.fn().mockResolvedValue(undefined),
     search: vi.fn().mockResolvedValue({ total: 0, hits: [], aggregations: {} }),
     bulkIndex: vi.fn().mockResolvedValue({ indexed: 0, failed: 0 }),
     bulkIndexMultiType: vi.fn().mockResolvedValue({ indexed: 0, failed: 0 }),
@@ -25,14 +26,21 @@ function makeEsClient(): EsIndexClient {
 const sampleDoc: IocDocument = {
   iocId: 'ioc-001',
   value: '1.2.3.4',
+  normalizedValue: '1.2.3.4',
   type: 'ip',
   severity: 'high',
   confidence: 85,
+  lifecycle: 'active',
   tags: ['malware', 'c2'],
+  mitreAttack: [],
+  malwareFamilies: [],
+  threatActors: [],
   firstSeen: '2026-01-01T00:00:00.000Z',
   lastSeen: '2026-03-01T00:00:00.000Z',
+  updatedAt: '2026-03-01T00:00:00.000Z',
   tenantId: 'tenant-abc',
   enriched: true,
+  archived: false,
   tlp: 'AMBER',
 };
 
@@ -131,19 +139,14 @@ describe('IocIndexer', () => {
 
   // ── deleteIOC ───────────────────────────────────────────────────────────────
   describe('deleteIOC', () => {
-    it('routes delete to correct per-type index', async () => {
-      await indexer.deleteIOC('tenant-abc', 'ioc-001', 'ip');
-      expect(es.deleteDoc).toHaveBeenCalledWith('etip_tenant-abc_iocs_ip', 'ioc-001');
-    });
-
-    it('falls back to other index when type not provided', async () => {
+    it('deletes the id across all of the tenant per-type indices (type-agnostic)', async () => {
       await indexer.deleteIOC('tenant-abc', 'ioc-001');
-      expect(es.deleteDoc).toHaveBeenCalledWith('etip_tenant-abc_iocs_other', 'ioc-001');
+      expect(es.deleteByIds).toHaveBeenCalledWith('tenant-abc', ['ioc-001']);
     });
 
-    it('throws AppError when deleteDoc rejects', async () => {
-      vi.mocked(es.deleteDoc).mockRejectedValue(new Error('delete failed'));
-      await expect(indexer.deleteIOC('tenant-abc', 'ioc-001', 'ip')).rejects.toMatchObject({
+    it('throws AppError when deleteByIds rejects', async () => {
+      vi.mocked(es.deleteByIds).mockRejectedValue(new Error('delete failed'));
+      await expect(indexer.deleteIOC('tenant-abc', 'ioc-001')).rejects.toMatchObject({
         code: 'ES_DELETE_FAILED',
       });
     });

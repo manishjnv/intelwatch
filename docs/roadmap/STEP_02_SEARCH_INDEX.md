@@ -1,6 +1,6 @@
 # Step 2 — Search works (IOC index at normalization + backfill)
 
-**Written:** 2026-09-25 · **Status:** in progress — S151 shared contract done (`packages/shared-utils/src/search-index.ts`, DECISION-033); next S152 es-indexing · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 2, §4 Phase 0 (S150–S153) · **Source:** docs/S147_APP_WIRING_FOLLOWUPS.md Follow-up A
+**Written:** 2026-09-25 · **Status:** in progress — S151 shared contract + S152 es-indexing consumer done (PR #38, not yet deployed); next S153 normalization producer · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 2, §4 Phase 0 (S150–S153) · **Source:** docs/S147_APP_WIRING_FOLLOWUPS.md Follow-up A
 **Rules:** one module per session (CLAUDE.md scope lock). S = 1–2 files, M = 3–5 files (plan mode). 🔒 = security-adjacent, needs an adversarial review before push.
 
 All file paths and line numbers below were checked against the code on 2026-09-25. Production numbers (0 ES docs, 5,934 IOCs) come from the S147 notes (2026-09-23). They were not measured again for this spec.
@@ -251,10 +251,10 @@ Order: consumer first, then producers, then backfill, then UI. Don't start a ses
 | S | Module | Task | Size |
 |---|---|---|---|
 | 151 ✅ | shared-utils + DECISION-033 | Shared schema, mapper, jobId helper, job options + tests. Write the decision | S |
-| 152 🔒 | elasticsearch-indexing-service | Type map, update/delete robustness, JWT tenant in search, safe query, mappings | M |
+| 152 ✅🔒 | elasticsearch-indexing-service | Type map, update/delete robustness, JWT tenant in search, safe query, mappings. Tenant isolation was already enforced by Step 0B (nginx-verified `x-tenant-id` + `tenant-guard.ts`), so no JWT plugin was added; added tenantId validation for index names instead | M |
 | 153 | normalization | Enqueue `index` after the tenant upsert + flag | M |
 | 154 | ai-enrichment | `update` action, job options, fix the flag coercion | S |
-| 155 🔒 | api-gateway | Super-admin backfill route. Run it on production. Verify counts (§9) | M |
+| 155 🔒 | api-gateway | Super-admin backfill route (build docs with `toIocDocument()` — the worker drops invalid docs with only a warn log). Run it on production. Verify counts (§9) | M |
 | 156 | frontend (owner OK for the LOCKED block) | ⌘K through `api()` + mapping + error state | S |
 | 157 | ioc-intelligence | Index jobs on analyst writes | M |
 

@@ -5,6 +5,16 @@
  * each with type-specific mappings optimised for that data shape.
  */
 
+import { AppError } from '@etip/shared-utils';
+
+/** Tenant ids go into index names/patterns; `*` or `,` would reach other tenants' indices. */
+export function assertSafeTenantId(tenantId: string): string {
+  if (!/^[a-z0-9-]{1,64}$/.test(tenantId)) {
+    throw new AppError(400, 'Invalid tenantId', 'INVALID_TENANT_ID');
+  }
+  return tenantId;
+}
+
 /** The six index categories that IOC types map to. */
 export type IndexCategory = 'ip' | 'domain' | 'hash' | 'email' | 'cve' | 'other';
 
@@ -21,9 +31,16 @@ const TYPE_TO_CATEGORY: Record<string, IndexCategory> = {
   sha1:            'hash',
   sha256:          'hash',
   sha512:          'hash',
+  // Prisma IocType uses the hash_* prefix (prisma/schema.prisma) — the bare
+  // names above are kept for backward compat with any existing docs/callers.
+  hash_md5:        'hash',
+  hash_sha1:       'hash',
+  hash_sha256:     'hash',
+  hash_sha512:     'hash',
   email:           'email',
   cve:             'cve',
   bitcoin_address: 'other',
+  unknown:         'other',
 };
 
 /** All known index categories (useful for iteration). */
@@ -46,7 +63,7 @@ export function getIndexCategory(iocType: string): IndexCategory {
  */
 export function getTypeIndex(tenantId: string, iocType: string): string {
   const category = getIndexCategory(iocType);
-  return `etip_${tenantId}_iocs_${category}`;
+  return `etip_${assertSafeTenantId(tenantId)}_iocs_${category}`;
 }
 
 /**
@@ -56,7 +73,7 @@ export function getTypeIndex(tenantId: string, iocType: string): string {
  * @example getWildcardIndex('tenant-1') → 'etip_tenant-1_iocs_*'
  */
 export function getWildcardIndex(tenantId: string): string {
-  return `etip_${tenantId}_iocs_*`;
+  return `etip_${assertSafeTenantId(tenantId)}_iocs_*`;
 }
 
 /**

@@ -103,10 +103,11 @@ describe('Reindex Routes', () => {
     it('passes iocs array to reindexTenant', async () => {
       const iocs = [
         {
-          iocId: 'ioc-001', value: '1.2.3.4', type: 'ip', severity: 'high',
-          confidence: 80, tags: [], firstSeen: '2026-01-01T00:00:00.000Z',
-          lastSeen: '2026-01-01T00:00:00.000Z', tenantId: 'tenant-abc',
-          enriched: false, tlp: 'WHITE',
+          iocId: 'ioc-001', value: '1.2.3.4', normalizedValue: '1.2.3.4', type: 'ip', severity: 'high',
+          confidence: 80, lifecycle: 'active', tags: [], mitreAttack: [], malwareFamilies: [], threatActors: [],
+          firstSeen: '2026-01-01T00:00:00.000Z', lastSeen: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z', tenantId: 'tenant-abc',
+          enriched: false, archived: false, tlp: 'WHITE',
         },
       ];
       await app.inject({
@@ -115,6 +116,18 @@ describe('Reindex Routes', () => {
         body: { tenantId: 'tenant-abc', iocs },
       });
       expect(mockIndexer.reindexTenant).toHaveBeenCalledWith('tenant-abc', iocs);
+    });
+
+    it('forces each doc tenantId to the request tenantId', async () => {
+      const doc = {
+        iocId: 'ioc-009', value: '5.6.7.8', normalizedValue: '5.6.7.8', type: 'ip', severity: 'low',
+        confidence: 10, lifecycle: 'active', tags: [], mitreAttack: [], malwareFamilies: [], threatActors: [],
+        firstSeen: '2026-01-01T00:00:00.000Z', lastSeen: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z', tenantId: 'tenant-other',
+        enriched: false, archived: false, tlp: 'WHITE',
+      };
+      await app.inject({ method: 'POST', url: '/api/v1/search/reindex', body: { tenantId: 'tenant-abc', iocs: [doc] } });
+      expect(mockIndexer.reindexTenant).toHaveBeenCalledWith('tenant-abc', [{ ...doc, tenantId: 'tenant-abc' }]);
     });
 
     it('returns 400 for invalid tenantId type', async () => {

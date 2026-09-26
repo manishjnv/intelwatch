@@ -3,8 +3,10 @@ import { AppError } from '@etip/shared-utils';
 
 // Minimal local alias — avoids importing from non-exported ES subpath
 type QueryContainer = Record<string, unknown>;
+import { IocDocumentSchema } from '@etip/shared-utils';
 import type { IocDocument, ReindexResult } from './schemas.js';
-import { getTypeIndex, getIndexCategory } from './index-naming.js';
+import { getLogger } from './logger.js';
+import { getTypeIndex, getIndexCategory, getWildcardIndex, assertSafeTenantId } from './index-naming.js';
 import { buildIndexBody } from './mappings.js';
 import { ILM_POLICY_NAME, ILM_POLICY_BODY, INDEX_TEMPLATE_NAME, buildIndexTemplateBody } from './ilm.js';
 
@@ -12,7 +14,7 @@ import { ILM_POLICY_NAME, ILM_POLICY_BODY, INDEX_TEMPLATE_NAME, buildIndexTempla
 
 /** Returns the legacy single-index name for a given tenant (pre-migration). */
 export function getIndexName(tenantId: string): string {
-  return `etip_${tenantId}_iocs`;
+  return `etip_${assertSafeTenantId(tenantId)}_iocs`;
 }
 
 // ── Search params + result (internal) ────────────────────────────────────────
@@ -23,8 +25,17 @@ export interface EsSearchParams {
   severity?: string;
   tlp?: string;
   enriched?: boolean;
+  includeInactive?: boolean;
   page: number;
   limit: number;
+}
+
+/** True if the ES error is a 404 "document missing" response (update/delete on a nonexistent doc). */
+function isDocumentMissing(err: unknown): boolean {
+  const meta = (err as { meta?: { statusCode?: number; body?: { error?: { type?: string } } } } | undefined)?.meta;
+  if (meta?.statusCode !== 404) return false;
+  const type = meta.body?.error?.type;
+  return type === undefined || type === 'document_missing_exception';
 }
 
 interface AggBuckets {
@@ -170,44 +181,94 @@ export class EsIndexClient {
     }
   }
 
-  /** Partially update an existing IOC document. */
+  /**
+   * Partially update an existing IOC document. If the document doesn't exist yet
+   * (404 `document_missing_exception` — a producer's `update` job can race an
+   * `index` job, or arrive for a doc that was never indexed), fall back to
+   * indexing the payload if it's a full, valid IocDocument. Otherwise log a
+   * warning and return — the job completes without creating a partial doc.
+   */
   async updateDoc(index: string, docId: string, doc: Partial<IocDocument>): Promise<void> {
     try {
       await this.client.update({ index, id: docId, doc, refresh: 'wait_for' });
     } catch (err) {
-      throw new AppError(503, `Failed to update document ${docId}`, 'ES_UPDATE_DOC_FAILED', err);
+      if (!isDocumentMissing(err)) {
+        throw new AppError(503, `Failed to update document ${docId}`, 'ES_UPDATE_DOC_FAILED', err);
+      }
+      const full = IocDocumentSchema.safeParse(doc);
+      if (!full.success) {
+        getLogger().warn(
+          { docId, index, issues: full.error.issues },
+          'Update target document missing and partial payload is not a full IocDocument — skipping',
+        );
+        return;
+      }
+      await this.indexDoc(index, docId, full.data);
     }
   }
 
-  /** Delete an IOC document by id. */
+  /** Delete an IOC document by id. A missing document is treated as success. */
   async deleteDoc(index: string, docId: string): Promise<void> {
     try {
       await this.client.delete({ index, id: docId, refresh: 'wait_for' });
     } catch (err) {
+      if (isDocumentMissing(err)) return;
       throw new AppError(503, `Failed to delete document ${docId}`, 'ES_DELETE_DOC_FAILED', err);
+    }
+  }
+
+  /**
+   * Delete documents by id across ALL of a tenant's per-type indices, so the
+   * caller doesn't need to know the IOC's type. A missing index or 0 matches
+   * is success, not an error.
+   */
+  async deleteByIds(tenantId: string, ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    try {
+      await this.client.deleteByQuery({
+        index: getWildcardIndex(tenantId),
+        query: { ids: { values: ids } },
+        ignore_unavailable: true,
+        allow_no_indices: true,
+        refresh: true,
+      });
+    } catch (err) {
+      throw new AppError(503, `Failed to delete IOCs ${ids.join(',')} for tenant ${tenantId}`, 'ES_DELETE_DOC_FAILED', err);
     }
   }
 
   /** Full-text + faceted search with aggregations. */
   async search(index: string, params: EsSearchParams): Promise<EsSearchResult> {
-    const { q, type, severity, tlp, enriched, page, limit } = params;
+    const { q, type, severity, tlp, enriched, includeInactive, page, limit } = params;
     const from = (page - 1) * limit;
 
     const must: QueryContainer[] = q
-      ? [{ query_string: { query: q, fields: ['value', 'tags'] } }]
+      ? [{
+          simple_query_string: {
+            query: q,
+            fields: ['value', 'normalizedValue', 'tags'],
+            default_operator: 'AND',
+          },
+        }]
+      : [];
+    const should: QueryContainer[] = q
+      ? [{ term: { normalizedValue: { value: q.toLowerCase(), boost: 5 } } }]
       : [];
     const filter: QueryContainer[] = [];
     if (type) filter.push({ term: { type } });
     if (severity) filter.push({ term: { severity } });
     if (tlp) filter.push({ term: { tlp } });
     if (enriched !== undefined) filter.push({ term: { enriched } });
+    const mustNot: QueryContainer[] = includeInactive
+      ? []
+      : [{ terms: { lifecycle: ['revoked', 'false_positive'] } }];
 
     try {
       const resp = await this.client.search({
         index,
         from,
         size: limit,
-        query: { bool: { must, filter } },
+        query: { bool: { must, should, filter, must_not: mustNot } },
         aggregations: {
           by_type:     { terms: { field: 'type',     size: 20 } },
           by_severity: { terms: { field: 'severity', size: 10 } },
