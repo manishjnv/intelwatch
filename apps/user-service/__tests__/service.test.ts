@@ -302,6 +302,54 @@ describe('UserService', () => {
       vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
       await expect(service.login({ email: 'nobody@nothing.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Invalid email or password');
     });
+
+    it('RCA: victim (oldest row) is not evicted by 10 later attacker-controlled active+verified rows', async () => {
+      const { hashPassword } = await import('@etip/shared-auth');
+      const victimHash = await hashPassword('VictimPassword123!');
+      const victim = { ...mockUser, id: 'victim-1', passwordHash: victimHash, createdAt: new Date('2020-01-01') };
+      const attackerRows = Array.from({ length: 10 }, (_, i) => ({
+        ...mockUser, id: `attacker-${i}`, passwordHash: 'irrelevant-hash-never-matches',
+        active: true, emailVerified: true, createdAt: new Date(2024, 0, i + 1),
+      }));
+      // Repo orders oldest-first: the victim (created 2020) sorts before every 2024 attacker row.
+      vi.mocked(prisma.user.findMany).mockResolvedValue([victim, ...attackerRows] as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(victim as never);
+      vi.mocked(prisma.session.create).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.session.update).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(victim as never);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+      const result = await service.login({ email: 'analyst@acme.com', password: 'VictimPassword123!', ipAddress: '127.0.0.1', userAgent: 'test' });
+      expect(result.user.id).toBe('victim-1');
+      expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        orderBy: [{ createdAt: 'asc' }],
+        take: 10,
+      }));
+    });
+
+    it('multi-candidate: MFA check runs against the matched candidate, not candidates[0]', async () => {
+      const { hashPassword } = await import('@etip/shared-auth');
+      const hashA = await hashPassword('PasswordA123!');
+      const hashB = await hashPassword('PasswordB456!');
+      const userA = { ...mockUser, id: 'user-a', tenantId: 'tenant-a', passwordHash: hashA };
+      const userB = { ...mockUser, id: 'user-b', tenantId: 'tenant-b', passwordHash: hashB };
+      vi.mocked(prisma.user.findMany).mockResolvedValue([userA, userB] as never);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-b', email: userB.email, tenantId: 'tenant-b', role: 'tenant_admin',
+        mfaEnabled: false, mfaSecret: null, mfaBackupCodes: [], mfaVerifiedAt: null,
+      } as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(userB as never);
+      vi.mocked(prisma.session.create).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.session.update).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.mfaEnforcementPolicy.findFirst).mockResolvedValue(null as never);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+      const result = await service.login({ email: 'shared@acme.com', password: 'PasswordB456!', ipAddress: '127.0.0.1', userAgent: 'test' });
+      expect(result.user.id).toBe('user-b');
+      // checkMfaRequired → findUserForMfa(userId) must run against the matched candidate (user-b), never candidates[0] (user-a)
+      expect(prisma.user.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'user-b' } }));
+      expect(prisma.user.findUnique).not.toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'user-a' } }));
+    });
   });
 
   // ── Matrix #87: Token Refresh (Security-Critical) ──────────────────
