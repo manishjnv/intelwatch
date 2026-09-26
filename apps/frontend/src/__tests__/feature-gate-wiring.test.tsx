@@ -3,13 +3,14 @@
  * @description Tests for FeatureGate wiring on TI pages, sidebar lock badges,
  * and dashboard widget gating.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@/test/test-utils'
 import { FeatureGate, UpgradeCTA } from '@/components/FeatureGate'
 
 // ─── Mock feature limits ────────────────────────────────────
 
 let mockEnabled = true
+let mockLoading = false
 
 vi.mock('@/hooks/use-feature-limits', () => ({
   useFeatureEnabled: () => mockEnabled,
@@ -18,9 +19,8 @@ vi.mock('@/hooks/use-feature-limits', () => ({
       { featureKey: 'digital_risk_protection', enabled: mockEnabled, limitDaily: 100, usedDaily: 10, limitMonthly: 1000, usedMonthly: 100, percentDaily: 10, percentMonthly: 10 },
       { featureKey: 'ioc_management', enabled: true, limitDaily: 5000, usedDaily: 100, limitMonthly: 50000, usedMonthly: 1000, percentDaily: 2, percentMonthly: 2 },
     ],
-    isLoading: false,
+    isLoading: mockLoading,
     error: null,
-    isDemo: false,
   }),
   useQuotaStatus: () => ({ percentage: 10, period: 'daily', limit: 100, used: 10, status: 'ok' }),
   FEATURE_KEYS: ['ioc_management', 'threat_actors', 'malware_intel', 'vulnerability_intel', 'threat_hunting', 'graph_exploration', 'digital_risk_protection', 'correlation_engine'],
@@ -40,6 +40,20 @@ vi.mock('@/hooks/use-feature-limits', () => ({
 // ─── FeatureGate Component Tests ────────────────────────────
 
 describe('FeatureGate', () => {
+  beforeEach(() => { mockEnabled = true; mockLoading = false })
+
+  it('renders neither children nor UpgradeCTA while loading', () => {
+    mockEnabled = false
+    mockLoading = true
+    render(
+      <FeatureGate feature="digital_risk_protection">
+        <div data-testid="drp-content">DRP Page</div>
+      </FeatureGate>
+    )
+    expect(screen.queryByTestId('drp-content')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('upgrade-cta-digital_risk_protection')).not.toBeInTheDocument()
+  })
+
   it('renders children when feature is enabled', () => {
     mockEnabled = true
     render(

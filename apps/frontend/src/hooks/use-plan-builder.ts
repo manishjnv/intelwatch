@@ -75,11 +75,14 @@ function demoFeatures(preset: 'free' | 'starter' | 'teams' | 'enterprise'): Plan
   }))
 }
 
-const DEMO_PLANS: PlanDefinition[] = [
+// DECISION-030/031: prices must match the public catalogue in data/plans.ts (PLANS).
+// priceAnnualInr here is the annual TOTAL — PLANS.priceAnnual is the per-month rate
+// when billed yearly, so priceAnnualInr = 12 * PLANS.priceAnnual for the same plan.
+export const DEMO_PLANS: PlanDefinition[] = [
   { id: '1', planId: 'free', name: 'Free', description: 'Get started with basic threat intel', priceMonthlyInr: 0, priceAnnualInr: 0, isPublic: true, isDefault: true, sortOrder: 0, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('free'), _count: { tenants: 12 } },
-  { id: '2', planId: 'starter', name: 'Starter', description: 'For small security teams', priceMonthlyInr: 9999, priceAnnualInr: 99999, isPublic: true, isDefault: false, sortOrder: 1, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('starter'), _count: { tenants: 5 } },
-  { id: '3', planId: 'teams', name: 'Teams', description: 'For growing security operations', priceMonthlyInr: 18999, priceAnnualInr: 189999, isPublic: true, isDefault: false, sortOrder: 2, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('teams'), _count: { tenants: 3 } },
-  { id: '4', planId: 'enterprise', name: 'Enterprise', description: 'Unlimited access for large orgs', priceMonthlyInr: 49999, priceAnnualInr: 499999, isPublic: true, isDefault: false, sortOrder: 3, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('enterprise'), _count: { tenants: 1 } },
+  { id: '2', planId: 'starter', name: 'Starter', description: 'For small security teams', priceMonthlyInr: 9999, priceAnnualInr: 95988, isPublic: true, isDefault: false, sortOrder: 1, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('starter'), _count: { tenants: 5 } },
+  { id: '3', planId: 'pro', name: 'Teams', description: 'For growing security operations', priceMonthlyInr: 18999, priceAnnualInr: 179988, isPublic: true, isDefault: false, sortOrder: 2, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('teams'), _count: { tenants: 3 } },
+  { id: '4', planId: 'enterprise', name: 'Enterprise', description: 'Unlimited access for large orgs', priceMonthlyInr: 49999, priceAnnualInr: 479988, isPublic: true, isDefault: false, sortOrder: 3, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('enterprise'), _count: { tenants: 1 } },
 ]
 
 // ─── Hook ───────────────────────────────────────────────────

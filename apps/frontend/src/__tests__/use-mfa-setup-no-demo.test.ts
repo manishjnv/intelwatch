@@ -14,7 +14,13 @@ vi.mock('@/lib/api', () => ({
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
 
 import { useMfaSetup } from '@/hooks/use-mfa'
-import { DEMO_MFA_SETUP } from '@/hooks/security-demo-data'
+
+// security-demo-data.ts was removed (S161a honest UI) — inline the shape it used to export.
+const DEMO_MFA_SETUP = {
+  secret: 'JBSWY3DPEHPK3PXP',
+  qrCodeUri: 'otpauth://totp/ETIP:demo@test.com?secret=JBSWY3DPEHPK3PXP&issuer=ETIP',
+  backupCodes: ['a1b2-c3d4', 'e5f6-g7h8'],
+}
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } })

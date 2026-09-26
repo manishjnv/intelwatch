@@ -1,11 +1,17 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { notifyApiError } from './hooks/useApiError';
 import './globals.css';
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (err, query) => {
+      notifyApiError(err, String(query.meta?.resource ?? query.queryKey[0]), undefined);
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000,

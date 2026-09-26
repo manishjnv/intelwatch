@@ -6,7 +6,6 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { notifyApiError } from './useApiError'
 
 // ─── Feature Keys ───────────────────────────────────────────
 
@@ -80,23 +79,6 @@ export interface QuotaInfo {
   status: QuotaStatus
 }
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEMO_LIMITS: FeatureLimitEntry[] = FEATURE_KEYS.map((key, i) => ({
-  featureKey: key,
-  enabled: i < 12,
-  limitDaily: i < 8 ? 5000 : i < 12 ? 1000 : -1,
-  usedDaily: i < 8 ? Math.floor(Math.random() * 4000) : i < 12 ? Math.floor(Math.random() * 800) : 0,
-  limitMonthly: i < 8 ? 50000 : i < 12 ? 10000 : -1,
-  usedMonthly: i < 8 ? Math.floor(Math.random() * 40000) : i < 12 ? Math.floor(Math.random() * 8000) : 0,
-  percentDaily: 0,
-  percentMonthly: 0,
-})).map(e => ({
-  ...e,
-  percentDaily: e.limitDaily > 0 ? Math.round((e.usedDaily / e.limitDaily) * 100) : 0,
-  percentMonthly: e.limitMonthly > 0 ? Math.round((e.usedMonthly / e.limitMonthly) * 100) : 0,
-}))
-
 // ─── Main Hook ──────────────────────────────────────────────
 
 export function useFeatureLimits() {
@@ -106,30 +88,28 @@ export function useFeatureLimits() {
     queryKey: ['feature-limits'],
     queryFn: () =>
       // api() already unwraps { data } — the old `r?.data` was always undefined (S147)
-      api<FeatureLimitEntry[]>('/billing/limits')
-        .then(r => (Array.isArray(r) ? r : empty))
-        .catch(err => notifyApiError(err, 'feature limits', DEMO_LIMITS)),
+      api<FeatureLimitEntry[]>('/billing/limits').then(r => (Array.isArray(r) ? r : empty)),
+    meta: { resource: 'feature limits' },
     staleTime: 5 * 60_000,
   })
 
-  const isDemo = !result.isLoading && (result.data?.length ?? 0) === 0
-  const data = isDemo ? DEMO_LIMITS : result.data
-
   return {
-    features: data ?? [],
-    isLoading: result.isLoading,
-    error: result.error,
-    isDemo,
+    ...result,
+    features: result.data ?? empty,
   }
 }
 
 // ─── Shortcut Hooks ─────────────────────────────────────────
 
-/** Check if a feature is enabled for the current tenant's plan. */
+/**
+ * Check if a feature is enabled for the current tenant's plan.
+ * ponytail: lock only on an explicit enabled:false; on error/unknown let the page
+ * load — the API still enforces (matches sidebar, DashboardLayout.tsx:169). Owner approved.
+ */
 export function useFeatureEnabled(featureKey: FeatureKey): boolean {
   const { features } = useFeatureLimits()
   const entry = features.find(f => f.featureKey === featureKey)
-  return entry?.enabled ?? false
+  return entry?.enabled ?? true
 }
 
 /** Get quota status for a feature (highest severity across daily/monthly). */
