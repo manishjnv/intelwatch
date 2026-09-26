@@ -14,7 +14,7 @@ vi.mock('../src/prisma.js', () => ({
   prisma: {
     tenant: { create: vi.fn(), findUnique: vi.fn() },
     tenantSubscription: { create: vi.fn() },
-    user: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
+    user: { create: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
     session: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
     auditLog: { create: _auditCreate, findFirst: vi.fn() },
     mfaEnforcementPolicy: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
@@ -172,7 +172,7 @@ describe('UserService', () => {
       const { hashPassword } = await import('@etip/shared-auth');
       const hash = await hashPassword('SecurePassword123!');
       const userWithHash = { ...mockUser, passwordHash: hash };
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(userWithHash as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([userWithHash] as never);
       vi.mocked(prisma.user.update).mockResolvedValue(userWithHash as never);
       vi.mocked(prisma.session.create).mockResolvedValue(mockSession as never);
       vi.mocked(prisma.session.update).mockResolvedValue(mockSession as never);
@@ -187,6 +187,7 @@ describe('UserService', () => {
     });
 
     it('#86: rejects nonexistent email', async () => {
+      vi.mocked(prisma.user.findMany).mockResolvedValue([] as never);
       vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
       await expect(service.login({ email: 'nobody@nothing.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Invalid email or password');
     });
@@ -194,29 +195,112 @@ describe('UserService', () => {
     it('#86: rejects wrong password', async () => {
       const { hashPassword } = await import('@etip/shared-auth');
       const hash = await hashPassword('CorrectPassword123!');
-      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, passwordHash: hash } as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([{ ...mockUser, passwordHash: hash }] as never);
       await expect(service.login({ email: 'analyst@acme.com', password: 'WrongPassword456!', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Invalid email or password');
     });
 
     it('#92: returns 401 with INVALID_CREDENTIALS code', async () => {
+      vi.mocked(prisma.user.findMany).mockResolvedValue([] as never);
       vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
       try { await service.login({ email: 'nobody@nothing.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' }); expect.fail('Should have thrown'); }
       catch (err: unknown) { const e = err as { statusCode: number; code: string }; expect(e.statusCode).toBe(401); expect(e.code).toBe('INVALID_CREDENTIALS'); }
     });
 
     it('rejects inactive user (email verified but account deactivated)', async () => {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, active: false, emailVerified: true } as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([{ ...mockUser, active: false, emailVerified: true }] as never);
       await expect(service.login({ email: 'analyst@acme.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Account is deactivated');
     });
 
     it('rejects suspended tenant', async () => {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, emailVerified: true, tenant: { ...mockTenant, active: false } } as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([{ ...mockUser, emailVerified: true, tenant: { ...mockTenant, active: false } }] as never);
       await expect(service.login({ email: 'analyst@acme.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Organization is suspended');
     });
 
     it('rejects user without password hash (SSO-only)', async () => {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, emailVerified: true, passwordHash: null } as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([{ ...mockUser, emailVerified: true, passwordHash: null }] as never);
       await expect(service.login({ email: 'analyst@acme.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Password login not available');
+    });
+
+    // ── RCA: duplicate email across tenants (break-glass, invites, SSO) ─
+
+    it('picks the owner over a break-glass row with the same email — owner password logs in as owner', async () => {
+      const { hashPassword } = await import('@etip/shared-auth');
+      const ownerHash = await hashPassword('OwnerPassword123!');
+      const owner = { ...mockUser, id: 'owner-1', passwordHash: ownerHash };
+      // Break-glass rows are excluded by the repo query itself (isBreakGlass: false), so only the owner comes back.
+      vi.mocked(prisma.user.findMany).mockResolvedValue([owner] as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(owner as never);
+      vi.mocked(prisma.session.create).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.session.update).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(owner as never);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+      const result = await service.login({ email: 'analyst@acme.com', password: 'OwnerPassword123!', ipAddress: '127.0.0.1', userAgent: 'test' });
+      expect(result.user.id).toBe('owner-1');
+    });
+
+    it('only a break-glass row exists for the email — 403 BREAK_GLASS_NORMAL_LOGIN_DENIED', async () => {
+      vi.mocked(prisma.user.findMany).mockResolvedValue([] as never);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...mockUser, isBreakGlass: true } as never);
+      try { await service.login({ email: 'breakglass@acme.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' }); expect.fail('Should have thrown'); }
+      catch (err: unknown) { const e = err as { statusCode: number; code: string }; expect(e.statusCode).toBe(403); expect(e.code).toBe('BREAK_GLASS_NORMAL_LOGIN_DENIED'); }
+    });
+
+    it('two tenants share an email with different passwords — each password logs into its own tenant', async () => {
+      const { hashPassword } = await import('@etip/shared-auth');
+      const hashA = await hashPassword('PasswordA123!');
+      const hashB = await hashPassword('PasswordB456!');
+      const userA = { ...mockUser, id: 'user-a', tenantId: 'tenant-a', passwordHash: hashA, tenant: { ...mockTenant, id: 'tenant-a' } };
+      const userB = { ...mockUser, id: 'user-b', tenantId: 'tenant-b', passwordHash: hashB, tenant: { ...mockTenant, id: 'tenant-b' } };
+      vi.mocked(prisma.user.findMany).mockResolvedValue([userA, userB] as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(userA as never);
+      vi.mocked(prisma.session.create).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.session.update).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(userA as never);
+      const resultA = await service.login({ email: 'shared@acme.com', password: 'PasswordA123!', ipAddress: '127.0.0.1', userAgent: 'test' });
+      expect(resultA.user.id).toBe('user-a');
+
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(userB as never);
+      const resultB = await service.login({ email: 'shared@acme.com', password: 'PasswordB456!', ipAddress: '127.0.0.1', userAgent: 'test' });
+      expect(resultB.user.id).toBe('user-b');
+    });
+
+    it('two candidates, wrong password — 401 INVALID_CREDENTIALS, never reveals EMAIL_NOT_VERIFIED', async () => {
+      const { hashPassword } = await import('@etip/shared-auth');
+      const hashA = await hashPassword('PasswordA123!');
+      const hashB = await hashPassword('PasswordB456!');
+      const userA = { ...mockUser, id: 'user-a', passwordHash: hashA, emailVerified: false };
+      const userB = { ...mockUser, id: 'user-b', passwordHash: hashB };
+      vi.mocked(prisma.user.findMany).mockResolvedValue([userA, userB] as never);
+
+      try {
+        await service.login({ email: 'shared@acme.com', password: 'WrongPassword!', ipAddress: '127.0.0.1', userAgent: 'test' });
+        expect.fail('Should have thrown');
+      } catch (err: unknown) {
+        const e = err as { statusCode: number; code: string };
+        expect(e.statusCode).toBe(401);
+        expect(e.code).toBe('INVALID_CREDENTIALS');
+      }
+    });
+
+    it('two candidates, password matches an unverified one — 403 EMAIL_NOT_VERIFIED', async () => {
+      const { hashPassword } = await import('@etip/shared-auth');
+      const hashA = await hashPassword('PasswordA123!');
+      const hashB = await hashPassword('PasswordB456!');
+      const userA = { ...mockUser, id: 'user-a', passwordHash: hashA, emailVerified: false };
+      const userB = { ...mockUser, id: 'user-b', passwordHash: hashB, emailVerified: true };
+      vi.mocked(prisma.user.findMany).mockResolvedValue([userA, userB] as never);
+
+      await expect(service.login({ email: 'shared@acme.com', password: 'PasswordA123!', ipAddress: '127.0.0.1', userAgent: 'test' }))
+        .rejects.toThrow('verify your email');
+    });
+
+    it('no candidates and no break-glass row — 401', async () => {
+      vi.mocked(prisma.user.findMany).mockResolvedValue([] as never);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      await expect(service.login({ email: 'nobody@nothing.com', password: 'whatever', ipAddress: '127.0.0.1', userAgent: 'test' })).rejects.toThrow('Invalid email or password');
     });
   });
 
@@ -397,7 +481,7 @@ describe('UserService', () => {
       const { hashPassword } = await import('@etip/shared-auth');
       const hash = await hashPassword('SecurePassword123!');
       const userWithHash = { ...mockUser, passwordHash: hash, emailVerified: true };
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(userWithHash as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([userWithHash] as never);
       vi.mocked(prisma.user.update).mockResolvedValue(userWithHash as never);
       // MFA check: findUserForMfa returns the user (MFA not enabled → no MFA required)
       // Then _createSession: findUserById returns null → 500

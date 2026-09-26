@@ -96,15 +96,35 @@ export class UserService {
   }
 
   async login(input: LoginInput): Promise<LoginResult | MfaLoginResult> {
-    const user = await repo.findUserByEmailAnyStatus(input.email);
-    if (!user) throw new AppError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
+    const candidates = await repo.findLoginCandidatesByEmail(input.email);
 
-    // Break-glass accounts must use the emergency login endpoint (I-22)
-    if (user.isBreakGlass) {
-      throw new AppError(403,
-        'Break-glass accounts must use the emergency login endpoint',
-        'BREAK_GLASS_NORMAL_LOGIN_DENIED',
-      );
+    let user: (typeof candidates)[number];
+    let passwordAlreadyVerified = false;
+
+    if (candidates.length === 0) {
+      const { findBreakGlassUserByEmail } = await import('./break-glass-repository.js');
+      if (await findBreakGlassUserByEmail(input.email)) {
+        // Break-glass accounts must use the emergency login endpoint (I-22)
+        throw new AppError(403,
+          'Break-glass accounts must use the emergency login endpoint',
+          'BREAK_GLASS_NORMAL_LOGIN_DENIED',
+        );
+      }
+      throw new AppError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
+    } else if (candidates.length === 1) {
+      user = candidates[0]!;
+    } else {
+      // ponytail: same email exists across tenants (invites/SSO) — disambiguate by password, never by row order
+      let matched: (typeof candidates)[number] | undefined;
+      for (const candidate of candidates) {
+        if (candidate.passwordHash && await verifyPassword(input.password, candidate.passwordHash)) {
+          matched = candidate;
+          break;
+        }
+      }
+      if (!matched) throw new AppError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
+      user = matched;
+      passwordAlreadyVerified = true;
     }
 
     // Email verification guard — before active/password checks
@@ -120,8 +140,10 @@ export class UserService {
     if (!user.tenant.active) throw new AppError(401, 'Organization is suspended', 'TENANT_INACTIVE');
     if (!user.passwordHash) throw new AppError(401, 'Password login not available for this account', 'INVALID_CREDENTIALS');
 
-    const validPassword = await verifyPassword(input.password, user.passwordHash);
-    if (!validPassword) throw new AppError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
+    if (!passwordAlreadyVerified) {
+      const validPassword = await verifyPassword(input.password, user.passwordHash);
+      if (!validPassword) throw new AppError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
+    }
 
     await repo.updateUserLoginStats(user.id);
 

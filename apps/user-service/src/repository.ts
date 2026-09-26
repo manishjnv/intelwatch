@@ -63,6 +63,20 @@ export async function findUserByEmailAnyStatus(email: string) {
   return prisma.user.findFirst({ where: { email }, include: { tenant: true } });
 }
 
+/**
+ * Find login candidates for an email, excluding break-glass rows. The same email can exist
+ * across several tenants (invites, SSO), so login must disambiguate by password rather than
+ * picking an arbitrary row (RCA: login picked wrong tenant's user for a duplicate email).
+ */
+export async function findLoginCandidatesByEmail(email: string) {
+  return prisma.user.findMany({
+    where: { email, isBreakGlass: false },
+    include: { tenant: true },
+    orderBy: [{ active: 'desc' }, { emailVerified: 'desc' }, { createdAt: 'asc' }],
+    take: 5,
+  });
+}
+
 export async function findUserByEmailAndTenant(email: string, tenantId: string) {
   return prisma.user.findFirst({ where: { email, tenantId }, include: { tenant: true } });
 }
