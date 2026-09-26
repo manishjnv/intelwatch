@@ -75,46 +75,51 @@ Build in this order. **Don't start a step until the step before it is green in p
 
 ## 4. Session plan
 
-### Phase 0 — Stay up, and search that works (S149–S153)
-| S | Module | Task | Size |
-|---|---|---|---|
-| 149 | ops (`.github/workflows`, `scripts/`) | External uptime check (UptimeRobot or Cloudflare health check → email/Telegram) on `/` and `/api/v1/health`. Deploy step: run the VPS side under `setsid nohup`, SSH `ServerAliveInterval=15`, then `compose up -d` a second time as a final check. Install the docker-cleanup cron. Verify `health-recovery.sh` is `-rwx` on the VPS. Retry wrapper for the tunnel-SSH `bad handshake` flake (W16). Check backups exist for Postgres/Neo4j/ES/MinIO and do one restore drill (W15) | M |
-| — | owner | Click through the logged-in app: dashboard, IOCs, Command Center, billing, reports | — |
-| 150 | normalization | Decide global vs tenant index (write a DECISION). After each IOC upsert, enqueue `IOC_INDEX {action:'index', payload: IocDocument}` with a deterministic jobId | M |
-| 151 | elasticsearch-indexing-service | `update` on a missing doc upserts (or logs and skips); tests | S |
-| 152 | ai-enrichment | Send `action:'update'` with enrichment fields instead of an incomplete `index` | S |
-| 153 | api-gateway (super-admin) 🔒 | One-time backfill job: page IOCs per tenant → reindex; verify ES count = DB count | M |
+_Renumbered 2026-09-26 (S150): Step 1 took S150; Step 2 expanded to 7 sessions (S151–S157); later sessions shifted +4._
 
-### Phase 1 — Don't lose data (S154–S160), per DECISION-027
+### Phase 0 — Stay up, and search that works (S149–S157)
 | S | Module | Task | Size |
 |---|---|---|---|
-| 154 | alerting-service | Prisma models + repos for rules, channels, alerts, escalation policies, maintenance windows (dual-mode store pattern from billing) | L → 2 |
-| 156 | integration-service | Prisma for integrations, webhook deliveries + DLQ, tickets, export schedules. Encrypt stored credentials | L → 2 |
-| 158 | drp-service | Prisma for monitored assets + findings (store used by 20 files) | L → 2 |
-| 158b | reporting-service | Persist reports, schedules, templates; replace hard-coded report data with real aggregation (W23, W24) | L → 2 |
-| 159 | hunting-service | Redis JSON via `@etip/shared-persistence` for hunts, saved queries, evidence | M |
-| 159b | caching-service / analytics-service / onboarding | Persist archive manifests (Postgres), trend snapshots and module-readiness (Redis JSON) (W14). One module per session | S each |
-| 160 | prisma / ops 🔒 | Least-privilege app role (no superuser, no BYPASSRLS); test RLS per tenant; keep a migration role for deploys | M |
+| 149 | ops (`.github/workflows`, `scripts/`) | External uptime check (UptimeRobot or Cloudflare health check → email/Telegram) on `/` and `/api/v1/health`. Deploy step: run the VPS side under `setsid nohup`, SSH `ServerAliveInterval=15`, then `compose up -d` a second time as a final check. Install the docker-cleanup cron. Verify `health-recovery.sh` is `-rwx` on the VPS. Retry wrapper for the tunnel-SSH `bad handshake` flake (W16). Check backups exist for Postgres/Neo4j/ES/MinIO and do one restore drill (W15). **✅ Done in S150 (Step 1, PR #36 → 112c39f); Step 0B was S149 (PR #35)** | M |
+| — | owner | Click through the logged-in app: dashboard, IOCs, Command Center, billing, reports. **✅ S149 (post-0B login + click-through)** | — |
+| 151 | packages/shared-utils | Shared `IocDocumentSchema` v2, `IocIndexJobSchema`, job ID generation, toIocDocument helper. DECISION-033 (global vs tenant index option A now, B later) | S |
+| 152 | elasticsearch-indexing-service 🔒 | Type mapping, update/delete on missing docs, JWT search validation, revoked filter, simple_query_string fallback | M |
+| 153 | normalization | IOC_INDEX queue at upsert, backfill config flag, job production with versioned jobId | M |
+| 154 | ai-enrichment | Enrichment update jobs with full payload, queue options, config boolean fix | S |
+| 155 | api-gateway 🔒 | Backfill endpoint `/api/v1/gateway/search/backfill`, page-per-tenant reindex, audit log, dryRun mode | M |
+| 156 | frontend | GlobalSearch + /search page: use `/api/v1/search/iocs` with Bearer token, map result shape, error handling | M |
+| 157 | ioc-intelligence | Index jobs on create, update (lifecycle), delete, bulk, all operation types | S |
+
+### Phase 1 — Don't lose data (S158–S164), per DECISION-027
+| S | Module | Task | Size |
+|---|---|---|---|
+| 158 | alerting-service | Prisma models + repos for rules, channels, alerts, escalation policies, maintenance windows (dual-mode store pattern from billing) | L → 2 |
+| 160 | integration-service | Prisma for integrations, webhook deliveries + DLQ, tickets, export schedules. Encrypt stored credentials | L → 2 |
+| 162 | drp-service | Prisma for monitored assets + findings (store used by 20 files) | L → 2 |
+| 162b | reporting-service | Persist reports, schedules, templates; replace hard-coded report data with real aggregation (W23, W24) | L → 2 |
+| 163 | hunting-service | Redis JSON via `@etip/shared-persistence` for hunts, saved queries, evidence | M |
+| 163b | caching-service / analytics-service / onboarding | Persist archive manifests (Postgres), trend snapshots and module-readiness (Redis JSON) (W14). One module per session | S each |
+| 164 | prisma / ops 🔒 | Least-privilege app role (no superuser, no BYPASSRLS); test RLS per tenant; keep a migration role for deploys | M |
 
 Rule from now on: **no business data in memory.** Maps are allowed only for caches, rate limits and short buffers.
 
-### Phase 2 — Make the UI honest (S161–S166)
+### Phase 2 — Make the UI honest (S165–S170)
 | S | Module | Task | Size |
 |---|---|---|---|
-| 161 | frontend | Replace `withDemoFallback` on error paths with a "Couldn't load — Retry" state. Demo data only for brand-new empty tenants, clearly labelled | M |
-| 162 | user-management-service | `GET /users` (member list), teams, roles, audit, stats. Where a backend route already exists, fix the UI path instead | M |
-| 163 | frontend | Fix the remaining wrong paths/shapes: MFA policy, ticketing create, AI global config shape | S |
-| 164 | ai-enrichment | `GET /enrichment/ioc/:id`. Auto-enrich **critical/high** IOCs by default with a daily cost cap (W13) | M |
-| 165 | threat-graph | Graph overview endpoint (top entities/clusters) for the graph landing page | S |
-| 165b | frontend | Align demo annual prices in `use-plan-builder.ts` with the seeds (W17) — fold into S161 if that session touches it | S |
-| 166 | admin-service | Command Center "Clients" reads real tenants (via user-service/billing APIs), not the in-memory registry | M |
+| 165 | frontend | Replace `withDemoFallback` on error paths with a "Couldn't load — Retry" state. Demo data only for brand-new empty tenants, clearly labelled | M |
+| 166 | user-management-service | `GET /users` (member list), teams, roles, audit, stats. Where a backend route already exists, fix the UI path instead | M |
+| 167 | frontend | Fix the remaining wrong paths/shapes: MFA policy, ticketing create, AI global config shape | S |
+| 168 | ai-enrichment | `GET /enrichment/ioc/:id`. Auto-enrich **critical/high** IOCs by default with a daily cost cap (W13) | M |
+| 169 | threat-graph | Graph overview endpoint (top entities/clusters) for the graph landing page | S |
+| 169b | frontend | Align demo annual prices in `use-plan-builder.ts` with the seeds (W17) — fold into S165 if that session touches it | S |
+| 170 | admin-service | Command Center "Clients" reads real tenants (via user-service/billing APIs), not the in-memory registry | M |
 
-### Phase 3 — Simpler runtime (S167+) — needs an owner decision; do before Phase 5 adds new modules
+### Phase 3 — Simpler runtime (S171+) — needs an owner decision; do before Phase 5 adds new modules
 | S | Module | Task | Size |
 |---|---|---|---|
-| 167 | chore | Delete the 11 empty `apps/` folders. Update PROJECT_STATE module table | S |
-| 168 | docs | **DECISION-032 (proposed): consolidate the runtime into ~7 deployables** (see §6). Design + pilot plan | S |
-| 169+ | per group | Pilot: host 3 small services (analytics, caching, admin) as Fastify plugins in one process. Measure RAM + deploy time. Roll out group by group only if the pilot is clean | M each |
+| 171 | chore | Delete the 11 empty `apps/` folders. Update PROJECT_STATE module table | S |
+| 172 | docs | **DECISION-032 (proposed): consolidate the runtime into ~7 deployables** (see §6). Design + pilot plan | S |
+| 173+ | per group | Pilot: host 3 small services (analytics, caching, admin) as Fastify plugins in one process. Measure RAM + deploy time. Roll out group by group only if the pilot is clean | M each |
 | ongoing | any | Split files >400 lines when a session touches them | — |
 | later | ops | Failover: second VPS or managed Postgres, once there are paying customers (W15) | L |
 | later | ops | Grafana alert rules → email/Telegram. Request-ID tracing across services (OpenTelemetry later) | M |

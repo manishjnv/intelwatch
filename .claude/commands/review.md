@@ -6,7 +6,7 @@ allowed-tools: Read, Bash(git diff:*)
 Review all changes in the current branch.
 
 ## 1. Scope Check
-Run: `git diff --stat main..HEAD` (or `git diff --stat`)
+Run: `git diff --stat origin/master...HEAD` (or `git diff --stat` for uncommitted work)
 List all modified files grouped by module.
 Flag any files outside the declared target module.
 

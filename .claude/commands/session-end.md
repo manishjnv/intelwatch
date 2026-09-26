@@ -166,9 +166,13 @@ Next: [specific task]
 ```bash
 git add docs/PROJECT_STATE.md docs/DECISIONS_LOG.md docs/SESSION_HANDOFF.md \
        docs/DEPLOYMENT_RCA.md docs/ETIP_Project_Stats.html docs/modules/ README.md
-git commit -m "docs: session [N] end — [1-line summary]"
-git push origin master
+GIT_COMMITTER_EMAIL="257227540+manishjnv@users.noreply.github.com" GIT_COMMITTER_NAME="Manish Kumar" \
+  git commit --author="Manish Kumar <257227540+manishjnv@users.noreply.github.com>" -m "docs: session [N] end — [1-line summary]"
+env -u GH_TOKEN git push -u origin HEAD
+# On a feature/session branch: open a PR — do NOT merge; the deployer merges one PR at a time.
+[ "$(git branch --show-current)" = master ] || env -u GH_TOKEN gh pr create --base master --fill
 ```
+Docs-only commits on `master` are safe (deploy.yml `paths-ignore`). Code must never be pushed to `master` directly — it goes via PR.
 
 ## 11. Final Check
 
@@ -188,7 +192,7 @@ Before closing, confirm ALL boxes:
 - [ ] README.md — test count + phase + container count current
 - [ ] memory/session{N}.md — created with key facts + frozen rules
 - [ ] memory/MEMORY.md — index updated
-- [ ] All committed + pushed to master
+- [ ] All committed + pushed (docs-only → master; code → branch + PR)
 - [ ] git status clean
 
 CRITICAL: Seven systems depend on accurate state:

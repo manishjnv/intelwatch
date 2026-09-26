@@ -15,8 +15,8 @@ Not done:
 
 - Worktree-per-session tooling (only the main checkout exists)
 - Single-deployer rule formalised
-- `/session-end` still runs `git push origin master` directly (line 170) — the bug this spec names in §3 is unfixed
-- `/review` still uses `git diff --stat main..HEAD` against a `master`-default repo (line 9) — the bug this spec names in §3 is unfixed
+- ✅ (2026-09-26) `/session-end` step 10 now `git push -u origin HEAD` + `gh pr create` when not on `master` (docs-only on master still allowed — paths-ignored); noreply author built in
+- ✅ (2026-09-26) `/review` now uses `git diff --stat origin/master...HEAD`
 
 ---
 
