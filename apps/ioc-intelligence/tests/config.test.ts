@@ -40,4 +40,14 @@ describe('IOC Intelligence — Config', () => {
     const config = loadConfig({ ...validEnv, TI_IOC_INTELLIGENCE_PORT: '3007' });
     expect(typeof config.TI_IOC_INTELLIGENCE_PORT).toBe('number');
   });
+
+  it('defaults TI_IOC_INDEX_ENABLED to true', () => {
+    const config = loadConfig(validEnv);
+    expect(config.TI_IOC_INDEX_ENABLED).toBe(true);
+  });
+
+  it('parses TI_IOC_INDEX_ENABLED=false', () => {
+    const config = loadConfig({ ...validEnv, TI_IOC_INDEX_ENABLED: 'false' });
+    expect(config.TI_IOC_INDEX_ENABLED).toBe(false);
+  });
 });

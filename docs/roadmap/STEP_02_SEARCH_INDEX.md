@@ -1,6 +1,6 @@
 # Step 2 — Search works (IOC index at normalization + backfill)
 
-**Written:** 2026-09-25 · **Status:** in progress — S151–S153 deployed (PR #38, #39); S154 ai-enrichment + S155 backfill route done (PR #40); next: run backfill, then S156 ⌘K · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 2, §4 Phase 0 (S150–S153) · **Source:** docs/S147_APP_WIRING_FOLLOWUPS.md Follow-up A
+**Written:** 2026-09-25 · **Status:** in progress — S151–S155 deployed (PR #38–#40); S156 ⌘K + S157 ioc-intelligence done (PR #41); remaining: run the backfill on production and verify ES count = DB count · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 2, §4 Phase 0 (S150–S153) · **Source:** docs/S147_APP_WIRING_FOLLOWUPS.md Follow-up A
 **Rules:** one module per session (CLAUDE.md scope lock). S = 1–2 files, M = 3–5 files (plan mode). 🔒 = security-adjacent, needs an adversarial review before push.
 
 All file paths and line numbers below were checked against the code on 2026-09-25. Production numbers (0 ES docs, 5,934 IOCs) come from the S147 notes (2026-09-23). They were not measured again for this spec.
@@ -255,8 +255,8 @@ Order: consumer first, then producers, then backfill, then UI. Don't start a ses
 | 153 ✅ | normalization | Enqueue `index` after the tenant upsert + flag | M |
 | 154 ✅ | ai-enrichment | `update` action, job options, fix the flag coercion | S |
 | 155 ✅🔒 | api-gateway | Super-admin backfill route (build docs with `toIocDocument()` — the worker drops invalid docs with only a warn log). Run it on production. Verify counts (§9) | M |
-| 156 | frontend (owner OK for the LOCKED block) | ⌘K through `api()` + mapping + error state | S |
-| 157 | ioc-intelligence | Index jobs on analyst writes | M |
+| 156 ✅ | frontend (owner OK given 2026-09-26) | ⌘K through `api()` + mapping + error state | S |
+| 157 ✅ | ioc-intelligence | Index jobs on analyst writes | M |
 
 This is 7 sessions where the roadmap planned 4 (S150–S153). S156 and S157 are what make ⌘K usable and keep edits in sync.
 

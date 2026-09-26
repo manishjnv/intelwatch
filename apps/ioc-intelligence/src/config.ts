@@ -16,6 +16,8 @@ const EnvSchema = z.object({
   TI_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().default(60000),
   TI_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().default(100),
   TI_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+  /** Gates enqueueing analyst-write IOCs to the ES search-index queue (S157). */
+  TI_IOC_INDEX_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
-import { AppError } from '@etip/shared-utils';
+import type pino from 'pino';
+import { AppError, type IocRow } from '@etip/shared-utils';
+import { getLogger } from './logger.js';
+import { syncIocsToSearch } from './search-sync.js';
 import type { IOCRepository } from './repository.js';
 import type {
   ListIocsQuery, CreateIocBody, UpdateIocBody,
@@ -56,7 +59,10 @@ interface IocRecord {
 
 /** Business logic for IOC Intelligence Service. */
 export class IOCService {
-  constructor(private readonly repo: IOCRepository) {}
+  constructor(
+    private readonly repo: IOCRepository,
+    private readonly logger: pino.Logger = getLogger(),
+  ) {}
 
   /** Paginated IOC list with filters. */
   async listIocs(tenantId: string, query: ListIocsQuery): Promise<{ items: unknown[]; total: number }> {
@@ -121,7 +127,7 @@ export class IOCService {
     }
 
     const now = new Date();
-    return this.repo.create({
+    const created = await this.repo.create({
       tenantId,
       iocType: body.iocType,
       value: body.value,
@@ -148,6 +154,8 @@ export class IOCService {
       lastSeen: now,
       expiresAt: body.expiresAt ?? null,
     });
+    syncIocsToSearch([created as IocRow], this.logger);
+    return created;
   }
 
   /** Update IOC metadata. Enforces severity/TLP escalation rules. */
@@ -200,12 +208,15 @@ export class IOCService {
 
     const result = await this.repo.update(tenantId, id, data);
     if (!result) throw new AppError(404, 'IOC not found', 'NOT_FOUND');
+    syncIocsToSearch([result as IocRow], this.logger);
 
     // B1: FP propagation — when marking false_positive, tag related IOCs for review
     if (body.lifecycle === 'false_positive') {
       const relatedIds = await this.repo.findFPRelated(tenantId, existing);
       if (relatedIds.length > 0) {
         await this.repo.tagForReview(tenantId, relatedIds, 'fp_review_suggested');
+        const relatedRows = await this.repo.findByIds(tenantId, relatedIds);
+        syncIocsToSearch(relatedRows as IocRow[], this.logger);
       }
     }
 
@@ -216,6 +227,7 @@ export class IOCService {
   async deleteIoc(tenantId: string, id: string): Promise<void> {
     const result = await this.repo.softDelete(tenantId, id);
     if (!result) throw new AppError(404, 'IOC not found', 'NOT_FOUND');
+    syncIocsToSearch([result as IocRow], this.logger);
   }
 
   /** C1: Full-text search with multi-dimensional relevance ranking. */
@@ -364,6 +376,11 @@ export class IOCService {
         throw new AppError(400, `Unknown bulk action: ${body.action}`, 'INVALID_ACTION');
     }
 
+    if (affected > 0) {
+      const rows = await this.repo.findByIds(tenantId, body.ids);
+      syncIocsToSearch(rows as IocRow[], this.logger);
+    }
+
     return { affected };
   }
 
@@ -437,12 +454,15 @@ export class IOCService {
     }
     const result = await this.repo.update(tenantId, id, { lifecycle: targetState as never });
     if (!result) throw new AppError(404, 'IOC not found', 'NOT_FOUND');
+    syncIocsToSearch([result as IocRow], this.logger);
 
     // FP propagation: tag related IOCs for review
     if (targetState === 'false_positive') {
       const relatedIds = await this.repo.findFPRelated(tenantId, ioc);
       if (relatedIds.length > 0) {
         await this.repo.tagForReview(tenantId, relatedIds, 'fp_review_suggested');
+        const relatedRows = await this.repo.findByIds(tenantId, relatedIds);
+        syncIocsToSearch(relatedRows as IocRow[], this.logger);
       }
     }
 

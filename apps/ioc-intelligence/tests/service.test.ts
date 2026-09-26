@@ -7,6 +7,7 @@ function createMockRepo() {
   return {
     findMany: vi.fn().mockResolvedValue({ items: [], total: 0 }),
     findById: vi.fn().mockResolvedValue(null),
+    findByIds: vi.fn().mockResolvedValue([]),
     findByDedupeHash: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (data: Record<string, unknown>) => ({ id: 'new-id', ...data })),
     update: vi.fn().mockImplementation(async (_t: string, _id: string, data: Record<string, unknown>) => ({ id: 'test-id', ...data })),

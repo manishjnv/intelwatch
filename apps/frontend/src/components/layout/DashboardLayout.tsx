@@ -6,11 +6,11 @@
  */
 import { useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useThemeStore } from '@/stores/theme-store'
 import { useLogout } from '@/hooks/use-auth'
 import { useDashboardStats } from '@/hooks/use-intel-data'
+import { useGlobalSearchResults } from '@/hooks/use-global-search-results'
 import { cn } from '@/lib/utils'
 import { MODULES } from '@/config/modules'
 import {
@@ -21,7 +21,6 @@ import { IconDashboard } from '@/components/brand/ModuleIcons'
 import { LogoMark } from '@/components/brand/LogoMark'
 import { TopStatsBar }                          from '@etip/shared-ui/components/TopStatsBar'
 import { GlobalSearch, useGlobalSearch }         from '@etip/shared-ui/components/GlobalSearch'
-import type { SearchResult }                     from '@etip/shared-ui/components/GlobalSearch'
 import { ThreatPulseStrip }                      from '@/components/viz/ThreatPulseStrip'
 
 /* ------------------------------------------------------------------ */
@@ -110,18 +109,7 @@ export function DashboardLayout() {
 
   // Global search results — data fetch lives in app layer, not shared-ui
   const [searchQuery, setSearchQuery] = useState('')
-  const { data: searchResults } = useQuery<SearchResult[]>({
-    queryKey: ['global-search', searchQuery],
-    queryFn: async () => {
-      if (!searchQuery.trim() || searchQuery.length < 2) return []
-      const res = await fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}&limit=20`)
-      if (!res.ok) return []
-      return res.json()
-    },
-    enabled: searchQuery.length >= 2,
-    staleTime: 30_000,
-    retry: false,
-  })
+  const { data: searchResults } = useGlobalSearchResults(searchQuery)
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-bg-base transition-colors duration-200">

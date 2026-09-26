@@ -78,6 +78,11 @@ export class IOCRepository {
     return this.prisma.ioc.findFirst({ where: { id, tenantId } });
   }
 
+  /** Re-read full rows by id, tenant-scoped. Used to sync search after a bulk write. */
+  async findByIds(tenantId: string, ids: string[]): Promise<unknown[]> {
+    return this.prisma.ioc.findMany({ where: { id: { in: ids }, tenantId } });
+  }
+
   /** Find IOC by dedupe hash. */
   async findByDedupeHash(dedupeHash: string): Promise<unknown | null> {
     return this.prisma.ioc.findUnique({ where: { dedupeHash } });
