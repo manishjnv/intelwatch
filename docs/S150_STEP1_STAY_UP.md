@@ -88,8 +88,15 @@ Restore point tagged before starting: `git tag safe-point-2026-09-26-step1-stay-
 
 ## 6. Follow-ups (not done here)
 
-1. **Telegram bot** — owner still needs to create it via `@BotFather` and add the two env vars (`docs/runbooks/UPTIME_ALERTS.md` §2).
-2. **Healthchecks.io for cron heartbeats** — discussed, deferred. Would catch a cron job that stops running entirely (as opposed to running and failing, which the current logs + alerts already cover).
-3. **Off-site backup automation (rclone)** — `docs/roadmap/STEP_01_STAY_UP.md` §13. The VPS→owner's-machine copy is still manual.
-4. **`ProtectedRoute` demo-session finding** — frontend seeds a fake demo session on any non-2xx from `/api/v1/health` (which 404s by design). Belongs to Step 5, logged here so it isn't lost.
-5. **First deploy after merge will take longer than usual** — `/var/lib/etip/schema.sha256` doesn't exist yet, so the schema-changed branch runs unconditionally on the first deploy: a pre-deploy `pg_dump` + `prisma db push` even if the schema didn't actually change. Expect +2–5 min versus a normal deploy.
+1. **Healthchecks.io for cron heartbeats** — discussed, deferred. Would catch a cron job that stops running entirely (as opposed to running and failing, which the current logs + alerts already cover).
+2. **Off-site backup automation (rclone)** — `docs/roadmap/STEP_01_STAY_UP.md` §13. The VPS→owner's-machine copy is still manual.
+3. **`ProtectedRoute` demo-session finding** — frontend seeds a fake demo session on any non-2xx from `/api/v1/health` (which 404s by design). Belongs to Step 5, logged here so it isn't lost.
+4. **First deploy after merge will take longer than usual** — `/var/lib/etip/schema.sha256` doesn't exist yet, so the schema-changed branch runs unconditionally on the first deploy: a pre-deploy `pg_dump` + `prisma db push` even if the schema didn't actually change. Expect +2–5 min versus a normal deploy.
+
+## 7. Follow-ups done the same day (S150b)
+
+**Restore drill (§13 item) — PASS.** First monthly Postgres restore drill run: 2.16 GB dump, `pg_restore -j 2` rc 0, 6m18s, all row counts matched (or grew as expected). One gotcha found and fixed: `docker rm -f` without `-v` left a 14 GB anonymous volume behind. Procedure now a runbook: `docs/runbooks/RESTORE_DRILL.md`.
+
+**Login email-collision fix — PR #37 (`77e5953`).** The `findFirst`-by-email login bug (open since S149, `apps/user-service/src/repository.ts`) is fixed: a new `findLoginCandidatesByEmail` returns all non-break-glass rows for an email (oldest first, capped at 10), and login tries each until a bcrypt match. Sonnet adversarial review caught a candidate-eviction issue in the first pass (fixed with oldest-first ordering + cap 10). 176 → 184 user-service tests, CI green.
+
+**Tooling/doc fixes.** `/review` now diffs `origin/master...HEAD` (was `main..HEAD`); `/session-end` pushes the current branch and opens a PR when not on master; roadmap §4 renumbered (Step 2 = S151–S157); Step 0 marked partial; Step 1/Step 8 Redis eviction items marked resolved.

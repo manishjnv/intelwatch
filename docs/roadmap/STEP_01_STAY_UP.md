@@ -222,6 +222,8 @@ Files: `scripts/backup.sh`, `scripts/restore-drill.sh`, a line in `scripts/etip-
 
 **Restore drill (monthly, 20 min):** start a throwaway `postgres:16-alpine` container, `pg_restore` the latest dump, compare row counts of `Tenant`, `User`, `Ioc`, `GlobalIoc`, `TenantSubscription` (prisma/schema.prisma lines 14, 64, 398, 787, 610) with production. Log the result in DEPLOYMENT_RCA.md. A backup that was never restored is not a backup.
 
+✅ **First run 2026-09-26 (S150b): PASS.** 2.16 GB dump, `pg_restore -j 2` rc 0, 6m18s, all row counts matched or grew as expected. Runbook: `docs/runbooks/RESTORE_DRILL.md`. Off-site copy (rclone, VPS → owner machine) is still open — see the plan below.
+
 ### Failover options (owner choice, no work yet)
 
 | Option | Cost | Recovery time | Notes |

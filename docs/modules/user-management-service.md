@@ -1,6 +1,6 @@
 # User Management Service
 
-**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 210 (+ 121 in user-service for SSO/MFA/email-verification/access-review/compliance)
+**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 210 (+ 184 in user-service for SSO/MFA/email-verification/access-review/compliance/login)
 
 ## What It Does
 Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, SOC2 audit logging, quarterly access review automation (I-17), and compliance report generation (I-18). All in-memory (DECISION-013 pattern).
@@ -42,6 +42,7 @@ Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TO
 | SOC 2 report | compliance-report-service.ts | User access review, stale accounts, access changes (I-18) |
 | Privileged access report | compliance-report-service.ts | Super/tenant admins, API keys, SCIM tokens (I-18) |
 | GDPR DSAR export | compliance-report-service.ts | All user data: profile, sessions, audit logs, API keys (I-18) |
+| Multi-tenant email login disambiguation | user-service `repository.ts`/`service.ts` | `findLoginCandidatesByEmail` — when an email exists in more than one tenant row (break-glass, invite, SCIM/SSO), login tries oldest-first candidates (capped at 10) for a bcrypt match instead of an unordered `findFirst` |
 
 ## API
 | Method | Path | Auth | Description |

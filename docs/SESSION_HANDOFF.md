@@ -80,24 +80,27 @@
 
 **Note:** `/etc/cron.d/docker-image-prune` and `/etc/cron.d/docker-builder-prune` on the VPS are pre-existing, not ETIP-owned, and required for the other project's (dhanradar) on-VPS builds — left in place.
 
+## Later same session (S150b)
+
+Same day, after the Step 1 deploy verified clean, three more items were closed. **(A) Postgres restore drill** — the monthly drill from Step 1 §13 was run for the first time: a throwaway `drill-pgrestore` container (not `etip_`-prefixed, isolated network, capped resources) restored the 2.16 GB nightly dump, `pg_restore -j 2` rc 0 in 6m18s, row counts across 8 key tables matched or grew as expected vs prod. PASS. One gotcha: `docker rm -f` without `-v` leaves the anonymous data volume behind (14 GB) — fixed by always using `-v`; disk returned to baseline. Procedure captured as `docs/runbooks/RESTORE_DRILL.md`. **(B) Login email-collision fix** — PR #37 (`77e5953`) fixed the `findFirst`-by-email bug carried from S149: `findLoginCandidatesByEmail` now returns non-break-glass rows oldest-first, capped at 10, and login tries each until a bcrypt match. A Sonnet adversarial review (codex:rescue fallback) caught a candidate-eviction issue in the first draft (fixed with oldest-first + cap 10, 2 new tests). user-service tests 176 → 184, CI green. **(C) Tooling/doc fixes** — `/review` now diffs `origin/master...HEAD`; `/session-end` pushes the branch and opens a PR when not on master; roadmap §4 renumbered (Step 2 = S151–S157); Step 0 marked partial; Step 1/8 Redis eviction items marked resolved.
+
 ## ⚠️ Open Items / Next Steps
 
 1. **After 2026-09-27 03:17 UTC:** verify the first automated `etip-backup` and `docker-cleanup` cron runs succeeded (check `/var/log/etip-backup.log` and `/var/log/etip-docker-cleanup.log`).
 2. **Next session: Step 2 — search index** (`docs/roadmap/STEP_02_SEARCH_INDEX.md`). Fixes the Elasticsearch indexer's `'type'` crash and backfills the 12,010 Postgres IOCs currently missing from the index (carried from S149's baseline finding).
-3. **Open bug (carried from S149):** login `findFirst` email collision, `apps/user-service/src/repository.ts:63` — a real user row and a break-glass row can share an email; matching-password workaround is in place, deterministic fix still pending.
-4. **Deferred (Step 1 §13):** off-site backup automation (rclone, VPS → owner machine) — currently a manual copy step.
-5. **Deferred:** Healthchecks.io cron heartbeats (would catch a cron job that stops running entirely, as opposed to one that runs and fails — already covered by logs + Telegram); `ProtectedRoute` demo-session fallback on non-2xx `/health` — belongs to Step 5.
-6. **Not run this session:** `shellcheck`/`actionlint` on the changed scripts/workflows (no Docker Desktop locally) — CI's own checks are the only current gate on these files.
+3. **Deferred (Step 1 §13):** off-site backup automation (rclone, VPS → owner machine) — currently a manual copy step. Restore drill half of §13 is now done (see above).
+4. **Deferred:** Healthchecks.io cron heartbeats (would catch a cron job that stops running entirely, as opposed to one that runs and fails — already covered by logs + Telegram); `ProtectedRoute` demo-session fallback on non-2xx `/health` — belongs to Step 5.
+5. **Not run this session:** `shellcheck`/`actionlint` on the changed scripts/workflows (no Docker Desktop locally) — CI's own checks are the only current gate on these files.
 
 ## 🔁 How to Resume
 ```
 Run /session-start. Working on Step 2 (docs/roadmap/STEP_02_SEARCH_INDEX.md) session 1.
 Branch from latest master. Use sonnet/haiku as much as possible.
 ```
-Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md`, `docs/S150_STEP1_STAY_UP.md`, `docs/runbooks/UPTIME_ALERTS.md`.
+Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md`, `docs/S150_STEP1_STAY_UP.md`, `docs/runbooks/UPTIME_ALERTS.md`, `docs/runbooks/RESTORE_DRILL.md`.
 
 ## Agent-utilization footer
-- **Opus:** planning, diff review (7 bugs fixed), UptimeRobot/Telegram setup, VPS recovery drill.
-- **Sonnet:** scripts impl · reworked: Y (lock-hold, pipefail, image-ID bugs) · workflows impl · reworked: Y (ssh_retry under `bash -e`, rerun no-op) · docs · reworked: N · adversarial review · reworked: N · session-end docs · reworked: Y (first run interrupted, relaunched).
-- **Haiku:** session-start digest; post-deploy 21-check verification.
-- **codex:rescue:** n/a — Sonnet adversarial takeover, verdict=accept (2 medium fixed).
+- **Opus:** planning, diff review (7 bugs fixed), UptimeRobot/Telegram setup, VPS recovery drill, cleaned up leftover restore-drill volume.
+- **Sonnet:** scripts impl · reworked: Y (lock-hold, pipefail, image-ID bugs) · workflows impl · reworked: Y (ssh_retry under `bash -e`, rerun no-op) · docs · reworked: N · adversarial review · reworked: N · session-end docs · reworked: Y (first run interrupted, relaunched) · login fix TDD · reworked: Y (adversarial revise: candidate eviction) · restore drill · reworked: N (Opus cleaned leftover volume) · adversarial review login · reworked: N · 3 spec fixes · reworked: N.
+- **Haiku:** session-start digest; post-deploy 21-check verification; roadmap §4 renumber · reworked: Y (2 row labels corrected by Opus).
+- **codex:rescue:** n/a — Sonnet adversarial takeover ×2 (Step 1: accept; login: revise→fixed).
