@@ -311,7 +311,7 @@ describe('Sidebar cleanup — MODULES array', () => {
   })
 
   it('Command Center is last in the array', () => {
-    expect(MODULES[MODULES.length - 1].id).toBe('command-center')
+    expect(MODULES[MODULES.length - 1]!.id).toBe('command-center')
   })
 })
 

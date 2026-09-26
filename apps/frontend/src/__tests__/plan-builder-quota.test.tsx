@@ -5,10 +5,18 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@/test/test-utils'
+import type { PlanDefinition } from '@/hooks/use-plan-builder'
+import type { FeatureKey } from '@/hooks/use-feature-limits'
 
 // ─── Mock hooks ─────────────────────────────────────────────
 
-const mockPlans = [
+const ALL_FEATURE_KEYS: FeatureKey[] = [
+  'ioc_management', 'threat_actors', 'malware_intel', 'vulnerability_intel', 'threat_hunting',
+  'graph_exploration', 'digital_risk_protection', 'correlation_engine', 'reports', 'ai_enrichment',
+  'feed_subscriptions', 'users', 'data_retention', 'api_access', 'ioc_storage', 'alerts',
+]
+
+const mockPlans: PlanDefinition[] = [
   {
     id: '1', planId: 'free', name: 'Free', description: 'Basic', priceMonthlyInr: 0,
     priceAnnualInr: 0, isPublic: true, isDefault: true, sortOrder: 0,
@@ -37,8 +45,8 @@ const mockPlans = [
     id: '2', planId: 'enterprise', name: 'Enterprise', description: 'Unlimited', priceMonthlyInr: 49999,
     priceAnnualInr: 499999, isPublic: true, isDefault: false, sortOrder: 3,
     createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z',
-    features: Array.from({ length: 16 }, (_, i) => ({
-      featureKey: ['ioc_management', 'threat_actors', 'malware_intel', 'vulnerability_intel', 'threat_hunting', 'graph_exploration', 'digital_risk_protection', 'correlation_engine', 'reports', 'ai_enrichment', 'feed_subscriptions', 'users', 'data_retention', 'api_access', 'ioc_storage', 'alerts'][i],
+    features: ALL_FEATURE_KEYS.map((featureKey) => ({
+      featureKey,
       enabled: true, limitDaily: -1, limitWeekly: -1, limitMonthly: -1, limitTotal: -1,
     })),
     _count: { tenants: 1 },

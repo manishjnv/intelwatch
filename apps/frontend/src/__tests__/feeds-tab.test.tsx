@@ -34,7 +34,7 @@ vi.mock('@/hooks/use-global-catalog', () => ({
     isLoading: false, isDemo: false,
   }),
   useMySubscriptions: () => ({
-    data: { data: [{ globalFeedId: 'gf-1', id: 's1', tenantId: 't1', alertConfig: {}, createdAt: '' }], total: 1, page: 1, limit: 50 },
+    data: [{ globalFeedId: 'gf-1', id: 's1', tenantId: 't1', alertConfig: {}, createdAt: '' }],
     isLoading: false, isDemo: false,
     subscribe: vi.fn(), unsubscribe: vi.fn(), isSubscribing: false, isUnsubscribing: false,
   }),

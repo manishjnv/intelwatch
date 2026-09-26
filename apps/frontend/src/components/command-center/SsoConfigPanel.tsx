@@ -81,7 +81,7 @@ function GroupMappingTable({ mappings, onChange }: { mappings: GroupRoleMapping[
   const removeRow = (i: number) => onChange(mappings.filter((_, idx) => idx !== i))
   const updateRow = (i: number, field: keyof GroupRoleMapping, value: string) => {
     const updated = [...mappings]
-    updated[i] = { ...updated[i], [field]: value }
+    updated[i] = { ...updated[i]!, [field]: value }
     onChange(updated)
   }
 

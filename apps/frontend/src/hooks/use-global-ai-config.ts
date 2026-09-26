@@ -58,7 +58,7 @@ const MODEL_ACCURACY: Record<AiModel, number> = { haiku: 78, sonnet: 92, opus: 9
 
 function buildDemoSubtasks(): AiSubtaskConfig[] {
   return Object.entries(RECOMMENDED_MODELS).map(([key, rec]) => {
-    const [category, subtask] = key.split('.')
+    const [category = '', subtask = ''] = key.split('.')
     return {
       category,
       subtask,

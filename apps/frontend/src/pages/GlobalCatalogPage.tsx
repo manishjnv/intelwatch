@@ -12,7 +12,7 @@ import {
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { DataTable, type Column } from '@/components/data/DataTable'
 import { TableSkeleton } from '@/components/data/TableSkeleton'
-import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
+import { FilterBar } from '@/components/data/FilterBar'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { StatusDot } from '@/components/feed/FeedCard'
 import { useAuthStore } from '@/stores/auth-store'
@@ -27,7 +27,7 @@ const TABS: { id: TabId; label: string; adminOnly?: boolean }[] = [
   { id: 'pipeline', label: 'Pipeline Health', adminOnly: true },
 ]
 
-const FEED_TYPE_FILTERS: FilterOption[] = [
+const FEED_TYPE_FILTERS: { value: string; label: string }[] = [
   { value: '', label: 'All Types' },
   { value: 'rss', label: 'RSS' },
   { value: 'nvd', label: 'NVD' },
@@ -36,7 +36,7 @@ const FEED_TYPE_FILTERS: FilterOption[] = [
   { value: 'misp', label: 'MISP' },
 ]
 
-const PLAN_FILTERS: FilterOption[] = [
+const PLAN_FILTERS: { value: string; label: string }[] = [
   { value: '', label: 'All Plans' },
   { value: 'free', label: 'Free' },
   { value: 'starter', label: 'Starter' },
@@ -242,9 +242,14 @@ export function GlobalCatalogPage() {
             onSearchChange={setSearch}
             searchPlaceholder="Search feeds..."
             filters={[
-              { label: 'Type', value: feedTypeFilter, options: FEED_TYPE_FILTERS, onChange: setFeedTypeFilter },
-              { label: 'Plan', value: planFilter, options: PLAN_FILTERS, onChange: setPlanFilter },
+              { key: 'type', label: 'Type', options: FEED_TYPE_FILTERS },
+              { key: 'plan', label: 'Plan', options: PLAN_FILTERS },
             ]}
+            filterValues={{ type: feedTypeFilter, plan: planFilter }}
+            onFilterChange={(key, value) => {
+              if (key === 'type') setFeedTypeFilter(value)
+              else if (key === 'plan') setPlanFilter(value)
+            }}
           />
           {feedsLoading ? (
             <TableSkeleton rows={5} columns={8} />

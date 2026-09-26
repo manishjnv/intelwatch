@@ -38,7 +38,7 @@ function ReviewTypeBadge({ type }: { type: ReviewType }) {
 
 function ReviewStatusBadge({ status, autoDisabled }: { status: ReviewStatus; autoDisabled: boolean }) {
   const key = autoDisabled ? 'autoDisabled' : status
-  const s = STATUS_STYLES[key] ?? STATUS_STYLES.pending
+  const s = STATUS_STYLES[key] ?? STATUS_STYLES.pending!
   return <span className={cn('px-1.5 py-0.5 text-[10px] rounded font-medium', s.className)}>{s.label}</span>
 }
 

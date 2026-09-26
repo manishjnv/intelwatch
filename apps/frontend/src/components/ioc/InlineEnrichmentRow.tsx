@@ -5,6 +5,7 @@
  */
 import { Loader2 } from 'lucide-react'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
+import type { Severity } from '@etip/shared-ui/components/EntityChip'
 
 interface EnrichmentSummary {
   vtDetections?: number
@@ -81,7 +82,7 @@ export function InlineEnrichmentRow({ enrichment, isLoading }: InlineEnrichmentR
       {enrichment.severity && (
         <div className="flex items-center gap-1.5" data-testid="risk-verdict">
           <span className="text-[10px] text-text-muted uppercase tracking-wider">Risk</span>
-          <SeverityBadge severity={enrichment.severity} />
+          <SeverityBadge severity={enrichment.severity as Severity} />
         </div>
       )}
 

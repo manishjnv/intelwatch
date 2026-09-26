@@ -50,7 +50,7 @@ vi.mock('@/components/ui/Toast', () => ({
 const mockUser = {
   id: 'u1', email: 'test@test.com', displayName: 'Test',
   role: 'analyst', tenantId: 't1', avatarUrl: null,
-  mfaEnabled: false, emailVerified: true, mfaVerifiedAt: null,
+  mfaEnabled: false, emailVerified: true, mfaVerifiedAt: null as string | null,
 }
 
 vi.mock('@/stores/auth-store', () => ({

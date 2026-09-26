@@ -67,7 +67,7 @@ export function GlobalAiConfigPage() {
 
   const handleSaveAll = () => {
     for (const [key, model] of Object.entries(pendingChanges)) {
-      const [category, subtask] = key.split('.')
+      const [category = '', subtask = ''] = key.split('.')
       setModel({ category, subtask, model })
     }
     setPendingChanges({})

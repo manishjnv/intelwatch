@@ -60,7 +60,7 @@ describe('LinkedIocsSection', () => {
   it('click IOC row calls onIocClick', () => {
     const onIocClick = vi.fn()
     render(<LinkedIocsSection entityId="a1" entityType="actor" entityName="APT29" onIocClick={onIocClick} />)
-    fireEvent.click(screen.getAllByTestId('linked-ioc-row')[0])
+    fireEvent.click(screen.getAllByTestId('linked-ioc-row')[0]!)
     expect(onIocClick).toHaveBeenCalledWith('i1')
   })
 

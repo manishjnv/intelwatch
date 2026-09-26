@@ -159,7 +159,7 @@ function SuperAdminOverview({ data }: OverviewTabProps) {
         <KpiCard label="Items Processed" value={globalStats.totalItems.toLocaleString()}
           color="text-accent" testId="kpi-total-items" />
         <KpiCard label="Providers Active"
-          value={String(Object.keys(globalStats.costByProvider).filter(k => globalStats.costByProvider[k] > 0).length)}
+          value={String(Object.keys(globalStats.costByProvider).filter(k => (globalStats.costByProvider[k] ?? 0) > 0).length)}
           color="text-sev-low" testId="kpi-providers" />
         <KpiCard label="Subtasks" value={String(Object.keys(globalStats.costBySubtask).length)}
           color="text-cyan-400" testId="kpi-subtasks" />

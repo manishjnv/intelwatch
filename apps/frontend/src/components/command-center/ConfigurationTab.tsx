@@ -134,7 +134,7 @@ export function ConfigurationTab({ data, aiConfig }: ConfigurationTabProps) {
   // Cost estimator: per-subtask cost for N articles/month
   const costBreakdown = useMemo(() => {
     return subtasks.map(s => {
-      const perItem = MODEL_COSTS_PER_1K[s.model] ?? MODEL_COSTS_PER_1K.haiku
+      const perItem = MODEL_COSTS_PER_1K[s.model] ?? MODEL_COSTS_PER_1K.haiku!
       const monthlyCost = perItem * articlesPerMonth
       return { subtask: s.subtask, category: s.category, model: s.model, monthlyCost }
     })

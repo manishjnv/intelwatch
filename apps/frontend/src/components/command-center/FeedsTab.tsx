@@ -101,7 +101,7 @@ export function UnifiedFeedsPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const unifiedRows = useMemo(() => {
     const tenantFeeds: FeedRecord[] = feeds.data?.data ?? []
     const catalogFeeds = catalog.data ?? []
-    const subList: Array<{ globalFeedId?: string; id?: string }> = subs.data?.data ?? subs.data ?? []
+    const subList: Array<{ globalFeedId?: string; id?: string }> = subs.data ?? []
     const subscribedCatalogIds = new Set(subList.map(s => s.globalFeedId ?? s.id))
     const claimedNames = new Set<string>()
     const rows: UnifiedFeedRow[] = []

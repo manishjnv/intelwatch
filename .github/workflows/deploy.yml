@@ -60,7 +60,7 @@ jobs:
 
       - name: Typecheck + Lint + Audit (parallel — these are independent of each other)
         run: |
-          pnpm --filter '!@etip/frontend' -r run typecheck &
+          pnpm -r run typecheck &
           PID_TC=$!
           pnpm -r run lint &
           PID_LINT=$!

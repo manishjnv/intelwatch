@@ -79,8 +79,8 @@ export function useOnboardingFeeds(planTier: string) {
     iocTypes: [...ALL_IOC_TYPES],
   })
 
-  const maxGlobal = PLAN_FEED_LIMITS[planTier] ?? PLAN_FEED_LIMITS.free
-  const maxPrivate = PLAN_PRIVATE_LIMITS[planTier] ?? PLAN_PRIVATE_LIMITS.free
+  const maxGlobal = PLAN_FEED_LIMITS[planTier] ?? PLAN_FEED_LIMITS.free ?? 5
+  const maxPrivate = PLAN_PRIVATE_LIMITS[planTier] ?? PLAN_PRIVATE_LIMITS.free ?? 3
   const tenantTier = tierIndex(planTier)
 
   // Fetch global catalog

@@ -66,7 +66,7 @@ export function PlanComparisonMatrix({ plans, currentPlanId, onUpgrade, compact 
               Feature
             </th>
             {sorted.map(plan => {
-              const colors = TIER_COLORS[plan.planId] ?? TIER_COLORS.free
+              const colors = TIER_COLORS[plan.planId] ?? TIER_COLORS.free!
               const isCurrent = plan.planId === currentPlanId
               return (
                 <th
@@ -103,7 +103,7 @@ export function PlanComparisonMatrix({ plans, currentPlanId, onUpgrade, compact 
               </td>
               {sorted.map(plan => {
                 const feature = plan.features.find(f => f.featureKey === featureKey)
-                const colors = TIER_COLORS[plan.planId] ?? TIER_COLORS.free
+                const colors = TIER_COLORS[plan.planId] ?? TIER_COLORS.free!
                 const enabled = feature?.enabled ?? false
                 const dailyLimit = feature?.limitDaily ?? 0
                 const monthlyLimit = feature?.limitMonthly ?? 0

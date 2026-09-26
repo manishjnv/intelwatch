@@ -37,7 +37,7 @@ export function ThreatBriefingWidget({ profile }: Props) {
     // Severity trend: compare last two iocTrend points
     const trend = iocTrend.slice(-2)
     const today = trend[1]?.count ?? trend[0]?.count ?? 0
-    const yesterday = trend.length > 1 ? trend[0].count : today
+    const yesterday = trend.length > 1 ? trend[0]!.count : today
     const pctChange = yesterday > 0 ? ((today - yesterday) / yesterday) * 100 : 0
 
     return { criticalCount, cveCount, topEpss, activeActor, pctChange }

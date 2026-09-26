@@ -31,8 +31,8 @@ describe('AttackTechniqueMatrix', () => {
   it('hover shows tooltip with description (title attribute)', () => {
     render(<AttackTechniqueMatrix techniques={MOCK_TECHNIQUES} entityName="APT29" entityType="actor" />)
     const cells = screen.getAllByTestId('technique-cell')
-    expect(cells[0].getAttribute('title')).toContain('T1190')
-    expect(cells[0].getAttribute('title')).toContain('Exploit Public-Facing App')
+    expect(cells[0]!.getAttribute('title')).toContain('T1190')
+    expect(cells[0]!.getAttribute('title')).toContain('Exploit Public-Facing App')
   })
 
   it('click technique opens MITRE ATT&CK external link', () => {

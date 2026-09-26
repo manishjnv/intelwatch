@@ -37,12 +37,12 @@ export function ExecSummaryCards() {
   const data = useMemo(() => {
     // Risk posture
     const riskKey = deriveRiskLevel(iocBySeverity)
-    const risk = RISK_LEVELS[riskKey]
+    const risk = RISK_LEVELS[riskKey]!
 
     // Trend
     const pts = iocTrend.slice(-2)
     const today = pts[1]?.count ?? pts[0]?.count ?? 0
-    const yesterday = pts.length > 1 ? pts[0].count : today
+    const yesterday = pts.length > 1 ? pts[0]!.count : today
     const pctChange = yesterday > 0 ? ((today - yesterday) / yesterday) * 100 : 0
 
     // Top threats (plain English)

@@ -29,7 +29,7 @@ interface AdmiraltyBadgeProps {
 }
 
 export function AdmiraltyBadge({ source, cred, size = 'sm' }: AdmiraltyBadgeProps) {
-  const letter = (source || '?')[0].toUpperCase()
+  const letter = (source || '?').charAt(0).toUpperCase()
   const num = String(cred || '?')
   const code = `${letter}${num}`
 

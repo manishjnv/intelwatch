@@ -119,7 +119,7 @@ export function FeedSelectionStep({ planTier, onContinue, onSkip }: {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-text-primary">Your Own Feeds</h3>
-          <span className="text-[10px] text-text-muted">{privateFeeds.length}/{maxPrivate} added</span>
+          <span className="text-[10px] text-text-muted">{privateFeeds.length}/{maxPrivate ?? 0} added</span>
         </div>
         {privateFeeds.map(pf => (
           <div key={pf.id} className="flex items-center gap-3 p-2 bg-bg-elevated rounded border border-border-subtle mb-2">
@@ -158,7 +158,7 @@ export function FeedSelectionStep({ planTier, onContinue, onSkip }: {
           </div>
         ) : (
           <button onClick={() => setShowAddFeed(true)}
-            disabled={privateFeeds.length >= maxPrivate}
+            disabled={privateFeeds.length >= (maxPrivate ?? 0)}
             className="flex items-center gap-1.5 px-3 py-2 text-xs text-accent border border-accent/30 rounded-lg hover:bg-accent/5 disabled:opacity-50">
             <Plus className="w-3.5 h-3.5" /> Add Your Own Feed
           </button>

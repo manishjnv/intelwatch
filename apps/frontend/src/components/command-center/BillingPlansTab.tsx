@@ -230,7 +230,7 @@ function SubscriptionPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <h3 className="text-sm font-semibold text-text-primary">Your Plan Includes</h3>
         {(() => {
           const plan = s?.planName ?? 'Free'
-          const features = PLAN_FEATURES[plan] ?? PLAN_FEATURES.Free
+          const features = PLAN_FEATURES[plan] ?? PLAN_FEATURES.Free!
           const items = [
             { label: 'Threat Feeds', value: features.feeds, icon: Rss },
             { label: 'IOC Capacity', value: features.iocs, icon: ShieldCheck },
@@ -316,10 +316,10 @@ function PlansUpgradePanel() {
   const currentPlan = sub.data?.planName ?? 'Free'
 
   const planList: { name: string; price: number; features: Record<string, string> }[] = [
-    { name: 'Free', price: 0, features: PLAN_FEATURES.Free },
-    { name: 'Starter', price: 9999, features: PLAN_FEATURES.Starter },
-    { name: 'Teams', price: 18999, features: PLAN_FEATURES.Teams },
-    { name: 'Enterprise', price: 49999, features: PLAN_FEATURES.Enterprise },
+    { name: 'Free', price: 0, features: PLAN_FEATURES.Free! },
+    { name: 'Starter', price: 9999, features: PLAN_FEATURES.Starter! },
+    { name: 'Teams', price: 18999, features: PLAN_FEATURES.Teams! },
+    { name: 'Enterprise', price: 49999, features: PLAN_FEATURES.Enterprise! },
   ]
 
   const featureKeys = ['iocs', 'feeds', 'members', 'ai', 'exports', 'integrations', 'support']

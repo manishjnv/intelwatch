@@ -7,6 +7,7 @@ import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { X, GitCompare } from 'lucide-react'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
+import type { Severity } from '@etip/shared-ui/components/EntityChip'
 import { ConfidenceGauge } from '@/components/ioc/ConfidenceGauge'
 import type { IOCRecord } from '@/hooks/use-intel-data'
 
@@ -102,7 +103,7 @@ function buildRows(records: IOCRecord[]): CompareRow[] {
   }
 
   add('Type', r => <span className="font-mono uppercase">{r.iocType}</span>, r => r.iocType)
-  add('Severity', r => <SeverityBadge severity={r.severity} />, r => r.severity)
+  add('Severity', r => <SeverityBadge severity={r.severity as Severity} />, r => r.severity)
   add('Confidence', r => <ConfidenceGauge value={r.confidence} />, r => r.confidence)
   add('Lifecycle', r => <LifecyclePill state={r.lifecycle} />, r => r.lifecycle)
   add('TLP', r => <span className="uppercase font-mono text-[10px]">{r.tlp}</span>, r => r.tlp)
