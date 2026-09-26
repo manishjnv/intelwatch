@@ -17,20 +17,6 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
-    inputs:
-      action:
-        description: 'Action to perform'
-        required: true
-        default: 'deploy'
-        type: choice
-        options:
-          - deploy
-          - status
-          - migrate
-          - command
-      command:
-        description: 'Custom command (only for action=command)'
-        required: false
 
 # STEP_00B U10: never run two deploys at once (older code could win the :latest race)
 concurrency:
@@ -126,6 +112,7 @@ jobs:
     name: Deploy to VPS
     needs: [build-images]
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     if: |
       always() &&
       needs.build-images.result == 'success'
@@ -147,173 +134,147 @@ jobs:
             IdentityFile ~/.ssh/id_deploy
             StrictHostKeyChecking no
             ProxyCommand cloudflared access ssh --hostname %h
+            ServerAliveInterval 15
+            ServerAliveCountMax 4
+            ConnectTimeout 30
           EOF
 
-      - name: Deploy via SSH
-        timeout-minutes: 10
-        run: |
-          ssh vps << 'DEPLOY_SCRIPT'
-            set -e
-
-            echo "═══ ETIP Deploy Started ═══"
-            echo "Time: $(date -u)"
-
-            # ── Safety: verify existing site is healthy ──
-            echo "Checking existing containers..."
-            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
-
-            # ── Pull latest code ──
-            cd /opt/intelwatch
-            git fetch origin master
-            git reset --hard origin/master
-
-            # ── Sync AI config to .env (from GitHub Secrets) ──
-            grep -q '^TI_ANTHROPIC_API_KEY=' .env 2>/dev/null && \
-              sed -i 's|^TI_ANTHROPIC_API_KEY=.*|TI_ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}|' .env || \
-              echo 'TI_ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}' >> .env
-            grep -q '^TI_AI_ENABLED=' .env 2>/dev/null && \
-              sed -i 's|^TI_AI_ENABLED=.*|TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}|' .env || \
-              echo 'TI_AI_ENABLED=${{ secrets.TI_AI_ENABLED }}' >> .env
-
-            # ── Pull pre-built images from GHCR (built in CI, not on VPS) ──
-            echo "Pulling pre-built images from GHCR..."
-            echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-            docker pull ghcr.io/${{ github.repository_owner }}/etip-backend:latest
-            docker pull ghcr.io/${{ github.repository_owner }}/etip-frontend:latest
-
-            # Tag as local names for docker-compose compatibility
-            docker tag ghcr.io/${{ github.repository_owner }}/etip-backend:latest etip-backend:latest
-            docker tag ghcr.io/${{ github.repository_owner }}/etip-frontend:latest etip-frontend:latest
-
-            # ── Pre-cleanup: remove ALL orphaned/hash-prefixed containers (RCA #41) ──
-            # Must run BEFORE compose up — otherwise compose creates hash-prefixed
-            # duplicates when it finds name collisions with stale containers.
-            echo "Removing stale orphan containers..."
-            docker ps -a --filter "status=created" --filter "status=exited" \
-              --format "{{.Names}}" | grep "etip" | xargs -r docker rm -f 2>/dev/null || true
-
-            # Start infra services (no recreate — preserves uptime)
-            echo "Starting infrastructure..."
-            docker compose -p etip -f docker-compose.etip.yml up -d etip_postgres etip_redis etip_elasticsearch etip_neo4j etip_minio etip_prometheus etip_grafana
-
-            # Force recreate app containers (picks up new images + compose config)
-            echo "Recreating app containers..."
-            docker compose -p etip -f docker-compose.etip.yml up -d --force-recreate --remove-orphans etip_api etip_ingestion etip_normalization etip_enrichment etip_ioc_intelligence etip_threat_actor_intel etip_malware_intel etip_vulnerability_intel etip_threat_graph etip_correlation etip_hunting etip_drp etip_customization etip_integration etip_user_management etip_onboarding etip_billing etip_admin etip_es_indexing etip_reporting etip_alerting etip_analytics etip_caching etip_frontend etip_nginx
-
-            # ── Sync database schema (idempotent) ──
-            echo "Syncing database schema..."
-            for i in 1 2 3 4 5; do
-              if docker exec etip_api npx prisma db push --schema=prisma/schema.prisma --accept-data-loss 2>&1; then
-                echo "✅ Database schema synced"
-                break
-              fi
-              if [ $i -eq 5 ]; then
-                echo "⚠️  DB push failed after 5 attempts — continuing (scheduler will retry)"
-              fi
-              echo "DB push attempt $i failed, retrying in 5s..."
-              sleep 5
-            done
-
-            # ── Caddy network ──
-            docker restart ti-platform-caddy-1 2>/dev/null || echo "Caddy restart skipped"
-
-            # ── Parallel health checks ─────────────────────────────────
-            # All services checked concurrently (60s max wall-clock instead of 20×60s sequential)
-            echo ""
-            echo "=== Health Checks (parallel) ==="
-
-            HEALTH_DIR=$(mktemp -d)
-            check_health() {
-              local name="$1" port="$2" container="$3" critical="$4"
-              for i in $(seq 1 12); do
-                if curl -sf "http://127.0.0.1:${port}/health" > /dev/null 2>&1; then
-                  echo "${name}: ✅ healthy after $((i * 5))s"
-                  echo "ok" > "${HEALTH_DIR}/${container}"
-                  return 0
-                fi
-                sleep 5
-              done
-              if [ "$critical" = "yes" ]; then
-                echo "${name}: ❌ FAILED after 60s"
-                docker logs "$container" --tail 20 2>&1 || true
-                echo "fail" > "${HEALTH_DIR}/${container}"
-                return 1
+          # ssh_retry: retries ONLY on ssh exit 255 (dropped tunnel — "websocket: bad
+          # handshake", "Broken pipe"), 3 attempts total, sleeps 10s then 20s between.
+          # Any other exit code returns immediately.
+          # Callers needing stdin set SSH_STDIN=<file> so every attempt re-reads it.
+          # `&& rc=0 || rc=$?` keeps a 255 from tripping the runner's `bash -e`.
+          cat > ~/ssh_retry.sh << 'HELPER'
+          ssh_retry() {
+            local attempt=1 max=3 rc sleep_s
+            while true; do
+              if [ -n "${SSH_STDIN:-}" ]; then
+                ssh "$@" < "$SSH_STDIN" && rc=0 || rc=$?
               else
-                echo "${name}: ⚠️  PENDING (non-critical)"
-                echo "ok" > "${HEALTH_DIR}/${container}"
-                return 0
+                ssh "$@" && rc=0 || rc=$?
               fi
-            }
-
-            # Launch all checks in background
-            check_health "API Gateway"        3001 etip_api                  yes &
-            check_health "Ingestion"           3004 etip_ingestion            no  &
-            check_health "Normalization"       3005 etip_normalization        yes &
-            check_health "Enrichment"          3006 etip_enrichment           yes &
-            check_health "IOC Intelligence"    3007 etip_ioc_intelligence     yes &
-            check_health "Threat Actor"        3008 etip_threat_actor_intel   yes &
-            check_health "Malware Intel"       3009 etip_malware_intel        yes &
-            check_health "Vulnerability"       3010 etip_vulnerability_intel  yes &
-            check_health "DRP Service"         3011 etip_drp                  no  &
-            check_health "Threat Graph"        3012 etip_threat_graph         no  &
-            check_health "Correlation"         3013 etip_correlation          no  &
-            check_health "Hunting"             3014 etip_hunting              no  &
-            check_health "Integration"         3015 etip_integration          no  &
-            check_health "User Management"     3016 etip_user_management      no  &
-            check_health "Customization"       3017 etip_customization        no  &
-            check_health "Onboarding"          3018 etip_onboarding           no  &
-            check_health "Billing"             3019 etip_billing              no  &
-            check_health "Admin"               3022 etip_admin                no  &
-            check_health "ES Indexing"         3020 etip_es_indexing          no  &
-            check_health "Reporting"           3021 etip_reporting            no  &
-            check_health "Alerting"            3023 etip_alerting             no  &
-            check_health "Analytics"           3024 etip_analytics            no  &
-            check_health "Caching"             3025 etip_caching              no  &
-
-            # Wait for all background checks
-            wait
-
-            # Check nginx + frontend after backends are up
-            echo -n "Nginx proxy: "
-            for i in 1 2 3 4 5 6; do
-              if curl -sf http://127.0.0.1:8080/health > /dev/null 2>&1; then
-                echo "✅ healthy after $((i * 5))s"
-                break
+              if [ "$rc" -ne 255 ] || [ "$attempt" -ge "$max" ]; then
+                return "$rc"
               fi
-              if [ $i -eq 6 ]; then
-                echo "❌ FAILED after 30s"
+              sleep_s=$((attempt * 10))
+              echo "ssh attempt $attempt failed (255), retrying in ${sleep_s}s..." >&2
+              sleep "$sleep_s"
+              attempt=$((attempt + 1))
+            done
+          }
+          HELPER
+
+      - name: Sync code
+        timeout-minutes: 3
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          source ~/ssh_retry.sh
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "SHA is not a valid git hash: $SHA"; exit 1; }
+          ssh_retry vps "cd /opt/intelwatch && git fetch origin master && git reset --hard $SHA"
+          ssh_retry vps "cd /opt/intelwatch && git log --oneline -1"
+
+      - name: Stage deploy secrets
+        timeout-minutes: 2
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_ENABLED: ${{ secrets.TI_AI_ENABLED }}
+        run: |
+          source ~/ssh_retry.sh
+          set -euo pipefail
+          ENV_FILE="$RUNNER_TEMP/deploy.env"
+          trap 'rm -f "$ENV_FILE"' EXIT
+          umask 077
+          printf 'GHCR_TOKEN=%s\nGHCR_OWNER=%s\nANTHROPIC_KEY=%s\nAI_ENABLED=%s\n' \
+            "$GHCR_TOKEN" "$GHCR_OWNER" "$ANTHROPIC_KEY" "$AI_ENABLED" > "$ENV_FILE"
+          SSH_STDIN="$ENV_FILE" ssh_retry vps 'umask 077; cat > /opt/intelwatch/.deploy.env'
+
+      - name: Launch detached deploy
+        timeout-minutes: 2
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          source ~/ssh_retry.sh
+          set -euo pipefail
+          LAUNCH_FILE="$RUNNER_TEMP/launch.sh"
+          trap 'rm -f "$LAUNCH_FILE"' EXIT
+          cat > "$LAUNCH_FILE" << 'LAUNCHER'
+          set -euo pipefail
+          SHA="$1"
+          mkdir -p /var/log/etip-deploy
+          STATUS_FILE="/var/log/etip-deploy/${SHA}.status"
+          case "$(cat "$STATUS_FILE" 2>/dev/null)" in
+            launched|running) echo "already launched"; exit 0 ;;
+          esac
+          echo "launched" > "$STATUS_FILE"
+          setsid nohup bash /opt/intelwatch/scripts/deploy-vps.sh "$SHA" \
+            > "/var/log/etip-deploy/${SHA}.log" 2>&1 < /dev/null &
+          exit 0
+          LAUNCHER
+          SSH_STDIN="$LAUNCH_FILE" ssh_retry vps "bash -s -- '$SHA'"
+
+      - name: Wait for deploy
+        timeout-minutes: 14
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          source ~/ssh_retry.sh
+          set -euo pipefail
+          STATUS_FILE="/var/log/etip-deploy/${SHA}.status"
+          LOG_FILE="/var/log/etip-deploy/${SHA}.log"
+          elapsed=0
+          max_elapsed=780
+          fail_streak=0
+          max_fail_streak=5
+          launched_for=0
+          status="unknown"
+          while [ "$elapsed" -lt "$max_elapsed" ]; do
+            if out=$(ssh_retry vps "cat '$STATUS_FILE' 2>/dev/null; true"); then
+              fail_streak=0
+              status=$(printf '%s' "$out" | tr -d '[:space:]')
+            else
+              fail_streak=$((fail_streak + 1))
+              echo "poll failed ($fail_streak/$max_fail_streak), continuing..."
+              if [ "$fail_streak" -ge "$max_fail_streak" ]; then
+                echo "too many consecutive poll failures — giving up"
+                ssh_retry vps "tail -n 200 '$LOG_FILE' 2>/dev/null || true" || true
                 exit 1
               fi
-              sleep 5
-            done
-            echo -n "Frontend: "
-            curl -sf http://127.0.0.1:8080/login > /dev/null 2>&1 && echo "✅ serving" || echo "⚠️  PENDING"
-
-            # Fail deploy if any critical service failed
-            if grep -rq "fail" "$HEALTH_DIR/" 2>/dev/null; then
-              echo "❌ Critical service(s) failed health check — deploy FAILED"
-              rm -rf "$HEALTH_DIR"
-              exit 1
+              sleep 15
+              elapsed=$((elapsed + 15))
+              continue
             fi
-            rm -rf "$HEALTH_DIR"
 
-            # ── Status ──
-            echo ""
-            echo "=== ETIP Container Status ==="
-            docker compose -p etip -f docker-compose.etip.yml ps
+            if [ "$status" = "ok" ]; then
+              echo "✅ deploy ok"
+              ssh_retry vps "tail -n 80 '$LOG_FILE'"
+              exit 0
+            elif [ "$status" = "fail" ]; then
+              echo "❌ deploy failed"
+              ssh_retry vps "tail -n 200 '$LOG_FILE'"
+              exit 1
+            elif [ "$status" = "launched" ]; then
+              launched_for=$((launched_for + 15))
+              if [ "$launched_for" -gt 120 ]; then
+                echo "❌ deploy stuck at 'launched' for over 2 min — never took the lock"
+                ssh_retry vps "tail -n 200 '$LOG_FILE' 2>/dev/null || true"
+                exit 1
+              fi
+            fi
 
-            echo ""
-            echo "=== Existing Site (should be unchanged) ==="
-            docker ps --format '{{.Names}} {{.Status}}' | grep -v etip_ | head -5 || true
-
-            # ── Cleanup: prune images + any orphan containers created during deploy ──
-            docker ps -a --filter "status=created" --filter "status=exited" \
-              --format "{{.Names}}" | grep "etip" | xargs -r docker rm -f 2>/dev/null || true
-            docker image prune -f 2>/dev/null || true
-
-            echo ""
-            echo "═══ ETIP Deploy Complete ═══"
-          DEPLOY_SCRIPT
+            if [ $((elapsed % 60)) -eq 0 ]; then
+              echo "[$(date -u +%H:%M:%S)] status=${status}"
+              ssh_retry vps "tail -n 3 '$LOG_FILE' 2>/dev/null || true" || true
+            fi
+            sleep 15
+            elapsed=$((elapsed + 15))
+          done
+          echo "❌ deploy wait timed out after ${max_elapsed}s"
+          ssh_retry vps "tail -n 200 '$LOG_FILE' 2>/dev/null || true" || true
+          exit 1
 
       # ─── E2E Smoke Tests (master push only, non-blocking) ──────────
       - name: E2E pipeline smoke tests (post-deploy)
@@ -321,7 +282,8 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: |
-          ssh vps << 'E2E_SCRIPT'
+          source ~/ssh_retry.sh
+          cat > "$RUNNER_TEMP/e2e.sh" << 'E2E_SCRIPT'
             set +e
             echo "═══ E2E Smoke Tests ═══"
             cd /opt/intelwatch
@@ -351,3 +313,4 @@ jobs:
             echo "═══ E2E complete (non-blocking) ═══"
             exit 0
           E2E_SCRIPT
+          SSH_STDIN="$RUNNER_TEMP/e2e.sh" ssh_retry vps bash -s

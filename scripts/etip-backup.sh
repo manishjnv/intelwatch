@@ -15,7 +15,10 @@ set -euo pipefail
 BACKUP_DIR="${ETIP_BACKUP_DIR:-/var/backups/etip}"
 KEEP_DAYS="${ETIP_BACKUP_KEEP_DAYS:-7}"
 STAMP="$(date -u '+%Y-%m-%d_%H%M')"
-LOG_PREFIX="[ETIP-BACKUP $(date -u '+%Y-%m-%d %H:%M:%S')]"
+
+log() {
+  echo "[ETIP-BACKUP $(date -u '+%Y-%m-%d %H:%M:%S')] $*"
+}
 
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
@@ -28,16 +31,16 @@ PG_FILE="$BACKUP_DIR/pg-$STAMP.dump"
 docker exec etip_postgres pg_dump -U "$PG_USER" -d "$PG_DB" -Fc > "$PG_FILE.partial"
 mv "$PG_FILE.partial" "$PG_FILE"
 chmod 600 "$PG_FILE"
-echo "$LOG_PREFIX postgres ok $(du -h "$PG_FILE" | cut -f1) $PG_FILE"
+log "postgres ok $(du -h "$PG_FILE" | cut -f1) $PG_FILE"
 
 # Redis: copy the persistence files (appendonly is on). Best effort.
 if docker exec etip_redis sh -c 'test -d /data' 2>/dev/null; then
   docker exec etip_redis sh -c 'tar -C /data -cf - .' > "$BACKUP_DIR/redis-$STAMP.tar" 2>/dev/null \
     && chmod 600 "$BACKUP_DIR/redis-$STAMP.tar" \
-    && echo "$LOG_PREFIX redis ok $(du -h "$BACKUP_DIR/redis-$STAMP.tar" | cut -f1)" \
-    || echo "$LOG_PREFIX redis copy failed (non-fatal)"
+    && log "redis ok $(du -h "$BACKUP_DIR/redis-$STAMP.tar" | cut -f1)" \
+    || log "redis copy failed (non-fatal)"
 fi
 
 # Retention
 find "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'pg-*.dump' -o -name 'redis-*.tar' \) -mtime +"$KEEP_DAYS" -delete
-echo "$LOG_PREFIX done (keeping ${KEEP_DAYS} days)"
+log "done (keeping ${KEEP_DAYS} days)"

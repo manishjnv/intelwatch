@@ -1,0 +1,5 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/5 * * * * root ionice -c3 bash /opt/intelwatch/scripts/health-recovery.sh >> /var/log/etip-health-recovery.log 2>&1
+30 2 * * * root bash /opt/intelwatch/scripts/etip-backup.sh >> /var/log/etip-backup.log 2>&1
+17 3 * * * root bash /opt/intelwatch/scripts/docker-cleanup.sh >> /var/log/etip-docker-cleanup.log 2>&1

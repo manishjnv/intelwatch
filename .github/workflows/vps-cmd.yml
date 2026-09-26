@@ -37,12 +37,41 @@ jobs:
             IdentityFile ~/.ssh/id_deploy
             StrictHostKeyChecking no
             ProxyCommand cloudflared access ssh --hostname %h
+            ServerAliveInterval 15
+            ServerAliveCountMax 4
+            ConnectTimeout 30
           EOF
+
+          # ssh_retry: retries ONLY on ssh exit 255 (dropped tunnel — "websocket: bad
+          # handshake", "Broken pipe"), 3 attempts total, sleeps 10s then 20s between.
+          # Any other exit code returns immediately.
+          # Callers needing stdin set SSH_STDIN=<file> so every attempt re-reads it.
+          # `&& rc=0 || rc=$?` keeps a 255 from tripping the runner's `bash -e`.
+          cat > ~/ssh_retry.sh << 'HELPER'
+          ssh_retry() {
+            local attempt=1 max=3 rc sleep_s
+            while true; do
+              if [ -n "${SSH_STDIN:-}" ]; then
+                ssh "$@" < "$SSH_STDIN" && rc=0 || rc=$?
+              else
+                ssh "$@" && rc=0 || rc=$?
+              fi
+              if [ "$rc" -ne 255 ] || [ "$attempt" -ge "$max" ]; then
+                return "$rc"
+              fi
+              sleep_s=$((attempt * 10))
+              echo "ssh attempt $attempt failed (255), retrying in ${sleep_s}s..." >&2
+              sleep "$sleep_s"
+              attempt=$((attempt + 1))
+            done
+          }
+          HELPER
 
       - name: Execute command on VPS
         timeout-minutes: 5
         run: |
-          ssh ssh.intelwatch.in << 'REMOTE'
+          source ~/ssh_retry.sh
+          cat > "$RUNNER_TEMP/remote.sh" << 'REMOTE'
           set -e
           cd /opt/intelwatch
           echo "━━━ VPS Command Runner ━━━"
@@ -54,3 +83,4 @@ jobs:
           echo ""
           echo "━━━ Done ━━━"
           REMOTE
+          SSH_STDIN="$RUNNER_TEMP/remote.sh" ssh_retry ssh.intelwatch.in bash -s
