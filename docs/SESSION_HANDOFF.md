@@ -42,7 +42,7 @@ Sample IP 3.0.21.0 (tenant e4e11c4c) found in ES: 1 hit
 7 transient "ioc-update" job failures during the drain (60 min window) — all retried OK, failed count
   unchanged. Likely an update racing the backfill index write. Folded into the existing
   "ES indexer backfill speed" debt item, not a new bug.
-Result: Step 2 DONE (server side). Owner ⌘K UI click-through (3.0.21.0 / 3.5.17.10) still pending.
+Result: Step 2 DONE. Owner ⌘K click-through PASSED: `3.0.21.0` (IntelWatch HQ) and `3.5.17.10` (home pvt ltd) both shown under "Indicators of Compromise".
 ```
 
 **S161a PR A deploy (PR #44, run 36244794791):** Test/Typecheck/Lint 6m20s ✅, Build&Push 2m03s ✅, Deploy 2m55s ✅. VPS at `baaf147`. 32/32 etip containers healthy (verified directly).
@@ -62,7 +62,7 @@ Frontend container logs: 0 errors
 ## ⚠️ Open Items / Next Steps
 
 **Immediate:**
-1. Owner ⌘K UI click-through (type `3.0.21.0` or `3.5.17.10` on intelwatch.in) — the last unverified piece of Step 2.
+1. ~~Owner ⌘K UI click-through~~ — PASSED 2026-09-26 (both tenants).
 2. **S161a PR B** (branch `s161a/honest-ui-billing-users`) — see "How to Resume" below.
 
 **Deferred (carried):**
