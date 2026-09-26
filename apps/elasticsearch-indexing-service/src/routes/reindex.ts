@@ -28,7 +28,9 @@ export function reindexRoutes(deps: ReindexRouteDeps) {
         );
       }
 
-      const { tenantId, iocs } = parsed.data;
+      const { tenantId } = parsed.data;
+      // Docs land in tenantId's index, so their tenantId field must say the same.
+      const iocs = parsed.data.iocs.map((ioc) => ({ ...ioc, tenantId }));
       const result = await indexer.reindexTenant(tenantId, iocs);
 
       return reply.status(202).send({

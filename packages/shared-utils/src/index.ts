@@ -80,3 +80,15 @@ export {
   type ModelDefinition,
   type Subtask,
 } from './model-registry.js';
+
+// ── Search index (IOC → Elasticsearch) ───────────────────────────
+export {
+  IocDocumentSchema,
+  IocIndexJobSchema,
+  IOC_INDEX_JOB_OPTIONS,
+  toIocDocument,
+  iocIndexJobId,
+  type IocDocument,
+  type IocIndexJob,
+  type IocRow,
+} from './search-index.js';

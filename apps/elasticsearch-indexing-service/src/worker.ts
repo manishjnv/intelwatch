@@ -41,28 +41,39 @@ export class IocIndexWorker {
     });
   }
 
-  /** Process a single IOC index job. Unknown actions are silently skipped. */
+  /** Process a single IOC index job. Invalid/unknown jobs are logged and dropped (job completes). */
   private async processJob(data: unknown): Promise<void> {
     const parsed = IocIndexJobSchema.safeParse(data);
     if (!parsed.success) {
-      getLogger().warn({ data, issues: parsed.error.issues }, 'Invalid IOC index job payload — skipping');
+      const jobId = (data as { iocId?: unknown } | null)?.iocId;
+      getLogger().warn({ jobId, issues: parsed.error.issues }, 'Invalid IOC index job payload — dropping');
       return;
     }
 
-    const { iocId, tenantId, action, payload } = parsed.data;
+    // Index name comes from the job's tenantId; a payload claiming another tenant/IOC is a producer bug.
+    const p = 'payload' in parsed.data ? parsed.data.payload : undefined;
+    if ((p?.tenantId !== undefined && p.tenantId !== parsed.data.tenantId) ||
+        (p?.iocId !== undefined && p.iocId !== parsed.data.iocId)) {
+      getLogger().warn({ jobId: parsed.data.iocId }, 'IOC index job payload tenantId/iocId mismatch — dropping');
+      return;
+    }
 
-    switch (action) {
-      case 'index':
-        await this.indexer.indexIOC(tenantId, iocId, payload as Parameters<typeof this.indexer.indexIOC>[2]);
+    switch (parsed.data.action) {
+      case 'index': {
+        const { iocId, tenantId, payload } = parsed.data;
+        await this.indexer.indexIOC(tenantId, iocId, payload);
         break;
-      case 'update':
-        await this.indexer.updateIOC(tenantId, iocId, (payload ?? {}) as Parameters<typeof this.indexer.updateIOC>[2]);
+      }
+      case 'update': {
+        const { iocId, tenantId, payload, iocType } = parsed.data;
+        await this.indexer.updateIOC(tenantId, iocId, payload, iocType);
         break;
-      case 'delete':
+      }
+      case 'delete': {
+        const { iocId, tenantId } = parsed.data;
         await this.indexer.deleteIOC(tenantId, iocId);
         break;
-      default:
-        getLogger().warn({ action }, 'Unknown IOC index action — skipping');
+      }
     }
   }
 

@@ -1,25 +1,12 @@
 import { z } from 'zod';
+import { IocDocumentSchema, IocIndexJobSchema } from '@etip/shared-utils';
+import type { IocDocument, IocIndexJob } from '@etip/shared-utils';
 
-// ── IOC document stored in Elasticsearch ────────────────────────────────────
+// ── IOC document stored in Elasticsearch (shared contract, DECISION-033) ────
+// Re-exported under the old local names so existing imports keep working.
 
-export const IocDocumentSchema = z.object({
-  iocId: z.string().min(1),
-  value: z.string().min(1),
-  type: z.string().min(1),
-  severity: z.enum(['low', 'medium', 'high', 'critical']),
-  confidence: z.number().int().min(0).max(100),
-  tags: z.array(z.string()).default([]),
-  firstSeen: z.string().datetime(),
-  lastSeen: z.string().datetime(),
-  tenantId: z.string().min(1),
-  sourceId: z.string().optional(),
-  enriched: z.boolean().default(false),
-  tlp: z.enum(['WHITE', 'GREEN', 'AMBER', 'RED']).default('WHITE'),
-  campaignIds: z.array(z.string()).optional(),
-  actorIds: z.array(z.string()).optional(),
-});
-
-export type IocDocument = z.infer<typeof IocDocumentSchema>;
+export { IocDocumentSchema, IocIndexJobSchema };
+export type { IocDocument, IocIndexJob };
 
 // ── Search query params ──────────────────────────────────────────────────────
 
@@ -27,12 +14,18 @@ export const SearchQueryParamsSchema = z.object({
   tenantId: z.string().min(1),
   q: z.string().optional(),
   type: z.string().optional(),
-  severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional(),
   tlp: z.enum(['WHITE', 'GREEN', 'AMBER', 'RED']).optional(),
   enriched: z
     .union([z.literal('true'), z.literal('false'), z.boolean()])
     .transform((v) => (typeof v === 'boolean' ? v : v === 'true'))
     .optional(),
+  // ponytail: same accept-string-default-false pattern as `enriched` above —
+  // z.coerce.boolean() would turn the string "false" into `true`.
+  includeInactive: z
+    .union([z.literal('true'), z.literal('false'), z.boolean()])
+    .transform((v) => (typeof v === 'boolean' ? v : v === 'true'))
+    .default(false),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(500).default(50),
 });
@@ -47,17 +40,6 @@ export const ReindexBodySchema = z.object({
 });
 
 export type ReindexBody = z.infer<typeof ReindexBodySchema>;
-
-// ── BullMQ job payload ────────────────────────────────────────────────────────
-
-export const IocIndexJobSchema = z.object({
-  iocId: z.string().min(1),
-  tenantId: z.string().min(1),
-  action: z.enum(['index', 'update', 'delete']),
-  payload: z.record(z.unknown()).optional(),
-});
-
-export type IocIndexJob = z.infer<typeof IocIndexJobSchema>;
 
 // ── Search result ─────────────────────────────────────────────────────────────
 

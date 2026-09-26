@@ -69,6 +69,17 @@ describe('index-naming', () => {
     it('maps unknown types to other category', () => {
       expect(getIndexCategory('some_future_type')).toBe('other');
     });
+
+    // Prisma IocType enum values (prisma/schema.prisma) — the real strings the
+    // worker sees, distinct from the bare hash names kept above for compat.
+    it.each([
+      ['ip', 'ip'], ['ipv6', 'ip'], ['domain', 'domain'], ['fqdn', 'domain'],
+      ['url', 'domain'], ['email', 'email'], ['hash_md5', 'hash'], ['hash_sha1', 'hash'],
+      ['hash_sha256', 'hash'], ['hash_sha512', 'hash'], ['cve', 'cve'], ['asn', 'ip'],
+      ['cidr', 'ip'], ['bitcoin_address', 'other'], ['unknown', 'other'],
+    ] as const)('maps Prisma IocType %s to category %s', (type, category) => {
+      expect(getIndexCategory(type)).toBe(category);
+    });
   });
 
   describe('getTypeIndex', () => {
@@ -86,6 +97,14 @@ describe('index-naming', () => {
     });
     it('returns other index for unknown types', () => {
       expect(getTypeIndex('tenant-1', 'xyz')).toBe('etip_tenant-1_iocs_other');
+    });
+
+    it('returns hash index for Prisma hash_sha256 type', () => {
+      expect(getTypeIndex('tenant-1', 'hash_sha256')).toBe('etip_tenant-1_iocs_hash');
+    });
+
+    it('returns other index for the literal Prisma "unknown" type', () => {
+      expect(getTypeIndex('tenant-1', 'unknown')).toBe('etip_tenant-1_iocs_other');
     });
   });
 
@@ -300,5 +319,19 @@ describe('ilm', () => {
     it('has priority 100', () => {
       expect(buildIndexTemplateBody().priority).toBe(100);
     });
+  });
+});
+
+describe('tenantId safety in index names', () => {
+  it.each(['*', 'a,b', 'ABC', '', 'x_iocs_*', '../x', 'a b'])('rejects unsafe tenantId %j', async (t) => {
+    const { getTypeIndex, getWildcardIndex } = await import('../src/index-naming.js');
+    expect(() => getWildcardIndex(t)).toThrow('Invalid tenantId');
+    expect(() => getTypeIndex(t, 'ip')).toThrow('Invalid tenantId');
+  });
+
+  it('accepts a uuid tenantId', async () => {
+    const { getWildcardIndex } = await import('../src/index-naming.js');
+    const id = '3f2b8c1e-4d5a-4b6c-9e7f-0a1b2c3d4e5f';
+    expect(getWildcardIndex(id)).toBe(`etip_${id}_iocs_*`);
   });
 });

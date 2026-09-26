@@ -62,6 +62,27 @@ describe('IocIndexWorker', () => {
     expect(typeof depth).toBe('number');
   });
 
+  const fullPayload = {
+    iocId: 'ioc-001',
+    tenantId: 'tenant-abc',
+    value: '1.2.3.4',
+    normalizedValue: '1.2.3.4',
+    type: 'ip',
+    severity: 'high',
+    confidence: 80,
+    lifecycle: 'active',
+    tags: [],
+    mitreAttack: [],
+    malwareFamilies: [],
+    threatActors: [],
+    firstSeen: '2026-01-01T00:00:00.000Z',
+    lastSeen: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    enriched: false,
+    archived: false,
+    tlp: 'WHITE',
+  };
+
   it('processes index action by calling indexer.indexIOC', async () => {
     const { Worker } = await import('bullmq');
     const calls = vi.mocked(Worker).mock.calls;
@@ -76,16 +97,13 @@ describe('IocIndexWorker', () => {
         action: 'index',
         iocId: 'ioc-001',
         tenantId: 'tenant-abc',
-        payload: { value: '1.2.3.4', type: 'ip' },
+        payload: fullPayload,
       },
     });
-    expect(indexer.indexIOC).toHaveBeenCalledWith('tenant-abc', 'ioc-001', {
-      value: '1.2.3.4',
-      type: 'ip',
-    });
+    expect(indexer.indexIOC).toHaveBeenCalledWith('tenant-abc', 'ioc-001', fullPayload);
   });
 
-  it('processes update action by calling indexer.updateIOC', async () => {
+  it('processes update action by calling indexer.updateIOC with iocType', async () => {
     const { Worker } = await import('bullmq');
     const calls = vi.mocked(Worker).mock.calls;
     const processorFn = calls[calls.length - 1]?.[1] as
@@ -99,12 +117,46 @@ describe('IocIndexWorker', () => {
         action: 'update',
         iocId: 'ioc-002',
         tenantId: 'tenant-xyz',
+        iocType: 'ip',
         payload: { severity: 'critical' },
       },
     });
     expect(indexer.updateIOC).toHaveBeenCalledWith('tenant-xyz', 'ioc-002', {
       severity: 'critical',
+    }, 'ip');
+  });
+
+  it('drops an invalid job (index action without payload) — logs warn, no ES call', async () => {
+    const { Worker } = await import('bullmq');
+    const calls = vi.mocked(Worker).mock.calls;
+    const processorFn = calls[calls.length - 1]?.[1] as
+      | ((job: { data: unknown }) => Promise<void>)
+      | undefined;
+
+    if (!processorFn) throw new Error('Worker processor not captured');
+
+    await expect(
+      processorFn({ data: { action: 'index', iocId: 'ioc-003', tenantId: 'tenant-abc' } }),
+    ).resolves.not.toThrow();
+    expect(indexer.indexIOC).not.toHaveBeenCalled();
+    expect(indexer.updateIOC).not.toHaveBeenCalled();
+  });
+
+  it('drops a job whose payload tenantId/iocId differs from the job (no cross-tenant doc)', async () => {
+    const { Worker } = await import('bullmq');
+    const calls = vi.mocked(Worker).mock.calls;
+    const processorFn = calls[calls.length - 1]?.[1] as
+      | ((job: { data: unknown }) => Promise<void>)
+      | undefined;
+    if (!processorFn) throw new Error('Worker processor not captured');
+
+    await processorFn({ data: { action: 'index', iocId: 'ioc-001', tenantId: 'tenant-other', payload: fullPayload } });
+    await processorFn({ data: { action: 'index', iocId: 'ioc-999', tenantId: 'tenant-abc', payload: fullPayload } });
+    await processorFn({
+      data: { action: 'update', iocId: 'ioc-001', tenantId: 'tenant-other', iocType: 'ip', payload: { tenantId: 'tenant-abc' } },
     });
+    expect(indexer.indexIOC).not.toHaveBeenCalled();
+    expect(indexer.updateIOC).not.toHaveBeenCalled();
   });
 
   it('processes delete action by calling indexer.deleteIOC', async () => {
