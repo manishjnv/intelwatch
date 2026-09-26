@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 149 &middot; 2026-09-25 &middot; S149: Step 0B urgent security + data-safety fixes deployed (tenant guard, secrets, Redis noeviction, nightly backups). 32/32 healthy.</span>
+  <span class="version">Session 150 &middot; 2026-09-26 &middot; S150: Step 1 stay-up deployed — detached deploy, schema push before restart, cron installed from git, recovery drill 38s (vs 46h in S148). 32/32 healthy.</span>
 </div>
 </div>
 
@@ -537,8 +537,9 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 149</span> Step 0B urgent fixes deployed — Next: Step 1 (uptime alert, safer deploy, schema push first)</div>
+    <div class="card-title"><span class="badge badge-green">Session 150</span> Step 1 stay-up deployed — Next: Step 2 (search index fix + backfill)</div>
     <div class="card-body">
+      <strong>Session 150 — Step 1 (2026-09-26):</strong> PR #36 merged (112c39f), CI/CD run 36219067370 green first try. Ops-only (scripts/, workflows), no app code changed. Deploy now runs detached (<code>setsid</code>) so an SSH drop can't strand it mid-<code>compose up</code>; schema push happens before the app restart with a conditional pre-deploy <code>pg_dump</code> (2.1 GB); a second <code>up -d</code> pass plus a Created/Exited assert closes the exact gap that caused S148. <code>/etc/cron.d/etip</code> is now installed from git on every deploy, with every job invoked via <code>bash &lt;path&gt;</code> so a lost exec bit can't break it again. 21/21 post-deploy checks passed. <strong>Recovery drill:</strong> <code>etip_nginx</code> stopped manually &rarr; health-recovery cron restarted it in ~38 s (vs 46 h in S148), Telegram alert received. UptimeRobot (3 monitors) + Telegram alerting live. Details: docs/S150_STEP1_STAY_UP.md.<br><br>
       <strong>Session 149 — Step 0B (2026-09-25):</strong> PR #35 merged (d3d4c01), CI/CD run 36159365105 green, 32/32 healthy. Cross-tenant reads blocked in alerting/reporting/search (403), integration encryption key required in production + secrets masked, Razorpay routes closed (503) while payments are deferred, Grafana health endpoint hidden, Redis <code>noeviction</code> + 1 GB (evictions had already dropped 1,420 keys), nightly Postgres + Redis backup cron (02:30 UTC, 7 days), deploy concurrency + docs-only skip, REST/MISP connector fix, MFA demo fallback removed. Login secrets rotated (all users re-login). Pre-deploy dump copied off-box.<br><br>
       <strong>Session 148 (2026-09-25):</strong> intelwatch.in returned 502 for ~46 h. The #30 deploy's SSH dropped mid-<code>compose up</code>, leaving <code>etip_nginx</code> in <code>Created</code>. The 5-min health-recovery cron should have restarted it but had failed <code>Permission denied</code> ~20k times (script committed 100644). Fixed live: nginx started (<code>nginx -t</code> ok), script made executable. PR #31 sets mode 100755 + RCA + docs/S148_NGINX_OUTAGE.md. Live grid after the fix: pages 200, unauthenticated API 401. Gaps: no external uptime alert; deploy not resilient to SSH drops.<br><br>
       <strong>Session 147 — later the same day:</strong> #21 prerender (/ ships real HTML), #22 /pricing with monthly/annual INR + JSON-LD, #23 nginx auth_request on every direct-to-service API route (identity headers from the verified token; gateway admin features no longer 404), #24 DECISION-031 no trials (signup always Free, paid via sales, super-admin plan-change runbook). All verified live; 32/32 healthy.<br><br>
@@ -550,7 +551,7 @@ li strong { color: var(--text-primary); }
       &bull; <strong>Unsupported sortable columns removed:</strong> normalizedValue, corroborationCount, iocType, lifecycle — only severity/confidence/lastSeen remain sortable.<br>
       &bull; <strong>Commit:</strong> d517ea0. CI run 23929832680 green. Deployed.<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Next</strong> — Owner click-through of the logged-in app after the API auth change; Search Console + Bing verification. Then SEO 2c (/features, /solutions, legal pages) and 2d (glossary + generated sitemap); wire Command Center Clients to real tenants.<br>
+      1. <strong>Next</strong> — Step 2 (docs/roadmap/STEP_02_SEARCH_INDEX.md): fix the Elasticsearch indexer's <code>'type'</code> crash and backfill the 12,010 Postgres IOCs currently missing from the index. Then verify the first automated backup/cleanup cron runs after 2026-09-27 03:17 UTC; fix the login <code>findFirst</code> email-collision bug; Search Console + Bing verification; SEO 2c/2d; wire Command Center Clients to real tenants.<br>
     </div>
   </div>
 </div>
@@ -558,7 +559,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 149 &middot; 2026-09-25 &middot; Generated by Claude Opus 5.5
+    ETIP v5.0 &middot; Session 150 &middot; 2026-09-26 &middot; Generated by Claude Opus 5.5
   </div>
 </div>
 

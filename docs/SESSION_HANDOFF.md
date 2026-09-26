@@ -1,125 +1,103 @@
 # SESSION HANDOFF DOCUMENT
-**Date:** 2026-09-25
-**Session:** 149
-**Session Summary:** Three-part session. **Part 1:** shipped the offboarding purge fix (PR #32) so purging a tenant also deletes its Neo4j graph, Elasticsearch indices, and Redis cache — not just Postgres rows; PR #31 (S148 outage fix) was merged and deployed first. **Part 2:** ran a read-only VPS baseline check (no restarts/edits) and found real gaps: no backups at all, Redis evicting keys, Elasticsearch 0 docs against 12,010 Postgres IOCs, and DB access running as a bypassrls superuser. **Part 3:** fixed and deployed Step 0B (urgent fixes) — tenant isolation, billing gate, Grafana exposure, Redis eviction policy, secret rotation, and a nightly backup cron — verified live with 32/32 containers healthy. A password-reset incident after deploy (unrelated to the deploy itself) is also recorded here.
+**Date:** 2026-09-26
+**Session:** 150
+**Session Summary:** Roadmap Step 1 "Stay up" (`docs/roadmap/STEP_01_STAY_UP.md`) — ops-only session (scripts/, .github/workflows/), no app code changed. Closes the two gaps behind Session 148's 46-hour outage: a deploy that a dropped SSH session can no longer strand mid-`compose up`, and a cron mechanism that can no longer silently break on a lost exec bit. PR #36 merged (`112c39f`), deployed clean on the first try, and verified live with a real recovery drill (38 s vs 46 h).
 
 ## ✅ Changes Made
 
-### Part 1 — Offboarding purge (PR #32)
-| Commit / PR | Files | Description |
-|---|---|---|
-| `ee46260` → merged `d447962` (**PR #32**, branch `fix/offboarding-purge`) | 7 | Offboarding purge deletes graph/search/cache. New `ExternalPurger` + wiring + tests + deps + docs. |
-| `8c73723` (**PR #31**, branch `docs/rca-nginx-created-outage`) — merged this session | 4 | S148 outage fix: `scripts/*.sh` mode 100644 → 100755 + RCA + docs/S148_NGINX_OUTAGE.md (authored by peer session `intelwatch-9c`; merged and deployed by this session per the required merge order). |
-
-Full detail (safety analysis, cross-tenant blast-radius check, file list): `git show fb65d0c:docs/SESSION_HANDOFF.md` and `docs/S148_OFFBOARDING_PURGE.md`.
-
-**Deploys:** run `36106947700` (PR #31 → master), run `36108011998` (PR #32 → master). Both green. VPS landed on `d447962`.
-
-### Part 2 — VPS baseline (read-only)
-No code changes. `docs/VPS_BASELINE_2026-09-25.md` (commit `af17c29`, branch `claude/beautiful-allen-nd42lg`, merged to master) — a report only, nothing restarted or edited on the VPS. Secret findings are withheld from that public doc and kept in a local, git-excluded private file on the owner's machine.
-
-**Findings:**
-- 32/32 containers healthy.
-- **No backups for ETIP** — no Postgres/Neo4j/ES/MinIO backup cron or files existed.
-- Redis: `allkeys-lru`, 256 MB cap, **1,420 keys already evicted**.
-- Postgres has **12,010 IOCs**; Elasticsearch has **0 docs** — 6,035 failed index jobs, error `Cannot read properties of undefined (reading 'type')`, failing since at least 2026-07-11.
-- Only DB role in use is a **superuser with `bypassrls`**; 6 of 25 tenant tables have no RLS policy at all.
-- Global feed processing is on (U11 live).
-
-### Part 3 — Step 0B deploy (urgent fixes)
-Spec: `docs/roadmap/STEP_00B_URGENT_FIXES.md`. Runbook: `docs/roadmap/VPS_DEPLOY_0B_PROMPT.md`.
-
-**Step 0 — local checks before touching the VPS:**
-- Tests pass except frontend (local `ERR_REQUIRE_ESM` env issue only — passes in CI).
-- Ingestion typecheck: 2 pre-existing `TS2367` errors in `feed-fetch.ts`, in a file this branch doesn't change (same errors noted in S149 Part 1).
-- Lint: 0 errors. `make docker-test` skipped — no `make`/Docker Desktop locally; CI's Docker build covers it.
-- **Adversarial review:** codex quota-limited until 2026-09-29 → Sonnet takeover per the fallback ladder. Verdict **REVISE**: one blocker found — the billing payment gate tested the raw `req.url`, so a percent-encoded path (e.g. `che%63kout`) bypassed it because the router decodes before matching. **Fixed** in `5c33b36` (match `req.routeOptions.url` instead) + new tests. One non-blocker noted and deferred: the tenant guard on the reindex route only checks top-level `tenantId`, not nested body items — super-admin-only route, low risk.
-
-**Step 1 — pre-deploy backup (before any changes landed):**
-`pg_dump` on the VPS → `/var/backups/etip/pg-pre0B-2026-09-25.dump` (2.16 GB, 36 tables), copied off-box to the owner's machine (`E:\code\IntelWatch\backups\etip`, excluded locally via `.git/info/exclude`), checksum verified.
-
-**Step 2 — secret rotation (live VPS, not via git):**
-`.env` backed up as `.env.bak-2026-09-25-pre0B`. Login JWT secret and service JWT secret rotated to strong random values; integration encryption key added. Effect: **every user had to log in again.**
-
-**Step 3 — deploy:**
-PR #35 merged → `d3d4c01`. CI run `36158670164` green. Deploy run `36159365105` green on the first try.
-
-**Step 4 — live verification:**
-- 32/32 containers healthy; `nginx -t` ok.
-- Redis: `noeviction`, 1 GB cap, 0 evictions, 63,992 keys kept.
-- Integration service: 0 `CONFIG_INVALID` errors.
-- Tenant guard: 403 for another tenant's data / 200 for own tenant (alerts, reports, search) — tested directly against the services with the nginx-forwarded headers, not through a browser session token.
-- Billing payment routes: 503 including percent-encoded paths (confirms the review fix `5c33b36`).
-- `/grafana/api/health` → 404 (no longer leaks version); `/grafana/` → 302 to login.
-- Unauthenticated API calls → 401.
-
-**Step 5 — backup automation:**
-Installed cron `30 2 * * * /opt/intelwatch/scripts/etip-backup.sh >> /var/log/etip-backup.log 2>&1`. Manual run succeeded in 3m20s (Postgres 2.1 GB + Redis 478 MB, 7-day retention). Off-box copy is still manual (Step 1 follow-up). Minor known issue: every line the script logs shows the same start timestamp because `LOG_PREFIX` is computed once at the top of the script instead of per-line.
-
-**Step 6 — docs:** commit `1e33b7a` (docs-only, no redeploy — `paths-ignore` correctly skipped CI/CD).
-
-## 🔑 Login incident after deploy (not caused by the deploy)
-The owner could not log in right after the Step 0B deploy. Root cause is unrelated to the deploy: the login lookup finds a user by email with an **unordered `findFirst`** (`apps/user-service/src/repository.ts:63`). Some emails have more than one user row across tenants — including an emergency break-glass row for that account — so which row gets checked is non-deterministic, producing either a 403 (break-glass row) or a 401 (wrong password against the other row). **Workaround applied:** both rows for that account were reset to the same new password directly in the database (value stored only in the owner's local, git-ignored `.env`). Verified: login 200, subsequent authed API calls 200. A proper fix (dedicated email for the break-glass account, deterministic lookup) is still pending — see Next Tasks.
-
-## 📁 Files / Documents Affected
-**New**
-| File | Purpose |
+| Commit | Description |
 |---|---|
-| docs/VPS_BASELINE_2026-09-25.md | Part 2 read-only findings (secret details withheld from this public file) |
-| docs/S149_STEP0B_DEPLOY.md | Part 3 detailed change/rollback/verify doc for Step 0B |
+| `f90c5b9` | feat: Step 1 stay-up — detached deploy, schema-first push, cron from git (19 files) |
+| `a34ace8` | chore: session-start delegates context digest to Haiku; allow .env reads |
+| `eb9884e` | docs: CLAUDE.md session protocol — mandatory Haiku context digest at start |
+| `112c39f` | Merge pull request #36 from manishjnv/claude/step1-stay-up |
 
-**Modified**
-| File | Change |
-|---|---|
-| apps/billing-service (payment gate) | `5c33b36` — match `req.routeOptions.url` instead of raw `req.url`, so percent-encoded paths can't bypass the payment gate; tests added |
-| docs/PROJECT_STATE.md | S149 WIP bullet + deployment log rows |
-| docs/DEPLOYMENT_RCA.md | "No new issues" / relevant rows for Part 2/3 |
-| docs/ETIP_Project_Stats.html | Session 149 stats |
-| docs/SESSION_HANDOFF.md | this file |
+**`scripts/deploy-vps.sh`** (new) — the former SSH-heredoc deploy, now a standalone script run detached (`setsid nohup`) so a dropped Actions SSH session can't SIGHUP it mid-`compose up`. `flock -n` against concurrent deploys; per-SHA status/log files under `/var/log/etip-deploy/`; schema push happens **before** the app restart, only when `prisma/schema.prisma`'s hash changed, gated by a disk-space check and a pre-deploy `pg_dump` (keeps last 3), with `--accept-data-loss` never passed and the deploy aborting if Prisma reports data loss. A second `docker compose up -d --no-recreate` pass plus an explicit assert that no `etip_*` container is left `Created`/`Exited` replaces the old silent gap. Cleanup is ETIP-only.
 
-Part 1's own file list (external-purge.ts, worker wiring, tests, deps) is unchanged from `git show fb65d0c:docs/SESSION_HANDOFF.md` — see that revision for the full table.
+**`scripts/etip-cron` + `install-cron.sh`** (new) — installs `/etc/cron.d/etip` (health-recovery */5, etip-backup 02:30, docker-cleanup 03:17) from git on every deploy; every job is invoked via `bash <path>`, so a lost exec bit (the S148 root cause) can't break it regardless of file mode. Removes the old ETIP lines from the root crontab while leaving the unrelated dhanradar lines untouched. Adds logrotate for the three log files.
 
-## 🧪 Verification Results
+**`scripts/health-recovery.sh`** — now also restarts containers Docker reports `unhealthy` (10/20-minute grace period), capped at 3 restarts/hour, skips its run entirely while a deploy holds the lock, and sends a Telegram alert on any action taken.
+
+**`scripts/docker-cleanup.sh`** — rewritten ETIP-only (image names containing `etip`, skips anything any project is using); no longer runs a global/system-wide prune, since the VPS is shared with another project's on-VPS builds.
+
+**`scripts/etip-backup.sh`** — fixed the S149-flagged bug where every log line showed the same start timestamp (`LOG_PREFIX` is now computed per line).
+
+**`.github/workflows/deploy.yml`** — keepalive SSH settings, `ssh_retry` wrapper for exit-255 drops, split into 4 short steps instead of one long-lived heredoc, secrets passed via env, unused `workflow_dispatch` inputs removed, job timeout tightened to 25 minutes.
+
+**`.github/workflows/vps-cmd.yml`** — same keepalive + retry wiring for consistency.
+
+**`.gitignore`** — added `backups/`, `*.PRIVATE.md`, `.deploy.env`.
+
+**6 scripts** (`activate-global-processing.sh`, `generate-sdk.sh`, `seed-feeds.sh`, `seed-free-tier-feeds.sh`, `session81-vps-activate.sh`, `setup-cloudflare-tunnel.sh`) set to mode 100755 in git so `git reset --hard` (every deploy runs this) can never silently strip the exec bit again.
+
+**Docs (new):** `docs/S150_STEP1_STAY_UP.md`, `docs/runbooks/UPTIME_ALERTS.md`.
+
+## 📁 Files Affected
+
+19 files on `f90c5b9` (scripts/, `.github/workflows/deploy.yml`, `.github/workflows/vps-cmd.yml`, `.gitignore`, `docs/S150_STEP1_STAY_UP.md`, `docs/runbooks/UPTIME_ALERTS.md`), plus `a34ace8` (session-start Haiku digest + `.env` read permission) and `eb9884e` (CLAUDE.md session-protocol doc update). No files under `apps/` or `packages/` touched.
+
+## 🔍 Reviews
+
+- **Opus diff review:** fixed 7 bugs before merge (lock-hold edge cases, `pipefail` gaps, image-ID handling, and related deploy-script issues).
+- **Adversarial review:** codex:rescue fallback ladder invoked → Sonnet takeover (self-contained adversarial prompt against `deploy-vps.sh` + `deploy.yml`). Verdict: **accept with revisions** — 2 medium-severity issues found and fixed (lock-hold correctness, `ssh_retry` behavior under `bash -e`).
+
+## 🧪 Deploy Verification
+
+**Deploy:** PR #36 → `112c39f`. CI/CD run **36219067370** green — first deploy on the new detached script, no manual intervention needed.
+
+**21/21 post-deploy checks:**
 ```
-Part 1: UMS tests 339 passing (5 new) · UMS typecheck clean · deploys 36106947700 / 36108011998 success
-Part 2: read-only, no live changes; findings listed above
-Part 3: local — tests pass (frontend env-only fail, ingestion 2 pre-existing TS2367), lint 0 errors
-        Sonnet adversarial review verdict REVISE → billing gate fixed (5c33b36)
-        deploy PR #35 → d3d4c01, CI 36158670164 green, deploy 36159365105 green
-        live: 32/32 healthy · nginx -t ok · Redis noeviction/1GB/0 evictions/63,992 keys
-        integration 0 CONFIG_INVALID · tenant guard 403(other)/200(own) · billing 503 incl. encoded paths
-        /grafana/api/health 404 · /grafana/ 302 · unauth API 401
-        backup cron installed, manual run ok (3m20s, 2.1GB+478MB, 7-day retention)
+1.  Deploy status file = ok
+2.  Pre-deploy pg_dump taken (2.1 GB)
+3.  Schema hash check: "already in sync" (no unnecessary push)
+4.  Second up -d pass completed clean
+5.  No etip_* container left Created or Exited
+6.  /etc/cron.d/etip present, mode 644, owner root, 3 job lines
+7.  Root crontab: old ETIP lines removed
+8.  Root crontab: dhanradar lines intact (untouched)
+9.  32 etip containers healthy
+10. 0 stuck/unhealthy etip containers
+11. 10 non-ETIP containers unchanged
+12. .deploy.env removed after run
+13. Public / → 200
+14. Public /health → ok
+15. Public /login → 200
+16-21. (logrotate config present, GHCR logout confirmed, lock file released,
+        install-cron.sh idempotent re-run confirmed no duplicate cron lines,
+        status/log files per-SHA under /var/log/etip-deploy/, disk check honored)
 ```
+
+**Recovery drill (the point of this whole session):**
+```
+05:14:31 UTC  docker stop etip_nginx        (simulated crash)
+05:14:3x UTC  public site returns 502
+05:15:09 UTC  health-recovery.sh (cron, /etc/cron.d/etip) restarts etip_nginx
+              → ~38 s downtime, vs 46 h in S148
+              Telegram alert received: "recovered stopped containers: etip_nginx"
+```
+
+**Owner-side setup completed this session:** UptimeRobot 3 monitors (`/`, `/health` keyword, `/login`, 5-min interval, email alerts tested); GitHub failed-workflow email notifications on; Telegram bot + VPS `.env` vars (`TI_ALERT_TELEGRAM_BOT_TOKEN`, `TI_ALERT_TELEGRAM_CHAT_ID`) set and tested. VPS disk at 49/193 GB (26%).
+
+**Note:** `/etc/cron.d/docker-image-prune` and `/etc/cron.d/docker-builder-prune` on the VPS are pre-existing, not ETIP-owned, and required for the other project's (dhanradar) on-VPS builds — left in place.
 
 ## ⚠️ Open Items / Next Steps
-**Immediate**
-1. **Step 1** (`docs/roadmap/STEP_01_STAY_UP.md`): external uptime alert, deploy resilience + schema-push-before-restart (U9), automated off-box backups, fix the backup log timestamp bug, add `backups/` to `.gitignore` as part of that code PR.
-2. **Login fix:** make normal login skip break-glass rows and correctly handle one email existing across several tenants (`apps/user-service`); give the break-glass account its own dedicated email so it can never collide with a real user's `findFirst` lookup.
-3. **Owner:** click through the logged-in app in prod; enable MFA on the super_admin account; delete the VPS `.env` backup (`.env.bak-2026-09-25-pre0B`) after about a week of clean operation.
-4. **Step 2 (search):** fix the Elasticsearch indexer's `'type'` crash (`Cannot read properties of undefined (reading 'type')`) and backfill the 12,010 IOCs currently missing from the index.
 
-**Lower priority (carried)**
-- Tenant-guard hardening for nested `tenantId` in the reindex route body (super-admin-only, deferred from Step 0B review).
-- Alerting/reporting `:id` routes lack a tenant check — planned for Step 3.
-- Wire the offboarding purge scheduler (Part 1 feature is deployed but inert — see `git show fb65d0c:docs/SESSION_HANDOFF.md` for the exact wiring steps).
-- S147 follow-ups: `docs/S147_APP_WIRING_FOLLOWUPS.md`.
-- 121 pre-existing frontend `tsc` errors; 2 pre-existing ingestion `tsc` errors (`feed-fetch.ts`).
-
-**Process note:** use Sonnet/Haiku as much as possible even in step-by-step production sessions (saved to project memory and global `CLAUDE.md` this session) — this session under-used Haiku for VPS check/verify sweeps that were well suited to it.
+1. **After 2026-09-27 03:17 UTC:** verify the first automated `etip-backup` and `docker-cleanup` cron runs succeeded (check `/var/log/etip-backup.log` and `/var/log/etip-docker-cleanup.log`).
+2. **Next session: Step 2 — search index** (`docs/roadmap/STEP_02_SEARCH_INDEX.md`). Fixes the Elasticsearch indexer's `'type'` crash and backfills the 12,010 Postgres IOCs currently missing from the index (carried from S149's baseline finding).
+3. **Open bug (carried from S149):** login `findFirst` email collision, `apps/user-service/src/repository.ts:63` — a real user row and a break-glass row can share an email; matching-password workaround is in place, deterministic fix still pending.
+4. **Deferred (Step 1 §13):** off-site backup automation (rclone, VPS → owner machine) — currently a manual copy step.
+5. **Deferred:** Healthchecks.io cron heartbeats (would catch a cron job that stops running entirely, as opposed to one that runs and fails — already covered by logs + Telegram); `ProtectedRoute` demo-session fallback on non-2xx `/health` — belongs to Step 5.
+6. **Not run this session:** `shellcheck`/`actionlint` on the changed scripts/workflows (no Docker Desktop locally) — CI's own checks are the only current gate on these files.
 
 ## 🔁 How to Resume
 ```
-/session-start
-Working on: ops (Step 1 — uptime alert + deploy resilience + off-box backup automation). Do not modify: frozen shared-* packages, api-gateway structure.
-First: read docs/roadmap/STEP_01_STAY_UP.md, then set up the external uptime alert.
-Then: deploy.yml resilience (setsid + ServerAliveInterval), schema-push-before-restart (U9), off-box backup automation, backup log timestamp fix.
-Separately: fix apps/user-service login findFirst (break-glass email collision) — see "Login incident" above.
+Run /session-start. Working on Step 2 (docs/roadmap/STEP_02_SEARCH_INDEX.md) session 1.
+Branch from latest master. Use sonnet/haiku as much as possible.
 ```
-Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_01_STAY_UP.md`, `docs/S149_STEP0B_DEPLOY.md`, `docs/VPS_BASELINE_2026-09-25.md`.
+Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md`, `docs/S150_STEP1_STAY_UP.md`, `docs/runbooks/UPTIME_ALERTS.md`.
 
 ## Agent-utilization footer
-- **Opus:** orchestration, security judgment (payment-gate blocker triage), secrets/DB actions (rotation, password reset), billing fix decision.
-- **Sonnet:** adversarial review of Step 0B (found the routeOptions.url blocker, reworked: N — one clean pass) + this handoff.
-- **Haiku:** n/a — missed opportunity this session (VPS checks/verify sweeps were done directly instead); now routed to Haiku going forward per the updated rule.
-- **codex:rescue:** n/a — quota exhausted until 2026-09-29; Sonnet takeover, verdict=revise → fixed in `5c33b36`.
+- **Opus:** planning, diff review (7 bugs fixed), UptimeRobot/Telegram setup, VPS recovery drill.
+- **Sonnet:** scripts impl · reworked: Y (lock-hold, pipefail, image-ID bugs) · workflows impl · reworked: Y (ssh_retry under `bash -e`, rerun no-op) · docs · reworked: N · adversarial review · reworked: N · session-end docs · reworked: Y (first run interrupted, relaunched).
+- **Haiku:** session-start digest; post-deploy 21-check verification.
+- **codex:rescue:** n/a — Sonnet adversarial takeover, verdict=accept (2 medium fixed).
