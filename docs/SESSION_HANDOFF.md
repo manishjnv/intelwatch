@@ -71,8 +71,8 @@ Frontend container logs: 0 errors
 - `tests/e2e/pipeline-downstream-flow.test.ts` still documents the pre-S154 enrichment job shape (stale but passing).
 - es-indexing backfill speed (`refresh:'wait_for'` per doc, ~1/s) + the 7 transient update-vs-backfill races seen in S160 — same debt item, switch to bulk/no-refresh if IOC volume grows.
 - `MfaEnforcement` frontend type fields (`gracePeriodDays`/`usersWithMfa`/`totalUsers`) don't match what the server returns (`{enforced, enforcedBy?, enforcedAt?}`) — optional, no crash, not reconciled.
-- Local Node v20.11.1 can't start Vitest (`jsdom` needs `require(esm)`, needs Node ≥ 20.19); CI is unaffected. Workaround: `cd apps/frontend && npx -y node@20 ./node_modules/vitest/vitest.mjs run`. Owner should upgrade local Node.
-- Codex CLI 0.125.0 defaults to model `gpt-5.5`, unavailable on this account, so `codex:rescue` fails immediately — set `model` in `~/.codex/config.toml`. Sonnet took over the adversarial review this session (verdict: accept).
+- ~~Local Node v20.11.1 couldn't start Vitest~~ — **fixed 2026-09-26:** local Node upgraded to 20.20.2 (winget `OpenJS.NodeJS.20`, same as CI's `'20'`); `pnpm exec vitest run` works directly.
+- ~~Codex CLI 0.125.0 fell back to `gpt-5.5`~~ — **fixed 2026-09-26:** the old CLI couldn't parse the server's model list (new `max` reasoning level) and ChatGPT accounts reject older models; upgraded to Codex CLI 0.157.1 (`npm i -g @openai/codex@latest`), no model pin needed. `codex:rescue` usable again.
 - `usePlanBuilder` still returns `DEMO_PLANS` on a fetch error — scoped to PR B.
 
 ## 🔁 How to Resume
@@ -102,7 +102,7 @@ hooks in these same files — those move in S161b.
 
 Plan → Sonnet implements (TDD, see superpowers:test-driven-development) → Opus reviews the diff
 (seams: FeatureGate interaction, any route still on the old demo path) → PR → CI → merge → deploy →
-verify. Run the frontend suite locally with the Node 20 workaround above (or trust CI). Check at
+verify. Run the frontend suite locally with `cd apps/frontend && pnpm exec vitest run` (Node 20.20.2). Check at
 375px per feedback_mobile_first.md.
 
 Then: S161b (remaining hook files: alerting, reporting, phase4, analytics, monitoring,

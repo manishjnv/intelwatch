@@ -38,8 +38,7 @@ reset in `beforeEach`), `use-mfa`, `use-mfa-setup-no-demo`. Full frontend suite 
 2 skipped, 6 failed — all 6 from one leaked mock flag in `feature-gate-wiring`; fixed, and the 9 touched test files
 re-run green (62/62). CI runs the full suite.
 
-**Local note:** Vitest cannot start on Node 20.11 (jsdom dep needs `require(esm)`, Node ≥ 20.19). CI uses latest 20.x.
-Workaround without upgrading: `cd apps/frontend && npx -y node@20 ./node_modules/vitest/vitest.mjs run`.
+**Local note:** Vitest needed Node ≥ 20.19; local Node was upgraded to 20.20.2 on 2026-09-26, so `pnpm exec vitest run` works directly.
 
 ## How to verify (production)
 1. `curl -s -o /dev/null -w '%{http_code}' https://intelwatch.in/api/v1/auth/settings/mfa/enforcement` → `401` (route exists; was 404 on the old path).
