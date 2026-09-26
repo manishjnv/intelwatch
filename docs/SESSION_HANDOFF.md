@@ -1,81 +1,126 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-09-26
-**Session:** 159
-**Session Summary:** Roadmap Step 2 "Search works" complete end to end (S151–S157, PRs #38–#41) — shared IOC search-index contract, es-indexing/normalization/ai-enrichment/ioc-intelligence producers, super-admin backfill, real ⌘K search. Plus S158 Step 0 dev-workflow tooling (PR #42, superseded same day by DECISION-034) and S159 frontend `tsc` 122→0 errors with CI now type-checking the frontend (PR #43). Production backfill enqueued 12,093 IOCs; ES=DB count verification is the next task (S160). Detail: `docs/S151_S159_STEP2_SEARCH_AND_TOOLING.md`.
+**Session:** 161 (label S160–S161a PR A)
+**Session Summary:** S160 verified Roadmap Step 2 "Search works" end to end on the VPS (read-only): ES doc count per tenant equals Postgres `iocs` row count for both tenants that hold IOCs. Step 2 is now DONE. S161a PR A shipped Step 5 Honest UI core (PR #44 → `baaf147`): a shared `QueryStateView` loading/error/empty/data pattern, a fix for the MFA enforcement toggle (it was silently 404'ing in production on the wrong path), removal of `DEMO_SESSIONS`/`DEMO_ENFORCEMENT`/`DEMO_LIMITS`, `FeatureGate` locking only on an explicit `enabled:false` (DECISION-035), and the W17 demo-price fix. Detail: `docs/S161a_HONEST_UI_CORE.md`.
 
 ## ✅ Changes Made
 
 | Commit(s) | PR | Description |
 |---|---|---|
-| `f932cee`, `d8b5bbf` | #38 → `c04b813` | S151 shared-utils `search-index.ts` (IocDocumentSchema v2, IocIndexJobSchema, toIocDocument, versioned iocIndexJobId) + DECISION-033. S152 es-indexing consumes the shared contract: hash-type fix, robust update/delete-on-missing-doc, safer search, tenant-name validation. |
-| `bf3830b` | #39 → `30ec9ae` | S153 normalization queues an `index` search job after every tenant IOC upsert (`TI_IOC_INDEX_ENABLED`). |
-| `3eb610d` | #40 → `7a58a4f` | S154 ai-enrichment sends contract-valid `update` jobs with a versioned jobId (fixes a silent-drop bug affecting every re-enrichment since 2026-07-11) + fixes `z.coerce.boolean()` across config flags. S155 api-gateway super-admin search backfill route. |
-| `c7c9fc5` | #41 → `f7984bb` | S156 frontend ⌘K wired to real search via `use-global-search-results.ts`. S157 ioc-intelligence re-indexes on every analyst write. |
-| `f71c26f`, `6c8d3fd`, `b9bc62c`, `3581f0b` | #42 → `48ebc22` | S158 Step 0 dev-workflow tooling — rewritten same day to DECISION-034 (one folder, one session, no worktrees). |
-| `0bdad51`, `e8874a8` | #43 → `960fc23` | S159 frontend `tsc` 122→0 errors, CI now type-checks frontend, 2 real bugs fixed (SecurityPanel missing import, GlobalCatalogPage filter wiring). |
+| — (read-only) | — | S160: confirmed `bull:etip-ioc-indexed:wait`/`:active` draining, ES per-tenant doc counts == Postgres `iocs` row counts, sample IOC findable in search. No code changed. |
+| `e2cc697` | #44 → `baaf147` | S161a PR A feat: new `QueryStateView`; `useApiError.ts` exports `classifyError`; `main.tsx` wires `QueryCache.onError` to the existing debounced toast; `use-mfa.ts` enforcement paths fixed to `/auth/settings/mfa/enforcement` + `/auth/admin/mfa/enforcement`, `DEMO_ENFORCEMENT` removed; `use-sessions.ts` `DEMO_SESSIONS` removed; `use-feature-limits.ts` `DEMO_LIMITS`/`isDemo` removed, `useFeatureEnabled` = `entry?.enabled ?? true`; `FeatureGate.tsx` renders nothing while loading; `SecurityPanel.tsx`/`ActiveSessionsList.tsx`/`TenantUsagePanel.tsx` use the error card; `hooks/security-demo-data.ts` deleted; `use-plan-builder.ts` W17 price/plan-id fix. |
+| `4a91c0d` | #44 | docs/comment wording pass (FeatureGate default comment — seeded plans list every key). |
+| `7ff635b` | #44 | docs: DECISION-035 (FeatureGate locks only on explicit `enabled:false`). |
+| `baaf147` | #44 (merge) | Merged to master. Deploy run 36244794791 green (test/typecheck/lint 6m20s, build&push 2m03s, deploy 2m55s). |
 
 ## 📁 Files / Documents Affected
 
-**New:** `docs/S151_S159_STEP2_SEARCH_AND_TOOLING.md`, `packages/shared-utils/src/search-index.ts`, `apps/frontend/src/hooks/use-global-search-results.ts`, `apps/api-gateway/src/routes/search-backfill.ts`.
+**New:** `apps/frontend/src/components/ui/QueryStateView.tsx`, `apps/frontend/src/__tests__/{query-state-view,use-feature-limits-no-demo,use-mfa-enforcement,use-sessions-no-demo,plan-builder-prices}.test.{ts,tsx}`, `docs/S161a_HONEST_UI_CORE.md`.
 
-**Modified (code):** `packages/shared-utils/src/index.ts`; `apps/elasticsearch-indexing-service/src/{schemas,index-naming,worker,es-client,ioc-indexer,mappings,routes/search,routes/reindex}.ts`; `apps/normalization/src/{queue,config,service,index}.ts`; `apps/ai-enrichment/src/{workers/enrich-worker,queue,config}.ts`; `apps/api-gateway/src/app.ts`; `apps/ioc-intelligence/src/{service,queue}.ts`; `apps/frontend/src/components/layout/DashboardLayout.tsx` (LOCKED block, data-only, owner-approved), `apps/frontend/src/hooks/use-es-search.ts`; ~50 frontend files for the tsc cleanup (see PR #43 diff); `.github/workflows/deploy.yml` (frontend typecheck no longer excluded).
+**Deleted:** `apps/frontend/src/hooks/security-demo-data.ts`.
 
-**Modified (docs, this closing session):** `docs/PROJECT_STATE.md`, `docs/DEPLOYMENT_RCA.md`, `docs/ETIP_Project_Stats.html`, `README.md`, `docs/roadmap/STEP_02_SEARCH_INDEX.md`, `docs/ROADMAP_S149_PLUS.md`, `docs/modules/{ai-enrichment,elasticsearch-indexing,normalization,ioc-intelligence}.md`.
+**Modified:** `apps/frontend/src/components/FeatureGate.tsx`; `apps/frontend/src/components/command-center/TenantUsagePanel.tsx`; `apps/frontend/src/components/security/{ActiveSessionsList,SecurityPanel}.tsx`; `apps/frontend/src/hooks/{use-feature-limits,use-mfa,use-plan-builder,use-sessions,useApiError}.ts`; `apps/frontend/src/main.tsx`; `apps/frontend/src/__tests__/{active-sessions,feature-gate-wiring,use-mfa,use-mfa-setup-no-demo}.test.{ts,tsx}`. Full diff: `git show --stat e2cc697`.
+
+**Modified (docs, this closing session):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md`, `docs/DEPLOYMENT_RCA.md`, `docs/ETIP_Project_Stats.html`, `README.md`, `docs/roadmap/STEP_02_SEARCH_INDEX.md`, `docs/roadmap/STEP_05_HONEST_UI.md`, `docs/ROADMAP_S149_PLUS.md`. No `docs/modules/frontend.md` exists in this repo (module docs cover backend services only) — skipped, noted here instead.
 
 ## 🔧 Decisions & Rationale
 
-- **DECISION-033** (2026-09-26, S151): IOC search index — tenant rows only now (option A), shared global index later (option B) when global processing goes live. Accepted on Claude's recommendation, owner did not object.
-- **DECISION-034** (2026-09-26, S150c/S158): One folder, one session — no git worktrees, branch per task. Supersedes the worktree-per-session design PR #42 originally shipped with.
+- **DECISION-035** (2026-09-26, S161a): `FeatureGate` locks a route only on an explicit `enabled:false` from `/billing/limits`; blank while loading; a fetch error or a missing entry lets the page load (owner option A). Already recorded in `docs/DECISIONS_LOG.md` — not re-added here.
 
 ## 🧪 E2E / Deploy Verification Results
 
-All 6 PRs deployed clean, 32/32 containers healthy after each. Test counts: shared-utils 148→172, elasticsearch-indexing-service 116→166, normalization 322→328, ai-enrichment 314→329, api-gateway 296→307, ioc-intelligence 140→148, frontend +4 (CI: 118 test files pass; local frontend vitest blocked by a Node 20.11/jsdom ESM issue, unrelated to CI).
+**S160 — Step 2 ES=DB verification (VPS, read-only, 12:59 UTC):**
+```
+bull:etip-ioc-indexed  wait=4  active=5 (live traffic draining)  failed=6,118 (legacy baseline, unchanged)
+Postgres iocs vs ES etip_<tenant>_iocs_*:
+  e4e11c4c…  6,051 = 6,051  ✅
+  10c895c3…  6,042 = 6,042  ✅   (other 8 tenants hold 0 IOCs)
+Per-index (10c895c3): cve 2276, domain 1420, email 191, hash 1134, ip 1021
+Per-index (e4e11c4c): cve 2274, domain 1425, email 204, hash 1134, ip 1014
+Base `_iocs` (no suffix) indices: 0 docs
+Sample IP 3.0.21.0 (tenant e4e11c4c) found in ES: 1 hit
+7 transient "ioc-update" job failures during the drain (60 min window) — all retried OK, failed count
+  unchanged. Likely an update racing the backfill index write. Folded into the existing
+  "ES indexer backfill speed" debt item, not a new bug.
+Result: Step 2 DONE (server side). Owner ⌘K UI click-through (3.0.21.0 / 3.5.17.10) still pending.
+```
 
-**Production backfill (2026-09-26):**
+**S161a PR A deploy (PR #44, run 36244794791):** Test/Typecheck/Lint 6m20s ✅, Build&Push 2m03s ✅, Deploy 2m55s ✅. VPS at `baaf147`. 32/32 etip containers healthy (verified directly).
+
+Post-deploy checks:
 ```
-dryRun: 12,093 rows / 10 tenants (2 tenants hold IOCs), 0 skipped
-real:   12,093 jobs enqueued
-drain:  ~1 doc/s (refresh:'wait_for' per doc), ~3h estimated
-mid-drain check: 598 docs in ES, 0 new errors, failed count unchanged at 6,118 (legacy, pre-dates S154's fix)
-NOT VERIFIED YET: ES count == Postgres count per tenant — first task for S160
+GET /api/v1/auth/settings/mfa/enforcement    → 401 (route exists; was 404 on the old path)
+GET /api/v1/auth/admin/mfa/enforcement       → 401 (route exists)
+GET /api/v1/settings/mfa/enforcement (old)   → 404 (confirms the bug that was fixed)
+GET /, /iocs, /login, /health                → 200
+Built bundle: old fake MFA secret 0 hits; new MFA route path present; new empty-state text present
+Frontend container logs: 0 errors
 ```
+
+**Frontend test count:** 123 test files, **1,856 passing + 2 skipped (1,858 total)**, CI green. Previous frontend count (S159, `docs/PROJECT_STATE.md`) was **1,789**. Arithmetic: 1,858 − 1,789 = **69 new/changed tests** net (5 new test files — `query-state-view`, `use-sessions-no-demo`, `use-mfa-enforcement`, `use-feature-limits-no-demo`, `plan-builder-prices` — plus additions to 4 existing files: `active-sessions`, `feature-gate-wiring`, `use-mfa`, `use-mfa-setup-no-demo`). Other packages unchanged this session (no backend/schema touched).
 
 ## ⚠️ Open Items / Next Steps
 
 **Immediate:**
-1. **S160** — confirm `bull:etip-ioc-indexed:wait` = 0, then verify ES doc count per tenant == `SELECT tenant_id, count(*) FROM iocs GROUP BY 1` (commands: `docs/roadmap/STEP_02_SEARCH_INDEX.md` §9).
-2. **S161a** — Step 5 Honest UI (`docs/roadmap/STEP_05_HONEST_UI.md`): shared `ViewState`/`QueryStateView` pattern, remove security-sensitive demo fallbacks (MFA, sessions, feature-limits) first.
+1. Owner ⌘K UI click-through (type `3.0.21.0` or `3.5.17.10` on intelwatch.in) — the last unverified piece of Step 2.
+2. **S161a PR B** (branch `s161a/honest-ui-billing-users`) — see "How to Resume" below.
 
-**Deferred (see `docs/S151_S159_STEP2_SEARCH_AND_TOOLING.md` §6 for the full list):**
-- es-indexing backfill speed (`refresh:'wait_for'` per doc, ~1/s) — switch to bulk/no-refresh if volume grows.
-- ai-enrichment downstream queues (graphSync, correlate, cacheInvalidate) have no `removeOnComplete` — Redis grows unbounded.
-- 6,118 legacy failed jobs in `bull:etip-ioc-indexed:failed` — purge once ES=DB confirmed.
-- Legacy `etip_<t>_iocs` index not covered by the offboarding purge pattern.
-- Leftover `E:/code/IntelWatch-wt` worktree folders (Windows-locked `node_modules`) — owner deletes by hand.
-- Owner's local `.env` `token` line (short-lived super-admin JWT) — remove after use.
-- **Session-numbering collision:** S158/S159 used for tooling/tsc, not Step 3 persistence. Flagged in `docs/ROADMAP_S149_PLUS.md` §4 rather than force-renumbered (that table already disagreed with `STEP_03_PERSISTENCE.md`'s own numbering before today). Next never-used number: **S160**.
+**Deferred (carried):**
+- Purge the 6,118 legacy failed jobs in `bull:etip-ioc-indexed:failed` now that ES=DB is confirmed.
+- ai-enrichment downstream queues (graphSync, correlate, cacheInvalidate) still have no `removeOnComplete` — Redis grows unbounded.
+- `tests/e2e/pipeline-downstream-flow.test.ts` still documents the pre-S154 enrichment job shape (stale but passing).
+- es-indexing backfill speed (`refresh:'wait_for'` per doc, ~1/s) + the 7 transient update-vs-backfill races seen in S160 — same debt item, switch to bulk/no-refresh if IOC volume grows.
+- `MfaEnforcement` frontend type fields (`gracePeriodDays`/`usersWithMfa`/`totalUsers`) don't match what the server returns (`{enforced, enforcedBy?, enforcedAt?}`) — optional, no crash, not reconciled.
+- Local Node v20.11.1 can't start Vitest (`jsdom` needs `require(esm)`, needs Node ≥ 20.19); CI is unaffected. Workaround: `cd apps/frontend && npx -y node@20 ./node_modules/vitest/vitest.mjs run`. Owner should upgrade local Node.
+- Codex CLI 0.125.0 defaults to model `gpt-5.5`, unavailable on this account, so `codex:rescue` fails immediately — set `model` in `~/.codex/config.toml`. Sonnet took over the adversarial review this session (verdict: accept).
+- `usePlanBuilder` still returns `DEMO_PLANS` on a fetch error — scoped to PR B.
 
 ## 🔁 How to Resume
 
 ```
-/session-start → S160. One folder (E:\code\IntelWatch), branch per task, one PR merged + deployed at a time (DECISION-034). Use Sonnet/Haiku as much as possible.
+/session-start → S161a PR B. One folder (E:\code\IntelWatch), branch per task, one PR merged +
+deployed at a time (DECISION-034). Use Sonnet/Haiku as much as possible.
 
-First (Haiku, read-only VPS): confirm bull:etip-ioc-indexed:wait = 0, then ES count per tenant
-(etip_<t>_iocs_*/_count) == SELECT tenant_id,count(*) FROM iocs GROUP BY 1. If the local .env `token`
-is still valid use it for any super-admin API call (decode exp first, never print it); otherwise ask
-for a fresh one.
+Branch: s161a/honest-ui-billing-users (frontend only).
 
-Then S161a (Step 5 honest UI, docs/roadmap/STEP_05_HONEST_UI.md): replace withDemoFallback on error
-paths with "Couldn't load — Retry", demo data only for brand-new empty tenants, clearly labelled.
-Plan → Sonnet implements → Opus reviews diff → PR → CI → merge → deploy → verify, then continue the
-queue: S161b, S166–S170 (+ auto-enrich critical IOCs with a daily cost cap; AI off by default rule),
-Step 3 persistence sessions, Step 4 DB role + RLS (security review before push), Step 10, Steps 11–13.
+Convert to throw + meta.resource (no more silent demo fallback), then wire the matching screens to
+<QueryStateView> (apps/frontend/src/components/ui/QueryStateView.tsx):
+
+- apps/frontend/src/hooks/use-phase6-data.ts: useBillingPlans, useUsageMeters, useCurrentSubscription,
+  usePaymentHistory, useBillingStats, useSystemHealth, useMaintenanceWindows, useAdminTenants,
+  useAdminAuditLog, useAdminStats, useDlqStatus, useQueueHealth, useQueueAlerts
+- apps/frontend/src/hooks/use-phase5-data.ts: useUsers, useTeams, useRoles, useSessions (phase5),
+  useAuditLog, useUserManagementStats
+- apps/frontend/src/hooks/use-plan-builder.ts: error fallback (drop DEMO_PLANS)
+
+Screens: BillingPage, BillingPlansTab, AdminOpsPage, SystemTab, PipelinePanel, UserManagementPage,
+UsersAccessTab, ComplianceReportsPanel, PlanBuilderPanel. No sample data allowed on any of these
+(O1 in STEP_05_HONEST_UI.md doesn't block them). Users screens will show "Not available yet" (404)
+until S162 adds the real /users list/audit/stats routes in user-management-service — that's expected,
+not a bug to chase in this PR. Keep withDemoFallback for the onboarding/integration/customization
+hooks in these same files — those move in S161b.
+
+Plan → Sonnet implements (TDD, see superpowers:test-driven-development) → Opus reviews the diff
+(seams: FeatureGate interaction, any route still on the old demo path) → PR → CI → merge → deploy →
+verify. Run the frontend suite locally with the Node 20 workaround above (or trust CI). Check at
+375px per feedback_mobile_first.md.
+
+Then: S161b (remaining hook files: alerting, reporting, phase4, analytics, monitoring,
+command-center, inline hooks) → S162 (user-management-service /users routes) → S166–S170 →
+Step 3 persistence sessions → Step 4 DB role + RLS (security review before push) → Step 10 → 11–13.
 ```
 
-Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md` (done, pending verify), `docs/roadmap/STEP_05_HONEST_UI.md` (next), `docs/S151_S159_STEP2_SEARCH_AND_TOOLING.md`.
+Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md` (done, verified), `docs/roadmap/STEP_05_HONEST_UI.md` (§12 has the full PR A/B/S161b/S162+ split), `docs/S161a_HONEST_UI_CORE.md`.
 
-## Agent-utilization footer
-- **Opus:** n/a this closing session (docs-only session-end, run by Sonnet).
-- **Sonnet:** session-end documentation — PROJECT_STATE, SESSION_HANDOFF, DEPLOYMENT_RCA, module docs (4), README, ETIP_Project_Stats.html, roadmap flag note, new S151_S159 session doc · reworked: N.
-- **Haiku:** n/a this closing session.
-- **codex:rescue:** n/a — no security/auth/classifier-adjacent code touched in this documentation pass.
+## Agent utilization
+- Opus: plan, seam reads (FeatureGate/limits/MFA routes), diff review, security judgment (DECISION-035), test-leak fix, commits/PR/merge/deploy
+- Sonnet: context digest, hook map, PR A implementation (TDD), adversarial review (codex fallback), docs
+- Haiku: 2 VPS verification sweeps (Step 2 counts, post-deploy)
+- codex:rescue: n/a — codex CLI default model gpt-5.5 unavailable on account; Sonnet takeover, verdict=accept
+Routing telemetry:
+- sonnet · context digest · reworked: N
+- sonnet · frontend hook seam map · reworked: N
+- sonnet · PR A implementation TDD · reworked: Y (couldn't run vitest locally; 6-test mock-state leak fixed by Opus)
+- sonnet · adversarial review (codex fallback) · reworked: N
+- haiku · Step 2 DB vs ES counts · reworked: Y (summed one tenant wrong, 6,537 vs 5,537; Opus re-polled)
+- haiku · post-deploy verify · reworked: Y (reported 25 etip containers; direct count 32/32)

@@ -1,6 +1,6 @@
 # Step 5 — Honest UI, missing endpoints, auto-enrich critical IOCs (S161–S166)
 
-**Written:** 2026-09-25 · **Status:** spec, not started · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 5, §4 Phase 2 (W6, W7, W8, W13, W17)
+**Written:** 2026-09-25 · **Status:** in progress — S161a PR A deployed (PR #44, 2026-09-26); PR B next · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 5, §4 Phase 2 (W6, W7, W8, W13, W17)
 **Details from:** docs/S147_APP_WIRING_FOLLOWUPS.md (Follow-ups B and C), DECISION-013, 029, 030, 031.
 **Before you start:** step 3 (persistence) and step 4 (RLS) should be green. Every claim below was checked against the code on 2026-09-25; re-check line numbers, they drift.
 
@@ -217,6 +217,7 @@ Global AI config (UI adapter): `subtasks = config.map(c => ({category, subtask, 
 | S | Module | Work | Size |
 |---|---|---|---|
 | 161a | frontend | Pattern + QueryCache toast + MFA/sessions/feature-limits/billing/admin/users hooks + W17 prices | M |
+| 161a PR A ✅ | frontend | **Done (PR #44, 2026-09-26):** QueryStateView pattern, QueryCache toast, MFA/sessions/feature-limits/tenant-usage hooks, W17 prices, DECISION-035. **PR B next:** billing/admin hooks (`use-phase6-data.ts`) + user hooks (`use-phase5-data.ts`) + `usePlanBuilder` error fallback. Splitting into two PRs did not need an O1 decision first — O1 (sample data) only governs showcase pages, and none of PR A's or PR B's screens are showcase pages, so sample data is never allowed on them regardless of how O1 is answered. | M |
 | 161b | frontend | Remaining hook files, one PR each (alerting, reporting, phase4, analytics, monitoring, command-center, inline hooks) | M ×2–3 |
 | 162 | user-management-service | `GET /users`, `/users/audit`, `/users/stats` from Prisma | M |
 | 163 | frontend | Paths/shapes: sessions, roles, ticketing, AI global, MFA (if not done in 161a), hide Teams/Invite | S |

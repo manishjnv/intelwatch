@@ -1,6 +1,8 @@
 # Step 2 — Search works (IOC index at normalization + backfill)
 
-**Written:** 2026-09-25 · **Status:** ✅ all 7 sessions (S151–S157) deployed (PRs #38–#41). Production backfill run 2026-09-26 (12,093 IOCs enqueued across 10 tenants, dryRun-verified first). **Remaining:** ES count = DB count per tenant not yet verified (worker drains ~1 doc/s, ~3h) — carried to S160. · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 2, §4 Phase 0 (S150–S153) · **Source:** docs/S147_APP_WIRING_FOLLOWUPS.md Follow-up A
+**Written:** 2026-09-25 · **Status:** ✅ done — deployed S151–S157, ES=DB verified S160 (2026-09-26). · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 2, §4 Phase 0 (S150–S153) · **Source:** docs/S147_APP_WIRING_FOLLOWUPS.md Follow-up A
+
+**S160 verification (2026-09-26, read-only, VPS):** `bull:etip-ioc-indexed` wait=4, active=5 (live traffic draining), failed=6,118 (legacy baseline, unchanged, now safe to purge). Postgres `iocs` vs ES `etip_<tenant>_iocs_*` per tenant: `e4e11c4c…` 6,051 = 6,051 ✅, `10c895c3…` 6,042 = 6,042 ✅ (other 8 tenants hold 0 IOCs). Per-index counts (10c895c3: cve 2276, domain 1420, email 191, hash 1134, ip 1021; e4e11c4c: cve 2274, domain 1425, email 204, hash 1134, ip 1014); base `_iocs` indices (no suffix) hold 0 docs. Sample IP `3.0.21.0` found in ES (1 hit). 7 transient `ioc-update` job failures during the drain, all retried OK — folded into the existing backfill-speed risk row in §13, not a new bug. Owner ⌘K UI click-through still pending.
 **Rules:** one module per session (CLAUDE.md scope lock). S = 1–2 files, M = 3–5 files (plan mode). 🔒 = security-adjacent, needs an adversarial review before push.
 
 All file paths and line numbers below were checked against the code on 2026-09-25. Production numbers (0 ES docs, 5,934 IOCs) come from the S147 notes (2026-09-23). They were not measured again for this spec.
