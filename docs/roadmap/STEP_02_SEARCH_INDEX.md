@@ -37,7 +37,7 @@ A logged-in user types an IOC value in ⌘K or on `/search` and sees their IOCs 
 | Retention archive | `apps/user-management-service/src/services/retention-service.ts:115`, `apps/user-service/src/retention-service.ts:86` (`updateMany` sets `archivedAt`) | `iocs` | No |
 | Offboarding purge | `apps/user-management-service/src/services/offboarding-purge-worker.ts:78` (`ioc.deleteMany`), then `external-purge.ts:119-124` deletes indices `etip_<t>_iocs_*` | `iocs` | Deletes the ES indices directly |
 
-Global processing is **off by default**: `TI_GLOBAL_PROCESSING_ENABLED: ${…:-false}` (`docker-compose.etip.yml:314,360,1161`) and `apps/normalization/src/index.ts:92`. So the ~5,934 IOCs are most likely tenant `iocs` rows. **Check before S150** with the SQL in §8.
+Global processing is **off by default**: `TI_GLOBAL_PROCESSING_ENABLED: ${…:-false}` (`docker-compose.etip.yml:314,360,1161`) and `apps/normalization/src/index.ts:92`. So the ~5,934 IOCs are most likely tenant `iocs` rows. **Check before S151** with the SQL in §8.
 
 ### 3.3 The es-indexing service today (`apps/elasticsearch-indexing-service/src`)
 - The job schema is loose: `IocIndexJobSchema = {iocId, tenantId, action: index|update|delete, payload?: record}` (`schemas.ts:54-58`). The payload is **not** checked against `IocDocumentSchema` (`schemas.ts:5-20`).
@@ -109,24 +109,24 @@ offboarding purge → delete indices etip_<t>_iocs_* and etip_<t>_iocs
 
 | Session | Module | File | Change |
 |---|---|---|---|
-| S150 | packages/shared-utils (**shared, owner OK needed**) | `src/search-index.ts` (new), `src/index.ts` | `IocDocumentSchema` v2, `IocIndexJobSchema`, `toIocDocument(ioc)`, `iocIndexJobId()`, `IOC_INDEX_JOB_OPTIONS`. Moved here because 3 modules need them: normalization, api-gateway, ioc-intelligence (the CLAUDE.md "3 copies" rule) |
-| S150 | docs | `docs/DECISIONS_LOG.md` | DECISION-033: option A now, B later |
-| S151 🔒 | elasticsearch-indexing-service | `src/schemas.ts` | Re-export the shared schemas. Search params keep `tenantId` optional and ignored |
+| S151 | packages/shared-utils (**shared, owner OK needed**) | `src/search-index.ts` (new), `src/index.ts` | `IocDocumentSchema` v2, `IocIndexJobSchema`, `toIocDocument(ioc)`, `iocIndexJobId()`, `IOC_INDEX_JOB_OPTIONS`. Moved here because 3 modules need them: normalization, api-gateway, ioc-intelligence (the CLAUDE.md "3 copies" rule) |
+| S151 | docs | `docs/DECISIONS_LOG.md` | DECISION-033: option A now, B later |
+| S152 🔒 | elasticsearch-indexing-service | `src/schemas.ts` | Re-export the shared schemas. Search params keep `tenantId` optional and ignored |
 | | | `src/index-naming.ts` | Add `hash_md5/sha1/sha256/sha512` → `hash`, `unknown` → `other` (keep old keys) |
 | | | `src/worker.ts` | Validate with the shared schema. Pass `iocType` to update. Delete by id across the tenant wildcard (`deleteByQuery {ids}` on `etip_<t>_iocs_*`), so the type doesn't matter. Log invalid jobs and drop them |
 | | | `src/es-client.ts` | `updateDoc`: on 404, index the doc if the payload passes the full `IocDocumentSchema`; otherwise log a `warn` and return (the job completes). `deleteDoc`/`deleteByIds`: treat 404 as success. Search: `simple_query_string` on `value, normalizedValue, tags` plus a `term` boost on `normalizedValue`. Filter out `lifecycle: revoked, false_positive` unless `includeInactive=true` |
 | | | `src/routes/search.ts` (+ small `src/plugins/auth.ts` copied from normalization) | Verify the Bearer JWT. `tenantId = user.tenantId`. Ignore `?tenantId=` |
 | | | `src/mappings.ts` | Add `enrichedAt` date, `externalRiskScore` and `enrichmentQuality` integer, `updatedAt` date |
-| S152 | normalization | `src/queue.ts` | `createIocIndexQueue()` / `getIocIndexQueue()` (same pattern as the enrich queue), `IOC_INDEX_JOB_OPTIONS` |
+| S153 | normalization | `src/queue.ts` | `createIocIndexQueue()` / `getIocIndexQueue()` (same pattern as the enrich queue), `IOC_INDEX_JOB_OPTIONS` |
 | | | `src/config.ts` | `TI_IOC_INDEX_ENABLED` as `enum('true','false')` with a transform (the `TI_BLOOM_ENABLED` pattern at `:24`), default `true` |
 | | | `src/service.ts` (after `:568`) | After `repo.upsert`: `add('ioc-index', {action:'index', iocId, tenantId, payload: toIocDocument(upserted)}, {jobId: iocIndexJobId('index', upserted)})`. Fire and forget with `.catch(warn)`, like the enrich job. Send it even when the enrich job is skipped (bloom hit) |
 | | | `src/index.ts` | Create and close the queue |
-| S153 | ai-enrichment | `src/workers/enrich-worker.ts:94-108` | `action:'update'`, `iocType`, `payload:{enriched:true, enrichedAt, externalRiskScore, enrichmentQuality, confidence, severity}`, jobId `ioc-update-<iocId>-<enrichedAtMs>` |
+| S154 | ai-enrichment | `src/workers/enrich-worker.ts:94-108` | `action:'update'`, `iocType`, `payload:{enriched:true, enrichedAt, externalRiskScore, enrichmentQuality, confidence, severity}`, jobId `ioc-update-<iocId>-<enrichedAtMs>` |
 | | | `src/queue.ts:43` | Add `defaultJobOptions` (removeOnComplete/Fail) |
 | | | `src/config.ts:57` | `z.coerce.boolean()` turns `"false"` into `true` (the flag can't be turned off). Use the enum+transform pattern |
-| S154 🔒 | api-gateway | `src/routes/search-backfill.ts` (new), `src/app.ts` | `POST /api/v1/gateway/search/backfill` (routed by the nginx `/api/` catch-all, `default.conf:618`; no nginx change needed). `authenticate`, then `role === 'super_admin'` or 403. Body `{tenantId?: uuid, dryRun?: boolean}`. For each tenant with `offboardedAt = null`: page through `prisma.ioc.findMany({where:{tenantId}, orderBy:{id}, cursor, take:500})`, then `queue.addBulk` of `index` jobs. Returns `[{tenantId, dbCount, enqueued}]`. Write an audit log entry |
-| S155 | frontend | `src/components/layout/DashboardLayout.tsx:113-124` (⛔ LOCKED block, **owner OK needed**) | Use `api('/search/iocs?q=…&limit=20')` and map `data[]` → `{id: iocId, type, value, severity, category:'iocs'}`. On error, show the error (no silent `[]`). Drop `tenantId` from `use-es-search.ts:220` (the server ignores it) |
-| S156 | ioc-intelligence | `src/service.ts`, `src/queue.ts` (new or existing) | After create, update, soft-delete (revoke), bulk, and lifecycle changes: `index` (full doc from the returned row). For `updateMany` bulk operations: re-read the ids, then `addBulk` |
+| S155 🔒 | api-gateway | `src/routes/search-backfill.ts` (new), `src/app.ts` | `POST /api/v1/gateway/search/backfill` (routed by the nginx `/api/` catch-all, `default.conf:618`; no nginx change needed). `authenticate`, then `role === 'super_admin'` or 403. Body `{tenantId?: uuid, dryRun?: boolean}`. For each tenant with `offboardedAt = null`: page through `prisma.ioc.findMany({where:{tenantId}, orderBy:{id}, cursor, take:500})`, then `queue.addBulk` of `index` jobs. Returns `[{tenantId, dbCount, enqueued}]`. Write an audit log entry |
+| S156 | frontend | `src/components/layout/DashboardLayout.tsx:113-124` (⛔ LOCKED block, **owner OK needed**) | Use `api('/search/iocs?q=…&limit=20')` and map `data[]` → `{id: iocId, type, value, severity, category:'iocs'}`. On error, show the error (no silent `[]`). Drop `tenantId` from `use-es-search.ts:220` (the server ignores it) |
+| S157 | ioc-intelligence | `src/service.ts`, `src/queue.ts` (new or existing) | After create, update, soft-delete (revoke), bulk, and lifecycle changes: `index` (full doc from the returned row). For `updateMany` bulk operations: re-read the ids, then `addBulk` |
 | later | user-management-service | `src/services/external-purge.ts:119` | Also delete the legacy `etip_<t>_iocs` index (the `_*` pattern misses it) |
 | later | normalization + es-indexing | option B | The global index |
 
@@ -204,7 +204,7 @@ export const IocIndexJobSchema = z.discriminatedUnion('action', [
 ## 9. Acceptance checks (run on the VPS, `cd /opt/intelwatch && set -a && . ./.env && set +a`)
 
 ```bash
-# 0. Baseline — which table holds the 5,934? (run before S150)
+# 0. Baseline — which table holds the 5,934? (run before S151)
 docker exec etip_postgres psql -U "${TI_POSTGRES_USER:-etip_user}" -d "${TI_POSTGRES_DB:-etip}" -c \
  "SELECT tenant_id, count(*) FROM iocs GROUP BY 1 ORDER BY 2 DESC;" -c "SELECT count(*) FROM global_iocs;"
 
@@ -239,10 +239,10 @@ curl -s "https://intelwatch.in/api/v1/search/iocs?tenantId=<OTHER_TENANT>&limit=
 ## 10. Rollback
 
 - Before each session: `git tag safe-point-2026-MM-DD-s15x-search`. Revert the PR, or `git reset --hard <tag>`, then redeploy.
-- **Stop producing without a deploy:** set `TI_IOC_INDEX_ENABLED=false` for normalization (and ai-enrichment after S153 fixes the coercion bug). Then `docker compose -f docker-compose.etip.yml up -d etip_normalization etip_enrichment`.
+- **Stop producing without a deploy:** set `TI_IOC_INDEX_ENABLED=false` for normalization (and ai-enrichment after S154 fixes the coercion bug). Then `docker compose -f docker-compose.etip.yml up -d etip_normalization etip_enrichment`.
 - **Clear the queue:** `docker exec etip_redis redis-cli -a … DEL bull:etip-ioc-indexed:wait` (or drain it with a BullMQ `obliterate` script).
 - **Throw away the index:** `curl -X DELETE …/etip_*_iocs_*` removes only derived data. Postgres stays the source of truth. Re-run the backfill to rebuild.
-- The search auth change (S151) is the one change that must **not** be rolled back once ES has docs. If it is reverted, delete the indices too.
+- The search auth change (S152) is the one change that must **not** be rolled back once ES has docs. If it is reverted, delete the indices too.
 
 ## 11. Session breakdown
 
@@ -258,7 +258,7 @@ Order: consumer first, then producers, then backfill, then UI. Don't start a ses
 | 155 | frontend (owner OK for the LOCKED block) | ⌘K through `api()` + mapping + error state | S |
 | 156 | ioc-intelligence | Index jobs on analyst writes | M |
 
-This is 7 sessions where the roadmap planned 4 (S150–S153). S155 and S156 are what make ⌘K usable and keep edits in sync.
+This is 7 sessions where the roadmap planned 4 (S150–S153). S156 and S157 are what make ⌘K usable and keep edits in sync.
 
 ## 12. Owner decisions needed
 
@@ -273,11 +273,11 @@ This is 7 sessions where the roadmap planned 4 (S150–S153). S155 and S156 are 
 
 | Risk | Mitigation |
 |---|---|
-| Cross-tenant read once docs exist (§3.4) | S151 ships before S152 and S154. The acceptance check in §9 step 4 |
+| Cross-tenant read once docs exist (§3.4) | S152 ships before S153 and S155. The acceptance check in §9 step 4 |
 | Queued index jobs recreate a tenant's index after an offboarding purge (`ensureTypeIndex` creates indices on demand) | Backfill skips offboarded tenants. Normalization stops once `feedSource` rows are deleted. `update` never creates partial docs. After a purge, check `_cat/indices/etip_<t>_*` is empty. The purge scheduler isn't wired yet (docs/S148_OFFBOARDING_PURGE.md), so this is future-proofing |
 | Legacy `etip_<t>_iocs` index (no suffix) is left behind by the purge pattern `etip_<t>_iocs_*` | Later fix in user-management-service (§6) |
 | `refresh:'wait_for'` on every doc (`es-client.ts:167`) slows the backfill | 5,934 docs at concurrency 5 takes minutes, which is fine. If the volume grows, backfill through `bulkIndexMultiType` instead |
 | Single-node ES with `number_of_replicas: 1` (`mappings.ts:112`) makes the cluster status yellow | Doesn't block search. Set replicas to 0 in a later ops session |
-| Bulk `updateMany` writes (retention archive, ioc-intelligence bulk) don't emit per-row jobs | S156 re-reads the ids. For retention, the next backfill run corrects the `archived` flag. Log it as a known lag |
+| Bulk `updateMany` writes (retention archive, ioc-intelligence bulk) don't emit per-row jobs | S157 re-reads the ids. For retention, the next backfill run corrects the `archived` flag. Log it as a known lag |
 | ES down, so producers pile up jobs in Redis | Jobs are small. `removeOnComplete/Fail` caps them. BullMQ retries 3× with backoff, and the backfill repairs gaps |
 | Global IOCs are invisible to search under option A | Stated in DECISION-033. Option B is scheduled for the day `TI_GLOBAL_PROCESSING_ENABLED=true` |

@@ -1,7 +1,22 @@
 # Step 0 — Dev workflow: one worktree per session, one deployer, review before push
 
 **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 0 · **Module:** dev tooling (`.claude/`, `.github/workflows/deploy.yml` concurrency only) · **Size:** M (1 session)
-**Status:** spec, not started. Written 2026-09-25. All claims checked against the repo on that date.
+**Status:** partial — see progress below. Written 2026-09-25. All claims checked against the repo on that date.
+
+## Progress (2026-09-26)
+
+Done:
+
+- Deploy `concurrency:` + `paths-ignore: docs/**, **/*.md` (Step 0B U10, commit 2d3e6e0)
+- `/session-start` step 0 delegates the context digest to a Haiku/Sonnet agent (S150, commits a34ace8, eb9884e)
+- Review before push is being practiced ad hoc (S149, S150 used a Sonnet adversarial review), but not yet formalised as tooling here
+
+Not done:
+
+- Worktree-per-session tooling (only the main checkout exists)
+- Single-deployer rule formalised
+- `/session-end` still runs `git push origin master` directly (line 170) — the bug this spec names in §3 is unfixed
+- `/review` still uses `git diff --stat main..HEAD` against a `master`-default repo (line 9) — the bug this spec names in §3 is unfixed
 
 ---
 

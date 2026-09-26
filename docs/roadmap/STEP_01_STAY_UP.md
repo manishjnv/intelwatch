@@ -234,4 +234,4 @@ Recommendation: A now, B when the first paying customer signs.
 
 ### Related finding for later
 
-`etip_redis` runs `--maxmemory 256mb --maxmemory-policy allkeys-lru` (compose lines 45–47). BullMQ requires `noeviction`; with LRU, queued jobs and the Redis-JSON config stores from DECISION-027 (`@etip/shared-persistence`) can be **silently evicted** when memory is full. Needs its own small session (change to `noeviction` + raise the limit + alert on `used_memory`). Owner decision because it is shared infra.
+✅ Resolved in Step 0B (S149, U7): `noeviction`, maxmemory 1 GB, verified live 2026-09-26. Remaining: alert on `used_memory` → Step 8. (Was: `etip_redis` ran `--maxmemory 256mb --maxmemory-policy allkeys-lru`, risking silent eviction of BullMQ jobs and DECISION-027 Redis-JSON config stores.)

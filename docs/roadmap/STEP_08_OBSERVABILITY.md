@@ -245,7 +245,7 @@ Do S-8a first — it gives value with zero code change. S-8b can go in the same 
 | Alert noise → owner ignores alerts | Start with 8 rules, `for:` windows of 3–15 min, `repeat_interval 4h`; tune after 2 weeks |
 | Grafana itself is down → no inside alerts | Step 1's outside UptimeRobot check stays the first line. If `/grafana/` is removed from nginx, Grafana cannot be watched from outside; health-recovery (Step 1) restarts it if it exits. Accept this small gap |
 | Public `/grafana/` with a default password | Fixed in S-8a (required password + lock-down). **Check today** whether `TI_GRAFANA_PASSWORD` is set in the VPS `.env` |
-| Redis `allkeys-lru` (compose lines 45–47) silently evicts BullMQ jobs and DECISION-027 Redis-JSON config | Separate small ops session: `noeviction` + more memory + redis-exporter alert on `evicted_keys`. Owner decision (shared infra) |
+| Redis eviction policy | ✅ Resolved in Step 0B (S149, U7): `noeviction`, maxmemory 1 GB, verified live 2026-09-26. Remaining here: redis-exporter alert on `used_memory` approaching maxmemory |
 | `AsyncLocalStorage` context lost in some callbacks (e.g. BullMQ worker threads) | Workers read `requestId` from job data, not from context |
 | Clients can send their own `X-Request-ID` | nginx overwrites it with `proxy_set_header` on every proxied location; service ports are bound to 127.0.0.1 only |
 | Different `service` label values than expected break the memory regexes | Check label values in Explore first (§6 note) |
