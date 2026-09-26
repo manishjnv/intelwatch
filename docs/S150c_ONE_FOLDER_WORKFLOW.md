@@ -30,7 +30,7 @@ One working folder, one session at a time (see DECISION-034):
   "dropped by owner decision 2026-09-26".
 - Kept: `.claude/agents/etip-reviewer.md`, `.gitattributes` (`*.sh eol=lf`),
   one-deployer rule.
-- PR #42 CI was running at write time — pending merge; not re-verified here.
+- PR #42 merged as `48ebc22` after CI passed (test job 5m53s); the merge triggers a no-op deploy (only `scripts/new-worktree.sh` deleted).
 
 ## How to work now (per task)
 

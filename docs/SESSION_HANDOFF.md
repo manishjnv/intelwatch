@@ -8,12 +8,12 @@
 Docs-only. No app code, `.claude/**`, `CLAUDE.md`, `scripts/**`, or roadmap Step-00 doc touched (those belong to PR #42 / other sessions).
 
 - **One folder, one session (DECISION-034):** work only in `E:\code\IntelWatch`, no git worktrees, one Claude session at a time, branch per task, one deployer merges one PR at a time. Prompted by two sessions colliding in this checkout today. Detail: `docs/S150c_ONE_FOLDER_WORKFLOW.md`.
-- **PR #42** (`s158/devtools-worktree-flow`) rewritten at `b9bc62c` to match the one-folder decision — pending merge at time of writing.
+- **PR #42** (`s158/devtools-worktree-flow`) rewritten at `b9bc62c` to match the one-folder decision — **merged** (`48ebc22`, CI green).
 - **Worktree cleanup:** `s158-devtools` worktree unregistered, leftover folder needs manual delete (Windows file lock). `s159-frontend-tsc` still in active use by another running session — asked to commit/push/PR then leave clean for removal.
 - **Razorpay:** owner reaffirmed deferred (DECISION-031 stands) — not a new decision, not on the active plan.
 - **Roadmap reviewed:** Steps 3-14 (~70 sessions) + SEO 2.2-3 + weekly threat brief remain after Step 2. Step 2 (S151-S157, PRs #38-#41) already merged today by other sessions — not re-described here.
 
-**Open items:** finish S159 (frontend tsc cleanup) + remove its worktree; delete leftover worktree folders; merge PR #42 if not yet merged; check nightly backup/cleanup cron logs after 03:17 UTC 2026-09-27.
+**Open items:** finish S159 (frontend tsc cleanup) + remove its worktree; delete leftover worktree folders; check nightly backup/cleanup cron logs after 03:17 UTC 2026-09-27.
 
 **Agent utilization:**
 - Sonnet · roadmap pending sweep · reworked: N
