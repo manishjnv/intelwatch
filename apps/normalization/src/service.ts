@@ -4,9 +4,10 @@ import { detectIOCType, normalizeIOCValue, calculateCompositeConfidence, IOC_DEC
 import type { IOCRepository } from './repository.js';
 import type { NormalizeBatchJob } from './schema.js';
 import { applyQualityFilters } from './filters.js';
-import { getEnrichQueue } from './queue.js';
+import { getEnrichQueue, getIocIndexQueue } from './queue.js';
 import { incrementUnknownType } from './stats-counter.js';
 import type { BloomManager } from './bloom.js';
+import { toIocDocument, iocIndexJobId } from '@etip/shared-utils';
 
 /** Map shared-normalization IOCType to Prisma IocType enum values */
 function mapIOCType(rawType: string): string {
@@ -566,6 +567,23 @@ export class NormalizationService {
           lastSeen: now,
           enrichmentData: enrichmentData as object,
         });
+
+        // ── Queue IOC for search indexing (ES) — always, regardless of enrichment skip ──
+        const iocIndexQueue = getIocIndexQueue();
+        if (iocIndexQueue && upserted.id) {
+          try {
+            const payload = toIocDocument(upserted);
+            iocIndexQueue.add(
+              'ioc-index',
+              { action: 'index', iocId: upserted.id, tenantId: job.tenantId, payload },
+              { jobId: iocIndexJobId('index', upserted.id, upserted.updatedAt) },
+            ).catch((err) => {
+              this.logger.warn({ error: err instanceof Error ? err.message : String(err), iocId: upserted.id }, 'Failed to queue IOC index job');
+            });
+          } catch (err) {
+            this.logger.warn({ error: err instanceof Error ? err.message : String(err), iocId: upserted.id }, 'IOC not indexable — skipped search index job');
+          }
+        }
 
         // ── Add to Bloom filter after successful upsert ────────
         if (this.bloomManager) {

@@ -49,4 +49,14 @@ describe('loadConfig', () => {
   it('rejects invalid log level', () => {
     expect(() => loadConfig({ ...validEnv, TI_LOG_LEVEL: 'verbose' })).toThrow();
   });
+
+  it('defaults TI_IOC_INDEX_ENABLED to true when unset', () => {
+    const config = loadConfig(validEnv);
+    expect(config.TI_IOC_INDEX_ENABLED).toBe(true);
+  });
+
+  it('parses TI_IOC_INDEX_ENABLED=false', () => {
+    const config = loadConfig({ ...validEnv, TI_IOC_INDEX_ENABLED: 'false' });
+    expect(config.TI_IOC_INDEX_ENABLED).toBe(false);
+  });
 });

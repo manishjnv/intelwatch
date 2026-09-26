@@ -34,6 +34,8 @@ const EnvSchema = z.object({
   TI_MAJESTIC_TOP_N: z.coerce.number().int().min(1000).max(1_000_000).default(100_000),
   /** Confidence penalty for IOCs matching Majestic Million domains */
   TI_MAJESTIC_CONFIDENCE_PENALTY: z.coerce.number().int().min(0).max(100).default(30),
+  /** Enable queuing IOC upserts to the Elasticsearch index queue */
+  TI_IOC_INDEX_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
