@@ -1,7 +1,7 @@
 # Step 0 — Dev workflow: one worktree per session, one deployer, review before push
 
 **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 0 · **Module:** dev tooling (`.claude/`, `.github/workflows/deploy.yml` concurrency only) · **Size:** M (1 session)
-**Status:** partial — see progress below. Written 2026-09-25. All claims checked against the repo on that date.
+**Status:** done (2026-09-26, S158). All §11 acceptance checks pass except the `git ls-files -s` mode bit, which the orchestrator sets at commit time.
 
 ## Progress (2026-09-26)
 
@@ -10,13 +10,15 @@ Done:
 - Deploy `concurrency:` + `paths-ignore: docs/**, **/*.md` (Step 0B U10, commit 2d3e6e0)
 - `/session-start` step 0 delegates the context digest to a Haiku/Sonnet agent (S150, commits a34ace8, eb9884e)
 - Review before push is being practiced ad hoc (S149, S150 used a Sonnet adversarial review), but not yet formalised as tooling here
-
-Not done:
-
-- Worktree-per-session tooling (only the main checkout exists)
-- Single-deployer rule formalised
 - ✅ (2026-09-26) `/session-end` step 10 now `git push -u origin HEAD` + `gh pr create` when not on `master` (docs-only on master still allowed — paths-ignored); noreply author built in
 - ✅ (2026-09-26) `/review` now uses `git diff --stat origin/master...HEAD`
+- ✅ (2026-09-26, S158) `/session-start` new step 0a — workspace check: stops if in the main checkout or on `master`, reads session number from the branch name, warns if `.claude/settings.local.json` is missing
+- ✅ (2026-09-26, S158) `/session-end` — added "do not merge" note + step 10b worktree-cleanup instructions (run from the main checkout after the PR merges)
+- ✅ (2026-09-26, S158) `.claude/agents/etip-reviewer.md` created — read-only Sonnet subagent, PASS/FAIL gate before push
+- ✅ (2026-09-26, S158) `scripts/new-worktree.sh` created and guard-tested (`bash -n`, no-args, wrong-checkout) — orchestrator must set mode 100755 at commit (RCA S148)
+- ✅ (2026-09-26, S158) `CLAUDE.md` updated: Session Protocol step 0 (worktree rule), "9 steps" → "12 steps" fixed, one-deployer rule added to Git section
+
+Not done: none — see §14 for the owner decisions this session applied.
 
 ---
 
@@ -202,13 +204,13 @@ git ls-files -s scripts/new-worktree.sh             # 100755 if the helper is ad
 
 Note: `deploy.yml` is also touched in Step 1. Do Step 0 first and merge it, then start Step 1 from the new `master`.
 
-## 14. Owner decisions needed
+## 14. Owner decisions (settled 2026-09-26, applied in S158)
 
-1. OK to edit `CLAUDE.md` (Session Protocol + "12 steps")?
-2. Who is the deployer: always the owner, or one named Claude session per day?
-3. Per-session handoff files (`docs/handoffs/S<NNN>.md`) — yes or no?
-4. Docs-only merges: skip deploy (`paths-ignore`)? Recommended yes. Side effect: `ETIP_Project_Stats.html` changes also won't deploy — it is not served by the app, so no impact.
-5. Merge style: squash (one commit per session) — recommended.
+1. **CLAUDE.md edit** — OK. Applied: Session Protocol step 0 (worktree rule), "9 steps" → "12 steps" fix, one-deployer line in Git section.
+2. **Deployer** — the owner, or the one session the owner names for that day. Only one PR merged at a time; the next merge waits until the previous PR's CI/CD deploy is green and `/deploy-check` passes.
+3. **Per-session handoff files** — **no**. Keep the single `SESSION_HANDOFF.md` (overwritten each session-end, as today). Not adopting the `docs/handoffs/S<NNN>.md` split from §8.
+4. **Docs-only merges skip deploy** — yes, already implemented via `paths-ignore` (see Progress above).
+5. **Merge style** — unchanged (not mandating squash); whatever the deployer already does.
 
 ## 15. Risks
 

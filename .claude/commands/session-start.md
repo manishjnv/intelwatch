@@ -5,6 +5,29 @@ allowed-tools: Read, Bash(git:*), Agent
 
 Initialize a development session. Execute every step below without skipping.
 
+## 0a. Workspace check (worktree required)
+
+Run in one batch: `git rev-parse --show-toplevel`, `git branch --show-current`, `git worktree list`.
+
+**STOP** (do not proceed to any other step) if either is true:
+- The toplevel path is the main checkout — compare case-insensitively and accept either slash style (`E:/code/IntelWatch`, `E:\code\IntelWatch`, `e:/code/intelwatch`, ...)
+- The current branch is `master`
+
+If stopped, tell the user:
+
+```
+This session is in the main checkout / on master. Create a worktree first:
+
+  cd /e/code/IntelWatch
+  scripts/new-worktree.sh <sNNN> <module> <short-task>
+
+Then start Claude inside the new worktree and run /session-start again.
+```
+
+Otherwise:
+- Read the session number from the branch name pattern `s<NNN>/…` (e.g. `s158/devtools-worktree-flow` → session 158). If the branch doesn't match that pattern, ask the user for the session number instead of guessing.
+- Warn (do not stop) if `.claude/settings.local.json` is missing in this worktree — it holds gitignored config/secrets (DECISION-010) and should have been copied by `scripts/new-worktree.sh`.
+
 ## 0. Context digest (delegate — do NOT read these with the main model)
 In your FIRST message, in parallel with `git fetch && git status`, launch ONE `Agent` call with `model: "haiku"` (use `"sonnet"` if the task is cross-module), read-only, returning a facts-only digest (< 600 words, file:line refs) of:
 1. `docs/PROJECT_STATE.md` — phase, deployed/WIP modules, next task, blockers

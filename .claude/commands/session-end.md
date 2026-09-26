@@ -174,6 +174,20 @@ env -u GH_TOKEN git push -u origin HEAD
 ```
 Docs-only commits on `master` are safe (deploy.yml `paths-ignore`). Code must never be pushed to `master` directly — it goes via PR.
 
+**Do not merge.** The deployer merges one PR at a time (CLAUDE.md one-deployer rule) — the next merge waits until the previous PR's CI/CD deploy is green and `/deploy-check` passes.
+
+### 10b. Worktree cleanup (after the PR is merged, not now)
+
+Once this session's PR has merged, from the **main checkout** (`E:/code/IntelWatch`), not this worktree:
+
+```bash
+cd /e/code/IntelWatch
+git worktree remove ../IntelWatch-wt/<sNNN>-<module>
+git worktree prune
+```
+
+This session does not do this itself (the PR isn't merged yet) — leave it for the deployer or a future session.
+
 ## 11. Final Check
 
 - `git status` — must show clean working tree
