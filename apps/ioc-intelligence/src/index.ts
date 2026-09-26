@@ -5,6 +5,7 @@ import { buildApp } from './app.js';
 import { prisma, disconnectPrisma } from './prisma.js';
 import { IOCRepository } from './repository.js';
 import { IOCService } from './service.js';
+import { createIocIndexQueue, closeIocIndexQueue } from './queue.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -18,11 +19,14 @@ async function main(): Promise<void> {
   });
   loadServiceJwtSecret({ TI_SERVICE_JWT_SECRET: config.TI_SERVICE_JWT_SECRET });
 
+  createIocIndexQueue();
+
   const repo = new IOCRepository(prisma);
-  const service = new IOCService(repo);
+  const service = new IOCService(repo, logger);
   const app = await buildApp({ config, service });
 
   app.addHook('onClose', async () => {
+    await closeIocIndexQueue();
     await disconnectPrisma();
   });
 
