@@ -4,7 +4,7 @@ import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
 import { buildApp } from './app.js';
 import { prisma, disconnectPrisma } from './prisma.js';
 import { IOCRepository } from './repository.js';
-import { createNormalizeQueue, createEnrichQueue, closeNormalizeQueue } from './queue.js';
+import { createNormalizeQueue, createEnrichQueue, createIocIndexQueue, closeNormalizeQueue } from './queue.js';
 import { createNormalizeWorker } from './workers/normalize-worker.js';
 import { createLifecycleWorker } from './workers/lifecycle-worker.js';
 import { createGlobalNormalizeWorker } from './workers/global-normalize-worker.js';
@@ -39,6 +39,7 @@ async function main(): Promise<void> {
   const repo = new IOCRepository(prisma);
   createNormalizeQueue();
   createEnrichQueue();
+  if (config.TI_IOC_INDEX_ENABLED) createIocIndexQueue();
 
   // ── Bloom Filter Initialization (optional, gated by TI_BLOOM_ENABLED) ──
   let bloomManager: BloomManager | undefined;

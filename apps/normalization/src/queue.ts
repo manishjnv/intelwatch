@@ -1,9 +1,10 @@
 import { Queue } from 'bullmq';
-import { QUEUES, AppError } from '@etip/shared-utils';
+import { QUEUES, AppError, IOC_INDEX_JOB_OPTIONS } from '@etip/shared-utils';
 import { getConfig } from './config.js';
 
 let _queue: Queue | null = null;
 let _enrichQueue: Queue | null = null;
+let _iocIndexQueue: Queue | null = null;
 
 /** Create the normalize queue (producer side — for enqueuing enrichment downstream) */
 export function createNormalizeQueue(): Queue {
@@ -65,6 +66,30 @@ export function getEnrichQueue(): Queue | null {
   return _enrichQueue;
 }
 
+/** Create the IOC search-index queue (producer — normalization enqueues IOCs for ES indexing) */
+export function createIocIndexQueue(): Queue {
+  const config = getConfig();
+  const url = new URL(config.TI_REDIS_URL);
+  const password = decodeURIComponent(url.password || '');
+
+  _iocIndexQueue = new Queue(QUEUES.IOC_INDEX, {
+    connection: {
+      host: url.hostname,
+      port: Number(url.port) || 6379,
+      password: password || undefined,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      lazyConnect: true,
+    },
+    defaultJobOptions: { ...IOC_INDEX_JOB_OPTIONS },
+  });
+  return _iocIndexQueue;
+}
+
+export function getIocIndexQueue(): Queue | null {
+  return _iocIndexQueue;
+}
+
 export async function closeNormalizeQueue(): Promise<void> {
   if (_queue) {
     await _queue.close();
@@ -73,5 +98,9 @@ export async function closeNormalizeQueue(): Promise<void> {
   if (_enrichQueue) {
     await _enrichQueue.close();
     _enrichQueue = null;
+  }
+  if (_iocIndexQueue) {
+    await _iocIndexQueue.close();
+    _iocIndexQueue = null;
   }
 }

@@ -147,8 +147,11 @@ vi.mock('../src/queue.js', () => ({
       return { id: name };
     }),
   }),
+  // ponytail: this suite doesn't exercise the ES index queue — null keeps it a no-op
+  getIocIndexQueue: () => null,
   createNormalizeQueue: vi.fn(),
   createEnrichQueue: vi.fn(),
+  createIocIndexQueue: vi.fn(),
   closeNormalizeQueue: vi.fn(),
 }));
 
