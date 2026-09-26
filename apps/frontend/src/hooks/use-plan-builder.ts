@@ -58,7 +58,7 @@ function demoFeatures(preset: 'free' | 'starter' | 'teams' | 'enterprise'): Plan
     'reports', 'ai_enrichment', 'feed_subscriptions', 'users',
     'data_retention', 'api_access', 'ioc_storage', 'alerts',
   ]
-  const configs: Record<string, { enabled: number; daily: number; monthly: number }> = {
+  const configs: Record<'free' | 'starter' | 'teams' | 'enterprise', { enabled: number; daily: number; monthly: number }> = {
     free:       { enabled: 6,  daily: 100,   monthly: 1000 },
     starter:    { enabled: 10, daily: 5000,  monthly: 50000 },
     teams:      { enabled: 14, daily: 50000, monthly: 500000 },

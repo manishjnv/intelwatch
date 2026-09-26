@@ -21,7 +21,7 @@ export interface DateRange {
 function computeDateRange(preset: DateRangePreset): DateRange {
   const to = new Date().toISOString()
   const ms: Record<string, number> = { '24h': 86_400_000, '7d': 604_800_000, '30d': 2_592_000_000, '90d': 7_776_000_000 }
-  const from = new Date(Date.now() - (ms[preset] ?? ms['7d'])).toISOString()
+  const from = new Date(Date.now() - (ms[preset] ?? ms['7d'] ?? 604_800_000)).toISOString()
   return { preset, from, to }
 }
 
@@ -251,10 +251,9 @@ export function useAnalyticsDashboard(initialPreset: DateRangePreset = '7d') {
 
   const result = useQuery({
     queryKey: ['analytics-dashboard-full', dateRange.preset, dateRange.from],
-    queryFn: () => fetchAnalytics(dateRange).catch(err => {
-      notifyApiError(err, 'analytics dashboard')
-      return null as unknown as AnalyticsDashboardData
-    }),
+    queryFn: () => fetchAnalytics(dateRange).catch(err =>
+      notifyApiError(err, 'analytics dashboard', null as unknown as AnalyticsDashboardData),
+    ),
     staleTime: 5 * 60_000,
   })
 

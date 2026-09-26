@@ -17,7 +17,7 @@ vi.mock('@/lib/api', () => ({
 
 const mockNotifyApiError = vi.fn((_err: unknown, _res: string, fallback: unknown) => fallback)
 vi.mock('@/hooks/useApiError', () => ({
-  notifyApiError: (...args: unknown[]) => mockNotifyApiError(...args),
+  notifyApiError: (err: unknown, resource: string, fallback: unknown) => mockNotifyApiError(err, resource, fallback),
 }))
 
 import { useGlobalSearchResults } from '@/hooks/use-global-search-results'

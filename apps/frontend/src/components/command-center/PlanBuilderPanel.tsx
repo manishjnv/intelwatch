@@ -55,7 +55,7 @@ function PlanCard({ plan, onEdit, onDelete }: {
               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sev-medium/10 text-sev-medium font-medium">Default</span>
             )}
             {plan.isPublic && (
-              <Globe className="w-3 h-3 text-text-muted" title="Public" />
+              <span title="Public"><Globe className="w-3 h-3 text-text-muted" /></span>
             )}
           </div>
           <p className="text-xs text-text-muted mt-0.5 line-clamp-1">{plan.description ?? '—'}</p>

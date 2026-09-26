@@ -318,7 +318,7 @@ describe('QueueTab', () => {
     render(<QueueTab data={makeMockCommandCenter()} />)
     // Click first checkbox
     const checkboxes = screen.getAllByRole('checkbox')
-    fireEvent.click(checkboxes[0])
+    fireEvent.click(checkboxes[0]!)
     expect(screen.getByTestId('batch-enrich-btn')).toBeInTheDocument()
   })
 })

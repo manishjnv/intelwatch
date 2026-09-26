@@ -69,7 +69,7 @@ describe('sortByRelevance', () => {
       { tags: ['unrelated'] },
     ]
     const sorted = sortByRelevance(items, TECH_PROFILE)
-    expect(sorted[0].tags).toContain('technology')
+    expect(sorted[0]!.tags).toContain('technology')
   })
 })
 

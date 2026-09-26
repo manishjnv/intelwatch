@@ -94,8 +94,8 @@ function setupDownloadSpy() {
   if (!URL.createObjectURL) (URL as any).createObjectURL = vi.fn()
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url')
   const OrigBlob = globalThis.Blob
-  vi.spyOn(globalThis, 'Blob').mockImplementation((parts: any[]) => {
-    blobContent = parts?.[0] as string ?? ''
+  vi.spyOn(globalThis, 'Blob').mockImplementation((parts?: BlobPart[]) => {
+    blobContent = (parts?.[0] as string) ?? ''
     return new OrigBlob(parts)
   })
 }

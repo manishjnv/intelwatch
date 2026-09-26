@@ -239,6 +239,7 @@ function EnrichmentMatrix({ stats }: { stats: AnalyticsDashboardData['enrichment
         <tbody>
           {sources.map(src => {
             const s = stats.bySource[src]
+            if (!s) return null
             const total = s.success + s.failed
             const rate = total > 0 ? Math.round((s.success / total) * 100) : 0
             const rateColor = rate > 80 ? 'text-sev-low' : rate > 50 ? 'text-sev-medium' : 'text-sev-critical'

@@ -61,7 +61,7 @@ export function AreaChart({
       {points.filter((_, i) => i % Math.ceil(points.length / 5) === 0 || i === points.length - 1).map((p, idx) => {
         const ci = points.indexOf(p)
         return (
-          <text key={idx} x={coords[ci].x} y={h - 4} textAnchor="middle"
+          <text key={idx} x={coords[ci]!.x} y={h - 4} textAnchor="middle"
             className="fill-text-muted" style={{ fontSize: '4px' }}>
             {p.label}
           </text>
@@ -76,7 +76,7 @@ export function AreaChart({
               <circle cx={c.x} cy={c.y} r={2} fill={color} />
               <text x={c.x} y={c.y - 5} textAnchor="middle" className="fill-text-primary"
                 style={{ fontSize: '4px', fontWeight: 700 }}>
-                {formatValue(vals[i])}
+                {formatValue(vals[i]!)}
               </text>
             </>
           )}
@@ -356,7 +356,7 @@ export function MiniSparkline({
   const range = max - min || 1
 
   // Auto-detect trend color
-  const trend = values[values.length - 1] - values[0]
+  const trend = values[values.length - 1]! - values[0]!
   const autoColor = trend > 0 ? 'var(--sev-low)' : trend < 0 ? 'var(--sev-critical)' : 'var(--text-muted)'
   const strokeColor = color ?? autoColor
 
@@ -379,7 +379,7 @@ export function MiniSparkline({
       {/* Endpoint dot */}
       <circle
         cx={(values.length - 1) / (values.length - 1) * width}
-        cy={height - 2 - ((values[values.length - 1] - min) / range) * (height - 4)}
+        cy={height - 2 - ((values[values.length - 1]! - min) / range) * (height - 4)}
         r={1.5}
         fill={strokeColor}
       />

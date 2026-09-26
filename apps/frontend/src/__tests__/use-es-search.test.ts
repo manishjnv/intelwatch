@@ -174,7 +174,7 @@ describe('useEsSearch', () => {
   it('passes tenantId as query param to API', async () => {
     renderHook(() => useEsSearch(), { wrapper: createWrapper('/search?q=test') })
     await waitFor(() => expect(mockApi).toHaveBeenCalled())
-    const callArg = mockApi.mock.calls[0][0] as string
+    const callArg = mockApi.mock.calls[0]![0] as string
     expect(callArg).toContain('tenantId=test-tenant')
   })
 })

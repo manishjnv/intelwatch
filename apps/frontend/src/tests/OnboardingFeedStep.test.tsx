@@ -56,7 +56,7 @@ vi.mock('@/hooks/use-phase6-data', () => ({
 }))
 
 vi.mock('@/hooks/use-onboarding-feeds', () => ({
-  useOnboardingFeeds: (...args: unknown[]) => mockUseOnboardingFeeds(...args),
+  useOnboardingFeeds: (_planTier: string) => mockUseOnboardingFeeds(),
 }))
 
 vi.mock('@etip/shared-ui/components/PageStatsBar', () => ({

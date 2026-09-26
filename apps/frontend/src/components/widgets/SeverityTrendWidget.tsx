@@ -68,7 +68,7 @@ export function SeverityTrendWidget() {
             <span className="text-[10px] tabular-nums text-text-muted ml-auto shrink-0">
               {s.total.toLocaleString()}
               {s.values.length >= 2 && (() => {
-                const delta = s.values[s.values.length - 1] - s.values[s.values.length - 2]
+                const delta = s.values[s.values.length - 1]! - s.values[s.values.length - 2]!
                 if (delta === 0) return null
                 const isNeg = delta < 0
                 return (

@@ -119,9 +119,9 @@ describe('GlobalAiConfigPage', () => {
     expect(select).toBeInTheDocument()
     const options = select.querySelectorAll('option')
     expect(options).toHaveLength(3)
-    expect(options[0].value).toBe('haiku')
-    expect(options[1].value).toBe('sonnet')
-    expect(options[2].value).toBe('opus')
+    expect(options[0]!.value).toBe('haiku')
+    expect(options[1]!.value).toBe('sonnet')
+    expect(options[2]!.value).toBe('opus')
   })
 
   it('changing model shows cost delta inline', () => {
@@ -217,6 +217,7 @@ describe('GlobalAiConfigPage', () => {
         activePlan: null,
       },
       isLoading: false,
+      error: null,
       isDemo: true,
       setModel: mockSetModel,
       isSavingModel: false,
@@ -252,8 +253,9 @@ describe('GlobalAiConfigPage', () => {
 
   it('loading skeleton shown while fetching', () => {
     vi.mocked(useGlobalAiConfig).mockReturnValueOnce({
-      config: undefined as any,
+      config: undefined,
       isLoading: true,
+      error: null,
       isDemo: false,
       setModel: vi.fn(),
       isSavingModel: false,

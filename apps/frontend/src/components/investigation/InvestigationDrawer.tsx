@@ -86,7 +86,7 @@ export function InvestigationDrawer() {
   // Derived data
   const enrichments = useMemo(() => {
     if (!payload) return []
-    return DEMO_ENRICHMENT[payload.type] ?? DEMO_ENRICHMENT.ip
+    return DEMO_ENRICHMENT[payload.type] ?? DEMO_ENRICHMENT.ip!
   }, [payload])
 
   const relatedActors = useMemo(() => {

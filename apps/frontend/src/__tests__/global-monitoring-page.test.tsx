@@ -110,7 +110,7 @@ describe('GlobalMonitoringPage', () => {
     render(<GlobalMonitoringPage />)
     const badges = screen.getAllByTestId('admiralty-badge')
     expect(badges.length).toBeGreaterThan(0)
-    expect(badges[0].textContent).toBe('B2')
+    expect(badges[0]!.textContent).toBe('B2')
   })
 
   it('disabled feed shows Re-enable button', () => {
@@ -135,13 +135,13 @@ describe('GlobalMonitoringPage', () => {
     render(<GlobalMonitoringPage />)
     const rows = screen.getAllByTestId('corroboration-row')
     expect(rows.length).toBe(2)
-    expect(rows[0].textContent).toContain('185.220.101.34')
+    expect(rows[0]!.textContent).toContain('185.220.101.34')
   })
 
   it('clicking corroboration row selects IOC', () => {
     render(<GlobalMonitoringPage />)
     const rows = screen.getAllByTestId('corroboration-row')
-    fireEvent.click(rows[0])
+    fireEvent.click(rows[0]!)
     // selection is tracked internally — no error thrown
   })
 

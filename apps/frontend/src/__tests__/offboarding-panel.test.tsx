@@ -137,7 +137,7 @@ describe('OffboardingPanel', () => {
     expect(modal).toBeInTheDocument()
 
     // Click the X close button in the modal header
-    fireEvent.click(modal.querySelectorAll('button')[0])
+    fireEvent.click(modal.querySelectorAll('button')[0]!)
     expect(screen.queryByTestId('offboard-confirm-modal')).not.toBeInTheDocument()
     expect(mockOffboardMutate).not.toHaveBeenCalled()
   })

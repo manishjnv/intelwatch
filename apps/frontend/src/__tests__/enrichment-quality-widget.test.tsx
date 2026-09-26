@@ -34,8 +34,6 @@ vi.mock('@/components/widgets/SeverityTrendWidget', () => ({ SeverityTrendWidget
 vi.mock('@/components/widgets/ProfileMatchWidget', () => ({ ProfileMatchWidget: () => null }))
 vi.mock('@/components/widgets/GeoThreatWidget', () => ({ GeoThreatWidget: () => null }))
 
-import React from 'react'
-
 describe('EnrichmentQualityWidget removed from Dashboard', () => {
   it('does not render enrichment quality widget (internal admin scope)', () => {
     render(<DashboardPage />)

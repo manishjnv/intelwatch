@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@/test/test-utils'
 import { computeDecayCurve, halfLifeDays, halfLifeLabel, getDecayRate, buildEventMarkers } from '@/utils/confidence-decay'
 import { ConfidenceDecayChart } from '@/components/ioc/ConfidenceDecayChart'
+import type { IOCTimelineEvent } from '@/hooks/use-intel-data'
 
 // ─── Mock framer-motion ─────────────────────────────────────────
 vi.mock('framer-motion', () => ({
@@ -91,7 +92,7 @@ describe('ConfidenceDecayChart', () => {
     timelineEvents: [
       { timestamp: '2026-03-22T00:00:00Z', summary: 'VT enriched', eventType: 'enrichment', source: 'VirusTotal' },
       { timestamp: '2026-03-25T00:00:00Z', summary: 'Risk propagated', eventType: 'correlation', source: 'correlation-engine' },
-    ],
+    ] as IOCTimelineEvent[],
   }
 
   it('renders the chart container', () => {

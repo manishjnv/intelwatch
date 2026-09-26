@@ -95,7 +95,7 @@ const SEV_COLORS: Record<string, string> = {
 function normalizeTechniques(input: AttackTechnique[] | string[]): AttackTechnique[] {
   return input.map(t => {
     if (typeof t === 'string') {
-      const baseId = t.split('.')[0]
+      const baseId = t.split('.')[0]!
       return {
         techniqueId: t,
         name: TECHNIQUE_NAMES[baseId] ?? t,
@@ -104,7 +104,7 @@ function normalizeTechniques(input: AttackTechnique[] | string[]): AttackTechniq
       }
     }
     // Fill in missing fields
-    const baseId = t.techniqueId.split('.')[0]
+    const baseId = t.techniqueId.split('.')[0]!
     return {
       ...t,
       name: t.name || TECHNIQUE_NAMES[baseId] || t.techniqueId,

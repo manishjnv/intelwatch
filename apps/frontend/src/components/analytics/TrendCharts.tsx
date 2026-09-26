@@ -72,7 +72,7 @@ function AreaChart({ points, height = 160 }: { points: TrendPoint[]; height?: nu
       {points.filter((_, i) => i % Math.ceil(points.length / 5) === 0 || i === points.length - 1).map((p, idx) => {
         const ci = points.indexOf(p)
         return (
-          <text key={idx} x={coords[ci].x} y={h - 4} textAnchor="middle"
+          <text key={idx} x={coords[ci]!.x} y={h - 4} textAnchor="middle"
             className="fill-text-muted" style={{ fontSize: '4px' }}>
             {p.date.slice(5)}
           </text>
@@ -146,11 +146,11 @@ function AlertChart({ points }: { points: TrendPoint[] }) {
       <text x={w - 1} y={avgY - 2} textAnchor="end" className="fill-text-muted" style={{ fontSize: '3px' }}>avg</text>
       <path d={linePath} fill="none" stroke="var(--sev-high)" strokeWidth="1" strokeLinecap="round" />
       {/* Highlight spikes */}
-      {coords.map((c, i) => vals[i] > avg * 2 && (
+      {coords.map((c, i) => vals[i]! > avg * 2 && (
         <circle key={i} cx={c.x} cy={c.y} r={1.5} fill="var(--sev-critical)" />
       ))}
       {points.map((p, i) => (i % Math.ceil(points.length / 5) === 0 || i === points.length - 1) && (
-        <text key={i} x={coords[i].x} y={h - 2} textAnchor="middle"
+        <text key={i} x={coords[i]!.x} y={h - 2} textAnchor="middle"
           className="fill-text-muted" style={{ fontSize: '3.5px' }}>
           {p.date.slice(5)}
         </text>
@@ -214,7 +214,7 @@ function CostChart({ trend, budget = 50 }: { trend: { date: string; cost: number
       <line x1={0} y1={budgetY} x2={w} y2={budgetY} stroke="var(--sev-critical)" strokeWidth="0.5" strokeDasharray="2,2" data-testid="budget-line" />
       <text x={2} y={budgetY - 2} className="fill-text-muted" style={{ fontSize: '3px' }}>Budget ${budget}</text>
       {trend.map((t, i) => (i % Math.ceil(trend.length / 5) === 0 || i === trend.length - 1) && (
-        <text key={i} x={coords[i].x} y={h - 2} textAnchor="middle"
+        <text key={i} x={coords[i]!.x} y={h - 2} textAnchor="middle"
           className="fill-text-muted" style={{ fontSize: '3.5px' }}>
           {t.date.slice(5)}
         </text>

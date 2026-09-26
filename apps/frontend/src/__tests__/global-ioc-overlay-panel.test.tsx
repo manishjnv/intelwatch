@@ -138,7 +138,7 @@ describe('GlobalIocOverlayPanel — warninglist', () => {
         enrichmentData: {},
       },
       isLoading: false,
-    })
+    } as unknown as ReturnType<typeof useGlobalIocDetail>)
     render(<GlobalIocOverlayPanel iocId="gioc-5" onClose={vi.fn()} />)
     expect(screen.getByTestId('warninglist-banner')).toBeInTheDocument()
     expect(screen.getByText(/IANA Reserved/)).toBeInTheDocument()

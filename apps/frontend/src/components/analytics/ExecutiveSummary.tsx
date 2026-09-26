@@ -145,7 +145,7 @@ export function ExecutiveSummary({ data, isDemo, onNavigate }: ExecutiveSummaryP
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         <KpiCard testId="kpi-total-iocs" label="Total IOCs" value={summary.totalIocs.toLocaleString()}
-          icon={Shield} sparkline={iocSparkline} delta={iocTrend.length > 1 ? iocTrend[iocTrend.length - 1].count - iocTrend[0].count : 0}
+          icon={Shield} sparkline={iocSparkline} delta={iocTrend.length > 1 ? iocTrend[iocTrend.length - 1]!.count - iocTrend[0]!.count : 0}
           onClick={nav('ioc-distribution')} />
 
         <KpiCard testId="kpi-active-threats" label="Active Threats" value={activeThreats.toLocaleString()}

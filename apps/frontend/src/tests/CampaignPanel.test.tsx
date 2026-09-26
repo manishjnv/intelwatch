@@ -51,7 +51,7 @@ describe('CampaignPanel', () => {
     render(<CampaignPanel campaign={MOCK_CAMPAIGN} onActorClick={onActorClick} />)
     const actors = screen.getAllByTestId('related-actor')
     expect(actors).toHaveLength(2)
-    fireEvent.click(actors[0])
+    fireEvent.click(actors[0]!)
     expect(onActorClick).toHaveBeenCalledWith('APT29')
   })
 
@@ -60,7 +60,7 @@ describe('CampaignPanel', () => {
     render(<CampaignPanel campaign={MOCK_CAMPAIGN} onMalwareClick={onMalwareClick} />)
     const malware = screen.getAllByTestId('related-malware')
     expect(malware).toHaveLength(2)
-    fireEvent.click(malware[0])
+    fireEvent.click(malware[0]!)
     expect(onMalwareClick).toHaveBeenCalledWith('SUNBURST')
   })
 

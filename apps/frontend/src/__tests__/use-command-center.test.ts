@@ -54,7 +54,7 @@ describe('useCommandCenter', () => {
     const { result } = renderHook(() => useCommandCenter(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.tenantList).toHaveLength(5)
-    expect(result.current.tenantList[0].name).toBe('Acme Corp')
+    expect(result.current.tenantList[0]!.name).toBe('Acme Corp')
   })
 
   it('returns demo queue stats', async () => {
@@ -68,8 +68,8 @@ describe('useCommandCenter', () => {
     const { result } = renderHook(() => useCommandCenter(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.providerKeys).toHaveLength(3)
-    expect(result.current.providerKeys[0].provider).toBe('anthropic')
-    expect(result.current.providerKeys[0].isValid).toBe(true)
+    expect(result.current.providerKeys[0]!.provider).toBe('anthropic')
+    expect(result.current.providerKeys[0]!.isValid).toBe(true)
   })
 
   it('defaults to month period', async () => {
