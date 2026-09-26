@@ -63,6 +63,17 @@ export async function findUserByEmailAnyStatus(email: string) {
   return prisma.user.findFirst({ where: { email }, include: { tenant: true } });
 }
 
+/** Find login candidates for a duplicate email across tenants, excluding break-glass rows. */
+// ponytail: register() blocks duplicate emails, so the real account is always the oldest row — later invite/SCIM rows can't evict it; oldest-first ordering + take:10 also bounds bcrypt cost.
+export async function findLoginCandidatesByEmail(email: string) {
+  return prisma.user.findMany({
+    where: { email, isBreakGlass: false },
+    include: { tenant: true },
+    orderBy: [{ createdAt: 'asc' }],
+    take: 10,
+  });
+}
+
 export async function findUserByEmailAndTenant(email: string, tenantId: string) {
   return prisma.user.findFirst({ where: { email, tenantId }, include: { tenant: true } });
 }

@@ -8,6 +8,7 @@ vi.mock('../src/prisma.js', () => ({
   prisma: {
     user: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -105,7 +106,7 @@ describe('EmailVerificationService', () => {
       tenant: baseTenant,
     };
 
-    vi.mocked(prisma.user.findFirst).mockResolvedValue(unverifiedUser as never);
+    vi.mocked(prisma.user.findMany).mockResolvedValue([unverifiedUser] as never);
 
     await expect(service.login({
       email: 'user@test.com', password: 'StrongPass123!', ipAddress: IP, userAgent: UA,
@@ -206,7 +207,7 @@ describe('EmailVerificationService', () => {
       tenant: baseTenant,
     };
 
-    vi.mocked(prisma.user.findFirst).mockResolvedValue(verifiedUser as never);
+    vi.mocked(prisma.user.findMany).mockResolvedValue([verifiedUser] as never);
 
     // Password won't match our mock hash, but the point is it gets past the email check
     await expect(service.login({
