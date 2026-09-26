@@ -5,28 +5,22 @@ allowed-tools: Read, Bash(git:*), Agent
 
 Initialize a development session. Execute every step below without skipping.
 
-## 0a. Workspace check (worktree required)
+## 0a. Workspace check (one folder, one session — no worktrees)
 
-Run in one batch: `git rev-parse --show-toplevel`, `git branch --show-current`, `git worktree list`.
+Owner decision (2026-09-26): one working folder, `E:\code\IntelWatch`. No git worktrees. One Claude session at a time in this folder.
 
-**STOP** (do not proceed to any other step) if either is true:
-- The toplevel path is the main checkout — compare case-insensitively and accept either slash style (`E:/code/IntelWatch`, `E:\code\IntelWatch`, `e:/code/intelwatch`, ...)
-- The current branch is `master`
+Run in one batch: `git rev-parse --show-toplevel`, `git status -sb`, `git worktree list`.
 
-If stopped, tell the user:
+**STOP** (do not touch anything, ask the owner) if:
+- The working tree has uncommitted changes AND those changes don't look like this session's own in-progress work (e.g. you don't recognize them from earlier in this conversation) — tell the owner: "another session may be running in this folder; check before I proceed."
+- The current branch is one this session didn't create and has uncommitted changes on it.
 
-```
-This session is in the main checkout / on master. Create a worktree first:
-
-  cd /e/code/IntelWatch
-  scripts/new-worktree.sh <sNNN> <module> <short-task>
-
-Then start Claude inside the new worktree and run /session-start again.
-```
+**Warn** (do not stop) if `git worktree list` shows more than one entry — the owner rule is one folder, no worktrees; flag it and suggest `git worktree remove` on any stale ones.
 
 Otherwise:
-- Read the session number from the branch name pattern `s<NNN>/…` (e.g. `s158/devtools-worktree-flow` → session 158). If the branch doesn't match that pattern, ask the user for the session number instead of guessing.
-- Warn (do not stop) if `.claude/settings.local.json` is missing in this worktree — it holds gitignored config/secrets (DECISION-010) and should have been copied by `scripts/new-worktree.sh`.
+- If on `master` and the task is docs-only, staying on `master` is fine (docs commits can go straight to master).
+- If on `master` and the task involves code, tell the user the branch you will create before editing, e.g. `git switch -c s159/normalization-index`, then create it.
+- Optional: if already on a branch matching `s<NNN>/…`, you may read the session number from it — don't guess if it doesn't match, just ask.
 
 ## 0. Context digest (delegate — do NOT read these with the main model)
 In your FIRST message, in parallel with `git fetch && git status`, launch ONE `Agent` call with `model: "haiku"` (use `"sonnet"` if the task is cross-module), read-only, returning a facts-only digest (< 600 words, file:line refs) of:

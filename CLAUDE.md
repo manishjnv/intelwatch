@@ -5,7 +5,7 @@ Monorepo: pnpm workspaces. 20+ microservices in /apps, shared packages in /packa
 Tech: Node 20, Fastify 4, Prisma 5, React 18, TypeScript strict, Zod validation.
 
 ## Session Protocol (MANDATORY)
-0. Work in your own worktree, never the main checkout (docs/roadmap/STEP_00_DEV_WORKFLOW.md; `scripts/new-worktree.sh`)
+0. **One folder, one session:** work only in `E:\code\IntelWatch`; no git worktrees; one Claude session at a time; branch per task; one deployer merges one PR at a time (docs/roadmap/STEP_00_DEV_WORKFLOW.md)
 1. Run /session-start — loads state, decisions, git status, last session handoff
    - Its step 0 MUST delegate the read of docs (state, handoff, decisions, RCA, roadmap + STEP spec, newest S1xx doc) + newest `session*.md` memory + `reference_external_services.md` to ONE Haiku/Sonnet agent → digest. Even without /session-start, do this in the first message. Never claim something is "not set up" before the digest confirms it.
    - At /session-end: put must-not-miss facts on the MEMORY.md index line, and update `reference_external_services.md` when any external service (UptimeRobot, Telegram, crons, GitHub settings) changes.

@@ -176,17 +176,16 @@ Docs-only commits on `master` are safe (deploy.yml `paths-ignore`). Code must ne
 
 **Do not merge.** The deployer merges one PR at a time (CLAUDE.md one-deployer rule) — the next merge waits until the previous PR's CI/CD deploy is green and `/deploy-check` passes.
 
-### 10b. Worktree cleanup (after the PR is merged, not now)
+### 10b. After the PR is merged (next session, not now)
 
-Once this session's PR has merged, from the **main checkout** (`E:/code/IntelWatch`), not this worktree:
+One folder, one session — no worktree to remove. Once this session's PR has merged, the next session in this folder returns to master and deletes the local branch:
 
 ```bash
-cd /e/code/IntelWatch
-git worktree remove ../IntelWatch-wt/<sNNN>-<module>
-git worktree prune
+git switch master && git pull --ff-only
+git branch -d <sNNN>/<module>-<task>
 ```
 
-This session does not do this itself (the PR isn't merged yet) — leave it for the deployer or a future session.
+This session does not do this itself (the PR isn't merged yet) — leave it for the next session in this folder.
 
 ## 11. Final Check
 
