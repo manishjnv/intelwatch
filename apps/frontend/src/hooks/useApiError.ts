@@ -12,10 +12,11 @@ import { ApiError } from '@/lib/api'
 const lastNotified = new Map<string, number>()
 const DEBOUNCE_MS = 10_000
 
-function classifyError(err: unknown): string {
+export function classifyError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.status === 401) return 'Session expired'
     if (err.status === 403) return 'Access denied'
+    if (err.status === 404) return 'Not available yet'
     if (err.status >= 500) return 'Server error'
     return err.message
   }

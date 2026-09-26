@@ -13,7 +13,7 @@
  */
 import type { ReactNode } from 'react'
 import { ArrowUpCircle, Lock } from 'lucide-react'
-import { useFeatureEnabled, FEATURE_LABELS, type FeatureKey } from '@/hooks/use-feature-limits'
+import { useFeatureEnabled, useFeatureLimits, FEATURE_LABELS, type FeatureKey } from '@/hooks/use-feature-limits'
 
 // ─── Upgrade CTA (default fallback) ────────────────────────
 
@@ -58,7 +58,13 @@ interface FeatureGateProps {
 }
 
 export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
+  const { isLoading } = useFeatureLimits()
   const enabled = useFeatureEnabled(feature)
+
+  // Don't flash the Upgrade CTA while feature limits are still loading.
+  if (isLoading) {
+    return null
+  }
 
   if (!enabled) {
     return <>{fallback ?? <UpgradeCTA feature={feature} />}</>

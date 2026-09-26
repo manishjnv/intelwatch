@@ -69,22 +69,24 @@ describe('use-mfa API contracts', () => {
     expect(result.codes).toHaveLength(2)
   })
 
+  // Gateway registers mfaRoutes under /api/v1/auth (apps/api-gateway/src/app.ts) — the
+  // hook paths need the /auth segment since api() only prepends /api/v1 (S161a fix).
   it('MFA enforcement GET returns enforcement data', async () => {
     mockApi.mockResolvedValue({ enforced: true, gracePeriodDays: 14, usersWithMfa: 5, totalUsers: 10 })
-    const result = await mockApi('/settings/mfa/enforcement')
+    const result = await mockApi('/auth/settings/mfa/enforcement')
     expect(result.enforced).toBe(true)
     expect(result.totalUsers).toBe(10)
   })
 
   it('MFA enforcement PUT updates enforcement', async () => {
     mockApi.mockResolvedValue(undefined)
-    await mockApi('/settings/mfa/enforcement', { method: 'PUT', body: { enforced: true } })
-    expect(mockApi).toHaveBeenCalledWith('/settings/mfa/enforcement', { method: 'PUT', body: { enforced: true } })
+    await mockApi('/auth/settings/mfa/enforcement', { method: 'PUT', body: { enforced: true } })
+    expect(mockApi).toHaveBeenCalledWith('/auth/settings/mfa/enforcement', { method: 'PUT', body: { enforced: true } })
   })
 
-  it('Platform enforcement uses /admin/mfa/enforcement path', async () => {
+  it('Platform enforcement uses /auth/admin/mfa/enforcement path', async () => {
     mockApi.mockResolvedValue({ enforced: false })
-    await mockApi('/admin/mfa/enforcement')
-    expect(mockApi).toHaveBeenCalledWith('/admin/mfa/enforcement')
+    await mockApi('/auth/admin/mfa/enforcement')
+    expect(mockApi).toHaveBeenCalledWith('/auth/admin/mfa/enforcement')
   })
 })

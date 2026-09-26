@@ -50,10 +50,16 @@ const DEMO_SESSIONS = [
   },
 ]
 
+let mockIsError = false
+const mockRefetch = vi.fn()
+
 vi.mock('@/hooks/use-sessions', () => ({
   useSessions: () => ({
-    data: DEMO_SESSIONS,
+    data: mockIsError ? undefined : DEMO_SESSIONS,
     isLoading: false,
+    isError: mockIsError,
+    error: mockIsError ? new Error('boom') : null,
+    refetch: mockRefetch,
   }),
   useTerminateSession: () => ({
     mutate: mockTerminate,
@@ -69,9 +75,29 @@ vi.mock('@/components/ui/Toast', () => ({
   toast: vi.fn(),
 }))
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockIsError = false
+})
 
 // ─── Tests ──────────────────────────────────────────────────
+
+describe('ActiveSessionsList — API failure (honest UI, no demo rows)', () => {
+  it('shows the error card instead of demo sessions when the API fails', () => {
+    mockIsError = true
+    render(<ActiveSessionsList />)
+    expect(screen.getByTestId('query-error')).toBeInTheDocument()
+    expect(screen.getByTestId('query-error')).toHaveTextContent("Couldn't load active sessions")
+    expect(screen.queryByTestId('session-sess-current')).not.toBeInTheDocument()
+  })
+
+  it('Retry calls refetch', () => {
+    mockIsError = true
+    render(<ActiveSessionsList />)
+    fireEvent.click(screen.getByTestId('query-retry'))
+    expect(mockRefetch).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe('ActiveSessionsList', () => {
   it('renders all sessions', () => {

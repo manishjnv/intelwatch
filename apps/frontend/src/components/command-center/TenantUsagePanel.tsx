@@ -11,6 +11,7 @@ import {
   Archive, Key, Database, Bell, Lock, ArrowUpCircle, Crown,
 } from 'lucide-react'
 import { useFeatureLimits, FEATURE_LABELS, type FeatureLimitEntry, type FeatureKey } from '@/hooks/use-feature-limits'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 
 // ─── Icon Map ───────────────────────────────────────────────
 
@@ -166,34 +167,37 @@ function UsageSummaryHeader({ features }: { features: FeatureLimitEntry[] }) {
 
 // ─── Main Export ────────────────────────────────────────────
 
-export function TenantUsagePanel() {
-  const { features, isLoading, isDemo } = useFeatureLimits()
+const USAGE_SKELETON = (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" data-testid="usage-skeleton">
+    {Array.from({ length: 8 }, (_, i) => (
+      <div key={i} className="h-28 rounded-lg bg-bg-elevated border border-border animate-pulse" />
+    ))}
+  </div>
+)
 
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" data-testid="usage-skeleton">
-        {Array.from({ length: 8 }, (_, i) => (
-          <div key={i} className="h-28 rounded-lg bg-bg-elevated border border-border animate-pulse" />
-        ))}
-      </div>
-    )
-  }
+export function TenantUsagePanel() {
+  const limits = useFeatureLimits()
 
   return (
     <div className="space-y-4" data-testid="tenant-usage-panel">
-      {isDemo && (
-        <div className="text-[10px] text-sev-medium px-2 py-1 rounded bg-sev-medium/10 border border-sev-medium/20 inline-block">
-          Demo data — connect API for live usage
-        </div>
-      )}
-
-      <UsageSummaryHeader features={features} />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" data-testid="usage-cards-grid">
-        {features.map(entry => (
-          <FeatureUsageCard key={entry.featureKey} entry={entry} />
-        ))}
-      </div>
+      <QueryStateView
+        query={{ ...limits, data: limits.features }}
+        resource="feature usage"
+        isEmpty={d => d.length === 0}
+        empty={<p className="text-xs text-text-muted" data-testid="query-empty">No plan limits are set for this tenant.</p>}
+        skeleton={USAGE_SKELETON}
+      >
+        {features => (
+          <>
+            <UsageSummaryHeader features={features} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" data-testid="usage-cards-grid">
+              {features.map(entry => (
+                <FeatureUsageCard key={entry.featureKey} entry={entry} />
+              ))}
+            </div>
+          </>
+        )}
+      </QueryStateView>
     </div>
   )
 }

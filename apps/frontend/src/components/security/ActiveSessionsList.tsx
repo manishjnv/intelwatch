@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Monitor, Smartphone, Globe, AlertTriangle, Trash2, X, Loader2, LogOut } from 'lucide-react'
 import { useSessions, useTerminateSession, useTerminateAllOtherSessions } from '@/hooks/use-sessions'
 import { toast } from '@/components/ui/Toast'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import type { SessionInfo } from '@/types/auth-security'
 
 // ─── UA Parser ─────────────────────────────────────────────────
@@ -149,19 +150,19 @@ function SessionCard({ session, onTerminate }: { session: SessionInfo; onTermina
 
 // ─── Main Component ────────────────────────────────────────────
 
+const SESSIONS_SKELETON = (
+  <div className="space-y-2" data-testid="sessions-loading">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <div key={i} className="h-20 bg-bg-elevated rounded-lg animate-pulse" />
+    ))}
+  </div>
+)
+
 export function ActiveSessionsList() {
   const sessions = useSessions()
   const terminate = useTerminateSession()
   const terminateAll = useTerminateAllOtherSessions()
   const [confirmTarget, setConfirmTarget] = useState<string | 'all' | null>(null)
-
-  const sessionList = sessions.data ?? []
-  const sorted = [...sessionList].sort((a, b) => {
-    if (a.isCurrent) return -1
-    if (b.isCurrent) return 1
-    return new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime()
-  })
-  const otherCount = sorted.filter(s => !s.isCurrent).length
 
   const handleConfirm = () => {
     if (confirmTarget === 'all') {
@@ -175,43 +176,48 @@ export function ActiveSessionsList() {
     }
   }
 
-  if (sessions.isLoading) {
-    return (
-      <div className="space-y-2" data-testid="sessions-loading">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-20 bg-bg-elevated rounded-lg animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-3" data-testid="active-sessions-list">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">Active Sessions</h3>
-        {otherCount > 0 && (
-          <button
-            onClick={() => setConfirmTarget('all')}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-sev-high/30 text-sev-high rounded-lg hover:bg-sev-high/10 transition-colors"
-            data-testid="terminate-all-btn"
-          >
-            <LogOut className="w-3 h-3" /> End All Other Sessions
-          </button>
-        )}
-      </div>
+      <QueryStateView query={sessions} resource="active sessions" skeleton={SESSIONS_SKELETON}>
+        {sessionList => {
+          const sorted = [...sessionList].sort((a, b) => {
+            if (a.isCurrent) return -1
+            if (b.isCurrent) return 1
+            return new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime()
+          })
+          const otherCount = sorted.filter(s => !s.isCurrent).length
 
-      <div className="space-y-2">
-        {sorted.map(session => (
-          <SessionCard
-            key={session.id}
-            session={session}
-            onTerminate={() => setConfirmTarget(session.id)}
-          />
-        ))}
-        {sorted.length === 0 && (
-          <div className="text-center py-8 text-xs text-text-muted">No active sessions found</div>
-        )}
-      </div>
+          return (
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-text-primary">Active Sessions</h3>
+                {otherCount > 0 && (
+                  <button
+                    onClick={() => setConfirmTarget('all')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-sev-high/30 text-sev-high rounded-lg hover:bg-sev-high/10 transition-colors"
+                    data-testid="terminate-all-btn"
+                  >
+                    <LogOut className="w-3 h-3" /> End All Other Sessions
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {sorted.map(session => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    onTerminate={() => setConfirmTarget(session.id)}
+                  />
+                ))}
+                {sorted.length === 0 && (
+                  <div className="text-center py-8 text-xs text-text-muted">No active sessions found</div>
+                )}
+              </div>
+            </>
+          )
+        }}
+      </QueryStateView>
 
       {confirmTarget && (
         <ConfirmModal

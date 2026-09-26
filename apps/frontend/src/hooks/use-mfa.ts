@@ -11,7 +11,12 @@ import type {
   MfaChallengeInput, MfaChallengeResponse, BackupCodesResponse,
   MfaEnforcement,
 } from '@/types/auth-security'
-import { DEMO_ENFORCEMENT } from './security-demo-data'
+
+// Gateway registers mfaRoutes under /api/v1/auth (apps/api-gateway/src/app.ts) —
+// api() already prepends /api/v1, so the path needs the /auth segment.
+function mfaEnforcementPath(scope: 'tenant' | 'platform'): string {
+  return scope === 'platform' ? '/auth/admin/mfa/enforcement' : '/auth/settings/mfa/enforcement'
+}
 
 // ─── MFA Setup (generate secret + QR) ─────────────────────────
 
@@ -86,17 +91,17 @@ export function useRegenerateBackupCodes() {
 // ─── MFA Enforcement (query + update) ─────────────────────────
 
 export function useMfaEnforcement(scope: 'tenant' | 'platform') {
-  const path = scope === 'platform' ? '/admin/mfa/enforcement' : '/settings/mfa/enforcement'
+  const path = mfaEnforcementPath(scope)
   return useQuery<MfaEnforcement, ApiError>({
     queryKey: ['mfa-enforcement', scope],
-    queryFn: () =>
-      api<MfaEnforcement>(path).catch(() => DEMO_ENFORCEMENT),
+    queryFn: () => api<MfaEnforcement>(path),
+    meta: { resource: 'MFA enforcement' },
     staleTime: 5 * 60_000,
   })
 }
 
 export function useUpdateMfaEnforcement(scope: 'tenant' | 'platform') {
-  const path = scope === 'platform' ? '/admin/mfa/enforcement' : '/settings/mfa/enforcement'
+  const path = mfaEnforcementPath(scope)
   const qc = useQueryClient()
   return useMutation<void, ApiError, Partial<MfaEnforcement>>({
     mutationFn: (input) =>

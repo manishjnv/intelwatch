@@ -245,3 +245,12 @@
 **Decision:** Work only in `E:\code\IntelWatch`; no git worktrees; one Claude session at a time; branch per task (`git switch -c sNNN/<task>` from an up-to-date `master`); one deployer merges one PR at a time; docs-only commits may go straight to `master`. PR #42 was rewritten (commit `b9bc62c`) to match: `scripts/new-worktree.sh` deleted, `/session-start` step 0a does a workspace check (`git status -sb`, `git worktree list`) before any edit, `/session-end` does post-merge cleanup (`git switch master && git pull --ff-only && git branch -d`) instead of worktree removal.
 **Alternatives:** Worktree per session (PR #42 original) — rejected: extra folders, per-worktree `node_modules`, and it did not prevent the collision it was meant to prevent.
 **Consequences:** No parallel sessions going forward. Session start now stops if the folder has uncommitted tracked changes that aren't this session's own work. Detail and exact commands: `docs/S150c_ONE_FOLDER_WORKFLOW.md`. Rollback: revert `b9bc62c` on the PR #42 branch.
+
+---
+
+### DECISION-035: FeatureGate locks a page only on an explicit `enabled:false`
+**Date:** 2026-09-26 (S161a) | **Status:** Accepted (owner, option A) | **Spec:** `docs/roadmap/STEP_05_HONEST_UI.md` §3.3
+**Context:** Step 5 removes demo data on API errors. `useFeatureLimits` used to substitute `DEMO_LIMITS` (12 features unlocked, random usage) whenever `/billing/limits` failed or returned an empty list. FeatureGate wraps core routes (`/iocs`, `/search`, graph, hunting, DRP, correlation, actors, malware, vulnerabilities), and `useFeatureEnabled` treated a missing entry as locked while the sidebar (`DashboardLayout.tsx:169`) treated it as unlocked.
+**Decision:** `useFeatureEnabled` = `entry?.enabled ?? true`. A page is locked only when the plan explicitly says `enabled:false`; on a fetch error or a missing entry the page loads. FeatureGate renders nothing while limits are loading (the Upgrade CTA used to flash).
+**Alternatives:** Fail closed with "Couldn't check your plan — Retry" (option B) — rejected: any billing-limits outage would wall off the IOC page for every tenant.
+**Consequences:** Seeded plans (`prisma/seeds/plan-definitions.ts`) list every feature key explicitly, so no seeded plan gains access; the default only matters on errors or unseeded plans. Frontend gating is a UX hint — plan enforcement belongs on the server. Detail: `docs/S161a_HONEST_UI_CORE.md`.

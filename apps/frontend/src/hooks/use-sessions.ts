@@ -5,15 +5,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '@/lib/api'
 import type { SessionInfo } from '@/types/auth-security'
-import { DEMO_SESSIONS } from './security-demo-data'
 
 // ─── Active Sessions List ─────────────────────────────────────
 
 export function useSessions() {
   return useQuery<SessionInfo[], ApiError>({
     queryKey: ['active-sessions'],
-    queryFn: () =>
-      api<SessionInfo[]>('/auth/sessions').catch(() => DEMO_SESSIONS),
+    queryFn: () => api<SessionInfo[]>('/auth/sessions'),
+    meta: { resource: 'active sessions' },
     staleTime: 60_000,
   })
 }
