@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { EnrichJob, EnrichmentResult } from '../src/schema.js';
+import { iocIndexJobId } from '@etip/shared-utils';
 
 // Mock config before enrich-worker imports it
 vi.mock('../src/config.js', () => ({
@@ -141,12 +142,9 @@ describe('Enrich Worker — Downstream Enqueue', () => {
       { jobId: `graph-sync-${jobData.iocId}` },
     );
 
-    // ioc-index uses deterministic jobId
-    expect((downstream.iocIndex as unknown as { add: ReturnType<typeof vi.fn> }).add).toHaveBeenCalledWith(
-      'ioc-index',
-      expect.any(Object),
-      { jobId: `ioc-index-${jobData.iocId}` },
-    );
+    // ioc-index uses deterministic jobId derived from action + iocId + enrichedAt version
+    const call = (downstream.iocIndex as unknown as { add: ReturnType<typeof vi.fn> }).add.mock.calls[0];
+    expect(call[2].jobId).toBe(iocIndexJobId('update', jobData.iocId, call[1].payload.enrichedAt));
 
     // correlate uses deterministic jobId
     expect((downstream.correlate as unknown as { add: ReturnType<typeof vi.fn> }).add).toHaveBeenCalledWith(
@@ -156,7 +154,7 @@ describe('Enrich Worker — Downstream Enqueue', () => {
     );
   });
 
-  it('(#9) IOC_INDEX payload includes enrichment fields', async () => {
+  it('(#9) IOC_INDEX sends a partial "update" job with enrichment fields', async () => {
     const result = makeSuccessResult({ externalRiskScore: 90, enrichmentQuality: 85 });
     mockService.enrichIOC.mockResolvedValue(result);
 
@@ -165,21 +163,93 @@ describe('Enrich Worker — Downstream Enqueue', () => {
     const { __getProcessor } = await import('bullmq') as unknown as { __getProcessor: () => (job: unknown) => Promise<unknown> };
     const processor = __getProcessor();
 
-    await processor({ id: 'job-1', data: makeEnrichJob() });
+    const jobData = makeEnrichJob();
+    await processor({ id: 'job-1', data: jobData });
 
     expect((downstream.iocIndex as unknown as { add: ReturnType<typeof vi.fn> }).add).toHaveBeenCalledWith(
       'ioc-index',
       expect.objectContaining({
-        action: 'index',
-        iocId: expect.any(String),
-        externalRiskScore: 90,
-        enrichmentQuality: 85,
-        severity: 'high',
-        confidence: 80,
-        enrichedAt: expect.any(String),
+        action: 'update',
+        iocId: jobData.iocId,
+        tenantId: jobData.tenantId,
+        iocType: jobData.iocType,
+        payload: expect.objectContaining({
+          enriched: true,
+          enrichedAt: expect.any(String),
+          severity: 'high',
+          confidence: 80,
+          externalRiskScore: 90,
+          enrichmentQuality: 85,
+        }),
       }),
       expect.any(Object),
     );
+  });
+
+  it('(#9) IOC_INDEX job validates against IocIndexJobSchema', async () => {
+    mockService.enrichIOC.mockResolvedValue(makeSuccessResult({ externalRiskScore: 72.6, enrichmentQuality: 41.4 }));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createEnrichWorker({ service: mockService as any, logger: mockLogger as any, downstream });
+    const { __getProcessor } = await import('bullmq') as unknown as { __getProcessor: () => (job: unknown) => Promise<unknown> };
+    const processor = __getProcessor();
+
+    await processor({ id: 'job-1', data: makeEnrichJob() });
+
+    const { IocIndexJobSchema } = await import('@etip/shared-utils');
+    const [, job] = (downstream.iocIndex as unknown as { add: ReturnType<typeof vi.fn> }).add.mock.calls[0];
+    expect(() => IocIndexJobSchema.parse(job)).not.toThrow();
+    // 72.6 rounds to 73
+    expect(job.payload.externalRiskScore).toBe(73);
+    expect(job.payload.enrichmentQuality).toBe(41);
+  });
+
+  it('(#9) omits externalRiskScore/enrichmentQuality from payload when null', async () => {
+    mockService.enrichIOC.mockResolvedValue(makeSuccessResult({ externalRiskScore: null, enrichmentQuality: null }));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createEnrichWorker({ service: mockService as any, logger: mockLogger as any, downstream });
+    const { __getProcessor } = await import('bullmq') as unknown as { __getProcessor: () => (job: unknown) => Promise<unknown> };
+    const processor = __getProcessor();
+
+    await processor({ id: 'job-1', data: makeEnrichJob() });
+
+    const [, job] = (downstream.iocIndex as unknown as { add: ReturnType<typeof vi.fn> }).add.mock.calls[0];
+    expect('externalRiskScore' in job.payload).toBe(false);
+    expect('enrichmentQuality' in job.payload).toBe(false);
+  });
+
+  it('(#9) two enrichments with different enrichedAt get different jobIds', async () => {
+    mockService.enrichIOC
+      .mockResolvedValueOnce(makeSuccessResult({ enrichedAt: '2026-01-01T00:00:00.000Z' }))
+      .mockResolvedValueOnce(makeSuccessResult({ enrichedAt: '2026-01-02T00:00:00.000Z' }));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createEnrichWorker({ service: mockService as any, logger: mockLogger as any, downstream });
+    const { __getProcessor } = await import('bullmq') as unknown as { __getProcessor: () => (job: unknown) => Promise<unknown> };
+    const processor = __getProcessor();
+
+    const jobData = makeEnrichJob();
+    await processor({ id: 'job-1', data: jobData });
+    await processor({ id: 'job-2', data: jobData });
+
+    const calls = (downstream.iocIndex as unknown as { add: ReturnType<typeof vi.fn> }).add.mock.calls;
+    expect(calls[0][2].jobId).not.toBe(calls[1][2].jobId);
+  });
+
+  it('(#9) invalid severity is skipped with a warn log, never throws', async () => {
+    mockService.enrichIOC.mockResolvedValue(makeSuccessResult());
+    const jobData = makeEnrichJob({ severity: 'bogus' });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createEnrichWorker({ service: mockService as any, logger: mockLogger as any, downstream });
+    const { __getProcessor } = await import('bullmq') as unknown as { __getProcessor: () => (job: unknown) => Promise<unknown> };
+    const processor = __getProcessor();
+
+    await expect(processor({ id: 'job-1', data: jobData })).resolves.toBeDefined();
+
+    expect((downstream.iocIndex as unknown as { add: ReturnType<typeof vi.fn> }).add).not.toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalled();
   });
 
   it('(#10) emits CACHE_INVALIDATE event after enrichment', async () => {

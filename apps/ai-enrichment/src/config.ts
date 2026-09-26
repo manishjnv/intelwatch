@@ -17,7 +17,7 @@ const EnvSchema = z.object({
   TI_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().default(100),
   TI_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   /** Master switch — external API enrichment only runs when true */
-  TI_AI_ENABLED: z.coerce.boolean().default(false),
+  TI_AI_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   /** VirusTotal API key (free tier: 4 req/min) */
   TI_VIRUSTOTAL_API_KEY: z.string().default(''),
   /** AbuseIPDB API key (free tier: 1000 req/day) */
@@ -43,19 +43,19 @@ const EnvSchema = z.object({
   /** Daily cost budget per tenant in USD (0 = unlimited) */
   TI_ENRICHMENT_DAILY_BUDGET_USD: z.coerce.number().min(0).default(5.00),
   /** Enable Redis enrichment cache (disabled = skip cache layer) */
-  TI_ENRICHMENT_CACHE_ENABLED: z.coerce.boolean().default(true),
+  TI_ENRICHMENT_CACHE_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   /** Enable batch enrichment via Anthropic Batch API (#13) */
-  TI_BATCH_ENABLED: z.coerce.boolean().default(false),
+  TI_BATCH_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   /** Minimum IOC count for batch enrichment */
   TI_BATCH_MIN_SIZE: z.coerce.number().int().min(2).default(10),
   /** Re-enrichment scan interval in milliseconds (#15, default 1 hour) */
   TI_REENRICH_INTERVAL_MS: z.coerce.number().int().min(60000).default(3_600_000),
   /** Enable cost persistence to Redis (#14) */
-  TI_COST_PERSISTENCE_ENABLED: z.coerce.boolean().default(true),
+  TI_COST_PERSISTENCE_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   /** Downstream pipeline flags — enable/disable enqueuing after enrichment */
-  TI_GRAPH_SYNC_ENABLED: z.coerce.boolean().default(true),
-  TI_IOC_INDEX_ENABLED: z.coerce.boolean().default(true),
-  TI_CORRELATE_ENABLED: z.coerce.boolean().default(true),
+  TI_GRAPH_SYNC_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  TI_IOC_INDEX_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  TI_CORRELATE_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

@@ -1,5 +1,5 @@
 import { Worker, type Job, type Queue } from 'bullmq';
-import { QUEUES } from '@etip/shared-utils';
+import { QUEUES, IocIndexJobSchema, iocIndexJobId } from '@etip/shared-utils';
 import type pino from 'pino';
 import { EnrichJobSchema, type EnrichJob, type EnrichmentResult } from '../schema.js';
 import type { EnrichmentService } from '../service.js';
@@ -75,7 +75,7 @@ async function enqueueDownstream(
   downstream: DownstreamQueues,
   logger: pino.Logger,
 ): Promise<void> {
-  const { iocId, tenantId, iocType, normalizedValue, severity, confidence } = data;
+  const { iocId, tenantId, iocType, severity, confidence } = data;
 
   // (#7) Graph sync with filtered properties + (#6) deterministic jobId
   if (downstream.graphSync) {
@@ -90,22 +90,29 @@ async function enqueueDownstream(
     }).catch((err) => logger.warn({ err: (err as Error).message, iocId }, 'Failed to enqueue GRAPH_SYNC'));
   }
 
-  // (#9) IOC_INDEX with enrichment fields + (#6) deterministic jobId
+  // (#9) IOC_INDEX: partial "update" job adding enrichment fields to the existing ES doc.
+  // Contract lives in @etip/shared-utils/search-index — normalization already sent the
+  // full "index" job for this IOC, so we only patch in what enrichment adds.
   if (downstream.iocIndex) {
-    downstream.iocIndex.add('ioc-index', {
-      action: 'index',
-      iocId,
-      tenantId,
-      iocType,
-      normalizedValue,
-      externalRiskScore: result.externalRiskScore,
-      enrichmentQuality: result.enrichmentQuality,
+    const enrichedAt = result.enrichedAt;
+    const clampScore = (n: number) => Math.round(Math.min(100, Math.max(0, n)));
+    const payload: Record<string, unknown> = {
+      enriched: true,
+      enrichedAt,
       severity,
-      confidence,
-      enrichedAt: result.enrichedAt,
-    }, {
-      jobId: `ioc-index-${iocId}`,
-    }).catch((err) => logger.warn({ err: (err as Error).message, iocId }, 'Failed to enqueue IOC_INDEX'));
+      confidence: clampScore(confidence),
+      ...(result.externalRiskScore != null && { externalRiskScore: clampScore(result.externalRiskScore) }),
+      ...(result.enrichmentQuality != null && { enrichmentQuality: clampScore(result.enrichmentQuality) }),
+    };
+    const job = { action: 'update' as const, iocId, tenantId, iocType, payload };
+    const parsed = IocIndexJobSchema.safeParse(job);
+    if (!parsed.success) {
+      logger.warn({ iocId, issues: parsed.error.issues }, 'Invalid IOC_INDEX update job — skipping (search will not reflect this enrichment)');
+    } else {
+      downstream.iocIndex.add('ioc-index', parsed.data, {
+        jobId: iocIndexJobId('update', iocId, enrichedAt),
+      }).catch((err) => logger.warn({ err: (err as Error).message, iocId }, 'Failed to enqueue IOC_INDEX'));
+    }
   }
 
   // (#6) Correlate with deterministic jobId

@@ -26,6 +26,7 @@ import { accessReviewRoutes } from './routes/access-review.js';
 import { complianceRoutes } from './routes/compliance.js';
 import { offboardingGatewayRoutes } from './routes/offboarding.js';
 import { breakGlassRoutes } from './routes/break-glass.js';
+import { searchBackfillRoutes } from './routes/search-backfill.js';
 import { publicRoutes } from './routes/public/index.js';
 import { registerSwagger } from './plugins/swagger.js';
 
@@ -127,6 +128,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(planRoutes, { prefix: '/api/v1/admin/plans' });
   await app.register(overrideRoutes, { prefix: '/api/v1/admin/tenants' });
   await app.register(errorAlertingRoutes, { prefix: '/api/v1/gateway' });
+  await app.register(searchBackfillRoutes, { prefix: '/api/v1/gateway' });
   await app.register(usageRoutes, { prefix: '/api/v1' });
   await app.register(mfaRoutes, { prefix: '/api/v1/auth' });
   await app.register(billingUpgradeRoutes, { prefix: '/api/v1/billing' });

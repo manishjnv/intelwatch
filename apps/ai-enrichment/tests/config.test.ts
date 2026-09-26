@@ -108,4 +108,53 @@ describe('loadConfig', () => {
     expect(config.TI_AI_ENABLED).toBe(false);
     expect(config.TI_ENRICHMENT_CONCURRENCY).toBe(2);
   });
+
+  // --- S154/S155: boolean flags must not coerce string "false" to true ---
+
+  it('TI_AI_ENABLED="false" stays false (RCA: z.coerce.boolean bug)', () => {
+    const config = loadConfig({ ...VALID_ENV, TI_AI_ENABLED: 'false' });
+    expect(config.TI_AI_ENABLED).toBe(false);
+  });
+
+  it('TI_AI_ENABLED unset defaults to false', () => {
+    const config = loadConfig(VALID_ENV);
+    expect(config.TI_AI_ENABLED).toBe(false);
+  });
+
+  it('TI_IOC_INDEX_ENABLED="false" stays false', () => {
+    const config = loadConfig({ ...VALID_ENV, TI_IOC_INDEX_ENABLED: 'false' });
+    expect(config.TI_IOC_INDEX_ENABLED).toBe(false);
+  });
+
+  it('TI_IOC_INDEX_ENABLED unset defaults to true', () => {
+    const config = loadConfig(VALID_ENV);
+    expect(config.TI_IOC_INDEX_ENABLED).toBe(true);
+  });
+
+  it('TI_GRAPH_SYNC_ENABLED="false" stays false and "true" stays true', () => {
+    expect(loadConfig({ ...VALID_ENV, TI_GRAPH_SYNC_ENABLED: 'false' }).TI_GRAPH_SYNC_ENABLED).toBe(false);
+    expect(loadConfig({ ...VALID_ENV, TI_GRAPH_SYNC_ENABLED: 'true' }).TI_GRAPH_SYNC_ENABLED).toBe(true);
+  });
+
+  it('TI_CORRELATE_ENABLED="false" stays false', () => {
+    expect(loadConfig({ ...VALID_ENV, TI_CORRELATE_ENABLED: 'false' }).TI_CORRELATE_ENABLED).toBe(false);
+  });
+
+  it('TI_ENRICHMENT_CACHE_ENABLED="false" stays false (default true otherwise)', () => {
+    expect(loadConfig({ ...VALID_ENV, TI_ENRICHMENT_CACHE_ENABLED: 'false' }).TI_ENRICHMENT_CACHE_ENABLED).toBe(false);
+    expect(loadConfig(VALID_ENV).TI_ENRICHMENT_CACHE_ENABLED).toBe(true);
+  });
+
+  it('TI_BATCH_ENABLED="true" becomes true (default false otherwise)', () => {
+    expect(loadConfig({ ...VALID_ENV, TI_BATCH_ENABLED: 'true' }).TI_BATCH_ENABLED).toBe(true);
+    expect(loadConfig(VALID_ENV).TI_BATCH_ENABLED).toBe(false);
+  });
+
+  it('TI_COST_PERSISTENCE_ENABLED="false" stays false', () => {
+    expect(loadConfig({ ...VALID_ENV, TI_COST_PERSISTENCE_ENABLED: 'false' }).TI_COST_PERSISTENCE_ENABLED).toBe(false);
+  });
+
+  it('rejects a non-boolean-string value for a boolean flag', () => {
+    expect(() => loadConfig({ ...VALID_ENV, TI_AI_ENABLED: 'yes' })).toThrow();
+  });
 });

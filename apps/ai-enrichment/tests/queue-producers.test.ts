@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('bullmq', () => ({
-  Queue: vi.fn().mockImplementation((name: string) => ({
+  Queue: vi.fn().mockImplementation((name: string, opts?: unknown) => ({
     name,
+    opts,
     add: vi.fn().mockResolvedValue({ id: `${name}-job-1` }),
     close: vi.fn().mockResolvedValue(undefined),
   })),
@@ -35,6 +36,13 @@ describe('Downstream Queue Producers', () => {
     expect((queues.iocIndex as unknown as { name: string }).name).toBe('etip-ioc-indexed');
     expect((queues.correlate as unknown as { name: string }).name).toBe('etip-correlate');
     expect((queues.cacheInvalidate as unknown as { name: string }).name).toBe('etip-cache-invalidate');
+  });
+
+  it('IOC_INDEX queue is constructed with removeOnComplete/removeOnFail defaults', () => {
+    const queues = createDownstreamQueues();
+    const opts = (queues.iocIndex as unknown as { opts: { defaultJobOptions?: { removeOnComplete?: unknown; removeOnFail?: unknown } } }).opts;
+    expect(opts.defaultJobOptions?.removeOnComplete).toBeDefined();
+    expect(opts.defaultJobOptions?.removeOnFail).toBeDefined();
   });
 
   it('returns null for disabled queues', () => {

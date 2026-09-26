@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { QUEUES } from '@etip/shared-utils';
+import { QUEUES, IOC_INDEX_JOB_OPTIONS } from '@etip/shared-utils';
 import { getConfig } from './config.js';
 
 let _enrichQueue: Queue | null = null;
@@ -40,7 +40,9 @@ export function createDownstreamQueues(): { graphSync: Queue | null; iocIndex: Q
   const connection = parseRedisUrl(config.TI_REDIS_URL);
 
   _graphSyncQueue = config.TI_GRAPH_SYNC_ENABLED ? new Queue(QUEUES.GRAPH_SYNC, { connection }) : null;
-  _iocIndexQueue = config.TI_IOC_INDEX_ENABLED ? new Queue(QUEUES.IOC_INDEX, { connection }) : null;
+  _iocIndexQueue = config.TI_IOC_INDEX_ENABLED
+    ? new Queue(QUEUES.IOC_INDEX, { connection, defaultJobOptions: { ...IOC_INDEX_JOB_OPTIONS } })
+    : null;
   _correlateQueue = config.TI_CORRELATE_ENABLED ? new Queue(QUEUES.CORRELATE, { connection }) : null;
   _cacheInvalidateQueue = new Queue(QUEUES.CACHE_INVALIDATE, { connection });
 
