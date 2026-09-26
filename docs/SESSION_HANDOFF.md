@@ -3,6 +3,8 @@
 **Session:** 161 (label S160–S161a PR A)
 **Session Summary:** S160 verified Roadmap Step 2 "Search works" end to end on the VPS (read-only): ES doc count per tenant equals Postgres `iocs` row count for both tenants that hold IOCs. Step 2 is now DONE. S161a PR A shipped Step 5 Honest UI core (PR #44 → `baaf147`): a shared `QueryStateView` loading/error/empty/data pattern, a fix for the MFA enforcement toggle (it was silently 404'ing in production on the wrong path), removal of `DEMO_SESSIONS`/`DEMO_ENFORCEMENT`/`DEMO_LIMITS`, `FeatureGate` locking only on an explicit `enabled:false` (DECISION-035), and the W17 demo-price fix. Detail: `docs/S161a_HONEST_UI_CORE.md`.
 
+Full detail: docs/S160_S161a_VERIFY_HONEST_UI_TOOLING.md
+
 ## ✅ Changes Made
 
 | Commit(s) | PR | Description |
@@ -74,6 +76,9 @@ Frontend container logs: 0 errors
 - ~~Local Node v20.11.1 couldn't start Vitest~~ — **fixed 2026-09-26:** local Node upgraded to 20.20.2 (winget `OpenJS.NodeJS.20`, same as CI's `'20'`); `pnpm exec vitest run` works directly.
 - ~~Codex CLI 0.125.0 fell back to `gpt-5.5`~~ — **fixed 2026-09-26:** the old CLI couldn't parse the server's model list (new `max` reasoning level) and ChatGPT accounts reject older models; upgraded to Codex CLI 0.157.1 (`npm i -g @openai/codex@latest`), no model pin needed. `codex:rescue` usable again.
 - `usePlanBuilder` still returns `DEMO_PLANS` on a fetch error — scoped to PR B.
+- Dashboard "IOC Trend (7d)" / "Threat Score" widgets show 0/empty despite the active tenant holding thousands of IOCs — likely a widget wiring gap, check during S161b's dashboard-widget pass.
+- Owner's two accounts each exist in two tenants (login picks the oldest matching-password tenant) — works but confusing, tidy up later.
+- ⌘K result rows show only the IOC value, no type/severity chip — minor UX gap.
 
 ## 🔁 How to Resume
 
@@ -110,13 +115,26 @@ command-center, inline hooks) → S162 (user-management-service /users routes) �
 Step 3 persistence sessions → Step 4 DB role + RLS (security review before push) → Step 10 → 11–13.
 ```
 
+**Queue after PR B:**
+1. S161b — remaining honest-UI hooks incl. dashboard widgets
+2. S162 — user-management-service `/users` routes
+3. S163 — frontend paths/shapes
+4. S164 — ai-enrichment `/enrichment/ioc/:id` + auto-enrich critical/high with a daily cap + admin switch (AI off by default)
+5. S165 — threat-graph `/graph/overview`
+6. S166 — real tenant list in Command Center
+7. One small security-reviewed session (owner's private notes) before Step 3
+8. Step 3 persistence
+9. Step 4 DB role + RLS
+10. Step 10
+11. Steps 11–13
+
 Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md` (done, verified), `docs/roadmap/STEP_05_HONEST_UI.md` (§12 has the full PR A/B/S161b/S162+ split), `docs/S161a_HONEST_UI_CORE.md`.
 
 ## Agent utilization
 - Opus: plan, seam reads (FeatureGate/limits/MFA routes), diff review, security judgment (DECISION-035), test-leak fix, commits/PR/merge/deploy
 - Sonnet: context digest, hook map, PR A implementation (TDD), adversarial review (codex fallback), docs
 - Haiku: 2 VPS verification sweeps (Step 2 counts, post-deploy)
-- codex:rescue: n/a — codex CLI default model gpt-5.5 unavailable on account; Sonnet takeover, verdict=accept
+- codex:rescue: n/a — CLI 0.125.0 outdated (fixed same day → 0.157.1); Sonnet takeover, verdict=accept
 Routing telemetry:
 - sonnet · context digest · reworked: N
 - sonnet · frontend hook seam map · reworked: N
