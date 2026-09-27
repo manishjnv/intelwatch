@@ -20,16 +20,11 @@ const mockUseCreateSTIXCollection = vi.fn()
 const mockUseCreateBulkExport = vi.fn()
 const mockUseTestSIEMConnection = vi.fn()
 const mockUseUsers = vi.fn()
-const mockUseTeams = vi.fn()
 const mockUseRoles = vi.fn()
 const mockUseSessions = vi.fn()
 const mockUseAuditLog = vi.fn()
 const mockUseUserManagementStats = vi.fn()
-const mockUseInviteUser = vi.fn()
-const mockUseCreateTeam = vi.fn()
-const mockUseCreateRole = vi.fn()
 const mockUseRevokeSession = vi.fn()
-const mockUseRevokeAllSessions = vi.fn()
 const mockUseModuleToggles = vi.fn()
 const mockUseAIConfigs = vi.fn()
 const mockUseRiskWeights = vi.fn()
@@ -56,16 +51,11 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useCreateBulkExport: () => mockUseCreateBulkExport(),
   useTestSIEMConnection: () => mockUseTestSIEMConnection(),
   useUsers: (...args: any[]) => mockUseUsers(...args),
-  useTeams: () => mockUseTeams(),
   useRoles: () => mockUseRoles(),
   useSessions: () => mockUseSessions(),
   useAuditLog: (...args: any[]) => mockUseAuditLog(...args),
   useUserManagementStats: () => mockUseUserManagementStats(),
-  useInviteUser: () => mockUseInviteUser(),
-  useCreateTeam: () => mockUseCreateTeam(),
-  useCreateRole: () => mockUseCreateRole(),
   useRevokeSession: () => mockUseRevokeSession(),
-  useRevokeAllSessions: () => mockUseRevokeAllSessions(),
   useModuleToggles: () => mockUseModuleToggles(),
   useAIConfigs: () => mockUseAIConfigs(),
   useRiskWeights: () => mockUseRiskWeights(),
@@ -132,21 +122,17 @@ const EXPORT = {
   status: 'active', recordCount: 342, createdAt: new Date().toISOString(),
 }
 
+// Roles are the 3 real Prisma enum values (schema.prisma:102) — super_admin/tenant_admin/analyst.
 const USER = {
-  id: 'usr-1', name: 'Manish Kumar', email: 'manish@intelwatch.in', role: 'admin',
+  id: 'usr-1', name: 'Manish Kumar', email: 'manish@intelwatch.in', role: 'tenant_admin',
   team: 'Platform', status: 'active', lastLogin: new Date().toISOString(),
   mfaEnabled: true, createdAt: new Date().toISOString(),
 }
 
 const USER_LOCKED = {
-  id: 'usr-4', name: 'Jordan Blake', email: 'jordan@intelwatch.in', role: 'soc_analyst',
+  id: 'usr-4', name: 'Jordan Blake', email: 'jordan@intelwatch.in', role: 'analyst',
   team: 'SOC Tier 2', status: 'locked', lastLogin: new Date().toISOString(),
   mfaEnabled: false, createdAt: new Date().toISOString(),
-}
-
-const TEAM = {
-  id: 'team-1', name: 'Platform', description: 'Platform engineering',
-  memberCount: 3, lead: 'Manish Kumar', createdAt: new Date().toISOString(),
 }
 
 const ROLE = {
@@ -215,16 +201,11 @@ function setupDefaultMocks() {
 
   // User Management
   mockUseUsers.mockReturnValue({ data: { data: [USER, USER_LOCKED], total: 2, page: 1, limit: 50 } })
-  mockUseTeams.mockReturnValue({ data: { data: [TEAM], total: 1, page: 1, limit: 50 } })
   mockUseRoles.mockReturnValue({ data: { data: [ROLE, ROLE_CUSTOM], total: 2, page: 1, limit: 50 } })
   mockUseSessions.mockReturnValue({ data: { data: [SESSION], total: 1, page: 1, limit: 50 } })
   mockUseAuditLog.mockReturnValue({ data: { data: [AUDIT], total: 1, page: 1, limit: 50 } })
   mockUseUserManagementStats.mockReturnValue({ data: { totalUsers: 6, activeSessions: 3, teams: 4, roles: 6, mfaPercent: 67 }, isDemo: true })
-  mockUseInviteUser.mockReturnValue({ mutate: vi.fn(), isPending: false })
-  mockUseCreateTeam.mockReturnValue({ mutate: vi.fn(), isPending: false })
-  mockUseCreateRole.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseRevokeSession.mockReturnValue({ mutate: vi.fn(), isPending: false })
-  mockUseRevokeAllSessions.mockReturnValue({ mutate: vi.fn(), isPending: false })
 
   // Customization
   mockUseModuleToggles.mockReturnValue({ data: { data: [MODULE, MODULE_DISABLED] } })
@@ -416,14 +397,13 @@ describe('UserManagementPage', () => {
     render(<UserManagementPage />)
     expect(screen.getByTestId('stat-Total Users')).toBeTruthy()
     expect(screen.getByTestId('stat-Active Sessions')).toBeTruthy()
-    expect(screen.getByTestId('stat-Teams')).toBeTruthy()
     expect(screen.getByTestId('stat-MFA Enabled')).toBeTruthy()
   })
 
-  it('renders all 5 tab buttons', () => {
+  it('renders all 4 tab buttons — no Teams tab (no backing Prisma model, S162)', () => {
     render(<UserManagementPage />)
     expect(screen.getByText('Users')).toBeTruthy()
-    expect(screen.getByText('Teams')).toBeTruthy()
+    expect(screen.queryByText('Teams')).not.toBeInTheDocument()
     expect(screen.getByText('Roles')).toBeTruthy()
     expect(screen.getByText('Sessions')).toBeTruthy()
     expect(screen.getByText('Audit Log')).toBeTruthy()
@@ -433,13 +413,13 @@ describe('UserManagementPage', () => {
     render(<UserManagementPage />)
     expect(screen.getByText('Manish Kumar')).toBeTruthy()
     expect(screen.getByText('manish@intelwatch.in')).toBeTruthy()
-    expect(screen.getByText('admin')).toBeTruthy()
+    expect(screen.getByText('tenant admin')).toBeTruthy()
   })
 
   it('shows role color badges', () => {
     render(<UserManagementPage />)
-    const adminBadge = screen.getByText('admin')
-    expect(adminBadge.className).toContain('text-sev-critical')
+    const badge = screen.getByText('tenant admin')
+    expect(badge.className).toContain('text-sev-high')
   })
 
   it('shows status badges for active and locked users', () => {
@@ -448,42 +428,26 @@ describe('UserManagementPage', () => {
     expect(screen.getByText('locked')).toBeTruthy()
   })
 
-  it('renders Invite User button on Users tab', () => {
+  it('hides the Invite User entry point — no DB-backed invite flow (S162)', () => {
     render(<UserManagementPage />)
-    expect(screen.getByText('Invite User')).toBeTruthy()
+    expect(screen.queryByText('Invite User')).not.toBeInTheDocument()
   })
 
-  it('opens Invite User modal', () => {
-    render(<UserManagementPage />)
-    fireEvent.click(screen.getByText('Invite User'))
-    // Button and modal title both say "Invite User"
-    expect(screen.getAllByText('Invite User').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByPlaceholderText('user@company.com')).toBeTruthy()
-  })
-
-  it('switches to Teams tab and shows data', () => {
-    render(<UserManagementPage />)
-    fireEvent.click(screen.getByText('Teams'))
-    expect(screen.getByText('Platform')).toBeTruthy()
-    expect(screen.getByText('Platform engineering')).toBeTruthy()
-    expect(screen.getByText('Create Team')).toBeTruthy()
-  })
-
-  it('switches to Roles tab and shows system/custom badges', () => {
+  it('switches to Roles tab and shows system/custom badges from mocked data', () => {
     render(<UserManagementPage />)
     fireEvent.click(screen.getByText('Roles'))
     expect(screen.getByText('Admin')).toBeTruthy()
     expect(screen.getByText('System')).toBeTruthy()
     expect(screen.getByText('Custom')).toBeTruthy()
-    expect(screen.getByText('Create Role')).toBeTruthy()
+    expect(screen.queryByText('Create Role')).not.toBeInTheDocument()
   })
 
-  it('switches to Sessions tab and shows revoke buttons', () => {
+  it('switches to Sessions tab and shows a revoke button but no Revoke All', () => {
     render(<UserManagementPage />)
     fireEvent.click(screen.getByText('Sessions'))
     expect(screen.getByText('72.61.227.64')).toBeTruthy()
     expect(screen.getByText('Revoke')).toBeTruthy()
-    expect(screen.getByText('Revoke All')).toBeTruthy()
+    expect(screen.queryByText('Revoke All')).not.toBeInTheDocument()
   })
 
   it('switches to Audit Log tab and shows entries', () => {
@@ -512,22 +476,6 @@ describe('UserManagementPage', () => {
     render(<UserManagementPage />)
     fireEvent.click(screen.getByText('Manish Kumar'))
     expect(screen.getByText('Lock Account')).toBeTruthy()
-  })
-
-  it('opens Create Role modal with permission groups', () => {
-    render(<UserManagementPage />)
-    fireEvent.click(screen.getByText('Roles'))
-    fireEvent.click(screen.getByText('Create Role'))
-    expect(screen.getByText('Create Custom Role')).toBeTruthy()
-    expect(screen.getByText('IOCs')).toBeTruthy()
-    expect(screen.getByText('Alerts')).toBeTruthy()
-    expect(screen.getByText('Hunting')).toBeTruthy()
-  })
-
-  it('shows team member count', () => {
-    render(<UserManagementPage />)
-    fireEvent.click(screen.getByText('Teams'))
-    expect(screen.getByText('3')).toBeTruthy()
   })
 
   it('shows role permission count', () => {

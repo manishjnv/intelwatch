@@ -1,14 +1,15 @@
 /**
  * @module pages/UserManagementPage
- * @description User Management dashboard — RBAC users, teams, roles,
- * active sessions, and audit log. 5 tabs with tables and detail panels.
+ * @description User Management dashboard — RBAC users, roles, active sessions, and audit log.
+ * 4 tabs with tables and detail panels. Teams/Invite/custom-role creation are hidden — no
+ * backing Prisma model exists yet (S162 route-inventory).
  */
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  useUsers, useTeams, useRoles, useSessions, useAuditLog,
-  useUserManagementStats, useRevokeSession, useRevokeAllSessions,
-  type UserRecord, type TeamRecord, type RoleRecord,
+  useUsers, useRoles, useSessions, useAuditLog,
+  useUserManagementStats, useRevokeSession,
+  type UserRecord, type RoleRecord,
   type SessionRecord, type AuditLogEntry,
 } from '@/hooks/use-phase5-data'
 import { DataTable, type Column } from '@/components/data/DataTable'
@@ -17,21 +18,18 @@ import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
-  Users, UsersRound, ShieldCheck, Monitor, ScrollText,
-  Plus, XCircle, Shield,
+  Users, ShieldCheck, Monitor, ScrollText, Shield,
 } from 'lucide-react'
-import {
-  InviteUserModal, CreateTeamModal, CreateRoleModal,
-  UserDetailPanel,
-} from '@/components/viz/UserManagementModals'
+import { UserDetailPanel } from '@/components/viz/UserManagementModals'
 
 // ─── Tab type ───────────────────────────────────────────────────
+// ponytail: no 'teams' tab — no Team model in Prisma, only an in-memory TeamStore (S162
+// route-inventory). Add back once a real backend exists.
 
-type UserTab = 'users' | 'teams' | 'roles' | 'sessions' | 'audit'
+type UserTab = 'users' | 'roles' | 'sessions' | 'audit'
 
 const TABS: { key: UserTab; label: string; icon: React.FC<{ className?: string }> }[] = [
   { key: 'users', label: 'Users', icon: Users },
-  { key: 'teams', label: 'Teams', icon: UsersRound },
   { key: 'roles', label: 'Roles', icon: ShieldCheck },
   { key: 'sessions', label: 'Sessions', icon: Monitor },
   { key: 'audit', label: 'Audit Log', icon: ScrollText },
@@ -44,12 +42,11 @@ const STATUS_COLORS: Record<string, string> = {
   expired: 'text-text-muted bg-bg-elevated',
 }
 
+// Real RBAC is the 3-value Prisma Role enum (schema.prisma:102).
 const ROLE_COLORS: Record<string, string> = {
-  admin: 'text-sev-critical bg-sev-critical/10',
-  soc_manager: 'text-sev-high bg-sev-high/10',
-  soc_analyst: 'text-accent bg-accent/10',
-  threat_hunter: 'text-purple-400 bg-purple-400/10',
-  viewer: 'text-text-muted bg-bg-elevated',
+  super_admin: 'text-sev-critical bg-sev-critical/10',
+  tenant_admin: 'text-sev-high bg-sev-high/10',
+  analyst: 'text-accent bg-accent/10',
 }
 
 const AUDIT_FILTERS: FilterOption[] = [
@@ -73,7 +70,6 @@ function timeAgo(iso: string | null): string {
 
 export function UserManagementPage() {
   const [activeTab, setActiveTab] = useState<UserTab>('users')
-  const [showModal, setShowModal] = useState<'invite' | 'team' | 'role' | null>(null)
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null)
   const [auditPage, setAuditPage] = useState(1)
   const [auditFilters, setAuditFilters] = useState<Record<string, string>>({})
@@ -89,12 +85,10 @@ export function UserManagementPage() {
   const statsQuery = useUserManagementStats()
   const stats = statsQuery.data
   const usersQuery = useUsers()
-  const teamsQuery = useTeams()
   const rolesQuery = useRoles()
   const sessionsQuery = useSessions()
   const auditQuery = useAuditLog({ page: auditPage, ...auditFilters })
   const revokeSession = useRevokeSession()
-  const revokeAll = useRevokeAllSessions()
 
   // ponytail: `action` is already filtered server-side via useAuditLog params.
   // `auditSearch` has no server param, so it stays a client-side filter over whatever page came back.
@@ -124,22 +118,6 @@ export function UserManagementPage() {
       render: (r) => r.mfaEnabled
         ? <Shield className="w-3.5 h-3.5 text-sev-low" />
         : <span className="text-[10px] text-text-muted">Off</span> },
-  ], [])
-
-  const teamColumns: Column<TeamRecord>[] = useMemo(() => [
-    { key: 'name', label: 'Team', sortable: true, width: '22%',
-      render: (r) => (
-        <div className="min-w-0">
-          <div className="text-text-primary font-medium text-xs">{r.name}</div>
-          <div className="text-[10px] text-text-muted truncate">{r.description}</div>
-        </div>
-      ) },
-    { key: 'memberCount', label: 'Members', sortable: true, width: '12%',
-      render: (r) => <span className="tabular-nums text-text-secondary">{r.memberCount}</span> },
-    { key: 'lead', label: 'Lead', width: '16%',
-      render: (r) => <span className="text-xs text-accent">{r.lead}</span> },
-    { key: 'createdAt', label: 'Created', width: '12%',
-      render: (r) => <span className="text-[10px] text-text-muted tabular-nums">{timeAgo(r.createdAt)}</span> },
   ], [])
 
   const roleColumns: Column<RoleRecord>[] = useMemo(() => [
@@ -194,14 +172,11 @@ export function UserManagementPage() {
       render: (r) => <span className="text-[10px] text-text-muted truncate block max-w-[200px]">{r.details}</span> },
   ], [])
 
-  const addButtonLabel = activeTab === 'users' ? 'Invite User' : activeTab === 'teams' ? 'Create Team' : activeTab === 'roles' ? 'Create Role' : null
-
   return (
     <div className="flex flex-col h-full">
       <PageStatsBar>
         <CompactStat label="Total Users" value={stats?.totalUsers?.toString() ?? '—'} />
         <CompactStat label="Active Sessions" value={stats?.activeSessions?.toString() ?? '—'} color="text-sev-low" />
-        <CompactStat label="Teams" value={stats?.teams?.toString() ?? '—'} />
         <CompactStat label="Roles" value={stats?.roles?.toString() ?? '—'} />
         <CompactStat label="MFA Enabled" value={stats?.mfaPercent != null ? `${stats.mfaPercent}%` : '—'} color={
           stats?.mfaPercent == null ? undefined : stats.mfaPercent >= 80 ? 'text-sev-low' : stats.mfaPercent >= 50 ? 'text-sev-medium' : 'text-sev-critical'
@@ -218,20 +193,6 @@ export function UserManagementPage() {
               <Icon className="w-3 h-3" /><span className="hidden sm:inline">{label}</span>
             </button>
           ))}
-
-          {addButtonLabel && (
-            <button onClick={() => setShowModal(activeTab === 'users' ? 'invite' : activeTab === 'teams' ? 'team' : 'role')}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent/10 text-accent border border-accent/20 rounded-md hover:bg-accent/20 transition-colors">
-              <Plus className="w-3 h-3" />{addButtonLabel}
-            </button>
-          )}
-
-          {activeTab === 'sessions' && (
-            <button onClick={() => revokeAll.mutate()} disabled={revokeAll.isPending}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-sev-critical/10 text-sev-critical border border-sev-critical/20 rounded-md hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
-              <XCircle className="w-3 h-3" />Revoke All
-            </button>
-          )}
         </div>
 
         {/* Audit Log filter bar */}
@@ -248,15 +209,6 @@ export function UserManagementPage() {
               <DataTable columns={userColumns} data={userData.data} loading={false} rowKey={(r) => r.id}
                 sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
                 density="compact" onRowClick={(r) => setSelectedUser(r)} emptyMessage="No users found." />
-            )}
-          </QueryStateView>
-        )}
-        {activeTab === 'teams' && (
-          <QueryStateView query={teamsQuery} resource="teams">
-            {teamData => (
-              <DataTable columns={teamColumns} data={teamData.data} loading={false} rowKey={(r) => r.id}
-                sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
-                density="compact" emptyMessage="No teams created yet." />
             )}
           </QueryStateView>
         )}
@@ -289,11 +241,6 @@ export function UserManagementPage() {
           </QueryStateView>
         )}
       </div>
-
-      {/* Modals */}
-      <InviteUserModal open={showModal === 'invite'} onClose={() => setShowModal(null)} roles={rolesQuery.data?.data ?? []} teams={teamsQuery.data?.data ?? []} />
-      <CreateTeamModal open={showModal === 'team'} onClose={() => setShowModal(null)} users={usersQuery.data?.data ?? []} />
-      <CreateRoleModal open={showModal === 'role'} onClose={() => setShowModal(null)} />
 
       {/* User Detail Panel */}
       {selectedUser && (

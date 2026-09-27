@@ -1,15 +1,28 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-09-27
-**Session:** 162 (label S161a PR B + post-deploy hotfixes)
-**Session Summary:** Step 5 Honest UI PR B removed the remaining silent demo fallbacks from billing, admin-ops,
-and user-management hooks/screens (PR #45 → `cd4a227`), applying the `QueryStateView` pattern built in PR A.
-Converting these hooks surfaced real, pre-existing billing/admin path+shape mismatches, hidden until now by
-demo data — the owner chose to ship honest anyway (DECISION-036), deferring the backend fixes to S163. Three
-same-day post-deploy hotfixes followed (RCA #45), each its own PR/merge/deploy/verify, fixing crashes the
-removed fallbacks had been masking: Command Center System tab (PR #46), Emergency Access on a normal load
-(PR #47), and Emergency Access raw-row mapping + a maintenance-window crash (PR #48). A 3-agent page-shape
-audit after the third hotfix found no further crash paths. Session closes with master at `0b126ff`, VPS at
-`f012bdc`, 32/32 containers healthy, 1,926 frontend tests. Full detail: `docs/S161a_PR_B_SESSION_2026-09-27.md`.
+**Session:** 163 (label S161b PR 1 — RCA #45 unwrap sweep — DEPLOYED; S162 user-management routes IN PROGRESS)
+**Session Summary (current, read this first):** S161b PR 1 deployed — RCA #45 bug-class sweep fixed
+`api<{data}>` double-unwrap across 17 frontend hooks (~40 sites), restoring real data that had been silently
+falling back to demo/empty on analytics trends, onboarding catalog, customization cost/AI config, hunt
+templates, enrichment queue, DRP typosquat scanner, global catalog/IOCs, tenant overrides. Master fast-forwarded
+2 commits (`b4975c6` session-start optimization, `255b49f` the sweep); CI/CD run 36328956242 green; VPS HEAD
+`255b49f`, 32/32 containers healthy, 1,944 frontend tests. Detail: `docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md`.
+Work is now on branch `s162/user-management-routes` (about to deploy): new `user-management-service` directory
+routes (`GET /users`, `/users/stats`, `/users/audit`) so the Users screens (shipped honest with error cards in
+S161a PR B per DECISION-036) stop 404ing. Detail: `docs/S162_USER_MANAGEMENT_ROUTES.md`.
+S161b PRs 2–4 (alerting/reporting, phase4, phase5/6 rest — see list below) are still pending, unchanged since
+S161b PR 1 landed.
+
+**Previous session summary (S161a PR B + post-deploy hotfixes, 2026-09-27, CLOSED):** Step 5 Honest UI PR B
+removed the remaining silent demo fallbacks from billing, admin-ops, and user-management hooks/screens
+(PR #45 → `cd4a227`), applying the `QueryStateView` pattern built in PR A. Converting these hooks surfaced
+real, pre-existing billing/admin path+shape mismatches, hidden until now by demo data — the owner chose to
+ship honest anyway (DECISION-036), deferring the backend fixes to S163. Three same-day post-deploy hotfixes
+followed (RCA #45), each its own PR/merge/deploy/verify, fixing crashes the removed fallbacks had been
+masking: Command Center System tab (PR #46), Emergency Access on a normal load (PR #47), and Emergency Access
+raw-row mapping + a maintenance-window crash (PR #48). A 3-agent page-shape audit after the third hotfix found
+no further crash paths. Session closed with master at `0b126ff`, VPS at `f012bdc`, 32/32 containers healthy,
+1,926 frontend tests. Full detail: `docs/S161a_PR_B_SESSION_2026-09-27.md`.
 
 ## ✅ Changes Made
 
@@ -103,6 +116,17 @@ Details column shows raw JSON (cosmetic). Full list: `docs/S161a_PR_B_SESSION_20
 3. **S163** — fix the billing/admin path+shape mismatches PR B surfaced (`docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`):
    `/billing/plans` price field, `/billing/usage` shape, `/billing/subscription` singular vs. real plural route,
    missing `/billing/stats` and `/admin/stats`; plus `QuotaWarningBanner.tsx` and `BillingPage`'s `DEMO_PLAN_PRICES` table.
+   Also pick up the S161b PR 1 backend gaps (`docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md`): no route
+   `/access-reviews/stats`; no route `POST /customization/plans/:id/reset`; `GET /customization/ai` has no
+   handler; `/customization/risk-weights` should be `/customization/risk/profiles`; `/customization/notifications`
+   returns a single per-user prefs object, not a channel list; no `/ingestion/catalog/subscription-stats`;
+   ingestion `catalogRoutes` not registered in `apps/ingestion/src/app.ts`; frontend calls
+   `/ingestion/feeds/validate` but the real route is `/api/v1/feeds/validate`; `useDsarExport` is unused and
+   the backend returns a `ComplianceReport`, not a DSAR export shape; compliance report viewer reads
+   `fullReport.data` but the backend field is `reportData` (spins forever, not a crash — deferred from PR 4).
+   And the S162 follow-ups (`docs/S162_USER_MANAGEMENT_ROUTES.md`): audit-field redaction inside
+   `AuditLogger.log()`, GET-query `ZodError` → 500 in user-management-service's error handler (also affects
+   `teams.ts`), `AuditLog.user` relation unscoped at the schema level.
 4. **S164** — ai-enrichment `/enrichment/ioc/:id` + auto-enrich critical/high with a daily cap + admin switch (AI off by default).
 5. **S165** — threat-graph `/graph/overview`.
 6. **S166** — real tenant list in Command Center (replace admin-service's in-memory `TenantStore`, DECISION-013).

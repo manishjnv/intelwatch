@@ -1,7 +1,8 @@
 /**
  * @module __tests__/users-honest-ui
  * @description UserManagementPage must show loading/error/empty states per-region via
- * QueryStateView and never fall back to demo rows (S161a honest-UI).
+ * QueryStateView and never fall back to demo rows (S161a/S162 honest-UI). Teams tab, Invite
+ * button, and Create Role are hidden — no backing Prisma model exists (S162 route-inventory).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
@@ -35,31 +36,23 @@ const SESSION = {
 }
 
 const mockUseUsers = vi.fn()
-const mockUseTeams = vi.fn()
 const mockUseRoles = vi.fn()
 const mockUseSessions = vi.fn()
 const mockUseAuditLog = vi.fn()
 const mockUseUserManagementStats = vi.fn()
 const mockRevokeSessionMutate = vi.fn()
-const mockRevokeAllMutate = vi.fn()
 
 vi.mock('@/hooks/use-phase5-data', () => ({
   useUsers: (...args: any[]) => mockUseUsers(...args),
-  useTeams: () => mockUseTeams(),
   useRoles: () => mockUseRoles(),
   useSessions: () => mockUseSessions(),
   useAuditLog: (...args: any[]) => mockUseAuditLog(...args),
   useUserManagementStats: () => mockUseUserManagementStats(),
   useRevokeSession: () => ({ mutate: mockRevokeSessionMutate, isPending: false }),
-  useRevokeAllSessions: () => ({ mutate: mockRevokeAllMutate, isPending: false }),
-  useInviteUser: () => ({ mutate: vi.fn(), isPending: false }),
-  useCreateTeam: () => ({ mutate: vi.fn(), isPending: false }),
-  useCreateRole: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 function setupHappyDefaults() {
   mockUseUsers.mockReturnValue(dataQuery({ data: [USER], total: 1, page: 1, limit: 50 }))
-  mockUseTeams.mockReturnValue(dataQuery({ data: [], total: 0, page: 1, limit: 50 }))
   mockUseRoles.mockReturnValue(dataQuery({ data: [], total: 0, page: 1, limit: 50 }))
   mockUseSessions.mockReturnValue(dataQuery({ data: [SESSION], total: 1, page: 1, limit: 50 }))
   mockUseAuditLog.mockReturnValue(dataQuery({ data: [], total: 0, page: 1, limit: 50 }))
@@ -114,7 +107,6 @@ describe('UserManagementPage — honest UI (no demo fallback)', () => {
     render(<UserManagementPage />)
     expect(screen.getByTestId('stat-Total Users')).toHaveTextContent('—')
     expect(screen.getByTestId('stat-Active Sessions')).toHaveTextContent('—')
-    expect(screen.getByTestId('stat-Teams')).toHaveTextContent('—')
     expect(screen.getByTestId('stat-Roles')).toHaveTextContent('—')
     expect(screen.getByTestId('stat-MFA Enabled')).toHaveTextContent('—')
   })
@@ -134,13 +126,18 @@ describe('UserManagementPage — honest UI (no demo fallback)', () => {
     expect(mockRevokeSessionMutate).toHaveBeenCalledWith('sess-1')
   })
 
-  it('revoke-all button is enabled with real session data (no demo guard)', () => {
+  it('hides Revoke All — no bulk-revoke route on the gateway (only DELETE /auth/sessions/:id)', () => {
     render(<UserManagementPage />)
     fireEvent.click(screen.getByText('Sessions'))
-    const revokeAllBtn = screen.getByText('Revoke All') as HTMLButtonElement
-    expect(revokeAllBtn.disabled).toBe(false)
-    fireEvent.click(revokeAllBtn)
-    expect(mockRevokeAllMutate).toHaveBeenCalled()
+    expect(screen.queryByText('Revoke All')).not.toBeInTheDocument()
+  })
+
+  it('hides Teams tab, Invite User, and Create Role — no backing Prisma model (S162)', () => {
+    render(<UserManagementPage />)
+    expect(screen.queryByText('Teams')).not.toBeInTheDocument()
+    expect(screen.queryByText('Invite User')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Roles'))
+    expect(screen.queryByText('Create Role')).not.toBeInTheDocument()
   })
 
   it('sessions tab shows its own error card when only the sessions endpoint fails', () => {

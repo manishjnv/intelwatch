@@ -13,7 +13,7 @@ import {
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
-  Search, UserPlus, Shield, Mail,
+  Search, Shield, Mail,
   Check, X, Key, Webhook, AlertTriangle,
   Settings, CheckCircle, ArrowUpCircle, Zap, Crown,
 } from 'lucide-react'
@@ -35,8 +35,6 @@ interface UsersAccessTabProps {
 const ROLE_COLORS: Record<string, string> = {
   super_admin: 'bg-amber-500/20 text-amber-400',
   tenant_admin: 'bg-purple-500/20 text-purple-400',
-  manager: 'bg-blue-500/20 text-blue-400',
-  lead: 'bg-cyan-500/20 text-cyan-400',
   analyst: 'bg-sev-low/20 text-sev-low',
 }
 
@@ -70,9 +68,6 @@ function StatusBadge({ status }: { status: string }) {
 function TeamPanel({ isSuperAdmin: _isSuperAdmin, tenantPlan }: { isSuperAdmin: boolean; tenantPlan: string }) {
   const users = useUsers()
   const [search, setSearch] = useState('')
-  const [showInviteModal, setShowInviteModal] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState('analyst')
   const debouncedSearch = useDebouncedValue(search, 300)
   const isFree = tenantPlan === 'free'
 
@@ -93,11 +88,7 @@ function TeamPanel({ isSuperAdmin: _isSuperAdmin, tenantPlan }: { isSuperAdmin: 
           <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent/10 text-accent rounded-lg hover:bg-accent/20" data-testid="upgrade-cta">
             <ArrowUpCircle className="w-3.5 h-3.5" /> Upgrade to add team members
           </button>
-        ) : (
-          <button onClick={() => setShowInviteModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/80" data-testid="invite-btn">
-            <UserPlus className="w-3.5 h-3.5" /> Invite Member
-          </button>
-        )}
+        ) : null /* ponytail: no DB-backed invite route yet (STEP_05) — add the button with it */}
       </div>
 
       <QueryStateView query={users} resource="users">
@@ -163,10 +154,6 @@ function TeamPanel({ isSuperAdmin: _isSuperAdmin, tenantPlan }: { isSuperAdmin: 
                           <span className="text-xs text-text-primary">{u.email}</span>
                           <RoleBadge role={u.role} />
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button className="px-2 py-1 text-[10px] text-accent hover:bg-accent/10 rounded" data-testid={`resend-${u.id}`}>Resend</button>
-                          <button className="px-2 py-1 text-[10px] text-sev-high hover:bg-sev-high/10 rounded" data-testid={`revoke-${u.id}`}>Revoke</button>
-                        </div>
                       </div>
                     ))}
                   </div>
@@ -176,40 +163,6 @@ function TeamPanel({ isSuperAdmin: _isSuperAdmin, tenantPlan }: { isSuperAdmin: 
           )
         }}
       </QueryStateView>
-
-      {/* Invite Modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="invite-modal">
-          <div className="bg-bg-primary border border-border rounded-lg p-4 max-w-sm w-full mx-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text-primary flex items-center gap-2"><UserPlus className="w-4 h-4 text-accent" /> Invite Team Member</h3>
-              <button onClick={() => setShowInviteModal(false)} className="text-text-muted hover:text-text-primary"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs text-text-muted">Email Address</label>
-              <input
-                data-testid="invite-email"
-                type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                placeholder="colleague@company.com"
-                className="w-full px-3 py-1.5 text-xs bg-bg-elevated border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-              />
-              <label className="block text-xs text-text-muted">Role</label>
-              <select data-testid="invite-role" value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs bg-bg-elevated border border-border rounded-lg text-text-primary">
-                <option value="analyst">Analyst</option>
-                <option value="lead">Lead</option>
-                <option value="manager">Manager</option>
-                <option value="tenant_admin">Tenant Admin</option>
-              </select>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowInviteModal(false)} className="px-3 py-1.5 text-xs border border-border rounded-lg text-text-secondary hover:text-text-primary">Cancel</button>
-              <button data-testid="send-invite" onClick={() => { setShowInviteModal(false); setInviteEmail('') }}
-                className="px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80">Send Invite</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

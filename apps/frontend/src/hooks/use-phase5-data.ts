@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tan
 import { api, ApiError } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
+import type { SessionInfo } from '@/types/auth-security'
 import {
   DEMO_SIEM_INTEGRATIONS, DEMO_WEBHOOKS, DEMO_TICKETING,
   DEMO_STIX_COLLECTIONS, DEMO_BULK_EXPORTS, DEMO_INTEGRATION_STATS,
@@ -16,7 +17,7 @@ import {
   DEMO_PLAN_TIERS, DEMO_SUBTASK_MAPPINGS, DEMO_RECOMMENDED_MODELS, DEMO_COST_ESTIMATE,
   type SIEMIntegration, type WebhookConfig, type TicketingIntegration,
   type STIXCollection, type BulkExport, type IntegrationStats,
-  type UserRecord, type TeamRecord, type RoleRecord,
+  type UserRecord, type RoleRecord,
   type SessionRecord, type AuditLogEntry, type UserManagementStats,
   type ModuleToggle, type AIModelConfig, type RiskWeight,
   type NotificationChannel, type CustomizationStats,
@@ -27,7 +28,7 @@ import {
 export type {
   SIEMIntegration, WebhookConfig, TicketingIntegration,
   STIXCollection, BulkExport, IntegrationStats,
-  UserRecord, TeamRecord, RoleRecord,
+  UserRecord, RoleRecord,
   SessionRecord, AuditLogEntry, UserManagementStats,
   ModuleToggle, AIModelConfig, RiskWeight,
   NotificationChannel, CustomizationStats,
@@ -201,29 +202,51 @@ export function useUsers(params: QueryParams = {}) {
   })
 }
 
-export function useTeams() {
-  return useQuery<ListResponse<TeamRecord>, ApiError>({
-    queryKey: ['teams'],
-    queryFn: () => apiList<TeamRecord>('/users/teams'),
-    meta: { resource: 'teams' },
-    staleTime: 60_000,
-  })
-}
+// Real RBAC is the 3-value Prisma Role enum (schema.prisma:102) + shared-auth's role→permission
+// map (packages/shared-auth/src/permissions.ts:32) — not importable from the frontend workspace.
+// No custom-role backend exists, so this is a static, read-only reference list: no network call,
+// no "Create role" entry point. Permission counts mirror ROLE_PERMISSIONS exactly (super_admin:
+// ['*'] = 1, tenant_admin = 14 resource grants, analyst = 10).
+const REAL_ROLES: RoleRecord[] = [
+  { id: 'super_admin', name: 'Super Admin', permissionCount: 1, userCount: 0, isSystem: true, createdAt: '',
+    description: 'Full platform access across every tenant. The only role that can manage tenants, plans, and global settings.' },
+  { id: 'tenant_admin', name: 'Tenant Admin', permissionCount: 14, userCount: 0, isSystem: true, createdAt: '',
+    description: 'Full access within the tenant — IOCs, hunting, alerts, feeds, users, integrations, settings — plus read-only audit log.' },
+  { id: 'analyst', name: 'Analyst', permissionCount: 10, userCount: 0, isSystem: true, createdAt: '',
+    description: 'Day-to-day SOC work — IOCs, hunting, alerts, dashboards, reports. No user, integration, or settings management.' },
+]
 
+/** Static reference list — no backend, no loading/error states. */
 export function useRoles() {
-  return useQuery<ListResponse<RoleRecord>, ApiError>({
-    queryKey: ['roles'],
-    queryFn: () => apiList<RoleRecord>('/users/roles'),
-    meta: { resource: 'roles' },
-    staleTime: 60_000,
-  })
+  return {
+    data: { data: REAL_ROLES, total: REAL_ROLES.length, page: 1, limit: REAL_ROLES.length },
+    isLoading: false, isError: false, error: null,
+    refetch: () => undefined,
+  }
 }
 
+/**
+ * Real, Prisma-backed sessions: gateway GET /auth/sessions (api-gateway/src/routes/sessions.ts:9),
+ * current user only. The in-memory `/users/sessions` UMS route (S162 route-inventory) is not used.
+ */
 export function useSessions() {
   return useQuery<ListResponse<SessionRecord>, ApiError>({
     queryKey: ['user-sessions'],
-    queryFn: () => apiList<SessionRecord>('/users/sessions'),
-    meta: { resource: 'user sessions' },
+    queryFn: async () => {
+      const sessions = await api<SessionInfo[]>('/auth/sessions')
+      const data: SessionRecord[] = sessions.map(s => ({
+        id: s.id,
+        userId: '',
+        userName: s.isCurrent ? 'You (this session)' : 'You (other device)',
+        ip: s.ipAddress,
+        device: s.userAgent,
+        startedAt: s.createdAt,
+        lastActivity: s.lastUsedAt,
+        status: 'active',
+      }))
+      return { data, total: data.length, page: 1, limit: data.length || 50 }
+    },
+    meta: { resource: 'your active sessions' },
     staleTime: 30_000,
   })
 }
@@ -247,49 +270,27 @@ export function useUserManagementStats() {
   })
 }
 
-export function useInviteUser() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { email: string; role: string; teamId?: string }) =>
-      api<UserRecord>('/users/invite', { method: 'POST', body: input }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); qc.invalidateQueries({ queryKey: ['user-management-stats'] }) },
-  })
-}
+// No DB-backed invite flow exists (S162 route-inventory) — no useInviteUser. The Invite button is
+// hidden in UserManagementPage.
 
-export function useCreateTeam() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { name: string; description: string; leadId: string }) =>
-      api<TeamRecord>('/users/teams', { method: 'POST', body: input }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['teams'] }); qc.invalidateQueries({ queryKey: ['user-management-stats'] }) },
-  })
-}
+// No Team model in Prisma, only an in-memory TeamStore — no useCreateTeam. The Teams tab is
+// hidden in UserManagementPage.
 
-export function useCreateRole() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { name: string; description: string; permissions: string[] }) =>
-      api<RoleRecord>('/users/roles', { method: 'POST', body: input }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['roles'] }); qc.invalidateQueries({ queryKey: ['user-management-stats'] }) },
-  })
-}
+// Custom roles are never enforced (see useRoles above) — no useCreateRole. "Create Role" is
+// hidden in UserManagementPage.
 
+/** DELETE /auth/sessions/:sessionId — the only real revoke route (api-gateway sessions.ts:16). */
 export function useRevokeSession() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (sessionId: string) =>
-      api<void>(`/users/sessions/${sessionId}`, { method: 'DELETE' }),
+      api<void>(`/auth/sessions/${sessionId}`, { method: 'DELETE' }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['user-sessions'] }); qc.invalidateQueries({ queryKey: ['user-management-stats'] }) },
   })
 }
 
-export function useRevokeAllSessions() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: () => api<void>('/users/sessions', { method: 'DELETE' }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['user-sessions'] }); qc.invalidateQueries({ queryKey: ['user-management-stats'] }) },
-  })
-}
+// No bulk "revoke all" route exists on the gateway (only GET / and DELETE /:sessionId) — no
+// useRevokeAllSessions. The Revoke All button is hidden in UserManagementPage.
 
 // ─── Customization Hooks ────────────────────────────────────────
 

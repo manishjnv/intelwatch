@@ -153,6 +153,26 @@ export const AuditQuerySchema = z.object({
   to: z.string().datetime().optional(),
 });
 
+// ─── User Directory Schemas (S162: honest UI /users routes, backed by Prisma) ──
+// NOTE: this is a separate schema from AuditQuerySchema above — that one shapes
+// queries against the in-memory AuditLogger (riskLevel/from/to, no DB column for
+// those on the Prisma AuditLog model). DirectoryAuditQuerySchema below shapes
+// queries against the actual Prisma `audit_logs` table.
+
+export const UserDirectoryQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(500).default(50),
+  role: z.enum(['super_admin', 'tenant_admin', 'analyst']).optional(),
+  status: z.enum(['active', 'locked', 'invited']).optional(),
+  search: z.string().max(256).optional(),
+});
+
+export const DirectoryAuditQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(500).default(50),
+  action: z.string().optional(),
+});
+
 // ─── Shared Types ───────────────────────────────────────────────
 
 export type Permission = z.infer<typeof PermissionStringSchema>;

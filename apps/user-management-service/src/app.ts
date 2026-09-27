@@ -18,6 +18,7 @@ import { scimGroupRoutes, type ScimGroupRouteDeps } from './routes/scim-groups.j
 import { offboardingRoutes, type OffboardingRouteDeps } from './routes/offboarding.js';
 import { retentionRoutes, type RetentionRouteDeps } from './routes/retention.js';
 import { ownershipTransferRoutes, type OwnershipTransferRouteDeps } from './routes/ownership-transfer.js';
+import { directoryRoutes } from './routes/directory.js';
 import { registerMetrics } from '@etip/shared-utils';
 import type { UserManagementConfig } from './config.js';
 
@@ -129,6 +130,11 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   if (opts.ownershipTransferDeps) {
     await app.register(ownershipTransferRoutes(opts.ownershipTransferDeps), { prefix: '/api/v1' });
   }
+  // ─── User Directory (S162: honest UI /users, /users/stats, /users/audit) ──
+  // Registered after teams/roles/sessions/etc. above — distinct paths (bare '/',
+  // '/stats', '/audit'), so it never shadows their handlers. No injected deps:
+  // reads Prisma directly, same pattern as api-keys.ts / scim-user-service.ts.
+  await app.register(directoryRoutes(), { prefix: '/api/v1/users' });
 
   return app;
 }

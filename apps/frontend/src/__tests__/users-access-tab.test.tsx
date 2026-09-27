@@ -90,23 +90,15 @@ describe('UsersAccessTab', () => {
     expect(screen.getByText('newhire@company.com')).toBeInTheDocument()
   })
 
-  it('shows invite button for paid plans', () => {
+  it('hides the invite button (no DB-backed invite route yet)', () => {
     render(<UsersAccessTab data={baseMockCC} />)
-    expect(screen.getByTestId('invite-btn')).toBeInTheDocument()
+    expect(screen.queryByTestId('invite-btn')).not.toBeInTheDocument()
   })
 
   it('shows upgrade CTA for free plan', () => {
     const freeCC = { ...baseMockCC, tenantPlan: 'free' }
     render(<UsersAccessTab data={freeCC} />)
     expect(screen.getByTestId('upgrade-cta')).toBeInTheDocument()
-  })
-
-  it('opens invite modal', () => {
-    render(<UsersAccessTab data={baseMockCC} />)
-    fireEvent.click(screen.getByTestId('invite-btn'))
-    expect(screen.getByTestId('invite-modal')).toBeInTheDocument()
-    expect(screen.getByTestId('invite-email')).toBeInTheDocument()
-    expect(screen.getByTestId('invite-role')).toBeInTheDocument()
   })
 
   it('switches to Roles & Permissions sub-tab', () => {
