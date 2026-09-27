@@ -2,11 +2,31 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AppError } from '@etip/shared-utils';
 import type { EnrichmentRepository } from '../repository.js';
 import type { BatchEnrichmentService } from '../batch-enrichment.js';
-import { TriggerEnrichmentSchema, EnrichmentStatusQuerySchema, BatchEnrichmentSchema, BatchStatusParamsSchema } from '../schema.js';
+import {
+  TriggerEnrichmentSchema, EnrichmentStatusQuerySchema, BatchEnrichmentSchema,
+  BatchStatusParamsSchema, EnrichmentIocParamsSchema, type EnrichmentResult,
+} from '../schema.js';
 import { authenticate, getUser } from '../plugins/auth.js';
 import { getEnrichQueue } from '../queue.js';
 
-export function enrichmentRoutes(repo: EnrichmentRepository, batchService?: BatchEnrichmentService | null) {
+/** Auto-enrichment severity list — mirrors service.ts gate for the "not_selected" status. */
+export function buildNotEnrichedResult(severity: string, autoSeverities: string[]): EnrichmentResult {
+  const enrichmentStatus: EnrichmentResult['enrichmentStatus'] = autoSeverities.includes(severity?.toLowerCase())
+    ? 'pending'
+    : 'not_selected';
+  return {
+    vtResult: null, abuseipdbResult: null, haikuResult: null, gsbResult: null, ipinfoResult: null,
+    enrichedAt: null as unknown as string, enrichmentStatus,
+    failureReason: null, externalRiskScore: null, costBreakdown: null,
+    enrichmentQuality: null, geolocation: null,
+  };
+}
+
+export function enrichmentRoutes(
+  repo: EnrichmentRepository,
+  batchService?: BatchEnrichmentService | null,
+  autoSeverities: string[] = ['critical', 'high'],
+) {
   return async function (app: FastifyInstance): Promise<void> {
 
     /** POST /api/v1/enrichment/trigger — manually trigger enrichment for an IOC */
@@ -30,11 +50,35 @@ export function enrichmentRoutes(repo: EnrichmentRepository, batchService?: Batc
         confidence: ioc.confidence,
         severity: ioc.severity,
         existingEnrichment: ioc.enrichmentData as Record<string, unknown> | undefined,
+        manual: true,
       }, { priority: 1 });
 
       return reply.status(202).send({
         data: { iocId, status: 'queued', message: 'Enrichment job queued' },
       });
+    });
+
+    /** GET /api/v1/enrichment/ioc/:iocId — enrichment result for a single IOC (tenant-scoped) */
+    app.get('/ioc/:iocId', {
+      preHandler: [authenticate],
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      const user = getUser(req);
+      const { iocId } = EnrichmentIocParamsSchema.parse(req.params);
+
+      const ioc = await repo.findById(iocId, user.tenantId);
+      if (!ioc) {
+        // Same 404 for "doesn't exist" and "belongs to another tenant" — no existence leak.
+        throw new AppError(404, `IOC not found: ${iocId}`, 'NOT_FOUND');
+      }
+
+      if (ioc.enrichmentData && typeof ioc.enrichmentData === 'object') {
+        const data = ioc.enrichmentData as Record<string, unknown>;
+        return reply.send({
+          data: { ...data, enrichedAt: ioc.enrichedAt ?? (data.enrichedAt as string | null) ?? null },
+        });
+      }
+
+      return reply.send({ data: buildNotEnrichedResult(ioc.severity, autoSeverities) });
     });
 
     /** GET /api/v1/enrichment/stats — enrichment statistics */

@@ -18,6 +18,20 @@ const EnvSchema = z.object({
   TI_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   /** Master switch — external API enrichment only runs when true */
   TI_AI_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  /** Comma list of severities that trigger auto-enrichment (manual triggers bypass this gate) */
+  TI_ENRICHMENT_AUTO_SEVERITIES: z.string().default('critical,high').transform((v, ctx) => {
+    const valid = ['info', 'low', 'medium', 'high', 'critical'];
+    const list = v.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    for (const s of list) {
+      if (!valid.includes(s)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Invalid severity in TI_ENRICHMENT_AUTO_SEVERITIES: ${s}` });
+        return z.NEVER;
+      }
+    }
+    return list;
+  }),
+  /** Master switch — VT/AbuseIPDB/IPinfo/GSB lookups only run when true */
+  TI_ENRICHMENT_LOOKUPS_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   /** VirusTotal API key (free tier: 4 req/min) */
   TI_VIRUSTOTAL_API_KEY: z.string().default(''),
   /** AbuseIPDB API key (free tier: 1000 req/day) */

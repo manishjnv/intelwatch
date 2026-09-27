@@ -85,6 +85,7 @@ export class ReEnrichScheduler {
             confidence: ioc.confidence,
             severity: ioc.severity,
             existingEnrichment: ioc.enrichmentData as Record<string, unknown> | undefined,
+            manual: false, // automatic background job — still subject to the severity auto-enrich gate
           }, { priority: RE_ENRICH_PRIORITY });
           queued++;
         } catch (err) {

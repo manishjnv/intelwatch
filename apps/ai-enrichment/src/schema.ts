@@ -10,6 +10,8 @@ export const EnrichJobSchema = z.object({
   severity: z.string(),
   /** Existing enrichment data to merge with */
   existingEnrichment: z.record(z.unknown()).optional(),
+  /** User-initiated trigger — bypasses the severity auto-enrichment gate */
+  manual: z.boolean().optional().default(false),
 });
 export type EnrichJob = z.infer<typeof EnrichJobSchema>;
 
@@ -166,7 +168,7 @@ export const EnrichmentResultSchema = z.object({
   abuseipdbResult: AbuseIPDBResultSchema.nullable().default(null),
   haikuResult: HaikuTriageResultSchema.nullable().default(null),
   enrichedAt: z.string(),
-  enrichmentStatus: z.enum(['enriched', 'partial', 'pending', 'failed', 'skipped']),
+  enrichmentStatus: z.enum(['enriched', 'partial', 'pending', 'failed', 'skipped', 'not_selected']),
   failureReason: z.string().nullable().default(null),
   /** Composite risk score from all sources (0-100) */
   externalRiskScore: z.number().min(0).max(100).nullable().default(null),
@@ -186,9 +188,14 @@ export type EnrichmentResult = z.infer<typeof EnrichmentResultSchema>;
 export const EnrichmentStatusQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(['enriched', 'partial', 'pending', 'failed', 'skipped']).optional(),
+  status: z.enum(['enriched', 'partial', 'pending', 'failed', 'skipped', 'not_selected']).optional(),
 });
 export type EnrichmentStatusQuery = z.infer<typeof EnrichmentStatusQuerySchema>;
+
+/** Params for GET /api/v1/enrichment/ioc/:iocId */
+export const EnrichmentIocParamsSchema = z.object({
+  iocId: z.string().uuid(),
+});
 
 /** Params for POST /api/v1/enrichment/trigger */
 export const TriggerEnrichmentSchema = z.object({

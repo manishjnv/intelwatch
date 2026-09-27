@@ -141,7 +141,7 @@ export function EnrichmentDetailPanel({ iocId, iocType, enrichment, className }:
             e.enrichmentStatus === 'partial' && 'bg-sev-medium/20 text-yellow-300',
             e.enrichmentStatus === 'pending' && 'bg-accent/20 text-accent',
             e.enrichmentStatus === 'failed' && 'bg-sev-critical/20 text-red-300',
-            e.enrichmentStatus === 'skipped' && 'bg-bg-elevated text-text-muted',
+            (e.enrichmentStatus === 'skipped' || e.enrichmentStatus === 'not_selected') && 'bg-bg-elevated text-text-muted',
           )}>
             {e.enrichmentStatus}
           </span>
@@ -158,7 +158,7 @@ export function EnrichmentDetailPanel({ iocId, iocType, enrichment, className }:
             className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={cn('w-3 h-3', triggerMutation.isPending && 'animate-spin')} />
-            Enrich
+            Enrich now
           </button>
         )}
       </div>
@@ -190,7 +190,8 @@ export function EnrichmentDetailPanel({ iocId, iocType, enrichment, className }:
       {!isEnriched && (
         <div className="p-4 text-center text-text-muted text-xs">
           <Brain className="w-6 h-6 mx-auto mb-2 opacity-50" />
-          <p>Not yet enriched. Click "Enrich" to queue AI analysis.</p>
+          <p>Not enriched yet.</p>
+          <p className="mt-1 opacity-70">{e.enrichmentStatus === 'not_selected' ? "Only critical/high IOCs auto-enrich — use Enrich now." : 'Click "Enrich now" to queue enrichment.'}</p>
         </div>
       )}
 

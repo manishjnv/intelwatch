@@ -179,7 +179,7 @@ describe('EnrichmentDetailPanel', () => {
     render(
       <EnrichmentDetailPanel iocId="test-1" iocType="ip" enrichment={pending} />
     )
-    expect(screen.getByText('Enrich')).toBeTruthy()
+    expect(screen.getByText('Enrich now')).toBeTruthy()
   })
 
   it('does not show enrich button when already enriched', () => {
@@ -225,6 +225,6 @@ describe('EnrichmentDetailPanel', () => {
     render(
       <EnrichmentDetailPanel iocId="test-1" iocType="ip" enrichment={pending} />
     )
-    expect(screen.getByText(/Not yet enriched/)).toBeTruthy()
+    expect(screen.getByText(/Not enriched yet/)).toBeTruthy()
   })
 })

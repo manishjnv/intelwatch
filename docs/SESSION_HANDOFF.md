@@ -1,15 +1,23 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-09-27
-**Session:** 163 (label S161b PR 1 — RCA #45 unwrap sweep — DEPLOYED; S162 user-management routes IN PROGRESS)
-**Session Summary (current, read this first):** S161b PR 1 deployed — RCA #45 bug-class sweep fixed
-`api<{data}>` double-unwrap across 17 frontend hooks (~40 sites), restoring real data that had been silently
-falling back to demo/empty on analytics trends, onboarding catalog, customization cost/AI config, hunt
-templates, enrichment queue, DRP typosquat scanner, global catalog/IOCs, tenant overrides. Master fast-forwarded
-2 commits (`b4975c6` session-start optimization, `255b49f` the sweep); CI/CD run 36328956242 green; VPS HEAD
-`255b49f`, 32/32 containers healthy, 1,944 frontend tests. Detail: `docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md`.
-Work is now on branch `s162/user-management-routes` (about to deploy): new `user-management-service` directory
-routes (`GET /users`, `/users/stats`, `/users/audit`) so the Users screens (shipped honest with error cards in
-S161a PR B per DECISION-036) stop 404ing. Detail: `docs/S162_USER_MANAGEMENT_ROUTES.md`.
+**Session:** 163/164 (label S162 user-management routes — DEPLOYED; S164 ai-enrichment auto-enrich ABOUT TO DEPLOY)
+**Session Summary (current, read this first):** S162 deployed — master `045fb35` (user directory routes),
+CI/CD run 36330819062 green, VPS HEAD `045fb35`, 32/32 containers healthy, `directory.js` present in the
+user-management image, no log errors, new bundle `assets/index-Ckl4LPzT.js`, `/api/v1/users` +
+`/api/v1/users/stats` 401 without token. 1,934 frontend tests, 360 user-management-service tests. No new deploy
+issues. Detail: `docs/S162_USER_MANAGEMENT_ROUTES.md`.
+Work is now on branch `s164/ai-enrichment-auto-enrich` (about to deploy): new
+`GET /api/v1/enrichment/ioc/:iocId` route (the frontend already called it, was 404), severity-gated
+auto-enrichment (`TI_ENRICHMENT_AUTO_SEVERITIES`, default critical/high), free-lookup gate
+(`TI_ENRICHMENT_LOOKUPS_ENABLED`), and a new per-tenant AI budget (`services/tenant-budget.ts`, plan-based
+token limits + Redis daily counters, fails closed) layered on top of the existing global USD check. `TI_AI_ENABLED`
+stays off by default. Fixed along the way: an enrichment overwrite bug (all-null provider results used to
+clobber earlier good data), the Anthropic batch service being constructed with no AI-flag check at all, and
+`TI_ENRICHMENT_DAILY_BUDGET_USD` never actually being read (hardcoded `5.00` always applied). Security review:
+Sonnet adversarial takeover (codex companion stale again), verdict ACCEPT. Follow-ups: batch path still has no
+tenant-budget check (only `TI_AI_ENABLED`); no per-IOC `/trigger` cooldown; plan resolution is a hardcoded
+mirror of customization-service's plan defaults, not a live call. ai-enrichment 366 tests, frontend ~1,939.
+Detail: `docs/S164_AI_ENRICHMENT_AUTO_ENRICH.md`.
 S161b PRs 2–4 (alerting/reporting, phase4, phase5/6 rest — see list below) are still pending, unchanged since
 S161b PR 1 landed.
 
@@ -112,8 +120,12 @@ Details column shows raw JSON (cosmetic). Full list: `docs/S161a_PR_B_SESSION_20
 
 **Then:**
 1. The owner-scheduled security fix before Step 3 (plan-limits enforcement — no further detail here, per the public-repo rule).
-2. **S162** — user-management-service real `/users` list/audit/stats routes.
-3. **S163** — fix the billing/admin path+shape mismatches PR B surfaced (`docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`):
+2. **S162** — DEPLOYED (2026-09-27, `045fb35`) — user-management-service real `/users` list/audit/stats routes.
+3. **S164** — DEPLOYING (this branch, `s164/ai-enrichment-auto-enrich`) — per-IOC enrichment endpoint,
+   severity-gated auto-enrichment, per-tenant AI budget. Follow-ups for a later session: batch path
+   tenant-budget check (before `TI_BATCH_ENABLED`), per-IOC `/trigger` cooldown, live plan-config service
+   call instead of the hardcoded plan-defaults mirror.
+4. **S163** — fix the billing/admin path+shape mismatches PR B surfaced (`docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`):
    `/billing/plans` price field, `/billing/usage` shape, `/billing/subscription` singular vs. real plural route,
    missing `/billing/stats` and `/admin/stats`; plus `QuotaWarningBanner.tsx` and `BillingPage`'s `DEMO_PLAN_PRICES` table.
    Also pick up the S161b PR 1 backend gaps (`docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md`): no route

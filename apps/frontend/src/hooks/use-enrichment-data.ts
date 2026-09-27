@@ -120,7 +120,7 @@ export interface BatchStatus {
 
 /** Enrichment result stored on IOC record */
 export interface EnrichmentResult {
-  enrichmentStatus: 'enriched' | 'partial' | 'pending' | 'failed' | 'skipped'
+  enrichmentStatus: 'enriched' | 'partial' | 'pending' | 'failed' | 'skipped' | 'not_selected'
   enrichedAt: string | null
   externalRiskScore: number | null
   enrichmentQuality: number | null

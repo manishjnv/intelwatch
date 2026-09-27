@@ -18,6 +18,7 @@ import { IPinfoProvider } from './providers/ipinfo.js';
 import { createVTRateLimiter, createAbuseIPDBRateLimiter, createGSBRateLimiter, createIPinfoRateLimiter } from './rate-limiter.js';
 import { createEnrichQueue, closeEnrichQueue, getEnrichQueue, createDownstreamQueues, closeDownstreamQueues } from './queue.js';
 import { createEnrichWorker } from './workers/enrich-worker.js';
+import { TenantBudgetService } from './services/tenant-budget.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -74,7 +75,8 @@ async function main(): Promise<void> {
   }
 
   // #13 Batch Enrichment Service (client reuses Anthropic SDK from haiku provider)
-  const batchService = config.TI_BATCH_ENABLED && config.TI_ANTHROPIC_API_KEY
+  // TI_AI_ENABLED gates every paid Anthropic path, batch included (batch has no tenant-budget check yet).
+  const batchService = config.TI_AI_ENABLED && config.TI_BATCH_ENABLED && config.TI_ANTHROPIC_API_KEY
     ? new BatchEnrichmentService(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { batches: (haikuProvider as any)?.client?.batches ?? null } as any,
@@ -82,10 +84,15 @@ async function main(): Promise<void> {
       )
     : null;
 
+  // Tenant AI budget gate — own lazy Redis connection so it works independent of TI_COST_PERSISTENCE_ENABLED
+  const budgetRedis = new IORedis(config.TI_REDIS_URL, { maxRetriesPerRequest: null, lazyConnect: true });
+  const tenantBudget = new TenantBudgetService(prisma, budgetRedis, config.TI_ENRICHMENT_DAILY_BUDGET_USD, logger);
+
   const repo = new EnrichmentRepository(prisma);
   const service = new EnrichmentService(
     repo, vtProvider, abuseProvider, haikuProvider, costTracker,
-    config.TI_AI_ENABLED, logger, undefined, undefined, gsbProvider, ipinfoProvider,
+    config.TI_AI_ENABLED, logger, undefined, config.TI_ENRICHMENT_DAILY_BUDGET_USD, gsbProvider, ipinfoProvider,
+    config.TI_ENRICHMENT_AUTO_SEVERITIES, config.TI_ENRICHMENT_LOOKUPS_ENABLED, tenantBudget,
   );
 
   createEnrichQueue();
@@ -113,6 +120,7 @@ async function main(): Promise<void> {
     await closeDownstreamQueues();
     await closeEnrichQueue();
     if (redis) await redis.quit();
+    await budgetRedis.quit().catch(() => { /* best-effort */ });
     await disconnectPrisma();
   });
 

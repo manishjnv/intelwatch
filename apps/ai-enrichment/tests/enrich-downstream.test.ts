@@ -282,6 +282,23 @@ describe('Enrich Worker — Downstream Enqueue', () => {
     expect((downstream.cacheInvalidate as unknown as { add: ReturnType<typeof vi.fn> }).add).not.toHaveBeenCalled();
   });
 
+  // S164: gate-skipped enrichment (severity gate / all-gates-off) must not fan out either
+  it('does NOT enqueue downstream on skipped enrichment (S164 gates)', async () => {
+    mockService.enrichIOC.mockResolvedValue(makeSuccessResult({ enrichmentStatus: 'skipped', failureReason: 'severity-below-threshold' }));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createEnrichWorker({ service: mockService as any, logger: mockLogger as any, downstream });
+    const { __getProcessor } = await import('bullmq') as unknown as { __getProcessor: () => (job: unknown) => Promise<unknown> };
+    const processor = __getProcessor();
+
+    await processor({ id: 'job-skip', data: makeEnrichJob() });
+
+    expect((downstream.graphSync as unknown as { add: ReturnType<typeof vi.fn> }).add).not.toHaveBeenCalled();
+    expect((downstream.iocIndex as unknown as { add: ReturnType<typeof vi.fn> }).add).not.toHaveBeenCalled();
+    expect((downstream.correlate as unknown as { add: ReturnType<typeof vi.fn> }).add).not.toHaveBeenCalled();
+    expect((downstream.cacheInvalidate as unknown as { add: ReturnType<typeof vi.fn> }).add).not.toHaveBeenCalled();
+  });
+
   it('does NOT enqueue when downstream is not provided', async () => {
     mockService.enrichIOC.mockResolvedValue(makeSuccessResult());
 

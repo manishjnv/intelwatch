@@ -165,8 +165,9 @@ export function createEnrichWorker(deps: EnrichWorkerDeps): Worker<EnrichJob, En
 
       const result = await service.enrichIOC(parsed.data);
 
-      // Enqueue downstream jobs on successful enrichment
-      if (result.enrichmentStatus !== 'failed' && downstream) {
+      // Enqueue downstream jobs on successful enrichment — 'failed' and 'skipped'
+      // (severity gate / all-gates-off / disabled) must not trigger graph-sync/index/correlate.
+      if (result.enrichmentStatus !== 'failed' && result.enrichmentStatus !== 'skipped' && downstream) {
         await enqueueDownstream(parsed.data, result, downstream, logger);
         logger.debug({ iocId: parsed.data.iocId }, 'Downstream jobs enqueued');
       }

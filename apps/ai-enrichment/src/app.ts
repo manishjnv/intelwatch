@@ -66,7 +66,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
 
   await app.register(healthRoutes);
-  await app.register(enrichmentRoutes(repo, opts.batchService), { prefix: '/api/v1/enrichment' });
+  await app.register(enrichmentRoutes(repo, opts.batchService, config.TI_ENRICHMENT_AUTO_SEVERITIES), { prefix: '/api/v1/enrichment' });
   await app.register(costRoutes(opts.costTracker, config.TI_ENRICHMENT_DAILY_BUDGET_USD), { prefix: '/api/v1/enrichment/cost' });
 
   return app;

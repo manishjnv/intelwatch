@@ -7,6 +7,7 @@ import type { EnrichmentCostTracker } from './cost-tracker.js';
 import type { EnrichmentCache } from './cache.js';
 import type { GoogleSafeBrowsingProvider } from './providers/google-safe-browsing.js';
 import type { IPinfoProvider } from './providers/ipinfo.js';
+import type { TenantBudgetService } from './services/tenant-budget.js';
 import type { EnrichJob, EnrichmentResult, VTResult, AbuseIPDBResult, HaikuTriageResult, GSBResult, IPinfoResult, Geolocation } from './schema.js';
 import { ruleBasedScore } from './rule-based-scorer.js';
 import { calculateCompositeConfidence } from '@etip/shared-normalization';
@@ -68,20 +69,36 @@ export class EnrichmentService {
     private readonly dailyBudgetUsd: number = 5.00,
     private readonly gsbProvider?: GoogleSafeBrowsingProvider | null,
     private readonly ipinfoProvider?: IPinfoProvider | null,
+    private readonly autoSeverities: string[] = ['critical', 'high'],
+    private readonly lookupsEnabled: boolean = true,
+    private readonly tenantBudget?: TenantBudgetService | null,
   ) {}
+
+  private skippedResult(now: Date, reason: string): EnrichmentResult {
+    return {
+      vtResult: null, abuseipdbResult: null, haikuResult: null, gsbResult: null, ipinfoResult: null,
+      enrichedAt: now.toISOString(), enrichmentStatus: 'skipped',
+      failureReason: reason, externalRiskScore: null, costBreakdown: null,
+      enrichmentQuality: null, geolocation: null,
+    };
+  }
 
   /** Enrich a single IOC with external API lookups + optional Haiku triage */
   async enrichIOC(job: EnrichJob): Promise<EnrichmentResult> {
     const now = new Date();
 
-    if (!this.aiEnabled) {
-      this.logger.debug({ iocId: job.iocId }, 'Enrichment disabled (TI_AI_ENABLED=false)');
-      return {
-        vtResult: null, abuseipdbResult: null, haikuResult: null, gsbResult: null, ipinfoResult: null,
-        enrichedAt: now.toISOString(), enrichmentStatus: 'skipped',
-        failureReason: 'TI_AI_ENABLED is false', externalRiskScore: null, costBreakdown: null,
-        enrichmentQuality: null, geolocation: null,
-      };
+    // Gate 1: severity — manual (user-triggered) jobs always run; automatic
+    // (feed-driven) jobs only run for severities in TI_ENRICHMENT_AUTO_SEVERITIES.
+    if (!job.manual && !this.autoSeverities.includes(job.severity?.toLowerCase())) {
+      this.logger.debug({ iocId: job.iocId, severity: job.severity }, 'Enrichment skipped — severity below auto-enrich threshold');
+      return this.skippedResult(now, 'severity-below-threshold');
+    }
+
+    // Gate 2/3 combined: if both lookups and AI are switched off entirely, there is
+    // nothing to do — skip before touching cache/DB so we never blank out existing data.
+    if (!this.lookupsEnabled && !this.aiEnabled) {
+      this.logger.debug({ iocId: job.iocId }, 'Enrichment skipped — lookups and AI both disabled');
+      return this.skippedResult(now, 'all-gates-off');
     }
 
     // #6 Cache check — return cached result if available
@@ -101,87 +118,108 @@ export class EnrichmentService {
     let gsbResult: GSBResult | null = null;
     const errors: string[] = [];
 
-    // VirusTotal lookup (IP, domain, hash, URL)
-    if (this.vtProvider.supports(job.iocType)) {
-      const vtStart = Date.now();
-      try {
-        vtResult = await this.vtProvider.lookup(job.iocType, job.normalizedValue);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`VT: ${msg}`);
-        this.logger.warn({ error: msg, iocId: job.iocId }, 'VT lookup failed');
-      }
-      this.costTracker.trackProvider(job.iocId, job.iocType, 'virustotal', 0, 0, null, Date.now() - vtStart);
-    }
-
-    // AbuseIPDB lookup (IP only)
-    if (this.abuseProvider.supports(job.iocType)) {
-      const abuseStart = Date.now();
-      try {
-        abuseResult = await this.abuseProvider.lookup(job.iocType, job.normalizedValue);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`AbuseIPDB: ${msg}`);
-        this.logger.warn({ error: msg, iocId: job.iocId }, 'AbuseIPDB lookup failed');
-      }
-      this.costTracker.trackProvider(job.iocId, job.iocType, 'abuseipdb', 0, 0, null, Date.now() - abuseStart);
-    }
-
-    // IPinfo.io lookup (ip/ipv6 only — geolocation + ASN, called after AbuseIPDB)
+    // Gate 2: lookups — VT/AbuseIPDB/IPinfo/GSB only run when TI_ENRICHMENT_LOOKUPS_ENABLED=true
     let ipinfoResult: IPinfoResult | null = null;
-    if (this.ipinfoProvider?.supports(job.iocType)) {
-      const ipinfoStart = Date.now();
-      try {
-        ipinfoResult = await this.ipinfoProvider.lookup(job.iocType, job.normalizedValue);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`IPinfo: ${msg}`);
-        this.logger.warn({ error: msg, iocId: job.iocId }, 'IPinfo lookup failed');
+    if (this.lookupsEnabled) {
+      // VirusTotal lookup (IP, domain, hash, URL)
+      if (this.vtProvider.supports(job.iocType)) {
+        const vtStart = Date.now();
+        try {
+          vtResult = await this.vtProvider.lookup(job.iocType, job.normalizedValue);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`VT: ${msg}`);
+          this.logger.warn({ error: msg, iocId: job.iocId }, 'VT lookup failed');
+        }
+        this.costTracker.trackProvider(job.iocId, job.iocType, 'virustotal', 0, 0, null, Date.now() - vtStart);
       }
-      this.costTracker.trackProvider(job.iocId, job.iocType, 'ipinfo', 0, 0, null, Date.now() - ipinfoStart);
+
+      // AbuseIPDB lookup (IP only)
+      if (this.abuseProvider.supports(job.iocType)) {
+        const abuseStart = Date.now();
+        try {
+          abuseResult = await this.abuseProvider.lookup(job.iocType, job.normalizedValue);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`AbuseIPDB: ${msg}`);
+          this.logger.warn({ error: msg, iocId: job.iocId }, 'AbuseIPDB lookup failed');
+        }
+        this.costTracker.trackProvider(job.iocId, job.iocType, 'abuseipdb', 0, 0, null, Date.now() - abuseStart);
+      }
+
+      // IPinfo.io lookup (ip/ipv6 only — geolocation + ASN, called after AbuseIPDB)
+      if (this.ipinfoProvider?.supports(job.iocType)) {
+        const ipinfoStart = Date.now();
+        try {
+          ipinfoResult = await this.ipinfoProvider.lookup(job.iocType, job.normalizedValue);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`IPinfo: ${msg}`);
+          this.logger.warn({ error: msg, iocId: job.iocId }, 'IPinfo lookup failed');
+        }
+        this.costTracker.trackProvider(job.iocId, job.iocType, 'ipinfo', 0, 0, null, Date.now() - ipinfoStart);
+      }
+
+      // Google Safe Browsing lookup (url, domain, fqdn only — supplementary to VT)
+      if (this.gsbProvider?.supports(job.iocType)) {
+        try {
+          gsbResult = await this.gsbProvider.lookup(job.iocType, job.normalizedValue);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`GSB: ${msg}`);
+          this.logger.warn({ error: msg, iocId: job.iocId }, 'GSB lookup failed');
+        }
+      }
     }
 
-    // Google Safe Browsing lookup (url, domain, fqdn only — supplementary to VT)
-    if (this.gsbProvider?.supports(job.iocType)) {
-      try {
-        gsbResult = await this.gsbProvider.lookup(job.iocType, job.normalizedValue);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`GSB: ${msg}`);
-        this.logger.warn({ error: msg, iocId: job.iocId }, 'GSB lookup failed');
-      }
-    }
+    // Gate 3: AI — TI_AI_ENABLED=false skips Haiku outright (no rule-based fallback either,
+    // that fallback is reserved for the budget-exceeded case below).
+    if (this.aiEnabled && this.haikuProvider?.isEnabled()) {
+      // Tenant-plan + Redis daily budget gate (services/tenant-budget.ts) runs first.
+      const tenantAllowed = this.tenantBudget ? await this.tenantBudget.checkBudget(job.tenantId) : { allowed: true };
 
-    // #5 Budget Enforcement Gate — check before calling Haiku
-    if (this.haikuProvider?.isEnabled()) {
-      const budgetAlert = this.costTracker.checkBudgetAlert(job.tenantId, this.dailyBudgetUsd);
-
-      if (budgetAlert.isOverBudget) {
-        // 100%+ budget — skip AI entirely, use rule-based fallback
-        this.logger.warn({ tenantId: job.tenantId, spend: budgetAlert.currentSpendUsd }, 'Budget exceeded — skipping Haiku');
-        haikuResult = ruleBasedScore(job.iocType, vtResult, abuseResult);
-      } else if (budgetAlert.percentUsed >= BUDGET_FALLBACK_PERCENT) {
-        // 90-99% budget — use rule-based fallback instead of Haiku
-        this.logger.info({ tenantId: job.tenantId, percentUsed: budgetAlert.percentUsed }, 'Budget at 90%+ — using rule-based fallback');
-        haikuResult = ruleBasedScore(job.iocType, vtResult, abuseResult);
+      if (!tenantAllowed.allowed) {
+        this.logger.warn({ tenantId: job.tenantId, reason: tenantAllowed.reason }, 'Tenant AI budget gate blocked — skipping Haiku');
       } else {
-        // Under budget — call Haiku normally
-        haikuResult = await this.haikuProvider.triage(job.iocType, job.normalizedValue, vtResult, abuseResult, job.confidence);
-        if (haikuResult) {
-          this.costTracker.trackProvider(
-            job.iocId, job.iocType, 'haiku_triage',
-            haikuResult.inputTokens, haikuResult.outputTokens, 'haiku', haikuResult.durationMs,
-          );
+        // Belt-and-braces: existing in-memory 24h-rolling USD check (#5) still applies.
+        const budgetAlert = this.costTracker.checkBudgetAlert(job.tenantId, this.dailyBudgetUsd);
+
+        if (budgetAlert.isOverBudget) {
+          // 100%+ budget — skip AI entirely, use rule-based fallback
+          this.logger.warn({ tenantId: job.tenantId, spend: budgetAlert.currentSpendUsd }, 'Budget exceeded — skipping Haiku');
+          haikuResult = ruleBasedScore(job.iocType, vtResult, abuseResult);
+        } else if (budgetAlert.percentUsed >= BUDGET_FALLBACK_PERCENT) {
+          // 90-99% budget — use rule-based fallback instead of Haiku
+          this.logger.info({ tenantId: job.tenantId, percentUsed: budgetAlert.percentUsed }, 'Budget at 90%+ — using rule-based fallback');
+          haikuResult = ruleBasedScore(job.iocType, vtResult, abuseResult);
+        } else {
+          // Under budget — call Haiku normally
+          haikuResult = await this.haikuProvider.triage(job.iocType, job.normalizedValue, vtResult, abuseResult, job.confidence);
+          if (haikuResult) {
+            this.costTracker.trackProvider(
+              job.iocId, job.iocType, 'haiku_triage',
+              haikuResult.inputTokens, haikuResult.outputTokens, 'haiku', haikuResult.durationMs,
+            );
+            if (this.tenantBudget) {
+              await this.tenantBudget.recordUsage(job.tenantId, haikuResult.inputTokens + haikuResult.outputTokens, haikuResult.costUsd);
+            }
+          }
         }
       }
     }
 
     // Determine status
     const hasAnyResult = vtResult !== null || abuseResult !== null || haikuResult !== null || gsbResult !== null || ipinfoResult !== null;
-    const hasAllExternal = (
+    const hasAllExternal = !this.lookupsEnabled || (
       (!this.vtProvider.supports(job.iocType) || vtResult !== null) &&
       (!this.abuseProvider.supports(job.iocType) || abuseResult !== null)
     );
+
+    // Nothing came back and nothing errored (e.g. provider keys unset, IOC type unsupported):
+    // don't persist an all-null "enriched" record over existing data.
+    if (!hasAnyResult && errors.length === 0) {
+      return this.skippedResult(now, 'no-provider-results');
+    }
 
     let enrichmentStatus: EnrichmentResult['enrichmentStatus'];
     if (hasAllExternal) enrichmentStatus = 'enriched';
@@ -213,7 +251,12 @@ export class EnrichmentService {
 
     // Merge with existing enrichment data and persist
     const existingData = (job.existingEnrichment ?? {}) as Record<string, unknown>;
-    const mergedEnrichment = { ...existingData, ...result };
+    // Null results (a provider that failed or didn't run this time) must not erase earlier good data.
+    const freshFields = Object.fromEntries(Object.entries(result).filter(([, v]) => v !== null));
+    const mergedEnrichment = {
+      ...existingData, ...freshFields,
+      enrichmentStatus: result.enrichmentStatus, enrichedAt: result.enrichedAt, failureReason: result.failureReason,
+    };
 
     await this.repo.updateEnrichment(job.iocId, mergedEnrichment, now);
 

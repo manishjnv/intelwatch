@@ -157,4 +157,28 @@ describe('loadConfig', () => {
   it('rejects a non-boolean-string value for a boolean flag', () => {
     expect(() => loadConfig({ ...VALID_ENV, TI_AI_ENABLED: 'yes' })).toThrow();
   });
+
+  // --- S164: TI_ENRICHMENT_AUTO_SEVERITIES + TI_ENRICHMENT_LOOKUPS_ENABLED ---
+
+  it('TI_ENRICHMENT_AUTO_SEVERITIES defaults to ["critical","high"]', () => {
+    const config = loadConfig(VALID_ENV);
+    expect(config.TI_ENRICHMENT_AUTO_SEVERITIES).toEqual(['critical', 'high']);
+  });
+
+  it('parses TI_ENRICHMENT_AUTO_SEVERITIES as a lowercase trimmed list', () => {
+    const config = loadConfig({ ...VALID_ENV, TI_ENRICHMENT_AUTO_SEVERITIES: ' Critical, HIGH ,medium' });
+    expect(config.TI_ENRICHMENT_AUTO_SEVERITIES).toEqual(['critical', 'high', 'medium']);
+  });
+
+  it('rejects an invalid severity in TI_ENRICHMENT_AUTO_SEVERITIES', () => {
+    expect(() => loadConfig({ ...VALID_ENV, TI_ENRICHMENT_AUTO_SEVERITIES: 'critical,bogus' })).toThrow();
+  });
+
+  it('TI_ENRICHMENT_LOOKUPS_ENABLED defaults to true', () => {
+    expect(loadConfig(VALID_ENV).TI_ENRICHMENT_LOOKUPS_ENABLED).toBe(true);
+  });
+
+  it('TI_ENRICHMENT_LOOKUPS_ENABLED="false" stays false', () => {
+    expect(loadConfig({ ...VALID_ENV, TI_ENRICHMENT_LOOKUPS_ENABLED: 'false' }).TI_ENRICHMENT_LOOKUPS_ENABLED).toBe(false);
+  });
 });

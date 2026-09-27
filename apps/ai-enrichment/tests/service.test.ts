@@ -92,7 +92,8 @@ function buildJob(overrides: Partial<EnrichJob> = {}): EnrichJob {
     iocType: 'ip',
     normalizedValue: '185.220.101.34',
     confidence: 50,
-    severity: 'medium',
+    severity: 'critical',
+    manual: false,
     ...overrides,
   };
 }
@@ -182,16 +183,36 @@ describe('EnrichmentService', () => {
     });
   });
 
+  // S164: TI_AI_ENABLED now only gates Haiku — lookups (VT/AbuseIPDB) still run by
+  // default (TI_ENRICHMENT_LOOKUPS_ENABLED defaults true). Full "nothing runs" behavior
+  // now requires the lookups gate to also be off (see service-gating.test.ts).
   describe('enrichIOC — AI disabled', () => {
-    it('returns skipped when TI_AI_ENABLED is false', async () => {
+    it('runs lookups but skips Haiku when TI_AI_ENABLED is false', async () => {
       const repo = mockRepo();
       const costTracker = new EnrichmentCostTracker();
       const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, false, logger);
 
       const result = await service.enrichIOC(buildJob());
 
+      expect(result.enrichmentStatus).toBe('enriched');
+      expect(result.vtResult).not.toBeNull();
+      expect(result.abuseipdbResult).not.toBeNull();
+      expect(result.haikuResult).toBeNull();
+      expect(repo.updateEnrichment).toHaveBeenCalledOnce();
+    });
+
+    it('returns skipped (all-gates-off) when both lookups and AI are disabled', async () => {
+      const repo = mockRepo();
+      const costTracker = new EnrichmentCostTracker();
+      const service = new EnrichmentService(
+        repo, mockVT(), mockAbuse(), null, costTracker, false, logger,
+        undefined, 5, undefined, undefined, ['critical', 'high'], false,
+      );
+
+      const result = await service.enrichIOC(buildJob());
+
       expect(result.enrichmentStatus).toBe('skipped');
-      expect(result.failureReason).toContain('TI_AI_ENABLED');
+      expect(result.failureReason).toBe('all-gates-off');
       expect(result.vtResult).toBeNull();
       expect(result.abuseipdbResult).toBeNull();
       expect(result.haikuResult).toBeNull();
@@ -306,15 +327,27 @@ describe('EnrichmentService', () => {
       }
     });
 
-    it('still returns enriched when all providers return null', async () => {
+    it('skips without writing when no provider returns anything (no all-null overwrite)', async () => {
       const vtProvider = mockVT({ supports: vi.fn().mockReturnValue(false) });
       const abuseProvider = mockAbuse({ supports: vi.fn().mockReturnValue(false) });
       const disabledHaiku = mockHaiku({ isEnabled: vi.fn().mockReturnValue(false) });
       service = new EnrichmentService(repo, vtProvider, abuseProvider, disabledHaiku, costTracker, true, logger);
 
       const result = await service.enrichIOC(buildJob());
-      expect(result.enrichmentStatus).toBe('enriched');
-      expect(result.externalRiskScore).toBeNull();
+      expect(result.enrichmentStatus).toBe('skipped');
+      expect(result.failureReason).toBe('no-provider-results');
+      expect(repo.updateEnrichment).not.toHaveBeenCalled();
+    });
+
+    it('keeps earlier good results when a provider returns null this time', async () => {
+      const vtProvider = mockVT({ lookup: vi.fn().mockResolvedValue(null) });
+      const previousVt = { malicious: 5 }
+      const result = await new EnrichmentService(repo, vtProvider, mockAbuse(), mockHaiku({ isEnabled: vi.fn().mockReturnValue(false) }), costTracker, true, logger)
+        .enrichIOC(buildJob({ existingEnrichment: { vtResult: previousVt } }));
+      expect(result.enrichmentStatus).not.toBe('skipped');
+      const written = (repo.updateEnrichment as ReturnType<typeof vi.fn>).mock.calls.at(-1)![1] as Record<string, unknown>;
+      expect(written.vtResult).toEqual(previousVt);
+      expect(written.enrichmentStatus).toBe(result.enrichmentStatus);
     });
 
     it('includes costBreakdown with totalCostUsd in result', async () => {
@@ -403,8 +436,11 @@ describe('EnrichmentService', () => {
       expect(newConfidence).toBeLessThanOrEqual(100);
     });
 
-    it('does not update confidence when enrichment is skipped', async () => {
-      const service = new EnrichmentService(repo, mockVT(), mockAbuse(), null, costTracker, false, logger);
+    it('does not update confidence when enrichment is skipped (all-gates-off)', async () => {
+      const service = new EnrichmentService(
+        repo, mockVT(), mockAbuse(), null, costTracker, false, logger,
+        undefined, 5, undefined, undefined, ['critical', 'high'], false,
+      );
       await service.enrichIOC(buildJob());
 
       expect(repo.updateConfidence).not.toHaveBeenCalled();
@@ -561,10 +597,11 @@ describe('EnrichmentService', () => {
       expect(result.enrichmentQuality).toBeLessThanOrEqual(100);
     });
 
-    it('enrichmentQuality is null when AI disabled (skipped)', async () => {
+    it('enrichmentQuality is null when both lookups and AI are disabled (all-gates-off)', async () => {
       const service = new EnrichmentService(
         mockRepo(), mockVT(), mockAbuse(), null,
         new EnrichmentCostTracker(), false, logger,
+        undefined, 5, undefined, undefined, ['critical', 'high'], false,
       );
       const result = await service.enrichIOC(buildJob());
       expect(result.enrichmentQuality).toBeNull();
