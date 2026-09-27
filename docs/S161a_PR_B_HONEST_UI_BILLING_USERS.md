@@ -4,6 +4,13 @@
 **Restore point:** `git tag safe-point-2026-09-27-pre-pr-b`
 **Follows:** `docs/S161a_HONEST_UI_CORE.md` (PR A — pattern + security screens, PR #44, deployed)
 
+## Deployment
+
+- **PR #45** merged to master (feature commit `c369aa9`, merge commit `cd4a227`).
+- **CI/CD run 36297890539:** Test/Type-check/Lint/Audit ✅, Build & Push ✅, Deploy to VPS ✅ (completed 2026-09-27 05:52 UTC).
+- **Production verify:** VPS HEAD `cd4a227`; 32/32 `etip_*` containers healthy; `https://intelwatch.in/` and `/health` → 200; new honest-UI strings present in the live frontend bundle; PR B demo strings (fake tenants/coupons/users) absent from the bundle.
+- No new deployment issues (`docs/DEPLOYMENT_RCA.md` — "Session 161a PR B" row).
+
 ## Summary
 PR A built the shared honest-UI pattern (`QueryStateView`, `QueryCache.onError` toasts, throw-on-failure hooks)
 and applied it to the security-sensitive screens. PR B applies the same pattern to billing, admin ops, and user
@@ -142,6 +149,10 @@ Also carried forward, not fixed here:
   Pre-existing, not addressed in this PR — split later.
 - No coupon list endpoint exists in billing-service; the coupon catalog UI stays a "not available yet" message
   until one is added.
+- `components/QuotaWarningBanner.tsx` is not imported anywhere in the app (dead code, tree-shaken from the
+  production bundle) — its PR B change is inert. Decide in S161b whether to wire it up or delete it.
+- `BillingPage`'s pre-existing `DEMO_PLAN_PRICES` table (used only for the Upgrade/Downgrade button label) should
+  switch to real plan data in S163, alongside the other billing path/shape fixes.
 
 ## How to verify
 
