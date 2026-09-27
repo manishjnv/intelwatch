@@ -207,3 +207,17 @@ describe('useCurrentSubscription null pass-through (deliberate exception)', () =
     expect(result.current.data).toBeNull()
   })
 })
+
+describe('useMaintenanceWindows — real admin-service row shape', () => {
+  it('defaults affectedServices to [] (admin-service sends scope/tenantIds, no affectedServices)', async () => {
+    mockApi.mockResolvedValueOnce([{
+      id: 'm1', title: 'DB upgrade', description: '', type: 'planned', scope: 'platform', tenantIds: [],
+      startsAt: '2026-09-28T00:00:00Z', endsAt: '2026-09-28T01:00:00Z', status: 'scheduled',
+      createdBy: 'u1', createdAt: '2026-09-27T00:00:00Z', updatedAt: '2026-09-27T00:00:00Z',
+    }])
+    const { result } = renderHook(() => useMaintenanceWindows(), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.data[0]?.affectedServices).toEqual([])
+    expect(result.current.data?.data[0]?.title).toBe('DB upgrade')
+  })
+})
