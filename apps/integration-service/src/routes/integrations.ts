@@ -14,6 +14,7 @@ import type { TicketingService } from '../services/ticketing-service.js';
 import type { HealthDashboard } from '../services/health-dashboard.js';
 import type { IntegrationRateLimiter } from '../services/rate-limiter.js';
 import type { WebhookRetryEngine } from '../services/webhook-retry.js';
+import type { WebhookService } from '../services/webhook-service.js';
 import { maskSecrets, restoreMaskedSecrets } from '../utils/secret-mask.js';
 import { requirePermission } from '../plugins/authz.js';
 
@@ -24,12 +25,13 @@ export interface IntegrationRouteDeps {
   healthDashboard?: HealthDashboard;
   rateLimiter?: IntegrationRateLimiter;
   webhookRetryEngine?: WebhookRetryEngine;
+  webhookService?: WebhookService;
 }
 
 /** Build integration CRUD route handler. */
 export function integrationRoutes(deps: IntegrationRouteDeps) {
   return async function (app: FastifyInstance): Promise<void> {
-    const { store, siemAdapter, ticketingService, healthDashboard, rateLimiter, webhookRetryEngine } = deps;
+    const { store, siemAdapter, ticketingService, healthDashboard, rateLimiter, webhookRetryEngine, webhookService } = deps;
 
     // Auth preHandler
     const auth = async (req: FastifyRequest, reply: FastifyReply) => {
@@ -112,8 +114,12 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
         result = await siemAdapter.testConnection(integration.siemConfig);
       } else if (integration.ticketingConfig) {
         result = await ticketingService.testConnection(integration.ticketingConfig);
+      } else if (integration.webhookConfig && webhookService) {
+        // One Test endpoint for every connector type (the UI doesn't branch on type).
+        const r = await webhookService.testWebhook(integration.webhookConfig);
+        result = { success: r.success, message: r.message };
       } else {
-        result = { success: false, message: 'No SIEM or ticketing config found' };
+        result = { success: false, message: 'No SIEM, ticketing or webhook config found' };
       }
 
       return reply.send({ data: result });

@@ -7,7 +7,7 @@ import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { PillSwitcher, type PillItem } from './PillSwitcher'
 import type { useCommandCenter } from '@/hooks/use-command-center'
-import { useUsers, useIntegrationStats } from '@/hooks/use-phase5-data'
+import { useUsers } from '@/hooks/use-phase5-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
@@ -23,7 +23,7 @@ import { TaxiiFeedCard } from './integrations/TaxiiFeedCard'
 import { ConnectionList } from './integrations/ConnectionList'
 import { AddConnectionWizard } from './integrations/AddConnectionWizard'
 import { ApiKeysPanel } from './ApiKeysPanel'
-import type { Integration } from '@/hooks/use-integrations'
+import { useIntegrationStats, type Integration } from '@/hooks/use-integrations'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -239,17 +239,19 @@ function IntegrationsPanel({ tenantPlan, onCreateKey }: { tenantPlan: string; on
   const [wizardOpen, setWizardOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Integration | null>(null)
 
-  const statValues = stats.data ?? { total: 0, active: 0, failing: 0, eventsPerHour: 0, lastSync: null }
+  // Real counts only (GET /integrations/stats) — '—' until loaded, never demo numbers.
+  const st = stats.data
+  const fmt = (n: number | undefined) => (n === undefined ? '—' : n)
 
   return (
     <div className="space-y-4" data-testid="integrations-panel">
       {/* Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: statValues.total, icon: Settings },
-          { label: 'Active', value: statValues.active, icon: CheckCircle, color: 'text-sev-low' },
-          { label: 'Failing', value: statValues.failing, icon: AlertTriangle, color: statValues.failing > 0 ? 'text-sev-high' : 'text-text-muted' },
-          { label: 'Events/hr', value: statValues.eventsPerHour, icon: Zap, color: 'text-accent' },
+          { label: 'Connections', value: fmt(st?.totalIntegrations), icon: Settings },
+          { label: 'Enabled', value: fmt(st?.enabledIntegrations), icon: CheckCircle, color: 'text-sev-low' },
+          { label: 'Failed deliveries', value: fmt(st?.failedLogs), icon: AlertTriangle, color: (st?.failedLogs ?? 0) > 0 ? 'text-sev-high' : 'text-text-muted' },
+          { label: 'Dead-letter queue', value: fmt(st?.dlqSize), icon: Zap, color: (st?.dlqSize ?? 0) > 0 ? 'text-sev-high' : 'text-text-muted' },
         ].map(s => (
           <div key={s.label} className="border border-border rounded-lg p-3 bg-bg-primary">
             <div className="flex items-center gap-1.5 mb-1">

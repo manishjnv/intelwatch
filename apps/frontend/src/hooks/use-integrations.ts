@@ -179,3 +179,22 @@ export function fieldError(error: unknown, pathSuffix: string): string | null {
   const details = error.details as Array<{ path: string; message: string }> | undefined
   return details?.find(d => d.path.endsWith(pathSuffix))?.message ?? null
 }
+
+/** Real shape of GET /integrations/stats (integration-store getStats). */
+export interface IntegrationStatsSummary {
+  totalIntegrations: number
+  enabledIntegrations: number
+  totalLogs: number
+  failedLogs: number
+  dlqSize: number
+  totalTickets: number
+}
+
+export function useIntegrationStats() {
+  return useQuery<IntegrationStatsSummary, ApiError>({
+    queryKey: ['integration-stats'],
+    queryFn: () => api<IntegrationStatsSummary>('/integrations/stats'),
+    meta: { resource: 'connection stats' },
+    staleTime: 60_000,
+  })
+}

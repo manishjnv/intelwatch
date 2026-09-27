@@ -20,6 +20,7 @@ import { SiemAdapter } from '../src/services/siem-adapter.js';
 import { TicketingService } from '../src/services/ticketing-service.js';
 import type { IntegrationConfig } from '../src/config.js';
 import type { FastifyInstance } from 'fastify';
+import type { WebhookService } from '../src/services/webhook-service.js';
 
 // Mock shared-auth to avoid needing real JWT, but keep the real hasPermission/PERMISSIONS
 // implementation so RBAC preHandlers are exercised exactly as in production.
@@ -487,5 +488,41 @@ describe('Integration routes — RBAC (role permission checks)', () => {
     expect(analystRes.statusCode).toBe(403);
     const adminRes = await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}/logs`, headers: AUTH });
     expect(adminRes.statusCode).toBe(200);
+  });
+});
+
+describe('POST /:id/test — webhook connectors use the same Test endpoint', () => {
+  let app: FastifyInstance;
+  let store: IntegrationStore;
+  const AUTH = { authorization: 'Bearer valid-token' };
+  const testWebhook = vi.fn().mockResolvedValue({ success: true, statusCode: 200, message: 'Webhook test successful' });
+
+  beforeAll(async () => {
+    store = new IntegrationStore();
+    const fieldMapper = new FieldMapper();
+    app = await buildApp({
+      config: TEST_CONFIG,
+      routeDeps: {
+        store,
+        siemAdapter: new SiemAdapter(store, fieldMapper, TEST_CONFIG),
+        ticketingService: new TicketingService(store, fieldMapper),
+        webhookService: { testWebhook } as unknown as WebhookService,
+      },
+    });
+    await app.ready();
+  });
+
+  afterAll(async () => { await app.close(); });
+
+  it('tests a webhook connector via webhookService.testWebhook', async () => {
+    const created = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: AUTH,
+      payload: { name: 'Hook', type: 'webhook', triggers: ['ioc.created'], webhookConfig: { url: 'https://hooks.example.com/x', method: 'POST' } },
+    });
+    const id = created.json().data.id;
+    const res = await app.inject({ method: 'POST', url: `/api/v1/integrations/${id}/test`, headers: AUTH });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({ success: true, message: 'Webhook test successful' });
+    expect(testWebhook).toHaveBeenCalledTimes(1);
   });
 });

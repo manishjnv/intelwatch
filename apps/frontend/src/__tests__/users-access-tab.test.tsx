@@ -30,13 +30,14 @@ vi.mock('@/hooks/use-phase5-data', () => ({
     },
     isLoading: false, isDemo: false,
   }),
-  useIntegrationStats: () => ({
-    data: { total: 7, active: 3, failing: 0, eventsPerHour: 42, lastSync: null },
-    isLoading: false, isDemo: true,
-  }),
 }))
 
 vi.mock('@/hooks/use-integrations', () => ({
+  // Real GET /integrations/stats body (integration-store getStats)
+  useIntegrationStats: () => ({
+    data: { totalIntegrations: 2, enabledIntegrations: 1, totalLogs: 5, failedLogs: 1, dlqSize: 0, totalTickets: 0 },
+    isLoading: false, isError: false,
+  }),
   useIntegrations: () => ({
     data: { data: [], total: 0, page: 1, limit: 50 },
     isLoading: false, isError: false, error: null, refetch: vi.fn(),
@@ -177,18 +178,23 @@ describe('UsersAccessTab', () => {
     expect(screen.getByTestId('connections-empty')).toBeInTheDocument()
   })
 
+  it('stat tiles show the real /integrations/stats counts, never demo numbers', () => {
+    render(<UsersAccessTab data={baseMockCC} />)
+    fireEvent.click(screen.getByTestId('pill-integrations'))
+    const panel = screen.getByTestId('integrations-panel')
+    expect(panel).toHaveTextContent('Connections2')
+    expect(panel).toHaveTextContent('Enabled1')
+    expect(panel).toHaveTextContent('Failed deliveries1')
+    expect(panel).toHaveTextContent('Dead-letter queue0')
+    expect(panel).not.toHaveTextContent('Events/hr')
+    expect(panel).not.toHaveTextContent('2840')
+  })
+
   it('never shows the old fake XSOAR "connected" card (QRadar is legit here — plain-text TAXII compatibility line)', () => {
     render(<UsersAccessTab data={baseMockCC} />)
     fireEvent.click(screen.getByTestId('pill-integrations'))
     expect(screen.queryByText(/XSOAR/i)).not.toBeInTheDocument()
     expect(screen.queryByTestId('integration-qradar')).not.toBeInTheDocument()
-  })
-
-  it('shows integration stats', () => {
-    render(<UsersAccessTab data={baseMockCC} />)
-    fireEvent.click(screen.getByTestId('pill-integrations'))
-    expect(screen.getByText('7')).toBeInTheDocument() // total
-    expect(screen.getByText('42')).toBeInTheDocument() // events/hr
   })
 
   it('filters team members by search', () => {

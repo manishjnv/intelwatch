@@ -81,7 +81,7 @@ async function main(): Promise<void> {
   // 8. Build Fastify app
   const app = await buildApp({
     config,
-    routeDeps: { store, siemAdapter, ticketingService, healthDashboard, rateLimiter, webhookRetryEngine },
+    routeDeps: { store, siemAdapter, ticketingService, healthDashboard, rateLimiter, webhookRetryEngine, webhookService },
     webhookDeps: { store, webhookService },
     exportDeps: { store, stixExport, bulkExport, ticketingService },
     advancedDeps: { fieldMappingStore, templateEngine, stixCollectionStore, exportScheduler },
