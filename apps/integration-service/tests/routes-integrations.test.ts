@@ -37,6 +37,7 @@ const TEST_CONFIG: IntegrationConfig = {
   TI_IOC_SERVICE_URL: 'http://localhost:3007',
   TI_GRAPH_SERVICE_URL: 'http://localhost:3012',
   TI_CORRELATION_SERVICE_URL: 'http://localhost:3013',
+  TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS: false,
 };
 
 describe('Integration CRUD Routes', () => {
@@ -257,5 +258,72 @@ describe('Integration routes — secret masking', () => {
     });
     expect(put.statusCode).toBe(200);
     expect(store.getIntegration(id, 'tenant-1')?.siemConfig?.token).toBe('super-secret-token');
+  });
+});
+
+// SSRF guard (roadmap S166): tenant-supplied SIEM/webhook/ticketing URLs must be
+// publicly reachable — rejected at save time, and defended again at connect time.
+describe('Integration routes — SSRF guard', () => {
+  let app: FastifyInstance;
+  let store: IntegrationStore;
+  const AUTH = { authorization: 'Bearer valid-token' };
+
+  beforeAll(async () => {
+    store = new IntegrationStore();
+    const fieldMapper = new FieldMapper();
+    app = await buildApp({
+      config: TEST_CONFIG,
+      routeDeps: { store, siemAdapter: new SiemAdapter(store, fieldMapper, TEST_CONFIG), ticketingService: new TicketingService(store, fieldMapper) },
+    });
+    await app.ready();
+  });
+
+  afterAll(async () => { await app.close(); });
+
+  it('rejects creating a webhook integration pointed at a private IP literal', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: AUTH,
+      payload: { name: 'Bad Webhook', type: 'webhook', triggers: ['alert.created'],
+        webhookConfig: { url: 'http://127.0.0.1/hook' } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('rejects creating a SIEM integration pointed at localhost', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: AUTH,
+      payload: { name: 'Bad Splunk', type: 'splunk_hec', triggers: ['alert.created'],
+        siemConfig: { type: 'splunk_hec', url: 'http://localhost:6379', token: 'tok' } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('accepts an ordinary public destination URL', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: AUTH,
+      payload: { name: 'Good Webhook', type: 'webhook', triggers: ['alert.created'],
+        webhookConfig: { url: 'https://hooks.example.com/incoming' } },
+    });
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('POST /:id/test against a private destination fails gracefully — no 500, no connection made', async () => {
+    // Bypass the save-time schema check to simulate a pre-existing bad record
+    // (e.g. migrated data) — connect-time protection must still hold.
+    const integration = store.createIntegration('tenant-1', {
+      name: 'Sneaky', type: 'splunk_hec', enabled: true, triggers: ['alert.created'],
+      fieldMappings: [], credentials: {},
+      siemConfig: { type: 'splunk_hec', url: 'http://169.254.169.254', token: 'tok', index: 'main', sourcetype: 'etip:alert', verifySsl: true },
+    });
+
+    const res = await app.inject({
+      method: 'POST', url: `/api/v1/integrations/${integration.id}/test`, headers: AUTH,
+    });
+
+    expect(res.statusCode).toBe(200); // not a 500 crash
+    const body = res.json().data;
+    expect(body.success).toBe(false);
+    expect(body.message).toContain('Destination not allowed');
   });
 });

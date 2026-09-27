@@ -36,6 +36,9 @@ const ConfigSchema = z.object({
     z.string().min(32).default(DEV_ENCRYPTION_KEY),
   ),
 
+  // SSRF guard escape hatch — local dev/tests ONLY. Refused in production (see refine below).
+  TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS: z.coerce.boolean().default(false),
+
   // Rate limiter
   TI_INTEGRATION_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(60),
 
@@ -46,6 +49,9 @@ const ConfigSchema = z.object({
 }).refine(
   (c) => c.TI_NODE_ENV !== 'production' || c.TI_INTEGRATION_ENCRYPTION_KEY !== DEV_ENCRYPTION_KEY,
   { message: 'must be set to a real key in production (not the dev default)', path: ['TI_INTEGRATION_ENCRYPTION_KEY'] },
+).refine(
+  (c) => c.TI_NODE_ENV !== 'production' || !c.TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS,
+  { message: 'must not be true in production (SSRF guard escape hatch is dev/test only)', path: ['TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS'] },
 );
 
 export type IntegrationConfig = z.infer<typeof ConfigSchema>;

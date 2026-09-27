@@ -1,10 +1,13 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { AppError } from '@etip/shared-utils';
+import { SECRET_KEYS } from '../utils/secret-mask.js';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
+/** Marker prefix so encrypt is idempotent (never double-encrypts an already-encrypted value). */
+const ENC_PREFIX = 'enc:v1:';
 
 /**
  * AES-256-GCM encryption for integration credentials.
@@ -40,9 +43,14 @@ export class CredentialEncryption {
     ]);
     const tag = cipher.getAuthTag();
 
-    // Format: iv(12) + encrypted(N) + tag(16) → base64
+    // Format: iv(12) + encrypted(N) + tag(16) → base64, prefixed with a format marker
     const combined = Buffer.concat([iv, encrypted, tag]);
-    return combined.toString('base64');
+    return ENC_PREFIX + combined.toString('base64');
+  }
+
+  /** True if `value` carries the encryption format marker (i.e. came from encrypt()). */
+  isEncrypted(value: string): boolean {
+    return value.startsWith(ENC_PREFIX);
   }
 
   /**
@@ -51,7 +59,7 @@ export class CredentialEncryption {
    */
   decrypt(encryptedBase64: string): string {
     try {
-      const combined = Buffer.from(encryptedBase64, 'base64');
+      const combined = Buffer.from(encryptedBase64.slice(ENC_PREFIX.length), 'base64');
 
       if (combined.length < IV_LENGTH + TAG_LENGTH) {
         throw new Error('Encrypted data too short');
@@ -94,12 +102,12 @@ export class CredentialEncryption {
 
   /**
    * Decrypt all string values in a credentials object.
-   * Skips values that don't look like base64-encoded encrypted data.
+   * Skips values that don't carry the encryption format marker.
    */
   decryptCredentials(credentials: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(credentials)) {
-      if (typeof value === 'string' && this.looksEncrypted(value)) {
+      if (typeof value === 'string' && this.isEncrypted(value)) {
         try {
           result[key] = this.decrypt(value);
         } catch {
@@ -112,10 +120,50 @@ export class CredentialEncryption {
     return result;
   }
 
-  /** Check if a string looks like base64-encoded encrypted data. */
-  private looksEncrypted(value: string): boolean {
-    // Encrypted values are base64 and at least IV + TAG + 1 byte long
-    const minBase64Length = Math.ceil((IV_LENGTH + TAG_LENGTH + 1) / 3) * 4;
-    return value.length >= minBase64Length && /^[A-Za-z0-9+/=]+$/.test(value);
+  /**
+   * Deep-encrypt an integration entity (or any nested object): every value under a
+   * `credentials` key, plus any value at a key matching secret-mask's SECRET_KEYS
+   * (token, sharedKey, apiKey, password, ...), gets encrypted. Idempotent — an
+   * already-encrypted value (marker prefix present) is left alone.
+   */
+  encryptSecretFields<T>(obj: T): T {
+    return this.walkEncrypt(obj, false) as T;
+  }
+
+  /** Deep-decrypt: any string anywhere carrying the encryption marker is decrypted. */
+  decryptSecretFields<T>(obj: T): T {
+    return this.walkDecrypt(obj) as T;
+  }
+
+  private walkEncrypt(value: unknown, forceEncrypt: boolean): unknown {
+    if (Array.isArray(value)) return value.map((v) => this.walkEncrypt(v, forceEncrypt));
+    if (value && typeof value === 'object') {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        out[k] = this.walkEncrypt(v, forceEncrypt || k === 'credentials' || SECRET_KEYS.test(k));
+      }
+      return out;
+    }
+    if (forceEncrypt && typeof value === 'string' && value.length > 0 && !this.isEncrypted(value)) {
+      return this.encrypt(value);
+    }
+    return value;
+  }
+
+  private walkDecrypt(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map((v) => this.walkDecrypt(v));
+    if (value && typeof value === 'object') {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = this.walkDecrypt(v);
+      return out;
+    }
+    if (typeof value === 'string' && this.isEncrypted(value)) {
+      try {
+        return this.decrypt(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
   }
 }

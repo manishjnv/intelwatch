@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { checkDestinationUrl } from '../utils/safe-fetch.js';
 
 // ─── Integration Types ────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ export type TicketingConfig = z.infer<typeof TicketingConfigSchema>;
 
 // ─── Integration Entity ──────────────────────────────────────────
 
-export const CreateIntegrationSchema = z.object({
+const IntegrationBaseSchema = z.object({
   name: z.string().min(1).max(100),
   type: IntegrationTypeEnum,
   enabled: z.boolean().default(true),
@@ -114,9 +115,37 @@ export const CreateIntegrationSchema = z.object({
   siemConfig: SiemConfigSchema.optional(),
   ticketingConfig: TicketingConfigSchema.optional(),
 });
+
+/**
+ * SSRF guard (Part 3): reject destination URLs that aren't publicly reachable at
+ * save time. Static check only (scheme/userinfo/localhost-ish hostnames/IP literals) —
+ * the DNS-rebinding-proof check happens at connect time in safeFetch().
+ */
+function validateDestinations(
+  data: { webhookConfig?: WebhookConfig; siemConfig?: SiemConfig; ticketingConfig?: TicketingConfig },
+  ctx: z.RefinementCtx,
+): void {
+  const check = (url: string | undefined, path: (string | number)[]): void => {
+    if (!url) return;
+    const issue = checkDestinationUrl(url);
+    if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue, path });
+  };
+  // Values carrying our ciphertext marker would be stored as-is (never encrypted) — reject them.
+  if (JSON.stringify(data).includes('"enc:v1:')) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Secret values must not start with a reserved prefix', path: [] });
+  }
+  check(data.webhookConfig?.url, ['webhookConfig', 'url']);
+  if (data.siemConfig?.type === 'splunk_hec' || data.siemConfig?.type === 'elastic_siem') {
+    check(data.siemConfig.url, ['siemConfig', 'url']);
+  }
+  if (data.ticketingConfig?.type === 'servicenow') check(data.ticketingConfig.instanceUrl, ['ticketingConfig', 'instanceUrl']);
+  if (data.ticketingConfig?.type === 'jira') check(data.ticketingConfig.baseUrl, ['ticketingConfig', 'baseUrl']);
+}
+
+export const CreateIntegrationSchema = IntegrationBaseSchema.superRefine(validateDestinations);
 export type CreateIntegrationInput = z.infer<typeof CreateIntegrationSchema>;
 
-export const UpdateIntegrationSchema = CreateIntegrationSchema.partial();
+export const UpdateIntegrationSchema = IntegrationBaseSchema.partial().superRefine(validateDestinations);
 export type UpdateIntegrationInput = z.infer<typeof UpdateIntegrationSchema>;
 
 export interface Integration {

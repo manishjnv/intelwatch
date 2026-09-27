@@ -66,6 +66,7 @@ async function main(): Promise<void> {
 
   // 7. P2 services
   const credentialEncryption = new CredentialEncryption(config.TI_INTEGRATION_ENCRYPTION_KEY);
+  store.setCredentialEncryption(credentialEncryption);
   const healthScoring = new HealthScoring(store, rateLimiter);
   const auditTrail = new AuditTrail();
   const rateLimitTracker = new RateLimitTracker(rateLimiter);

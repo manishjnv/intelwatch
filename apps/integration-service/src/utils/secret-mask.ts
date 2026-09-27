@@ -5,7 +5,7 @@
  */
 export const SECRET_MASK = '********';
 
-const SECRET_KEYS = /^(token|sharedkey|apikey|apitoken|secret|password|clientsecret|accesstoken|refreshtoken)$/i;
+export const SECRET_KEYS = /^(token|sharedkey|apikey|apitoken|secret|password|clientsecret|accesstoken|refreshtoken)$/i;
 
 function maskValue(value: unknown, forceMask: boolean): unknown {
   if (Array.isArray(value)) return value.map((v) => maskValue(v, forceMask));

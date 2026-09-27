@@ -4,11 +4,27 @@ import { IntegrationStore } from '../src/services/integration-store.js';
 import { FieldMapper } from '../src/services/field-mapper.js';
 import type { IntegrationConfig } from '../src/config.js';
 import type { FieldMapping } from '../src/schemas/integration.js';
+import { safeFetch } from '../src/utils/safe-fetch.js';
+import type { SafeFetchResponse } from '../src/utils/safe-fetch.js';
+
+vi.mock('../src/utils/safe-fetch.js', () => ({ safeFetch: vi.fn() }));
 
 const TEST_CONFIG = {
   TI_INTEGRATION_SIEM_RETRY_MAX: 2,
   TI_INTEGRATION_SIEM_RETRY_DELAY_MS: 10, // fast for tests
 } as IntegrationConfig;
+
+/** Build a minimal SafeFetchResponse for mocking. */
+function fakeResponse(status: number, body = ''): SafeFetchResponse {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: '',
+    headers: {},
+    text: () => Promise.resolve(body),
+    json: <T,>() => Promise.resolve(JSON.parse(body) as T),
+  };
+}
 
 describe('SiemAdapter', () => {
   let store: IntegrationStore;
@@ -32,9 +48,7 @@ describe('SiemAdapter', () => {
 
   describe('push to Splunk HEC', () => {
     it('sends data and logs success on 200', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('{"text":"Success","code":0}', { status: 200 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, '{"text":"Success","code":0}'));
 
       const result = await adapter.push(
         'int-1', 'tenant-1',
@@ -46,11 +60,11 @@ describe('SiemAdapter', () => {
 
       expect(result.success).toBe(true);
       expect(result.statusCode).toBe(200);
-      expect(fetch).toHaveBeenCalledOnce();
+      expect(safeFetch).toHaveBeenCalledOnce();
     });
 
     it('retries on failure and eventually returns failure', async () => {
-      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Connection refused'));
+      vi.mocked(safeFetch).mockRejectedValue(new Error('Connection refused'));
 
       const result = await adapter.push(
         'int-1', 'tenant-1',
@@ -61,15 +75,13 @@ describe('SiemAdapter', () => {
       );
 
       expect(result.success).toBe(false);
-      expect(fetch).toHaveBeenCalledTimes(2); // maxRetries = 2
+      expect(safeFetch).toHaveBeenCalledTimes(2); // maxRetries = 2
     });
   });
 
   describe('push to Sentinel', () => {
     it('sends data with HMAC auth header', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('', { status: 200 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200));
 
       const result = await adapter.push(
         'int-1', 'tenant-1',
@@ -80,7 +92,7 @@ describe('SiemAdapter', () => {
       );
 
       expect(result.success).toBe(true);
-      const call = vi.mocked(fetch).mock.calls[0];
+      const call = vi.mocked(safeFetch).mock.calls[0]!;
       expect(call[0]).toContain('opinsights.azure.com');
       const headers = call[1]?.headers as Record<string, string>;
       expect(headers['Authorization']).toMatch(/^SharedKey/);
@@ -89,9 +101,7 @@ describe('SiemAdapter', () => {
 
   describe('push to Elastic', () => {
     it('sends data with ApiKey auth', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('{"_id":"doc1"}', { status: 201 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(201, '{"_id":"doc1"}'));
 
       const result = await adapter.push(
         'int-1', 'tenant-1',
@@ -102,7 +112,7 @@ describe('SiemAdapter', () => {
       );
 
       expect(result.success).toBe(true);
-      const call = vi.mocked(fetch).mock.calls[0];
+      const call = vi.mocked(safeFetch).mock.calls[0]!;
       const headers = call[1]?.headers as Record<string, string>;
       expect(headers['Authorization']).toBe('ApiKey key123');
     });
@@ -110,9 +120,7 @@ describe('SiemAdapter', () => {
 
   describe('testConnection', () => {
     it('returns success on 200', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('OK', { status: 200 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
       const result = await adapter.testConnection(
         { type: 'splunk_hec', url: 'https://splunk.example.com', token: 'tok', index: 'main', sourcetype: 'etip:alert', verifySsl: true },
@@ -122,7 +130,7 @@ describe('SiemAdapter', () => {
     });
 
     it('returns failure on error', async () => {
-      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('DNS error'));
+      vi.mocked(safeFetch).mockRejectedValue(new Error('DNS error'));
 
       const result = await adapter.testConnection(
         { type: 'splunk_hec', url: 'https://splunk.example.com', token: 'tok', index: 'main', sourcetype: 'etip:alert', verifySsl: true },

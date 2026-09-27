@@ -3,6 +3,10 @@ import { WebhookService } from '../src/services/webhook-service.js';
 import { IntegrationStore } from '../src/services/integration-store.js';
 import type { IntegrationConfig } from '../src/config.js';
 import type { WebhookConfig } from '../src/schemas/integration.js';
+import { safeFetch } from '../src/utils/safe-fetch.js';
+import type { SafeFetchResponse } from '../src/utils/safe-fetch.js';
+
+vi.mock('../src/utils/safe-fetch.js', () => ({ safeFetch: vi.fn() }));
 
 const TEST_CONFIG = {
   TI_INTEGRATION_WEBHOOK_TIMEOUT_MS: 5000,
@@ -15,6 +19,18 @@ const webhookConfig: WebhookConfig = {
   headers: {},
   method: 'POST',
 };
+
+/** Build a minimal SafeFetchResponse for mocking. */
+function fakeResponse(status: number, body = ''): SafeFetchResponse {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: '',
+    headers: {},
+    text: () => Promise.resolve(body),
+    json: <T,>() => Promise.resolve(JSON.parse(body) as T),
+  };
+}
 
 describe('WebhookService', () => {
   let store: IntegrationStore;
@@ -31,9 +47,7 @@ describe('WebhookService', () => {
 
   describe('send', () => {
     it('delivers webhook successfully on 200', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('OK', { status: 200 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
       const result = await service.send(
         'int-1', 'tenant-1', webhookConfig,
@@ -45,16 +59,14 @@ describe('WebhookService', () => {
     });
 
     it('includes HMAC signature when secret configured', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('OK', { status: 200 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
       await service.send(
         'int-1', 'tenant-1', webhookConfig,
         'alert.created', { test: true },
       );
 
-      const call = vi.mocked(fetch).mock.calls[0];
+      const call = vi.mocked(safeFetch).mock.calls[0]!;
       const headers = call[1]?.headers as Record<string, string>;
       expect(headers['X-ETIP-Signature']).toMatch(/^sha256=/);
       expect(headers['X-ETIP-Event']).toBe('alert.created');
@@ -62,7 +74,7 @@ describe('WebhookService', () => {
     });
 
     it('retries on failure and moves to DLQ after max attempts', async () => {
-      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Connection refused'));
+      vi.mocked(safeFetch).mockRejectedValue(new Error('Connection refused'));
 
       const result = await service.send(
         'int-1', 'tenant-1', webhookConfig,
@@ -70,7 +82,7 @@ describe('WebhookService', () => {
       );
 
       expect(result.success).toBe(false);
-      expect(fetch).toHaveBeenCalledTimes(3); // 3 max attempts
+      expect(safeFetch).toHaveBeenCalledTimes(3); // 3 max attempts
 
       // Verify DLQ
       const dlq = store.listDLQ('tenant-1', { page: 1, limit: 50 });
@@ -79,9 +91,9 @@ describe('WebhookService', () => {
     });
 
     it('logs all attempts', async () => {
-      vi.spyOn(globalThis, 'fetch')
+      vi.mocked(safeFetch)
         .mockRejectedValueOnce(new Error('fail 1'))
-        .mockResolvedValueOnce(new Response('OK', { status: 200 }));
+        .mockResolvedValueOnce(fakeResponse(200, 'OK'));
 
       await service.send(
         'int-1', 'tenant-1', webhookConfig,
@@ -94,9 +106,7 @@ describe('WebhookService', () => {
     });
 
     it('skips HMAC when no secret configured', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('OK', { status: 200 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
       const noSecretConfig: WebhookConfig = {
         url: 'https://hooks.example.com/webhook',
@@ -109,7 +119,7 @@ describe('WebhookService', () => {
         'alert.created', {},
       );
 
-      const call = vi.mocked(fetch).mock.calls[0];
+      const call = vi.mocked(safeFetch).mock.calls[0]!;
       const headers = call[1]?.headers as Record<string, string>;
       expect(headers['X-ETIP-Signature']).toBeUndefined();
     });
@@ -117,9 +127,7 @@ describe('WebhookService', () => {
 
   describe('testWebhook', () => {
     it('returns success on 200', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('OK', { status: 200 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
       const result = await service.testWebhook(webhookConfig);
       expect(result.success).toBe(true);
@@ -127,16 +135,14 @@ describe('WebhookService', () => {
     });
 
     it('returns failure on 500', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response('Error', { status: 500 }),
-      );
+      vi.mocked(safeFetch).mockResolvedValue(fakeResponse(500, 'Error'));
 
       const result = await service.testWebhook(webhookConfig);
       expect(result.success).toBe(false);
     });
 
     it('returns failure on network error', async () => {
-      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('DNS failed'));
+      vi.mocked(safeFetch).mockRejectedValue(new Error('DNS failed'));
 
       const result = await service.testWebhook(webhookConfig);
       expect(result.success).toBe(false);

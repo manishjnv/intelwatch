@@ -3,6 +3,7 @@ import type { TicketingConfig, Ticket, CreateTicketInput, FieldMapping } from '.
 import type { IntegrationStore } from './integration-store.js';
 import type { FieldMapper } from './field-mapper.js';
 import { getLogger } from '../logger.js';
+import { safeFetch } from '../utils/safe-fetch.js';
 
 interface TicketResult {
   success: boolean;
@@ -148,7 +149,7 @@ export class TicketingService {
     const url = `${config.instanceUrl}/api/now/table/${config.tableName}`;
     const auth = Buffer.from(`${config.username}:${config.password}`).toString('base64');
 
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${auth}`,
@@ -179,7 +180,7 @@ export class TicketingService {
     const url = `${config.instanceUrl}/api/now/table/${config.tableName}?sysparm_query=number=${externalId}&sysparm_fields=state`;
     const auth = Buffer.from(`${config.username}:${config.password}`).toString('base64');
 
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
     });
 
@@ -196,7 +197,7 @@ export class TicketingService {
   ): Promise<{ success: boolean; message: string }> {
     const url = `${config.instanceUrl}/api/now/table/${config.tableName}?sysparm_limit=1`;
     const auth = Buffer.from(`${config.username}:${config.password}`).toString('base64');
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
     });
     return { success: response.ok, message: response.ok ? 'Connected to ServiceNow' : `HTTP ${response.status}` };
@@ -227,7 +228,7 @@ export class TicketingService {
       },
     };
 
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${auth}`,
@@ -258,7 +259,7 @@ export class TicketingService {
     const url = `${config.baseUrl}/rest/api/3/issue/${externalId}?fields=status`;
     const auth = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
 
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
     });
 
@@ -273,7 +274,7 @@ export class TicketingService {
   ): Promise<{ success: boolean; message: string }> {
     const url = `${config.baseUrl}/rest/api/3/myself`;
     const auth = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
     });
     return { success: response.ok, message: response.ok ? 'Connected to Jira' : `HTTP ${response.status}` };

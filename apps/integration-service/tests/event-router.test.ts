@@ -6,6 +6,22 @@ import { SiemAdapter } from '../src/services/siem-adapter.js';
 import { WebhookService } from '../src/services/webhook-service.js';
 import type { IntegrationConfig } from '../src/config.js';
 import type { Job } from 'bullmq';
+import { safeFetch } from '../src/utils/safe-fetch.js';
+import type { SafeFetchResponse } from '../src/utils/safe-fetch.js';
+
+vi.mock('../src/utils/safe-fetch.js', () => ({ safeFetch: vi.fn() }));
+
+/** Build a minimal SafeFetchResponse for mocking. */
+function fakeResponse(status: number, body = ''): SafeFetchResponse {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: '',
+    headers: {},
+    text: () => Promise.resolve(body),
+    json: <T,>() => Promise.resolve(JSON.parse(body) as T),
+  };
+}
 
 const TEST_CONFIG = {
   TI_INTEGRATION_SIEM_RETRY_MAX: 1,
@@ -28,7 +44,7 @@ describe('EventRouter', () => {
   });
 
   it('processJob dispatches to SIEM integrations', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('OK', { status: 200 }));
+    vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
     store.createIntegration('tenant-1', {
       name: 'Splunk',
@@ -55,12 +71,12 @@ describe('EventRouter', () => {
     } as Job;
 
     await router.processJob(job);
-    expect(fetch).toHaveBeenCalled();
+    expect(safeFetch).toHaveBeenCalled();
     vi.restoreAllMocks();
   });
 
   it('processJob dispatches to webhook integrations', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('OK', { status: 200 }));
+    vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
     store.createIntegration('tenant-1', {
       name: 'Slack Webhook',
@@ -84,12 +100,12 @@ describe('EventRouter', () => {
     } as Job;
 
     await router.processJob(job);
-    expect(fetch).toHaveBeenCalled();
+    expect(safeFetch).toHaveBeenCalled();
     vi.restoreAllMocks();
   });
 
   it('processJob skips when no integrations match', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    vi.mocked(safeFetch).mockClear();
 
     const job = {
       data: {
@@ -100,13 +116,13 @@ describe('EventRouter', () => {
     } as Job;
 
     await router.processJob(job);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(safeFetch).not.toHaveBeenCalled();
     vi.restoreAllMocks();
   });
 
   it('processJob handles mixed success/failure', async () => {
-    vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(new Response('OK', { status: 200 }))
+    vi.mocked(safeFetch)
+      .mockResolvedValueOnce(fakeResponse(200, 'OK'))
       .mockRejectedValueOnce(new Error('fail'));
 
     store.createIntegration('tenant-1', {

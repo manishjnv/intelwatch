@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { IntegrationStore } from '../src/services/integration-store.js';
+import { CredentialEncryption } from '../src/services/credential-encryption.js';
 import type { CreateIntegrationInput } from '../src/schemas/integration.js';
 
 const TENANT = 'tenant-1';
@@ -236,5 +237,62 @@ describe('IntegrationStore', () => {
     store.touchIntegration(int.id);
     const updated = store.getIntegration(int.id, TENANT);
     expect(updated?.lastUsedAt).toBeDefined();
+  });
+
+  // ─── Credential encryption (SSRF guard task, Part 4) ────────
+
+  describe('credential encryption', () => {
+    const KEY = 'etip-test-encryption-key-32chars!';
+
+    it('encrypts secret fields at rest but returns plaintext to callers', () => {
+      const encStore = new IntegrationStore();
+      encStore.setCredentialEncryption(new CredentialEncryption(KEY));
+
+      const created = encStore.createIntegration(TENANT, makeInput({
+        siemConfig: { type: 'splunk_hec', url: 'https://s.example', token: 'super-secret-token', index: 'main', sourcetype: 'etip:alert', verifySsl: true },
+        credentials: { apiKey: 'cred-secret' },
+      }));
+
+      // Caller (create response) sees plaintext.
+      expect(created.siemConfig?.token).toBe('super-secret-token');
+      expect(created.credentials.apiKey).toBe('cred-secret');
+
+      // GET also decrypts transparently.
+      const got = encStore.getIntegration(created.id, TENANT);
+      expect(got?.siemConfig?.token).toBe('super-secret-token');
+
+      // LIST also decrypts transparently.
+      const list = encStore.listIntegrations(TENANT, { page: 1, limit: 50 });
+      expect(list.data[0]?.siemConfig?.token).toBe('super-secret-token');
+
+      // getEnabledForTrigger (used by services that actually connect) decrypts too.
+      const enabled = encStore.getEnabledForTrigger(TENANT, 'alert.created');
+      expect(enabled[0]?.siemConfig?.token).toBe('super-secret-token');
+    });
+
+    it('does not double-encrypt on repeated updates (idempotent)', () => {
+      const encStore = new IntegrationStore();
+      const encryption = new CredentialEncryption(KEY);
+      encStore.setCredentialEncryption(encryption);
+
+      const created = encStore.createIntegration(TENANT, makeInput({
+        siemConfig: { type: 'splunk_hec', url: 'https://s.example', token: 'token-v1', index: 'main', sourcetype: 'etip:alert', verifySsl: true },
+      }));
+
+      // Round-trip the same (already-plaintext-from-caller's-view) config back through update.
+      const updated1 = encStore.updateIntegration(created.id, TENANT, { siemConfig: created.siemConfig });
+      const updated2 = encStore.updateIntegration(created.id, TENANT, { siemConfig: updated1?.siemConfig });
+
+      expect(updated2?.siemConfig?.token).toBe('token-v1');
+    });
+
+    it('with no encryption injected, behaves exactly as before (plaintext at rest)', () => {
+      // `store` in the outer describe has no encryption wired — default behaviour unchanged.
+      const created = store.createIntegration(TENANT, makeInput({
+        siemConfig: { type: 'splunk_hec', url: 'https://s.example', token: 'plain-token', index: 'main', sourcetype: 'etip:alert', verifySsl: true },
+      }));
+      expect(created.siemConfig?.token).toBe('plain-token');
+      expect(store.getIntegration(created.id, TENANT)?.siemConfig?.token).toBe('plain-token');
+    });
   });
 });

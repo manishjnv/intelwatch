@@ -4,6 +4,7 @@ import type { WebhookConfig, TriggerEvent } from '../schemas/integration.js';
 import type { IntegrationStore } from './integration-store.js';
 import type { IntegrationConfig } from '../config.js';
 import { getLogger } from '../logger.js';
+import { safeFetch } from '../utils/safe-fetch.js';
 
 /**
  * Outbound webhook service with retry logic and dead letter queue.
@@ -59,7 +60,7 @@ export class WebhookService {
             statusCode: result.statusCode,
             attempt,
             payload,
-            responseBody: result.responseBody,
+            responseBody: result.responseBody.slice(0, 300),
           });
           this.store.touchIntegration(integrationId);
           return { deliveryId: delivery.id, success: true };
@@ -154,15 +155,12 @@ export class WebhookService {
       headers['X-ETIP-Signature'] = `sha256=${signature}`;
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
-
     try {
-      const response = await fetch(config.url, {
+      const response = await safeFetch(config.url, {
         method: config.method,
         headers,
         body,
-        signal: controller.signal,
+        timeoutMs: this.timeoutMs,
       });
 
       const responseBody = await response.text();
@@ -172,12 +170,10 @@ export class WebhookService {
         responseBody: responseBody.slice(0, 1000),
       };
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
+      if (err instanceof AppError && err.code === 'DESTINATION_TIMEOUT') {
         throw new AppError(408, `Webhook timed out after ${this.timeoutMs}ms`, 'WEBHOOK_TIMEOUT');
       }
       throw err;
-    } finally {
-      clearTimeout(timeoutId);
     }
   }
 

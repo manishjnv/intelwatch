@@ -54,7 +54,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
   await app.register(sensible);
   await registerMetrics(app, 'integration-service');
-  await app.register(errorHandlerPlugin);
+  // Called directly (not via app.register) so setErrorHandler/setNotFoundHandler apply to
+  // the root instance and every sibling route plugin below — app.register() would create a
+  // new Fastify encapsulation boundary and silently scope the handlers to nothing.
+  await errorHandlerPlugin(app);
 
   // ─── Request logging ──────────────────────────────────────
   app.addHook('onRequest', async (req) => {

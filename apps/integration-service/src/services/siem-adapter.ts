@@ -5,6 +5,7 @@ import type { FieldMapper } from './field-mapper.js';
 import type { IntegrationStore } from './integration-store.js';
 import type { IntegrationConfig } from '../config.js';
 import { getLogger } from '../logger.js';
+import { safeFetch } from '../utils/safe-fetch.js';
 
 interface SiemPushResult {
   success: boolean;
@@ -49,7 +50,7 @@ export class SiemAdapter {
           statusCode: result.statusCode,
           attempt,
           payload: mapped,
-          responseBody: result.responseBody,
+          responseBody: result.responseBody.slice(0, 300),
         });
         this.store.touchIntegration(integrationId);
         return result;
@@ -90,7 +91,7 @@ export class SiemAdapter {
       const result = await this.sendToSiem(siemConfig, testPayload);
       return {
         success: result.success,
-        message: result.success ? 'Connection successful' : `Failed: ${result.responseBody}`,
+        message: result.success ? 'Connection successful' : `Failed: HTTP ${result.statusCode} ${result.responseBody.slice(0, 300)}`,
       };
     } catch (err) {
       return {
@@ -132,7 +133,7 @@ export class SiemAdapter {
       time: Date.now() / 1000,
     });
 
-    const response = await fetch(`${url}/services/collector/event`, {
+    const response = await safeFetch(`${url}/services/collector/event`, {
       method: 'POST',
       headers: {
         Authorization: `Splunk ${token}`,
@@ -161,7 +162,7 @@ export class SiemAdapter {
     const signature = this.buildSentinelSignature(body, date, sharedKey, workspaceId);
     const url = `https://${workspaceId}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01`;
 
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -186,7 +187,7 @@ export class SiemAdapter {
     const index = indexPattern.replace('*', new Date().toISOString().slice(0, 10));
     const body = JSON.stringify({ ...payload, '@timestamp': new Date().toISOString() });
 
-    const response = await fetch(`${url}/${index}/_doc`, {
+    const response = await safeFetch(`${url}/${index}/_doc`, {
       method: 'POST',
       headers: {
         Authorization: `ApiKey ${apiKey}`,

@@ -4,6 +4,7 @@ import type { WebhookRetryConfig, RetryState, TriggerEvent } from '../schemas/in
 import type { IntegrationStore } from './integration-store.js';
 import type { WebhookService } from './webhook-service.js';
 import { getLogger } from '../logger.js';
+import { safeFetch } from '../utils/safe-fetch.js';
 
 /**
  * P1 #6: Enhanced webhook retry engine with configurable exponential backoff,
@@ -230,15 +231,12 @@ export class WebhookRetryEngine {
       headers['X-ETIP-Signature'] = `sha256=${signature}`;
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
     try {
-      const response = await fetch(config.url, {
+      const response = await safeFetch(config.url, {
         method: config.method,
         headers,
         body,
-        signal: controller.signal,
+        timeoutMs: 10000,
       });
 
       const responseBody = await response.text();
@@ -248,12 +246,10 @@ export class WebhookRetryEngine {
         responseBody: responseBody.slice(0, 1000),
       };
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
+      if (err instanceof AppError && err.code === 'DESTINATION_TIMEOUT') {
         throw new AppError(408, 'Webhook timed out', 'WEBHOOK_TIMEOUT');
       }
       throw err;
-    } finally {
-      clearTimeout(timeoutId);
     }
   }
 

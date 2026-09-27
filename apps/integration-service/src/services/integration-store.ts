@@ -10,6 +10,7 @@ import type {
   UpdateIntegrationInput,
 } from '../schemas/integration.js';
 import type { FieldMapper } from './field-mapper.js';
+import type { CredentialEncryption } from './credential-encryption.js';
 
 /**
  * In-memory store for integration entities.
@@ -22,10 +23,24 @@ export class IntegrationStore {
   private tickets = new Map<string, Ticket>();
   private deadLetterQueue = new Map<string, WebhookDelivery>();
   private fieldMapper: FieldMapper | null = null;
+  private encryption: CredentialEncryption | null = null;
 
   /** Inject field mapper for auto-populating default mappings on creation. */
   setFieldMapper(mapper: FieldMapper): void {
     this.fieldMapper = mapper;
+  }
+
+  /**
+   * Inject credential encryption. Once set, secret fields (credentials{} values and
+   * keys like token/apiKey/password/sharedKey) are encrypted at rest in the Map and
+   * transparently decrypted on every read — callers never see ciphertext.
+   */
+  setCredentialEncryption(encryption: CredentialEncryption): void {
+    this.encryption = encryption;
+  }
+
+  private decryptOut(integration: Integration): Integration {
+    return this.encryption ? this.encryption.decryptSecretFields(integration) : integration;
   }
 
   // ─── Integration CRUD ──────────────────────────────────────
@@ -53,18 +68,18 @@ export class IntegrationStore {
       createdAt: now,
       updatedAt: now,
     };
-    this.integrations.set(integration.id, integration);
-    return integration;
+    this.integrations.set(integration.id, this.encryption ? this.encryption.encryptSecretFields(integration) : integration);
+    return integration; // local var still holds plaintext — no decrypt round-trip needed
   }
 
-  /** Get integration by ID, filtered by tenant. */
+  /** Get integration by ID, filtered by tenant. Secret fields are decrypted for the caller. */
   getIntegration(id: string, tenantId: string): Integration | undefined {
     const item = this.integrations.get(id);
     if (!item || item.tenantId !== tenantId) return undefined;
-    return item;
+    return this.decryptOut(item);
   }
 
-  /** List integrations for a tenant with optional filters. */
+  /** List integrations for a tenant with optional filters. Secret fields are decrypted for the caller. */
   listIntegrations(
     tenantId: string,
     opts: { type?: string; enabled?: boolean; page: number; limit: number },
@@ -76,27 +91,28 @@ export class IntegrationStore {
     if (opts.enabled !== undefined) items = items.filter((i) => i.enabled === opts.enabled);
     const total = items.length;
     const start = (opts.page - 1) * opts.limit;
-    return { data: items.slice(start, start + opts.limit), total };
+    return { data: items.slice(start, start + opts.limit).map((i) => this.decryptOut(i)), total };
   }
 
-  /** Update an existing integration. */
+  /** Update an existing integration. Secret fields in `input` are encrypted before storage. */
   updateIntegration(
     id: string,
     tenantId: string,
     input: UpdateIntegrationInput,
   ): Integration | undefined {
-    const existing = this.getIntegration(id, tenantId);
-    if (!existing) return undefined;
+    const existing = this.integrations.get(id);
+    if (!existing || existing.tenantId !== tenantId) return undefined;
+    const encryptedInput = this.encryption ? this.encryption.encryptSecretFields(input) : input;
     const updated: Integration = {
       ...existing,
-      ...input,
+      ...encryptedInput,
       id: existing.id,
       tenantId: existing.tenantId,
       createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };
     this.integrations.set(id, updated);
-    return updated;
+    return this.decryptOut(updated);
   }
 
   /** Delete an integration and its logs. */
@@ -111,11 +127,11 @@ export class IntegrationStore {
     return true;
   }
 
-  /** Get all enabled integrations for a tenant that match a trigger event. */
+  /** Get all enabled integrations for a tenant that match a trigger event. Secret fields are decrypted for the caller. */
   getEnabledForTrigger(tenantId: string, event: TriggerEvent): Integration[] {
-    return Array.from(this.integrations.values()).filter(
-      (i) => i.tenantId === tenantId && i.enabled && i.triggers.includes(event),
-    );
+    return Array.from(this.integrations.values())
+      .filter((i) => i.tenantId === tenantId && i.enabled && i.triggers.includes(event))
+      .map((i) => this.decryptOut(i));
   }
 
   /** Mark integration as recently used. */
