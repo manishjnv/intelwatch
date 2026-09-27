@@ -23,42 +23,47 @@ Otherwise:
 - Optional: if already on a branch matching `s<NNN>/…`, you may read the session number from it — don't guess if it doesn't match, just ask.
 
 ## 0. Context digest (delegate — do NOT read these with the main model)
+
 In your FIRST message, in parallel with `git fetch && git status`, launch ONE `Agent` call with `model: "haiku"` (use `"sonnet"` if the task is cross-module), read-only, returning a facts-only digest (< 600 words, file:line refs) of:
+
 1. `docs/PROJECT_STATE.md` — phase, deployed/WIP modules, next task, blockers
-2. `docs/SESSION_HANDOFF.md` — last session's work, open items, resume prompt
-3. `docs/DECISIONS_LOG.md` — last 5 decisions
-4. `docs/DEPLOYMENT_RCA.md` — total count, last 3 entries, entries relevant to the stated task
-5. `docs/ROADMAP_S149_PLUS.md` §3, `docs/roadmap/README.md`, and the Status line of every `docs/roadmap/STEP_*.md`
+2. `docs/SESSION_HANDOFF.md` — last session's work, open items, resume prompt, **current step number**
+3. `docs/DEPLOYMENT_RCA.md` — total count + **last 5 entries only** (read only the last ~120 lines of the file, not all 765). Mention entries relevant to the stated task if any.
+4. The **current step spec only**: extract the current roadmap step number from SESSION_HANDOFF.md, then read ONLY `docs/roadmap/STEP_XX_*.md` for that step. Do NOT read other step specs or scan all STEP files.
+5. `docs/ROADMAP_S149_PLUS.md` §3 and `docs/roadmap/README.md` — status lines only (do NOT read individual step files beyond #4)
 6. Newest `docs/S1*_*.md` session doc and `docs/runbooks/*.md` (titles + key facts)
 7. Newest `session*.md` and `reference_external_services.md` in `C:/Users/manis/.claude/projects/e--code-IntelWatch/memory/` (live UptimeRobot / Telegram / VPS cron state)
-8. `CLAUDE.md`, `docs/CLAUDE.md`, `skills/00-CLAUDE-INSTRUCTIONS.md` — only rules that changed or are easy to miss
+8. `CLAUDE.md`, `docs/CLAUDE.md` — only rules that changed or are easy to miss
 
-Steps 1–4b below are then satisfied by the digest. Read a file directly only when the digest flags it as central to today's task (e.g. the current STEP spec). Never say something "isn't set up" or "isn't known" until the digest or a grep of `docs/` + memory confirms it.
+**CRITICAL: Steps 1–5 below are satisfied by this digest. Do NOT re-read those files into the main model context.** Only read a file directly when the digest flags it as needing deeper review for today's task (e.g. the current STEP spec for implementation details, or a specific RCA entry that matches the planned work). Never say something "isn't set up" or "isn't known" until the digest or a grep of `docs/` + memory confirms it.
 
-## 1. Load Core Rules (always)
-Read these files in order — they are the non-negotiable foundation:
-1. `skills/00-CLAUDE-INSTRUCTIONS.md` — coding rules, Docker rules, definition of done
-2. `skills/00-MASTER.md` — queue names, event types, service JWT, API shapes
-3. `skills/00-ARCHITECTURE-ROADMAP.md` — phase order, tech stack, USPs
+## 1. Load Core Rules (only if not already in context)
 
-## 2. Load Project State
-Read `docs/PROJECT_STATE.md` completely. Extract:
+Check if `skills/00-CLAUDE-INSTRUCTIONS.md`, `skills/00-MASTER.md`, `skills/00-ARCHITECTURE-ROADMAP.md` are already loaded via CLAUDE.md or prior context. If NOT already available, read them — but **do not re-read files the digest already covered.**
+
+## 2. Project State — FROM DIGEST
+
+Extract from the digest (do NOT re-read `docs/PROJECT_STATE.md`):
 - Current phase
 - Every module marked ✅ Deployed → these are FROZEN for this session
 - Every module marked 🔨 WIP → candidate for this session
 - "Next task" from Work In Progress section
 - Known blockers
 
-## 3. Load Decision History
-Read `docs/DECISIONS_LOG.md` — note the last 5 decisions.
-These are hard constraints. Never propose an approach that was already rejected here.
+## 3. Decision History — LAZY LOAD
 
-## 4. RCA Check
-Read `docs/DEPLOYMENT_RCA.md` — note total issue count and last 3 entries.
-Before any code is written, check if the planned change matches a known failure pattern.
+**Do NOT read `docs/DECISIONS_LOG.md` at session start.** Read it only when:
+- You are about to propose an architectural alternative
+- The digest flags a relevant decision
+- The user asks about a past decision
 
-## 4b. Load Last Session Handoff
-Read `docs/SESSION_HANDOFF.md` — this has:
+## 4. RCA Check — FROM DIGEST
+
+Use the RCA summary from the digest (last 5 entries + task-relevant entries). **Do NOT re-read `docs/DEPLOYMENT_RCA.md`.** Before any code is written, check if the planned change matches a known failure pattern from the digest.
+
+## 4b. Last Session Handoff — FROM DIGEST
+
+Use the handoff summary from the digest. **Do NOT re-read `docs/SESSION_HANDOFF.md`.** Extract:
 - What was built last session (commits, files)
 - Open items / next steps
 - Resume prompt with frozen module list

@@ -176,6 +176,15 @@ apps/frontend/src/hooks/
 apps/frontend/src/components/ui/QueryStateView.tsx  → the shared pattern (PR A), reuse as-is
 ```
 
+## Session 163 Addendum — Session-Start Optimization (2026-09-27)
+
+Process-only task within S161b: optimized `/session-start` to reduce context consumption from ~50% to ~15-20% of window. Three changes:
+1. `.claude/commands/session-start.md` — eliminated double-read of PROJECT_STATE/SESSION_HANDOFF/RCA/DECISIONS_LOG (steps 1-5 now "FROM DIGEST"); roadmap reads only current step spec (not all 18); DECISIONS_LOG lazy-loaded; RCA scoped to last 5 entries.
+2. `memory/MEMORY.md` — archived S117-S145 (25 entries, 97→72 lines). Files stay on disk.
+3. `memory/feedback_session_start_reads.md` — updated with optimization rationale.
+
+**S161b code changes (Sonnet agents, uncommitted on branch):** 17 modified + 5 new test files. Next session should verify before committing.
+
 ## Agent utilization
 - Opus: plan, seam checks, diff review (3 pre-push fixes), 4 post-deploy fixes, prod verification, memory — ~600k tokens
 - Sonnet: 13 runs — 2 parallel PR B implementers, review-fix tests, 4 doc updates, 2 etip-reviewer passes, 1 api-unwrap crash audit, 3 page shape audits — ~2.0M tokens
