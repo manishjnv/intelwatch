@@ -30,18 +30,21 @@ vi.mock('@/hooks/use-phase5-data', () => ({
     },
     isLoading: false, isDemo: false,
   }),
-  useSIEMIntegrations: () => ({
-    data: { data: [], total: 0, page: 1, limit: 50 },
-    isLoading: false, isDemo: true,
-  }),
-  useWebhooks: () => ({
-    data: { data: [], total: 0, page: 1, limit: 50 },
-    isLoading: false, isDemo: true,
-  }),
   useIntegrationStats: () => ({
     data: { total: 7, active: 3, failing: 0, eventsPerHour: 42, lastSync: null },
     isLoading: false, isDemo: true,
   }),
+}))
+
+vi.mock('@/hooks/use-integrations', () => ({
+  useIntegrations: () => ({
+    data: { data: [], total: 0, page: 1, limit: 50 },
+    isLoading: false, isError: false, error: null, refetch: vi.fn(),
+  }),
+  useIntegrationsHealth: () => ({ data: null, isLoading: false }),
+  useUpdateIntegration: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteIntegration: () => ({ mutate: vi.fn(), isPending: false }),
+  useTestIntegration: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/hooks/useDebouncedValue', () => ({
@@ -146,8 +149,16 @@ describe('UsersAccessTab', () => {
     render(<UsersAccessTab data={baseMockCC} />)
     fireEvent.click(screen.getByTestId('pill-integrations'))
     expect(screen.getByTestId('integrations-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('integration-splunk')).toBeInTheDocument()
-    expect(screen.getByTestId('integration-webhooks')).toBeInTheDocument()
+    expect(screen.getByTestId('taxii-feed-card')).toBeInTheDocument()
+    expect(screen.getByTestId('connection-list')).toBeInTheDocument()
+    expect(screen.getByTestId('connections-empty')).toBeInTheDocument()
+  })
+
+  it('never shows the old fake XSOAR "connected" card (QRadar is legit here — plain-text TAXII compatibility line)', () => {
+    render(<UsersAccessTab data={baseMockCC} />)
+    fireEvent.click(screen.getByTestId('pill-integrations'))
+    expect(screen.queryByText(/XSOAR/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('integration-qradar')).not.toBeInTheDocument()
   })
 
   it('shows integration stats', () => {

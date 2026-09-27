@@ -7,20 +7,22 @@ import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { PillSwitcher, type PillItem } from './PillSwitcher'
 import type { useCommandCenter } from '@/hooks/use-command-center'
-import {
-  useUsers, useSIEMIntegrations, useWebhooks, useIntegrationStats,
-} from '@/hooks/use-phase5-data'
+import { useUsers, useIntegrationStats } from '@/hooks/use-phase5-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
-  Search, Shield, Mail,
-  Check, X, Key, Webhook, AlertTriangle,
+  Search, Mail,
+  Check, X, AlertTriangle,
   Settings, CheckCircle, ArrowUpCircle, Zap,
 } from 'lucide-react'
 import { SecurityPanel } from '@/components/security/SecurityPanel'
 import { AccessReviewPanel } from './AccessReviewPanel'
 import { SsoConfigPanel, SsoStatusBadge } from './SsoConfigPanel'
 import { useSsoConfig } from '@/hooks/use-sso'
+import { TaxiiFeedCard } from './integrations/TaxiiFeedCard'
+import { ConnectionList } from './integrations/ConnectionList'
+import { AddConnectionWizard } from './integrations/AddConnectionWizard'
+import type { Integration } from '@/hooks/use-integrations'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -229,32 +231,14 @@ function RolesPanel() {
 // ─── SSO Sub-Tab (replaced with SsoConfigPanel — S18) ──────
 
 // ─── Integrations Sub-Tab ───────────────────────────────────
+// Real connectors (S166 Step 15 P1) — see components/command-center/integrations/*.
 
-interface IntegrationCard {
-  id: string; name: string; category: string; type: string
-  status: 'connected' | 'not_configured' | 'error'
-  lastSync: string | null
-}
-
-const DEMO_INTEGRATION_CARDS: IntegrationCard[] = [
-  { id: 'splunk', name: 'Splunk', category: 'SIEM', type: 'splunk', status: 'connected', lastSync: new Date(Date.now() - 300_000).toISOString() },
-  { id: 'elk', name: 'Elastic (ELK)', category: 'SIEM', type: 'elastic', status: 'not_configured', lastSync: null },
-  { id: 'qradar', name: 'QRadar', category: 'SIEM', type: 'qradar', status: 'not_configured', lastSync: null },
-  { id: 'xsoar', name: 'Cortex XSOAR', category: 'SOAR', type: 'xsoar', status: 'connected', lastSync: new Date(Date.now() - 600_000).toISOString() },
-  { id: 'phantom', name: 'Splunk SOAR', category: 'SOAR', type: 'phantom', status: 'not_configured', lastSync: null },
-  { id: 'webhooks', name: 'Webhooks', category: 'Webhooks', type: 'webhook', status: 'connected', lastSync: new Date(Date.now() - 120_000).toISOString() },
-  { id: 'api-keys', name: 'API Keys', category: 'API', type: 'api', status: 'connected', lastSync: null },
-]
-
-function IntegrationsPanel() {
-  useSIEMIntegrations() // pre-fetch for future use
-  useWebhooks() // pre-fetch for future use
+function IntegrationsPanel({ tenantPlan }: { tenantPlan: string }) {
   const stats = useIntegrationStats()
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<Integration | null>(null)
 
-  // Use demo cards enriched with real data when available
-  const cards = DEMO_INTEGRATION_CARDS
-
-  const statValues = stats.data ?? { total: 7, active: 3, failing: 0, eventsPerHour: 42, lastSync: null }
+  const statValues = stats.data ?? { total: 0, active: 0, failing: 0, eventsPerHour: 0, lastSync: null }
 
   return (
     <div className="space-y-4" data-testid="integrations-panel">
@@ -276,40 +260,20 @@ function IntegrationsPanel() {
         ))}
       </div>
 
-      {/* Integration Cards */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {cards.map(c => (
-          <div key={c.id} className="border border-border rounded-lg p-3 bg-bg-primary hover:border-border-strong transition-colors" data-testid={`integration-${c.id}`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
-                  {c.category === 'SIEM' ? <Shield className="w-3.5 h-3.5 text-accent" /> :
-                   c.category === 'SOAR' ? <Zap className="w-3.5 h-3.5 text-purple-400" /> :
-                   c.category === 'Webhooks' ? <Webhook className="w-3.5 h-3.5 text-blue-400" /> :
-                   <Key className="w-3.5 h-3.5 text-amber-400" />}
-                </div>
-                <div>
-                  <span className="text-xs font-medium text-text-primary">{c.name}</span>
-                  <span className="block text-[10px] text-text-muted">{c.category}</span>
-                </div>
-              </div>
-              <StatusBadge status={c.status === 'connected' ? 'active' : c.status === 'error' ? 'error' : 'disabled'} />
-            </div>
-            <div className="flex items-center justify-between">
-              {c.lastSync && <span className="text-[10px] text-text-muted">Synced {formatTimeAgo(c.lastSync)}</span>}
-              {!c.lastSync && <span className="text-[10px] text-text-muted">Not configured</span>}
-              <div className="flex items-center gap-1">
-                <button className="px-2 py-1 text-[10px] font-medium bg-accent/10 text-accent rounded hover:bg-accent/20" data-testid={`configure-int-${c.id}`}>
-                  {c.status === 'connected' ? 'Configure' : 'Set Up'}
-                </button>
-                {c.status === 'connected' && (
-                  <button className="px-2 py-1 text-[10px] font-medium border border-border rounded text-text-muted hover:text-text-primary" data-testid={`test-int-${c.id}`}>Test</button>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <TaxiiFeedCard />
+
+      <ConnectionList
+        tenantPlan={tenantPlan}
+        onAdd={() => { setEditTarget(null); setWizardOpen(true) }}
+        onEdit={integration => { setEditTarget(integration); setWizardOpen(true) }}
+      />
+
+      {wizardOpen && (
+        <AddConnectionWizard
+          editTarget={editTarget ?? undefined}
+          onClose={() => setWizardOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -362,7 +326,7 @@ export function UsersAccessTab({ data }: UsersAccessTabProps) {
       {effectiveSubTab === 'team' && <TeamPanel isSuperAdmin={isSuperAdmin} tenantPlan={tenantPlan} />}
       {effectiveSubTab === 'roles' && <RolesPanel />}
       {effectiveSubTab === 'sso' && <SsoConfigPanel />}
-      {effectiveSubTab === 'integrations' && <IntegrationsPanel />}
+      {effectiveSubTab === 'integrations' && <IntegrationsPanel tenantPlan={tenantPlan} />}
       {effectiveSubTab === 'security' && <SecurityPanel data={data} />}
       {effectiveSubTab === 'access-reviews' && <AccessReviewPanel isSuperAdmin={isSuperAdmin} />}
     </div>

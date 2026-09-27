@@ -40,3 +40,9 @@ tenant-scoped update/delete, ciphertext-only persistence, hydrate retry, row rou
 
 ## Rollback
 `git revert` the PR B commit. The extra `integrations` table is harmless if left in place (or `DROP TABLE integrations;` after a dump).
+
+## Deployed (2026-09-28)
+- master `c44a5f0`, CI/CD run 36345804944 green (test/typecheck/lint/audit, build + push, deploy).
+- VPS: HEAD `c44a5f0`, 32/32 etip containers healthy, none stuck; `prisma db push` created table `integrations` (0 rows);
+  `etip_integration` logged "IntegrationStore hydrated from DB" on attempt 1; `TI_DATABASE_URL` set in the container.
+- No new deploy issues. End-to-end "survives redeploy" check is done through the PR C UI (see `docs/S166_PR_C_INTEGRATIONS_UI.md`).
