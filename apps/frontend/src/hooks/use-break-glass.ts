@@ -6,6 +6,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { toast } from '@/components/ui/Toast'
 import { notifyApiError } from './useApiError'
 
@@ -101,8 +102,11 @@ export function useBreakGlassAudit(filters: AuditFilters = {}) {
 
   const result = useQuery({
     queryKey: ['break-glass-audit', filters],
+    // apiList, not api<{data,total}>: api() already unwraps the gateway's { data: entries, total }, so the
+    // old shape made auditData.data undefined and crashed the panel on any successful response (RCA #45 class).
+    // ponytail: demo fallback on error stays until S161b converts this hook to honest UI.
     queryFn: () =>
-      api<{ data: BreakGlassAuditEntry[]; total: number }>(`/admin/break-glass/audit${qs ? `?${qs}` : ''}`)
+      apiList<BreakGlassAuditEntry>(`/admin/break-glass/audit${qs ? `?${qs}` : ''}`)
         .catch(err => notifyApiError(err, 'break-glass audit', null)),
     staleTime: 30_000,
   })
