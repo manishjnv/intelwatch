@@ -102,7 +102,14 @@ function HealthSubTab() {
       >
         {health => {
           const services: ServiceHealth[] = health.services
-          const summary = health.summary
+          // admin-service sends {overall, services, metrics, queues, timestamp} — no `summary`
+          // (S163 aligns the type). Derive the counts from the real service list; uptime stays unknown.
+          const count = (...st: string[]) => services.filter(s => st.includes(s.status)).length
+          const summary = health.summary ?? {
+            healthy: count('healthy'), degraded: count('degraded'), down: count('down', 'critical'),
+            total: services.length, uptimePercent: undefined,
+            lastUpdated: (health as { timestamp?: string }).timestamp ?? '',
+          }
           const healthScore = summary.total > 0
             ? Math.round((summary.healthy / summary.total) * 100)
             : 0

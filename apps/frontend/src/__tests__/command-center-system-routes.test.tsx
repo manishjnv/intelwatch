@@ -159,6 +159,26 @@ describe('SystemTab', () => {
     expect(screen.getByText('91%')).toBeInTheDocument()
   })
 
+  it('does not crash on the real admin-service shape (no summary) — derives counts from services', () => {
+    const original = mockSystemHealth.data
+    // admin-service health-store: {overall, services, metrics, queues, timestamp}; ServiceEntry has no responseMs
+    mockSystemHealth.data = {
+      overall: 'degraded', timestamp: new Date().toISOString(), metrics: {}, queues: [],
+      services: [
+        { name: 'api-gateway', status: 'healthy', port: 3001, lastCheck: new Date().toISOString() },
+        { name: 'ingestion', status: 'healthy', port: 3004, uptime: 99.5, lastCheck: new Date().toISOString() },
+        { name: 'enrichment', status: 'critical', port: 3006, lastCheck: new Date().toISOString() },
+      ],
+    } as unknown as typeof original
+    try {
+      renderSystemTab()
+      expect(screen.getByTestId('service-grid').children.length).toBe(3)
+      expect(screen.getByText('67%')).toBeInTheDocument() // 2 of 3 healthy
+    } finally {
+      mockSystemHealth.data = original
+    }
+  })
+
   it('shows summary cards (healthy, degraded, down)', () => {
     renderSystemTab()
     expect(screen.getByText('30')).toBeInTheDocument() // healthy

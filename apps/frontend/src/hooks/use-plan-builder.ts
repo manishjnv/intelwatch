@@ -56,9 +56,13 @@ export function usePlanBuilder() {
 
   const result = useQuery<PlanDefinition[]>({
     queryKey: ['admin-plans'],
+    // api() already unwraps the gateway's { data, total } envelope — the old `r?.data` was always
+    // undefined, so the builder always looked empty (same bug S147 fixed in use-feature-limits).
     queryFn: () =>
-      api<{ data: PlanDefinition[]; total: number }>('/admin/plans')
-        .then(r => r?.data ?? []),
+      api<PlanDefinition[]>('/admin/plans').then(r => {
+        if (!Array.isArray(r)) throw new Error('Unexpected response from /admin/plans')
+        return r
+      }),
     meta: { resource: 'plans' },
     staleTime: 60_000,
   })

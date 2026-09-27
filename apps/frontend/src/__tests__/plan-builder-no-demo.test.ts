@@ -26,11 +26,18 @@ beforeEach(() => {
 })
 
 describe('usePlanBuilder (no demo fallback)', () => {
-  it('returns real plans on success', async () => {
-    mockApi.mockResolvedValueOnce({ data: [{ id: '1', planId: 'free', name: 'Free', sortOrder: 0 }], total: 1 })
+  it('returns real plans on success (api() has already unwrapped the gateway { data, total } envelope)', async () => {
+    mockApi.mockResolvedValueOnce([{ id: '1', planId: 'free', name: 'Free', sortOrder: 0 }])
     const { result } = renderHook(() => usePlanBuilder(), { wrapper })
     await waitFor(() => expect(result.current.plans.length).toBe(1))
     expect(result.current.plans[0]!.name).toBe('Free')
+  })
+
+  it('errors on a non-array response instead of showing a false "No plans defined yet"', async () => {
+    mockApi.mockResolvedValueOnce({ data: [{ id: '1' }], total: 1 })
+    const { result } = renderHook(() => usePlanBuilder(), { wrapper })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.plans).toEqual([])
   })
 
   it('returns an empty plan list and isError on API failure — no DEMO plan names', async () => {
