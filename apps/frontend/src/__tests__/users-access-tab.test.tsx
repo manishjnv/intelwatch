@@ -3,7 +3,7 @@
  * @description Tests for UsersAccessTab — Team, Roles, SSO, Integrations sub-tabs.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@/test/test-utils'
+import { render, screen, fireEvent, within } from '@/test/test-utils'
 import { UsersAccessTab } from '@/components/command-center/UsersAccessTab'
 
 // ─── Mock hooks ──────────────────────────────────────────────
@@ -108,17 +108,23 @@ describe('UsersAccessTab', () => {
     expect(screen.getByTestId('role-matrix')).toBeInTheDocument()
   })
 
-  it('shows custom roles banner for non-enterprise', () => {
-    render(<UsersAccessTab data={baseMockCC} />)
+  it('shows only the 3 real roles, no fake roles or custom-role upsell', () => {
+    render(<UsersAccessTab data={{ ...baseMockCC, tenantPlan: 'free' }} />)
     fireEvent.click(screen.getByTestId('pill-roles'))
-    expect(screen.getByTestId('custom-roles-banner')).toBeInTheDocument()
+    const matrix = screen.getByTestId('role-matrix')
+    expect(matrix.querySelectorAll('tbody tr')).toHaveLength(3)
+    for (const role of ['analyst', 'tenant admin', 'super admin']) expect(within(matrix).getByText(role)).toBeInTheDocument()
+    expect(within(matrix).queryByText('lead')).not.toBeInTheDocument()
+    expect(within(matrix).queryByText('manager')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('custom-roles-banner')).not.toBeInTheDocument()
   })
 
-  it('hides custom roles banner for enterprise', () => {
-    const entCC = { ...baseMockCC, tenantPlan: 'enterprise' }
-    render(<UsersAccessTab data={entCC} />)
+  it('matches shared-auth: analyst has view-only feeds and no user admin', () => {
+    render(<UsersAccessTab data={baseMockCC} />)
     fireEvent.click(screen.getByTestId('pill-roles'))
-    expect(screen.queryByTestId('custom-roles-banner')).not.toBeInTheDocument()
+    const analystRow = within(screen.getByTestId('role-matrix')).getByText('analyst').closest('tr')!
+    expect(within(analystRow).getByText('View only')).toBeInTheDocument()
+    expect(within(analystRow).getAllByLabelText('No access')).toHaveLength(3)
   })
 
   it('shows SSO sub-tab for super-admin with SsoConfigPanel', () => {

@@ -8,14 +8,14 @@ import { cn } from '@/lib/utils'
 import { PillSwitcher, type PillItem } from './PillSwitcher'
 import type { useCommandCenter } from '@/hooks/use-command-center'
 import {
-  useUsers, useRoles, useSIEMIntegrations, useWebhooks, useIntegrationStats,
+  useUsers, useSIEMIntegrations, useWebhooks, useIntegrationStats,
 } from '@/hooks/use-phase5-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
   Search, Shield, Mail,
   Check, X, Key, Webhook, AlertTriangle,
-  Settings, CheckCircle, ArrowUpCircle, Zap, Crown,
+  Settings, CheckCircle, ArrowUpCircle, Zap,
 } from 'lucide-react'
 import { SecurityPanel } from '@/components/security/SecurityPanel'
 import { AccessReviewPanel } from './AccessReviewPanel'
@@ -169,24 +169,33 @@ function TeamPanel({ isSuperAdmin: _isSuperAdmin, tenantPlan }: { isSuperAdmin: 
 
 // ─── Roles & Permissions Sub-Tab ────────────────────────────
 
-const PERMISSIONS = ['view_iocs', 'export_data', 'manage_feeds', 'configure_alerts', 'manage_reports', 'admin_access'] as const
-const PERMISSION_LABELS: Record<string, string> = {
-  view_iocs: 'View IOCs', export_data: 'Export Data', manage_feeds: 'Manage Feeds',
-  configure_alerts: 'Configure Alerts', manage_reports: 'Manage Reports', admin_access: 'Admin Access',
+// ponytail: static copy of packages/shared-auth/src/permissions.ts ROLE_PERMISSIONS, grouped for display
+// (frontend can't import shared-auth). Update both together; roles are a fixed Prisma enum.
+type Access = 'full' | 'view' | 'none'
+const CAPABILITIES = [
+  { key: 'intel', label: 'Threat Intel (IOCs, actors, malware, vulns)' },
+  { key: 'ops', label: 'Hunting, Graph & Alerts' },
+  { key: 'reports', label: 'Dashboards & Reports' },
+  { key: 'feeds', label: 'Feeds' },
+  { key: 'admin', label: 'Users, Integrations & Settings' },
+  { key: 'audit', label: 'Audit Log' },
+  { key: 'platform', label: 'All Tenants (Platform)' },
+] as const
+type Capability = (typeof CAPABILITIES)[number]['key']
+
+const ROLE_MATRIX: { role: string; access: Record<Capability, Access> }[] = [
+  { role: 'analyst', access: { intel: 'full', ops: 'full', reports: 'full', feeds: 'view', admin: 'none', audit: 'none', platform: 'none' } },
+  { role: 'tenant_admin', access: { intel: 'full', ops: 'full', reports: 'full', feeds: 'full', admin: 'full', audit: 'view', platform: 'none' } },
+  { role: 'super_admin', access: { intel: 'full', ops: 'full', reports: 'full', feeds: 'full', admin: 'full', audit: 'full', platform: 'full' } },
+]
+
+function AccessCell({ access }: { access: Access }) {
+  if (access === 'full') return <Check className="w-4 h-4 text-sev-low mx-auto" aria-label="Full access" />
+  if (access === 'view') return <span className="text-[10px] text-sev-medium">View only</span>
+  return <X className="w-4 h-4 text-text-muted/30 mx-auto" aria-label="No access" />
 }
 
-const ROLE_PERMISSIONS: Record<string, string[]> = {
-  analyst: ['view_iocs'],
-  lead: ['view_iocs', 'export_data'],
-  manager: ['view_iocs', 'export_data', 'manage_feeds', 'configure_alerts'],
-  tenant_admin: ['view_iocs', 'export_data', 'manage_feeds', 'configure_alerts', 'manage_reports', 'admin_access'],
-  super_admin: ['view_iocs', 'export_data', 'manage_feeds', 'configure_alerts', 'manage_reports', 'admin_access'],
-}
-
-function RolesPanel({ tenantPlan }: { tenantPlan: string }) {
-  useRoles() // pre-fetch for future use
-  const isEnterprise = tenantPlan === 'enterprise'
-
+function RolesPanel() {
   return (
     <div className="space-y-4" data-testid="roles-panel">
       {/* Role Matrix */}
@@ -195,35 +204,24 @@ function RolesPanel({ tenantPlan }: { tenantPlan: string }) {
           <thead>
             <tr className="border-b border-border bg-bg-elevated">
               <th className="text-left px-3 py-2 text-text-muted font-medium sticky left-0 bg-bg-elevated">Role</th>
-              {PERMISSIONS.map(p => (
-                <th key={p} className="text-center px-3 py-2 text-text-muted font-medium whitespace-nowrap">{PERMISSION_LABELS[p]}</th>
+              {CAPABILITIES.map(c => (
+                <th key={c.key} className="text-center px-3 py-2 text-text-muted font-medium whitespace-nowrap">{c.label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {Object.entries(ROLE_PERMISSIONS).map(([role, perms]) => (
+            {ROLE_MATRIX.map(({ role, access }) => (
               <tr key={role} className="border-b border-border/50 hover:bg-bg-hover transition-colors">
                 <td className="px-3 py-2 sticky left-0 bg-bg-primary"><RoleBadge role={role} /></td>
-                {PERMISSIONS.map(p => (
-                  <td key={p} className="text-center px-3 py-2">
-                    {perms.includes(p)
-                      ? <Check className="w-4 h-4 text-sev-low mx-auto" />
-                      : <X className="w-4 h-4 text-text-muted/30 mx-auto" />}
-                  </td>
+                {CAPABILITIES.map(c => (
+                  <td key={c.key} className="text-center px-3 py-2"><AccessCell access={access[c.key]} /></td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {/* Custom Roles Banner */}
-      {!isEnterprise && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-accent/5 border border-accent/20 rounded-lg" data-testid="custom-roles-banner">
-          <Crown className="w-4 h-4 text-accent shrink-0" />
-          <span className="text-xs text-text-muted">Custom roles with granular permissions are available on the <span className="text-accent font-medium">Enterprise plan</span></span>
-        </div>
-      )}
+      <p className="text-[10px] text-text-muted">These are the 3 built-in roles enforced by the platform. Custom roles are not supported.</p>
     </div>
   )
 }
@@ -362,7 +360,7 @@ export function UsersAccessTab({ data }: UsersAccessTabProps) {
       </div>
 
       {effectiveSubTab === 'team' && <TeamPanel isSuperAdmin={isSuperAdmin} tenantPlan={tenantPlan} />}
-      {effectiveSubTab === 'roles' && <RolesPanel tenantPlan={tenantPlan} />}
+      {effectiveSubTab === 'roles' && <RolesPanel />}
       {effectiveSubTab === 'sso' && <SsoConfigPanel />}
       {effectiveSubTab === 'integrations' && <IntegrationsPanel />}
       {effectiveSubTab === 'security' && <SecurityPanel data={data} />}

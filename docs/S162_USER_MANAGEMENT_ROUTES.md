@@ -103,3 +103,22 @@ M  apps/user-management-service/src/schemas/user-management.ts
 ?? apps/user-management-service/src/routes/directory.ts
 ?? apps/user-management-service/tests/directory-routes.test.ts
 ```
+
+## Follow-up (2026-09-28): Roles & Permissions tab shows the real roles
+
+Command Center → Users & Access → **Roles & Permissions** showed a hardcoded matrix with two roles that
+don't exist (Lead, Manager), invented permission columns, and a "Custom roles … on the Enterprise plan"
+upsell (custom roles are not supported on any plan).
+
+- `apps/frontend/src/components/command-center/UsersAccessTab.tsx` — matrix now lists only the 3 Prisma
+  roles (analyst, tenant_admin, super_admin) with capabilities grouped from
+  `packages/shared-auth/src/permissions.ts` `ROLE_PERMISSIONS` (analyst: feeds view-only, no user/settings
+  admin, no audit; tenant_admin: everything in its tenant, audit view-only; super_admin: everything incl.
+  all tenants). Static copy — keep in sync with shared-auth. Upsell banner removed; unused `useRoles()`
+  call dropped.
+- `apps/frontend/src/__tests__/users-access-tab.test.tsx` — 2 banner tests replaced by: exactly 3 roles,
+  no Lead/Manager, no upsell; analyst row matches shared-auth.
+- Verify: Command Center → Users & Access → Roles & Permissions shows 3 rows; analyst row has "View only"
+  under Feeds and ✗ under Users/Integrations/Settings, Audit Log, All Tenants.
+- Rollback: `git revert` the commit.
+- Still demo on the same tab (not fixed yet): **Integrations** sub-tab cards (hardcoded Splunk/XSOAR "connected").
