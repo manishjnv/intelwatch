@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { verifyAccessToken } from '@etip/shared-auth';
+import { verifyAccessToken, PERMISSIONS } from '@etip/shared-auth';
 import { AppError } from '@etip/shared-utils';
 import { z } from 'zod';
 import {
@@ -15,6 +15,7 @@ import type { RateLimitTracker } from '../services/rate-limit-tracker.js';
 import type { CredentialRotationService } from '../services/credential-rotation.js';
 import type { AlertRoutingEngine } from '../services/alert-routing-engine.js';
 import type { IntegrationStore } from '../services/integration-store.js';
+import { requirePermission } from '../plugins/authz.js';
 
 export interface P2RouteDeps {
   store: IntegrationStore;
@@ -43,6 +44,11 @@ export function p2Routes(deps: P2RouteDeps) {
       }
     };
 
+    const readAccess = requirePermission(PERMISSIONS.INTEGRATION_READ);
+    const createAccess = requirePermission(PERMISSIONS.INTEGRATION_CREATE);
+    const updateAccess = requirePermission(PERMISSIONS.INTEGRATION_UPDATE);
+    const deleteAccess = requirePermission(PERMISSIONS.INTEGRATION_DELETE);
+
     const getTenant = (req: FastifyRequest): string => {
       const user = (req as unknown as Record<string, unknown>).user as { tenantId?: string } | undefined;
       if (!user?.tenantId) throw new AppError(403, 'No tenant context', 'NO_TENANT');
@@ -58,7 +64,7 @@ export function p2Routes(deps: P2RouteDeps) {
     // P2 #11: Health Scoring
     // ═══════════════════════════════════════════════════════════════
 
-    app.get('/:id/health-score', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/:id/health-score', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const score = healthScoring.calculateScore(id, tenantId);
@@ -66,7 +72,7 @@ export function p2Routes(deps: P2RouteDeps) {
       return reply.send({ data: score });
     });
 
-    app.get('/:id/health-history', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/:id/health-history', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const history = healthScoring.getHistory(id, tenantId);
@@ -78,7 +84,7 @@ export function p2Routes(deps: P2RouteDeps) {
     // P2 #12: Audit Trail
     // ═══════════════════════════════════════════════════════════════
 
-    app.get('/audit-log', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/audit-log', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = AuditQuerySchema.parse(req.query);
       const result = auditTrail.query(tenantId, query);
@@ -89,7 +95,7 @@ export function p2Routes(deps: P2RouteDeps) {
     // P2 #13: Rate Limit Dashboard
     // ═══════════════════════════════════════════════════════════════
 
-    app.get('/:id/rate-limits', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/:id/rate-limits', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -102,7 +108,7 @@ export function p2Routes(deps: P2RouteDeps) {
     // P2 #14: Credential Rotation
     // ═══════════════════════════════════════════════════════════════
 
-    app.post('/:id/credentials/rotate', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/:id/credentials/rotate', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = RotateCredentialsSchema.parse(req.body);
@@ -120,7 +126,7 @@ export function p2Routes(deps: P2RouteDeps) {
       return reply.status(201).send({ data: record });
     });
 
-    app.get('/:id/credentials/rotation-history', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/:id/credentials/rotation-history', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -134,7 +140,7 @@ export function p2Routes(deps: P2RouteDeps) {
     // P2 #15: Alert Routing Rules
     // ═══════════════════════════════════════════════════════════════
 
-    app.post('/routing-rules', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/routing-rules', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateRoutingRuleSchema.parse(req.body);
       const rule = alertRoutingEngine.createRule(tenantId, input);
@@ -151,7 +157,7 @@ export function p2Routes(deps: P2RouteDeps) {
       return reply.status(201).send({ data: rule });
     });
 
-    app.get('/routing-rules', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/routing-rules', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = PaginationSchema.extend({
         enabled: z.coerce.boolean().optional(),
@@ -160,7 +166,7 @@ export function p2Routes(deps: P2RouteDeps) {
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
-    app.get('/routing-rules/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/routing-rules/:id', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const rule = alertRoutingEngine.getRule(id, tenantId);
@@ -168,7 +174,7 @@ export function p2Routes(deps: P2RouteDeps) {
       return reply.send({ data: rule });
     });
 
-    app.put('/routing-rules/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.put('/routing-rules/:id', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateRoutingRuleSchema.parse(req.body);
@@ -186,7 +192,7 @@ export function p2Routes(deps: P2RouteDeps) {
       return reply.send({ data: updated });
     });
 
-    app.delete('/routing-rules/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.delete('/routing-rules/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const deleted = alertRoutingEngine.deleteRule(id, tenantId);
@@ -203,7 +209,7 @@ export function p2Routes(deps: P2RouteDeps) {
       return reply.status(204).send();
     });
 
-    app.post('/routing-rules/:id/dry-run', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/routing-rules/:id/dry-run', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const body = req.body as { payload: Record<string, unknown> };
@@ -213,7 +219,7 @@ export function p2Routes(deps: P2RouteDeps) {
       return reply.send({ data: result });
     });
 
-    app.put('/routing-rules/reorder', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.put('/routing-rules/reorder', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const body = req.body as { ordering: Array<{ ruleId: string; priority: number }> };
       if (!Array.isArray(body.ordering)) throw new AppError(400, 'Missing ordering array', 'MISSING_ORDERING');

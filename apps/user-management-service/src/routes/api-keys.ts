@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { AppError } from '@etip/shared-utils';
-import { hashApiKey } from '@etip/shared-auth';
+import { hashApiKey, hasPermission, PERMISSIONS } from '@etip/shared-auth';
+import type { Role } from '@etip/shared-types';
 import { prisma } from '../prisma.js';
 import type { AuditLogger } from '../services/audit-logger.js';
 
@@ -19,6 +20,20 @@ export interface ApiKeyRouteDeps {
   auditLogger: AuditLogger;
 }
 
+/** Tenant ONLY from x-tenant-id (nginx overwrites it from the verified JWT). Never 'default'. */
+function requireTenant(req: FastifyRequest): string {
+  const tenantId = req.headers['x-tenant-id'] as string | undefined;
+  if (!tenantId) throw new AppError(401, 'Missing tenant context', 'UNAUTHORIZED');
+  return tenantId;
+}
+
+function requirePermission(req: FastifyRequest, permission: string): void {
+  const role = req.headers['x-user-role'] as Role | undefined;
+  if (!role || !hasPermission(role, permission)) {
+    throw new AppError(403, 'Insufficient permissions', 'FORBIDDEN');
+  }
+}
+
 /** API key management routes — creation gated to enterprise plan. */
 export function apiKeyRoutes(deps: ApiKeyRouteDeps) {
   const { auditLogger } = deps;
@@ -26,7 +41,8 @@ export function apiKeyRoutes(deps: ApiKeyRouteDeps) {
   return async function (app: FastifyInstance): Promise<void> {
     /** POST /api-keys — Create API key (enterprise only). */
     app.post('/api-keys', async (req: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (req.headers['x-tenant-id'] as string) || '';
+      const tenantId = requireTenant(req);
+      requirePermission(req, PERMISSIONS.SETTINGS_UPDATE);
       const userId = (req.headers['x-user-id'] as string) || '';
 
       // I-09: Enterprise tier gate — check real plan definition system + overrides
@@ -94,7 +110,8 @@ export function apiKeyRoutes(deps: ApiKeyRouteDeps) {
 
     /** GET /api-keys — List API keys for the tenant. Returns empty for non-enterprise. */
     app.get('/api-keys', async (req: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (req.headers['x-tenant-id'] as string) || '';
+      const tenantId = requireTenant(req);
+      requirePermission(req, PERMISSIONS.SETTINGS_READ);
 
       const keys = await prisma.apiKey.findMany({
         where: { tenantId, active: true },
@@ -107,7 +124,8 @@ export function apiKeyRoutes(deps: ApiKeyRouteDeps) {
 
     /** DELETE /api-keys/:id — Revoke an API key (soft delete). */
     app.delete('/api-keys/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const tenantId = (req.headers['x-tenant-id'] as string) || '';
+      const tenantId = requireTenant(req);
+      requirePermission(req, PERMISSIONS.SETTINGS_UPDATE);
       const userId = (req.headers['x-user-id'] as string) || '';
 
       const existing = await prisma.apiKey.findFirst({

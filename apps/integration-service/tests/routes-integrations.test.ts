@@ -21,16 +21,24 @@ import { TicketingService } from '../src/services/ticketing-service.js';
 import type { IntegrationConfig } from '../src/config.js';
 import type { FastifyInstance } from 'fastify';
 
-// Mock shared-auth to avoid needing real JWT
-vi.mock('@etip/shared-auth', () => ({
-  verifyAccessToken: (token: string) => {
-    if (token === 'valid-token') return { userId: 'user-1', tenantId: 'tenant-1', role: 'admin' };
-    if (token === 'tenant-b') return { userId: 'user-2', tenantId: 'tenant-2', role: 'admin' };
-    throw new Error('Invalid token');
-  },
-  loadJwtConfig: () => {},
-  loadServiceJwtSecret: () => {},
-}));
+// Mock shared-auth to avoid needing real JWT, but keep the real hasPermission/PERMISSIONS
+// implementation so RBAC preHandlers are exercised exactly as in production.
+vi.mock('@etip/shared-auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@etip/shared-auth')>();
+  return {
+    ...actual,
+    verifyAccessToken: (token: string) => {
+      if (token === 'valid-token') return { userId: 'user-1', tenantId: 'tenant-1', role: 'tenant_admin' };
+      if (token === 'tenant-b') return { userId: 'user-2', tenantId: 'tenant-2', role: 'tenant_admin' };
+      if (token === 'analyst-token') return { userId: 'user-3', tenantId: 'tenant-1', role: 'analyst' };
+      if (token === 'super-admin-token') return { userId: 'user-4', tenantId: 'tenant-1', role: 'super_admin' };
+      if (token === 'no-role-token') return { userId: 'user-5', tenantId: 'tenant-1' };
+      throw new Error('Invalid token');
+    },
+    loadJwtConfig: () => {},
+    loadServiceJwtSecret: () => {},
+  };
+});
 
 const TEST_CONFIG: IntegrationConfig = {
   TI_NODE_ENV: 'test',
@@ -339,5 +347,128 @@ describe('Integration routes — SSRF guard', () => {
     const body = res.json().data;
     expect(body.success).toBe(false);
     expect(body.message).toContain('Destination not allowed');
+  });
+});
+
+// Security fix: every route's preHandler used to only verify the JWT, with no role check —
+// any authenticated analyst could create/update/delete/test/push integrations and point a
+// connector at their own URL. requirePermission() now gates every mutation/read on the role.
+describe('Integration routes — RBAC (role permission checks)', () => {
+  let app: FastifyInstance;
+  let store: IntegrationStore;
+  const ANALYST = { authorization: 'Bearer analyst-token' };
+  const SUPER_ADMIN = { authorization: 'Bearer super-admin-token' };
+  const NO_ROLE = { authorization: 'Bearer no-role-token' };
+  const AUTH = { authorization: 'Bearer valid-token' }; // tenant_admin
+
+  beforeAll(async () => {
+    store = new IntegrationStore();
+    const fieldMapper = new FieldMapper();
+    app = await buildApp({
+      config: TEST_CONFIG,
+      routeDeps: { store, siemAdapter: new SiemAdapter(store, fieldMapper, TEST_CONFIG), ticketingService: new TicketingService(store, fieldMapper) },
+    });
+    await app.ready();
+  });
+
+  afterAll(async () => { await app.close(); });
+
+  async function seedIntegration(): Promise<string> {
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: AUTH,
+      payload: { name: 'RBAC Test', type: 'webhook', triggers: ['ioc.created'] },
+    });
+    return res.json().data.id;
+  }
+
+  it('POST / (create) — analyst 403, tenant_admin 201, super_admin 201, no role 403', async () => {
+    const analystRes = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: ANALYST,
+      payload: { name: 'Blocked', type: 'webhook', triggers: ['ioc.created'] },
+    });
+    expect(analystRes.statusCode).toBe(403);
+
+    const adminRes = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: AUTH,
+      payload: { name: 'Allowed Admin', type: 'webhook', triggers: ['ioc.created'] },
+    });
+    expect(adminRes.statusCode).toBe(201);
+
+    const superRes = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: SUPER_ADMIN,
+      payload: { name: 'Allowed Super', type: 'webhook', triggers: ['ioc.created'] },
+    });
+    expect(superRes.statusCode).toBe(201);
+
+    const noRoleRes = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: NO_ROLE,
+      payload: { name: 'Blocked No Role', type: 'webhook', triggers: ['ioc.created'] },
+    });
+    expect(noRoleRes.statusCode).toBe(403);
+  });
+
+  it('GET / (list) — analyst 403, tenant_admin 200', async () => {
+    const analystRes = await app.inject({ method: 'GET', url: '/api/v1/integrations', headers: ANALYST });
+    expect(analystRes.statusCode).toBe(403);
+    const adminRes = await app.inject({ method: 'GET', url: '/api/v1/integrations', headers: AUTH });
+    expect(adminRes.statusCode).toBe(200);
+  });
+
+  it('GET /:id (get) — analyst 403, tenant_admin 200', async () => {
+    const id = await seedIntegration();
+    const analystRes = await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}`, headers: ANALYST });
+    expect(analystRes.statusCode).toBe(403);
+    const adminRes = await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}`, headers: AUTH });
+    expect(adminRes.statusCode).toBe(200);
+  });
+
+  it('PUT /:id (update) — analyst 403, tenant_admin 200', async () => {
+    const id = await seedIntegration();
+    const analystRes = await app.inject({
+      method: 'PUT', url: `/api/v1/integrations/${id}`, headers: ANALYST, payload: { name: 'Nope' },
+    });
+    expect(analystRes.statusCode).toBe(403);
+    const adminRes = await app.inject({
+      method: 'PUT', url: `/api/v1/integrations/${id}`, headers: AUTH, payload: { name: 'Renamed' },
+    });
+    expect(adminRes.statusCode).toBe(200);
+  });
+
+  it('DELETE /:id (delete) — analyst 403, super_admin 204', async () => {
+    const id = await seedIntegration();
+    const analystRes = await app.inject({ method: 'DELETE', url: `/api/v1/integrations/${id}`, headers: ANALYST });
+    expect(analystRes.statusCode).toBe(403);
+    const superRes = await app.inject({ method: 'DELETE', url: `/api/v1/integrations/${id}`, headers: SUPER_ADMIN });
+    expect(superRes.statusCode).toBe(204);
+  });
+
+  it('POST /:id/test — analyst 403, tenant_admin 200', async () => {
+    const id = await seedIntegration();
+    const analystRes = await app.inject({ method: 'POST', url: `/api/v1/integrations/${id}/test`, headers: ANALYST });
+    expect(analystRes.statusCode).toBe(403);
+    const adminRes = await app.inject({ method: 'POST', url: `/api/v1/integrations/${id}/test`, headers: AUTH });
+    expect(adminRes.statusCode).toBe(200);
+  });
+
+  it('POST /:id/push — analyst 403 (attacker cannot point a connector at their own destination)', async () => {
+    const create = await app.inject({
+      method: 'POST', url: '/api/v1/integrations', headers: AUTH,
+      payload: { name: 'Push Test', type: 'splunk_hec', triggers: ['alert.created'],
+        siemConfig: { type: 'splunk_hec', url: 'https://splunk.example.com', token: 'tok' } },
+    });
+    const id = create.json().data.id;
+    const analystRes = await app.inject({
+      method: 'POST', url: `/api/v1/integrations/${id}/push`, headers: ANALYST,
+      payload: { event: 'ioc.created', payload: { foo: 'bar' } },
+    });
+    expect(analystRes.statusCode).toBe(403);
+  });
+
+  it('GET /:id/logs — analyst 403, tenant_admin 200', async () => {
+    const id = await seedIntegration();
+    const analystRes = await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}/logs`, headers: ANALYST });
+    expect(analystRes.statusCode).toBe(403);
+    const adminRes = await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}/logs`, headers: AUTH });
+    expect(adminRes.statusCode).toBe(200);
   });
 });

@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { verifyAccessToken } from '@etip/shared-auth';
+import { verifyAccessToken, PERMISSIONS } from '@etip/shared-auth';
 import { AppError } from '@etip/shared-utils';
 import {
   PaginationSchema,
@@ -18,6 +18,7 @@ import type { FieldMappingStore } from '../services/field-mapping-store.js';
 import type { TemplateEngine } from '../services/template-engine.js';
 import type { StixCollectionStore } from '../services/stix-collection-store.js';
 import type { ExportScheduler } from '../services/export-scheduler.js';
+import { requirePermission } from '../plugins/authz.js';
 
 export interface AdvancedRouteDeps {
   fieldMappingStore: FieldMappingStore;
@@ -44,6 +45,11 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       }
     };
 
+    const readAccess = requirePermission(PERMISSIONS.INTEGRATION_READ);
+    const createAccess = requirePermission(PERMISSIONS.INTEGRATION_CREATE);
+    const updateAccess = requirePermission(PERMISSIONS.INTEGRATION_UPDATE);
+    const deleteAccess = requirePermission(PERMISSIONS.INTEGRATION_DELETE);
+
     const getTenant = (req: FastifyRequest): string => {
       const user = (req as unknown as Record<string, unknown>).user as { tenantId?: string } | undefined;
       if (!user?.tenantId) throw new AppError(403, 'No tenant context', 'NO_TENANT');
@@ -54,14 +60,14 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     // P1 #7: Field Mapping Presets
     // ═══════════════════════════════════════════════════════════════
 
-    app.post('/field-mapping-presets', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/field-mapping-presets', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateFieldMappingPresetSchema.parse(req.body);
       const preset = fieldMappingStore.createPreset(tenantId, input);
       return reply.status(201).send({ data: preset });
     });
 
-    app.get('/field-mapping-presets', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/field-mapping-presets', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = PaginationSchema.extend({
         targetType: IntegrationTypeEnum.optional(),
@@ -70,7 +76,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
-    app.put('/field-mapping-presets/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.put('/field-mapping-presets/:id', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateFieldMappingPresetSchema.parse(req.body);
@@ -79,7 +85,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.send({ data: updated });
     });
 
-    app.delete('/field-mapping-presets/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.delete('/field-mapping-presets/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const deleted = fieldMappingStore.deletePreset(id, tenantId);
@@ -91,14 +97,14 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     // P1 #8: Ticket Templates
     // ═══════════════════════════════════════════════════════════════
 
-    app.post('/ticket-templates', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/ticket-templates', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateTicketTemplateSchema.parse(req.body);
       const template = templateEngine.createTemplate(tenantId, input);
       return reply.status(201).send({ data: template });
     });
 
-    app.get('/ticket-templates', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/ticket-templates', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = PaginationSchema.extend({
         targetType: z.enum(['servicenow', 'jira']).optional(),
@@ -107,7 +113,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
-    app.put('/ticket-templates/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.put('/ticket-templates/:id', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateTicketTemplateSchema.parse(req.body);
@@ -116,7 +122,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.send({ data: updated });
     });
 
-    app.delete('/ticket-templates/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.delete('/ticket-templates/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const deleted = templateEngine.deleteTemplate(id, tenantId);
@@ -128,14 +134,14 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     // P1 #9: TAXII Collection Management
     // ═══════════════════════════════════════════════════════════════
 
-    app.post('/taxii/collections', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/taxii/collections', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateTaxiiCollectionSchema.parse(req.body);
       const collection = stixCollectionStore.createCollection(tenantId, input);
       return reply.status(201).send({ data: collection });
     });
 
-    app.put('/taxii/collections/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.put('/taxii/collections/:id', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateTaxiiCollectionSchema.parse(req.body);
@@ -144,7 +150,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.send({ data: updated });
     });
 
-    app.delete('/taxii/collections/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.delete('/taxii/collections/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const deleted = stixCollectionStore.deleteCollection(id, tenantId);
@@ -152,7 +158,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.status(204).send();
     });
 
-    app.get('/taxii/collections/:id/manifest', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/taxii/collections/:id/manifest', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const query = PaginationSchema.parse(req.query);
@@ -166,14 +172,14 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     // P1 #10: Export Schedules
     // ═══════════════════════════════════════════════════════════════
 
-    app.post('/export/schedules', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/export/schedules', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateExportScheduleSchema.parse(req.body);
       const schedule = exportScheduler.createSchedule(tenantId, input);
       return reply.status(201).send({ data: schedule });
     });
 
-    app.get('/export/schedules', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/export/schedules', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = PaginationSchema.extend({
         enabled: z.coerce.boolean().optional(),
@@ -182,7 +188,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
-    app.put('/export/schedules/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.put('/export/schedules/:id', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateExportScheduleSchema.parse(req.body);
@@ -191,7 +197,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.send({ data: updated });
     });
 
-    app.delete('/export/schedules/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.delete('/export/schedules/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const deleted = exportScheduler.deleteSchedule(id, tenantId);
@@ -199,7 +205,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       return reply.status(204).send();
     });
 
-    app.post('/export/schedules/:id/run', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/export/schedules/:id/run', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const result = await exportScheduler.executeSchedule(id, tenantId);
@@ -210,7 +216,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         .send(result.content);
     });
 
-    app.get('/export/schedules/:id/history', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/export/schedules/:id/history', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const query = PaginationSchema.parse(req.query);

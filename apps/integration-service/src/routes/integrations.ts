@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { verifyAccessToken } from '@etip/shared-auth';
+import { verifyAccessToken, PERMISSIONS } from '@etip/shared-auth';
 import { AppError } from '@etip/shared-utils';
 import {
   CreateIntegrationSchema,
@@ -15,6 +15,7 @@ import type { HealthDashboard } from '../services/health-dashboard.js';
 import type { IntegrationRateLimiter } from '../services/rate-limiter.js';
 import type { WebhookRetryEngine } from '../services/webhook-retry.js';
 import { maskSecrets, restoreMaskedSecrets } from '../utils/secret-mask.js';
+import { requirePermission } from '../plugins/authz.js';
 
 export interface IntegrationRouteDeps {
   store: IntegrationStore;
@@ -44,6 +45,11 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       }
     };
 
+    const readAccess = requirePermission(PERMISSIONS.INTEGRATION_READ);
+    const createAccess = requirePermission(PERMISSIONS.INTEGRATION_CREATE);
+    const updateAccess = requirePermission(PERMISSIONS.INTEGRATION_UPDATE);
+    const deleteAccess = requirePermission(PERMISSIONS.INTEGRATION_DELETE);
+
     const getTenant = (req: FastifyRequest): string => {
       const user = (req as unknown as Record<string, unknown>).user as { tenantId?: string } | undefined;
       if (!user?.tenantId) throw new AppError(403, 'No tenant context', 'NO_TENANT');
@@ -52,21 +58,21 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
 
     // ─── CRUD ────────────────────────────────────────────────
 
-    app.post('/', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateIntegrationSchema.parse(req.body);
       const integration = await store.createIntegration(tenantId, input);
       return reply.status(201).send({ data: maskSecrets(integration) });
     });
 
-    app.get('/', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = IntegrationQuerySchema.parse(req.query);
       const result = store.listIntegrations(tenantId, query);
       return reply.send({ data: maskSecrets(result.data), total: result.total, page: query.page, limit: query.limit });
     });
 
-    app.get('/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/:id', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -74,7 +80,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       return reply.send({ data: maskSecrets(integration) });
     });
 
-    app.put('/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.put('/:id', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const existing = store.getIntegration(id, tenantId);
@@ -85,7 +91,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       return reply.send({ data: maskSecrets(updated) });
     });
 
-    app.delete('/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.delete('/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const deleted = await store.deleteIntegration(id, tenantId);
@@ -95,7 +101,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
 
     // ─── Test connection ──────────────────────────────────────
 
-    app.post('/:id/test', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/:id/test', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -115,7 +121,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
 
     // ─── Logs ──────────────────────────────────────────────────
 
-    app.get('/:id/logs', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/:id/logs', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -128,7 +134,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
 
     // ─── Stats ─────────────────────────────────────────────────
 
-    app.get('/stats', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/stats', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const stats = store.getStats(tenantId);
       return reply.send({ data: stats });
@@ -136,7 +142,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
 
     // ─── SIEM Push ─────────────────────────────────────────────
 
-    app.post('/:id/push', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/:id/push', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -159,14 +165,14 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
 
     // ─── P0 #5: Health Dashboard ──────────────────────────────
 
-    app.get('/health/dashboard', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/health/dashboard', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       if (!healthDashboard) throw new AppError(503, 'Health dashboard not available', 'NOT_AVAILABLE');
       const summary = healthDashboard.getSummary(tenantId);
       return reply.send({ data: summary });
     });
 
-    app.get('/:id/health', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/:id/health', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       if (!healthDashboard) throw new AppError(503, 'Health dashboard not available', 'NOT_AVAILABLE');
@@ -177,7 +183,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
 
     // ─── P1 #6: Webhook Retry Config ────────────────────────────
 
-    app.get('/:id/retry-config', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/:id/retry-config', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -187,7 +193,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       return reply.send({ data: state });
     });
 
-    app.put('/:id/retry-config', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.put('/:id/retry-config', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);

@@ -1,10 +1,11 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { verifyAccessToken } from '@etip/shared-auth';
+import { verifyAccessToken, PERMISSIONS } from '@etip/shared-auth';
 import { AppError } from '@etip/shared-utils';
 import { PaginationSchema } from '../schemas/integration.js';
 import type { IntegrationStore } from '../services/integration-store.js';
 import type { WebhookService } from '../services/webhook-service.js';
 import type { TriggerEvent } from '../schemas/integration.js';
+import { requirePermission } from '../plugins/authz.js';
 
 export interface WebhookRouteDeps {
   store: IntegrationStore;
@@ -29,6 +30,9 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
       }
     };
 
+    const readAccess = requirePermission(PERMISSIONS.INTEGRATION_READ);
+    const updateAccess = requirePermission(PERMISSIONS.INTEGRATION_UPDATE);
+
     const getTenant = (req: FastifyRequest): string => {
       const user = (req as unknown as Record<string, unknown>).user as { tenantId?: string } | undefined;
       if (!user?.tenantId) throw new AppError(403, 'No tenant context', 'NO_TENANT');
@@ -37,7 +41,7 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
 
     // ─── Trigger webhook ──────────────────────────────────────
 
-    app.post('/:id/trigger', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/:id/trigger', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -56,7 +60,7 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
 
     // ─── Test webhook ─────────────────────────────────────────
 
-    app.post('/:id/test-webhook', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/:id/test-webhook', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const integration = store.getIntegration(id, tenantId);
@@ -69,14 +73,14 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
 
     // ─── Dead Letter Queue ────────────────────────────────────
 
-    app.get('/dlq', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/dlq', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = PaginationSchema.parse(req.query);
       const result = store.listDLQ(tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
-    app.post('/dlq/:id/retry', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/dlq/:id/retry', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const delivery = store.retryDLQ(id, tenantId);

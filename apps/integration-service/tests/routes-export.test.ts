@@ -8,14 +8,19 @@ import { BulkExportService } from '../src/services/bulk-export.js';
 import type { IntegrationConfig } from '../src/config.js';
 import type { FastifyInstance } from 'fastify';
 
-vi.mock('@etip/shared-auth', () => ({
-  verifyAccessToken: (token: string) => {
-    if (token === 'valid-token') return { userId: 'user-1', tenantId: 'tenant-1', role: 'admin' };
-    throw new Error('Invalid token');
-  },
-  loadJwtConfig: () => {},
-  loadServiceJwtSecret: () => {},
-}));
+vi.mock('@etip/shared-auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@etip/shared-auth')>();
+  return {
+    ...actual,
+    verifyAccessToken: (token: string) => {
+      if (token === 'valid-token') return { userId: 'user-1', tenantId: 'tenant-1', role: 'tenant_admin' };
+      if (token === 'analyst-token') return { userId: 'user-3', tenantId: 'tenant-1', role: 'analyst' };
+      throw new Error('Invalid token');
+    },
+    loadJwtConfig: () => {},
+    loadServiceJwtSecret: () => {},
+  };
+});
 
 const TEST_CONFIG: IntegrationConfig = {
   TI_NODE_ENV: 'test',
@@ -153,5 +158,52 @@ describe('Export Routes', () => {
       payload: { format: 'json', entityType: 'iocs' },
     });
     expect(res.statusCode).toBe(401);
+  });
+
+  // Security fix: this route (and every other route in this file except the public
+  // TAXII discovery endpoint) only verified the JWT, with no role check.
+  it('GET /taxii/collections — analyst 403 (no integration:read), tenant_admin 200', async () => {
+    const analystRes = await app.inject({
+      method: 'GET',
+      url: '/api/v1/integrations/taxii/collections',
+      headers: { authorization: 'Bearer analyst-token' },
+    });
+    expect(analystRes.statusCode).toBe(403);
+
+    const adminRes = await app.inject({
+      method: 'GET',
+      url: '/api/v1/integrations/taxii/collections',
+      headers: AUTH,
+    });
+    expect(adminRes.statusCode).toBe(200);
+  });
+
+  it('POST /export — analyst 403 (no integration:update)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/integrations/export',
+      headers: { authorization: 'Bearer analyst-token' },
+      payload: { format: 'csv', entityType: 'iocs' },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('GET /tickets — analyst allowed (alert:read), tickets are analyst work', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/integrations/tickets',
+      headers: { authorization: 'Bearer analyst-token' },
+    });
+    expect(res.statusCode).not.toBe(403);
+  });
+
+  it('POST /tickets — analyst passes RBAC (fails later on the unknown integration, not 403)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/integrations/tickets',
+      headers: { authorization: 'Bearer analyst-token' },
+      payload: { integrationId: '00000000-0000-0000-0000-000000000099', title: 't', description: 'd' },
+    });
+    expect(res.statusCode).not.toBe(403);
   });
 });

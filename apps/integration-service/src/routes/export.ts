@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { verifyAccessToken } from '@etip/shared-auth';
+import { verifyAccessToken, PERMISSIONS } from '@etip/shared-auth';
 import { AppError } from '@etip/shared-utils';
 import { z } from 'zod';
 import { BulkExportRequestSchema, CreateTicketSchema, PaginationSchema } from '../schemas/integration.js';
@@ -7,6 +7,7 @@ import type { IntegrationStore } from '../services/integration-store.js';
 import type { StixExportService } from '../services/stix-export.js';
 import type { BulkExportService } from '../services/bulk-export.js';
 import type { TicketingService } from '../services/ticketing-service.js';
+import { requirePermission } from '../plugins/authz.js';
 
 export interface ExportRouteDeps {
   store: IntegrationStore;
@@ -33,6 +34,14 @@ export function exportRoutes(deps: ExportRouteDeps) {
       }
     };
 
+    const readAccess = requirePermission(PERMISSIONS.INTEGRATION_READ);
+    const updateAccess = requirePermission(PERMISSIONS.INTEGRATION_UPDATE);
+    // Tickets go only to an admin-configured ticketing integration (tenant-scoped by id), so raising
+    // them from alerts/correlations is analyst work — gated on alert permissions, not integration admin.
+    const ticketCreate = requirePermission(PERMISSIONS.ALERT_CREATE);
+    const ticketRead = requirePermission(PERMISSIONS.ALERT_READ);
+    const ticketUpdate = requirePermission(PERMISSIONS.ALERT_UPDATE);
+
     const getTenant = (req: FastifyRequest): string => {
       const user = (req as unknown as Record<string, unknown>).user as { tenantId?: string } | undefined;
       if (!user?.tenantId) throw new AppError(403, 'No tenant context', 'NO_TENANT');
@@ -40,6 +49,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
     };
 
     // ─── TAXII 2.1 Discovery ─────────────────────────────────
+    // Intentionally unauthenticated — standard TAXII discovery is public.
 
     app.get('/taxii/discovery', async (req: FastifyRequest, reply: FastifyReply) => {
       const baseUrl = `${req.protocol}://${req.hostname}`;
@@ -49,7 +59,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
 
     // ─── TAXII 2.1 Collections ───────────────────────────────
 
-    app.get('/taxii/collections', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/taxii/collections', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const collections = stixExport.getCollections(tenantId);
       return reply.header('Content-Type', 'application/taxii+json;version=2.1').send(collections);
@@ -57,7 +67,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
 
     // ─── TAXII 2.1 Collection Objects ─────────────────────────
 
-    app.get('/taxii/collections/:collectionId/objects', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/taxii/collections/:collectionId/objects', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       // collectionId from params — used in production to filter by collection
       void (req.params as { collectionId: string }).collectionId;
@@ -79,7 +89,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
 
     // ─── Bulk Export ──────────────────────────────────────────
 
-    app.post('/export', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/export', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const request = BulkExportRequestSchema.parse(req.body);
 
@@ -99,7 +109,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
 
     // ─── Ticketing ────────────────────────────────────────────
 
-    app.post('/tickets', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/tickets', { preHandler: [auth, ticketCreate] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateTicketSchema.parse(req.body);
 
@@ -114,7 +124,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
       return reply.status(201).send({ data: ticket });
     });
 
-    app.get('/tickets', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.get('/tickets', { preHandler: [auth, ticketRead] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = PaginationSchema.extend({
         integrationId: z.string().uuid().optional(),
@@ -123,7 +133,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
-    app.post('/tickets/:id/sync', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    app.post('/tickets/:id/sync', { preHandler: [auth, ticketUpdate] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
 

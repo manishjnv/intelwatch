@@ -298,7 +298,7 @@ describe('I-09: API key route integration', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/users/api-keys',
-      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1', 'content-type': 'application/json' },
+      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1', 'x-user-role': 'tenant_admin', 'content-type': 'application/json' },
       payload: JSON.stringify({ name: 'Test Key', scopes: ['ioc:read'] }),
     });
 
@@ -323,7 +323,7 @@ describe('I-09: API key route integration', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/users/api-keys',
-      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1' },
+      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1', 'x-user-role': 'tenant_admin' },
       payload: { name: 'Test Key', scopes: ['ioc:read'] },
     });
 
@@ -348,7 +348,7 @@ describe('I-09: API key route integration', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/users/api-keys',
-      headers: { 'x-tenant-id': 'tenant-free', 'x-user-id': 'user-1' },
+      headers: { 'x-tenant-id': 'tenant-free', 'x-user-id': 'user-1', 'x-user-role': 'tenant_admin' },
       payload: { name: 'Override Key', scopes: ['ioc:read'] },
     });
 
@@ -372,7 +372,7 @@ describe('I-09: API key route integration', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/users/api-keys',
-      headers: { 'x-tenant-id': 'tenant-free', 'x-user-id': 'user-1' },
+      headers: { 'x-tenant-id': 'tenant-free', 'x-user-id': 'user-1', 'x-user-role': 'tenant_admin' },
       payload: { name: 'Expired Key', scopes: ['ioc:read'] },
     });
 
@@ -388,7 +388,7 @@ describe('I-09: API key route integration', () => {
     const res = await app.inject({
       method: 'GET',
       url: '/api/v1/users/api-keys',
-      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1' },
+      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1', 'x-user-role': 'tenant_admin' },
     });
 
     expect(res.statusCode).toBe(200);
@@ -404,7 +404,7 @@ describe('I-09: API key route integration', () => {
     const res = await app.inject({
       method: 'GET',
       url: '/api/v1/users/api-keys',
-      headers: { 'x-tenant-id': 'tenant-free', 'x-user-id': 'user-1' },
+      headers: { 'x-tenant-id': 'tenant-free', 'x-user-id': 'user-1', 'x-user-role': 'tenant_admin' },
     });
 
     expect(res.statusCode).toBe(200);
@@ -422,7 +422,7 @@ describe('I-09: API key route integration', () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/api/v1/users/api-keys/key-1',
-      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1' },
+      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1', 'x-user-role': 'tenant_admin' },
     });
 
     expect(res.statusCode).toBe(204);
@@ -435,7 +435,7 @@ describe('I-09: API key route integration', () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/api/v1/users/api-keys/nonexistent',
-      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1' },
+      headers: { 'x-tenant-id': 'tenant-1', 'x-user-id': 'user-1', 'x-user-role': 'tenant_admin' },
     });
 
     expect(res.statusCode).toBe(404);
