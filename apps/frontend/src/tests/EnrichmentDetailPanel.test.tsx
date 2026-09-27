@@ -72,7 +72,7 @@ describe('EnrichmentDetailPanel', () => {
   it('shows a distinct message for not_selected status', () => {
     render(<EnrichmentDetailPanel iocId="ioc-1" iocType="ip" enrichment={NOT_SELECTED_RESULT} />)
     expect(screen.getByText('Not enriched yet.')).toBeInTheDocument()
-    expect(screen.getByText(/doesn't qualify for auto-enrichment/)).toBeInTheDocument()
+    expect(screen.getByText(/Only critical\/high IOCs auto-enrich/)).toBeInTheDocument()
   })
 
   it('triggers manual enrichment when Enrich now is clicked', async () => {
