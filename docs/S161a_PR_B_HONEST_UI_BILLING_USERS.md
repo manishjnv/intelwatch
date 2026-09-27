@@ -177,6 +177,23 @@ pnpm exec eslint .
 6. Check all of the above at 375px width (feedback_mobile_first.md).
 7. Search the built bundle for "Demo", "demo data", "(demo)" — none should appear on these screens.
 
+## Post-deploy hotfix (2026-09-27, branch `s161a/hotfix-system-tab`)
+
+The owner's browser check after deploy found two regressions exposed by removing the fallbacks (RCA Issue 45 in
+`docs/DEPLOYMENT_RCA.md`):
+
+1. **Command Center → System crashed** (`Cannot read properties of undefined (reading 'total')`).
+   `/admin/system/health` has no `summary` field; `SystemTab.tsx` now derives healthy / degraded / down counts
+   and the total from the real `services` list (uptime unknown → '—'). `AdminOpsPage` already guarded
+   `summary` with `?.` and was not affected (its services stat tile stays '—').
+2. **Plan Builder showed a false "No plans defined yet".** `usePlanBuilder` read `r.data` after `api()`, which
+   already unwraps the gateway's `{ data, total }` — always `[]`. It now uses the array and throws on a non-array.
+
+Also observed, not changed here: "No tenants found" on Subscription (super-admin) is the true API answer —
+admin-service's `TenantStore` is in-memory and empty (Step 3 persistence); the service grid shows a bare "ms" (no latency value)
+because admin-service's `ServiceEntry` has no `responseMs` (S163 shape alignment); the Compliance reports list
+and the Command Center "Demo data" banner come from S161b hooks.
+
 ## Rollback
 Revert the merge PR on `master` (frontend only, no backend/schema change), or before merge:
 `git reset --hard safe-point-2026-09-27-pre-pr-b`.
