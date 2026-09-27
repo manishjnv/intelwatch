@@ -203,7 +203,12 @@ export function useSystemHealth() {
 export function useMaintenanceWindows() {
   return useQuery<ListResponse<MaintenanceWindow>>({
     queryKey: ['admin-maintenance'],
-    queryFn: () => apiList<MaintenanceWindow>('/admin/maintenance'),
+    // admin-service's MaintenanceWindow has scope/tenantIds, no affectedServices — default it so
+    // SystemTab and AdminOpsPage (`.length` / `.map`) can't crash on a real window (RCA #45 class).
+    queryFn: () => apiList<MaintenanceWindow>('/admin/maintenance').then(env => ({
+      ...env,
+      data: env.data.map(w => ({ ...w, affectedServices: w.affectedServices ?? [] })),
+    })),
     meta: { resource: 'maintenance windows' },
     staleTime: 60_000,
   })

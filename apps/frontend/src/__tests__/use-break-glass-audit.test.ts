@@ -32,7 +32,20 @@ describe('useBreakGlassAudit — real api() return shape', () => {
     const { result } = renderHook(() => useBreakGlassAudit({ page: 1 }), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.isDemo).toBe(false)
-    expect(result.current.data.data).toEqual([entry])
+    expect(result.current.data.data).toEqual([{ ...entry, ip: '—', location: '—', details: null, riskLevel: 'critical' }])
+  })
+
+  it('maps raw Prisma AuditLog rows (what user-service really returns) to the panel shape', async () => {
+    mockApi.mockResolvedValueOnce([{
+      id: 'r1', tenantId: 't1', userId: null, action: 'break_glass.login.success', entityType: 'user',
+      entityId: 'u1', changes: { reason: 'drill' }, ipAddress: '10.0.0.1', createdAt: '2026-09-27T08:00:00Z',
+    }])
+    const { result } = renderHook(() => useBreakGlassAudit({ page: 1 }), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data.data[0]).toEqual({
+      id: 'r1', event: 'login.success', ip: '10.0.0.1', location: '—',
+      timestamp: '2026-09-27T08:00:00Z', details: '{"reason":"drill"}', riskLevel: 'critical',
+    })
   })
 
   it('an empty audit log is a real empty list, not undefined', async () => {
