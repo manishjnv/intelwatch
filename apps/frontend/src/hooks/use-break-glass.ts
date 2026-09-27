@@ -91,6 +91,25 @@ export function useBreakGlassStatus() {
   return { ...result, data: result.data ?? DEMO_STATUS, isDemo, DEMO_STATUS_ACTIVE }
 }
 
+// user-service returns raw Prisma AuditLog rows ({ action: 'break_glass.login.success', ipAddress, createdAt,
+// changes }), not the panel's shape — map them here so BreakGlassPanel never dereferences a missing field.
+type AuditLogRow = Partial<BreakGlassAuditEntry> & {
+  id: string; action?: string; ipAddress?: string | null; createdAt?: string; changes?: unknown
+}
+
+export function toBreakGlassAuditEntry(r: AuditLogRow): BreakGlassAuditEntry {
+  const changes = r.changes == null ? null : typeof r.changes === 'string' ? r.changes : JSON.stringify(r.changes)
+  return {
+    id: r.id,
+    event: r.event ?? (r.action ?? 'unknown').replace(/^break_glass\./, ''),
+    ip: r.ip ?? r.ipAddress ?? '—',
+    location: r.location ?? '—',
+    timestamp: r.timestamp ?? r.createdAt ?? '',
+    details: r.details ?? changes,
+    riskLevel: 'critical',
+  }
+}
+
 /** Fetch break-glass audit log. */
 export function useBreakGlassAudit(filters: AuditFilters = {}) {
   const params = new URLSearchParams()
@@ -106,7 +125,8 @@ export function useBreakGlassAudit(filters: AuditFilters = {}) {
     // old shape made auditData.data undefined and crashed the panel on any successful response (RCA #45 class).
     // ponytail: demo fallback on error stays until S161b converts this hook to honest UI.
     queryFn: () =>
-      apiList<BreakGlassAuditEntry>(`/admin/break-glass/audit${qs ? `?${qs}` : ''}`)
+      apiList<AuditLogRow>(`/admin/break-glass/audit${qs ? `?${qs}` : ''}`)
+        .then(env => ({ ...env, data: env.data.map(toBreakGlassAuditEntry) }))
         .catch(err => notifyApiError(err, 'break-glass audit', null)),
     staleTime: 30_000,
   })
