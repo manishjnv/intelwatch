@@ -117,7 +117,7 @@ Step 3 persistence sessions → Step 4 DB role + RLS (security review before pus
 
 **Queue after PR B:**
 0. S163 must fix the billing/admin path+shape mismatches PR B verified (see `docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`): `/billing/plans` price field (`priceInr`/`priceUsd` vs `price`), `/billing/usage` shape (flat snake_case vs nested), `/billing/subscription` vs the real `/billing/subscriptions` (plural), missing `/billing/stats`, missing `/admin/stats`.
-1. S161b — remaining honest-UI hooks incl. dashboard widgets
+1. S161b — remaining honest-UI hooks incl. dashboard widgets. **Also fix the `api(...).then(r => r?.data …)` bug class (RCA #45)** — `api()` already returns `json.data`, so these always hit their fallback (why Compliance reports still show demo rows): `use-access-reviews.ts:104,165`, `use-compliance-reports.ts:186,249`, `use-global-catalog.ts:74,88`, `use-global-iocs.ts:119,132,173,185,197`, `use-global-monitoring.ts:109,125,140`, `use-plan-limits.ts:62`, `use-tenant-overrides.ts:66`. Also: one test per converted screen must use the real backend response shape; `QuotaWarningBanner` is unused (wire or delete); widen `ServiceStatus` in `phase6-demo-data.ts:72` to include `'critical'` (the real admin-service value).
 2. S162 — user-management-service `/users` routes
 3. S163 — frontend paths/shapes
 4. S164 — ai-enrichment `/enrichment/ioc/:id` + auto-enrich critical/high with a daily cap + admin switch (AI off by default)
