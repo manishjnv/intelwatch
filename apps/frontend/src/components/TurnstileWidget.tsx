@@ -7,6 +7,8 @@
 import { useEffect, useRef, useCallback } from 'react'
 
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? ''
+/** True when this build has a site key, i.e. the server expects a Turnstile token. */
+export const CAPTCHA_ENABLED = SITE_KEY !== ''
 
 declare global {
   interface Window {

@@ -103,9 +103,23 @@ jobs:
           docker push ghcr.io/${{ github.repository_owner }}/etip-backend:latest
 
       - name: Build and push frontend image
+        env:
+          # Public Turnstile site key (repo variable). Production's gateway enforces CAPTCHA
+          # (TI_TURNSTILE_SECRET), so a bundle built without it ships a sign-up page that can
+          # never pass verification (RCA #50) — fail the build instead of shipping that.
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ghcr.io/${{ github.repository_owner }}/etip-frontend:latest -f Dockerfile.frontend .
-          docker push ghcr.io/${{ github.repository_owner }}/etip-frontend:latest
+          IMG=ghcr.io/${{ github.repository_owner }}/etip-frontend:latest
+          if [ -z "$VITE_TURNSTILE_SITE_KEY" ]; then
+            echo "::error::Repository variable VITE_TURNSTILE_SITE_KEY is empty — sign-up CAPTCHA would be broken in production."
+            exit 1
+          fi
+          DOCKER_BUILDKIT=1 docker build --build-arg VITE_TURNSTILE_SITE_KEY="$VITE_TURNSTILE_SITE_KEY" -t "$IMG" -f Dockerfile.frontend .
+          if ! docker run --rm -e K="$VITE_TURNSTILE_SITE_KEY" --entrypoint sh "$IMG" -c 'grep -rqF "$K" /usr/share/nginx/html/assets'; then
+            echo "::error::Turnstile site key is missing from the built frontend bundle."
+            exit 1
+          fi
+          docker push "$IMG"
 
   # ─── Deploy (VPS pulls pre-built images — no build on VPS) ──
   deploy:

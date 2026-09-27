@@ -9,7 +9,8 @@ import { Shield, Eye, EyeOff, ArrowRight, Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { PlanCards, PLANS } from '@/components/PlanCards'
 import { salesMailto } from '@/data/plans'
-import { TurnstileWidget } from '@/components/TurnstileWidget'
+import { SalesContactNote } from '@/components/SalesContactNote'
+import { TurnstileWidget, CAPTCHA_ENABLED } from '@/components/TurnstileWidget'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -28,6 +29,7 @@ export function RegisterPage() {
 
   // Plan selection state
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [salesPlan, setSalesPlan] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,10 +39,14 @@ export function RegisterPage() {
   )
 
   const isValid = email && password.length >= 12 && displayName && tenantName && tenantSlug
+  // When CAPTCHA is configured the server rejects registrations without a token — don't let the user
+  // reach the plan step until the check is done.
+  const canContinue = !!isValid && (!CAPTCHA_ENABLED || turnstileToken !== '')
 
   function handleAccountNext(e: React.FormEvent) {
     e.preventDefault()
-    if (!isValid) return
+    if (!canContinue) return
+    setError('')
     setStep('plans')
   }
 
@@ -48,7 +54,8 @@ export function RegisterPage() {
     // DECISION-031: only Free is self-serve; paid plans are set up by sales (no trial)
     if (planId !== 'free') {
       const name = PLANS.find(p => p.id === planId)?.name ?? planId
-      window.open(salesMailto(`${name} Plan Inquiry`), '_blank')
+      setSalesPlan(name)
+      window.location.href = salesMailto(`${name} Plan Inquiry`) // same-tab mailto: not popup-blocked
       return
     }
     setSelectedPlan(planId)
@@ -69,6 +76,16 @@ export function RegisterPage() {
 
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}))
+        const code = errBody?.error?.code
+        if (code === 'CAPTCHA_MISSING' || code === 'CAPTCHA_FAILED') {
+          // Tokens expire (~5 min) and are single-use: send the user back to redo the check.
+          setTurnstileToken('')
+          setIsSubmitting(false)
+          setSelectedPlan(null)
+          setError('The security check expired or failed. Please complete it again.')
+          setStep('account')
+          return
+        }
         throw new Error(errBody?.error?.message ?? errBody?.message ?? 'Registration failed')
       }
 
@@ -135,6 +152,7 @@ export function RegisterPage() {
           orgName={tenantName}
           error={error}
         />
+        {salesPlan && <SalesContactNote planName={salesPlan} />}
       </div>
     )
   }
@@ -156,6 +174,9 @@ export function RegisterPage() {
         {/* Form card */}
         <div className="bg-bg-primary border border-border rounded-xl p-6 shadow-card">
           <form onSubmit={handleAccountNext} className="space-y-4">
+            {error && (
+              <p role="alert" data-testid="register-account-error" className="text-xs text-sev-critical">{error}</p>
+            )}
             {/* Display name */}
             <div>
               <label htmlFor="displayName" className="block text-xs font-medium text-text-secondary mb-1.5">
@@ -248,7 +269,7 @@ export function RegisterPage() {
             {/* Submit */}
             <button
               type="submit"
-              disabled={!isValid}
+              disabled={!canContinue}
               className="w-full h-10 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               Choose Plan <ArrowRight className="w-4 h-4" />
