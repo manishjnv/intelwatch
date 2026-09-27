@@ -1,4 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock Prisma — persistence itself is covered by integration-store.test.ts.
+vi.mock('../src/prisma.js', () => ({
+  prisma: {
+    integration: {
+      create: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+  disconnectPrisma: vi.fn(),
+}));
+
 import { HealthScoring } from '../src/services/health-scoring.js';
 import { IntegrationStore } from '../src/services/integration-store.js';
 import { IntegrationRateLimiter } from '../src/services/rate-limiter.js';
@@ -30,8 +44,8 @@ describe('HealthScoring', () => {
     expect(scoring.calculateScore('no-such', TENANT)).toBeNull();
   });
 
-  it('calculates perfect score for integration with no logs', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('calculates perfect score for integration with no logs', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     const score = scoring.calculateScore(int.id, TENANT);
     expect(score).toBeDefined();
     expect(score!.score).toBeGreaterThanOrEqual(0);
@@ -40,8 +54,8 @@ describe('HealthScoring', () => {
     expect(score!.components).toBeDefined();
   });
 
-  it('returns grade A for high scores', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('returns grade A for high scores', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     // Add only success logs
     for (let i = 0; i < 10; i++) {
       store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
@@ -52,8 +66,8 @@ describe('HealthScoring', () => {
     expect(score!.grade).toBe('A');
   });
 
-  it('reduces score when failures present', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('reduces score when failures present', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     for (let i = 0; i < 5; i++) {
       store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
     }
@@ -66,21 +80,21 @@ describe('HealthScoring', () => {
     expect(score!.components.errorRateScore).toBe(50); // 50% error rate
   });
 
-  it('gives low syncAge score when never used', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('gives low syncAge score when never used', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     const score = scoring.calculateScore(int.id, TENANT);
     expect(score!.components.syncAgeScore).toBe(0); // Never used
   });
 
-  it('gives high syncAge score when recently used', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('gives high syncAge score when recently used', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     store.touchIntegration(int.id); // Mark as just used
     const score = scoring.calculateScore(int.id, TENANT);
     expect(score!.components.syncAgeScore).toBe(100); // Just used
   });
 
-  it('computes composite score from weighted components', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('computes composite score from weighted components', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     store.touchIntegration(int.id);
     for (let i = 0; i < 10; i++) {
       store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
@@ -98,8 +112,8 @@ describe('HealthScoring', () => {
     expect(scoring.getHistory('no-such', TENANT)).toBeNull();
   });
 
-  it('records history on each score calculation', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('records history on each score calculation', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     scoring.calculateScore(int.id, TENANT);
     scoring.calculateScore(int.id, TENANT);
     scoring.calculateScore(int.id, TENANT);
@@ -110,8 +124,8 @@ describe('HealthScoring', () => {
     expect(history![0]!.timestamp).toBeDefined();
   });
 
-  it('limits history to 30 points', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('limits history to 30 points', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     for (let i = 0; i < 35; i++) {
       scoring.calculateScore(int.id, TENANT);
     }
@@ -119,16 +133,16 @@ describe('HealthScoring', () => {
     expect(history).toHaveLength(30);
   });
 
-  it('returns empty history if score never calculated', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('returns empty history if score never calculated', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     const history = scoring.getHistory(int.id, TENANT);
     expect(history).toEqual([]);
   });
 
   // ─── Grade Mapping ──────────────────────────────────────────
 
-  it('maps dead_letter logs as failures', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('maps dead_letter logs as failures', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     for (let i = 0; i < 10; i++) {
       store.addLog(int.id, TENANT, 'alert.created', 'dead_letter', { errorMessage: 'dlq' });
     }

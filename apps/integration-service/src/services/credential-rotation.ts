@@ -25,11 +25,11 @@ export class CredentialRotationService {
    * Rotate credentials for an integration.
    * Old credentials remain valid during the grace period.
    */
-  rotate(
+  async rotate(
     integrationId: string,
     tenantId: string,
     input: RotateCredentialsInput,
-  ): CredentialRotationRecord {
+  ): Promise<CredentialRotationRecord> {
     const integration = this.store.getIntegration(integrationId, tenantId);
     if (!integration) {
       throw new AppError(404, 'Integration not found', 'NOT_FOUND');
@@ -51,7 +51,7 @@ export class CredentialRotationService {
       : input.newCredentials;
 
     // Update the integration with new credentials
-    this.store.updateIntegration(integrationId, tenantId, {
+    await this.store.updateIntegration(integrationId, tenantId, {
       credentials: encryptedCreds,
     });
 

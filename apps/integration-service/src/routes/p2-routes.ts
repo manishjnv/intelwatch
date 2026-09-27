@@ -106,7 +106,7 @@ export function p2Routes(deps: P2RouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = RotateCredentialsSchema.parse(req.body);
-      const record = credentialRotation.rotate(id, tenantId, input);
+      const record = await credentialRotation.rotate(id, tenantId, input);
 
       // Audit log the rotation
       auditTrail.record({

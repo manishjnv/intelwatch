@@ -11,6 +11,19 @@ import type { SafeFetchResponse } from '../src/utils/safe-fetch.js';
 
 vi.mock('../src/utils/safe-fetch.js', () => ({ safeFetch: vi.fn() }));
 
+// Mock Prisma — persistence itself is covered by integration-store.test.ts.
+vi.mock('../src/prisma.js', () => ({
+  prisma: {
+    integration: {
+      create: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+  disconnectPrisma: vi.fn(),
+}));
+
 /** Build a minimal SafeFetchResponse for mocking. */
 function fakeResponse(status: number, body = ''): SafeFetchResponse {
   return {
@@ -46,7 +59,7 @@ describe('EventRouter', () => {
   it('processJob dispatches to SIEM integrations', async () => {
     vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
-    store.createIntegration('tenant-1', {
+    await store.createIntegration('tenant-1', {
       name: 'Splunk',
       type: 'splunk_hec',
       triggers: ['alert.created'],
@@ -78,7 +91,7 @@ describe('EventRouter', () => {
   it('processJob dispatches to webhook integrations', async () => {
     vi.mocked(safeFetch).mockResolvedValue(fakeResponse(200, 'OK'));
 
-    store.createIntegration('tenant-1', {
+    await store.createIntegration('tenant-1', {
       name: 'Slack Webhook',
       type: 'webhook',
       triggers: ['alert.created'],
@@ -125,7 +138,7 @@ describe('EventRouter', () => {
       .mockResolvedValueOnce(fakeResponse(200, 'OK'))
       .mockRejectedValueOnce(new Error('fail'));
 
-    store.createIntegration('tenant-1', {
+    await store.createIntegration('tenant-1', {
       name: 'Success',
       type: 'webhook',
       triggers: ['alert.created'],
@@ -133,7 +146,7 @@ describe('EventRouter', () => {
       credentials: {},
       webhookConfig: { url: 'https://ok.example.com', method: 'POST', headers: {} },
     });
-    store.createIntegration('tenant-1', {
+    await store.createIntegration('tenant-1', {
       name: 'Fail',
       type: 'webhook',
       triggers: ['alert.created'],

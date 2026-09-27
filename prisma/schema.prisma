@@ -1062,3 +1062,25 @@ model WebhookSubscription {
   @@index([active])
   @@map("webhook_subscriptions")
 }
+
+// S166 PR B — persists apps/integration-service's in-memory IntegrationStore
+// (SIEM/webhook/ticketing connector configs), previously lost on every redeploy.
+// No @relation to Tenant: integration-service enforces tenant scoping in its own
+// store layer (module boundary rule), and this change is scoped to one model only.
+model Integration {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  name          String    @db.VarChar(100)
+  type          String    @db.VarChar(50)
+  enabled       Boolean   @default(true)
+  triggers      String[]
+  // credentials/webhookConfig/siemConfig/ticketingConfig/lastUsedAt — secrets are
+  // already encrypted (enc:v1: prefix) by CredentialEncryption before this is written.
+  config        Json      @default("{}")
+  fieldMappings Json?     @map("field_mappings")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("integrations")
+}

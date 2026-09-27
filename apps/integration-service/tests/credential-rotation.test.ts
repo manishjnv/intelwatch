@@ -1,4 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock Prisma — persistence itself is covered by integration-store.test.ts;
+// this file only needs create/update to resolve so the store's cache behaves.
+vi.mock('../src/prisma.js', () => ({
+  prisma: {
+    integration: {
+      create: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+  disconnectPrisma: vi.fn(),
+}));
+
 import { CredentialRotationService } from '../src/services/credential-rotation.js';
 import { IntegrationStore } from '../src/services/integration-store.js';
 import type { CreateIntegrationInput } from '../src/schemas/integration.js';
@@ -23,9 +38,9 @@ describe('CredentialRotationService', () => {
     rotation = new CredentialRotationService(store, null); // No encryption for tests
   });
 
-  it('rotates credentials successfully', () => {
-    const int = store.createIntegration(TENANT, makeInput());
-    const record = rotation.rotate(int.id, TENANT, {
+  it('rotates credentials successfully', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
+    const record = await rotation.rotate(int.id, TENANT, {
       newCredentials: { apiKey: 'new-key', token: 'new-token' },
       gracePeriodMinutes: 30,
     });
@@ -38,9 +53,9 @@ describe('CredentialRotationService', () => {
     expect(record.graceExpiresAt).toBeDefined();
   });
 
-  it('updates the integration credentials on rotation', () => {
-    const int = store.createIntegration(TENANT, makeInput());
-    rotation.rotate(int.id, TENANT, {
+  it('updates the integration credentials on rotation', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
+    await rotation.rotate(int.id, TENANT, {
       newCredentials: { apiKey: 'new-key-xyz' },
       gracePeriodMinutes: 0,
     });
@@ -49,27 +64,27 @@ describe('CredentialRotationService', () => {
     expect(updated?.credentials.apiKey).toBe('new-key-xyz');
   });
 
-  it('throws for nonexistent integration', () => {
-    expect(() =>
+  it('throws for nonexistent integration', async () => {
+    await expect(
       rotation.rotate('no-such', TENANT, {
         newCredentials: { apiKey: 'x' },
         gracePeriodMinutes: 0,
       }),
-    ).toThrow('not found');
+    ).rejects.toThrow('not found');
   });
 
-  it('sets status to expired when gracePeriod is 0', () => {
-    const int = store.createIntegration(TENANT, makeInput());
-    const record = rotation.rotate(int.id, TENANT, {
+  it('sets status to expired when gracePeriod is 0', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
+    const record = await rotation.rotate(int.id, TENANT, {
       newCredentials: { apiKey: 'new' },
       gracePeriodMinutes: 0,
     });
     expect(record.status).toBe('expired');
   });
 
-  it('masks old credential values', () => {
-    const int = store.createIntegration(TENANT, makeInput());
-    const record = rotation.rotate(int.id, TENANT, {
+  it('masks old credential values', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
+    const record = await rotation.rotate(int.id, TENANT, {
       newCredentials: { apiKey: 'new' },
       gracePeriodMinutes: 0,
     });
@@ -80,21 +95,21 @@ describe('CredentialRotationService', () => {
 
   // ─── Rotation History ───────────────────────────────────────
 
-  it('tracks rotation history', () => {
-    const int = store.createIntegration(TENANT, makeInput());
-    rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v1' }, gracePeriodMinutes: 0 });
-    rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v2' }, gracePeriodMinutes: 0 });
-    rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v3' }, gracePeriodMinutes: 0 });
+  it('tracks rotation history', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
+    await rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v1' }, gracePeriodMinutes: 0 });
+    await rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v2' }, gracePeriodMinutes: 0 });
+    await rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v3' }, gracePeriodMinutes: 0 });
 
     const history = rotation.getRotationHistory(int.id, TENANT, { page: 1, limit: 50 });
     expect(history.total).toBe(3);
     expect(history.data[0]!.rotatedAt >= history.data[1]!.rotatedAt).toBe(true); // newest first
   });
 
-  it('paginates rotation history', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('paginates rotation history', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     for (let i = 0; i < 5; i++) {
-      rotation.rotate(int.id, TENANT, { newCredentials: { k: `v${i}` }, gracePeriodMinutes: 0 });
+      await rotation.rotate(int.id, TENANT, { newCredentials: { k: `v${i}` }, gracePeriodMinutes: 0 });
     }
     const page = rotation.getRotationHistory(int.id, TENANT, { page: 1, limit: 2 });
     expect(page.data).toHaveLength(2);
@@ -103,9 +118,9 @@ describe('CredentialRotationService', () => {
 
   // ─── Latest Rotation ───────────────────────────────────────
 
-  it('gets latest rotation', () => {
-    const int = store.createIntegration(TENANT, makeInput());
-    rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v1' }, gracePeriodMinutes: 60 });
+  it('gets latest rotation', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
+    await rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v1' }, gracePeriodMinutes: 60 });
 
     const latest = rotation.getLatestRotation(int.id, TENANT);
     expect(latest).toBeDefined();
@@ -113,27 +128,27 @@ describe('CredentialRotationService', () => {
     expect(latest!.status).toBe('grace_period');
   });
 
-  it('returns null when no rotations exist', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('returns null when no rotations exist', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     expect(rotation.getLatestRotation(int.id, TENANT)).toBeNull();
   });
 
   // ─── Grace Period ───────────────────────────────────────────
 
-  it('isInGracePeriod returns true during grace period', () => {
-    const int = store.createIntegration(TENANT, makeInput());
-    rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v1' }, gracePeriodMinutes: 60 });
+  it('isInGracePeriod returns true during grace period', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
+    await rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v1' }, gracePeriodMinutes: 60 });
     expect(rotation.isInGracePeriod(int.id, TENANT)).toBe(true);
   });
 
-  it('isInGracePeriod returns false when no grace period', () => {
-    const int = store.createIntegration(TENANT, makeInput());
-    rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v1' }, gracePeriodMinutes: 0 });
+  it('isInGracePeriod returns false when no grace period', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
+    await rotation.rotate(int.id, TENANT, { newCredentials: { k: 'v1' }, gracePeriodMinutes: 0 });
     expect(rotation.isInGracePeriod(int.id, TENANT)).toBe(false);
   });
 
-  it('isInGracePeriod returns false when never rotated', () => {
-    const int = store.createIntegration(TENANT, makeInput());
+  it('isInGracePeriod returns false when never rotated', async () => {
+    const int = await store.createIntegration(TENANT, makeInput());
     expect(rotation.isInGracePeriod(int.id, TENANT)).toBe(false);
   });
 });

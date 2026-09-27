@@ -1,4 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+
+// Mock Prisma — persistence itself is covered by integration-store.test.ts.
+vi.mock('../src/prisma.js', () => ({
+  prisma: {
+    integration: {
+      create: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+  disconnectPrisma: vi.fn(),
+}));
+
 import { buildApp } from '../src/app.js';
 import { IntegrationStore } from '../src/services/integration-store.js';
 import { FieldMapper } from '../src/services/field-mapper.js';
@@ -311,7 +325,7 @@ describe('Integration routes — SSRF guard', () => {
   it('POST /:id/test against a private destination fails gracefully — no 500, no connection made', async () => {
     // Bypass the save-time schema check to simulate a pre-existing bad record
     // (e.g. migrated data) — connect-time protection must still hold.
-    const integration = store.createIntegration('tenant-1', {
+    const integration = await store.createIntegration('tenant-1', {
       name: 'Sneaky', type: 'splunk_hec', enabled: true, triggers: ['alert.created'],
       fieldMappings: [], credentials: {},
       siemConfig: { type: 'splunk_hec', url: 'http://169.254.169.254', token: 'tok', index: 'main', sourcetype: 'etip:alert', verifySsl: true },

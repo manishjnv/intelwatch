@@ -55,7 +55,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
     app.post('/', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateIntegrationSchema.parse(req.body);
-      const integration = store.createIntegration(tenantId, input);
+      const integration = await store.createIntegration(tenantId, input);
       return reply.status(201).send({ data: maskSecrets(integration) });
     });
 
@@ -80,7 +80,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       const existing = store.getIntegration(id, tenantId);
       if (!existing) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       const input = restoreMaskedSecrets(UpdateIntegrationSchema.parse(req.body), existing);
-      const updated = store.updateIntegration(id, tenantId, input);
+      const updated = await store.updateIntegration(id, tenantId, input);
       if (!updated) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       return reply.send({ data: maskSecrets(updated) });
     });
@@ -88,7 +88,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
     app.delete('/:id', { preHandler: [auth] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const deleted = store.deleteIntegration(id, tenantId);
+      const deleted = await store.deleteIntegration(id, tenantId);
       if (!deleted) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       return reply.status(204).send();
     });

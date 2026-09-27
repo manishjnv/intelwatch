@@ -1,4 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock Prisma — persistence itself is covered by integration-store.test.ts.
+vi.mock('../src/prisma.js', () => ({
+  prisma: {
+    integration: {
+      create: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+  disconnectPrisma: vi.fn(),
+}));
+
 import { HealthDashboard } from '../src/services/health-dashboard.js';
 import { IntegrationStore } from '../src/services/integration-store.js';
 import { IntegrationRateLimiter } from '../src/services/rate-limiter.js';
@@ -23,8 +37,8 @@ describe('HealthDashboard', () => {
     expect(summary.integrations).toEqual([]);
   });
 
-  it('computes success rate from logs', () => {
-    const int = store.createIntegration(TENANT, {
+  it('computes success rate from logs', async () => {
+    const int = await store.createIntegration(TENANT, {
       name: 'Test', type: 'webhook', triggers: ['alert.created'],
       fieldMappings: [], credentials: {},
     });
@@ -46,8 +60,8 @@ describe('HealthDashboard', () => {
     expect(health.lastError).toBe('timeout');
   });
 
-  it('reports 100% success rate when no logs', () => {
-    store.createIntegration(TENANT, {
+  it('reports 100% success rate when no logs', async () => {
+    await store.createIntegration(TENANT, {
       name: 'NoLogs', type: 'splunk_hec', triggers: ['ioc.created'],
       fieldMappings: [], credentials: {},
     });
@@ -57,8 +71,8 @@ describe('HealthDashboard', () => {
     expect(summary.integrations[0].uptimePercent).toBe(100);
   });
 
-  it('includes rate limit status', () => {
-    const int = store.createIntegration(TENANT, {
+  it('includes rate limit status', async () => {
+    const int = await store.createIntegration(TENANT, {
       name: 'RateLimited', type: 'webhook', triggers: ['alert.created'],
       fieldMappings: [], credentials: {},
     });
@@ -87,8 +101,8 @@ describe('HealthDashboard', () => {
     expect(dashboard.getIntegrationHealth('no-id', TENANT)).toBeNull();
   });
 
-  it('getIntegrationHealth returns detailed health', () => {
-    const int = store.createIntegration(TENANT, {
+  it('getIntegrationHealth returns detailed health', async () => {
+    const int = await store.createIntegration(TENANT, {
       name: 'Detail', type: 'sentinel', triggers: ['alert.created'],
       fieldMappings: [], credentials: {},
     });
@@ -104,12 +118,12 @@ describe('HealthDashboard', () => {
     expect(health!.lastError).toBe('exhausted');
   });
 
-  it('filters by tenant correctly', () => {
-    store.createIntegration(TENANT, {
+  it('filters by tenant correctly', async () => {
+    await store.createIntegration(TENANT, {
       name: 'Tenant1', type: 'webhook', triggers: ['alert.created'],
       fieldMappings: [], credentials: {},
     });
-    store.createIntegration('tenant-2', {
+    await store.createIntegration('tenant-2', {
       name: 'Tenant2', type: 'webhook', triggers: ['alert.created'],
       fieldMappings: [], credentials: {},
     });

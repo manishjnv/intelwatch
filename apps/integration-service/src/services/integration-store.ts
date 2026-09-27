@@ -1,4 +1,8 @@
 import { randomUUID } from 'crypto';
+import type { Prisma } from '@prisma/client';
+import { AppError } from '@etip/shared-utils';
+import { prisma } from '../prisma.js';
+import { getLogger } from '../logger.js';
 import type {
   Integration,
   IntegrationLog,
@@ -11,10 +15,13 @@ import type {
 } from '../schemas/integration.js';
 import type { FieldMapper } from './field-mapper.js';
 import type { CredentialEncryption } from './credential-encryption.js';
+import { toConfigJson, toRow, toUpdateRow, fromRow } from './integration-row.js';
 
 /**
- * In-memory store for integration entities.
- * Follows DECISION-013/022 pattern — will migrate to DB when scaling.
+ * Store for integration entities. Write-through cache: the Map is the fast
+ * synchronous read path; create/update/delete write to Postgres first and only
+ * update the Map on success (DB failure throws — cache stays consistent with DB).
+ * Call hydrate() at startup to load persisted rows into the cache.
  */
 export class IntegrationStore {
   private integrations = new Map<string, Integration>();
@@ -45,8 +52,45 @@ export class IntegrationStore {
 
   // ─── Integration CRUD ──────────────────────────────────────
 
+  /**
+   * Load all persisted integrations from Postgres into the in-memory cache.
+   * Throws on DB failure — see hydrateWithRetry() for the startup-safe wrapper.
+   */
+  async hydrate(): Promise<void> {
+    const rows = await prisma.integration.findMany();
+    for (const row of rows) {
+      this.integrations.set(row.id, fromRow(row));
+    }
+  }
+
+  /**
+   * hydrate(), retrying with backoff if the DB is still starting. Never throws —
+   * a still-down DB after all attempts just leaves the cache empty (or partially
+   * populated from an earlier attempt) and logs; the service keeps serving /health.
+   * (ponytail: fixed interval + attempt cap, not a backoff library — this only
+   * needs to smooth over a slow-starting Postgres container on deploy.)
+   */
+  async hydrateWithRetry(
+    logger: { info: (obj: unknown, msg?: string) => void; error: (obj: unknown, msg?: string) => void },
+    opts: { retryMs?: number; maxAttempts?: number } = {},
+  ): Promise<void> {
+    const retryMs = opts.retryMs ?? 30_000;
+    const maxAttempts = opts.maxAttempts ?? 5;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.hydrate();
+        logger.info({ attempt }, 'IntegrationStore hydrated from DB');
+        return;
+      } catch (err) {
+        logger.error({ attempt, error: err instanceof Error ? err.message : String(err) }, 'IntegrationStore hydrate failed');
+        if (attempt < maxAttempts) await new Promise((resolve) => setTimeout(resolve, retryMs));
+      }
+    }
+    logger.error({}, 'IntegrationStore hydrate: giving up after max attempts — starting with an empty cache');
+  }
+
   /** Create a new integration config. Auto-populates default field mappings if none provided. */
-  createIntegration(tenantId: string, input: CreateIntegrationInput): Integration {
+  async createIntegration(tenantId: string, input: CreateIntegrationInput): Promise<Integration> {
     const now = new Date().toISOString();
     // P0 #2: Auto-populate default field mappings when none provided
     const fieldMappings = (input.fieldMappings && input.fieldMappings.length > 0)
@@ -68,7 +112,14 @@ export class IntegrationStore {
       createdAt: now,
       updatedAt: now,
     };
-    this.integrations.set(integration.id, this.encryption ? this.encryption.encryptSecretFields(integration) : integration);
+    const stored = this.encryption ? this.encryption.encryptSecretFields(integration) : integration;
+    try {
+      await prisma.integration.create({ data: toRow(stored) });
+    } catch (err) {
+      getLogger().error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to persist integration');
+      throw new AppError(503, 'Failed to persist integration', 'DB_UNAVAILABLE'); // ponytail: DB detail stays in server logs, never in the response
+    }
+    this.integrations.set(integration.id, stored);
     return integration; // local var still holds plaintext — no decrypt round-trip needed
   }
 
@@ -95,11 +146,11 @@ export class IntegrationStore {
   }
 
   /** Update an existing integration. Secret fields in `input` are encrypted before storage. */
-  updateIntegration(
+  async updateIntegration(
     id: string,
     tenantId: string,
     input: UpdateIntegrationInput,
-  ): Integration | undefined {
+  ): Promise<Integration | undefined> {
     const existing = this.integrations.get(id);
     if (!existing || existing.tenantId !== tenantId) return undefined;
     const encryptedInput = this.encryption ? this.encryption.encryptSecretFields(input) : input;
@@ -111,14 +162,26 @@ export class IntegrationStore {
       createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };
+    try {
+      await prisma.integration.updateMany({ where: { id, tenantId }, data: toUpdateRow(updated) });
+    } catch (err) {
+      getLogger().error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to persist integration update');
+      throw new AppError(503, 'Failed to persist integration update', 'DB_UNAVAILABLE'); // ponytail: DB detail stays in server logs, never in the response
+    }
     this.integrations.set(id, updated);
     return this.decryptOut(updated);
   }
 
   /** Delete an integration and its logs. */
-  deleteIntegration(id: string, tenantId: string): boolean {
+  async deleteIntegration(id: string, tenantId: string): Promise<boolean> {
     const existing = this.getIntegration(id, tenantId);
     if (!existing) return false;
+    try {
+      await prisma.integration.deleteMany({ where: { id, tenantId } });
+    } catch (err) {
+      getLogger().error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to delete integration');
+      throw new AppError(503, 'Failed to delete integration', 'DB_UNAVAILABLE'); // ponytail: DB detail stays in server logs, never in the response
+    }
     this.integrations.delete(id);
     // Clean up related logs
     for (const [logId, log] of this.logs) {
@@ -134,13 +197,29 @@ export class IntegrationStore {
       .map((i) => this.decryptOut(i));
   }
 
-  /** Mark integration as recently used. */
+  /**
+   * Mark integration as recently used. Called after every SIEM/webhook/ticketing
+   * push — the Map update is synchronous so pushes never wait on it. The DB write
+   * is fire-and-forget (ponytail: awaiting here would add DB latency to every push;
+   * losing a lastUsedAt timestamp on crash is fine — upgrade to awaited if that changes).
+   */
   touchIntegration(id: string): void {
     const item = this.integrations.get(id);
-    if (item) {
-      item.lastUsedAt = new Date().toISOString();
-      item.updatedAt = new Date().toISOString();
-    }
+    if (!item) return;
+    const now = new Date().toISOString();
+    item.lastUsedAt = now;
+    item.updatedAt = now;
+    prisma.integration
+      .updateMany({
+        where: { id, tenantId: item.tenantId },
+        data: { config: toConfigJson(item) as unknown as Prisma.InputJsonValue, updatedAt: new Date(now) },
+      })
+      .catch((err: unknown) => {
+        getLogger().error(
+          { integrationId: id, error: err instanceof Error ? err.message : String(err) },
+          'touchIntegration: DB write failed — cache updated, DB left stale',
+        );
+      });
   }
 
   // ─── Logs ──────────────────────────────────────────────────

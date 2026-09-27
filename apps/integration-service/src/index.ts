@@ -1,6 +1,7 @@
 import { loadConfig } from './config.js';
 import { initLogger } from './logger.js';
 import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
+import { disconnectPrisma } from './prisma.js';
 import { IntegrationStore } from './services/integration-store.js';
 import { FieldMapper } from './services/field-mapper.js';
 import { SiemAdapter } from './services/siem-adapter.js';
@@ -73,6 +74,10 @@ async function main(): Promise<void> {
   const credentialRotation = new CredentialRotationService(store, credentialEncryption);
   const alertRoutingEngine = new AlertRoutingEngine();
 
+  // 7b. Load persisted integrations. Non-blocking (not awaited) — /health serves
+  // immediately even if Postgres is still starting; retries with backoff in the background.
+  void store.hydrateWithRetry(logger);
+
   // 8. Build Fastify app
   const app = await buildApp({
     config,
@@ -96,6 +101,7 @@ async function main(): Promise<void> {
     logger.info({ signal }, 'Shutting down integration-service...');
     await eventRouter.stop();
     await app.close();
+    await disconnectPrisma();
     process.exit(0);
   };
 
