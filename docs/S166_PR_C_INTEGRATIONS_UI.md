@@ -43,3 +43,11 @@ Tenants cannot create a public API key anywhere in the UI, so the TAXII card can
 
 ## Rollback
 `git revert` the PR C commit (frontend only).
+
+## Deployed
+
+**Date:** 2026-09-28 · Master `b4f9e71` · CI/CD run 36347744374 green.
+
+- VPS HEAD `b4f9e71`, 32/32 containers healthy.
+- Frontend bundle `index-BcDHey4p.js`.
+- Frontend tests: 1,954.

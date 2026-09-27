@@ -29,3 +29,14 @@ integration-service 455, user-management-service 371, frontend 1,969 — all pas
 
 ## Rollback
 `git revert` the two S167 commits (no schema/env changes).
+
+## Deployed
+
+**Date:** 2026-09-28 · Master `1790380` (role enforcement) + `f426026` (API keys panel) · CI/CD run 36349837126 green.
+
+- VPS HEAD `f426026`, 32/32 containers healthy.
+- No error logs in `etip_integration` / `etip_user_management`.
+- Frontend bundle `index-C1OKlfIM.js`.
+- Verified live: TAXII discovery and `/api/v1/integrations` both return 401 without credentials.
+- Tests: integration-service 455, user-management-service 371, frontend 1,969.
+- RCA: `docs/DEPLOYMENT_RCA.md` Issue 48 (server-side role enforcement gap — found during this build, not an incident).

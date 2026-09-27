@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 166 (S166 PR A) &middot; 2026-09-28 &middot; SIEM integration Phase 1 — PR A deployed (outbound hardening, RCA Issue 47), roles fix (69f8239) live, Step 15 v2 approved. Master 2831d00, VPS 2831d00. 1,939 frontend tests, 430 integration-service tests. 32/32 healthy. Next: PR B persistence, then PR C easy-connect UI.</span>
+  <span class="version">Session 167 &middot; 2026-09-28 &middot; SIEM integration Step 15 Phase 1 COMPLETE — PR A (outbound hardening, RCA Issue 47), PR B (persistence), PR C (real Integrations tab), and S167 (API keys panel + server-side role enforcement, RCA Issue 48) all deployed. Master f426026, VPS f426026. 1,969 frontend tests, 455 integration-service tests, 371 user-management-service tests. 32/32 healthy. Next: owner decisions for Step 15 P2.</span>
 </div>
 </div>
 
@@ -91,7 +91,7 @@ li strong { color: var(--text-primary); }
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
     <div class="stat-card"><div class="stat-value">~8,450</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">166</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">167</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -145,7 +145,7 @@ li strong { color: var(--text-primary); }
     <tbody>
       <tr><td>api-gateway</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Proxy + rate limit + quota enforcement + plan CRUD + usage API + break-glass + public API (TAXII 2.1, webhooks, changelog, SDK) + super-admin search backfill</td><td>307</td></tr>
       <tr><td>user-service</td><td>3001</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>Auth + SSO + Email Verify + SCIM 2.0 + Access Review + Compliance + Break-Glass</td><td>136</td></tr>
-      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Org-Aware Dashboard (9 widgets) + IOC Tier 1-3 (Stats, Enrichment, Corroboration, Multi-select, Create, Context Menu, Presets, Decay Chart, MITRE Badges, Risk Propagation, Compare, Inline Expansion) + Search Page (card/table toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu) + real &#8984;K search + honest UI core (QueryStateView loading/error+Retry/empty/data; MFA/Sessions/FeatureLimits/TenantUsage/Billing/Admin/Users no longer fake on error) + MFA + Sessions + FeatureGate (DECISION-035) + Access Review + Compliance + Offboarding + Break-Glass + SSO Config + 0 tsc errors (CI-enforced)</td><td>1,926</td></tr>
+      <tr><td>frontend</td><td>82</td><td>1</td><td><span class="badge badge-green">Deployed</span></td><td>SPA (23 pages) + Command Center (10 tabs SA / 7 TA) + Org-Aware Dashboard (9 widgets) + IOC Tier 1-3 (Stats, Enrichment, Corroboration, Multi-select, Create, Context Menu, Presets, Decay Chart, MITRE Badges, Risk Propagation, Compare, Inline Expansion) + Search Page (card/table toggle, bulk IOC search, saved presets, search history, multi-select, term highlights, expandable rows, context menu) + real &#8984;K search + honest UI core (QueryStateView loading/error+Retry/empty/data; MFA/Sessions/FeatureLimits/TenantUsage/Billing/Admin/Users no longer fake on error) + MFA + Sessions + FeatureGate (DECISION-035) + Access Review + Compliance + Offboarding + Break-Glass + SSO Config + real easy-connect Integrations tab (S166 PR C) + API keys panel (S167) + 0 tsc errors (CI-enforced)</td><td>1,969</td></tr>
       <tr><td>ingestion</td><td>3004</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Feed CRUD + Policies + 13 Connectors (RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX) + 5 Global Fetch Workers + Pipeline Orchestrator + 4 Admin Routes</td><td>750</td></tr>
       <tr><td>normalization</td><td>3005</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>Pipeline + Global Normalize/Enrich Workers + Shodan/GreyNoise + Tenant Overlay + IOC Stats + KEV/EPSS severity rules + Majestic Million FP whitelist + search-index producer</td><td>328</td></tr>
       <tr><td>ai-enrichment</td><td>3006</td><td>2</td><td><span class="badge badge-green">Deployed</span></td><td>7 (5+2 batch) + search-index producer</td><td>329</td></tr>
@@ -157,8 +157,8 @@ li strong { color: var(--text-primary); }
       <tr><td>correlation-engine</td><td>3013</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>20</td><td>173</td></tr>
       <tr><td>threat-hunting</td><td>3014</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>47</td><td>222</td></tr>
       <tr><td>digital-risk-protection</td><td>3011</td><td>4</td><td><span class="badge badge-green">Deployed</span></td><td>36</td><td>310</td></tr>
-      <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>24</td><td>174</td></tr>
-      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58 (+I-19 offboarding +I-20 retention +I-21 transfer)</td><td>334</td></tr>
+      <tr><td>enterprise-integration</td><td>3015</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>24 (persisted + RBAC)</td><td>455</td></tr>
+      <tr><td>user-management</td><td>3016</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>64 (+I-19 offboarding +I-20 retention +I-21 transfer +api-keys RBAC)</td><td>371</td></tr>
       <tr><td>customization</td><td>3017</td><td>5</td><td><span class="badge badge-green">Deployed</span></td><td>58 (+BYOK +FeedQuota +GlobalAI +PlanLimits)</td><td>319</td></tr>
       <tr><td>onboarding</td><td>3018</td><td>6</td><td><span class="badge badge-green">Deployed</span></td><td>32</td><td>241</td></tr>
       <tr><td><strong>billing</strong></td><td>3019</td><td>6</td><td><span class="badge badge-green">Complete</span></td><td>28 (PlanStore Prisma-backed)</td><td>174</td></tr>
@@ -537,8 +537,12 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 166 (S166 PR A) DEPLOYED</span> SIEM integration Phase 1 — PR A deployed (outbound hardening) — Next: PR B persistence, then PR C easy-connect UI</div>
+    <div class="card-title"><span class="badge badge-green">Step 15 Phase 1 DONE</span> Next: owner decisions for P2 (7 architecture decisions in docs/roadmap/STEP_15_ARCHITECTURE_UI.md &sect;11) &rarr; P2 MVP &quot;Am I affected?&quot; + basic advisories</div>
     <div class="card-body">
+      <strong>Step 15 Phase 1 COMPLETE (2026-09-28):</strong> PR A (outbound hardening, RCA Issue 47), PR B (integration persistence), PR C (real easy-connect Integrations tab), and S167 (API keys panel + server-side role enforcement, RCA Issue 48) are all deployed. Master/VPS HEAD <code>f426026</code>, 32/32 healthy. <strong>Follow-ups:</strong> Correlation page &quot;Create ticket&quot; is missing an integrationId picker (pre-existing 400); a route-permission coverage test (iterate registered routes, fail if an authenticated route lacks a permission preHandler) is still to be written.<br><br>
+      <strong>S167 — API keys panel + role enforcement (1790380 + f426026):</strong> Users &amp; Access &rarr; API keys pill (create-once-shown key, scopes, revoke), TAXII card links to it. Server-side: integration-service <code>requirePermission()</code> (fail closed) on every authenticated route; user-management-service api-keys routes gated by <code>settings:update</code>/<code>settings:read</code> — closes RCA Issue 48 (analysts could previously create/modify connectors or mint API keys; the UI hid this but the server didn't enforce it). CI run 36349837126 green, VPS HEAD <code>f426026</code>, 32/32 healthy, no error logs in etip_integration/etip_user_management, bundle <code>index-C1OKlfIM.js</code>. <strong>455 integration-service tests, 371 user-management-service tests, 1,969 frontend tests.</strong> Detail: docs/S167_API_KEYS_PANEL_AND_ROLE_ENFORCEMENT.md.<br><br>
+      <strong>S166 PR C — real easy-connect Integrations tab (b4f9e71):</strong> TAXII feed card + real connector list (health badges, enable/disable, test/edit/delete) + add-connection wizard, non-existent Splunk/XSOAR &quot;connected&quot; cards removed. CI run 36347744374 green, VPS HEAD <code>b4f9e71</code>, 32/32 healthy, bundle <code>index-BcDHey4p.js</code>. 1,954 frontend tests. Detail: docs/S166_PR_C_INTEGRATIONS_UI.md.<br><br>
+      <strong>S166 PR B — integration persistence (c44a5f0):</strong> <code>Integration</code> table replaces the in-memory store (write-through cache). CI run 36345804944 green, VPS verified (integrations table, hydrate log, <code>TI_DATABASE_URL</code> set). Detail: docs/S166_PR_B_INTEGRATION_PERSISTENCE.md.<br><br>
       <strong>S166 PR A (2026-09-28):</strong> integration-service outbound hardening + encrypted credentials. New <code>safeFetch()</code> client (stdlib only) — public-destination policy validated inside the socket DNS lookup, no redirects, idle timeout + total deadline, 1&nbsp;MB cap — applied to all 11 outbound SIEM/webhook/ticketing call sites; connector secrets now encrypted at rest (AES-256-GCM, <code>enc:v1:</code> marker); Fastify <code>errorHandlerPlugin</code> moved to the root scope (validation errors were falling back to generic 500s). Found during Step 15 research, not an incident — see RCA Issue 47. Master <code>2831d00</code>, CI/CD run 36343537845 green, VPS HEAD <code>2831d00</code>, 32/32 containers healthy, <code>etip_integration</code> healthy with no startup errors. <strong>430 integration-service tests</strong> (was 174). Detail: docs/S166_PR_A_INTEGRATION_OUTBOUND_HARDENING.md.<br><br>
       <strong>Roles fix (69f8239, deployed earlier):</strong> Command Center Roles &amp; Permissions tab now shows the 3 real platform roles instead of a fake matrix. CI run 36341451741 green, VPS verified 32/32 healthy, bundle <code>assets/index-B_mrXPFz.js</code>.<br><br>
       <strong>Step 15 roadmap v2 approved (2026-09-28):</strong> SIEM integrations plan revised after market research to threat exposure verdicts, advisories, and connection types (<code>3dd4f19</code> → <code>434cd4e</code> → <code>2cfb58f</code>). Detail: docs/roadmap/STEP_15_ARCHITECTURE_UI.md.<br><br>
@@ -566,10 +570,10 @@ li strong { color: var(--text-primary); }
       &bull; <strong>Unsupported sortable columns removed:</strong> normalizedValue, corroborationCount, iocType, lifecycle — only severity/confidence/lastSeen remain sortable.<br>
       &bull; <strong>Commit:</strong> d517ea0. CI run 23929832680 green. Deployed.<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Next — S166 PR B (in progress)</strong> — integration-service persistence (`Integration` table replaces the in-memory store), branch s166/integration-persistence.<br>
-      2. <strong>Then S166 PR C</strong> — easy-connect UI (TAXII card + real connectors), remove non-existent QRadar/XSOAR cards, fix hook paths.<br>
+      1. <strong>Next — owner decisions for Step 15 P2</strong> — 7 open architecture decisions in docs/roadmap/STEP_15_ARCHITECTURE_UI.md &sect;11 (exposure-service vs. extending existing services, org-profile ownership, asset/vuln-scanner data ownership, sightings ownership, rule&rarr;technique mapping ownership, posture-widget cache TTL exception, `/exposure` sidebar route). Once decided: P2 MVP &quot;Am I affected?&quot; + basic advisories.<br>
+      2. Route-permission coverage test (iterate registered routes per service, fail if an authenticated route lacks a permission preHandler) and the Correlation &quot;Create ticket&quot; integrationId picker.<br>
       3. S161b remaining demo-fallback hook files (alerting, reporting, phase4, analytics, monitoring, command-center incl. the Clients demo tenant list, plus onboarding/integration/customization hooks), S163 (billing/admin path+shape fixes surfaced by PR B, DECISION-036), Step 3 persistence, Step 4 DB role + RLS, Step 10 agent foundation, Steps 11-13.<br>
-      3. Search Console + Bing verification; SEO 2c/2d continue in parallel.<br>
+      4. Search Console + Bing verification; SEO 2c/2d continue in parallel.<br>
     </div>
   </div>
 </div>
@@ -577,7 +581,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 166 (S166 PR A) &middot; 2026-09-28 &middot; Generated by Claude Sonnet 5
+    ETIP v5.0 &middot; Session 167 &middot; 2026-09-28 &middot; Generated by Claude Sonnet 5
   </div>
 </div>
 

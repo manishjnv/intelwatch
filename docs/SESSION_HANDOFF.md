@@ -1,23 +1,28 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-09-28
-**Session:** 166 (label S166 PR A — integration-service outbound hardening + encrypted credentials — DEPLOYED; PR B persistence IN PROGRESS on branch `s166/integration-persistence`)
-**Session Summary (current, read this first):** S166 PR A deployed — master `2831d00`, CI/CD run 36343537845
-green, VPS HEAD `2831d00`, 32/32 containers healthy, `etip_integration` healthy with no startup errors,
-`dist/utils/safe-fetch.js` present, `TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS` unset (defaults false),
-`TI_NODE_ENV=production`. New `safeFetch()` SSRF guard (RCA Issue 47) on all 11 outbound SIEM/webhook/ticketing
-call sites, connector credentials encrypted at rest (AES-256-GCM, `enc:v1:` marker), Fastify
-`errorHandlerPlugin` moved to the root scope (validation errors had been falling back to generic 500s).
-430 integration-service tests. Detail: `docs/S166_PR_A_INTEGRATION_OUTBOUND_HARDENING.md`.
-Work is now on branch `s166/integration-persistence` (PR B, in progress): `Integration` table replaces the
-in-memory store. PR C (easy-connect UI — TAXII card + real connectors, remove non-existent QRadar/XSOAR cards,
-fix hook paths) is next after PR B merges.
-Since the last update to this doc: **S164** (ai-enrichment per-IOC endpoint + severity-gated auto-enrichment +
-per-tenant AI budget) deployed, with a same-day CI lint fix (RCA #46, commit `0ce8767`). **Roles fix**
-(`69f8239`, deployed): Command Center Roles & Permissions tab shows the 3 real roles instead of a fake matrix,
-CI run 36341451741 green, VPS verified 32/32 healthy, bundle `assets/index-B_mrXPFz.js`. **Step 15 roadmap v2
-approved** (`3dd4f19` roadmap → `434cd4e` market research → `2cfb58f` v2 approved): SIEM integrations plan
-revised to threat exposure verdicts, advisories, and connection types — `docs/roadmap/STEP_15_ARCHITECTURE_UI.md`
-(owned by another agent this session, not touched here).
+**Session:** 167 (label S167 — API keys panel + server-side role enforcement, RCA Issue 48 — DEPLOYED. **Step 15 Phase 1 is now COMPLETE**: PR A + PR B + PR C + S167 all deployed)
+**Session Summary (current, read this first):** This session's deploys, in order:
+- **S164** (ai-enrichment per-IOC endpoint + severity-gated auto-enrichment + per-tenant AI budget), with a same-day CI lint fix (RCA #46, commit `0ce8767`).
+- **Roles fix** (`69f8239`): Command Center Roles & Permissions tab shows the 3 real roles instead of a fake matrix, CI run 36341451741 green, VPS verified 32/32 healthy, bundle `assets/index-B_mrXPFz.js`.
+- **Step 15 roadmap v1→v2** (`3dd4f19` roadmap → `434cd4e` market research → `2cfb58f` v2 approved): SIEM integrations plan revised to threat exposure verdicts, advisories, and connection types — `docs/roadmap/STEP_15_ARCHITECTURE_UI.md`.
+- **S166 PR A** (integration-service outbound hardening + encrypted credentials, RCA Issue 47): master `2831d00`, CI/CD run 36343537845 green, VPS HEAD `2831d00`, 32/32 healthy, `etip_integration` healthy with no startup errors, `dist/utils/safe-fetch.js` present, `TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS` unset (defaults false), `TI_NODE_ENV=production`. New `safeFetch()` SSRF guard on all 11 outbound SIEM/webhook/ticketing call sites, connector credentials encrypted at rest (AES-256-GCM, `enc:v1:` marker), Fastify `errorHandlerPlugin` moved to the root scope. 430 integration-service tests. Detail: `docs/S166_PR_A_INTEGRATION_OUTBOUND_HARDENING.md`.
+- **S166 PR B** (integration persistence): `Integration` table replaces the in-memory store. Master `c44a5f0`, CI run 36345804944 green, VPS verified (integrations table, hydrate log, `TI_DATABASE_URL` set). Detail: `docs/S166_PR_B_INTEGRATION_PERSISTENCE.md`.
+- **S166 PR C** (real easy-connect Integrations tab, frontend only): TAXII feed card + real connector list + add-connection wizard, non-existent Splunk/XSOAR cards removed. Master `b4f9e71`, CI run 36347744374 green, VPS HEAD `b4f9e71`, 32/32 healthy, bundle `index-BcDHey4p.js`. 1,954 frontend tests. Detail: `docs/S166_PR_C_INTEGRATIONS_UI.md`.
+- **S167** (API keys panel + server-side role enforcement — RCA Issue 48: integration-service and user-management-service routes checked authentication only, not role, so any authenticated tenant user incl. `analyst` could create/modify connectors or mint API keys; the UI hid this but the server didn't enforce it): master `1790380` (role enforcement) + `f426026` (API keys panel), CI run 36349837126 green, VPS HEAD `f426026`, 32/32 healthy, no error logs in `etip_integration`/`etip_user_management`, bundle `index-C1OKlfIM.js`, TAXII discovery and `/api/v1/integrations` return 401 without credentials. integration-service 455 tests, user-management-service 371 tests, frontend 1,969 tests. Detail: `docs/S167_API_KEYS_PANEL_AND_ROLE_ENFORCEMENT.md`, RCA: `docs/DEPLOYMENT_RCA.md` Issue 48.
+
+**Step 15 Phase 1 is now COMPLETE.** Next is **owner decisions for P2** — 7 open architecture decisions in
+`docs/roadmap/STEP_15_ARCHITECTURE_UI.md` §11:
+1. New `exposure-service` vs. extending correlation-engine/integration-service (recommendation: new service).
+2. Where tenant org-profile (industry/geo/tech-stack) lives server-side (recommendation: extend customization).
+3. Asset/vuln-scanner data ownership (recommendation: extend drp-service's `DrpAsset`).
+4. Sightings ownership (recommendation: integration-service).
+5. Rule→technique mapping ownership (recommendation: integration-service).
+6. Posture-widget cache TTL exception to CLAUDE.md's "dashboard 48hr" constant (recommendation: approve).
+7. New top-level sidebar route `/exposure` vs. folding into Command Center (recommendation: new top-level route).
+(An 8th item in §11, `ExternalRule`/`ExternalIncident`/`Sighting` timing vs. Step 3, is already resolved —
+S166 PR B gave integration-service its own `integrations` table.) Once the owner decides, P2 MVP work
+("Am I affected?" + basic advisories) can start.
+
 S161b PRs 2–4 (alerting/reporting, phase4, phase5/6 rest — see list below) and S163 (billing/admin path+shape
 fixes) are still pending, unchanged since S161b PR 1 landed.
 
@@ -109,6 +114,20 @@ Details column shows raw JSON (cosmetic). Full list: `docs/S161a_PR_B_SESSION_20
 
 ## ⚠️ Open Items / Next Steps
 
+**Immediate — S167 follow-ups (new, this session):**
+- Correlation page "Create ticket" (`use-phase4-data.ts` `useCreateTicket`) sends no `integrationId`, which
+  `POST /integrations/tickets` requires — pre-existing 400; needs a ticketing-integration picker.
+- Route-permission coverage test (RCA Issue 48 prevention item, not yet built): add a test per service that
+  iterates its registered routes and fails if an authenticated route lacks a permission preHandler.
+- Plan-limit server enforcement gap still open (see `memory/project_plan_enforcement_gap.md`): plan
+  `enabled:false` is not enforced server-side for `/iocs`, `/drp`, `/graph`, `/search` etc. — nginx bypasses
+  the gateway quota. Keep out of public docs until fixed.
+- API keys panel: the `lastUsed` field exists on the backend model but isn't displayed in the frontend list yet.
+- integration-service logs/DLQ are still in-memory (not persisted) — only connector config moved to Postgres
+  in S166 PR B.
+- S161b PRs 2–4 still pending (alerting/reporting, phase4, phase5/6 rest hooks) — unchanged since PR 1 landed.
+- S163 backend gaps list still open (billing/admin path+shape mismatches — see "Then:" list below).
+
 **Immediate — S161b (remaining demo-fallback hook files):**
 - Hook files: alerting, reporting, phase4 (DRP/graph/correlation/hunting), analytics, global-monitoring,
   command-center (incl. the Clients demo tenant list), plus inline hooks (onboarding, integration, customization).
@@ -169,8 +188,26 @@ Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_
 ## 🔁 How to Resume
 
 ```
-/session-start → S161b. One folder (E:\code\IntelWatch), branch per task, one PR merged + deployed at a time
+/session-start → S168. One folder (E:\code\IntelWatch), branch per task, one PR merged + deployed at a time
 (DECISION-034). Use Sonnet/Haiku as much as possible (Opus for plan/review/security judgment only).
+
+Step 15 Phase 1 is COMPLETE (PR A/B/C + S167). Two independent tracks are open — pick whichever the owner
+wants first, they don't block each other:
+
+TRACK 1 — Step 15 P2, blocked on the owner:
+Present the 7 open architecture decisions in docs/roadmap/STEP_15_ARCHITECTURE_UI.md §11 (exposure-service
+vs. extending existing services, org-profile ownership, asset/vuln-scanner data ownership, sightings
+ownership, rule→technique mapping ownership, posture-widget cache TTL exception, /exposure sidebar route).
+Once the owner decides, branch for P2 MVP ("Am I affected?" + basic advisories) per the v2 spec.
+
+TRACK 2 — small follow-ups, no owner input needed:
+- Correlation "Create ticket" (use-phase4-data.ts useCreateTicket) needs an integrationId picker — currently
+  a pre-existing 400.
+- Route-permission coverage test per service (RCA Issue 48 prevention item) — iterate registered routes,
+  fail if an authenticated route lacks a permission preHandler.
+- API keys panel: wire up the lastUsed display (field exists on the backend model already).
+
+Then resume S161b (remaining demo-fallback hook files, unchanged since PR 1 landed):
 
 Suggested branch: s161b/honest-ui-remaining-hooks (frontend only — split into more than one PR if the file
 count grows past ~10-12; one module per task per CLAUDE.md).
@@ -208,9 +245,10 @@ QueryStateView interaction, any .then(r=>r.data) leftovers, FeatureGate interact
 deploy → verify (owner browser check on the specific screens touched). Run the frontend suite locally with
 `cd apps/frontend && pnpm exec vitest run` (Node 20.20.2). Check at 375px per feedback_mobile_first.md.
 
-Then: S162 (user-management-service /users routes) → S163 (billing/admin path+shape fixes) → S164
-(ai-enrichment endpoint + auto-enrich) → S165 (/graph/overview) → S166 (real Clients tenant list) →
-Step 3 persistence → Step 4 DB role + RLS (security review before push) → Step 10 → Steps 11-13.
+Then: S163 (billing/admin path+shape fixes) → S165 (/graph/overview) → S166-numbering item (real Clients
+tenant list, DECISION-013 — note: this is a different, older "S166" than the S166 PR A/B/C SIEM-integration
+label used elsewhere in this doc) → Step 3 persistence → Step 4 DB role + RLS (security review before push)
+→ Step 10 → Steps 11-13.
 ```
 
 ## Module Map (frontend, S161b-relevant)
