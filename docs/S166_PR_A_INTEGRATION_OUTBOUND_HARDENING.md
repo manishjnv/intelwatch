@@ -41,3 +41,20 @@ client, and connector credentials are encrypted at rest.
 - PR B: `Integration` table (persistence) — owner approved 2026-09-28.
 - PR C: easy-connect UI (TAXII card + real connectors), remove non-existent QRadar/XSOAR cards, fix hook paths.
 - `src/schemas/integration.ts` is 600+ lines (pre-existing) — split in Step 6 cleanup.
+
+## Deployed
+
+**2026-09-28.** CI/CD run 36343537845 green (test/typecheck/lint, build&push, deploy). VPS: HEAD `2831d00`,
+32/32 containers healthy, `etip_integration` healthy with no startup errors, `dist/utils/safe-fetch.js` present
+in the image, `TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS` unset on the VPS (defaults false), `TI_NODE_ENV=production`.
+integration-service test suite: 430 passing.
+
+This work was written up as **RCA Issue 47** (`docs/DEPLOYMENT_RCA.md`) since it was found during Step 15
+research rather than via an incident — symptom/root-cause/fix/prevention there, this doc keeps the PR-level
+design and verify-after-deploy checklist above.
+
+Also deployed the same day: Roles & Permissions tab fix (`69f8239`, roles-fix session — CI run 36341451741 green,
+VPS verified 32/32 healthy, bundle `assets/index-B_mrXPFz.js`) and Step 15 roadmap v2 approval (market research →
+threat exposure verdicts, advisories, connection types — `3dd4f19`/`434cd4e`/`2cfb58f`).
+
+Next: PR B (persistence, branch `s166/integration-persistence`, in progress) → PR C (easy-connect UI).

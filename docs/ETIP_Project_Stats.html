@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 163 (S161b PR 1 + S162) &middot; 2026-09-27 &middot; S162 user-management directory routes deployed (045fb35) — Users screens stop 404ing. Master 045fb35, VPS 045fb35. 1,934 frontend tests, 360 user-management-service tests. 32/32 healthy. Next: S164 ai-enrichment auto-enrich (deploying).</span>
+  <span class="version">Session 166 (S166 PR A) &middot; 2026-09-28 &middot; SIEM integration Phase 1 — PR A deployed (outbound hardening, RCA Issue 47), roles fix (69f8239) live, Step 15 v2 approved. Master 2831d00, VPS 2831d00. 1,939 frontend tests, 430 integration-service tests. 32/32 healthy. Next: PR B persistence, then PR C easy-connect UI.</span>
 </div>
 </div>
 
@@ -91,7 +91,7 @@ li strong { color: var(--text-primary); }
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
     <div class="stat-card"><div class="stat-value">~8,450</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">163</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">166</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -537,8 +537,12 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 163 (S162) DEPLOYED</span> user-management directory routes — Next: S164 ai-enrichment auto-enrich (deploying)</div>
+    <div class="card-title"><span class="badge badge-green">Session 166 (S166 PR A) DEPLOYED</span> SIEM integration Phase 1 — PR A deployed (outbound hardening) — Next: PR B persistence, then PR C easy-connect UI</div>
     <div class="card-body">
+      <strong>S166 PR A (2026-09-28):</strong> integration-service outbound hardening + encrypted credentials. New <code>safeFetch()</code> client (stdlib only) — public-destination policy validated inside the socket DNS lookup, no redirects, idle timeout + total deadline, 1&nbsp;MB cap — applied to all 11 outbound SIEM/webhook/ticketing call sites; connector secrets now encrypted at rest (AES-256-GCM, <code>enc:v1:</code> marker); Fastify <code>errorHandlerPlugin</code> moved to the root scope (validation errors were falling back to generic 500s). Found during Step 15 research, not an incident — see RCA Issue 47. Master <code>2831d00</code>, CI/CD run 36343537845 green, VPS HEAD <code>2831d00</code>, 32/32 containers healthy, <code>etip_integration</code> healthy with no startup errors. <strong>430 integration-service tests</strong> (was 174). Detail: docs/S166_PR_A_INTEGRATION_OUTBOUND_HARDENING.md.<br><br>
+      <strong>Roles fix (69f8239, deployed earlier):</strong> Command Center Roles &amp; Permissions tab now shows the 3 real platform roles instead of a fake matrix. CI run 36341451741 green, VPS verified 32/32 healthy, bundle <code>assets/index-B_mrXPFz.js</code>.<br><br>
+      <strong>Step 15 roadmap v2 approved (2026-09-28):</strong> SIEM integrations plan revised after market research to threat exposure verdicts, advisories, and connection types (<code>3dd4f19</code> → <code>434cd4e</code> → <code>2cfb58f</code>). Detail: docs/roadmap/STEP_15_ARCHITECTURE_UI.md.<br><br>
+      <strong>Next — PR B (persistence, branch s166/integration-persistence, in progress):</strong> <code>Integration</code> table replaces the in-memory store. <strong>Then PR C:</strong> easy-connect UI (TAXII card + real connectors), remove non-existent QRadar/XSOAR cards, fix hook paths.<br><br>
       <strong>Session 163 — S162 (2026-09-27):</strong> user-management-service real <code>/users</code> list/audit/stats routes so the Users screens stop 404ing (DECISION-036 had shipped them honest with error cards). Master <code>045fb35</code>. CI/CD run 36330819062 green (tests, build, deploy). VPS HEAD <code>045fb35</code>, 32/32 containers healthy, <code>directory.js</code> present in the user-management image, no log errors, new bundle <code>assets/index-Ckl4LPzT.js</code>, <code>/api/v1/users</code> + <code>/api/v1/users/stats</code> 401 without token. <strong>1,934 frontend tests</strong>, <strong>360 user-management-service tests</strong>. Detail: docs/S162_USER_MANAGEMENT_ROUTES.md.<br><br>
       <strong>S164 (about to deploy, branch s164/ai-enrichment-auto-enrich):</strong> per-IOC enrichment endpoint, severity-gated auto-enrichment, per-tenant AI budget — AI stays off by default. Detail: docs/S164_AI_ENRICHMENT_AUTO_ENRICH.md.<br><br>
       <strong>Session 163 — S161b PR 1 (2026-09-27):</strong> RCA #45 bug-class sweep — <code>api&lt;{data}&gt;</code> already double-unwraps the gateway envelope, fixed across 17 frontend hooks (~40 sites). Master fast-forwarded 2 commits (<code>b4975c6</code> session-start optimization, <code>255b49f</code> the sweep). CI/CD run 36328956242 green (test/typecheck/lint/audit, build+push, deploy). VPS HEAD <code>255b49f</code>, 32/32 containers healthy, <code>/api/v1/users</code> 401 without token. <strong>1,944 frontend tests</strong> (2 skipped). Detail: docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md.<br><br>
@@ -562,8 +566,9 @@ li strong { color: var(--text-primary); }
       &bull; <strong>Unsupported sortable columns removed:</strong> normalizedValue, corroborationCount, iocType, lifecycle — only severity/confidence/lastSeen remain sortable.<br>
       &bull; <strong>Commit:</strong> d517ea0. CI run 23929832680 green. Deployed.<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Next (S164, deploying)</strong> — ai-enrichment per-IOC endpoint, severity-gated auto-enrichment, per-tenant AI budget (AI off by default). Follow-ups: batch path tenant-budget check, per-IOC trigger cooldown, plan config service call.<br>
-      2. Then S161b remaining demo-fallback hook files (alerting, reporting, phase4, analytics, monitoring, command-center incl. the Clients demo tenant list, plus onboarding/integration/customization hooks), S163 (billing/admin path+shape fixes surfaced by PR B, DECISION-036), S165-S166 (graph overview + real Clients tenant list), Step 3 persistence, Step 4 DB role + RLS, Step 10 agent foundation, Steps 11-13.<br>
+      1. <strong>Next — S166 PR B (in progress)</strong> — integration-service persistence (`Integration` table replaces the in-memory store), branch s166/integration-persistence.<br>
+      2. <strong>Then S166 PR C</strong> — easy-connect UI (TAXII card + real connectors), remove non-existent QRadar/XSOAR cards, fix hook paths.<br>
+      3. S161b remaining demo-fallback hook files (alerting, reporting, phase4, analytics, monitoring, command-center incl. the Clients demo tenant list, plus onboarding/integration/customization hooks), S163 (billing/admin path+shape fixes surfaced by PR B, DECISION-036), Step 3 persistence, Step 4 DB role + RLS, Step 10 agent foundation, Steps 11-13.<br>
       3. Search Console + Bing verification; SEO 2c/2d continue in parallel.<br>
     </div>
   </div>
@@ -572,7 +577,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 162 (S161a PR B + hotfixes) &middot; 2026-09-27 &middot; Generated by Claude Sonnet 5
+    ETIP v5.0 &middot; Session 166 (S166 PR A) &middot; 2026-09-28 &middot; Generated by Claude Sonnet 5
   </div>
 </div>
 

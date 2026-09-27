@@ -1,27 +1,42 @@
 # SESSION HANDOFF DOCUMENT
-**Date:** 2026-09-27
-**Session:** 163/164 (label S162 user-management routes — DEPLOYED; S164 ai-enrichment auto-enrich ABOUT TO DEPLOY)
-**Session Summary (current, read this first):** S162 deployed — master `045fb35` (user directory routes),
-CI/CD run 36330819062 green, VPS HEAD `045fb35`, 32/32 containers healthy, `directory.js` present in the
-user-management image, no log errors, new bundle `assets/index-Ckl4LPzT.js`, `/api/v1/users` +
-`/api/v1/users/stats` 401 without token. 1,934 frontend tests, 360 user-management-service tests. No new deploy
-issues. Detail: `docs/S162_USER_MANAGEMENT_ROUTES.md`.
-Work is now on branch `s164/ai-enrichment-auto-enrich` (about to deploy): new
+**Date:** 2026-09-28
+**Session:** 166 (label S166 PR A — integration-service outbound hardening + encrypted credentials — DEPLOYED; PR B persistence IN PROGRESS on branch `s166/integration-persistence`)
+**Session Summary (current, read this first):** S166 PR A deployed — master `2831d00`, CI/CD run 36343537845
+green, VPS HEAD `2831d00`, 32/32 containers healthy, `etip_integration` healthy with no startup errors,
+`dist/utils/safe-fetch.js` present, `TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS` unset (defaults false),
+`TI_NODE_ENV=production`. New `safeFetch()` SSRF guard (RCA Issue 47) on all 11 outbound SIEM/webhook/ticketing
+call sites, connector credentials encrypted at rest (AES-256-GCM, `enc:v1:` marker), Fastify
+`errorHandlerPlugin` moved to the root scope (validation errors had been falling back to generic 500s).
+430 integration-service tests. Detail: `docs/S166_PR_A_INTEGRATION_OUTBOUND_HARDENING.md`.
+Work is now on branch `s166/integration-persistence` (PR B, in progress): `Integration` table replaces the
+in-memory store. PR C (easy-connect UI — TAXII card + real connectors, remove non-existent QRadar/XSOAR cards,
+fix hook paths) is next after PR B merges.
+Since the last update to this doc: **S164** (ai-enrichment per-IOC endpoint + severity-gated auto-enrichment +
+per-tenant AI budget) deployed, with a same-day CI lint fix (RCA #46, commit `0ce8767`). **Roles fix**
+(`69f8239`, deployed): Command Center Roles & Permissions tab shows the 3 real roles instead of a fake matrix,
+CI run 36341451741 green, VPS verified 32/32 healthy, bundle `assets/index-B_mrXPFz.js`. **Step 15 roadmap v2
+approved** (`3dd4f19` roadmap → `434cd4e` market research → `2cfb58f` v2 approved): SIEM integrations plan
+revised to threat exposure verdicts, advisories, and connection types — `docs/roadmap/STEP_15_ARCHITECTURE_UI.md`
+(owned by another agent this session, not touched here).
+S161b PRs 2–4 (alerting/reporting, phase4, phase5/6 rest — see list below) and S163 (billing/admin path+shape
+fixes) are still pending, unchanged since S161b PR 1 landed.
+
+**Previous session summary (S162 + S164, 2026-09-27, CLOSED):** S162 deployed — master `045fb35` (user
+directory routes), CI/CD run 36330819062 green, VPS HEAD `045fb35`, 32/32 containers healthy, `directory.js`
+present in the user-management image, new bundle `assets/index-Ckl4LPzT.js`, `/api/v1/users` +
+`/api/v1/users/stats` 401 without token. 1,934 frontend tests, 360 user-management-service tests. Detail:
+`docs/S162_USER_MANAGEMENT_ROUTES.md`. S164 (ai-enrichment auto-enrich, deployed): new
 `GET /api/v1/enrichment/ioc/:iocId` route (the frontend already called it, was 404), severity-gated
 auto-enrichment (`TI_ENRICHMENT_AUTO_SEVERITIES`, default critical/high), free-lookup gate
-(`TI_ENRICHMENT_LOOKUPS_ENABLED`), and a new per-tenant AI budget (`services/tenant-budget.ts`, plan-based
-token limits + Redis daily counters, fails closed) layered on top of the existing global USD check. `TI_AI_ENABLED`
-stays off by default. Fixed along the way: an enrichment overwrite bug (all-null provider results used to
-clobber earlier good data), the Anthropic batch service being constructed with no AI-flag check at all, and
+(`TI_ENRICHMENT_LOOKUPS_ENABLED`), and a per-tenant AI budget (`services/tenant-budget.ts`, plan-based token
+limits + Redis daily counters, fails closed) layered on the existing global USD check. `TI_AI_ENABLED` stays off
+by default. Fixed along the way: an enrichment overwrite bug (all-null provider results used to clobber earlier
+good data), the Anthropic batch service being constructed with no AI-flag check at all, and
 `TI_ENRICHMENT_DAILY_BUDGET_USD` never actually being read (hardcoded `5.00` always applied). Security review:
-Sonnet adversarial takeover (codex companion stale again), verdict ACCEPT. Follow-ups: batch path still has no
-tenant-budget check (only `TI_AI_ENABLED`); no per-IOC `/trigger` cooldown; plan resolution is a hardcoded
-mirror of customization-service's plan defaults, not a live call. ai-enrichment 366 tests, frontend ~1,939.
-Detail: `docs/S164_AI_ENRICHMENT_AUTO_ENRICH.md`.
-S161b PRs 2–4 (alerting/reporting, phase4, phase5/6 rest — see list below) are still pending, unchanged since
-S161b PR 1 landed.
+Sonnet adversarial takeover (codex companion stale again), verdict ACCEPT. Follow-up CI lint fix (RCA #46,
+`0ce8767`). ai-enrichment 366 tests, frontend ~1,939. Detail: `docs/S164_AI_ENRICHMENT_AUTO_ENRICH.md`.
 
-**Previous session summary (S161a PR B + post-deploy hotfixes, 2026-09-27, CLOSED):** Step 5 Honest UI PR B
+**Earlier session summary (S161a PR B + post-deploy hotfixes, 2026-09-27, CLOSED):** Step 5 Honest UI PR B
 removed the remaining silent demo fallbacks from billing, admin-ops, and user-management hooks/screens
 (PR #45 → `cd4a227`), applying the `QueryStateView` pattern built in PR A. Converting these hooks surfaced
 real, pre-existing billing/admin path+shape mismatches, hidden until now by demo data — the owner chose to
