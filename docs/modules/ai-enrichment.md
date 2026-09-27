@@ -1,10 +1,10 @@
 # AI Enrichment Service
 
-**Port:** 3006 | **Queue:** etip-enrich-realtime | **Status:** ✅ Deployed | **Tests:** 289
+**Port:** 3006 | **Queue:** etip-enrich-realtime | **Status:** ✅ Deployed | **Tests:** 366
 
 ## What It Does
 
-Receives IOCs from normalization, enriches with VirusTotal, AbuseIPDB, Google Safe Browsing, and Haiku AI triage. Computes weighted risk score (backward-compatible: 2-provider or 4-component with AI). Tracks per-IOC enrichment cost with full provider breakdown. Stores results on IOC record. Graceful degradation when providers fail or AI is disabled. Redis enrichment cache with type-specific TTLs. Budget enforcement gate with rule-based fallback. Confidence feedback loop wires AI score back into composite confidence formula.
+Receives IOCs from normalization, enriches with VirusTotal, AbuseIPDB, Google Safe Browsing, and Haiku AI triage. Computes weighted risk score (backward-compatible: 2-provider or 4-component with AI). Tracks per-IOC enrichment cost with full provider breakdown. Stores results on IOC record. Graceful degradation when providers fail or AI is disabled. Redis enrichment cache with type-specific TTLs. Budget enforcement gate with rule-based fallback. Confidence feedback loop wires AI score back into composite confidence formula. **S164 (2026-09-28, DECISION-038):** auto-enrichment now fires only for `critical`/`high` severity IOCs — a manual `/trigger` call bypasses the severity gate; a separate per-tenant AI Redis daily budget (in addition to the existing global USD budget) fails closed on a Redis error; free provider lookups (VT/AbuseIPDB/GSB) are gated independently from AI via `TI_ENRICHMENT_LOOKUPS_ENABLED`.
 
 ## Pipeline
 
@@ -48,6 +48,7 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
 | Haiku Triage Provider | providers/haiku-triage.ts | Claude Haiku IOC classifier — structured output with evidence chain, MITRE mapping, FP detection, malware/actor extraction, recommended actions. Prompt injection defense via shared-enrichment sanitizer. |
 | Cost Tracker | cost-tracker.ts | Per-IOC per-provider cost tracking. Aggregate stats with headline. Tenant budget alerts. |
 | Rule-Based Scorer | rule-based-scorer.ts | Fallback scorer when budget >= 90%. Deterministic VT+AbuseIPDB scoring, CDN FP detection, $0 cost. (#5) |
+| Tenant AI Budget (S164) | services/tenant-budget.ts | Per-tenant daily AI-spend cap via Redis counters, seeded from plan AI defaults mirrored from the customization service (a snapshot, not live — a runtime edit there doesn't propagate). Fails closed (blocks AI) on a Redis error, layered on top of the existing global USD budget check. |
 | Enrichment Cache | cache.ts | Redis cache with type-specific TTLs: hash=7d, IP=1h, domain=24h, URL=12h, CVE=12h. (#6) |
 | Rate Limiter | rate-limiter.ts | Sliding-window per provider (configurable) |
 | Enrich Worker | workers/enrich-worker.ts | BullMQ consumer with job validation |
@@ -99,7 +100,8 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | /health | - | Health check |
-| POST | /api/v1/enrichment/trigger | JWT | Queue IOC for enrichment (priority 1) |
+| POST | /api/v1/enrichment/trigger | JWT | Queue IOC for enrichment (priority 1, manual — bypasses the severity gate) |
+| GET | /api/v1/enrichment/ioc/:iocId | JWT | S164: fetch enrichment result + status for a single IOC (the frontend already called this path; it 404'd until this session) |
 | GET | /api/v1/enrichment/stats | JWT | `{total, enriched, pending}` |
 | GET | /api/v1/enrichment/pending | JWT | List IOCs awaiting enrichment |
 | GET | /api/v1/enrichment/cost/stats | JWT | Aggregate cost stats with headline |
@@ -117,7 +119,9 @@ QUEUES.ENRICH_REALTIME → Enrich Worker
 | TI_IOC_INDEX_ENABLED | true | S154: gate for producing `IOC_INDEX` update jobs after enrichment. Fixed a `z.coerce.boolean()` bug where the string `"false"` parsed as `true` (enum+transform pattern now) |
 | TI_ANTHROPIC_API_KEY | (empty) | Anthropic API key for Haiku triage |
 | TI_HAIKU_MODEL | claude-haiku-4-5-20251001 | Haiku model ID |
-| TI_ENRICHMENT_DAILY_BUDGET_USD | 5.00 | Daily cost budget per tenant (0 = unlimited) |
+| TI_ENRICHMENT_DAILY_BUDGET_USD | 5.00 | Daily cost budget per tenant (0 = unlimited). S164: fixed a bug where this was never actually read (hardcoded `5.00` always applied regardless of the env var) |
+| TI_ENRICHMENT_AUTO_SEVERITIES | critical,high | S164 (DECISION-038): comma-separated IOC severities eligible for automatic enrichment; a manual `/trigger` call bypasses this gate entirely |
+| TI_ENRICHMENT_LOOKUPS_ENABLED | true | S164: master switch for free provider lookups (VT/AbuseIPDB/GSB), gated separately from `TI_AI_ENABLED` |
 | TI_ENRICHMENT_CACHE_ENABLED | true | Enable Redis enrichment cache |
 | TI_ENRICHMENT_CONCURRENCY | 2 | Worker concurrency |
 | TI_VT_RATE_LIMIT_PER_MIN | 4 | VT rate limit |

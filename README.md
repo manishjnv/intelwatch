@@ -19,18 +19,18 @@
 | User Service (register, login, refresh, SSO, MFA, email verification, break-glass) | ✅ Live on VPS | 174 |
 | Ingestion Service (13 connectors: RSS/NVD/STIX/REST/MISP/Bulk/ThreatFox/URLhaus/MalwareBazaar/Feodo/KEV/EPSS/OTX, 11 pipeline modules, scheduler retry, global fetch workers) | ✅ Live on VPS | 770 |
 | Normalization Service (18 accuracy improvements, KEV/EPSS auto-severity, confidence bonus, global normalize/enrich, tenant overlay, fuzzy dedupe, corroboration, severity voting, Majestic Million FP whitelist, search-index producer) | ✅ Live on VPS | 328 |
-| AI Enrichment Service (VT + AbuseIPDB + GSB + IPinfo.io + Haiku AI + Cost Transparency + 15 Accuracy Improvements + search-index producer) | ✅ Live on VPS | 329 |
+| AI Enrichment Service (VT + AbuseIPDB + GSB + IPinfo.io + Haiku AI + Cost Transparency + 15 Accuracy Improvements + search-index producer + severity-gated auto-enrichment + per-tenant AI budget) | ✅ Live on VPS | 366 |
 | IOC Intelligence Service (CRUD, search, pivot, campaigns, search-index sync) | ✅ Live on VPS | 148 |
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements, EPSS live API) | ✅ Live on VPS | 131 |
-| Frontend (React 18 + Vite, 20 data pages, 21 viz components, demo fallbacks all 5 entity types + reporting + alerting + analytics, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons, feed health indicators, request dedup, org-aware dashboard 9 widgets, IOC Intelligence best-in-class, Search page best-in-class, real ⌘K search, honest UI core (QueryStateView) incl. billing/admin/users) | ✅ Live on VPS | 1,926 |
+| Frontend (React 18 + Vite, 20 data pages, 21 viz components, demo fallbacks all 5 entity types + reporting + alerting + analytics, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons, feed health indicators, request dedup, org-aware dashboard 9 widgets, IOC Intelligence best-in-class, Search page best-in-class, real ⌘K search, honest UI core (QueryStateView) incl. billing/admin/users, real Integrations tab + API keys panel, sign-up CAPTCHA fix) | ✅ Live on VPS | 1,977 (2 skipped) |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 32 endpoints) | 🔨 Feature-complete | 294 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |
 | DRP Service (4 detection engines, 12 typosquat algos, CertStream, 36 endpoints) | 🔨 Feature-complete (15/15 + accuracy) | 310 |
-| Enterprise Integration Service (SIEM, webhooks, ticketing, STIX/TAXII, 58 endpoints) | 🔨 Feature-complete (15/15) | 335 |
-| User Management Service (RBAC, teams, SSO, MFA, break-glass, 32 endpoints) | 🔨 Feature-complete (5 P0) | 185 |
+| Enterprise Integration Service (SIEM, webhooks, ticketing, STIX/TAXII, 24 endpoints, safeFetch SSRF guard, encrypted credentials, Postgres-persisted connectors, server-side RBAC) | ✅ Live on VPS | 458 |
+| User Management Service (RBAC, teams, SSO, MFA, break-glass, user directory, API keys, 64 endpoints) | ✅ Live on VPS | 371 |
 | Customization Service (module toggles, AI config, risk weights, Prisma persistence, global AI config, 58 endpoints) | ✅ Complete | 319 |
 | Onboarding Service (8-step wizard, connectors, health checks, 32 endpoints) | ✅ Deployed | 190 |
 | Billing Service (plan management, Razorpay, usage metering, GST invoices, Prisma persistence, 28 endpoints) | ✅ Built | 190 |

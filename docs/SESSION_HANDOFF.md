@@ -1,291 +1,245 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-09-28
-**Session:** 167 (label S167 — API keys panel + server-side role enforcement, RCA Issue 48 — DEPLOYED. **Step 15 Phase 1 is now COMPLETE**: PR A + PR B + PR C + S167 all deployed)
-**Session Summary (current, read this first):** This session's deploys, in order:
-- **S164** (ai-enrichment per-IOC endpoint + severity-gated auto-enrichment + per-tenant AI budget), with a same-day CI lint fix (RCA #46, commit `0ce8767`).
-- **Roles fix** (`69f8239`): Command Center Roles & Permissions tab shows the 3 real roles instead of a fake matrix, CI run 36341451741 green, VPS verified 32/32 healthy, bundle `assets/index-B_mrXPFz.js`.
-- **Step 15 roadmap v1→v2** (`3dd4f19` roadmap → `434cd4e` market research → `2cfb58f` v2 approved): SIEM integrations plan revised to threat exposure verdicts, advisories, and connection types — `docs/roadmap/STEP_15_ARCHITECTURE_UI.md`.
-- **S166 PR A** (integration-service outbound hardening + encrypted credentials, RCA Issue 47): master `2831d00`, CI/CD run 36343537845 green, VPS HEAD `2831d00`, 32/32 healthy, `etip_integration` healthy with no startup errors, `dist/utils/safe-fetch.js` present, `TI_INTEGRATION_ALLOW_PRIVATE_DESTINATIONS` unset (defaults false), `TI_NODE_ENV=production`. New `safeFetch()` SSRF guard on all 11 outbound SIEM/webhook/ticketing call sites, connector credentials encrypted at rest (AES-256-GCM, `enc:v1:` marker), Fastify `errorHandlerPlugin` moved to the root scope. 430 integration-service tests. Detail: `docs/S166_PR_A_INTEGRATION_OUTBOUND_HARDENING.md`.
-- **S166 PR B** (integration persistence): `Integration` table replaces the in-memory store. Master `c44a5f0`, CI run 36345804944 green, VPS verified (integrations table, hydrate log, `TI_DATABASE_URL` set). Detail: `docs/S166_PR_B_INTEGRATION_PERSISTENCE.md`.
-- **S166 PR C** (real easy-connect Integrations tab, frontend only): TAXII feed card + real connector list + add-connection wizard, non-existent Splunk/XSOAR cards removed. Master `b4f9e71`, CI run 36347744374 green, VPS HEAD `b4f9e71`, 32/32 healthy, bundle `index-BcDHey4p.js`. 1,954 frontend tests. Detail: `docs/S166_PR_C_INTEGRATIONS_UI.md`.
-- **S167** (API keys panel + server-side role enforcement — RCA Issue 48: integration-service and user-management-service routes checked authentication only, not role, so any authenticated tenant user incl. `analyst` could create/modify connectors or mint API keys; the UI hid this but the server didn't enforce it): master `1790380` (role enforcement) + `f426026` (API keys panel), CI run 36349837126 green, VPS HEAD `f426026`, 32/32 healthy, no error logs in `etip_integration`/`etip_user_management`, bundle `index-C1OKlfIM.js`, TAXII discovery and `/api/v1/integrations` return 401 without credentials. integration-service 455 tests, user-management-service 371 tests, frontend 1,969 tests. Detail: `docs/S167_API_KEYS_PANEL_AND_ROLE_ENFORCEMENT.md`, RCA: `docs/DEPLOYMENT_RCA.md` Issue 48.
+**Session:** 168 (label S168 — RCA #49 + RCA #50 fixed and deployed: webhook "Test connection" 500 + demo stat tiles, self-service sign-up CAPTCHA + Contact Sales. This closing update also covers the full session span since the last handoff, S161b PR1 through S167.)
 
-**Step 15 Phase 1 is now COMPLETE.** Next is **owner decisions for P2** — 7 open architecture decisions in
-`docs/roadmap/STEP_15_ARCHITECTURE_UI.md` §11:
-1. New `exposure-service` vs. extending correlation-engine/integration-service (recommendation: new service).
-2. Where tenant org-profile (industry/geo/tech-stack) lives server-side (recommendation: extend customization).
-3. Asset/vuln-scanner data ownership (recommendation: extend drp-service's `DrpAsset`).
-4. Sightings ownership (recommendation: integration-service).
-5. Rule→technique mapping ownership (recommendation: integration-service).
-6. Posture-widget cache TTL exception to CLAUDE.md's "dashboard 48hr" constant (recommendation: approve).
-7. New top-level sidebar route `/exposure` vs. folding into Command Center (recommendation: new top-level route).
-(An 8th item in §11, `ExternalRule`/`ExternalIncident`/`Sighting` timing vs. Step 3, is already resolved —
-S166 PR B gave integration-service its own `integrations` table.) Once the owner decides, P2 MVP work
-("Am I affected?" + basic advisories) can start.
+**Session Summary (current, read this first):** This session's deploys, in order (commit range `c68d452..ddcb6be`, 22 commits, 134 files, +8,823/−1,466), all on master, all deployed unless docs-only:
 
-S161b PRs 2–4 (alerting/reporting, phase4, phase5/6 rest — see list below) and S163 (billing/admin path+shape
-fixes) are still pending, unchanged since S161b PR 1 landed.
+- **S161b PR 1** (`255b49f`, docs-only follow-up `db0b250`): RCA #45 double-unwrap sweep across 17 frontend hooks (`api<{data}>` already unwraps — fixed ~40 sites).
+- **S162** (`045fb35`, docs `2c98451`): user-management-service real `/users`, `/users/stats`, `/users/audit` routes from Prisma, tenant from nginx-verified `x-tenant-id` (401 if missing). DECISION-037.
+- **S164** (`05ea889`, test fix `57aa75c`, CI lint fix `0ce8767` — RCA #46): ai-enrichment severity-gated auto-enrichment (critical/high only; manual `/trigger` bypasses), new `GET /enrichment/ioc/:iocId`, per-tenant AI Redis budget (fails closed), free-lookup gate separate from the AI gate. DECISION-038. **PROJECT_STATE.md's ai-enrichment rows had never been updated for this — fixed in this session's docs pass (366 tests, was 329).**
+- **Roles fix** (`69f8239`): Command Center Roles & Permissions tab shows the 3 real roles instead of a fake matrix.
+- **Step 15 roadmap v1→v2** (`3dd4f19` → `434cd4e` → `2cfb58f`): SIEM integrations plan revised to threat exposure verdicts, advisories, and connection types. DECISION-039.
+- **S166 PR A** (`2831d00`, docs `efe5e92` — RCA #47): integration-service outbound hardening — new `safeFetch()` SSRF guard on all 11 outbound call sites, connector credentials encrypted at rest, `errorHandlerPlugin` fixed. DECISION-040.
+- **S166 PR B** (`c44a5f0`): integration connectors persisted to Postgres (`Integration` table, write-through cache), replacing the in-memory store. DECISION-041.
+- **S166 PR C** (`b4f9e71`): real easy-connect Integrations tab (frontend only).
+- **S167** (`1790380` role enforcement + `f426026` API keys panel — RCA #48): server-side RBAC (`requirePermission()`, fail closed) on integration-service and user-management-service API-key routes. DECISION-042. (`docs` `e28cf52`.)
+- **S168 — this closing session** (`fbd925c` RCA #49, `1481ac9` RCA #49 follow-up, `ddcb6be` RCA #50): see below.
 
-**Previous session summary (S162 + S164, 2026-09-27, CLOSED):** S162 deployed — master `045fb35` (user
-directory routes), CI/CD run 36330819062 green, VPS HEAD `045fb35`, 32/32 containers healthy, `directory.js`
-present in the user-management image, new bundle `assets/index-Ckl4LPzT.js`, `/api/v1/users` +
-`/api/v1/users/stats` 401 without token. 1,934 frontend tests, 360 user-management-service tests. Detail:
-`docs/S162_USER_MANAGEMENT_ROUTES.md`. S164 (ai-enrichment auto-enrich, deployed): new
-`GET /api/v1/enrichment/ioc/:iocId` route (the frontend already called it, was 404), severity-gated
-auto-enrichment (`TI_ENRICHMENT_AUTO_SEVERITIES`, default critical/high), free-lookup gate
-(`TI_ENRICHMENT_LOOKUPS_ENABLED`), and a per-tenant AI budget (`services/tenant-budget.ts`, plan-based token
-limits + Redis daily counters, fails closed) layered on the existing global USD check. `TI_AI_ENABLED` stays off
-by default. Fixed along the way: an enrichment overwrite bug (all-null provider results used to clobber earlier
-good data), the Anthropic batch service being constructed with no AI-flag check at all, and
-`TI_ENRICHMENT_DAILY_BUDGET_USD` never actually being read (hardcoded `5.00` always applied). Security review:
-Sonnet adversarial takeover (codex companion stale again), verdict ACCEPT. Follow-up CI lint fix (RCA #46,
-`0ce8767`). ai-enrichment 366 tests, frontend ~1,939. Detail: `docs/S164_AI_ENRICHMENT_AUTO_ENRICH.md`.
+## S168 detail — the two fixes this closing pass adds
 
-**Earlier session summary (S161a PR B + post-deploy hotfixes, 2026-09-27, CLOSED):** Step 5 Honest UI PR B
-removed the remaining silent demo fallbacks from billing, admin-ops, and user-management hooks/screens
-(PR #45 → `cd4a227`), applying the `QueryStateView` pattern built in PR A. Converting these hooks surfaced
-real, pre-existing billing/admin path+shape mismatches, hidden until now by demo data — the owner chose to
-ship honest anyway (DECISION-036), deferring the backend fixes to S163. Three same-day post-deploy hotfixes
-followed (RCA #45), each its own PR/merge/deploy/verify, fixing crashes the removed fallbacks had been
-masking: Command Center System tab (PR #46), Emergency Access on a normal load (PR #47), and Emergency Access
-raw-row mapping + a maintenance-window crash (PR #48). A 3-agent page-shape audit after the third hotfix found
-no further crash paths. Session closed with master at `0b126ff`, VPS at `f012bdc`, 32/32 containers healthy,
-1,926 frontend tests. Full detail: `docs/S161a_PR_B_SESSION_2026-09-27.md`.
+**RCA #49 — "Test connection" 500 on bodyless requests (`fbd925c`):** Integrations → Add connection → Webhook → Test connection
+showed "Internal server error". Root cause: `apps/frontend/src/lib/api.ts` always set `Content-Type: application/json`, even
+with no body — Fastify rejects an empty body declared as JSON (`FST_ERR_CTP_EMPTY_JSON_BODY`, a 400), and integration-service's
+error handler mapped every non-AppError/Zod error, including Fastify's own 4xx client errors, to a generic 500. Fix: `api()`
+sets the JSON header only when a body is actually sent (fixes every bodyless POST/DELETE app-wide — Test connection, Delete
+connector, Revoke API key, …); the error handler now passes Fastify 4xx errors through with their own status/code. New test:
+`apps/frontend/src/__tests__/api-json-content-type.test.ts` (red without the fix, green with it) plus two route tests in
+integration-service.
+
+**Same-day owner retest follow-up (`1481ac9`):** After the RCA #49 fix, testing a **webhook** connector returned "No SIEM or
+ticketing config found" — `POST /integrations/:id/test` only ever handled SIEM/ticketing types; webhooks had a separate
+`/:id/test-webhook` route the UI never called. Fixed: `/:id/test` now also tests webhooks via `WebhookService.testWebhook`
+(one Test endpoint for every connector type). Same screen also showed demo stat tiles (Total 14, Events/hr 2840) —
+`useIntegrationStats` fell back to demo data and its type never matched the real backend shape (RCA #45 class bug). Fixed with
+a real hook in `hooks/use-integrations.ts`; tiles relabelled Connections / Enabled / Failed deliveries / Dead-letter queue (no
+events-per-hour metric exists in the backend). integration-service: 458 tests (was 455).
+
+**RCA #50 — self-service sign-up impossible (`ddcb6be`):** `/register` always failed with "CAPTCHA verification required", no
+widget ever shown — see `docs/S168_SIGNUP_CAPTCHA_FIX.md` for full root cause (CI built the frontend without
+`VITE_TURNSTILE_SITE_KEY`) and fix (repo variable + CI build arg + build-time assertion; CAPTCHA gating and recovery UX on
+`RegisterPage`/`ClientOnboardingPage`). Same commit fixed "Contact Sales" doing nothing (`window.open(mailto:)` was
+popup-blocked) via a new same-tab link + always-visible copyable address (`SalesContactNote.tsx`). DECISION-043.
+
+**Deploy verification (final, this session):** Master `ddcb6be`, CI/CD run 36358218015 green (test/typecheck/lint, build&push
+incl. the new CAPTCHA build-time key guard, deploy), VPS HEAD `ddcb6be`, 32/32 etip containers healthy, frontend bundle
+`assets/index-icIBot1J.js`, Turnstile site key confirmed present in the live bundle via grep.
+
+**Owner browser checks passed:** Integrations tab — webhook Test connection to a webhook.site URL returns "Webhook test
+successful" and the POST arrives from the real VPS IP (187.127.138.93); a private-network URL (`http://127.0.0.1:...`) is
+rejected inline; stat tiles show real counts; the connector survives `docker restart etip_integration` with the row still in
+the DB and 0 plaintext secrets. Roles & Permissions tab shows the 3 real roles. Team list is real (not the fake matrix/list from
+before this session's earlier fixes).
+
+**Owner has NOT yet tested sign-up** after the CAPTCHA fix (deferred by the owner) — this is the first item for the next
+session.
 
 ## ✅ Changes Made
 
-| Commit(s) | PR | Description |
-|---|---|---|
-| `c369aa9` | #45 → `cd4a227` | PR B feat (28 files): `use-phase6-data.ts`/`use-phase5-data.ts`/`use-plan-builder.ts` converted to throw + `meta.resource`; 9 screens wired to `<QueryStateView>` (`BillingPage`, `AdminOpsPage`, `UserManagementPage`, `BillingPlansTab`, `SystemTab`, `PipelinePanel`, `PlanBuilderPanel`, `UsersAccessTab`, `ComplianceReportsPanel`); fake super-admin tenant table replaced with a real `/admin/tenants` call gated on `isSuperAdmin`; fake coupon codes replaced with "Offers aren't available yet"; DSAR user-picker shows a load-error hint instead of silently listing nobody; tenant plan name resolves subscription → login-session plan → `—`. |
-| `e3a8415` | docs | post-deploy stats update, PR B. |
-| `859a6d4` | #46 → `1111965` | **Hotfix 1 (RCA #45):** System tab crash (`reading 'total'`) — `SystemTab.tsx` derives counts from the real `services` list when `summary` is absent. Plan Builder false empty state — `usePlanBuilder` now reads the array `api()` returns directly instead of `r.data`. |
-| `9cb8d7a` | docs | post-deploy hotfix 1 + S161b api-unwrap sweep list. |
-| `ad1a7d9` | #47 → `5489428` | **Hotfix 2 (RCA #45 follow-up):** Emergency Access crash on a normal successful load (`reading 'length'`, pre-existing since S18) — `useBreakGlassAudit` switched to `apiList()`. |
-| `e82ca15` | docs | post-deploy hotfix 2. |
-| `004f23b` + `83aedf7` | #48 → `f012bdc` | **Hotfix 3 (RCA #45 second layer):** Emergency Access raw Prisma `AuditLog` rows mapped to the panel shape via new `toBreakGlassAuditEntry()`; `useMaintenanceWindows` defaults `affectedServices` (admin-service sends `scope`/`tenantIds`). Page-shape audit (3 agents): no further crash paths found. |
-| `0b126ff` | docs | post-deploy hotfix 3; this closing update (Session 162). |
+| Commit(s) | Description |
+|---|---|
+| `b4975c6` | docs: session-start command optimization (double-read fix, scoped roadmap read, lazy decisions log) — landed at the very start of this span, by another session. |
+| `255b49f` | S161b PR 1 — RCA #45 sweep: remove `api<{data}>` double-unwrap across 17 frontend hooks (~40 sites). |
+| `db0b250` | docs: post-deploy stats update — S161b PR 1. |
+| `045fb35` | S162 — user-management-service directory routes: `GET /users`, `/users/stats`, `/users/audit` from Prisma, tenant scoped to nginx-verified `x-tenant-id`. DECISION-037. |
+| `2c98451` | docs: post-deploy stats update — S162. |
+| `05ea889` | S164 — ai-enrichment severity-gated auto-enrichment, per-IOC enrichment endpoint, per-tenant AI budget. DECISION-038. |
+| `57aa75c` | test: align EnrichmentDetailPanel `not_selected` assertion with final copy. |
+| `0ce8767` | fix: remove unused identifiers in S164 tests that failed CI lint (RCA #46). |
+| `69f8239` | fix: Roles & Permissions tab shows the 3 real roles, not a fake matrix. |
+| `3dd4f19` | docs: Step 15 roadmap — SIEM integrations v1 (push/REST/TAXII/read connectors, coverage use cases). |
+| `434cd4e` | docs: SIEM posture market research + Step 15 v2 proposal (threat exposure verdicts, advisories, connection types). |
+| `2cfb58f` | docs: Step 15 v2 approved — replaces v1. DECISION-039. |
+| `2831d00` | S166 PR A — harden integration-service outbound calls (`safeFetch()`, RCA Issue 47) and encrypt connector credentials at rest. DECISION-040. |
+| `efe5e92` | docs: post-deploy S166 PR A + roles fix; Step 15 architecture & UI design doc. |
+| `c44a5f0` | S166 PR B — persist integration connectors in Postgres (`Integration` table, write-through cache). DECISION-041. |
+| `b4f9e71` | S166 PR C — real easy-connect Integrations tab (frontend only). |
+| `1790380` | fix: enforce admin permissions on integration and API-key routes (RCA Issue 48). DECISION-042. |
+| `f426026` | feat: API keys panel in Users & Access (create once-shown key, revoke) + TAXII card link. |
+| `fbd925c` | fix: bodyless requests no longer send JSON content-type; 4xx framework errors not masked as 500 (RCA #49). |
+| `e28cf52` | docs: post-deploy S166 PR B/C + S167 (RCA #48), RCA #49, session handoff. |
+| `1481ac9` | fix: Test connection works for webhooks; integration stat tiles show real counts (RCA #49 follow-up). |
+| `ddcb6be` | fix: sign-up CAPTCHA works in production; Contact Sales always usable (RCA #50). DECISION-043. |
 
 ## 📁 Files / Documents Affected
 
-**New:** `docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`, `docs/S161a_PR_B_SESSION_2026-09-27.md`, plus frontend test files `plan-builder-no-demo.test.ts`, `use-break-glass-audit.test.ts`, `use-phase5-no-demo.test.ts`, `use-phase6-no-demo.test.ts`, `users-honest-ui.test.tsx`.
+**New docs this session:** `docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md`, `docs/S162_USER_MANAGEMENT_ROUTES.md`,
+`docs/S164_AI_ENRICHMENT_AUTO_ENRICH.md`, `docs/S166_PR_A_INTEGRATION_OUTBOUND_HARDENING.md`,
+`docs/S166_PR_B_INTEGRATION_PERSISTENCE.md`, `docs/S166_PR_C_INTEGRATIONS_UI.md`,
+`docs/S167_API_KEYS_PANEL_AND_ROLE_ENFORCEMENT.md`, `docs/S168_SIGNUP_CAPTCHA_FIX.md` (new, this closing pass),
+`docs/research/SIEM_POSTURE_MARKET_RESEARCH.md`, `docs/roadmap/STEP_15_SIEM_INTEGRATIONS.md` (v2),
+`docs/roadmap/STEP_15_ARCHITECTURE_UI.md`.
 
-**Deleted:** `apps/frontend/src/__tests__/plan-builder-prices.test.ts` (guarded the removed `DEMO_PLANS` constant only).
+**Key code areas touched this session:** `apps/frontend/src/hooks/*` (17-hook RCA #45 sweep, `use-integrations.ts`),
+`apps/user-management-service/src/routes/directory.ts` (new), `apps/ai-enrichment/src/services/tenant-budget.ts` (new) +
+`workers/enrich-worker.ts` + `routes/enrichment.ts`, `apps/integration-service/src/utils/safe-fetch.ts` (new) +
+`plugins/authz.ts` (new) + `routes/{integrations,webhooks,export,advanced,p2-routes}.ts` + Prisma `Integration` model,
+`apps/user-management-service/src/routes/api-keys.ts`, `apps/frontend/src/components/command-center/integrations/*` (new),
+`apps/frontend/src/lib/api.ts` (Content-Type fix), `apps/frontend/src/components/SalesContactNote.tsx` (new),
+`apps/frontend/src/pages/{RegisterPage,ClientOnboardingPage}.tsx`, `.github/workflows/deploy.yml` (Turnstile build arg +
+build-time assertion).
 
-**Modified (code, `git diff --stat 370ce75..0b126ff -- apps/frontend`, 28 files, +1,667/-1,228):**
-`apps/frontend/src/__tests__/{admin-queue-alerts,command-center-billing-alerts,command-center-system-routes,compliance-reports-panel,phase5-pages}.test.tsx`;
-`apps/frontend/src/components/QuotaWarningBanner.tsx`;
-`apps/frontend/src/components/command-center/{BillingPlansTab,ComplianceReportsPanel,PipelinePanel,PlanBuilderPanel,SystemTab,UsersAccessTab}.tsx`;
-`apps/frontend/src/components/viz/UserManagementModals.tsx`;
-`apps/frontend/src/hooks/{phase5-demo-data,phase6-demo-data,use-break-glass,use-phase5-data,use-phase6-data,use-plan-builder}.ts`;
-`apps/frontend/src/pages/{AdminOpsPage,BillingPage,UserManagementPage}.tsx`.
-
-**Modified (docs, this closing session):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md`, `docs/DECISIONS_LOG.md` (DECISION-036 added), `docs/DEPLOYMENT_RCA.md` (verified — rows already present, no changes needed), `docs/ETIP_Project_Stats.html`, `README.md`. No `docs/modules/frontend.md` exists in this repo (module docs cover backend services only, per `docs/modules/*.md` listing) — skipped again, as in prior sessions.
+**Docs updated in this closing pass:** `docs/PROJECT_STATE.md` (session counter → 168, deployment/module status rows for
+frontend/integration-service/user-management-service/ai-enrichment, WIP section, 2 new Deployment Log rows), this file,
+`docs/DECISIONS_LOG.md` (037–043 added), `docs/DEPLOYMENT_RCA.md` (2 new resolution-summary rows — issues 49/50 detail
+entries already existed), `docs/ETIP_Project_Stats.html`, `README.md`, `docs/modules/ai-enrichment.md`,
+`docs/modules/user-management-service.md`. No `docs/modules/frontend.md` or `docs/modules/integration-service.md` (or
+`enterprise-integration.md`) exists in this repo — module docs cover only backend services that have a file; both were
+skipped for the same reason prior sessions noted for frontend.
 
 ## 🔧 Decisions & Rationale
 
-- **DECISION-036** (2026-09-27, S161a PR B): Ship PR B honest-UI now; billing/admin path+shape mismatches it surfaced (`/billing/plans` price field, `/billing/usage` shape, `/billing/subscription` singular vs. plural, missing `/billing/stats` and `/admin/stats`) are fixed in S163, not blocking this merge. Recorded in full in `docs/DECISIONS_LOG.md`.
-- **Owner note (not a DECISIONS_LOG entry):** owner emails already present in git history (~1,092 author/committer entries, 5 older docs commits) are not being scrubbed — a history rewrite would break existing VPS/CI checkouts, and they predate the "no emails in new docs" rule. The rule covers new docs going forward only.
+- **DECISION-037** (S162): user directory served from Prisma; tenant only from nginx-verified header; sessions list scoped to the current user (gateway is frozen, a tenant-wide sessions route is out of scope).
+- **DECISION-038** (S164): enrichment gating — severity gate, separate free-lookup and AI gates, per-tenant AI budget, fail closed on Redis error.
+- **DECISION-039** (Step 15 v2): "Threat Exposure & Detection Posture" replaces the v1 SIEM-integrations checklist — provider flow ingest→master DB→relevance→deliver→assess→advise→track, per-threat "Am I safe?" verdict cards, basic advisories in P2 MVP. Gated on 7 owner decisions.
+- **DECISION-040** (S166 PR A): every tenant-supplied outbound integration destination goes through `safeFetch()` (DNS-lookup-time validation, no redirects, deadline, size cap); connector secrets encrypted at rest.
+- **DECISION-041** (S166 PR B): integration connectors persisted to Postgres via write-through cache; logs/DLQ/rate-limiter state stay in memory.
+- **DECISION-042** (S167): server-side RBAC is mandatory on every authenticated mutating route — UI hiding is never access control.
+- **DECISION-043** (S168): frontend build-time config the server depends on (`VITE_TURNSTILE_SITE_KEY`) must be a CI build input with a build-time assertion, never only a VPS `.env` value.
 
-## 🧪 E2E / Deploy Verification Results
+Full text of each: `docs/DECISIONS_LOG.md`.
+
+## 🧪 Deploy Verification Results
 
 ```
-PR #45 → cd4a227: CI/CD run 36297890539 green (test/typecheck/lint, build&push, deploy), completed 05:52 UTC
-PR #46 → 1111965: CI/CD run 36302952387 green
-PR #47 → 5489428: CI/CD run 36305645836 green
-PR #48 → f012bdc: CI/CD run 36308018916 green
+S161b PR 1  → 255b49f : CI 36328956242 green · 32/32 healthy · 1,944 frontend tests
+S162        → 045fb35 : CI 36330819062 green · 32/32 healthy · 1,934 frontend / 360 user-management-service tests
+S164        → 05ea889 (+ 0ce8767 lint fix) : Sonnet adversarial takeover verdict ACCEPT (codex companion stale) · 366 ai-enrichment tests
+Roles fix   → 69f8239 : CI 36341451741 green · 32/32 healthy
+S166 PR A   → 2831d00 : CI 36343537845 green · 32/32 healthy · dist/utils/safe-fetch.js present · 430 integration-service tests
+S166 PR B   → c44a5f0 : CI 36345804944 green · integrations table + hydrate log verified on VPS
+S166 PR C   → b4f9e71 : CI 36347744374 green · 32/32 healthy · 1,954 frontend tests
+S167        → 1790380 + f426026 : CI 36349837126 green · 32/32 healthy · 455 integration-service / 371 user-management-service / 1,969 frontend tests
+S168        → fbd925c + 1481ac9 + ddcb6be : CI 36358218015 green (final) · VPS HEAD ddcb6be · 32/32 healthy
+             bundle assets/index-icIBot1J.js · Turnstile site key confirmed present in the live bundle
 
-Final VPS HEAD: f012bdc · 32/32 etip_* containers healthy (verified directly)
-https://intelwatch.in/       → 200
-https://intelwatch.in/health → 200
-Built bundle: PR B demo strings (fake tenants/coupons/users) absent; honest-UI strings present
-Owner confirmed live: Emergency Access renders real audit rows, "Emergency Login"/"Session Replaced" badges
-
-Frontend tests: 126 files, 1,926 passing, 2 skipped (was 1,858 after PR A)
-tsc --noEmit: 0 errors · eslint: 0 errors
-Only apps/frontend changed code this session — no backend service, no packages/* touched
+Final test counts (measured this session via `pnpm --filter <pkg> test -- --run`, 4 target packages —
+full `pnpm -r test` bailed on an unrelated pre-existing flaky timing test in packages/shared-persistence,
+`scheduleCheckpoint > debounces multiple calls into a single save`, not touched this session):
+  frontend                    : 1,975 passed + 2 skipped (1,977 total), 138 test files, 0 failed
+  integration-service          : 458 passed, 30 test files, 0 failed
+  user-management-service      : 371 passed, 23 test files, 0 failed
+  ai-enrichment                 : 366 passed, 21 test files, 0 failed
 ```
 
-**Page-shape audit (3 agents, run after hotfix 3):** no additional crash paths found. Non-crashing demo/wrong-data
-screens found (deferred to S161b/S163, not urgent): Command Center Overview stats field mismatch, Report/Alert
-rule templates field mismatch, System → Backups has no API, Threat Graph `/graph/entity/root` always misses,
-Correlation/Campaigns read an empty in-memory store, Threat Actors/Malware swallow list errors, Admin Ops health
-tiles stuck at `—`, analytics Pipeline Throughput always 0, queue-stats `bySubtask` always `{}`, break-glass
-Details column shows raw JSON (cosmetic). Full list: `docs/S161a_PR_B_SESSION_2026-09-27.md`.
+**Owner browser checks passed (this session, live production):** Integrations tab — webhook test to webhook.site succeeds,
+POST arrives from 187.127.138.93; private URL rejected; real stat tiles; connector persists across
+`docker restart etip_integration`, 0 plaintext secrets in the DB. Roles & Permissions tab real. Team list real.
+**Not yet done:** owner retest of self-service sign-up after the RCA #50 fix.
 
-## ⚠️ Open Items / Next Steps
+## ⚠️ Open Items — Immediate (owner)
 
-**Immediate — S167 follow-ups (new, this session):**
+1. **Test sign-up at `/register`** now that RCA #50 is fixed — needs the verification email to arrive (Resend key is set; if
+   no email shows up, check `etip_api`/user-management-service logs, not the CAPTCHA path, which is confirmed fixed).
+2. **Make the 7 Step 15 P2 decisions** in `docs/roadmap/STEP_15_ARCHITECTURE_UI.md` §11: new `exposure-service` vs. extending
+   correlation-engine/integration-service; where tenant org-profile lives server-side; asset/vuln-scanner data ownership;
+   sightings ownership; rule→technique mapping ownership; posture-widget cache-TTL exception to the 48hr dashboard constant;
+   new `/exposure` top-level route vs. folding into Command Center.
+3. **Decide `TI_AI_ENABLED` in prod `.env`** — currently `true` but the Anthropic key is empty, so no AI calls actually happen
+   yet; either set the key or turn the flag off to make the state match reality.
+4. **Close the stale peer Claude session** `intelwatch-dd [99cbe6]` if it's still open (one-folder-one-session rule,
+   DECISION-034).
+
+## ⚠️ Open Items — Engineering follow-ups (no owner input needed)
+
+- Tenant admins cannot add users in-app: team invite is in-memory (not DB-backed), SCIM routes exist but aren't reachable via
+  nginx, SSO JIT callback isn't wired, there's no Prisma-backed role-change route, and Command Center "Add Client" invite is
+  also in-memory. **Recommend a dedicated "real user & tenant provisioning" task** before more feature work stacks on top of
+  fake provisioning paths.
 - Correlation page "Create ticket" (`use-phase4-data.ts` `useCreateTicket`) sends no `integrationId`, which
-  `POST /integrations/tickets` requires — pre-existing 400; needs a ticketing-integration picker.
-- Route-permission coverage test (RCA Issue 48 prevention item, not yet built): add a test per service that
-  iterates its registered routes and fails if an authenticated route lacks a permission preHandler.
-- Plan-limit server enforcement gap still open (see `memory/project_plan_enforcement_gap.md`): plan
-  `enabled:false` is not enforced server-side for `/iocs`, `/drp`, `/graph`, `/search` etc. — nginx bypasses
-  the gateway quota. Keep out of public docs until fixed.
-- API keys panel: the `lastUsed` field exists on the backend model but isn't displayed in the frontend list yet.
-- integration-service logs/DLQ are still in-memory (not persisted) — only connector config moved to Postgres
-  in S166 PR B.
-- S161b PRs 2–4 still pending (alerting/reporting, phase4, phase5/6 rest hooks) — unchanged since PR 1 landed.
-- S163 backend gaps list still open (billing/admin path+shape mismatches — see "Then:" list below).
-
-**Immediate — S161b (remaining demo-fallback hook files):**
-- Hook files: alerting, reporting, phase4 (DRP/graph/correlation/hunting), analytics, global-monitoring,
-  command-center (incl. the Clients demo tenant list), plus inline hooks (onboarding, integration, customization).
-- **RCA #45 bug-class sweep** — fix every `.then(r => r.data)` / `r.data`-after-`api()` site (always `undefined`,
-  `api()` already unwraps): `use-access-reviews.ts:104,165`, `use-compliance-reports.ts:186,249`,
-  `use-global-catalog.ts:74,88`, `use-global-iocs.ts:119,132,173,185,197`, `use-global-monitoring.ts:109,125,140`,
-  `use-plan-limits.ts:62`, `use-tenant-overrides.ts:66`; plus (no `.then` unwrap, consumer `?.` hides it → always
-  0 rows) `use-enrichment-data.ts:191` (enrichment pending queue) and `use-phase4-data.ts:422` (hunting templates),
-  and the `use-phase5-data.ts` customization hooks at lines 299–499. `use-break-glass.ts` still has a demo
-  fallback on error elsewhere in the file (its crash path was fixed in PR #47/#48).
-- **Page-shape audit fixes** (not crashes, but wrong/demo data shown): Command Center Overview stats
-  (`use-command-center.ts:219-224` checks the wrong field names); Report templates (`type` vs. real `reportType`,
-  `sections` are objects not strings — fix `AlertsReportsTab.tsx:452` alongside or it will crash once the shape
-  is corrected); Alert rule templates (`conditionType` is nested at `rule.condition.type`); System → Backups has
-  no backing API (100% fake); Threat Graph's `/graph/entity/root` call always misses (no node has id "root" —
-  needs a real "top nodes" query, see S165); Correlation + Campaigns read an in-memory worker store that looks
-  empty/demo on a fresh process; Threat Actors + Malware list routes send an unwrapped `{data,total}` and their
-  hooks swallow the resulting error into "none found"; Admin Ops health tiles stuck at `—` (apply the same
-  `summary`-derivation fix SystemTab got); analytics `processing-rate` never set → Pipeline Throughput always 0;
-  queue-stats `bySubtask` always `{}`.
-- Decide wire-vs-delete for `components/QuotaWarningBanner.tsx` (dead code, not imported anywhere).
-- Widen the `ServiceStatus` frontend type (`phase6-demo-data.ts:72`) to include `'critical'` (a real admin-service value).
-- One test per converted screen must use the real backend response shape (RCA #45 rule).
-
-**Then:**
-1. The owner-scheduled security fix before Step 3 (plan-limits enforcement — no further detail here, per the public-repo rule).
-2. **S162** — DEPLOYED (2026-09-27, `045fb35`) — user-management-service real `/users` list/audit/stats routes.
-3. **S164** — DEPLOYING (this branch, `s164/ai-enrichment-auto-enrich`) — per-IOC enrichment endpoint,
-   severity-gated auto-enrichment, per-tenant AI budget. Follow-ups for a later session: batch path
-   tenant-budget check (before `TI_BATCH_ENABLED`), per-IOC `/trigger` cooldown, live plan-config service
-   call instead of the hardcoded plan-defaults mirror.
-4. **S163** — fix the billing/admin path+shape mismatches PR B surfaced (`docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`):
-   `/billing/plans` price field, `/billing/usage` shape, `/billing/subscription` singular vs. real plural route,
-   missing `/billing/stats` and `/admin/stats`; plus `QuotaWarningBanner.tsx` and `BillingPage`'s `DEMO_PLAN_PRICES` table.
-   Also pick up the S161b PR 1 backend gaps (`docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md`): no route
-   `/access-reviews/stats`; no route `POST /customization/plans/:id/reset`; `GET /customization/ai` has no
-   handler; `/customization/risk-weights` should be `/customization/risk/profiles`; `/customization/notifications`
-   returns a single per-user prefs object, not a channel list; no `/ingestion/catalog/subscription-stats`;
-   ingestion `catalogRoutes` not registered in `apps/ingestion/src/app.ts`; frontend calls
-   `/ingestion/feeds/validate` but the real route is `/api/v1/feeds/validate`; `useDsarExport` is unused and
-   the backend returns a `ComplianceReport`, not a DSAR export shape; compliance report viewer reads
-   `fullReport.data` but the backend field is `reportData` (spins forever, not a crash — deferred from PR 4).
-   And the S162 follow-ups (`docs/S162_USER_MANAGEMENT_ROUTES.md`): audit-field redaction inside
-   `AuditLogger.log()`, GET-query `ZodError` → 500 in user-management-service's error handler (also affects
-   `teams.ts`), `AuditLog.user` relation unscoped at the schema level.
-4. **S164** — ai-enrichment `/enrichment/ioc/:id` + auto-enrich critical/high with a daily cap + admin switch (AI off by default).
-5. **S165** — threat-graph `/graph/overview`.
-6. **S166** — real tenant list in Command Center (replace admin-service's in-memory `TenantStore`, DECISION-013).
-7. Step 3 persistence sessions.
-8. Step 4 DB role + RLS (security review before push).
-9. Step 10 agent foundation.
-10. Steps 11–13.
-
-Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md` (done, verified),
-`docs/roadmap/STEP_05_HONEST_UI.md` (§12 has the full PR A/B/S161b/S162+ split), `docs/S161a_HONEST_UI_CORE.md`,
-`docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`, `docs/S161a_PR_B_SESSION_2026-09-27.md`.
+  `POST /integrations/tickets` requires — pre-existing 400, needs a ticketing-integration picker in the UI.
+- Route-permission coverage test (RCA Issue 48 prevention item, not yet built): a test per service that iterates its
+  registered routes and fails if an authenticated route lacks a permission preHandler.
+- **Check other services' error handlers for the same 4xx→500 masking RCA #49 found in integration-service** — it was found by
+  accident on one screen; nothing has swept the rest of the services for the same bug class.
+- Known open plan-limit enforcement gap — details in the owner's private notes (`memory/project_plan_enforcement_gap.md`),
+  intentionally not described here; scheduled before Step 3.
+- integration-service logs/DLQ state is still in-memory (DECISION-041) — only connector config moved to Postgres.
+- `integration-store.ts` is at 399 lines (right at the file-size limit) — watch it on the next touch.
+- Tenant org-profile (industry/geo/tech-stack) lives only in browser `localStorage` — a P2 blocker per Step 15 decision #2.
+- Audit-log redaction inside `AuditLogger.log()` still open (carried from S162 follow-ups).
+- GET-query `ZodError` → 500 in user-management-service's error handler (also affects `teams.ts`) — carried from S162.
+- Batch Anthropic tenant-budget check (before `TI_BATCH_ENABLED`) — carried from S164 follow-ups.
+- S161b PR 2–4 (alerting/reporting, phase4, remaining phase5/6 hooks) still pending, unchanged since PR 1 landed.
+- S163 backend gaps (billing/admin path+shape mismatches, DECISION-036) still open — see prior handoff for the full list
+  (`/billing/plans` price field, `/billing/usage` shape, `/billing/subscription` singular vs. plural, missing
+  `/billing/stats`/`/admin/stats`, `QuotaWarningBanner.tsx` wire-vs-delete, `BillingPage`'s `DEMO_PLAN_PRICES` table).
+- **Deferred with reason (not forgotten, just not now):** Razorpay/self-serve payments (owner decision, sales-led by
+  DECISION-031); ops hardening beyond what's already shipped (no paying customers yet, functional work takes priority per
+  `feedback_functional_first.md`).
 
 ## 🔁 How to Resume
 
 ```
-/session-start → S168. One folder (E:\code\IntelWatch), branch per task, one PR merged + deployed at a time
-(DECISION-034). Use Sonnet/Haiku as much as possible (Opus for plan/review/security judgment only).
+/session-start → S169. One folder (E:\code\IntelWatch), branch per task, one PR merged + deployed at a time (DECISION-034).
+Use Sonnet/Haiku as much as possible (Opus for plan/review/security judgment only).
 
-Step 15 Phase 1 is COMPLETE (PR A/B/C + S167). Two independent tracks are open — pick whichever the owner
-wants first, they don't block each other:
+Two independent tracks are open — pick whichever the owner wants first, they don't block each other:
 
-TRACK 1 — Step 15 P2, blocked on the owner:
-Present the 7 open architecture decisions in docs/roadmap/STEP_15_ARCHITECTURE_UI.md §11 (exposure-service
-vs. extending existing services, org-profile ownership, asset/vuln-scanner data ownership, sightings
-ownership, rule→technique mapping ownership, posture-widget cache TTL exception, /exposure sidebar route).
-Once the owner decides, branch for P2 MVP ("Am I affected?" + basic advisories) per the v2 spec.
+TRACK A — Step 15 P2, blocked on the owner:
+Present the 7 open architecture decisions in docs/roadmap/STEP_15_ARCHITECTURE_UI.md §11 (exposure-service vs. extending
+existing services, org-profile ownership, asset/vuln-scanner data ownership, sightings ownership, rule→technique mapping
+ownership, posture-widget cache TTL exception, /exposure sidebar route). Once the owner decides, branch for P2 MVP
+("Am I affected?" + basic advisories) per the v2 spec (docs/roadmap/STEP_15_SIEM_INTEGRATIONS.md v2 + STEP_15_ARCHITECTURE_UI.md).
 
-TRACK 2 — small follow-ups, no owner input needed:
-- Correlation "Create ticket" (use-phase4-data.ts useCreateTicket) needs an integrationId picker — currently
-  a pre-existing 400.
-- Route-permission coverage test per service (RCA Issue 48 prevention item) — iterate registered routes,
-  fail if an authenticated route lacks a permission preHandler.
-- API keys panel: wire up the lastUsed display (field exists on the backend model already).
+TRACK B — no-decision follow-ups (recommend starting here):
+1. Real user & tenant provisioning (new, not previously scoped) — team invite, SCIM routes reachable via nginx, SSO JIT
+   callback, Prisma-backed role-change route, Command Center "Add Client" — all currently in-memory or unreachable. This is
+   the recommended first pick: it blocks real usage more than any single feature gap.
+2. Route-permission coverage test per service (RCA Issue 48 prevention item).
+3. Sweep every service's error handler for the RCA #49 4xx→500 masking bug class (only integration-service has been checked).
+4. Correlation "Create ticket" integrationId picker.
+5. Then resume S161b (remaining demo-fallback hook files) → S163 (billing/admin path+shape fixes, DECISION-036) → Step 3
+   persistence → Step 4 DB role + RLS (security review before push) → Step 10 agent foundation → Steps 11-13.
 
-Then resume S161b (remaining demo-fallback hook files, unchanged since PR 1 landed):
+Owner does a browser check after each deploy — CI/unit tests with correct shapes still aren't a substitute for a live
+click-through (this is exactly how RCA #49 and #50 were caught this session — both were owner-reported, not test-caught).
 
-Suggested branch: s161b/honest-ui-remaining-hooks (frontend only — split into more than one PR if the file
-count grows past ~10-12; one module per task per CLAUDE.md).
-
-Convert to throw + meta.resource (drop withDemoFallback), then wire matching screens to <QueryStateView>
-(apps/frontend/src/components/ui/QueryStateView.tsx):
-
-- Hook files: alerting, reporting, phase4-data.ts (DRP/graph/correlation/hunting), analytics, global-monitoring,
-  command-center hooks (incl. the Clients demo tenant list), plus the remaining onboarding/integration/
-  customization hooks in use-phase5-data.ts / use-phase6-data.ts.
-
-- RCA #45 bug-class sweep (fix regardless of whether the screen gets full QueryStateView treatment this
-  session — these are always-wrong today): use-access-reviews.ts:104,165, use-compliance-reports.ts:186,249,
-  use-global-catalog.ts:74,88, use-global-iocs.ts:119,132,173,185,197, use-global-monitoring.ts:109,125,140,
-  use-plan-limits.ts:62, use-tenant-overrides.ts:66, use-enrichment-data.ts:191, use-phase4-data.ts:422,
-  use-phase5-data.ts:299-499 (customization hooks).
-
-- Page-shape audit fixes where in scope: Command Center Overview stats field names (use-command-center.ts:
-  219-224), Report/Alert rule template field names, Admin Ops health tiles (apply SystemTab's summary-
-  derivation pattern), analytics Pipeline Throughput, queue-stats bySubtask.
-
-- Decide QuotaWarningBanner.tsx: wire it up or delete it (currently dead code).
-
-RCA #45 rules — apply to every converted screen:
-1. One test per screen must use the REAL backend response shape, not the frontend type's assumption.
-2. Never write `.then(r => r.data)` or read `r.data` after calling api() — api() already unwraps. Use
-   apiList() for list endpoints needing {data, total}.
-3. Before removing a fallback, grep the real backend handler for every field the component dereferences
-   without `?.`.
-4. Owner does a browser check after each deploy — CI/unit tests with correct shapes still aren't a substitute
-   for a live click-through.
-
-Plan → Sonnet implements (TDD, see superpowers:test-driven-development) → Opus reviews the diff (seams:
-QueryStateView interaction, any .then(r=>r.data) leftovers, FeatureGate interaction) → PR → CI → merge →
-deploy → verify (owner browser check on the specific screens touched). Run the frontend suite locally with
-`cd apps/frontend && pnpm exec vitest run` (Node 20.20.2). Check at 375px per feedback_mobile_first.md.
-
-Then: S163 (billing/admin path+shape fixes) → S165 (/graph/overview) → S166-numbering item (real Clients
-tenant list, DECISION-013 — note: this is a different, older "S166" than the S166 PR A/B/C SIEM-integration
-label used elsewhere in this doc) → Step 3 persistence → Step 4 DB role + RLS (security review before push)
-→ Step 10 → Steps 11-13.
+Note: a personal (non-IntelWatch) OpenRouter free-router task has its own plan at
+C:/Users/manis/bin/OR_FREE_ROUTER_PLAN.md — unrelated to this project, do not pull it into IntelWatch session scope.
 ```
 
-## Module Map (frontend, S161b-relevant)
+## Module Map (frontend, integration-service — S168-relevant)
 
 ```
-apps/frontend/src/hooks/
-  use-phase4-data.ts     → DRP, graph, correlation, hunting (S161b target)
-  use-phase5-data.ts     → users (done in PR B) + onboarding/integration/customization (S161b target, lines 299-499)
-  use-phase6-data.ts     → billing/admin (done in PR B) + remaining phase6 hooks if any
-  use-command-center.ts  → Command Center Overview stats (field-name mismatch, page-shape audit)
-  use-access-reviews.ts, use-compliance-reports.ts, use-global-catalog.ts, use-global-iocs.ts,
-  use-global-monitoring.ts, use-plan-limits.ts, use-tenant-overrides.ts → RCA #45 sweep targets
-  use-enrichment-data.ts, use-break-glass.ts → partial fixes landed this session, more remain
-apps/frontend/src/components/ui/QueryStateView.tsx  → the shared pattern (PR A), reuse as-is
+apps/frontend/src/lib/api.ts                 → Content-Type-on-body-only fix (RCA #49), applies to every endpoint app-wide
+apps/frontend/src/hooks/use-integrations.ts  → real stats hook (RCA #49 follow-up), replaces demo use-phase5-data.ts stats hook
+apps/frontend/src/components/SalesContactNote.tsx → new, same-tab mailto + copy (RCA #50)
+apps/frontend/src/pages/RegisterPage.tsx, ClientOnboardingPage.tsx → CAPTCHA gating + recovery UX (RCA #50)
+apps/integration-service/src/plugins/*        → errorHandlerPlugin 4xx passthrough (RCA #49), authz.ts requirePermission (S167)
+apps/integration-service/src/routes/integrations.ts → /:id/test now covers webhooks via WebhookService.testWebhook
+.github/workflows/deploy.yml                  → VITE_TURNSTILE_SITE_KEY build arg + build-time presence assertion (RCA #50)
 ```
-
-## Session 163 Addendum — Session-Start Optimization (2026-09-27)
-
-Process-only task within S161b: optimized `/session-start` to reduce context consumption from ~50% to ~15-20% of window. Three changes:
-1. `.claude/commands/session-start.md` — eliminated double-read of PROJECT_STATE/SESSION_HANDOFF/RCA/DECISIONS_LOG (steps 1-5 now "FROM DIGEST"); roadmap reads only current step spec (not all 18); DECISIONS_LOG lazy-loaded; RCA scoped to last 5 entries.
-2. `memory/MEMORY.md` — archived S117-S145 (25 entries, 97→72 lines). Files stay on disk.
-3. `memory/feedback_session_start_reads.md` — updated with optimization rationale.
-
-**S161b code changes (Sonnet agents, uncommitted on branch):** 17 modified + 5 new test files. Next session should verify before committing.
 
 ## Agent utilization
-- Opus: plan, seam checks, diff review (3 pre-push fixes), 4 post-deploy fixes, prod verification, memory — ~600k tokens
-- Sonnet: 13 runs — 2 parallel PR B implementers, review-fix tests, 4 doc updates, 2 etip-reviewer passes, 1 api-unwrap crash audit, 3 page shape audits — ~2.0M tokens
-- Haiku: 4 runs — session-start digest, hook→screen map, backend shape check, post-deploy VPS/bundle verify — ~321k tokens
-- codex:rescue: n/a — frontend-only display/data-shape changes; no auth/security/classifier logic changed
+
+- Opus (main session): plan, digest review, all doc synthesis for this closing pass (PROJECT_STATE/DECISIONS_LOG/RCA/
+  SESSION_HANDOFF/S168 doc/module docs/stats HTML/README), diff-free verification (no code touched — docs-only session per
+  instructions) — ~350k tokens (estimate)
+- Sonnet (subagent, this session): none launched — docs-only task, all file reads/edits and the 4-package test run were done
+  directly by the orchestrating agent per the caller's "do the work directly" instruction
+- Haiku: none launched this session
+- codex:rescue: n/a — docs-only session, no security/auth/classifier code touched
+
 Routing telemetry:
-- haiku · session-start docs digest · reworked: N
-- haiku · hook→screen consumer map · reworked: N
-- sonnet · PR B billing/admin implementation · reworked: Y (Opus review: tenant 403 toast, null responses, fake Free plan; prod: System tab crash — tests mocked frontend types)
-- sonnet · PR B users implementation · reworked: Y (Opus added DSAR load-error hint)
-- haiku · backend shape verification · reworked: N
-- sonnet · review-fix tests · reworked: N
-- sonnet · etip-reviewer ×2 · reworked: N
-- haiku · post-deploy VPS/bundle verify · reworked: Y (grep quoting false negatives; Opus re-ran)
-- sonnet · page shape audits ×3 + unwrap crash audit · reworked: N (found maintenance-window crash)
+- opus · full-suite test run (bailed on unrelated pre-existing flaky test) · reworked: Y (re-ran scoped to the 4 target packages via pnpm --filter)
+- opus · docs synthesis across 8 files · reworked: N

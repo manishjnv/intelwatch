@@ -1,9 +1,9 @@
 # User Management Service
 
-**Port:** 3016 | **Status:** 🔨 WIP (FEATURE-COMPLETE) | **Tests:** 210 (+ 184 in user-service for SSO/MFA/email-verification/access-review/compliance/login)
+**Port:** 3016 | **Status:** ✅ Deployed (FEATURE-COMPLETE) | **Tests:** 371
 
 ## What It Does
-Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, SOC2 audit logging, quarterly access review automation (I-17), and compliance report generation (I-18). All in-memory (DECISION-013 pattern).
+Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, SOC2 audit logging, quarterly access review automation (I-17), compliance report generation (I-18), real user directory (S162), and API key management with server-side RBAC (S167). Mostly in-memory (DECISION-013 pattern) — the user directory and API keys read/write through Prisma.
 
 ## Features
 | Feature | File | Description |
@@ -43,12 +43,20 @@ Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TO
 | Privileged access report | compliance-report-service.ts | Super/tenant admins, API keys, SCIM tokens (I-18) |
 | GDPR DSAR export | compliance-report-service.ts | All user data: profile, sessions, audit logs, API keys (I-18) |
 | Multi-tenant email login disambiguation | user-service `repository.ts`/`service.ts` | `findLoginCandidatesByEmail` — when an email exists in more than one tenant row (break-glass, invite, SCIM/SSO), login tries oldest-first candidates (capped at 10) for a bcrypt match instead of an unordered `findFirst` |
+| User directory (S162, DECISION-037) | routes/directory.ts | `GET /users` (paginated, role/status/search filters), `GET /users/stats`, `GET /users/audit` — Prisma-backed, tenant scoped to the nginx-verified `x-tenant-id` header (401 if missing, never a client-supplied value) |
+| API keys (S167, RCA Issue 48) | routes/api-keys.ts | `POST/GET/DELETE /api/v1/users/api-keys` — create (once-shown key), list, revoke. Gated by `requirePermission()`: create/revoke need `settings:update`, list needs `settings:read`. Role read from the nginx-set `x-user-role`; role/tenant checks run before the plan check. |
 
 ## API
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | /health | - | Health check |
 | GET | /ready | - | Readiness probe |
+| GET | /api/v1/users | tenant (`user:read`) | S162: paginated user directory list, role/status/search filters |
+| GET | /api/v1/users/stats | tenant (`user:read`) | S162: user counts by role/status |
+| GET | /api/v1/users/audit | tenant (`audit:read`) | S162: audit trail for the tenant |
+| POST | /api/v1/users/api-keys | tenant (`settings:update`) | S167: create an API key (key value shown once) |
+| GET | /api/v1/users/api-keys | tenant (`settings:read`) | S167: list API keys (no key values) |
+| DELETE | /api/v1/users/api-keys/:id | tenant (`settings:update`) | S167: revoke an API key |
 | GET | /api/v1/users/permissions | tenant | List permission catalog |
 | GET | /api/v1/users/permissions/hierarchy | tenant | Get role hierarchy |
 | GET | /api/v1/users/roles | tenant | List all roles |
