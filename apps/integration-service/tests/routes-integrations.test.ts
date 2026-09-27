@@ -414,6 +414,23 @@ describe('Integration routes — RBAC (role permission checks)', () => {
     expect(adminRes.statusCode).toBe(200);
   });
 
+  it('bodyless POST declared as JSON returns 400 (framework client error), not 500', async () => {
+    const id = await seedIntegration();
+    const res = await app.inject({
+      method: 'POST', url: `/api/v1/integrations/${id}/test`,
+      headers: { ...AUTH, 'content-type': 'application/json' }, payload: '',
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('FST_ERR_CTP_EMPTY_JSON_BODY');
+  });
+
+  it('bodyless POST without content-type reaches the handler (Test connection path)', async () => {
+    const id = await seedIntegration();
+    const res = await app.inject({ method: 'POST', url: `/api/v1/integrations/${id}/test`, headers: AUTH });
+    expect(res.statusCode).not.toBe(400);
+    expect(res.statusCode).not.toBe(500);
+  });
+
   it('GET /:id (get) — analyst 403, tenant_admin 200', async () => {
     const id = await seedIntegration();
     const analystRes = await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}`, headers: ANALYST });

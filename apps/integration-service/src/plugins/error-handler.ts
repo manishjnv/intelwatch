@@ -25,10 +25,16 @@ export async function errorHandlerPlugin(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const fastifyError = error as { statusCode?: number; message?: string };
+    const fastifyError = error as { statusCode?: number; message?: string; code?: string };
     if (fastifyError.statusCode === 429) {
       return reply.status(429).send({
         error: { code: 'RATE_LIMITED', message: 'Too many requests' },
+      });
+    }
+    // Framework client errors (malformed/empty body, bad content type, payload too large) are 4xx, not 500.
+    if (fastifyError.statusCode && fastifyError.statusCode >= 400 && fastifyError.statusCode < 500) {
+      return reply.status(fastifyError.statusCode).send({
+        error: { code: fastifyError.code ?? 'BAD_REQUEST', message: fastifyError.message ?? 'Bad request' },
       });
     }
 

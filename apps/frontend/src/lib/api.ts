@@ -54,8 +54,10 @@ interface ApiOptions {
 export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   const { method = 'GET', body, headers = {}, auth = true } = opts;
 
+  // Only declare a JSON body when one is sent: Fastify rejects an empty body with
+  // Content-Type: application/json (FST_ERR_CTP_EMPTY_JSON_BODY), breaking bodyless POST/DELETE.
   const finalHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     ...headers,
   };
 
