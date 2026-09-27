@@ -4,8 +4,9 @@
  * schedule, no credentials stored with ETIP. Discovery route verified:
  * apps/api-gateway/src/routes/public/taxii.ts GET /taxii/discovery, registered at prefix
  * /api/v1/public (apps/api-gateway/src/app.ts:146). Auth: X-API-Key header, scope ioc:read
- * (apps/api-gateway/src/plugins/api-key-auth.ts:83-85) — no frontend page exists yet for a
- * tenant to self-serve one (see PR report), so that link is intentionally not rendered here.
+ * (apps/api-gateway/src/plugins/api-key-auth.ts:83-85). S167: self-serve key creation now
+ * exists at ApiKeysPanel — `onCreateKey` switches the Users & Access pill there. The caller
+ * omits it for roles that can't manage keys (analysts), so no dead link renders for them.
  */
 import { useState } from 'react'
 import { Copy, Check, Radio } from 'lucide-react'
@@ -13,7 +14,12 @@ import { toast } from '@/components/ui/Toast'
 
 const DISCOVERY_PATH = '/api/v1/public/taxii/discovery'
 
-export function TaxiiFeedCard() {
+interface TaxiiFeedCardProps {
+  /** Switches the Users & Access tab to the API keys pill. Omitted renders no link. */
+  onCreateKey?: () => void
+}
+
+export function TaxiiFeedCard({ onCreateKey }: TaxiiFeedCardProps = {}) {
   const [copied, setCopied] = useState(false)
   const url = `${window.location.origin}${DISCOVERY_PATH}`
 
@@ -57,8 +63,19 @@ export function TaxiiFeedCard() {
 
       <p className="text-[10px] text-text-muted">
         Authenticate with an <code className="font-mono">X-API-Key</code> header (scope{' '}
-        <code className="font-mono">ioc:read</code>). No self-serve API key page exists yet —
-        ask an admin to provision one.
+        <code className="font-mono">ioc:read</code>).{' '}
+        {onCreateKey ? (
+          <button
+            type="button"
+            onClick={onCreateKey}
+            className="text-accent font-medium hover:underline"
+            data-testid="taxii-create-key-link"
+          >
+            Create an API key
+          </button>
+        ) : (
+          'Ask an admin to create one in Users & Access -> API keys.'
+        )}
       </p>
       <p className="text-[10px] text-text-muted">Works with Sentinel, QRadar, Splunk, OpenCTI, MISP.</p>
     </div>

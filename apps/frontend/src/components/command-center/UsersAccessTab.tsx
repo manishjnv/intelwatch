@@ -22,11 +22,12 @@ import { useSsoConfig } from '@/hooks/use-sso'
 import { TaxiiFeedCard } from './integrations/TaxiiFeedCard'
 import { ConnectionList } from './integrations/ConnectionList'
 import { AddConnectionWizard } from './integrations/AddConnectionWizard'
+import { ApiKeysPanel } from './ApiKeysPanel'
 import type { Integration } from '@/hooks/use-integrations'
 
 // ─── Types ──────────────────────────────────────────────────
 
-type SubTab = 'team' | 'roles' | 'sso' | 'integrations' | 'security' | 'access-reviews'
+type SubTab = 'team' | 'roles' | 'sso' | 'integrations' | 'security' | 'access-reviews' | 'api-keys'
 
 interface UsersAccessTabProps {
   data: ReturnType<typeof useCommandCenter>
@@ -233,7 +234,7 @@ function RolesPanel() {
 // ─── Integrations Sub-Tab ───────────────────────────────────
 // Real connectors (S166 Step 15 P1) — see components/command-center/integrations/*.
 
-function IntegrationsPanel({ tenantPlan }: { tenantPlan: string }) {
+function IntegrationsPanel({ tenantPlan, onCreateKey }: { tenantPlan: string; onCreateKey?: () => void }) {
   const stats = useIntegrationStats()
   const [wizardOpen, setWizardOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Integration | null>(null)
@@ -260,7 +261,7 @@ function IntegrationsPanel({ tenantPlan }: { tenantPlan: string }) {
         ))}
       </div>
 
-      <TaxiiFeedCard />
+      <TaxiiFeedCard onCreateKey={onCreateKey} />
 
       <ConnectionList
         tenantPlan={tenantPlan}
@@ -298,9 +299,14 @@ function formatDate(dateStr: string): string {
 // ─── Main UsersAccessTab ────────────────────────────────────
 
 export function UsersAccessTab({ data }: UsersAccessTabProps) {
-  const { isSuperAdmin, tenantPlan } = data
+  const { isSuperAdmin, tenantPlan, userRole } = data
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('team')
   const { data: ssoConfig } = useSsoConfig()
+
+  // ponytail: UI-only admin gate (no role preHandler on the api-keys route today — same
+  // documented gap as ConnectionList's Add-action gating). tenant_admin + super_admin only;
+  // analysts don't see the pill or the TaxiiFeedCard "Create an API key" link.
+  const canManageApiKeys = isSuperAdmin || userRole === 'tenant_admin'
 
   const pills: PillItem[] = useMemo(() => {
     const items: PillItem[] = [
@@ -311,8 +317,9 @@ export function UsersAccessTab({ data }: UsersAccessTabProps) {
       { id: 'security', label: 'Security' },
       { id: 'access-reviews', label: 'Access Reviews' },
     ]
+    if (canManageApiKeys) items.push({ id: 'api-keys', label: 'API keys' })
     return items
-  }, [])
+  }, [canManageApiKeys])
 
   const effectiveSubTab = pills.find(p => p.id === activeSubTab) ? activeSubTab : 'team'
 
@@ -326,9 +333,15 @@ export function UsersAccessTab({ data }: UsersAccessTabProps) {
       {effectiveSubTab === 'team' && <TeamPanel isSuperAdmin={isSuperAdmin} tenantPlan={tenantPlan} />}
       {effectiveSubTab === 'roles' && <RolesPanel />}
       {effectiveSubTab === 'sso' && <SsoConfigPanel />}
-      {effectiveSubTab === 'integrations' && <IntegrationsPanel tenantPlan={tenantPlan} />}
+      {effectiveSubTab === 'integrations' && (
+        <IntegrationsPanel
+          tenantPlan={tenantPlan}
+          onCreateKey={canManageApiKeys ? () => setActiveSubTab('api-keys') : undefined}
+        />
+      )}
       {effectiveSubTab === 'security' && <SecurityPanel data={data} />}
       {effectiveSubTab === 'access-reviews' && <AccessReviewPanel isSuperAdmin={isSuperAdmin} />}
+      {effectiveSubTab === 'api-keys' && canManageApiKeys && <ApiKeysPanel />}
     </div>
   )
 }

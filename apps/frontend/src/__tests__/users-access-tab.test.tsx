@@ -61,6 +61,29 @@ vi.mock('@/hooks/use-sso', () => ({
 
 vi.mock('@/components/ui/Toast', () => ({ toast: vi.fn() }))
 
+// S167: API keys pill — real backend shape (api-keys.ts GET /api-keys, line 101).
+vi.mock('@/hooks/use-api-keys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-api-keys')>()
+  return {
+    ...actual,
+    useApiKeys: () => ({
+      data: { data: [], total: 0, page: 1, limit: 50 },
+      isLoading: false, isError: false, error: null, refetch: vi.fn(),
+    }),
+    useCreateApiKey: () => ({ mutate: vi.fn(), isPending: false }),
+    useRevokeApiKey: () => ({ mutate: vi.fn(), isPending: false }),
+  }
+})
+
+vi.mock('@/hooks/use-feature-limits', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-feature-limits')>()
+  return {
+    ...actual,
+    useFeatureEnabled: () => true,
+    useFeatureLimits: () => ({ features: [], isLoading: false, error: null }),
+  }
+})
+
 // ─── Mock data ──────────────────────────────────────────────
 
 const baseMockCC: any = {
@@ -178,5 +201,40 @@ describe('UsersAccessTab', () => {
   it('shows SsoStatusBadge in Users & Access tab header', () => {
     render(<UsersAccessTab data={baseMockCC} />)
     expect(screen.getByText('SSO Not Configured')).toBeInTheDocument()
+  })
+
+  // ─── API keys pill (S167) ───────────────────────────────────
+
+  it('shows the API keys pill for super_admin and switches to it', () => {
+    render(<UsersAccessTab data={baseMockCC} />)
+    expect(screen.getByTestId('pill-api-keys')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('pill-api-keys'))
+    expect(screen.getByTestId('api-keys-panel')).toBeInTheDocument()
+  })
+
+  it('shows the API keys pill for tenant_admin', () => {
+    const tenantCC = { ...baseMockCC, isSuperAdmin: false, userRole: 'tenant_admin' }
+    render(<UsersAccessTab data={tenantCC} />)
+    expect(screen.getByTestId('pill-api-keys')).toBeInTheDocument()
+  })
+
+  it('hides the API keys pill for analyst', () => {
+    const analystCC = { ...baseMockCC, isSuperAdmin: false, userRole: 'analyst' }
+    render(<UsersAccessTab data={analystCC} />)
+    expect(screen.queryByTestId('pill-api-keys')).not.toBeInTheDocument()
+  })
+
+  it('does not render the TaxiiFeedCard "Create an API key" link for analyst', () => {
+    const analystCC = { ...baseMockCC, isSuperAdmin: false, userRole: 'analyst' }
+    render(<UsersAccessTab data={analystCC} />)
+    fireEvent.click(screen.getByTestId('pill-integrations'))
+    expect(screen.queryByTestId('taxii-create-key-link')).not.toBeInTheDocument()
+  })
+
+  it('TaxiiFeedCard "Create an API key" link switches to the API keys pill', () => {
+    render(<UsersAccessTab data={baseMockCC} />)
+    fireEvent.click(screen.getByTestId('pill-integrations'))
+    fireEvent.click(screen.getByTestId('taxii-create-key-link'))
+    expect(screen.getByTestId('api-keys-panel')).toBeInTheDocument()
   })
 })
