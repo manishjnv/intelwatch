@@ -759,3 +759,4 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 | Session 160–161a | 2026-09-26 | No new issues. PR #44 (baaf147) deployed, 32/32 containers healthy. Step 2 ES=DB verified. |
 | Session 161a PR B | 2026-09-27 | No new issues. PR #45 (cd4a227) deployed, run 36297890539 green, 32/32 containers healthy. Honest UI billing/admin/users hooks + screens (Step 5). |
 | Session 161a PR B hotfix | 2026-09-27 | RCA #45: System tab crash + Plan Builder false empty state after PR B. PR #46 (1111965) deployed, run 36302952387 green, 32/32 healthy. |
+| Session 161a PR B hotfix 2 | 2026-09-27 | RCA #45 follow-up: Emergency Access (break-glass audit) crash, pre-existing since S18. PR #47 (5489428) deployed, run 36305645836. Crash audit of the remaining ~23 `api<{data}>` call sites: 0 crash risks (all silent demo/empty fallbacks → S161b). |
