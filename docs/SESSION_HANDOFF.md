@@ -1,146 +1,193 @@
 # SESSION HANDOFF DOCUMENT
-**Date:** 2026-09-26
-**Session:** 161 (label S160–S161a PR A)
-**Session Summary:** S160 verified Roadmap Step 2 "Search works" end to end on the VPS (read-only): ES doc count per tenant equals Postgres `iocs` row count for both tenants that hold IOCs. Step 2 is now DONE. S161a PR A shipped Step 5 Honest UI core (PR #44 → `baaf147`): a shared `QueryStateView` loading/error/empty/data pattern, a fix for the MFA enforcement toggle (it was silently 404'ing in production on the wrong path), removal of `DEMO_SESSIONS`/`DEMO_ENFORCEMENT`/`DEMO_LIMITS`, `FeatureGate` locking only on an explicit `enabled:false` (DECISION-035), and the W17 demo-price fix. Detail: `docs/S161a_HONEST_UI_CORE.md`.
-
-Full detail: docs/S160_S161a_VERIFY_HONEST_UI_TOOLING.md
+**Date:** 2026-09-27
+**Session:** 162 (label S161a PR B + post-deploy hotfixes)
+**Session Summary:** Step 5 Honest UI PR B removed the remaining silent demo fallbacks from billing, admin-ops,
+and user-management hooks/screens (PR #45 → `cd4a227`), applying the `QueryStateView` pattern built in PR A.
+Converting these hooks surfaced real, pre-existing billing/admin path+shape mismatches, hidden until now by
+demo data — the owner chose to ship honest anyway (DECISION-036), deferring the backend fixes to S163. Three
+same-day post-deploy hotfixes followed (RCA #45), each its own PR/merge/deploy/verify, fixing crashes the
+removed fallbacks had been masking: Command Center System tab (PR #46), Emergency Access on a normal load
+(PR #47), and Emergency Access raw-row mapping + a maintenance-window crash (PR #48). A 3-agent page-shape
+audit after the third hotfix found no further crash paths. Session closes with master at `0b126ff`, VPS at
+`f012bdc`, 32/32 containers healthy, 1,926 frontend tests. Full detail: `docs/S161a_PR_B_SESSION_2026-09-27.md`.
 
 ## ✅ Changes Made
 
 | Commit(s) | PR | Description |
 |---|---|---|
-| — (read-only) | — | S160: confirmed `bull:etip-ioc-indexed:wait`/`:active` draining, ES per-tenant doc counts == Postgres `iocs` row counts, sample IOC findable in search. No code changed. |
-| `e2cc697` | #44 → `baaf147` | S161a PR A feat: new `QueryStateView`; `useApiError.ts` exports `classifyError`; `main.tsx` wires `QueryCache.onError` to the existing debounced toast; `use-mfa.ts` enforcement paths fixed to `/auth/settings/mfa/enforcement` + `/auth/admin/mfa/enforcement`, `DEMO_ENFORCEMENT` removed; `use-sessions.ts` `DEMO_SESSIONS` removed; `use-feature-limits.ts` `DEMO_LIMITS`/`isDemo` removed, `useFeatureEnabled` = `entry?.enabled ?? true`; `FeatureGate.tsx` renders nothing while loading; `SecurityPanel.tsx`/`ActiveSessionsList.tsx`/`TenantUsagePanel.tsx` use the error card; `hooks/security-demo-data.ts` deleted; `use-plan-builder.ts` W17 price/plan-id fix. |
-| `4a91c0d` | #44 | docs/comment wording pass (FeatureGate default comment — seeded plans list every key). |
-| `7ff635b` | #44 | docs: DECISION-035 (FeatureGate locks only on explicit `enabled:false`). |
-| `baaf147` | #44 (merge) | Merged to master. Deploy run 36244794791 green (test/typecheck/lint 6m20s, build&push 2m03s, deploy 2m55s). |
+| `c369aa9` | #45 → `cd4a227` | PR B feat (28 files): `use-phase6-data.ts`/`use-phase5-data.ts`/`use-plan-builder.ts` converted to throw + `meta.resource`; 9 screens wired to `<QueryStateView>` (`BillingPage`, `AdminOpsPage`, `UserManagementPage`, `BillingPlansTab`, `SystemTab`, `PipelinePanel`, `PlanBuilderPanel`, `UsersAccessTab`, `ComplianceReportsPanel`); fake super-admin tenant table replaced with a real `/admin/tenants` call gated on `isSuperAdmin`; fake coupon codes replaced with "Offers aren't available yet"; DSAR user-picker shows a load-error hint instead of silently listing nobody; tenant plan name resolves subscription → login-session plan → `—`. |
+| `e3a8415` | docs | post-deploy stats update, PR B. |
+| `859a6d4` | #46 → `1111965` | **Hotfix 1 (RCA #45):** System tab crash (`reading 'total'`) — `SystemTab.tsx` derives counts from the real `services` list when `summary` is absent. Plan Builder false empty state — `usePlanBuilder` now reads the array `api()` returns directly instead of `r.data`. |
+| `9cb8d7a` | docs | post-deploy hotfix 1 + S161b api-unwrap sweep list. |
+| `ad1a7d9` | #47 → `5489428` | **Hotfix 2 (RCA #45 follow-up):** Emergency Access crash on a normal successful load (`reading 'length'`, pre-existing since S18) — `useBreakGlassAudit` switched to `apiList()`. |
+| `e82ca15` | docs | post-deploy hotfix 2. |
+| `004f23b` + `83aedf7` | #48 → `f012bdc` | **Hotfix 3 (RCA #45 second layer):** Emergency Access raw Prisma `AuditLog` rows mapped to the panel shape via new `toBreakGlassAuditEntry()`; `useMaintenanceWindows` defaults `affectedServices` (admin-service sends `scope`/`tenantIds`). Page-shape audit (3 agents): no further crash paths found. |
+| `0b126ff` | docs | post-deploy hotfix 3; this closing update (Session 162). |
 
 ## 📁 Files / Documents Affected
 
-**New:** `apps/frontend/src/components/ui/QueryStateView.tsx`, `apps/frontend/src/__tests__/{query-state-view,use-feature-limits-no-demo,use-mfa-enforcement,use-sessions-no-demo,plan-builder-prices}.test.{ts,tsx}`, `docs/S161a_HONEST_UI_CORE.md`.
+**New:** `docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`, `docs/S161a_PR_B_SESSION_2026-09-27.md`, plus frontend test files `plan-builder-no-demo.test.ts`, `use-break-glass-audit.test.ts`, `use-phase5-no-demo.test.ts`, `use-phase6-no-demo.test.ts`, `users-honest-ui.test.tsx`.
 
-**Deleted:** `apps/frontend/src/hooks/security-demo-data.ts`.
+**Deleted:** `apps/frontend/src/__tests__/plan-builder-prices.test.ts` (guarded the removed `DEMO_PLANS` constant only).
 
-**Modified:** `apps/frontend/src/components/FeatureGate.tsx`; `apps/frontend/src/components/command-center/TenantUsagePanel.tsx`; `apps/frontend/src/components/security/{ActiveSessionsList,SecurityPanel}.tsx`; `apps/frontend/src/hooks/{use-feature-limits,use-mfa,use-plan-builder,use-sessions,useApiError}.ts`; `apps/frontend/src/main.tsx`; `apps/frontend/src/__tests__/{active-sessions,feature-gate-wiring,use-mfa,use-mfa-setup-no-demo}.test.{ts,tsx}`. Full diff: `git show --stat e2cc697`.
+**Modified (code, `git diff --stat 370ce75..0b126ff -- apps/frontend`, 28 files, +1,667/-1,228):**
+`apps/frontend/src/__tests__/{admin-queue-alerts,command-center-billing-alerts,command-center-system-routes,compliance-reports-panel,phase5-pages}.test.tsx`;
+`apps/frontend/src/components/QuotaWarningBanner.tsx`;
+`apps/frontend/src/components/command-center/{BillingPlansTab,ComplianceReportsPanel,PipelinePanel,PlanBuilderPanel,SystemTab,UsersAccessTab}.tsx`;
+`apps/frontend/src/components/viz/UserManagementModals.tsx`;
+`apps/frontend/src/hooks/{phase5-demo-data,phase6-demo-data,use-break-glass,use-phase5-data,use-phase6-data,use-plan-builder}.ts`;
+`apps/frontend/src/pages/{AdminOpsPage,BillingPage,UserManagementPage}.tsx`.
 
-**Modified (docs, this closing session):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md`, `docs/DEPLOYMENT_RCA.md`, `docs/ETIP_Project_Stats.html`, `README.md`, `docs/roadmap/STEP_02_SEARCH_INDEX.md`, `docs/roadmap/STEP_05_HONEST_UI.md`, `docs/ROADMAP_S149_PLUS.md`. No `docs/modules/frontend.md` exists in this repo (module docs cover backend services only) — skipped, noted here instead.
+**Modified (docs, this closing session):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md`, `docs/DECISIONS_LOG.md` (DECISION-036 added), `docs/DEPLOYMENT_RCA.md` (verified — rows already present, no changes needed), `docs/ETIP_Project_Stats.html`, `README.md`. No `docs/modules/frontend.md` exists in this repo (module docs cover backend services only, per `docs/modules/*.md` listing) — skipped again, as in prior sessions.
 
 ## 🔧 Decisions & Rationale
 
-- **DECISION-035** (2026-09-26, S161a): `FeatureGate` locks a route only on an explicit `enabled:false` from `/billing/limits`; blank while loading; a fetch error or a missing entry lets the page load (owner option A). Already recorded in `docs/DECISIONS_LOG.md` — not re-added here.
+- **DECISION-036** (2026-09-27, S161a PR B): Ship PR B honest-UI now; billing/admin path+shape mismatches it surfaced (`/billing/plans` price field, `/billing/usage` shape, `/billing/subscription` singular vs. plural, missing `/billing/stats` and `/admin/stats`) are fixed in S163, not blocking this merge. Recorded in full in `docs/DECISIONS_LOG.md`.
+- **Owner note (not a DECISIONS_LOG entry):** owner emails already present in git history (~1,092 author/committer entries, 5 older docs commits) are not being scrubbed — a history rewrite would break existing VPS/CI checkouts, and they predate the "no emails in new docs" rule. The rule covers new docs going forward only.
 
 ## 🧪 E2E / Deploy Verification Results
 
-**S160 — Step 2 ES=DB verification (VPS, read-only, 12:59 UTC):**
 ```
-bull:etip-ioc-indexed  wait=4  active=5 (live traffic draining)  failed=6,118 (legacy baseline, unchanged)
-Postgres iocs vs ES etip_<tenant>_iocs_*:
-  e4e11c4c…  6,051 = 6,051  ✅
-  10c895c3…  6,042 = 6,042  ✅   (other 8 tenants hold 0 IOCs)
-Per-index (10c895c3): cve 2276, domain 1420, email 191, hash 1134, ip 1021
-Per-index (e4e11c4c): cve 2274, domain 1425, email 204, hash 1134, ip 1014
-Base `_iocs` (no suffix) indices: 0 docs
-Sample IP 3.0.21.0 (tenant e4e11c4c) found in ES: 1 hit
-7 transient "ioc-update" job failures during the drain (60 min window) — all retried OK, failed count
-  unchanged. Likely an update racing the backfill index write. Folded into the existing
-  "ES indexer backfill speed" debt item, not a new bug.
-Result: Step 2 DONE. Owner ⌘K click-through PASSED: `3.0.21.0` (IntelWatch HQ) and `3.5.17.10` (home pvt ltd) both shown under "Indicators of Compromise".
+PR #45 → cd4a227: CI/CD run 36297890539 green (test/typecheck/lint, build&push, deploy), completed 05:52 UTC
+PR #46 → 1111965: CI/CD run 36302952387 green
+PR #47 → 5489428: CI/CD run 36305645836 green
+PR #48 → f012bdc: CI/CD run 36308018916 green
+
+Final VPS HEAD: f012bdc · 32/32 etip_* containers healthy (verified directly)
+https://intelwatch.in/       → 200
+https://intelwatch.in/health → 200
+Built bundle: PR B demo strings (fake tenants/coupons/users) absent; honest-UI strings present
+Owner confirmed live: Emergency Access renders real audit rows, "Emergency Login"/"Session Replaced" badges
+
+Frontend tests: 126 files, 1,926 passing, 2 skipped (was 1,858 after PR A)
+tsc --noEmit: 0 errors · eslint: 0 errors
+Only apps/frontend changed code this session — no backend service, no packages/* touched
 ```
 
-**S161a PR A deploy (PR #44, run 36244794791):** Test/Typecheck/Lint 6m20s ✅, Build&Push 2m03s ✅, Deploy 2m55s ✅. VPS at `baaf147`. 32/32 etip containers healthy (verified directly).
-
-Post-deploy checks:
-```
-GET /api/v1/auth/settings/mfa/enforcement    → 401 (route exists; was 404 on the old path)
-GET /api/v1/auth/admin/mfa/enforcement       → 401 (route exists)
-GET /api/v1/settings/mfa/enforcement (old)   → 404 (confirms the bug that was fixed)
-GET /, /iocs, /login, /health                → 200
-Built bundle: old fake MFA secret 0 hits; new MFA route path present; new empty-state text present
-Frontend container logs: 0 errors
-```
-
-**Frontend test count:** 123 test files, **1,856 passing + 2 skipped (1,858 total)**, CI green. Previous frontend count (S159, `docs/PROJECT_STATE.md`) was **1,789**. Arithmetic: 1,858 − 1,789 = **69 new/changed tests** net (5 new test files — `query-state-view`, `use-sessions-no-demo`, `use-mfa-enforcement`, `use-feature-limits-no-demo`, `plan-builder-prices` — plus additions to 4 existing files: `active-sessions`, `feature-gate-wiring`, `use-mfa`, `use-mfa-setup-no-demo`). Other packages unchanged this session (no backend/schema touched).
+**Page-shape audit (3 agents, run after hotfix 3):** no additional crash paths found. Non-crashing demo/wrong-data
+screens found (deferred to S161b/S163, not urgent): Command Center Overview stats field mismatch, Report/Alert
+rule templates field mismatch, System → Backups has no API, Threat Graph `/graph/entity/root` always misses,
+Correlation/Campaigns read an empty in-memory store, Threat Actors/Malware swallow list errors, Admin Ops health
+tiles stuck at `—`, analytics Pipeline Throughput always 0, queue-stats `bySubtask` always `{}`, break-glass
+Details column shows raw JSON (cosmetic). Full list: `docs/S161a_PR_B_SESSION_2026-09-27.md`.
 
 ## ⚠️ Open Items / Next Steps
 
-**Immediate:**
-1. ~~Owner ⌘K UI click-through~~ — PASSED 2026-09-26 (both tenants).
-2. **S161a PR B** (branch `s161a/honest-ui-billing-users`) — see "How to Resume" below.
+**Immediate — S161b (remaining demo-fallback hook files):**
+- Hook files: alerting, reporting, phase4 (DRP/graph/correlation/hunting), analytics, global-monitoring,
+  command-center (incl. the Clients demo tenant list), plus inline hooks (onboarding, integration, customization).
+- **RCA #45 bug-class sweep** — fix every `.then(r => r.data)` / `r.data`-after-`api()` site (always `undefined`,
+  `api()` already unwraps): `use-access-reviews.ts:104,165`, `use-compliance-reports.ts:186,249`,
+  `use-global-catalog.ts:74,88`, `use-global-iocs.ts:119,132,173,185,197`, `use-global-monitoring.ts:109,125,140`,
+  `use-plan-limits.ts:62`, `use-tenant-overrides.ts:66`; plus (no `.then` unwrap, consumer `?.` hides it → always
+  0 rows) `use-enrichment-data.ts:191` (enrichment pending queue) and `use-phase4-data.ts:422` (hunting templates),
+  and the `use-phase5-data.ts` customization hooks at lines 299–499. `use-break-glass.ts` still has a demo
+  fallback on error elsewhere in the file (its crash path was fixed in PR #47/#48).
+- **Page-shape audit fixes** (not crashes, but wrong/demo data shown): Command Center Overview stats
+  (`use-command-center.ts:219-224` checks the wrong field names); Report templates (`type` vs. real `reportType`,
+  `sections` are objects not strings — fix `AlertsReportsTab.tsx:452` alongside or it will crash once the shape
+  is corrected); Alert rule templates (`conditionType` is nested at `rule.condition.type`); System → Backups has
+  no backing API (100% fake); Threat Graph's `/graph/entity/root` call always misses (no node has id "root" —
+  needs a real "top nodes" query, see S165); Correlation + Campaigns read an in-memory worker store that looks
+  empty/demo on a fresh process; Threat Actors + Malware list routes send an unwrapped `{data,total}` and their
+  hooks swallow the resulting error into "none found"; Admin Ops health tiles stuck at `—` (apply the same
+  `summary`-derivation fix SystemTab got); analytics `processing-rate` never set → Pipeline Throughput always 0;
+  queue-stats `bySubtask` always `{}`.
+- Decide wire-vs-delete for `components/QuotaWarningBanner.tsx` (dead code, not imported anywhere).
+- Widen the `ServiceStatus` frontend type (`phase6-demo-data.ts:72`) to include `'critical'` (a real admin-service value).
+- One test per converted screen must use the real backend response shape (RCA #45 rule).
 
-**Deferred (carried):**
-- Purge the 6,118 legacy failed jobs in `bull:etip-ioc-indexed:failed` now that ES=DB is confirmed.
-- ai-enrichment downstream queues (graphSync, correlate, cacheInvalidate) still have no `removeOnComplete` — Redis grows unbounded.
-- `tests/e2e/pipeline-downstream-flow.test.ts` still documents the pre-S154 enrichment job shape (stale but passing).
-- es-indexing backfill speed (`refresh:'wait_for'` per doc, ~1/s) + the 7 transient update-vs-backfill races seen in S160 — same debt item, switch to bulk/no-refresh if IOC volume grows.
-- `MfaEnforcement` frontend type fields (`gracePeriodDays`/`usersWithMfa`/`totalUsers`) don't match what the server returns (`{enforced, enforcedBy?, enforcedAt?}`) — optional, no crash, not reconciled.
-- ~~Local Node v20.11.1 couldn't start Vitest~~ — **fixed 2026-09-26:** local Node upgraded to 20.20.2 (winget `OpenJS.NodeJS.20`, same as CI's `'20'`); `pnpm exec vitest run` works directly.
-- ~~Codex CLI 0.125.0 fell back to `gpt-5.5`~~ — **fixed 2026-09-26:** the old CLI couldn't parse the server's model list (new `max` reasoning level) and ChatGPT accounts reject older models; upgraded to Codex CLI 0.157.1 (`npm i -g @openai/codex@latest`), no model pin needed. `codex:rescue` usable again.
-- `usePlanBuilder` still returns `DEMO_PLANS` on a fetch error — scoped to PR B.
-- Dashboard "IOC Trend (7d)" / "Threat Score" widgets show 0/empty despite the active tenant holding thousands of IOCs — likely a widget wiring gap, check during S161b's dashboard-widget pass.
-- Owner's two accounts each exist in two tenants (login picks the oldest matching-password tenant) — works but confusing, tidy up later.
-- ⌘K result rows show only the IOC value, no type/severity chip — minor UX gap.
+**Then:**
+1. The owner-scheduled security fix before Step 3 (plan-limits enforcement — no further detail here, per the public-repo rule).
+2. **S162** — user-management-service real `/users` list/audit/stats routes.
+3. **S163** — fix the billing/admin path+shape mismatches PR B surfaced (`docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`):
+   `/billing/plans` price field, `/billing/usage` shape, `/billing/subscription` singular vs. real plural route,
+   missing `/billing/stats` and `/admin/stats`; plus `QuotaWarningBanner.tsx` and `BillingPage`'s `DEMO_PLAN_PRICES` table.
+4. **S164** — ai-enrichment `/enrichment/ioc/:id` + auto-enrich critical/high with a daily cap + admin switch (AI off by default).
+5. **S165** — threat-graph `/graph/overview`.
+6. **S166** — real tenant list in Command Center (replace admin-service's in-memory `TenantStore`, DECISION-013).
+7. Step 3 persistence sessions.
+8. Step 4 DB role + RLS (security review before push).
+9. Step 10 agent foundation.
+10. Steps 11–13.
+
+Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md` (done, verified),
+`docs/roadmap/STEP_05_HONEST_UI.md` (§12 has the full PR A/B/S161b/S162+ split), `docs/S161a_HONEST_UI_CORE.md`,
+`docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`, `docs/S161a_PR_B_SESSION_2026-09-27.md`.
 
 ## 🔁 How to Resume
 
 ```
-/session-start → S161a PR B. One folder (E:\code\IntelWatch), branch per task, one PR merged +
-deployed at a time (DECISION-034). Use Sonnet/Haiku as much as possible.
+/session-start → S161b. One folder (E:\code\IntelWatch), branch per task, one PR merged + deployed at a time
+(DECISION-034). Use Sonnet/Haiku as much as possible (Opus for plan/review/security judgment only).
 
-Branch: s161a/honest-ui-billing-users (frontend only).
+Suggested branch: s161b/honest-ui-remaining-hooks (frontend only — split into more than one PR if the file
+count grows past ~10-12; one module per task per CLAUDE.md).
 
-Convert to throw + meta.resource (no more silent demo fallback), then wire the matching screens to
-<QueryStateView> (apps/frontend/src/components/ui/QueryStateView.tsx):
+Convert to throw + meta.resource (drop withDemoFallback), then wire matching screens to <QueryStateView>
+(apps/frontend/src/components/ui/QueryStateView.tsx):
 
-- apps/frontend/src/hooks/use-phase6-data.ts: useBillingPlans, useUsageMeters, useCurrentSubscription,
-  usePaymentHistory, useBillingStats, useSystemHealth, useMaintenanceWindows, useAdminTenants,
-  useAdminAuditLog, useAdminStats, useDlqStatus, useQueueHealth, useQueueAlerts
-- apps/frontend/src/hooks/use-phase5-data.ts: useUsers, useTeams, useRoles, useSessions (phase5),
-  useAuditLog, useUserManagementStats
-- apps/frontend/src/hooks/use-plan-builder.ts: error fallback (drop DEMO_PLANS)
+- Hook files: alerting, reporting, phase4-data.ts (DRP/graph/correlation/hunting), analytics, global-monitoring,
+  command-center hooks (incl. the Clients demo tenant list), plus the remaining onboarding/integration/
+  customization hooks in use-phase5-data.ts / use-phase6-data.ts.
 
-Screens: BillingPage, BillingPlansTab, AdminOpsPage, SystemTab, PipelinePanel, UserManagementPage,
-UsersAccessTab, ComplianceReportsPanel, PlanBuilderPanel. No sample data allowed on any of these
-(O1 in STEP_05_HONEST_UI.md doesn't block them). Users screens will show "Not available yet" (404)
-until S162 adds the real /users list/audit/stats routes in user-management-service — that's expected,
-not a bug to chase in this PR. Keep withDemoFallback for the onboarding/integration/customization
-hooks in these same files — those move in S161b.
+- RCA #45 bug-class sweep (fix regardless of whether the screen gets full QueryStateView treatment this
+  session — these are always-wrong today): use-access-reviews.ts:104,165, use-compliance-reports.ts:186,249,
+  use-global-catalog.ts:74,88, use-global-iocs.ts:119,132,173,185,197, use-global-monitoring.ts:109,125,140,
+  use-plan-limits.ts:62, use-tenant-overrides.ts:66, use-enrichment-data.ts:191, use-phase4-data.ts:422,
+  use-phase5-data.ts:299-499 (customization hooks).
 
-Plan → Sonnet implements (TDD, see superpowers:test-driven-development) → Opus reviews the diff
-(seams: FeatureGate interaction, any route still on the old demo path) → PR → CI → merge → deploy →
-verify. Run the frontend suite locally with `cd apps/frontend && pnpm exec vitest run` (Node 20.20.2). Check at
-375px per feedback_mobile_first.md.
+- Page-shape audit fixes where in scope: Command Center Overview stats field names (use-command-center.ts:
+  219-224), Report/Alert rule template field names, Admin Ops health tiles (apply SystemTab's summary-
+  derivation pattern), analytics Pipeline Throughput, queue-stats bySubtask.
 
-Then: S161b (remaining hook files: alerting, reporting, phase4, analytics, monitoring,
-command-center, inline hooks) → S162 (user-management-service /users routes) → S166–S170 →
-Step 3 persistence sessions → Step 4 DB role + RLS (security review before push) → Step 10 → 11–13.
+- Decide QuotaWarningBanner.tsx: wire it up or delete it (currently dead code).
+
+RCA #45 rules — apply to every converted screen:
+1. One test per screen must use the REAL backend response shape, not the frontend type's assumption.
+2. Never write `.then(r => r.data)` or read `r.data` after calling api() — api() already unwraps. Use
+   apiList() for list endpoints needing {data, total}.
+3. Before removing a fallback, grep the real backend handler for every field the component dereferences
+   without `?.`.
+4. Owner does a browser check after each deploy — CI/unit tests with correct shapes still aren't a substitute
+   for a live click-through.
+
+Plan → Sonnet implements (TDD, see superpowers:test-driven-development) → Opus reviews the diff (seams:
+QueryStateView interaction, any .then(r=>r.data) leftovers, FeatureGate interaction) → PR → CI → merge →
+deploy → verify (owner browser check on the specific screens touched). Run the frontend suite locally with
+`cd apps/frontend && pnpm exec vitest run` (Node 20.20.2). Check at 375px per feedback_mobile_first.md.
+
+Then: S162 (user-management-service /users routes) → S163 (billing/admin path+shape fixes) → S164
+(ai-enrichment endpoint + auto-enrich) → S165 (/graph/overview) → S166 (real Clients tenant list) →
+Step 3 persistence → Step 4 DB role + RLS (security review before push) → Step 10 → Steps 11-13.
 ```
 
-**Queue after PR B:**
-0. S163 must fix the billing/admin path+shape mismatches PR B verified (see `docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`): `/billing/plans` price field (`priceInr`/`priceUsd` vs `price`), `/billing/usage` shape (flat snake_case vs nested), `/billing/subscription` vs the real `/billing/subscriptions` (plural), missing `/billing/stats`, missing `/admin/stats`.
-1. S161b — remaining honest-UI hooks incl. dashboard widgets. **Also fix the `api(...).then(r => r?.data …)` bug class (RCA #45)** — `api()` already returns `json.data`, so these always hit their fallback (why Compliance reports still show demo rows): `use-access-reviews.ts:104,165`, `use-compliance-reports.ts:186,249`, `use-global-catalog.ts:74,88`, `use-global-iocs.ts:119,132,173,185,197`, `use-global-monitoring.ts:109,125,140`, `use-plan-limits.ts:62`, `use-tenant-overrides.ts:66`, plus (no `.then` unwrap, consumer `?.` hides it → always 0 rows) `use-enrichment-data.ts:191` (Enrichment pending queue) and `use-phase4-data.ts:422` (Hunting templates), and the `use-phase5-data.ts` customization hooks at 299–499. A crash audit (2026-09-27) found no remaining crash risks — all of these are silent demo/empty fallbacks. `use-break-glass.ts` still has a demo fallback on error (its crash was fixed in PR #47). Also: one test per converted screen must use the real backend response shape; `QuotaWarningBanner` is unused (wire or delete); widen `ServiceStatus` in `phase6-demo-data.ts:72` to include `'critical'` (the real admin-service value).
-   **Page shape audit (2026-09-27, 3 agents) — screens stuck on demo/wrong data because a hook checks a field the backend never sends** (fix in S161b/S163): Command Center Overview stats — hook checks `totalItems`/`itemsConsumed`, customization sends `totalItemsProcessed`/`totalConsumed` (`use-command-center.ts:219-224`) → always DEMO; Report templates — `type` vs real `reportType`, and `sections` are objects not strings (fix `AlertsReportsTab.tsx:452` at the same time or it crashes); Alert rule templates — `conditionType` is nested at `rule.condition.type`; System → Backups has no API at all (100% fake); Threat Graph calls `/graph/entity/root` (no node has id "root") → always demo, needs a real "top nodes" query; Correlation + Campaigns read an in-memory worker store → demo whenever it's empty; Threat Actors + Malware routes send an unwrapped `{data,total}` (total lost) and `useActors`/`useMalware` swallow errors into "none found"; Admin Ops health tiles stay '—' (no `summary` — derive like SystemTab); analytics `processing-rate` never set → Pipeline Throughput always 0; queue-stats `bySubtask` always `{}`.
-2. S162 — user-management-service `/users` routes
-3. S163 — frontend paths/shapes
-4. S164 — ai-enrichment `/enrichment/ioc/:id` + auto-enrich critical/high with a daily cap + admin switch (AI off by default)
-5. S165 — threat-graph `/graph/overview`
-6. S166 — real tenant list in Command Center
-7. One small security-reviewed session (owner's private notes) before Step 3
-8. Step 3 persistence
-9. Step 4 DB role + RLS
-10. Step 10
-11. Steps 11–13
+## Module Map (frontend, S161b-relevant)
 
-Phase: 13 (production hardening + SEO). Plan docs: `docs/roadmap/STEP_02_SEARCH_INDEX.md` (done, verified), `docs/roadmap/STEP_05_HONEST_UI.md` (§12 has the full PR A/B/S161b/S162+ split), `docs/S161a_HONEST_UI_CORE.md`.
+```
+apps/frontend/src/hooks/
+  use-phase4-data.ts     → DRP, graph, correlation, hunting (S161b target)
+  use-phase5-data.ts     → users (done in PR B) + onboarding/integration/customization (S161b target, lines 299-499)
+  use-phase6-data.ts     → billing/admin (done in PR B) + remaining phase6 hooks if any
+  use-command-center.ts  → Command Center Overview stats (field-name mismatch, page-shape audit)
+  use-access-reviews.ts, use-compliance-reports.ts, use-global-catalog.ts, use-global-iocs.ts,
+  use-global-monitoring.ts, use-plan-limits.ts, use-tenant-overrides.ts → RCA #45 sweep targets
+  use-enrichment-data.ts, use-break-glass.ts → partial fixes landed this session, more remain
+apps/frontend/src/components/ui/QueryStateView.tsx  → the shared pattern (PR A), reuse as-is
+```
 
 ## Agent utilization
-- Opus: plan, seam reads (FeatureGate/limits/MFA routes), diff review, security judgment (DECISION-035), test-leak fix, commits/PR/merge/deploy
-- Sonnet: context digest, hook map, PR A implementation (TDD), adversarial review (codex fallback), docs
-- Haiku: 2 VPS verification sweeps (Step 2 counts, post-deploy)
-- codex:rescue: n/a — CLI 0.125.0 outdated (fixed same day → 0.157.1); Sonnet takeover, verdict=accept
+- Opus: plan, seam checks, diff review (3 pre-push fixes), 4 post-deploy fixes, prod verification, memory — ~600k tokens
+- Sonnet: 13 runs — 2 parallel PR B implementers, review-fix tests, 4 doc updates, 2 etip-reviewer passes, 1 api-unwrap crash audit, 3 page shape audits — ~2.0M tokens
+- Haiku: 4 runs — session-start digest, hook→screen map, backend shape check, post-deploy VPS/bundle verify — ~321k tokens
+- codex:rescue: n/a — frontend-only display/data-shape changes; no auth/security/classifier logic changed
 Routing telemetry:
-- sonnet · context digest · reworked: N
-- sonnet · frontend hook seam map · reworked: N
-- sonnet · PR A implementation TDD · reworked: Y (couldn't run vitest locally; 6-test mock-state leak fixed by Opus)
-- sonnet · adversarial review (codex fallback) · reworked: N
-- haiku · Step 2 DB vs ES counts · reworked: Y (summed one tenant wrong, 6,537 vs 5,537; Opus re-polled)
-- haiku · post-deploy verify · reworked: Y (reported 25 etip containers; direct count 32/32)
+- haiku · session-start docs digest · reworked: N
+- haiku · hook→screen consumer map · reworked: N
+- sonnet · PR B billing/admin implementation · reworked: Y (Opus review: tenant 403 toast, null responses, fake Free plan; prod: System tab crash — tests mocked frontend types)
+- sonnet · PR B users implementation · reworked: Y (Opus added DSAR load-error hint)
+- haiku · backend shape verification · reworked: N
+- sonnet · review-fix tests · reworked: N
+- sonnet · etip-reviewer ×2 · reworked: N
+- haiku · post-deploy VPS/bundle verify · reworked: Y (grep quoting false negatives; Opus re-ran)
+- sonnet · page shape audits ×3 + unwrap crash audit · reworked: N (found maintenance-window crash)

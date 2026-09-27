@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 161a PR B &middot; 2026-09-27 &middot; Step 5 Honest UI billing/admin/users (PR #45, cd4a227) — use-phase6-data.ts + use-phase5-data.ts + use-plan-builder.ts converted to throw + meta.resource, BillingPage/AdminOpsPage/UserManagementPage/Command Center panels wired to QueryStateView. 1,926 frontend tests. 32/32 healthy. Next: S161b (remaining demo-fallback hooks).</span>
+  <span class="version">Session 162 (S161a PR B + hotfixes) &middot; 2026-09-27 &middot; Step 5 Honest UI billing/admin/users (PR #45, cd4a227) + 3 same-day post-deploy hotfixes (PR #46-48, RCA #45) — System tab crash, Emergency Access crash (&times;2), maintenance-window crash all fixed. Master 0b126ff, VPS f012bdc. 1,926 frontend tests. 32/32 healthy. Next: S161b (remaining demo-fallback hooks).</span>
 </div>
 </div>
 
@@ -91,7 +91,7 @@ li strong { color: var(--text-primary); }
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
     <div class="stat-card"><div class="stat-value">~8,450</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
-    <div class="stat-card"><div class="stat-value">161</div><div class="stat-label">Dev Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">162</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">43</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
     <div class="stat-card"><div class="stat-value" style="-webkit-text-fill-color:#4ade80">100%</div><div class="stat-label">Pipeline Wired</div></div>
     <div class="stat-card"><div class="stat-value">23</div><div class="stat-label">Frontend Pages</div></div>
@@ -537,8 +537,9 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h2><span class="num">10</span>Next Immediate Action</h2>
   <div class="card">
-    <div class="card-title"><span class="badge badge-green">Session 161a PR B hotfix</span> System tab crash + Plan Builder false empty state fixed (PR #46, RCA #45) — Next: S161b (remaining demo-fallback hooks)</div>
+    <div class="card-title"><span class="badge badge-green">Session 162 (S161a PR B + hotfixes) CLOSED</span> Honest UI billing/admin/users + 3 post-deploy hotfixes (RCA #45) — Next: S161b (remaining demo-fallback hooks)</div>
     <div class="card-body">
+      <strong>Session 162 close (2026-09-27):</strong> Master at <code>0b126ff</code>, VPS at <code>f012bdc</code>, 32/32 containers healthy, <strong>1,926 frontend tests</strong> (2 skipped, 126 files), tsc/eslint 0 errors. Full detail: docs/S161a_PR_B_SESSION_2026-09-27.md.<br><br>
       <strong>Session 161a PR B hotfix 3 (2026-09-27):</strong> PR #48 merged (f012bdc) — Emergency Access audit rows mapped from raw AuditLog + maintenance-window crash fixed; page shape audit found no further crash paths. <strong>Hotfix 2:</strong> PR #47 merged (5489428) — Emergency Access (break-glass audit) crash fixed (pre-existing since S18, RCA #45 follow-up); crash audit of remaining call sites found none. <strong>Hotfix 1:</strong> PR #46 merged (1111965), CI/CD run 36302952387 green, 32/32 containers healthy. Fixed Command Center System tab crash (<code>reading 'total'</code> &mdash; <code>/admin/system/health</code> has no <code>summary</code>; <code>SystemTab</code> now derives counts from <code>services</code>) and Plan Builder false "No plans defined yet" (<code>usePlanBuilder</code> read <code>r.data</code> after <code>api()</code>, which already unwraps). RCA #45. 1,922 frontend tests (was 1,920), 2 skipped, 126 files.<br><br>
       <strong>Session 161a PR B — Step 5 Honest UI billing/admin/users (2026-09-27):</strong> PR #45 merged (cd4a227), CI/CD run 36297890539 green (test/typecheck/lint, build&amp;push, deploy all &check;, completed 05:52 UTC). <code>use-phase6-data.ts</code> (billing + admin hooks) and <code>use-phase5-data.ts</code> (user hooks) plus <code>use-plan-builder.ts</code> converted to throw + <code>meta.resource</code>; <code>BillingPage</code>, <code>AdminOpsPage</code>, <code>UserManagementPage</code>, <code>BillingPlansTab</code>, <code>SystemTab</code>, <code>PipelinePanel</code>, <code>PlanBuilderPanel</code>, <code>UsersAccessTab</code>, <code>ComplianceReportsPanel</code> wired to <code>&lt;QueryStateView&gt;</code>. Owner decision: ship honest now — Users screens show "Not available yet" until S162 adds the backend routes; billing plans/usage error cards and billing/admin stat tiles show <code>&mdash;</code> until S163 fixes path/shape mismatches (documented, not new bugs — previously hidden by demo fallback). Verified live: VPS HEAD cd4a227, 32/32 containers healthy, <code>/</code> and <code>/health</code> 200, new honest-UI strings present in the bundle, PR B demo strings (fake tenants/coupons/users) absent. 1,920 frontend tests (was 1,858), <code>tsc</code>/eslint 0 errors. Detail: docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md.<br><br>
       <strong>Session 160 — Step 2 ES=DB verification (2026-09-26, read-only VPS):</strong> <code>bull:etip-ioc-indexed</code> wait=4, active=5 (live traffic draining), failed=6,118 (legacy baseline, unchanged — now safe to purge). Postgres <code>iocs</code> vs ES <code>etip_&lt;tenant&gt;_iocs_*</code> per tenant: <code>e4e11c4c&hellip;</code> 6,051 = 6,051 &check;, <code>10c895c3&hellip;</code> 6,042 = 6,042 &check; (other 8 tenants hold 0 IOCs). Sample IP <code>3.0.21.0</code> found in ES (1 hit). 7 transient <code>ioc-update</code> job failures during the drain, all retried OK. <strong>Result: Step 2 DONE.</strong> Owner &#8984;K UI click-through still pending.<br><br>
@@ -558,9 +559,9 @@ li strong { color: var(--text-primary); }
       &bull; <strong>Unsupported sortable columns removed:</strong> normalizedValue, corroborationCount, iocType, lifecycle — only severity/confidence/lastSeen remain sortable.<br>
       &bull; <strong>Commit:</strong> d517ea0. CI run 23929832680 green. Deployed.<br><br>
       <strong>Next session priorities:</strong><br>
-      1. <strong>Next (S161b)</strong> — remaining demo-fallback hook files (alerting, reporting, phase4, analytics, monitoring, command-center incl. the Clients demo tenant list, plus onboarding/integration/customization hooks) to the throw + <code>meta.resource</code> pattern.<br>
-      2. Then S162 (user-management-service real <code>/users</code> routes), S163 (billing/admin path+shape fixes surfaced by PR B), S166-S170 (missing endpoints + auto-enrich critical IOCs with a daily cost cap), Step 3 persistence, Step 4 DB role + RLS, Step 10 agent foundation, Steps 11-13.<br>
-      3. Owner &#8984;K UI click-through (Step 2 last check). Search Console + Bing verification; SEO 2c/2d continue in parallel.<br>
+      1. <strong>Next (S161b)</strong> — remaining demo-fallback hook files (alerting, reporting, phase4, analytics, monitoring, command-center incl. the Clients demo tenant list, plus onboarding/integration/customization hooks) to the throw + <code>meta.resource</code> pattern, plus the RCA #45 <code>api().then(r=&gt;r.data)</code> bug-class sweep and the page-shape-audit fixes (non-crashing, listed in docs/SESSION_HANDOFF.md).<br>
+      2. Then S162 (user-management-service real <code>/users</code> routes), S163 (billing/admin path+shape fixes surfaced by PR B, DECISION-036), S164-S166 (missing endpoints + auto-enrich critical IOCs with a daily cost cap + real Clients tenant list), Step 3 persistence, Step 4 DB role + RLS, Step 10 agent foundation, Steps 11-13.<br>
+      3. Search Console + Bing verification; SEO 2c/2d continue in parallel.<br>
     </div>
   </div>
 </div>
@@ -568,7 +569,7 @@ li strong { color: var(--text-primary); }
 
 <div class="footer">
   <div class="container">
-    ETIP v5.0 &middot; Session 161a PR B &middot; 2026-09-27 &middot; Generated by Claude Sonnet 5
+    ETIP v5.0 &middot; Session 162 (S161a PR B + hotfixes) &middot; 2026-09-27 &middot; Generated by Claude Sonnet 5
   </div>
 </div>
 
