@@ -15,6 +15,7 @@ import { DataTable, type Column } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
   Users, UsersRound, ShieldCheck, Monitor, ScrollText,
   Plus, XCircle, Shield,
@@ -85,25 +86,23 @@ export function UserManagementPage() {
     else { setSortBy(key); setSortOrder('asc') }
   }
 
-  const { data: stats, isDemo } = useUserManagementStats()
-  const { data: userData } = useUsers()
-  const { data: teamData } = useTeams()
-  const { data: roleData } = useRoles()
-  const { data: sessionData } = useSessions()
-  const { data: auditData } = useAuditLog({ page: auditPage, ...auditFilters })
+  const statsQuery = useUserManagementStats()
+  const stats = statsQuery.data
+  const usersQuery = useUsers()
+  const teamsQuery = useTeams()
+  const rolesQuery = useRoles()
+  const sessionsQuery = useSessions()
+  const auditQuery = useAuditLog({ page: auditPage, ...auditFilters })
   const revokeSession = useRevokeSession()
   const revokeAll = useRevokeAllSessions()
 
-  const filteredAudit = useMemo(() => {
-    let items = auditData?.data ?? []
-    if (!isDemo) return items
-    if (auditSearch) {
-      const q = auditSearch.toLowerCase()
-      items = items.filter(a => a.userName.toLowerCase().includes(q) || a.action.toLowerCase().includes(q) || a.resource.toLowerCase().includes(q))
-    }
-    if (auditFilters.action) items = items.filter(a => a.action === auditFilters.action)
-    return items
-  }, [auditData, isDemo, auditSearch, auditFilters])
+  // ponytail: `action` is already filtered server-side via useAuditLog params.
+  // `auditSearch` has no server param, so it stays a client-side filter over whatever page came back.
+  const filterBySearch = (items: AuditLogEntry[]) => {
+    if (!auditSearch) return items
+    const q = auditSearch.toLowerCase()
+    return items.filter(a => a.userName.toLowerCase().includes(q) || a.action.toLowerCase().includes(q) || a.resource.toLowerCase().includes(q))
+  }
 
   const userColumns: Column<UserRecord>[] = useMemo(() => [
     { key: 'name', label: 'Name', sortable: true, width: '18%',
@@ -172,13 +171,13 @@ export function UserManagementPage() {
       render: (r) => <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize', STATUS_COLORS[r.status] ?? '')}>{r.status}</span> },
     { key: 'actions', label: '', width: '8%',
       render: (r) => r.status === 'active' ? (
-        <button onClick={(e) => { e.stopPropagation(); if (!isDemo) revokeSession.mutate(r.id) }}
-          disabled={revokeSession.isPending || isDemo} title="Revoke session"
+        <button onClick={(e) => { e.stopPropagation(); revokeSession.mutate(r.id) }}
+          disabled={revokeSession.isPending} title="Revoke session"
           className="text-[10px] px-2 py-1 rounded bg-sev-critical/10 text-sev-critical hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
           Revoke
         </button>
       ) : null },
-  ], [isDemo, revokeSession])
+  ], [revokeSession])
 
   const auditColumns: Column<AuditLogEntry>[] = useMemo(() => [
     { key: 'timestamp', label: 'Time', width: '12%',
@@ -199,20 +198,13 @@ export function UserManagementPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-400/10 text-rose-400 font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect User Management service for live data</span>
-        </div>
-      )}
-
       <PageStatsBar>
         <CompactStat label="Total Users" value={stats?.totalUsers?.toString() ?? '—'} />
-        <CompactStat label="Active Sessions" value={stats?.activeSessions?.toString() ?? '0'} color="text-sev-low" />
-        <CompactStat label="Teams" value={stats?.teams?.toString() ?? '0'} />
-        <CompactStat label="Roles" value={stats?.roles?.toString() ?? '0'} />
-        <CompactStat label="MFA Enabled" value={`${stats?.mfaPercent ?? 0}%`} color={
-          (stats?.mfaPercent ?? 0) >= 80 ? 'text-sev-low' : (stats?.mfaPercent ?? 0) >= 50 ? 'text-sev-medium' : 'text-sev-critical'
+        <CompactStat label="Active Sessions" value={stats?.activeSessions?.toString() ?? '—'} color="text-sev-low" />
+        <CompactStat label="Teams" value={stats?.teams?.toString() ?? '—'} />
+        <CompactStat label="Roles" value={stats?.roles?.toString() ?? '—'} />
+        <CompactStat label="MFA Enabled" value={stats?.mfaPercent != null ? `${stats.mfaPercent}%` : '—'} color={
+          stats?.mfaPercent == null ? undefined : stats.mfaPercent >= 80 ? 'text-sev-low' : stats.mfaPercent >= 50 ? 'text-sev-medium' : 'text-sev-critical'
         } />
       </PageStatsBar>
 
@@ -235,7 +227,7 @@ export function UserManagementPage() {
           )}
 
           {activeTab === 'sessions' && (
-            <button onClick={() => { if (!isDemo) revokeAll.mutate() }} disabled={revokeAll.isPending || isDemo}
+            <button onClick={() => revokeAll.mutate()} disabled={revokeAll.isPending}
               className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-sev-critical/10 text-sev-critical border border-sev-critical/20 rounded-md hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
               <XCircle className="w-3 h-3" />Revoke All
             </button>
@@ -249,46 +241,65 @@ export function UserManagementPage() {
             filterValues={auditFilters} onFilterChange={(k, v) => { setAuditFilters(f => ({ ...f, [k]: v })); setAuditPage(1) }} />
         )}
 
-        {/* Data Tables */}
+        {/* Data Tables — each wrapped in its own QueryStateView so one failing endpoint doesn't blank the page */}
         {activeTab === 'users' && (
-          <DataTable columns={userColumns} data={userData?.data ?? []} loading={false} rowKey={(r) => r.id}
-            sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
-            density="compact" onRowClick={(r) => setSelectedUser(r)} emptyMessage="No users found." />
+          <QueryStateView query={usersQuery} resource="users">
+            {userData => (
+              <DataTable columns={userColumns} data={userData.data} loading={false} rowKey={(r) => r.id}
+                sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
+                density="compact" onRowClick={(r) => setSelectedUser(r)} emptyMessage="No users found." />
+            )}
+          </QueryStateView>
         )}
         {activeTab === 'teams' && (
-          <DataTable columns={teamColumns} data={teamData?.data ?? []} loading={false} rowKey={(r) => r.id}
-            sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
-            density="compact" emptyMessage="No teams created yet." />
+          <QueryStateView query={teamsQuery} resource="teams">
+            {teamData => (
+              <DataTable columns={teamColumns} data={teamData.data} loading={false} rowKey={(r) => r.id}
+                sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
+                density="compact" emptyMessage="No teams created yet." />
+            )}
+          </QueryStateView>
         )}
         {activeTab === 'roles' && (
-          <DataTable columns={roleColumns} data={roleData?.data ?? []} loading={false} rowKey={(r) => r.id}
-            sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
-            density="compact" emptyMessage="No roles configured." />
+          <QueryStateView query={rolesQuery} resource="roles">
+            {roleData => (
+              <DataTable columns={roleColumns} data={roleData.data} loading={false} rowKey={(r) => r.id}
+                sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
+                density="compact" emptyMessage="No roles configured." />
+            )}
+          </QueryStateView>
         )}
         {activeTab === 'sessions' && (
-          <DataTable columns={sessionColumns} data={sessionData?.data ?? []} loading={false} rowKey={(r) => r.id}
-            density="compact" emptyMessage="No active sessions." />
+          <QueryStateView query={sessionsQuery} resource="user sessions">
+            {sessionData => (
+              <DataTable columns={sessionColumns} data={sessionData.data} loading={false} rowKey={(r) => r.id}
+                density="compact" emptyMessage="No active sessions." />
+            )}
+          </QueryStateView>
         )}
         {activeTab === 'audit' && (
-          <>
-            <DataTable columns={auditColumns} data={filteredAudit} loading={false} rowKey={(r) => r.id}
-              density="compact" emptyMessage="No audit log entries." />
-            <Pagination page={auditPage} limit={50} total={isDemo ? filteredAudit.length : (auditData?.total ?? 0)}
-              onPageChange={setAuditPage} />
-          </>
+          <QueryStateView query={auditQuery} resource="audit log">
+            {auditData => (
+              <>
+                <DataTable columns={auditColumns} data={filterBySearch(auditData.data)} loading={false} rowKey={(r) => r.id}
+                  density="compact" emptyMessage="No audit log entries." />
+                <Pagination page={auditPage} limit={50} total={auditData.total} onPageChange={setAuditPage} />
+              </>
+            )}
+          </QueryStateView>
         )}
       </div>
 
       {/* Modals */}
-      <InviteUserModal open={showModal === 'invite'} onClose={() => setShowModal(null)} roles={roleData?.data ?? []} teams={teamData?.data ?? []} />
-      <CreateTeamModal open={showModal === 'team'} onClose={() => setShowModal(null)} users={userData?.data ?? []} />
+      <InviteUserModal open={showModal === 'invite'} onClose={() => setShowModal(null)} roles={rolesQuery.data?.data ?? []} teams={teamsQuery.data?.data ?? []} />
+      <CreateTeamModal open={showModal === 'team'} onClose={() => setShowModal(null)} users={usersQuery.data?.data ?? []} />
       <CreateRoleModal open={showModal === 'role'} onClose={() => setShowModal(null)} />
 
       {/* User Detail Panel */}
       {selectedUser && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelectedUser(null)} />
-          <UserDetailPanel user={selectedUser} onClose={() => setSelectedUser(null)} isDemo={isDemo} />
+          <UserDetailPanel user={selectedUser} onClose={() => setSelectedUser(null)} />
         </>
       )}
     </div>

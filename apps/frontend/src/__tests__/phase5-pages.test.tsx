@@ -411,12 +411,6 @@ describe('UserManagementPage', () => {
     UserManagementPage = mod.UserManagementPage
   })
 
-  it('renders demo banner in demo mode', () => {
-    render(<UserManagementPage />)
-    expect(screen.getByText('Demo')).toBeTruthy()
-    expect(screen.getByText(/Demo data — connect User Management/)).toBeTruthy()
-  })
-
   it('renders stats bar with user metrics', () => {
     render(<UserManagementPage />)
     expect(screen.getByTestId('stat-Total Users')).toBeTruthy()

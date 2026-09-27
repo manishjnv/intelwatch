@@ -157,52 +157,8 @@ export const DEMO_INTEGRATION_STATS: IntegrationStats = {
 
 // ─── User Management Demo Data ──────────────────────────────────
 
-export const DEMO_USERS: UserRecord[] = [
-  { id: 'usr-1', name: 'Manish Kumar', email: 'manish@intelwatch.in', role: 'admin', team: 'Platform', status: 'active', lastLogin: hoursAgo(1), mfaEnabled: true, createdAt: daysAgo(90) },
-  { id: 'usr-2', name: 'Sarah Chen', email: 'sarah@intelwatch.in', role: 'soc_analyst', team: 'SOC Tier 1', status: 'active', lastLogin: hoursAgo(3), mfaEnabled: true, createdAt: daysAgo(60) },
-  { id: 'usr-3', name: 'Alex Rivera', email: 'alex@intelwatch.in', role: 'threat_hunter', team: 'Threat Intel', status: 'active', lastLogin: daysAgo(1), mfaEnabled: true, createdAt: daysAgo(45) },
-  { id: 'usr-4', name: 'Jordan Blake', email: 'jordan@intelwatch.in', role: 'soc_analyst', team: 'SOC Tier 2', status: 'locked', lastLogin: daysAgo(7), mfaEnabled: false, createdAt: daysAgo(30) },
-  { id: 'usr-5', name: 'Priya Sharma', email: 'priya@intelwatch.in', role: 'soc_manager', team: 'SOC Tier 1', status: 'active', lastLogin: hoursAgo(2), mfaEnabled: true, createdAt: daysAgo(50) },
-  { id: 'usr-6', name: 'New Hire', email: 'newhire@intelwatch.in', role: 'viewer', team: null, status: 'invited', lastLogin: null, mfaEnabled: false, createdAt: daysAgo(1) },
-]
-
-export const DEMO_TEAMS: TeamRecord[] = [
-  { id: 'team-1', name: 'Platform', description: 'Platform engineering and infrastructure', memberCount: 3, lead: 'Manish Kumar', createdAt: daysAgo(90) },
-  { id: 'team-2', name: 'SOC Tier 1', description: 'First-line security operations', memberCount: 8, lead: 'Priya Sharma', createdAt: daysAgo(60) },
-  { id: 'team-3', name: 'SOC Tier 2', description: 'Advanced incident response', memberCount: 4, lead: 'Sarah Chen', createdAt: daysAgo(45) },
-  { id: 'team-4', name: 'Threat Intel', description: 'Threat intelligence and hunting', memberCount: 3, lead: 'Alex Rivera', createdAt: daysAgo(40) },
-]
-
-export const DEMO_ROLES: RoleRecord[] = [
-  { id: 'role-1', name: 'Admin', permissionCount: 45, userCount: 1, isSystem: true, description: 'Full platform access', createdAt: daysAgo(90) },
-  { id: 'role-2', name: 'SOC Analyst', permissionCount: 22, userCount: 4, isSystem: true, description: 'IOC triage, alert management, basic hunting', createdAt: daysAgo(90) },
-  { id: 'role-3', name: 'SOC Manager', permissionCount: 32, userCount: 2, isSystem: true, description: 'Team management, report generation, escalation', createdAt: daysAgo(90) },
-  { id: 'role-4', name: 'Threat Hunter', permissionCount: 28, userCount: 2, isSystem: true, description: 'Advanced hunting, hypothesis creation, graph queries', createdAt: daysAgo(90) },
-  { id: 'role-5', name: 'Viewer', permissionCount: 8, userCount: 1, isSystem: true, description: 'Read-only dashboard and report access', createdAt: daysAgo(90) },
-  { id: 'role-6', name: 'Integration Admin', permissionCount: 15, userCount: 1, isSystem: false, description: 'Custom role for managing SIEM and webhook configs', createdAt: daysAgo(10) },
-]
-
-export const DEMO_SESSIONS: SessionRecord[] = [
-  { id: 'sess-1', userId: 'usr-1', userName: 'Manish Kumar', ip: '72.61.227.64', device: 'Chrome / Windows', startedAt: hoursAgo(1), lastActivity: hoursAgo(0.1), status: 'active' },
-  { id: 'sess-2', userId: 'usr-2', userName: 'Sarah Chen', ip: '192.168.1.42', device: 'Firefox / macOS', startedAt: hoursAgo(3), lastActivity: hoursAgo(0.5), status: 'active' },
-  { id: 'sess-3', userId: 'usr-5', userName: 'Priya Sharma', ip: '10.0.0.15', device: 'Chrome / Linux', startedAt: hoursAgo(2), lastActivity: hoursAgo(0.3), status: 'active' },
-  { id: 'sess-4', userId: 'usr-3', userName: 'Alex Rivera', ip: '192.168.1.88', device: 'Safari / macOS', startedAt: daysAgo(1), lastActivity: daysAgo(1), status: 'expired' },
-]
-
-export const DEMO_AUDIT_LOG: AuditLogEntry[] = [
-  { id: 'aud-1', timestamp: hoursAgo(0.5), userName: 'Manish Kumar', action: 'user.login', resource: 'auth', ip: '72.61.227.64', details: 'MFA verified' },
-  { id: 'aud-2', timestamp: hoursAgo(1), userName: 'Sarah Chen', action: 'alert.triage', resource: 'drp-alert-1', ip: '192.168.1.42', details: 'Marked as investigating' },
-  { id: 'aud-3', timestamp: hoursAgo(2), userName: 'Manish Kumar', action: 'integration.update', resource: 'siem-1', ip: '72.61.227.64', details: 'Updated Splunk endpoint' },
-  { id: 'aud-4', timestamp: hoursAgo(4), userName: 'Alex Rivera', action: 'hunt.create', resource: 'hunt-session-5', ip: '192.168.1.88', details: 'New hunt: APT29 lateral movement' },
-  { id: 'aud-5', timestamp: hoursAgo(6), userName: 'Priya Sharma', action: 'role.assign', resource: 'usr-6', ip: '10.0.0.15', details: 'Assigned viewer role to New Hire' },
-  { id: 'aud-6', timestamp: hoursAgo(8), userName: 'Manish Kumar', action: 'export.run', resource: 'exp-1', ip: '72.61.227.64', details: 'Triggered daily IOC export' },
-  { id: 'aud-7', timestamp: daysAgo(1), userName: 'Sarah Chen', action: 'webhook.test', resource: 'wh-1', ip: '192.168.1.42', details: 'Test delivery successful' },
-  { id: 'aud-8', timestamp: daysAgo(1), userName: 'Manish Kumar', action: 'user.lock', resource: 'usr-4', ip: '72.61.227.64', details: 'Account locked: too many failed attempts' },
-]
-
-export const DEMO_USER_MANAGEMENT_STATS: UserManagementStats = {
-  totalUsers: 6, activeSessions: 3, teams: 4, roles: 6, mfaPercent: 67,
-}
+// ponytail: DEMO_USERS/TEAMS/ROLES/SESSIONS/AUDIT_LOG/USER_MANAGEMENT_STATS removed —
+// User Management hooks are honest-UI now (S161a), no demo fallback left to feed.
 
 // ─── Customization Demo Data ────────────────────────────────────
 

@@ -12,6 +12,7 @@ import {
   useCreateMaintenanceWindow,
   type ServiceHealth,
 } from '@/hooks/use-phase6-data'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
   RefreshCw, CheckCircle2, AlertTriangle, XCircle, Play, Square,
   Shield, Calendar,
@@ -88,80 +89,94 @@ export function SystemTab() {
 // ─── System Health Sub-tab ──────────────────────────────────────
 
 function HealthSubTab() {
-  const { data: health, refetch, isFetching } = useSystemHealth()
-  const services: ServiceHealth[] = health?.services ?? []
-  const summary = health?.summary ?? { healthy: 0, degraded: 0, down: 0, total: 0, uptimePercent: 0, lastUpdated: '' }
-
-  const healthScore = summary.total > 0
-    ? Math.round((summary.healthy / summary.total) * 100)
-    : 0
+  const healthQuery = useSystemHealth()
+  const { refetch, isFetching } = healthQuery
 
   return (
     <div className="space-y-4" data-testid="health-subtab">
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <SummaryCard
-          icon={<CheckCircle2 className="w-4 h-4 text-sev-low" />}
-          label="Healthy"
-          value={String(summary.healthy)}
-          color="text-sev-low"
-        />
-        <SummaryCard
-          icon={<AlertTriangle className="w-4 h-4 text-amber-400" />}
-          label="Degraded"
-          value={String(summary.degraded)}
-          color="text-amber-400"
-        />
-        <SummaryCard
-          icon={<XCircle className="w-4 h-4 text-sev-critical" />}
-          label="Down"
-          value={String(summary.down)}
-          color="text-sev-critical"
-        />
-        <SummaryCard
-          icon={<Shield className="w-4 h-4 text-accent" />}
-          label="Health Score"
-          value={`${healthScore}%`}
-          color="text-accent"
-        />
-      </div>
+      <QueryStateView
+        query={healthQuery}
+        resource="system health"
+        isEmpty={d => d.services.length === 0}
+        empty={<p className="text-xs text-text-muted" data-testid="query-empty">No services reported.</p>}
+      >
+        {health => {
+          const services: ServiceHealth[] = health.services
+          const summary = health.summary
+          const healthScore = summary.total > 0
+            ? Math.round((summary.healthy / summary.total) * 100)
+            : 0
 
-      {/* Resource bars */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <ResourceBar label="Platform Uptime" value={summary.uptimePercent} color="bg-sev-low" />
-        <ResourceBar label="Services Online" value={healthScore} color="bg-accent" />
-      </div>
+          return (
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <SummaryCard
+                  icon={<CheckCircle2 className="w-4 h-4 text-sev-low" />}
+                  label="Healthy"
+                  value={String(summary.healthy)}
+                  color="text-sev-low"
+                />
+                <SummaryCard
+                  icon={<AlertTriangle className="w-4 h-4 text-amber-400" />}
+                  label="Degraded"
+                  value={String(summary.degraded)}
+                  color="text-amber-400"
+                />
+                <SummaryCard
+                  icon={<XCircle className="w-4 h-4 text-sev-critical" />}
+                  label="Down"
+                  value={String(summary.down)}
+                  color="text-sev-critical"
+                />
+                <SummaryCard
+                  icon={<Shield className="w-4 h-4 text-accent" />}
+                  label="Health Score"
+                  value={`${healthScore}%`}
+                  color="text-accent"
+                />
+              </div>
 
-      {/* Last check + refresh */}
-      <div className="flex items-center justify-between text-xs text-text-muted">
-        <span>Last check: {summary.lastUpdated ? new Date(summary.lastUpdated).toLocaleTimeString() : '—'}</span>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50"
-          data-testid="refresh-health"
-        >
-          <RefreshCw className={cn('w-3 h-3', isFetching && 'animate-spin')} /> Refresh
-        </button>
-      </div>
+              {/* Resource bars */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ResourceBar label="Platform Uptime" value={summary.uptimePercent} color="bg-sev-low" />
+                <ResourceBar label="Services Online" value={healthScore} color="bg-accent" />
+              </div>
 
-      {/* Service grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2" data-testid="service-grid">
-        {services.map(svc => (
-          <div
-            key={svc.name}
-            className="flex items-center gap-2 p-2.5 bg-bg-elevated rounded-lg border border-border"
-          >
-            <StatusDot status={svc.status} />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-text-primary truncate">{svc.name}</p>
-              <p className="text-[10px] text-text-muted">
-                {formatUptime(svc.uptime)} uptime · {svc.responseMs}ms · :{svc.port}
-              </p>
+              {/* Last check + refresh */}
+              <div className="flex items-center justify-between text-xs text-text-muted">
+                <span>Last check: {summary.lastUpdated ? new Date(summary.lastUpdated).toLocaleTimeString() : '—'}</span>
+                <button
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  className="flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50"
+                  data-testid="refresh-health"
+                >
+                  <RefreshCw className={cn('w-3 h-3', isFetching && 'animate-spin')} /> Refresh
+                </button>
+              </div>
+
+              {/* Service grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2" data-testid="service-grid">
+                {services.map(svc => (
+                  <div
+                    key={svc.name}
+                    className="flex items-center gap-2 p-2.5 bg-bg-elevated rounded-lg border border-border"
+                  >
+                    <StatusDot status={svc.status} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-text-primary truncate">{svc.name}</p>
+                      <p className="text-[10px] text-text-muted">
+                        {formatUptime(svc.uptime)} uptime · {svc.responseMs}ms · :{svc.port}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          )
+        }}
+      </QueryStateView>
     </div>
   )
 }
@@ -196,16 +211,18 @@ function ResourceBar({ label, value, color }: { label: string; value: number | u
 // ─── Maintenance Sub-tab ────────────────────────────────────────
 
 function MaintenanceSubTab() {
-  const { data: maintData } = useMaintenanceWindows()
+  const maintQuery = useMaintenanceWindows()
   const activateMaint = useActivateMaintenance()
   const deactivateMaint = useDeactivateMaintenance()
   const createMaint = useCreateMaintenanceWindow()
   const [showCreate, setShowCreate] = useState(false)
 
-  const windows = maintData?.data ?? []
-  const activeWindow = windows.find(w => w.status === 'active')
-
   return (
+    <QueryStateView query={maintQuery} resource="maintenance windows">
+      {maintData => {
+        const windows = maintData.data
+        const activeWindow = windows.find(w => w.status === 'active')
+        return (
     <div className="space-y-4" data-testid="maintenance-subtab">
       {/* Active maintenance banner */}
       {activeWindow && (
@@ -281,6 +298,9 @@ function MaintenanceSubTab() {
         )}
       </div>
     </div>
+        )
+      }}
+    </QueryStateView>
   )
 }
 

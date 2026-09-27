@@ -16,6 +16,7 @@ import {
   type ServiceHealth, type MaintenanceWindow, type TenantRecord, type AdminAuditEntry,
   type QueueDepth, type DlqQueueEntry, type QueueAlert,
 } from '@/hooks/use-phase6-data'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   Activity, Calendar, Users, FileText, Download,
@@ -408,14 +409,17 @@ const TABS: { key: AdminTab; label: string; icon: React.FC<{ className?: string 
 export function AdminOpsPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('health')
 
-  const { data: health, isDemo: healthDemo } = useSystemHealth()
-  const { data: maintenance } = useMaintenanceWindows()
-  const { data: tenants } = useAdminTenants()
-  const { data: audit } = useAdminAuditLog()
+  const healthQuery = useSystemHealth()
+  const maintenanceQuery = useMaintenanceWindows()
+  const tenantsQuery = useAdminTenants()
+  const auditQuery = useAdminAuditLog()
   const { data: stats } = useAdminStats()
-  const { data: queueHealth, isDemo: queueDemo } = useQueueHealth()
-  const { data: queueAlertsData }                = useQueueAlerts()
-  const { data: dlqStatus, isDemo: dlqDemo }     = useDlqStatus()
+  const queueHealthQuery = useQueueHealth()
+  const { data: queueAlertsData } = useQueueAlerts()
+  const dlqQuery = useDlqStatus()
+
+  const health = healthQuery.data
+  const audit = auditQuery.data
 
   const activeQueueAlerts: QueueAlert[] = queueAlertsData?.alerts ?? []
 
@@ -428,11 +432,8 @@ export function AdminOpsPage() {
   const discardDlqMutation  = useDiscardDlqQueue()
   const retryAllDlqMutation = useRetryAllDlq()
 
-  const services = health?.services ?? []
-  const summary  = health?.summary
-  const mwList   = maintenance?.data ?? []
-  const tenantList = tenants?.data ?? []
-  const auditList  = audit?.data ?? []
+  const summary = health?.summary
+  const auditList = audit?.data ?? []
 
   // CSV export of audit log
   const handleExportAudit = () => {
@@ -453,7 +454,7 @@ export function AdminOpsPage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* ─── Stats bar ─── */}
-      <PageStatsBar title="Admin Operations" isDemo={healthDemo}>
+      <PageStatsBar title="Admin Operations">
         <CompactStat label="Services" value={summary ? `${summary.healthy}/${summary.total} healthy` : '—'} />
         <CompactStat label="Platform Uptime" value={summary ? `${(summary.uptimePercent ?? 0).toFixed(2)}%` : '—'} />
         <CompactStat label="Tenants" value={stats ? String(stats.totalTenants) : '—'} />
@@ -529,11 +530,20 @@ export function AdminOpsPage() {
             )}
 
             {/* Service grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {services.map((svc: ServiceHealth) => (
-                <ServiceCard key={svc.name} svc={svc} />
-              ))}
-            </div>
+            <QueryStateView
+              query={healthQuery}
+              resource="system health"
+              isEmpty={d => d.services.length === 0}
+              empty={<p className="text-xs text-text-muted" data-testid="query-empty">No services reported.</p>}
+            >
+              {h => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {h.services.map((svc: ServiceHealth) => (
+                    <ServiceCard key={svc.name} svc={svc} />
+                  ))}
+                </div>
+              )}
+            </QueryStateView>
 
             {/* Queue alert banner */}
             {activeQueueAlerts.length > 0 && (
@@ -550,49 +560,53 @@ export function AdminOpsPage() {
             )}
 
             {/* Queue health table */}
-            {queueHealth && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Database className="w-3.5 h-3.5 text-text-muted" />
-                    <h3 className="text-xs font-semibold text-text-secondary">BullMQ Queue Health</h3>
-                    {queueDemo && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">demo</span>
-                    )}
+            <QueryStateView
+              query={queueHealthQuery}
+              resource="queue health"
+              isEmpty={d => (d.queues ?? []).length === 0}
+              empty={<p className="text-xs text-text-muted" data-testid="query-empty">No queues reported.</p>}
+            >
+              {qh => (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-3.5 h-3.5 text-text-muted" />
+                      <h3 className="text-xs font-semibold text-text-secondary">BullMQ Queue Health</h3>
+                    </div>
+                    <span className="text-[10px] text-text-muted">
+                      Updated {timeAgo(qh.updatedAt)} · auto-refresh 10s
+                    </span>
                   </div>
-                  <span className="text-[10px] text-text-muted">
-                    Updated {timeAgo(queueHealth.updatedAt)} · auto-refresh 10s
-                  </span>
-                </div>
-                <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border-subtle">
-                          <th className="text-left px-4 py-2.5 text-[11px] text-text-muted font-medium">Queue</th>
-                          <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium" title="Jobs waiting to be processed">Waiting</th>
-                          <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium" title="Jobs currently being processed">Active</th>
-                          <th className="text-center px-4 py-2.5 text-[11px] text-sev-critical/70 font-medium" title="Jobs that failed">Failed</th>
-                          <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium">Completed</th>
-                          <th className="text-left px-4 py-2.5 text-[11px] text-text-muted font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(queueHealth.queues ?? []).map(q => (
-                          <QueueRow key={q.name} q={q} />
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border-subtle">
+                            <th className="text-left px-4 py-2.5 text-[11px] text-text-muted font-medium">Queue</th>
+                            <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium" title="Jobs waiting to be processed">Waiting</th>
+                            <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium" title="Jobs currently being processed">Active</th>
+                            <th className="text-center px-4 py-2.5 text-[11px] text-sev-critical/70 font-medium" title="Jobs that failed">Failed</th>
+                            <th className="text-center px-4 py-2.5 text-[11px] text-text-muted font-medium">Completed</th>
+                            <th className="text-left px-4 py-2.5 text-[11px] text-text-muted font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(qh.queues ?? []).map(q => (
+                            <QueueRow key={q.name} q={q} />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
+                  {qh.redisUnavailable && (
+                    <p className="text-[11px] text-sev-high flex items-center gap-1.5">
+                      <AlertTriangle className="w-3 h-3" />
+                      Redis unreachable — showing cached values. Depths may be stale.
+                    </p>
+                  )}
                 </div>
-                {(queueHealth as { redisUnavailable?: boolean }).redisUnavailable && (
-                  <p className="text-[11px] text-sev-high flex items-center gap-1.5">
-                    <AlertTriangle className="w-3 h-3" />
-                    Redis unreachable — showing cached values. Depths may be stale.
-                  </p>
-                )}
-              </div>
-            )}
+              )}
+            </QueryStateView>
 
             {/* CISO insight */}
             <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 text-[11px] text-text-secondary">
@@ -603,34 +617,37 @@ export function AdminOpsPage() {
             </div>
 
             {/* DLQ table */}
-            {dlqStatus && (
+            <QueryStateView
+              query={dlqQuery}
+              resource="dead-letter queue status"
+              isEmpty={d => (d.queues ?? []).length === 0}
+              empty={<p className="text-xs text-text-muted" data-testid="query-empty">No queues reported.</p>}
+            >
+              {dlq => (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <RotateCcw className="w-3.5 h-3.5 text-text-muted" />
                     <h3 className="text-xs font-semibold text-text-secondary">Dead-Letter Queue</h3>
-                    {dlqDemo && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">demo</span>
-                    )}
-                    {(dlqStatus.totalFailed ?? 0) > 0 && (
+                    {(dlq.totalFailed ?? 0) > 0 && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-sev-critical/10 text-sev-critical font-semibold">
-                        {dlqStatus.totalFailed} failed
+                        {dlq.totalFailed} failed
                       </span>
                     )}
                   </div>
                   <button
                     onClick={() => retryAllDlqMutation.mutate()}
-                    disabled={!dlqStatus.totalFailed || retryAllDlqMutation.isPending}
+                    disabled={!dlq.totalFailed || retryAllDlqMutation.isPending}
                     className={cn(
                       'flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded transition-colors',
-                      dlqStatus.totalFailed
+                      dlq.totalFailed
                         ? 'bg-sev-low/10 text-sev-low hover:bg-sev-low/20 border border-sev-low/20'
                         : 'bg-bg-elevated text-text-muted cursor-not-allowed opacity-50 border border-border-subtle',
                     )}
                     title="Retry all failed jobs across all queues"
                   >
                     <RefreshCw className={cn('w-3 h-3', retryAllDlqMutation.isPending && 'animate-spin')} />
-                    Retry All ({dlqStatus.totalFailed ?? 0})
+                    Retry All ({dlq.totalFailed ?? 0})
                   </button>
                 </div>
                 <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
@@ -644,7 +661,7 @@ export function AdminOpsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(dlqStatus.queues ?? []).map(q => (
+                        {(dlq.queues ?? []).map(q => (
                           <DlqRow
                             key={q.name}
                             q={q}
@@ -656,149 +673,175 @@ export function AdminOpsPage() {
                     </table>
                   </div>
                 </div>
-                {dlqStatus.redisUnavailable && (
+                {dlq.redisUnavailable && (
                   <p className="text-[11px] text-sev-high flex items-center gap-1.5">
                     <AlertTriangle className="w-3 h-3" />
                     Redis unreachable — DLQ counts may be stale.
                   </p>
                 )}
               </div>
-            )}
+              )}
+            </QueryStateView>
           </div>
         )}
 
         {/* ── Maintenance tab ── */}
         {activeTab === 'maintenance' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-xs font-semibold text-text-secondary">
-                {mwList.filter(m => m.status === 'active').length > 0 && (
-                  <span className="text-sev-high mr-2">
-                    {mwList.filter(m => m.status === 'active').length} ACTIVE
-                  </span>
-                )}
-                {mwList.length} window{mwList.length !== 1 ? 's' : ''} total
-              </h3>
-              <div className="flex gap-2 text-[10px] text-text-muted">
-                <span className={cn('px-2 py-0.5 rounded-full', MAINT_STATUS_COLORS['active']!)}>Active</span>
-                <span className={cn('px-2 py-0.5 rounded-full', MAINT_STATUS_COLORS['scheduled']!)}>Scheduled</span>
-                <span className={cn('px-2 py-0.5 rounded-full', MAINT_STATUS_COLORS['completed']!)}>Completed</span>
-              </div>
-            </div>
-            {mwList.length === 0 ? (
-              <div className="text-center py-8 text-xs text-text-muted">No maintenance windows found.</div>
-            ) : (
-              mwList.map(mw => (
-                <MaintenanceRow
-                  key={mw.id}
-                  mw={mw}
-                  onActivate={id => activateMutation.mutate(id)}
-                  onDeactivate={id => deactivateMutation.mutate(id)}
-                />
-              ))
-            )}
-          </div>
+          <QueryStateView
+            query={maintenanceQuery}
+            resource="maintenance windows"
+            isEmpty={d => d.data.length === 0}
+            empty={<div className="text-center py-8 text-xs text-text-muted" data-testid="query-empty">No maintenance windows found.</div>}
+          >
+            {maint => {
+              const windows = maint.data
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-xs font-semibold text-text-secondary">
+                      {windows.filter(m => m.status === 'active').length > 0 && (
+                        <span className="text-sev-high mr-2">
+                          {windows.filter(m => m.status === 'active').length} ACTIVE
+                        </span>
+                      )}
+                      {windows.length} window{windows.length !== 1 ? 's' : ''} total
+                    </h3>
+                    <div className="flex gap-2 text-[10px] text-text-muted">
+                      <span className={cn('px-2 py-0.5 rounded-full', MAINT_STATUS_COLORS['active']!)}>Active</span>
+                      <span className={cn('px-2 py-0.5 rounded-full', MAINT_STATUS_COLORS['scheduled']!)}>Scheduled</span>
+                      <span className={cn('px-2 py-0.5 rounded-full', MAINT_STATUS_COLORS['completed']!)}>Completed</span>
+                    </div>
+                  </div>
+                  {windows.map(mw => (
+                    <MaintenanceRow
+                      key={mw.id}
+                      mw={mw}
+                      onActivate={id => activateMutation.mutate(id)}
+                      onDeactivate={id => deactivateMutation.mutate(id)}
+                    />
+                  ))}
+                </div>
+              )
+            }}
+          </QueryStateView>
         )}
 
         {/* ── Tenants tab ── */}
         {activeTab === 'tenants' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-text-secondary">
-                {tenantList.length} tenant{tenantList.length !== 1 ? 's' : ''}
-              </h3>
-              <div className="flex gap-2 text-[10px]">
-                <span className={cn('px-2 py-0.5 rounded-full', TENANT_STATUS_COLORS['active']!)}>
-                  {tenantList.filter(t => t.status === 'active').length} active
-                </span>
-                
-                {tenantList.filter(t => t.status === 'suspended').length > 0 && (
-                  <span className={cn('px-2 py-0.5 rounded-full', TENANT_STATUS_COLORS['suspended']!)}>
-                    {tenantList.filter(t => t.status === 'suspended').length} suspended
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border-subtle">
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Tenant</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Plan</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Status</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Feeds</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Seats</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">IOCs</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Last Active</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tenantList.map(t => (
-                      <TenantRow
-                        key={t.id}
-                        tenant={t}
-                        onSuspend={id => suspendMutation.mutate({ id, reason: 'Admin action' })}
-                        onReinstate={id => reinstateMutation.mutate(id)}
-                        onChangePlan={(id, plan) => changePlanMutation.mutate({ id, plan })}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-                {tenantList.length === 0 && (
-                  <div className="px-4 py-8 text-center text-xs text-text-muted">No tenants found.</div>
-                )}
-              </div>
-            </div>
-          </div>
+          <QueryStateView
+            query={tenantsQuery}
+            resource="tenants"
+            isEmpty={d => d.data.length === 0}
+            empty={<div className="px-4 py-8 text-center text-xs text-text-muted" data-testid="query-empty">No tenants found.</div>}
+          >
+            {tenantsData => {
+              const tenantList = tenantsData.data
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-text-secondary">
+                      {tenantList.length} tenant{tenantList.length !== 1 ? 's' : ''}
+                    </h3>
+                    <div className="flex gap-2 text-[10px]">
+                      <span className={cn('px-2 py-0.5 rounded-full', TENANT_STATUS_COLORS['active']!)}>
+                        {tenantList.filter(t => t.status === 'active').length} active
+                      </span>
+                      {tenantList.filter(t => t.status === 'suspended').length > 0 && (
+                        <span className={cn('px-2 py-0.5 rounded-full', TENANT_STATUS_COLORS['suspended']!)}>
+                          {tenantList.filter(t => t.status === 'suspended').length} suspended
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-border-subtle">
+                            <th className="text-left px-4 py-3 text-text-muted font-medium">Tenant</th>
+                            <th className="text-left px-4 py-3 text-text-muted font-medium">Plan</th>
+                            <th className="text-left px-4 py-3 text-text-muted font-medium">Status</th>
+                            <th className="text-left px-4 py-3 text-text-muted font-medium">Feeds</th>
+                            <th className="text-left px-4 py-3 text-text-muted font-medium">Seats</th>
+                            <th className="text-left px-4 py-3 text-text-muted font-medium">IOCs</th>
+                            <th className="text-left px-4 py-3 text-text-muted font-medium">Last Active</th>
+                            <th className="text-left px-4 py-3 text-text-muted font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tenantList.map(t => (
+                            <TenantRow
+                              key={t.id}
+                              tenant={t}
+                              onSuspend={id => suspendMutation.mutate({ id, reason: 'Admin action' })}
+                              onReinstate={id => reinstateMutation.mutate(id)}
+                              onChangePlan={(id, plan) => changePlanMutation.mutate({ id, plan })}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )
+            }}
+          </QueryStateView>
         )}
 
         {/* ── Audit tab ── */}
         {activeTab === 'audit' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-text-secondary">
-                {auditList.length} audit events
-              </h3>
-              <button
-                onClick={handleExportAudit}
-                disabled={!auditList.length}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border-subtle text-text-muted hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Export CSV
-              </button>
-            </div>
-            <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border-subtle">
-                      <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium whitespace-nowrap">Time</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">Admin</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">Action</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">Type</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">Details</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">IP</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditList.map(entry => (
-                      <AuditRow key={entry.id} entry={entry} />
-                    ))}
-                  </tbody>
-                </table>
-                {auditList.length === 0 && (
-                  <div className="px-4 py-8 text-center text-xs text-text-muted">No audit entries found.</div>
-                )}
-              </div>
-            </div>
-            <p className="text-[11px] text-text-muted">
-              Showing up to 50 most recent events. Use Export CSV to download full history.
-              Audit records are retained for 90 days per compliance policy.
-            </p>
-          </div>
+          <QueryStateView
+            query={auditQuery}
+            resource="audit log"
+            isEmpty={d => d.data.length === 0}
+            empty={<div className="px-4 py-8 text-center text-xs text-text-muted" data-testid="query-empty">No audit entries found.</div>}
+          >
+            {auditData => {
+              const auditList = auditData.data
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-text-secondary">
+                      {auditList.length} audit events
+                    </h3>
+                    <button
+                      onClick={handleExportAudit}
+                      disabled={!auditList.length}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border-subtle text-text-muted hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Export CSV
+                    </button>
+                  </div>
+                  <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border-subtle">
+                            <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium whitespace-nowrap">Time</th>
+                            <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">Admin</th>
+                            <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">Action</th>
+                            <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">Type</th>
+                            <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">Details</th>
+                            <th className="text-left px-4 py-3 text-[11px] text-text-muted font-medium">IP</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {auditList.map(entry => (
+                            <AuditRow key={entry.id} entry={entry} />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-text-muted">
+                    Showing up to 50 most recent events. Use Export CSV to download full history.
+                    Audit records are retained for 90 days per compliance policy.
+                  </p>
+                </div>
+              )
+            }}
+          </QueryStateView>
         )}
       </div>
     </div>

@@ -10,21 +10,25 @@ import {
   type QueueDepth, type DlqQueueEntry,
 } from '@/hooks/use-phase6-data'
 import type { PipelineStage } from '@/hooks/phase6-demo-data'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
   RefreshCw, CheckCircle2, AlertTriangle, ArrowRight, RotateCcw, Trash2,
 } from 'lucide-react'
 
 export function PipelinePanel() {
-  const { data: queueData, refetch, isFetching } = useQueueHealth()
+  const queueQuery = useQueueHealth()
+  const { refetch, isFetching } = queueQuery
   const { data: alertsData } = useQueueAlerts()
-  const { data: dlqData } = useDlqStatus()
+  const dlqQuery = useDlqStatus()
+  // usePipelineHealth is an onboarding hook (still demo-fallback) — leave as-is
   const { data: healthData } = usePipelineHealth()
+
   const retryQueue = useRetryDlqQueue()
   const retryAll = useRetryAllDlq()
 
+  const queueData = queueQuery.data
   const queues: QueueDepth[] = queueData?.queues ?? []
   const alerts = alertsData?.alerts ?? []
-  const dlqQueues: DlqQueueEntry[] = dlqData?.queues?.filter((q: DlqQueueEntry) => q.failed > 0) ?? []
   const stages: PipelineStage[] = healthData?.stages ?? []
   const overallHealth = healthData?.overall ?? 'unknown'
 
@@ -118,78 +122,99 @@ export function PipelinePanel() {
       )}
 
       {/* Queue stats table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs" data-testid="queue-table">
-          <thead>
-            <tr className="border-b border-border text-text-muted">
-              <th className="text-left py-2 px-2 font-medium">Queue</th>
-              <th className="text-right py-2 px-2 font-medium">Waiting</th>
-              <th className="text-right py-2 px-2 font-medium">Active</th>
-              <th className="text-right py-2 px-2 font-medium">Completed</th>
-              <th className="text-right py-2 px-2 font-medium">Failed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {queues.map(q => {
-              const isStuck = q.waiting > 10
-              return (
-                <tr key={q.name} className={cn('border-b border-border/50', isStuck && 'bg-amber-400/5')}>
-                  <td className="py-1.5 px-2 font-medium text-text-primary">
-                    {q.name.replace('etip-', '')}
-                    {isStuck && <span className="ml-1 text-[10px] text-amber-400">(stuck)</span>}
-                  </td>
-                  <td className={cn('text-right py-1.5 px-2', q.waiting > 0 ? 'text-amber-400' : 'text-text-muted')}>{q.waiting}</td>
-                  <td className={cn('text-right py-1.5 px-2', q.active > 0 ? 'text-accent' : 'text-text-muted')}>{q.active}</td>
-                  <td className="text-right py-1.5 px-2 text-text-muted">{q.completed}</td>
-                  <td className={cn('text-right py-1.5 px-2', q.failed > 0 ? 'text-sev-critical' : 'text-text-muted')}>{q.failed}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <QueryStateView
+        query={queueQuery}
+        resource="queue health"
+        isEmpty={d => (d.queues ?? []).length === 0}
+        empty={<p className="text-xs text-text-muted" data-testid="query-empty">No queues reported.</p>}
+      >
+        {qData => (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs" data-testid="queue-table">
+                <thead>
+                  <tr className="border-b border-border text-text-muted">
+                    <th className="text-left py-2 px-2 font-medium">Queue</th>
+                    <th className="text-right py-2 px-2 font-medium">Waiting</th>
+                    <th className="text-right py-2 px-2 font-medium">Active</th>
+                    <th className="text-right py-2 px-2 font-medium">Completed</th>
+                    <th className="text-right py-2 px-2 font-medium">Failed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {qData.queues.map(q => {
+                    const isStuck = q.waiting > 10
+                    return (
+                      <tr key={q.name} className={cn('border-b border-border/50', isStuck && 'bg-amber-400/5')}>
+                        <td className="py-1.5 px-2 font-medium text-text-primary">
+                          {q.name.replace('etip-', '')}
+                          {isStuck && <span className="ml-1 text-[10px] text-amber-400">(stuck)</span>}
+                        </td>
+                        <td className={cn('text-right py-1.5 px-2', q.waiting > 0 ? 'text-amber-400' : 'text-text-muted')}>{q.waiting}</td>
+                        <td className={cn('text-right py-1.5 px-2', q.active > 0 ? 'text-accent' : 'text-text-muted')}>{q.active}</td>
+                        <td className="text-right py-1.5 px-2 text-text-muted">{q.completed}</td>
+                        <td className={cn('text-right py-1.5 px-2', q.failed > 0 ? 'text-sev-critical' : 'text-text-muted')}>{q.failed}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-      {/* Refresh + last updated */}
-      <div className="flex items-center justify-between text-xs text-text-muted">
-        <span>Updated: {queueData?.updatedAt ? new Date(queueData.updatedAt).toLocaleTimeString() : '—'}</span>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50"
-        >
-          <RefreshCw className={cn('w-3 h-3', isFetching && 'animate-spin')} /> Refresh
-        </button>
-      </div>
-
-      {/* DLQ failed items */}
-      {dlqQueues.length > 0 && (
-        <div className="space-y-2" data-testid="dlq-section">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
-              <Trash2 className="w-3.5 h-3.5 text-sev-critical" /> Failed Items (DLQ)
-            </h3>
-            <button
-              onClick={() => retryAll.mutate()}
-              disabled={retryAll.isPending}
-              className="text-[10px] text-accent hover:text-accent-hover disabled:opacity-50 flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" /> Retry All
-            </button>
-          </div>
-          {dlqQueues.map(q => (
-            <div key={q.name} className="flex items-center justify-between p-2 bg-bg-elevated rounded border border-border">
-              <span className="text-xs text-text-primary">{q.name.replace('etip-', '')} — {q.failed} failed</span>
+            {/* Refresh + last updated */}
+            <div className="flex items-center justify-between text-xs text-text-muted">
+              <span>Updated: {qData.updatedAt ? new Date(qData.updatedAt).toLocaleTimeString() : '—'}</span>
               <button
-                onClick={() => retryQueue.mutate(q.name)}
-                disabled={retryQueue.isPending}
-                className="text-[10px] text-accent hover:text-accent-hover disabled:opacity-50"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50"
               >
-                Retry
+                <RefreshCw className={cn('w-3 h-3', isFetching && 'animate-spin')} /> Refresh
               </button>
             </div>
-          ))}
-        </div>
-      )}
+          </>
+        )}
+      </QueryStateView>
+
+      {/* DLQ failed items */}
+      <QueryStateView
+        query={dlqQuery}
+        resource="dead-letter queue status"
+        isEmpty={d => (d.queues ?? []).filter(q => q.failed > 0).length === 0}
+        empty={null}
+      >
+        {dlqData => {
+          const dlqQueues: DlqQueueEntry[] = dlqData.queues.filter(q => q.failed > 0)
+          return (
+            <div className="space-y-2" data-testid="dlq-section">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5 text-sev-critical" /> Failed Items (DLQ)
+                </h3>
+                <button
+                  onClick={() => retryAll.mutate()}
+                  disabled={retryAll.isPending}
+                  className="text-[10px] text-accent hover:text-accent-hover disabled:opacity-50 flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" /> Retry All
+                </button>
+              </div>
+              {dlqQueues.map(q => (
+                <div key={q.name} className="flex items-center justify-between p-2 bg-bg-elevated rounded border border-border">
+                  <span className="text-xs text-text-primary">{q.name.replace('etip-', '')} — {q.failed} failed</span>
+                  <button
+                    onClick={() => retryQueue.mutate(q.name)}
+                    disabled={retryQueue.isPending}
+                    className="text-[10px] text-accent hover:text-accent-hover disabled:opacity-50"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
+        }}
+      </QueryStateView>
     </div>
   )
 }

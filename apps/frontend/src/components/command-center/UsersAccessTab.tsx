@@ -11,6 +11,7 @@ import {
   useUsers, useRoles, useSIEMIntegrations, useWebhooks, useIntegrationStats,
 } from '@/hooks/use-phase5-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
   Search, UserPlus, Shield, Mail,
   Check, X, Key, Webhook, AlertTriangle,
@@ -73,22 +74,7 @@ function TeamPanel({ isSuperAdmin: _isSuperAdmin, tenantPlan }: { isSuperAdmin: 
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('analyst')
   const debouncedSearch = useDebouncedValue(search, 300)
-
-  const userList = users.data?.data ?? []
   const isFree = tenantPlan === 'free'
-
-  const filtered = useMemo(() => {
-    if (!debouncedSearch) return userList
-    const q = debouncedSearch.toLowerCase()
-    return userList.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
-  }, [userList, debouncedSearch])
-
-  const pending = filtered.filter(u => u.status === 'invited')
-  const active = filtered.filter(u => u.status !== 'invited')
-
-  if (users.isLoading) {
-    return <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 bg-bg-elevated rounded animate-pulse" />)}</div>
-  }
 
   return (
     <div className="space-y-3" data-testid="team-panel">
@@ -114,65 +100,82 @@ function TeamPanel({ isSuperAdmin: _isSuperAdmin, tenantPlan }: { isSuperAdmin: 
         )}
       </div>
 
-      {/* Active Members Table */}
-      <div className="overflow-x-auto border border-border rounded-lg">
-        <table className="w-full text-xs" data-testid="members-table">
-          <thead>
-            <tr className="border-b border-border bg-bg-elevated">
-              <th className="text-left px-3 py-2 text-text-muted font-medium">Member</th>
-              <th className="text-left px-3 py-2 text-text-muted font-medium hidden sm:table-cell">Email</th>
-              <th className="text-left px-3 py-2 text-text-muted font-medium">Role</th>
-              <th className="text-left px-3 py-2 text-text-muted font-medium hidden md:table-cell">Status</th>
-              <th className="text-left px-3 py-2 text-text-muted font-medium hidden lg:table-cell">Last Active</th>
-              <th className="text-left px-3 py-2 text-text-muted font-medium hidden lg:table-cell">Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {active.map(u => (
-              <tr key={u.id} className="border-b border-border/50 hover:bg-bg-hover transition-colors">
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-[10px] font-medium text-accent">
-                      {u.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-text-primary font-medium">{u.name}</span>
-                  </div>
-                </td>
-                <td className="px-3 py-2 text-text-muted hidden sm:table-cell">{u.email}</td>
-                <td className="px-3 py-2"><RoleBadge role={u.role} /></td>
-                <td className="px-3 py-2 hidden md:table-cell"><StatusBadge status={u.status} /></td>
-                <td className="px-3 py-2 text-text-muted hidden lg:table-cell">{u.lastLogin ? formatTimeAgo(u.lastLogin) : '—'}</td>
-                <td className="px-3 py-2 text-text-muted hidden lg:table-cell">{formatDate(u.createdAt)}</td>
-              </tr>
-            ))}
-            {active.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-8 text-text-muted">No members found</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <QueryStateView query={users} resource="users">
+        {userData => {
+          const userList = userData.data
+          const filtered = debouncedSearch
+            ? userList.filter(u =>
+                u.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                u.email.toLowerCase().includes(debouncedSearch.toLowerCase()))
+            : userList
+          const pending = filtered.filter(u => u.status === 'invited')
+          const active = filtered.filter(u => u.status !== 'invited')
 
-      {/* Pending Invites */}
-      {pending.length > 0 && (
-        <div>
-          <h3 className="text-xs font-medium text-text-muted mb-2">Pending Invites ({pending.length})</h3>
-          <div className="space-y-1">
-            {pending.map(u => (
-              <div key={u.id} className="flex items-center justify-between px-3 py-2 border border-border/50 rounded-lg bg-bg-elevated" data-testid={`pending-${u.id}`}>
-                <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-xs text-text-primary">{u.email}</span>
-                  <RoleBadge role={u.role} />
-                </div>
-                <div className="flex items-center gap-1">
-                  <button className="px-2 py-1 text-[10px] text-accent hover:bg-accent/10 rounded" data-testid={`resend-${u.id}`}>Resend</button>
-                  <button className="px-2 py-1 text-[10px] text-sev-high hover:bg-sev-high/10 rounded" data-testid={`revoke-${u.id}`}>Revoke</button>
-                </div>
+          return (
+            <>
+              {/* Active Members Table */}
+              <div className="overflow-x-auto border border-border rounded-lg">
+                <table className="w-full text-xs" data-testid="members-table">
+                  <thead>
+                    <tr className="border-b border-border bg-bg-elevated">
+                      <th className="text-left px-3 py-2 text-text-muted font-medium">Member</th>
+                      <th className="text-left px-3 py-2 text-text-muted font-medium hidden sm:table-cell">Email</th>
+                      <th className="text-left px-3 py-2 text-text-muted font-medium">Role</th>
+                      <th className="text-left px-3 py-2 text-text-muted font-medium hidden md:table-cell">Status</th>
+                      <th className="text-left px-3 py-2 text-text-muted font-medium hidden lg:table-cell">Last Active</th>
+                      <th className="text-left px-3 py-2 text-text-muted font-medium hidden lg:table-cell">Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {active.map(u => (
+                      <tr key={u.id} className="border-b border-border/50 hover:bg-bg-hover transition-colors">
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-[10px] font-medium text-accent">
+                              {u.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-text-primary font-medium">{u.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-text-muted hidden sm:table-cell">{u.email}</td>
+                        <td className="px-3 py-2"><RoleBadge role={u.role} /></td>
+                        <td className="px-3 py-2 hidden md:table-cell"><StatusBadge status={u.status} /></td>
+                        <td className="px-3 py-2 text-text-muted hidden lg:table-cell">{u.lastLogin ? formatTimeAgo(u.lastLogin) : '—'}</td>
+                        <td className="px-3 py-2 text-text-muted hidden lg:table-cell">{formatDate(u.createdAt)}</td>
+                      </tr>
+                    ))}
+                    {active.length === 0 && (
+                      <tr><td colSpan={6} className="text-center py-8 text-text-muted">No members found</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+
+              {/* Pending Invites */}
+              {pending.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-medium text-text-muted mb-2">Pending Invites ({pending.length})</h3>
+                  <div className="space-y-1">
+                    {pending.map(u => (
+                      <div key={u.id} className="flex items-center justify-between px-3 py-2 border border-border/50 rounded-lg bg-bg-elevated" data-testid={`pending-${u.id}`}>
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="text-xs text-text-primary">{u.email}</span>
+                          <RoleBadge role={u.role} />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button className="px-2 py-1 text-[10px] text-accent hover:bg-accent/10 rounded" data-testid={`resend-${u.id}`}>Resend</button>
+                          <button className="px-2 py-1 text-[10px] text-sev-high hover:bg-sev-high/10 rounded" data-testid={`revoke-${u.id}`}>Revoke</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )
+        }}
+      </QueryStateView>
 
       {/* Invite Modal */}
       {showInviteModal && (

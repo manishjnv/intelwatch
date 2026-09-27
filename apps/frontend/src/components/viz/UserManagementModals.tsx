@@ -220,8 +220,8 @@ const ROLE_COLORS: Record<string, string> = {
   viewer: 'text-text-muted bg-bg-elevated',
 }
 
-export function UserDetailPanel({ user, onClose, isDemo }: {
-  user: UserRecord; onClose: () => void; isDemo: boolean
+export function UserDetailPanel({ user, onClose }: {
+  user: UserRecord; onClose: () => void
 }) {
   return (
     <div className="fixed right-0 top-0 bottom-0 w-full sm:w-[400px] bg-bg-primary border-l border-border z-50 overflow-y-auto shadow-xl">
@@ -285,19 +285,19 @@ export function UserDetailPanel({ user, onClose, isDemo }: {
           <h3 className="text-[10px] text-text-muted uppercase font-medium">Actions</h3>
           <div className="flex flex-col gap-2">
             {user.status === 'active' && (
-              <button disabled={isDemo}
+              <button
                 className="w-full py-2 text-xs font-medium bg-sev-critical/10 text-sev-critical border border-sev-critical/20 rounded hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
                 Lock Account
               </button>
             )}
             {user.status === 'locked' && (
-              <button disabled={isDemo}
+              <button
                 className="w-full py-2 text-xs font-medium bg-sev-low/10 text-sev-low border border-sev-low/20 rounded hover:bg-sev-low/20 transition-colors disabled:opacity-50">
                 Unlock Account
               </button>
             )}
             {!user.mfaEnabled && (
-              <button disabled={isDemo}
+              <button
                 className="w-full py-2 text-xs font-medium bg-accent/10 text-accent border border-accent/20 rounded hover:bg-accent/20 transition-colors disabled:opacity-50">
                 Require MFA
               </button>

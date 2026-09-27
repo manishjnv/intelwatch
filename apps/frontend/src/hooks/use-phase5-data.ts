@@ -5,14 +5,12 @@
  * All queries go through nginx → backend services.
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
 import {
   DEMO_SIEM_INTEGRATIONS, DEMO_WEBHOOKS, DEMO_TICKETING,
   DEMO_STIX_COLLECTIONS, DEMO_BULK_EXPORTS, DEMO_INTEGRATION_STATS,
-  DEMO_USERS, DEMO_TEAMS, DEMO_ROLES, DEMO_SESSIONS,
-  DEMO_AUDIT_LOG, DEMO_USER_MANAGEMENT_STATS,
   DEMO_MODULE_TOGGLES, DEMO_AI_CONFIGS, DEMO_RISK_WEIGHTS,
   DEMO_NOTIFICATION_CHANNELS, DEMO_CUSTOMIZATION_STATS,
   DEMO_PLAN_TIERS, DEMO_SUBTASK_MAPPINGS, DEMO_RECOMMENDED_MODELS, DEMO_COST_ESTIMATE,
@@ -195,79 +193,58 @@ export function useTestSIEMConnection() {
 
 export function useUsers(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  const empty: ListResponse<UserRecord> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery<ListResponse<UserRecord>, ApiError>({
     queryKey: ['users', params],
-    queryFn: () => apiList<UserRecord>(`/users${query}`).catch(err => notifyApiError(err, 'users', empty)),
+    queryFn: () => apiList<UserRecord>(`/users${query}`),
+    meta: { resource: 'users' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_USERS, total: DEMO_USERS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useTeams() {
-  const empty: ListResponse<TeamRecord> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery<ListResponse<TeamRecord>, ApiError>({
     queryKey: ['teams'],
-    queryFn: () => apiList<TeamRecord>('/users/teams').catch(() => empty),
+    queryFn: () => apiList<TeamRecord>('/users/teams'),
+    meta: { resource: 'teams' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_TEAMS, total: DEMO_TEAMS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useRoles() {
-  const empty: ListResponse<RoleRecord> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery<ListResponse<RoleRecord>, ApiError>({
     queryKey: ['roles'],
-    queryFn: () => apiList<RoleRecord>('/users/roles').catch(() => empty),
+    queryFn: () => apiList<RoleRecord>('/users/roles'),
+    meta: { resource: 'roles' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_ROLES, total: DEMO_ROLES.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useSessions() {
-  const empty: ListResponse<SessionRecord> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery<ListResponse<SessionRecord>, ApiError>({
     queryKey: ['user-sessions'],
-    queryFn: () => apiList<SessionRecord>('/users/sessions').catch(() => empty),
+    queryFn: () => apiList<SessionRecord>('/users/sessions'),
+    meta: { resource: 'user sessions' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_SESSIONS, total: DEMO_SESSIONS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useAuditLog(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  const empty: ListResponse<AuditLogEntry> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery<ListResponse<AuditLogEntry>, ApiError>({
     queryKey: ['audit-log', params],
-    queryFn: () => apiList<AuditLogEntry>(`/users/audit${query}`).catch(() => empty),
+    queryFn: () => apiList<AuditLogEntry>(`/users/audit${query}`),
+    meta: { resource: 'audit log' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_AUDIT_LOG, total: DEMO_AUDIT_LOG.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useUserManagementStats() {
-  const empty: UserManagementStats = { totalUsers: 0, activeSessions: 0, teams: 0, roles: 0, mfaPercent: 0 }
-  const result = useQuery({
+  return useQuery<UserManagementStats, ApiError>({
     queryKey: ['user-management-stats'],
-    queryFn: () => api<UserManagementStats>('/users/stats').catch(() => empty),
+    queryFn: () => api<UserManagementStats>('/users/stats'),
+    meta: { resource: 'user stats' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_USER_MANAGEMENT_STATS, d => (d?.totalUsers ?? 0) > 0)
 }
 
 export function useInviteUser() {

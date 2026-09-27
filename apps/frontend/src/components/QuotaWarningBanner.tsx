@@ -10,6 +10,7 @@ import { AlertTriangle, X, ArrowUpCircle, BarChart3 } from 'lucide-react'
 import { useQuotaStatus, FEATURE_LABELS, type FeatureKey } from '@/hooks/use-feature-limits'
 import { PlanComparisonMatrix } from './command-center/PlanComparisonMatrix'
 import { usePlanBuilder } from '@/hooks/use-plan-builder'
+import { salesMailto } from '@/data/plans'
 
 // ─── Quota Warning Banner (per-feature) ────────────────────
 
@@ -113,13 +114,22 @@ export function QuotaUpgradeModal({ info, onClose }: UpgradeModalProps) {
             </div>
           </div>
 
-          {showComparison && plans.length > 0 && (
+          {showComparison && (
             <div className="mb-4">
-              <PlanComparisonMatrix
-                plans={plans}
-                currentPlanId={info.currentPlan.toLowerCase()}
-                compact
-              />
+              {plans.length > 0 ? (
+                <PlanComparisonMatrix
+                  plans={plans}
+                  currentPlanId={info.currentPlan.toLowerCase()}
+                  compact
+                />
+              ) : (
+                <p className="text-xs text-text-muted" data-testid="plans-unavailable">
+                  Plans unavailable —{' '}
+                  <a href={salesMailto('Plan comparison request')} className="underline hover:no-underline">
+                    contact sales
+                  </a>.
+                </p>
+              )}
             </div>
           )}
 
