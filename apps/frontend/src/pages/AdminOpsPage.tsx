@@ -42,12 +42,13 @@ function timeAgo(iso: string): string {
 
 // ─── Status indicators ───────────────────────────────────────────
 
-type ServiceStatus = 'healthy' | 'degraded' | 'down' | 'unknown'
+type ServiceStatus = 'healthy' | 'degraded' | 'down' | 'critical' | 'unknown'
 
 const STATUS_CONFIG: Record<ServiceStatus, { label: string; dot: string; text: string; Icon: React.FC<{ className?: string }> }> = {
   healthy:  { label: 'Healthy',  dot: 'bg-sev-low',      text: 'text-sev-low',      Icon: CheckCircle2 },
   degraded: { label: 'Degraded', dot: 'bg-sev-high',     text: 'text-sev-high',     Icon: AlertTriangle },
   down:     { label: 'Down',     dot: 'bg-sev-critical',  text: 'text-sev-critical', Icon: XCircle },
+  critical: { label: 'Critical', dot: 'bg-sev-critical',  text: 'text-sev-critical', Icon: XCircle },
   unknown:  { label: 'Unknown',  dot: 'bg-text-muted',   text: 'text-text-muted',   Icon: Clock },
 }
 
@@ -92,7 +93,7 @@ function ServiceCard({ svc }: { svc: ServiceHealth }) {
       'bg-bg-elevated border rounded-lg p-3 transition-all duration-200',
       status === 'healthy'  ? 'border-border-subtle' :
       status === 'degraded' ? 'border-sev-high/40 bg-sev-high/5' :
-      status === 'down'     ? 'border-sev-critical/50 bg-sev-critical/5' :
+      status === 'down' || status === 'critical' ? 'border-sev-critical/50 bg-sev-critical/5' :
                               'border-border-subtle',
     )}>
       <div className="flex items-center justify-between mb-2">

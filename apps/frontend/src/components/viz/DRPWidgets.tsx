@@ -181,7 +181,7 @@ export function TyposquatScanner() {
   const handleScan = () => {
     if (!domain.trim()) return
     scanMutation.mutate(domain, {
-      onSuccess: (data) => setResults((data as any)?.data?.candidates ?? []),
+      onSuccess: (data) => setResults(data?.topCandidates ?? []),
       onError: () => setResults(DEMO_TYPOSQUAT_RESULTS),
     })
   }

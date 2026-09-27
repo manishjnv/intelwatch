@@ -296,15 +296,24 @@ export function useRevokeAllSessions() {
 export function useModuleToggles() {
   const result = useQuery({
     queryKey: ['module-toggles'],
-    queryFn: () => api<{ data: ModuleToggle[] }>('/customization/modules').catch(() => ({ data: [] })),
+    // Backend (module-toggles.ts GET /) sends { data: toggles, total } single-wrapped;
+    // apiList() normalizes it (api() alone would drop total — RCA #45).
+    queryFn: () => apiList<ModuleToggle>('/customization/modules').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
-    { data: DEMO_MODULE_TOGGLES },
+    { data: DEMO_MODULE_TOGGLES, total: DEMO_MODULE_TOGGLES.length, page: 1, limit: 50 },
     d => (d?.data?.length ?? 0) > 0,
   )
 }
 
+// BLOCKED: frontend calls GET /customization/ai, but aiModelRoutes (registered at prefix
+// /customization/ai) has no handler for the bare path — only /models, /tasks, /budget, /usage,
+// /recommended, /subtasks, /plans, /cost-estimate. The closest analog, GET /ai/tasks, returns
+// TaskMapping[] { id, tenantId, task, model, temperature?, maxTokens?, updatedAt } — it has none
+// of AIModelConfig's monthlyBudget/spent/confidenceThreshold/enabled fields. There is no backend
+// shape today that satisfies this hook's contract; needs a new endpoint, not a response-unwrap
+// fix. Left as a 404 → always-demo fallback (no regression vs. current behavior).
 export function useAIConfigs() {
   const result = useQuery({
     queryKey: ['ai-configs'],
@@ -317,6 +326,11 @@ export function useAIConfigs() {
   )
 }
 
+// BLOCKED: frontend calls GET /customization/risk-weights, but riskWeightRoutes is registered
+// at prefix /customization/risk with routes under /profiles, /presets, /validate — there is no
+// /customization/risk-weights path at all (404). The real list endpoint is
+// GET /customization/risk/profiles. Fixing the path is a route-repair change, not a response-
+// unwrap fix, and is outside this pass's scope. Left as-is (404 → always-demo, no regression).
 export function useRiskWeights() {
   const result = useQuery({
     queryKey: ['risk-weights'],
@@ -329,6 +343,14 @@ export function useRiskWeights() {
   )
 }
 
+// BLOCKED: GET /customization/notifications exists and resolves (notifications.ts GET /), but
+// it returns a single per-user NotificationPreferences object — { channels: Record<string,
+// {enabled, threshold, config}> } — not a NotificationChannel[] list with id/type/name/
+// severities/quietHours-per-channel. The backend has no concept of named, individually
+// addressable channels; quiet hours are also global (PUT /quiet-hours), not per-channel. This
+// needs a real shape reconciliation (backend or frontend model change), not a response-unwrap
+// fix. Left as-is: the current `.data` read on a non-array object yields undefined → always
+// falls back to demo, same as before this pass (no regression, no crash).
 export function useNotificationChannels() {
   const result = useQuery({
     queryKey: ['notification-channels'],
@@ -407,11 +429,13 @@ export function useTestNotification() {
 export function usePlanTiers() {
   const result = useQuery({
     queryKey: ['ai-plan-tiers'],
-    queryFn: () => api<{ data: PlanTierMeta[] }>('/customization/ai/plans').catch(() => ({ data: [] })),
+    // Backend (ai-models.ts GET /plans) sends { data: plans, total } single-wrapped;
+    // apiList() normalizes it (api() alone would drop total — RCA #45).
+    queryFn: () => apiList<PlanTierMeta>('/customization/ai/plans').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
     staleTime: 300_000,
   })
   return withDemoFallback(result,
-    { data: DEMO_PLAN_TIERS },
+    { data: DEMO_PLAN_TIERS, total: DEMO_PLAN_TIERS.length, page: 1, limit: 50 },
     d => (d?.data?.length ?? 0) > 0,
   )
 }
@@ -419,11 +443,12 @@ export function usePlanTiers() {
 export function useSubtaskMappings() {
   const result = useQuery({
     queryKey: ['ai-subtask-mappings'],
-    queryFn: () => api<{ data: SubtaskMapping[] }>('/customization/ai/subtasks').catch(() => ({ data: [] })),
+    // Backend (ai-models.ts GET /subtasks) sends { data: mappings, total } single-wrapped.
+    queryFn: () => apiList<SubtaskMapping>('/customization/ai/subtasks').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
     staleTime: 60_000,
   })
   return withDemoFallback(result,
-    { data: DEMO_SUBTASK_MAPPINGS },
+    { data: DEMO_SUBTASK_MAPPINGS, total: DEMO_SUBTASK_MAPPINGS.length, page: 1, limit: 50 },
     d => (d?.data?.length ?? 0) > 0,
   )
 }
@@ -431,11 +456,12 @@ export function useSubtaskMappings() {
 export function useRecommendedModels() {
   const result = useQuery({
     queryKey: ['ai-recommended-models'],
-    queryFn: () => api<{ data: RecommendedSubtask[] }>('/customization/ai/recommended').catch(() => ({ data: [] })),
+    // Backend (ai-models.ts GET /recommended) sends { data: recommended, total } single-wrapped.
+    queryFn: () => apiList<RecommendedSubtask>('/customization/ai/recommended').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
     staleTime: 300_000,
   })
   return withDemoFallback(result,
-    { data: DEMO_RECOMMENDED_MODELS },
+    { data: DEMO_RECOMMENDED_MODELS, total: DEMO_RECOMMENDED_MODELS.length, page: 1, limit: 50 },
     d => (d?.data?.length ?? 0) > 0,
   )
 }
@@ -443,21 +469,27 @@ export function useRecommendedModels() {
 export function useCostEstimate(plan: string, articles: number) {
   const result = useQuery({
     queryKey: ['ai-cost-estimate', plan, articles],
-    queryFn: () => api<{ data: CostEstimate }>(`/customization/ai/cost-estimate?plan=${encodeURIComponent(plan)}&articles=${articles}`).catch(() => ({ data: null as unknown as CostEstimate })),
+    // Backend (ai-models.ts GET /cost-estimate) sends { data: estimate } single-wrapped;
+    // api() already unwraps it — the CostEstimate fields are top-level, not nested under .data.
+    queryFn: () => api<CostEstimate>(`/customization/ai/cost-estimate?plan=${encodeURIComponent(plan)}&articles=${articles}`).catch(() => null as unknown as CostEstimate),
     staleTime: 60_000,
     enabled: articles > 0,
   })
   return withDemoFallback(result,
-    { data: DEMO_COST_ESTIMATE },
-    d => d?.data?.totalMonthlyUsd != null,
+    DEMO_COST_ESTIMATE,
+    d => d?.totalMonthlyUsd != null,
   )
 }
 
 export function useApplyPlan() {
   const qc = useQueryClient()
   return useMutation({
+    // Backend (ai-models.ts POST /plans/apply) sends { data: mappings, plan, total }
+    // single-wrapped; api() unwraps to `mappings` directly — `plan`/`total` are not recoverable
+    // from this call (dropped by the single unwrap). No consumer reads them off the mutation
+    // result today (CustomizationPage just invalidates queries on success).
     mutationFn: (plan: string) =>
-      api<{ data: SubtaskMapping[]; plan: string; total: number }>(
+      api<SubtaskMapping[]>(
         '/customization/ai/plans/apply', { method: 'POST', body: { plan } },
       ),
     onSuccess: () => {
@@ -470,8 +502,9 @@ export function useApplyPlan() {
 export function useSetSubtaskModel() {
   const qc = useQueryClient()
   return useMutation({
+    // Backend (ai-models.ts PUT /subtasks/:subtask) sends { data: mapping } single-wrapped.
     mutationFn: ({ subtask, model, fallbackModel }: { subtask: string; model: string; fallbackModel?: string }) =>
-      api<{ data: SubtaskMapping }>(
+      api<SubtaskMapping>(
         `/customization/ai/subtasks/${encodeURIComponent(subtask)}`,
         { method: 'PUT', body: fallbackModel ? { model, fallbackModel } : { model } },
       ),
@@ -495,12 +528,13 @@ export function useAnthropicKeyStatus() {
   const fallback: AnthropicKeyStatus = { tenantId: 'default', hasKey: false, maskedKey: null }
   const result = useQuery({
     queryKey: ['anthropic-key-status'],
+    // Backend (api-keys.ts) sends { data: status } single-wrapped; api() already unwraps it.
     queryFn: () =>
-      api<{ data: AnthropicKeyStatus }>('/customization/api-keys/anthropic')
-        .catch(() => ({ data: fallback })),
+      api<AnthropicKeyStatus>('/customization/api-keys/anthropic')
+        .catch(() => fallback),
     staleTime: 30_000,
   })
-  return withDemoFallback(result, { data: fallback }, d => d?.data != null)
+  return withDemoFallback(result, fallback, d => d != null)
 }
 
 /** PUT /customization/api-keys/anthropic — Store tenant Anthropic API key. */
@@ -508,7 +542,7 @@ export function useSaveAnthropicKey() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (apiKey: string) =>
-      api<{ data: AnthropicKeyStatus }>('/customization/api-keys/anthropic', { method: 'PUT', body: { apiKey } }),
+      api<AnthropicKeyStatus>('/customization/api-keys/anthropic', { method: 'PUT', body: { apiKey } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['anthropic-key-status'] }) },
   })
 }
@@ -518,7 +552,7 @@ export function useDeleteAnthropicKey() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      api<{ data: AnthropicKeyStatus }>('/customization/api-keys/anthropic', { method: 'DELETE' }),
+      api<AnthropicKeyStatus>('/customization/api-keys/anthropic', { method: 'DELETE' }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['anthropic-key-status'] }) },
   })
 }

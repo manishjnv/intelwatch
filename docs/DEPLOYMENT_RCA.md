@@ -687,6 +687,19 @@ All 41 issues are FIXED. This table tracks which session fixed each issue and co
 **Follow-up (same class, pre-existing since S18)**: once System rendered, the owner hit Command Center → System → Emergency Access crashing with `reading 'length'`. `useBreakGlassAudit` typed `api<{ data, total }>` but `api()` returns the unwrapped entries array, so `BreakGlassPanel`'s `auditData.data.length` threw on every successful response (the demo fallback only hid it when the API errored). Fix: `apiList()` (normalizes array or envelope) + hook test with the real `api()` return shape (red → green). Branch `s161a/hotfix-break-glass-audit` (PR #47).
 **Second layer** (seen once PR #47 deployed): the rows are raw Prisma `AuditLog` records (`action: 'break_glass.login.success'`, `ipAddress`, `createdAt`, `changes`), not the panel shape (`event`, `ip`, `timestamp`), so `eventBadge(entry.event)` threw `reading 'startsWith'`. Fix: `toBreakGlassAuditEntry()` in `use-break-glass.ts` maps each row (strip the `break_glass.` prefix → the panel's own event names; `ipAddress`→`ip`, `createdAt`→`timestamp`, `changes`→`details`) + test with a real raw row. Branch `s161a/hotfix-break-glass-rows`. A shape audit of all pages (3 agents, 2026-09-27) found one more latent crash: Admin Ops / System maintenance windows read `mw.affectedServices.length`/`.map`, but admin-service's `MaintenanceWindow` has `scope`/`tenantIds` and no `affectedServices` — fixed in the same branch by defaulting it to `[]` in `useMaintenanceWindows` (+ test with the real row shape). The remaining mismatches render demo/empty data, not crashes (S161b/S163 list in `docs/SESSION_HANDOFF.md`).
 
+**Follow-up (S161b PR 1): bug-class sweep.** A full sweep of `apps/frontend/src/hooks` for the RCA #45 pattern
+(`api<{data: X}>` then reading `.data`, always `undefined`) found ~40 more sites across 17 hook files, all
+silently falling back to demo/empty data instead of showing real API responses. Fixed the same way: `apiList()`
+for list-returning calls, `api<X>()` (wrapper type dropped) for single objects. Added 3 mappers where the
+backend shape still doesn't match the frontend type after unwrapping: `mapQuarterly` (`use-access-reviews.ts`),
+`mapPlan` (`use-plan-limits.ts`), `toCorroborationLeader` (`use-global-monitoring.ts`). 4 existing test files
+(`byok-card.test.tsx`, `customization-ai.test.tsx`, `phase5-pages.test.tsx`, `use-analytics-dashboard.test.ts`)
+had mocks that encoded the buggy double-wrapped shape and had to be corrected. **Prevention:** mock the REAL
+backend response body in tests, never the frontend type — a mock shaped like the type under test proves nothing
+about whether the code handles the actual API response. **Check:**
+`grep -rnE "api<\{\s*data" apps/frontend/src/hooks` should return only documented BLOCKED hooks (routes that
+don't exist yet), never a live call site. Detail: `docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md`.
+
 | Session 78 | 2026-03-26 | RCA #43: VPS OOM during build. Fix: CI-built Docker images (GHCR). Deploy 25m→2m41s. Per-plan feed quotas (7 components, 5 modules, 54 tests). Passwordless SSH. All 33 containers healthy. CI run 23597460387 green. |
 | Session 79 | 2026-03-26 | No deploy. Planning/review session: audited 27/27 gap items closed, 3/3 activation phases complete. No code changes. |
 | Session 81 | 2026-03-27 | VPS activation: 20 feeds live, 17K articles, 1.5K IOCs. Fixed frontend MISSING_TENANT 400 (api.ts x-tenant-id injection). Billing pro→teams rename. 33 containers healthy. No new RCA issues. |

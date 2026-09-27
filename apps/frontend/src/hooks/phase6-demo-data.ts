@@ -69,7 +69,7 @@ export interface BillingStats {
 
 // ─── Admin Ops Types ─────────────────────────────────────────────
 
-export type ServiceStatus = 'healthy' | 'degraded' | 'down' | 'unknown'
+export type ServiceStatus = 'healthy' | 'degraded' | 'down' | 'critical' | 'unknown'
 
 export interface ServiceHealth {
   name: string

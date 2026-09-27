@@ -7,6 +7,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { notifyApiError } from './useApiError'
 // Demo data imports removed — no fallback to fake data
 
@@ -188,9 +189,10 @@ export function useEnrichmentStats() {
 export function useEnrichmentPending(page = 1, limit = 20) {
   return useQuery({
     queryKey: ['enrichment-pending', page, limit],
-    queryFn: () => api<{ data: PendingIOC[]; total: number; page: number; limit: number }>(
-      `/enrichment/pending?page=${page}&limit=${limit}`,
-    ).catch(() => ({ data: [] as PendingIOC[], total: 0, page: 1, limit: 20 })),
+    // Backend sends { data: PendingIOC[], total, page, limit } single-wrapped; apiList()
+    // normalizes it (api() alone would drop total/page/limit — RCA #45).
+    queryFn: () => apiList<PendingIOC>(`/enrichment/pending?page=${page}&limit=${limit}`)
+      .catch(() => ({ data: [] as PendingIOC[], total: 0, page: 1, limit: 20 })),
     staleTime: 15_000,
   })
 }

@@ -115,8 +115,7 @@ export function useGlobalIocs(filters?: Record<string, string | number | undefin
   const result = useQuery({
     queryKey: ['global-iocs', filters],
     queryFn: () =>
-      api<{ data: GlobalIocRecord[] }>(`/normalization/global-iocs${params}`)
-        .then(r => r?.data ?? empty)
+      api<GlobalIocRecord[]>(`/normalization/global-iocs${params}`)
         .catch(err => notifyApiError(err, 'global IOCs', empty)),
     staleTime: 60_000,
   })
@@ -128,8 +127,7 @@ export function useGlobalIocDetail(iocId: string | null) {
   return useQuery({
     queryKey: ['global-ioc-detail', iocId],
     queryFn: () =>
-      api<{ data: GlobalIocRecord }>(`/normalization/global-iocs/${iocId}`)
-        .then(r => r?.data ?? null)
+      api<GlobalIocRecord>(`/normalization/global-iocs/${iocId}`)
         .catch(() => DEMO_GLOBAL_IOCS[0]),
     enabled: !!iocId,
     staleTime: 60_000,
@@ -169,8 +167,7 @@ export function useCorroborationDetail(iocId: string | null) {
   return useQuery({
     queryKey: ['global-ioc-corroboration', iocId],
     queryFn: () =>
-      api<{ data: CorroborationDetail }>(`/normalization/global-iocs/${iocId}/corroboration`)
-        .then(r => r?.data ?? null)
+      api<CorroborationDetail>(`/normalization/global-iocs/${iocId}/corroboration`)
         .catch(() => null),
     enabled: !!iocId,
     staleTime: 60_000,
@@ -181,8 +178,7 @@ export function useSeverityVotes(iocId: string | null) {
   return useQuery({
     queryKey: ['global-ioc-severity-votes', iocId],
     queryFn: () =>
-      api<{ data: SeverityVoteDetail }>(`/normalization/global-iocs/${iocId}/severity-votes`)
-        .then(r => r?.data ?? null)
+      api<SeverityVoteDetail>(`/normalization/global-iocs/${iocId}/severity-votes`)
         .catch(() => null),
     enabled: !!iocId,
     staleTime: 60_000,
@@ -193,8 +189,7 @@ export function useFpSummary(iocId: string | null) {
   return useQuery({
     queryKey: ['global-ioc-fp-summary', iocId],
     queryFn: () =>
-      api<{ data: FpSummaryDetail }>(`/normalization/global-iocs/${iocId}/fp-summary`)
-        .then(r => r?.data ?? null)
+      api<FpSummaryDetail>(`/normalization/global-iocs/${iocId}/fp-summary`)
         .catch(() => null),
     enabled: !!iocId,
     staleTime: 60_000,

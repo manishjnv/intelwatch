@@ -119,11 +119,23 @@ export function useCertStreamStatus() {
   return withDemoFallback(result, DEMO_CERTSTREAM_STATUS, d => (d?.totalProcessed ?? 0) > 0)
 }
 
+/** POST /drp/detect/typosquat response shape (backend field is `topCandidates`, not `candidates`). */
+export interface TyposquatScanResult {
+  scanId: string
+  domain: string
+  candidatesFound: number
+  registeredCount: number
+  alertsCreated: number
+  topCandidates: TyposquatCandidate[]
+  durationMs: number
+}
+
 export function useTyposquatScan() {
   const queryClient = useQueryClient()
   return useMutation({
+    // Backend sends { data: {...} } single-wrapped; api() already unwraps it.
     mutationFn: (domain: string) =>
-      api<{ data: { candidates: TyposquatCandidate[]; alertsCreated: number } }>(
+      api<TyposquatScanResult>(
         '/drp/detect/typosquat', { method: 'POST', body: { domain } },
       ),
     onSuccess: () => {
@@ -419,11 +431,13 @@ export function useHuntEvidence(huntId: string | null) {
 export function useHuntTemplates() {
   const result = useQuery({
     queryKey: ['hunt-templates'],
-    queryFn: () => api<{ data: HuntTemplate[]; total: number }>('/hunts/templates').catch(() => ({ data: [], total: 0 })),
+    // Backend sends { data: HuntTemplate[], total } single-wrapped; apiList() normalizes it
+    // (api() alone would drop total — RCA #45).
+    queryFn: () => apiList<HuntTemplate>('/hunts/templates').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
     staleTime: 5 * 60_000,
   })
   return withDemoFallback(result,
-    { data: DEMO_HUNT_TEMPLATES, total: DEMO_HUNT_TEMPLATES.length },
+    { data: DEMO_HUNT_TEMPLATES, total: DEMO_HUNT_TEMPLATES.length, page: 1, limit: 50 },
     d => (d?.data?.length ?? 0) > 0,
   )
 }

@@ -46,7 +46,7 @@ vi.mock('@/stores/sidebar-store', () => ({ useSidebarStore: vi.fn(() => ({ isOpe
 
 function setupNoKey() {
   mockAnthropicKeyStatus.mockReturnValue({
-    data: { data: { tenantId: 'default', hasKey: false, maskedKey: null } },
+    data: { tenantId: 'default', hasKey: false, maskedKey: null },
     isDemo: false,
     isLoading: false,
   })
@@ -56,7 +56,7 @@ function setupNoKey() {
 
 function setupHasKey(maskedKey = 'sk-ant-api...5678') {
   mockAnthropicKeyStatus.mockReturnValue({
-    data: { data: { tenantId: 'default', hasKey: true, maskedKey } },
+    data: { tenantId: 'default', hasKey: true, maskedKey },
     isDemo: false,
     isLoading: false,
   })
@@ -110,7 +110,7 @@ describe('ProviderApiKeysCard — interactions', () => {
   it('Save Key button calls mutate with trimmed input value', () => {
     const mutateFn = vi.fn()
     mockAnthropicKeyStatus.mockReturnValue({
-      data: { data: { tenantId: 'default', hasKey: false, maskedKey: null } },
+      data: { tenantId: 'default', hasKey: false, maskedKey: null },
       isDemo: false, isLoading: false,
     })
     mockSaveAnthropicKey.mockReturnValue({ mutate: mutateFn, isPending: false, isError: false })

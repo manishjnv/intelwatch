@@ -169,8 +169,10 @@ export function useComplianceReports(filters: ReportFilters = {}) {
 export function useGenerateReport() {
   const qc = useQueryClient()
   return useMutation({
+    // Backend (compliance.ts POST /admin/compliance/reports) sends { status, data: completed }
+    // single-wrapped; api() already unwraps it — no consumer reads the mutation result today.
     mutationFn: (input: GenerateReportInput) =>
-      api<{ data: ComplianceReport }>('/admin/compliance/reports', { method: 'POST', body: input }),
+      api<ComplianceReport>('/admin/compliance/reports', { method: 'POST', body: input }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['compliance-reports'] })
     },
@@ -182,8 +184,7 @@ export function useComplianceReport(id: string | null) {
   const result = useQuery({
     queryKey: ['compliance-report', id],
     queryFn: () =>
-      api<{ data: ComplianceReport }>(`/admin/compliance/reports/${id}`)
-        .then(r => r?.data ?? null)
+      api<ComplianceReport>(`/admin/compliance/reports/${id}`)
         .catch(err => notifyApiError(err, 'compliance report', null)),
     enabled: !!id,
     staleTime: 60_000,
@@ -232,21 +233,31 @@ export function useDsarExports() {
 export function useGenerateDsar() {
   const qc = useQueryClient()
   return useMutation({
+    // Backend (compliance.ts POST /settings/compliance/dsar) sends
+    // { status, data: { reportId, dsar } } single-wrapped; api() unwraps to { reportId, dsar }
+    // — not a DsarExport (the old `{ data: DsarExport }` type was wrong on both the envelope
+    // and the shape). No consumer reads the mutation result today (onSuccess just invalidates).
     mutationFn: (input: { userId: string }) =>
-      api<{ data: DsarExport }>('/settings/compliance/dsar', { method: 'POST', body: input }),
+      api<{ reportId: string; dsar: unknown }>('/settings/compliance/dsar', { method: 'POST', body: input }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['dsar-exports'] })
     },
   })
 }
 
-/** Fetch a single DSAR export (tenant admin). */
+/**
+ * Fetch a single DSAR export (tenant admin).
+ * NOTE (RCA #45 audit): unused by any component today. The backend route
+ * (apps/api-gateway/src/routes/compliance.ts GET /settings/compliance/dsar/:reportId)
+ * actually returns a ComplianceReport record (svc.getReport), not the DsarExport shape
+ * declared above — typed against the real payload here so a future caller doesn't inherit
+ * a silent mismatch.
+ */
 export function useDsarExport(id: string | null) {
   return useQuery({
     queryKey: ['dsar-export', id],
     queryFn: () =>
-      api<{ data: DsarExport }>(`/settings/compliance/dsar/${id}`)
-        .then(r => r?.data ?? null)
+      api<ComplianceReport>(`/settings/compliance/dsar/${id}`)
         .catch(err => notifyApiError(err, 'DSAR export', null)),
     enabled: !!id,
     staleTime: 60_000,

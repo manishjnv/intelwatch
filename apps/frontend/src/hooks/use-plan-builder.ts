@@ -69,15 +69,17 @@ export function usePlanBuilder() {
 
   const plans = result.data ?? []
 
+  // Backend (api-gateway/routes/plans.ts POST/PUT) sends { data: plan } single-wrapped;
+  // api() already unwraps it — no consumer reads the mutation result today (RCA #45).
   const createMut = useMutation({
     mutationFn: (body: PlanDefinitionCreate) =>
-      api<{ data: PlanDefinition }>('/admin/plans', { method: 'POST', body }),
+      api<PlanDefinition>('/admin/plans', { method: 'POST', body }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin-plans'] }),
   })
 
   const updateMut = useMutation({
     mutationFn: ({ planId, body }: { planId: string; body: PlanDefinitionUpdate }) =>
-      api<{ data: PlanDefinition }>(`/admin/plans/${planId}`, { method: 'PUT', body }),
+      api<PlanDefinition>(`/admin/plans/${planId}`, { method: 'PUT', body }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin-plans'] }),
   })
 

@@ -57,13 +57,11 @@ const DEMO_OVERRIDES: TenantFeatureOverride[] = [
 
 export function useTenantOverrides(tenantId: string | null) {
   const qc = useQueryClient()
-  const empty: TenantFeatureOverride[] = []
 
   const result = useQuery({
     queryKey: ['tenant-overrides', tenantId],
     queryFn: () =>
-      api<{ data: TenantFeatureOverride[] }>(`/admin/tenants/${tenantId}/overrides`)
-        .then(r => r?.data ?? empty)
+      api<TenantFeatureOverride[]>(`/admin/tenants/${tenantId}/overrides`)
         .catch(err => notifyApiError(err, 'tenant overrides', DEMO_OVERRIDES)),
     enabled: !!tenantId,
     staleTime: 60_000,
@@ -72,15 +70,17 @@ export function useTenantOverrides(tenantId: string | null) {
   const isDemo = !result.isLoading && !!tenantId && (result.data?.length ?? 0) === 0
   const overrides = isDemo ? DEMO_OVERRIDES : (result.data ?? [])
 
+  // Backend (api-gateway/routes/overrides.ts POST/PUT) sends { data: override } single-wrapped;
+  // api() already unwraps it — no consumer reads the mutation result today (RCA #45).
   const createMut = useMutation({
     mutationFn: (body: OverrideCreate) =>
-      api<{ data: TenantFeatureOverride }>(`/admin/tenants/${tenantId}/overrides`, { method: 'POST', body }),
+      api<TenantFeatureOverride>(`/admin/tenants/${tenantId}/overrides`, { method: 'POST', body }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['tenant-overrides', tenantId] }),
   })
 
   const updateMut = useMutation({
     mutationFn: ({ featureKey, body }: { featureKey: FeatureKey; body: OverrideUpdate }) =>
-      api<{ data: TenantFeatureOverride }>(`/admin/tenants/${tenantId}/overrides/${featureKey}`, { method: 'PUT', body }),
+      api<TenantFeatureOverride>(`/admin/tenants/${tenantId}/overrides/${featureKey}`, { method: 'PUT', body }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['tenant-overrides', tenantId] }),
   })
 

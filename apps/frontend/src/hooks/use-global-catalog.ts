@@ -70,8 +70,7 @@ export function useGlobalCatalog() {
   const result = useQuery({
     queryKey: ['global-catalog'],
     queryFn: () =>
-      api<{ data: GlobalCatalogFeed[] }>('/ingestion/catalog')
-        .then(r => r?.data ?? empty)
+      api<GlobalCatalogFeed[]>('/ingestion/catalog')
         .catch(err => notifyApiError(err, 'global catalog', empty)),
     staleTime: 60_000,
   })
@@ -84,8 +83,7 @@ export function useMySubscriptions() {
   const result = useQuery({
     queryKey: ['global-subscriptions'],
     queryFn: () =>
-      api<{ data: TenantSubscription[] }>('/ingestion/catalog/subscriptions')
-        .then(r => r?.data ?? empty)
+      api<TenantSubscription[]>('/ingestion/catalog/subscriptions')
         .catch(err => notifyApiError(err, 'subscriptions', empty)),
     staleTime: 60_000,
   })

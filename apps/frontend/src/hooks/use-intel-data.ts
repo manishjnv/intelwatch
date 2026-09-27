@@ -393,8 +393,10 @@ export function useDashboardStats() {
 export function useUpdateIOCLifecycle() {
   const qc = useQueryClient()
   return useMutation({
+    // Backend (ioc-intelligence/iocs.ts PUT /:id/lifecycle) sends { data: ioc } single-wrapped;
+    // api() already unwraps it — no consumer reads the mutation result today (RCA #45).
     mutationFn: ({ iocId, state }: { iocId: string; state: string }) =>
-      api<{ data: { id: string; lifecycle: string } }>(
+      api<{ id: string; lifecycle: string }>(
         `/ioc-intelligence/${iocId}/lifecycle`, { method: 'PUT', body: { state } },
       ),
     onSuccess: () => {

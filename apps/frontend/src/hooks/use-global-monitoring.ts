@@ -104,9 +104,9 @@ function withDemoFallback<T>(
 export function useGlobalIocStats(refreshInterval: number = 30_000) {
   const result = useQuery({
     queryKey: ['global-ioc-stats'],
+    // Backend sends { data: stats }; api() already unwraps that envelope — stats IS the payload.
     queryFn: () =>
-      api<{ data: GlobalIocStats }>('/normalization/global-iocs/stats')
-        .then(r => r?.data ?? null)
+      api<GlobalIocStats>('/normalization/global-iocs/stats')
         .catch(err => notifyApiError(err, 'global IOC stats', null)),
     staleTime: refreshInterval,
     refetchInterval: refreshInterval,
@@ -116,13 +116,29 @@ export function useGlobalIocStats(refreshInterval: number = 30_000) {
 
 // ─── Corroboration Leaders Hook ──────────────────────────
 
+// Backend's TenantIocView (normalization/tenant-overlay-service.ts) has every CorroborationLeader
+// field except sightingSources — that source-attribution list isn't tracked there yet.
+function toCorroborationLeader(v: Record<string, unknown>): CorroborationLeader {
+  return {
+    id: v.id as string,
+    value: v.value as string,
+    iocType: v.iocType as string,
+    confidence: v.confidence as number,
+    stixConfidenceTier: v.stixConfidenceTier as string,
+    crossFeedCorroboration: v.crossFeedCorroboration as number,
+    sightingSources: [], // ponytail: backend doesn't track this yet; add when TenantIocView does
+    firstSeen: v.firstSeen as string,
+  }
+}
+
 export function useCorroborationLeaders(refreshInterval: number = 30_000) {
   const empty: CorroborationLeader[] = []
   const result = useQuery({
     queryKey: ['global-corroboration-leaders'],
+    // Backend sends { data: TenantIocView[] } (no total/page); api() unwraps to the raw array.
     queryFn: () =>
-      api<{ data: CorroborationLeader[] }>('/normalization/global-iocs?sortBy=crossFeedCorroboration&sortOrder=desc&limit=10')
-        .then(r => r?.data ?? empty)
+      api<Record<string, unknown>[]>('/normalization/global-iocs?sortBy=crossFeedCorroboration&sortOrder=desc&limit=10')
+        .then(r => (r ?? []).map(toCorroborationLeader))
         .catch(err => notifyApiError(err, 'corroboration leaders', empty)),
     staleTime: refreshInterval,
     refetchInterval: refreshInterval,
@@ -132,12 +148,15 @@ export function useCorroborationLeaders(refreshInterval: number = 30_000) {
 
 // ─── Subscription Stats Hook ──────────────────────────────
 
+// BLOCKED: no backend route exists at /ingestion/catalog/subscription-stats (only
+// GET /ingestion/catalog/subscriptions, a raw list — not the aggregated {total,uniqueTenants,
+// popularFeeds} shape this hook needs). Always 404s → always demo. Needs a new backend
+// aggregation endpoint before this can be fixed; out of scope for this hook-unwrap pass.
 export function useSubscriptionStats(refreshInterval: number = 60_000) {
   const result = useQuery({
     queryKey: ['global-subscription-stats'],
     queryFn: () =>
-      api<{ data: typeof DEMO_SUB_STATS }>('/ingestion/catalog/subscription-stats')
-        .then(r => r?.data ?? null)
+      api<typeof DEMO_SUB_STATS>('/ingestion/catalog/subscription-stats')
         .catch(() => null),
     staleTime: refreshInterval,
   })

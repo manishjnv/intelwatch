@@ -156,7 +156,9 @@ async function fetchAnalytics(range: DateRange): Promise<AnalyticsDashboardData>
   const [dashboard, trends, distributions, costTracking, enrichQuality,
     feedPerf, alertSummary, topIocs, topActors, topVulns] = await Promise.allSettled([
     api<Record<string, unknown>>(`/analytics?${qs}`).catch(() => empty),
-    api<{ data: { metric: string; points: { timestamp: string; value: number }[] }[] }>(`/analytics/trends?period=${range.preset === '24h' ? '7d' : range.preset === 'custom' ? '30d' : range.preset}`).catch(() => empty),
+    // Backend (analytics-service/routes/trends.ts GET /) sends { data: trends, period, metrics }
+    // single-wrapped; api() already unwraps it — the trend array is top-level, not under .data.
+    api<{ metric: string; points: { timestamp: string; value: number }[] }[]>(`/analytics/trends?period=${range.preset === '24h' ? '7d' : range.preset === 'custom' ? '30d' : range.preset}`).catch(() => empty),
     api<Record<string, unknown>>(`/analytics/distributions`).catch(() => empty),
     api<Record<string, unknown>>(`/analytics/cost-tracking`).catch(() => empty),
     api<Record<string, unknown>>(`/analytics/enrichment-quality`).catch(() => empty),
@@ -172,7 +174,7 @@ async function fetchAnalytics(range: DateRange): Promise<AnalyticsDashboardData>
 
   const db = val(dashboard) as Record<string, unknown> | null
   const widgets = (db?.widgets ?? {}) as Record<string, { value: number | string }>
-  const tr = val(trends) as { data: { metric: string; points: { timestamp: string; value: number }[] }[] } | null
+  const tr = val(trends) as { metric: string; points: { timestamp: string; value: number }[] }[] | null
   const dist = val(distributions) as Record<string, unknown> | null
   const cost = val(costTracking) as Record<string, unknown> | null
   const enrich = val(enrichQuality) as Record<string, unknown> | null
@@ -187,8 +189,8 @@ async function fetchAnalytics(range: DateRange): Promise<AnalyticsDashboardData>
   if (allFailed) return null as unknown as AnalyticsDashboardData
 
   const num = (v: unknown) => Number(v ?? 0)
-  const iocTrend = (tr?.data ?? []).find(s => s.metric === 'ioc.total')
-  const alertTrend = (tr?.data ?? []).find(s => s.metric === 'alert.open')
+  const iocTrend = (tr ?? []).find(s => s.metric === 'ioc.total')
+  const alertTrend = (tr ?? []).find(s => s.metric === 'alert.open')
 
   return {
     summary: {

@@ -38,12 +38,12 @@ const MOCK_DASHBOARD = {
   cacheHit: false,
 }
 
-const MOCK_TRENDS = {
-  data: [
-    { metric: 'ioc.total', points: [{ timestamp: '2026-03-20', value: 4000 }, { timestamp: '2026-03-21', value: 5000 }] },
-    { metric: 'alert.open', points: [{ timestamp: '2026-03-20', value: 30 }, { timestamp: '2026-03-21', value: 25 }] },
-  ],
-}
+// RCA #45: api() already unwraps the gateway { data, period, metrics } envelope, so the mock
+// (matching what api() itself returns) is the trends array directly, not { data: [...] }.
+const MOCK_TRENDS = [
+  { metric: 'ioc.total', points: [{ timestamp: '2026-03-20', value: 4000 }, { timestamp: '2026-03-21', value: 5000 }] },
+  { metric: 'alert.open', points: [{ timestamp: '2026-03-20', value: 30 }, { timestamp: '2026-03-21', value: 25 }] },
+]
 
 function setupSuccessMocks() {
   mockApi.mockImplementation((path: string) => {

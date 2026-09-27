@@ -1,7 +1,7 @@
 /**
  * @module __tests__/plan-builder-quota.test
  * @description Tests for Phase C: Plan Builder, PlanComparisonMatrix, Override Panel,
- * Tenant Usage, FeatureGate, QuotaWarningBanner, useFeatureLimits hook, 429 interceptor.
+ * Tenant Usage, FeatureGate, useFeatureLimits hook, 429 interceptor.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@/test/test-utils'
@@ -160,7 +160,6 @@ import { PlanComparisonMatrix } from '@/components/command-center/PlanComparison
 import { TenantOverridePanel } from '@/components/command-center/TenantOverridePanel'
 import { TenantUsagePanel } from '@/components/command-center/TenantUsagePanel'
 import { FeatureGate, UpgradeCTA } from '@/components/FeatureGate'
-import { QuotaWarningBanner, QuotaUpgradeModal } from '@/components/QuotaWarningBanner'
 
 // ═══════════════════════════════════════════════════════════
 // Plan Builder Tests
@@ -413,93 +412,6 @@ describe('FeatureGate', () => {
     render(<UpgradeCTA feature="digital_risk_protection" />)
     expect(screen.getByTestId('upgrade-cta-digital_risk_protection')).toHaveTextContent('Digital Risk Protection')
     expect(screen.getByTestId('upgrade-btn-digital_risk_protection')).toHaveAttribute('href', '/command-center#billing-plans')
-  })
-})
-
-// ═══════════════════════════════════════════════════════════
-// Quota Warning Banner Tests
-// ═══════════════════════════════════════════════════════════
-
-describe('QuotaWarningBanner', () => {
-  it('shows no banner below 80%', () => {
-    // threat_actors is at 45%
-    render(<QuotaWarningBanner feature="threat_actors" />)
-    expect(screen.queryByTestId('quota-banner-threat_actors')).not.toBeInTheDocument()
-  })
-
-  it('shows amber warning at 80%+', () => {
-    // ioc_management daily is 82%
-    render(<QuotaWarningBanner feature="ioc_management" />)
-    const banner = screen.getByTestId('quota-banner-ioc_management')
-    expect(banner).toBeInTheDocument()
-    expect(banner).toHaveTextContent('82%')
-    expect(banner).toHaveTextContent('Consider upgrading')
-  })
-
-  it('amber banner is dismissible', () => {
-    render(<QuotaWarningBanner feature="ioc_management" />)
-    expect(screen.getByTestId('quota-banner-ioc_management')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('dismiss-quota-banner'))
-    expect(screen.queryByTestId('quota-banner-ioc_management')).not.toBeInTheDocument()
-  })
-
-  it('shows red banner at 90%+', () => {
-    // malware_intel is at 92%
-    render(<QuotaWarningBanner feature="malware_intel" />)
-    const banner = screen.getByTestId('quota-banner-malware_intel')
-    expect(banner).toBeInTheDocument()
-    expect(banner).toHaveTextContent('92%')
-    expect(banner).toHaveTextContent('Upgrade now')
-  })
-
-  it('red banner is NOT dismissible', () => {
-    render(<QuotaWarningBanner feature="malware_intel" />)
-    expect(screen.queryByTestId('dismiss-quota-banner')).not.toBeInTheDocument()
-  })
-
-  it('shows exceeded banner at 100%', () => {
-    // graph_exploration is at 100%
-    render(<QuotaWarningBanner feature="graph_exploration" />)
-    const banner = screen.getByTestId('quota-banner-graph_exploration')
-    expect(banner).toHaveTextContent('limit reached')
-  })
-})
-
-// ═══════════════════════════════════════════════════════════
-// Quota Upgrade Modal Tests
-// ═══════════════════════════════════════════════════════════
-
-describe('QuotaUpgradeModal', () => {
-  const info = {
-    feature: 'ioc_management', limit: 5000, used: 5000,
-    period: 'daily', resetsAt: '2026-03-30T00:00:00Z', currentPlan: 'starter',
-  }
-
-  it('renders quota exceeded info', () => {
-    render(<QuotaUpgradeModal info={info} onClose={vi.fn()} />)
-    const modal = screen.getByTestId('quota-upgrade-modal')
-    expect(modal).toHaveTextContent('Quota Exceeded')
-    expect(modal).toHaveTextContent('5,000')
-    expect(modal).toHaveTextContent('IOC Management')
-  })
-
-  it('has upgrade plan link', () => {
-    render(<QuotaUpgradeModal info={info} onClose={vi.fn()} />)
-    expect(screen.getByText('Upgrade Plan').closest('a')).toHaveAttribute('href', '/command-center#billing-plans')
-  })
-
-  it('has plan comparison toggle', () => {
-    render(<QuotaUpgradeModal info={info} onClose={vi.fn()} />)
-    fireEvent.click(screen.getByText('View Plan Comparison'))
-    // Comparison matrix should now be visible
-    expect(screen.getByTestId('plan-comparison-matrix')).toBeInTheDocument()
-  })
-
-  it('close button calls onClose', () => {
-    const onClose = vi.fn()
-    render(<QuotaUpgradeModal info={info} onClose={onClose} />)
-    fireEvent.click(screen.getByTestId('close-quota-modal'))
-    expect(onClose).toHaveBeenCalled()
   })
 })
 

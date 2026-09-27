@@ -169,7 +169,7 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
   const [confirmPlan, setConfirmPlan] = useState<string | null>(null)
 
   const { data: costData } = useCostEstimate(selectedPlan, articleCount)
-  const cost = costData?.data
+  const cost = costData
 
   const handleApplyPlan = () => {
     if (isDemo || selectedPlan === 'custom') return
@@ -384,7 +384,7 @@ function ProviderApiKeysCard() {
   const [keyInput, setKeyInput] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const status = keyData?.data
+  const status = keyData
   const hasKey = status?.hasKey ?? false
   const maskedKey = status?.maskedKey ?? null
 

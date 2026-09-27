@@ -86,9 +86,14 @@ export function useOnboardingFeeds(planTier: string) {
   // Fetch global catalog
   const { data: globalFeeds = [], isLoading } = useQuery({
     queryKey: ['onboarding-catalog', planTier],
+    // Backend (ingestion/routes/catalog.ts GET /) sends { data: feeds } single-wrapped;
+    // api() already unwraps it — the old `res?.data` was always undefined (RCA #45).
+    // NOTE: catalogRoutes is also not registered in apps/ingestion/src/app.ts (only in its
+    // test file), so this endpoint 404s in production regardless of the unwrap fix — a
+    // separate route-registration gap outside this pass's scope.
     queryFn: async () => {
-      const res = await api<{ data: CatalogFeed[] }>('/ingestion/catalog')
-      return res?.data ?? []
+      const res = await api<CatalogFeed[]>('/ingestion/catalog')
+      return res ?? []
     },
     staleTime: 120_000,
     select: (feeds) => {
@@ -158,11 +163,17 @@ export function useOnboardingFeeds(planTier: string) {
   // Feed validation
   const testFeed = useCallback(async (url: string, feedType = 'rss'): Promise<FeedValidationResult> => {
     try {
-      const res = await api<{ data: FeedValidationResult }>('/ingestion/feeds/validate', {
+      // Backend (ingestion/routes/feed-validation.ts POST /validate) sends { data: result }
+      // single-wrapped; api() already unwraps it — the old `res?.data` was always undefined
+      // (RCA #45). NOTE: the route is registered at /api/v1/feeds/validate, not
+      // /api/v1/ingestion/feeds/validate — no nginx location or api-gateway route matches this
+      // path today, so the call 404s in production regardless of the unwrap fix. A separate
+      // path-mismatch bug outside this pass's scope.
+      const res = await api<FeedValidationResult>('/ingestion/feeds/validate', {
         method: 'POST',
         body: JSON.stringify({ url, feedType }),
       })
-      return res?.data ?? { valid: false, error: 'No response', responseTimeMs: 0 }
+      return res ?? { valid: false, error: 'No response', responseTimeMs: 0 }
     } catch {
       return { valid: false, error: 'Validation failed', responseTimeMs: 0 }
     }

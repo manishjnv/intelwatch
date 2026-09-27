@@ -79,6 +79,35 @@ const DEMO_QUARTERLY: QuarterlyReview = {
   usersAddedThisQuarter: 7, usersRemovedThisQuarter: 2, staleAccounts: 4,
 }
 
+// Backend (apps/user-service/src/access-review-service.ts generateQuarterlyReview) sends
+// differently-named fields — map them so consumers (e.g. QuarterlySection dereferencing
+// q.roleBreakdown without a guard) don't crash on the real shape.
+interface BackendQuarterlyReview {
+  totalUsers: number
+  activeUsers: number
+  inactiveUsers: number
+  mfaAdoptionRate: number
+  ssoUsersCount: number
+  roleDistribution: Record<string, number>
+  usersAddedInPeriod: number
+  usersRemovedInPeriod: number
+  staleUsers: number
+}
+
+function mapQuarterly(r: BackendQuarterlyReview): QuarterlyReview {
+  return {
+    totalUsers: r.totalUsers,
+    activeUsers: r.activeUsers,
+    inactiveUsers: r.inactiveUsers,
+    mfaAdoptionPercent: r.mfaAdoptionRate,
+    ssoUsers: r.ssoUsersCount,
+    roleBreakdown: r.roleDistribution,
+    usersAddedThisQuarter: r.usersAddedInPeriod,
+    usersRemovedThisQuarter: r.usersRemovedInPeriod,
+    staleAccounts: r.staleUsers,
+  }
+}
+
 // ─── Helper ─────────────────────────────────────────────────
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
@@ -99,9 +128,12 @@ export function useAccessReviewStats() {
 
   const result = useQuery({
     queryKey: ['access-review-stats', isSuperAdmin],
+    // NOTE (RCA #45 audit): backend has no /admin|settings/access-reviews/stats route
+    // at all (only list, :reviewId, quarterly exist under apps/api-gateway/src/routes/access-review.ts).
+    // This always 404s and falls back to DEMO_STATS via .catch — same behavior pre/post this fix.
+    // BLOCKED: needs a real backend stats endpoint (out of scope, not one of this task's owned files).
     queryFn: () =>
-      api<{ data: AccessReviewStats }>(path)
-        .then(r => r?.data ?? DEMO_STATS)
+      api<AccessReviewStats>(path)
         .catch(err => notifyApiError(err, 'access review stats', DEMO_STATS)),
     staleTime: 60_000,
   })
@@ -160,9 +192,12 @@ export function useQuarterlyReview() {
 
   const result = useQuery({
     queryKey: ['quarterly-review', isSuperAdmin],
+    // Super-admin path requires ?tenantId=; without it the backend replies { data: [] }
+    // (see apps/api-gateway/src/routes/access-review.ts) instead of a QuarterlyReview object.
+    // Guard against that array reply so mapQuarterly never dereferences a missing field.
     queryFn: () =>
-      api<{ data: QuarterlyReview }>(path)
-        .then(r => r?.data ?? DEMO_QUARTERLY)
+      api<BackendQuarterlyReview>(path)
+        .then(r => (r && !Array.isArray(r) ? mapQuarterly(r) : DEMO_QUARTERLY))
         .catch(err => notifyApiError(err, 'quarterly review', DEMO_QUARTERLY)),
     staleTime: 5 * 60_000,
   })

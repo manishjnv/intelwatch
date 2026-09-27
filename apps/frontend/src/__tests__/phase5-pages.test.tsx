@@ -77,15 +77,16 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useResetRiskWeights: () => mockUseResetRiskWeights(),
   useUpdateNotificationChannel: () => mockUseUpdateNotificationChannel(),
   useTestNotification: () => mockUseTestNotification(),
-  // AI plan / subtask hooks (F2/F3)
-  usePlanTiers:         () => ({ data: { data: [] }, isDemo: true }),
-  useSubtaskMappings:   () => ({ data: { data: [] }, isDemo: true }),
-  useRecommendedModels: () => ({ data: { data: [] }, isDemo: true }),
-  useCostEstimate:      () => ({ data: { data: null }, isDemo: true }),
+  // AI plan / subtask hooks (F2/F3) — apiList()/api() already unwrap the {data:...} envelope,
+  // so the mocked hook result is the plain payload, not double-wrapped (RCA #45).
+  usePlanTiers:         () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true }),
+  useSubtaskMappings:   () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true }),
+  useRecommendedModels: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true }),
+  useCostEstimate:      () => ({ data: null, isDemo: true }),
   useApplyPlan:         () => ({ mutate: vi.fn(), isPending: false }),
   useSetSubtaskModel:   () => ({ mutate: vi.fn(), isPending: false }),
   // BYOK hooks
-  useAnthropicKeyStatus: () => ({ data: { data: { tenantId: 'default', hasKey: false, maskedKey: null } }, isDemo: false, isLoading: false }),
+  useAnthropicKeyStatus: () => ({ data: { tenantId: 'default', hasKey: false, maskedKey: null }, isDemo: false, isLoading: false }),
   useSaveAnthropicKey:   () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useDeleteAnthropicKey: () => ({ mutate: vi.fn(), isPending: false }),
 }))

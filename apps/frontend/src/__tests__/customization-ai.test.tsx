@@ -38,7 +38,7 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useUpdateNotificationChannel: () => ({ mutate: vi.fn(), isPending: false }),
   useTestNotification:      () => ({ mutate: vi.fn(), isPending: false }),
   // BYOK hooks — stub for tests that don't focus on the API keys card
-  useAnthropicKeyStatus:    () => ({ data: { data: { tenantId: 'default', hasKey: false, maskedKey: null } }, isDemo: false, isLoading: false }),
+  useAnthropicKeyStatus:    () => ({ data: { tenantId: 'default', hasKey: false, maskedKey: null }, isDemo: false, isLoading: false }),
   useSaveAnthropicKey:      () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useDeleteAnthropicKey:    () => ({ mutate: vi.fn(), isPending: false }),
 }))
@@ -80,7 +80,7 @@ function setupDefaults() {
   mockPlanTiers.mockReturnValue({ data: { data: DEMO_PLANS }, isDemo: true })
   mockSubtaskMappings.mockReturnValue({ data: { data: DEMO_SUBTASKS }, isDemo: true })
   mockRecommendedModels.mockReturnValue({ data: { data: [] }, isDemo: true })
-  mockCostEstimate.mockReturnValue({ data: { data: DEMO_COST }, isDemo: true })
+  mockCostEstimate.mockReturnValue({ data: DEMO_COST, isDemo: true })
   mockApplyPlan.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockModuleToggles.mockReturnValue({ data: { data: [] }, isDemo: false })
   mockAIConfigs.mockReturnValue({ data: { data: [] }, isDemo: false })

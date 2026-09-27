@@ -49,17 +49,47 @@ const DEFAULT_PLANS: PlanTierConfig[] = [
   },
 ]
 
+// ─── Backend shape mapper ────────────────────────────────────
+// Backend (apps/customization/src/routes/plan-limits.ts) sends:
+//   { planId, maxPrivateFeeds, maxGlobalSubs, minFetchInterval: '4h'|'2h'|'30m'|'15m', retentionDays, aiEnabled, dailyTokenBudget }
+// Frontend needs: { id, planName, maxPrivateFeeds, maxGlobalSubscriptions, minFetchIntervalMinutes, retentionDays, aiEnabled, dailyTokenBudget }
+
+const PLAN_NAMES: Record<string, string> = { free: 'Free', starter: 'Starter', teams: 'Teams', enterprise: 'Enterprise' }
+const INTERVAL_TO_MINUTES: Record<string, number> = { '15m': 15, '30m': 30, '1h': 60, '2h': 120, '4h': 240 }
+
+interface BackendPlanTierConfig {
+  planId: string
+  maxPrivateFeeds: number
+  maxGlobalSubs: number
+  minFetchInterval: string
+  retentionDays: number
+  aiEnabled: boolean
+  dailyTokenBudget: number
+}
+
+function mapPlan(p: BackendPlanTierConfig): PlanTierConfig {
+  return {
+    id: p.planId,
+    planName: PLAN_NAMES[p.planId] ?? p.planId,
+    maxPrivateFeeds: p.maxPrivateFeeds,
+    maxGlobalSubscriptions: p.maxGlobalSubs,
+    minFetchIntervalMinutes: INTERVAL_TO_MINUTES[p.minFetchInterval] ?? (Number(p.minFetchInterval) || 0),
+    retentionDays: p.retentionDays,
+    aiEnabled: p.aiEnabled,
+    dailyTokenBudget: p.dailyTokenBudget,
+  }
+}
+
 // ─── Hook ──────────────────────────────────────────────────
 
 export function usePlanLimits() {
   const qc = useQueryClient()
-  const empty: PlanTierConfig[] = []
 
   const result = useQuery({
     queryKey: ['plan-limits'],
     queryFn: () =>
-      api<{ data: PlanTierConfig[] }>('/customization/plans')
-        .then(r => r?.data ?? empty)
+      api<BackendPlanTierConfig[]>('/customization/plans')
+        .then(r => (r ?? []).map(mapPlan))
         .catch(err => notifyApiError(err, 'plan limits', DEFAULT_PLANS)),
     staleTime: 60_000,
   })
