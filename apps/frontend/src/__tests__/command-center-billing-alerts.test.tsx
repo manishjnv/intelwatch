@@ -2,7 +2,7 @@
  * @module __tests__/command-center-billing-alerts.test
  * @description Tests for BillingPlansTab and AlertsReportsTab (Command Center Phase F).
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within } from '@/test/test-utils'
 import { BillingPlansTab } from '@/components/command-center/BillingPlansTab'
 import { AlertsReportsTab } from '@/components/command-center/AlertsReportsTab'
@@ -49,6 +49,10 @@ const mockInvoices = [
   { id: 'inv-002', date: '2026-02-01T00:00:00.000Z', description: 'Teams Plan', amount: 18999, status: 'paid', invoiceUrl: null, plan: 'Teams' },
 ]
 
+const mockTenants = [
+  { id: 't-1', name: 'Acme Corp', domain: 'acme.example', plan: 'Teams', status: 'active', seats: 25, usedSeats: 18, iocCount: 5000, feedCount: 4, createdAt: '2026-01-01T00:00:00.000Z', lastActiveAt: '2026-03-27T00:00:00.000Z' },
+]
+
 const mockPlans = [
   { id: 'free', name: 'Free', price: 0, priceAnnual: 0, seats: 1, apiCallsPerMonth: 1000, iocLimit: 500, storageGb: 1, features: [] },
   { id: 'starter', name: 'Starter', price: 9999, priceAnnual: 8999, seats: 5, apiCallsPerMonth: 10000, iocLimit: 10000, storageGb: 5, features: [] },
@@ -56,15 +60,24 @@ const mockPlans = [
   { id: 'enterprise', name: 'Enterprise', price: 49999, priceAnnual: 44999, seats: -1, apiCallsPerMonth: -1, iocLimit: -1, storageGb: -1, features: [] },
 ]
 
+// Mutable spies (not plain object literals) so individual tests can override the
+// subscription result and assert on call counts — used by fixes 1 and 2 below.
+// vi.mock is hoisted above these, so the spies must be created inside vi.hoisted().
+const { mockUseCurrentSubscription, mockUseAdminTenants } = vi.hoisted(() => ({
+  mockUseCurrentSubscription: vi.fn(),
+  mockUseAdminTenants: vi.fn(),
+}))
+
 vi.mock('@/hooks/use-phase6-data', () => ({
   useBillingPlans: () => ({ data: mockPlans, isLoading: false, isDemo: false }),
   useUsageMeters: () => ({ data: mockUsageData, isLoading: false, isDemo: false }),
-  useCurrentSubscription: () => ({ data: mockSubData, isLoading: false, isDemo: false }),
+  useCurrentSubscription: mockUseCurrentSubscription,
   usePaymentHistory: () => ({ data: { data: mockInvoices, total: 2, page: 1, limit: 20 }, isLoading: false, isDemo: false }),
   useBillingStats: () => ({ data: { currentPlan: 'Teams', monthlySpend: 18999, nextBillingDate: '2026-04-15', apiUsagePercent: 8 }, isLoading: false, isDemo: false }),
   useApplyCoupon: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false, isError: false }),
   useUpgradePlan: () => ({ mutate: vi.fn(), isPending: false }),
   useCancelSubscription: () => ({ mutate: vi.fn(), isPending: false }),
+  useAdminTenants: mockUseAdminTenants,
   // SystemTab hooks (not exercised in this test file, but module mock must be complete)
   useSystemHealth: () => ({ data: { services: [], summary: { healthy: 0, degraded: 0, down: 0, total: 0, uptimePercent: 0, lastUpdated: '' } }, refetch: vi.fn(), isFetching: false }),
   useQueueHealth: () => ({ data: { queues: [], updatedAt: '' }, refetch: vi.fn(), isFetching: false }),
@@ -77,6 +90,21 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useRetryDlqQueue: () => ({ mutate: vi.fn(), isPending: false }),
   useRetryAllDlq: () => ({ mutate: vi.fn(), isPending: false }),
 }))
+
+// Controllable tenant.plan used by the useCurrentPlanName fallback (fix 2).
+let mockAuthTenantPlan: string | null | undefined = 'teams'
+vi.mock('@/stores/auth-store', () => ({
+  useAuthStore: (selector: (s: { tenant: { plan: string | null | undefined } }) => unknown) =>
+    selector({ tenant: { plan: mockAuthTenantPlan } }),
+}))
+
+beforeEach(() => {
+  mockUseCurrentSubscription.mockReset()
+  mockUseCurrentSubscription.mockReturnValue({ data: mockSubData, isLoading: false, isError: false, isDemo: false })
+  mockUseAdminTenants.mockReset()
+  mockUseAdminTenants.mockReturnValue({ data: { data: mockTenants, total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockAuthTenantPlan = 'teams'
+})
 
 vi.mock('@/hooks/use-plan-limits', () => ({
   usePlanLimits: () => ({
@@ -225,11 +253,11 @@ describe('BillingPlansTab', () => {
       expect(screen.getByTestId('apply-coupon-btn')).toBeInTheDocument()
     })
 
-    it('shows coupon management table for super-admin', () => {
+    it('shows honest empty state for super-admin (no coupon list endpoint)', () => {
       render(<BillingPlansTab data={makeMockCC({ isSuperAdmin: true })} />)
       fireEvent.click(screen.getByText('Offers'))
-      expect(screen.getByTestId('coupons-table')).toBeInTheDocument()
-      expect(screen.getByText('LAUNCH50')).toBeInTheDocument()
+      expect(screen.getByTestId('offers-unavailable')).toBeInTheDocument()
+      expect(screen.queryByText('LAUNCH50')).not.toBeInTheDocument()
     })
   })
 
@@ -245,6 +273,60 @@ describe('BillingPlansTab', () => {
       render(<BillingPlansTab data={makeMockCC({ isSuperAdmin: true })} />)
       expect(screen.queryByText('Billing Info')).not.toBeInTheDocument()
     })
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════
+// Fix 1: useAdminTenants only requested inside AdminTenantSubscriptions
+// ═══════════════════════════════════════════════════════════════
+
+describe('Subscription sub-tab — useAdminTenants call guarding', () => {
+  it('does not call useAdminTenants for a non-super-admin tenant', () => {
+    render(<BillingPlansTab data={makeMockCC({ isSuperAdmin: false })} />)
+    expect(mockUseAdminTenants).not.toHaveBeenCalled()
+  })
+
+  it('calls useAdminTenants for a super-admin', () => {
+    render(<BillingPlansTab data={makeMockCC({ isSuperAdmin: true })} />)
+    expect(mockUseAdminTenants).toHaveBeenCalled()
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════
+// Fix 2: useCurrentPlanName fallback (tenant, non-super-admin)
+// ═══════════════════════════════════════════════════════════════
+
+describe('Subscription sub-tab — useCurrentPlanName fallback', () => {
+  it('falls back to tenant.plan (pro -> Teams) when subscription errored', () => {
+    mockUseCurrentSubscription.mockReturnValue({ data: undefined, isLoading: false, isError: true, isDemo: false })
+    mockAuthTenantPlan = 'pro'
+    render(<BillingPlansTab data={makeMockCC({ isSuperAdmin: false })} />)
+
+    expect(screen.getByTestId('current-plan-name')).toHaveTextContent('Teams Plan')
+    expect(screen.getByText('Cycle').nextElementSibling).toHaveTextContent('—')
+    expect(screen.queryByText('Free Plan')).not.toBeInTheDocument()
+  })
+
+  it('shows — and hides plan-includes when subscription errored and tenant.plan is unknown', () => {
+    mockUseCurrentSubscription.mockReturnValue({ data: undefined, isLoading: false, isError: true, isDemo: false })
+    mockAuthTenantPlan = null
+    render(<BillingPlansTab data={makeMockCC({ isSuperAdmin: false })} />)
+
+    expect(screen.getByTestId('current-plan-name')).toHaveTextContent('—')
+    expect(screen.queryByTestId('plan-includes')).not.toBeInTheDocument()
+    expect(screen.queryByText('Free Plan')).not.toBeInTheDocument()
+  })
+
+  it('prefers the loaded subscription planName over tenant.plan', () => {
+    mockUseCurrentSubscription.mockReturnValue({
+      data: { ...mockSubData, planName: 'Starter', billingCycle: 'annual' },
+      isLoading: false, isError: false, isDemo: false,
+    })
+    mockAuthTenantPlan = 'pro'
+    render(<BillingPlansTab data={makeMockCC({ isSuperAdmin: false })} />)
+
+    expect(screen.getByTestId('current-plan-name')).toHaveTextContent('Starter Plan')
+    expect(screen.getByText('annual')).toBeInTheDocument()
   })
 })
 

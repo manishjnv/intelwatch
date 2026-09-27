@@ -12,6 +12,7 @@ import {
 import { usePlanBuilder, type PlanDefinition, type PlanDefinitionCreate } from '@/hooks/use-plan-builder'
 import { FEATURE_KEYS, FEATURE_LABELS, type FeatureKey } from '@/hooks/use-feature-limits'
 import type { PlanFeatureLimit } from '@/hooks/use-plan-builder'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -349,7 +350,7 @@ function DeleteConfirmModal({ planName, onConfirm, onCancel, isDeleting, error }
 // ─── Main Export ────────────────────────────────────────────
 
 export function PlanBuilderPanel() {
-  const { plans, isLoading, isDemo, createPlan, updatePlan, deletePlan, isCreating, isUpdating, isDeleting, deleteError } = usePlanBuilder()
+  const { plans, isLoading, isError, error, refetch, createPlan, updatePlan, deletePlan, isCreating, isUpdating, isDeleting, deleteError } = usePlanBuilder()
   const [editorPlan, setEditorPlan] = useState<PlanDefinition | null | 'new'>(null)
   const [deletingPlan, setDeletingPlan] = useState<PlanDefinition | null>(null)
 
@@ -372,22 +373,18 @@ export function PlanBuilderPanel() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3" data-testid="plan-builder-skeleton">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-40 rounded-lg bg-bg-elevated border border-border animate-pulse" />
-        ))}
-      </div>
-    )
-  }
+  const PLAN_SKELETON = (
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3" data-testid="plan-builder-skeleton">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} className="h-40 rounded-lg bg-bg-elevated border border-border animate-pulse" />
+      ))}
+    </div>
+  )
 
   return (
     <div className="space-y-4" data-testid="plan-builder-panel">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">
-          Plan Builder {isDemo && <span className="text-[10px] text-sev-medium ml-1">(demo)</span>}
-        </h3>
+        <h3 className="text-sm font-semibold text-text-primary">Plan Builder</h3>
         <button
           onClick={() => setEditorPlan('new')}
           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-accent text-bg-primary hover:bg-accent/90 transition-colors"
@@ -399,16 +396,26 @@ export function PlanBuilderPanel() {
       </div>
 
       {/* Plan card grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3" data-testid="plan-card-grid">
-        {plans.map(plan => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            onEdit={() => setEditorPlan(plan)}
-            onDelete={() => setDeletingPlan(plan)}
-          />
-        ))}
-      </div>
+      <QueryStateView
+        query={{ data: plans, isLoading, isError, error, refetch }}
+        resource="plans"
+        isEmpty={d => d.length === 0}
+        empty={<p className="text-xs text-text-muted" data-testid="query-empty">No plans defined yet.</p>}
+        skeleton={PLAN_SKELETON}
+      >
+        {planList => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3" data-testid="plan-card-grid">
+            {planList.map(plan => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                onEdit={() => setEditorPlan(plan)}
+                onDelete={() => setDeletingPlan(plan)}
+              />
+            ))}
+          </div>
+        )}
+      </QueryStateView>
 
       {/* Editor Modal */}
       {editorPlan !== null && (

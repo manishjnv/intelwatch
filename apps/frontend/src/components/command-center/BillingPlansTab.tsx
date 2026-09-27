@@ -6,19 +6,21 @@
  */
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { salesMailto } from '@/data/plans'
+import { salesMailto, PLANS } from '@/data/plans'
+import { useAuthStore } from '@/stores/auth-store'
 import { PillSwitcher, type PillItem } from './PillSwitcher'
 import type { useCommandCenter } from '@/hooks/use-command-center'
 import {
   useUsageMeters, useCurrentSubscription,
-  usePaymentHistory, useApplyCoupon,
+  usePaymentHistory, useApplyCoupon, useAdminTenants,
   type PaymentRecord,
 } from '@/hooks/use-phase6-data'
 import { usePlanLimits, type PlanTierConfig } from '@/hooks/use-plan-limits'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
   CreditCard, Crown, Rss, ShieldCheck, Users, Activity,
   Download, Check, X, ArrowUpCircle, AlertTriangle,
-  RotateCcw, Gift,
+  RotateCcw,
 } from 'lucide-react'
 import { PlanBuilderPanel } from './PlanBuilderPanel'
 import { PlanComparisonMatrix } from './PlanComparisonMatrix'
@@ -95,21 +97,6 @@ function PlanBadge({ plan }: { plan: string }) {
   return <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-semibold', c[plan] ?? 'bg-bg-hover text-text-muted')}>{plan}</span>
 }
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEMO_TENANT_SUBSCRIPTIONS = [
-  { tenantId: 't-1', name: 'Acme Corp', plan: 'Teams', status: 'active' as const, usagePercent: 72, renewalDate: '2026-04-15' },
-  { tenantId: 't-2', name: 'SecOps Ltd', plan: 'Enterprise', status: 'active' as const, usagePercent: 45, renewalDate: '2026-06-01' },
-  { tenantId: 't-3', name: 'ThreatLab', plan: 'Starter', status: 'past_due' as const, usagePercent: 91, renewalDate: '2026-03-20' },
-  { tenantId: 't-4', name: 'CyberShield', plan: 'Free', status: 'active' as const, usagePercent: 30, renewalDate: '—' },
-]
-
-const DEMO_OFFERS = [
-  { id: 'c-1', code: 'LAUNCH50', discountPercent: 50, validFrom: '2026-03-01', validTo: '2026-04-30', maxUses: 100, usedCount: 34, targetPlan: 'Starter' },
-  { id: 'c-2', code: 'TEAMS20', discountPercent: 20, validFrom: '2026-03-15', validTo: '2026-05-31', maxUses: 50, usedCount: 12, targetPlan: 'Teams' },
-  { id: 'c-3', code: 'ANNUAL15', discountPercent: 15, validFrom: '2026-01-01', validTo: '2026-12-31', maxUses: -1, usedCount: 78, targetPlan: null },
-]
-
 const PLAN_FEATURES: Record<string, Record<string, string>> = {
   Free:       { iocs: '500', feeds: '5', members: '1', ai: 'Off', exports: '5/mo', integrations: 'None', support: 'Community' },
   Starter:    { iocs: '10K', feeds: '20', members: '5', ai: 'Basic', exports: '50/mo', integrations: '2', support: 'Email' },
@@ -121,51 +108,67 @@ const PLAN_PRICES: Record<string, number> = { Free: 0, Starter: 9999, Teams: 189
 
 // ─── Subscription Sub-Tab ────────────────────────────────────
 
+// Own component so /admin/tenants is only requested for super-admins (tenant admins would get a 403 toast).
+function AdminTenantSubscriptions() {
+  const tenantsQuery = useAdminTenants()
+  return (
+      <div className="space-y-4" data-testid="subscription-admin">
+        <h3 className="text-sm font-semibold text-text-primary">All Tenant Subscriptions</h3>
+        <QueryStateView
+          query={tenantsQuery}
+          resource="tenant subscriptions"
+          isEmpty={d => d.data.length === 0}
+          empty={<p className="text-xs text-text-muted" data-testid="query-empty">No tenants found.</p>}
+        >
+          {tenants => (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="tenant-subscriptions-table">
+                <thead>
+                  <tr className="border-b border-border text-left text-text-muted text-xs">
+                    <th className="pb-2 pr-4">Tenant</th>
+                    <th className="pb-2 pr-4">Plan</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2">Seats</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tenants.data.map(t => (
+                    <tr key={t.id} className="border-b border-border/50 hover:bg-bg-hover">
+                      <td className="py-2 pr-4 font-medium text-text-primary">{t.name}</td>
+                      <td className="py-2 pr-4"><PlanBadge plan={t.plan} /></td>
+                      <td className="py-2 pr-4"><StatusBadge status={t.status} /></td>
+                      <td className="py-2 text-text-muted">
+                        {t.seats < 0 ? `${t.usedSeats} / ∞` : `${t.usedSeats} / ${t.seats}`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </QueryStateView>
+      </div>
+  )
+}
+
+// Real plan name: the subscription if it loaded, else the tenant's plan from the login session.
+// Never a made-up 'Free' — undefined means "unknown" and renders as '—'.
+function useCurrentPlanName(subPlanName: string | undefined): string | undefined {
+  const tenantPlan = useAuthStore(st => st.tenant?.plan)
+  return subPlanName ?? PLANS.find(p => p.id === tenantPlan || p.name.toLowerCase() === tenantPlan)?.name
+}
+
 function SubscriptionPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const sub = useCurrentSubscription()
   const usage = useUsageMeters()
+  const planName = useCurrentPlanName(sub.data?.planName)
 
-  if (isSuperAdmin) {
-    return (
-      <div className="space-y-4" data-testid="subscription-admin">
-        <h3 className="text-sm font-semibold text-text-primary">All Tenant Subscriptions</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm" data-testid="tenant-subscriptions-table">
-            <thead>
-              <tr className="border-b border-border text-left text-text-muted text-xs">
-                <th className="pb-2 pr-4">Tenant</th>
-                <th className="pb-2 pr-4">Plan</th>
-                <th className="pb-2 pr-4">Status</th>
-                <th className="pb-2 pr-4">Usage</th>
-                <th className="pb-2">Renewal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DEMO_TENANT_SUBSCRIPTIONS.map(t => (
-                <tr key={t.tenantId} className="border-b border-border/50 hover:bg-bg-hover">
-                  <td className="py-2 pr-4 font-medium text-text-primary">{t.name}</td>
-                  <td className="py-2 pr-4"><PlanBadge plan={t.plan} /></td>
-                  <td className="py-2 pr-4"><StatusBadge status={t.status} /></td>
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 rounded-full bg-bg-elevated overflow-hidden">
-                        <div className={cn('h-full rounded-full', usageColor(t.usagePercent))} style={{ width: `${t.usagePercent}%` }} />
-                      </div>
-                      <span className="text-xs text-text-muted">{t.usagePercent}%</span>
-                    </div>
-                  </td>
-                  <td className="py-2 text-text-muted">{t.renewalDate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
-  }
+  if (isSuperAdmin) return <AdminTenantSubscriptions />
 
   const s = sub.data
   const u = usage.data
+  const price = planName ? PLAN_PRICES[planName] : undefined
+  const features = planName ? PLAN_FEATURES[planName] : undefined
 
   return (
     <div className="space-y-4" data-testid="subscription-tenant">
@@ -174,19 +177,19 @@ function SubscriptionPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Crown className="w-4 h-4 text-accent" />
-            <span className="text-sm font-semibold text-text-primary">{s?.planName ?? 'Free'} Plan</span>
-            <PlanBadge plan={s?.planName ?? 'Free'} />
+            <span className="text-sm font-semibold text-text-primary" data-testid="current-plan-name">{planName ? `${planName} Plan` : '—'}</span>
+            {planName && <PlanBadge plan={planName} />}
           </div>
-          <StatusBadge status={s?.status ?? 'active'} />
+          {s?.status && <StatusBadge status={s.status} />}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-text-muted">Price</span>
-            <p className="font-medium text-text-primary">{fmtINR(PLAN_PRICES[s?.planName ?? 'Free'] ?? 0)}/mo</p>
+            <p className="font-medium text-text-primary">{price != null ? `${fmtINR(price)}/mo` : '—'}</p>
           </div>
           <div>
             <span className="text-text-muted">Cycle</span>
-            <p className="font-medium text-text-primary capitalize">{s?.billingCycle ?? 'monthly'}</p>
+            <p className="font-medium text-text-primary capitalize">{s?.billingCycle ?? '—'}</p>
           </div>
           <div>
             <span className="text-text-muted">Renewal</span>
@@ -194,7 +197,7 @@ function SubscriptionPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           </div>
           <div>
             <span className="text-text-muted">Discount</span>
-            <p className="font-medium text-text-primary">{s?.discountPercent ? `${s.discountPercent}%` : 'None'}</p>
+            <p className="font-medium text-text-primary">{s ? (s.discountPercent ? `${s.discountPercent}%` : 'None') : '—'}</p>
           </div>
         </div>
       </div>
@@ -225,12 +228,10 @@ function SubscriptionPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         </div>
       )}
 
-      {/* Plan includes — what feeds/features the tenant's plan provides */}
-      <div className="space-y-3" data-testid="plan-includes">
+      {/* Plan includes — what feeds/features the tenant's plan provides (hidden when the plan is unknown) */}
+      {features && <div className="space-y-3" data-testid="plan-includes">
         <h3 className="text-sm font-semibold text-text-primary">Your Plan Includes</h3>
         {(() => {
-          const plan = s?.planName ?? 'Free'
-          const features = PLAN_FEATURES[plan] ?? PLAN_FEATURES.Free!
           const items = [
             { label: 'Threat Feeds', value: features.feeds, icon: Rss },
             { label: 'IOC Capacity', value: features.iocs, icon: ShieldCheck },
@@ -254,7 +255,7 @@ function SubscriptionPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             </div>
           )
         })()}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -313,7 +314,7 @@ function InvoicesPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 function PlansUpgradePanel() {
   const sub = useCurrentSubscription()
-  const currentPlan = sub.data?.planName ?? 'Free'
+  const currentPlan = useCurrentPlanName(sub.data?.planName)
 
   const planList: { name: string; price: number; features: Record<string, string> }[] = [
     { name: 'Free', price: 0, features: PLAN_FEATURES.Free! },
@@ -502,30 +503,10 @@ function OffersPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     return (
       <div className="space-y-3" data-testid="offers-admin">
         <h3 className="text-sm font-semibold text-text-primary">Coupon Management</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm" data-testid="coupons-table">
-            <thead>
-              <tr className="border-b border-border text-left text-text-muted text-xs">
-                <th className="pb-2 pr-4">Code</th>
-                <th className="pb-2 pr-4">Discount</th>
-                <th className="pb-2 pr-4">Valid</th>
-                <th className="pb-2 pr-4">Uses</th>
-                <th className="pb-2">Target</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DEMO_OFFERS.map(o => (
-                <tr key={o.id} className="border-b border-border/50 hover:bg-bg-hover">
-                  <td className="py-2 pr-4 font-mono text-xs text-accent font-medium">{o.code}</td>
-                  <td className="py-2 pr-4 text-text-primary">{o.discountPercent}%</td>
-                  <td className="py-2 pr-4 text-text-muted text-xs">{fmtDate(o.validFrom)} – {fmtDate(o.validTo)}</td>
-                  <td className="py-2 pr-4 text-text-muted">{o.usedCount}/{o.maxUses < 0 ? '∞' : o.maxUses}</td>
-                  <td className="py-2">{o.targetPlan ? <PlanBadge plan={o.targetPlan} /> : <span className="text-xs text-text-muted">All plans</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <p className="text-xs text-text-muted" data-testid="offers-unavailable">
+          Offers aren&apos;t available yet. Coupons can be validated and applied at checkout,
+          but there is no coupon list endpoint yet.
+        </p>
       </div>
     )
   }
@@ -560,15 +541,9 @@ function OffersPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       {/* Active offers */}
       <div className="space-y-2">
         <h4 className="text-xs font-medium text-text-muted">Active Promotions</h4>
-        {DEMO_OFFERS.filter(o => new Date(o.validTo) > new Date()).map(o => (
-          <div key={o.id} className="flex items-center gap-3 p-2 rounded-lg bg-bg-elevated border border-border">
-            <Gift className="w-4 h-4 text-accent shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-text-primary">{o.discountPercent}% off {o.targetPlan ?? 'any plan'}</p>
-              <p className="text-[10px] text-text-muted">Code: {o.code} · Expires {fmtDate(o.validTo)}</p>
-            </div>
-          </div>
-        ))}
+        <p className="text-xs text-text-muted" data-testid="offers-unavailable">
+          Offers aren&apos;t available yet. Have a code? Enter it above.
+        </p>
       </div>
     </div>
   )

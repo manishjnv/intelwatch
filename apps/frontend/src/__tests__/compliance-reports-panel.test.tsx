@@ -52,16 +52,19 @@ vi.mock('@/hooks/use-compliance-reports', () => ({
   useDsarExport: () => ({ data: null, isLoading: false }),
 }))
 
+const USERS_OK = {
+  data: {
+    data: [
+      { id: 'u10', displayName: 'Employee A', email: 'a@corp.com' },
+      { id: 'u11', displayName: 'Employee B', email: 'b@corp.com' },
+    ],
+  },
+  isLoading: false, isError: false, error: null,
+}
+const mockUseUsers = vi.fn(() => USERS_OK as unknown)
+
 vi.mock('@/hooks/use-phase5-data', () => ({
-  useUsers: () => ({
-    data: {
-      data: [
-        { id: 'u10', displayName: 'Employee A', email: 'a@corp.com' },
-        { id: 'u11', displayName: 'Employee B', email: 'b@corp.com' },
-      ],
-    },
-    isLoading: false,
-  }),
+  useUsers: () => mockUseUsers(),
 }))
 
 vi.mock('@/stores/auth-store', () => ({
@@ -157,7 +160,16 @@ describe('ComplianceReportsList', () => {
 // ─── DsarPanel Tests ────────────────────────────────────────
 
 describe('DsarPanel', () => {
-  beforeEach(() => { mockDsarMutate.mockClear() })
+  beforeEach(() => { mockDsarMutate.mockClear(); mockUseUsers.mockImplementation(() => USERS_OK) })
+
+  it('user dropdown explains a users load failure instead of silently listing nobody', async () => {
+    const { ApiError } = await import('@/lib/api')
+    mockUseUsers.mockImplementation(() => ({ data: undefined, isLoading: false, isError: true, error: new ApiError(404, 'NOT_FOUND', 'Not Found') }))
+    render(<DsarPanel />)
+    fireEvent.click(screen.getByTestId('generate-dsar-btn'))
+    expect(screen.getByTestId('dsar-users-error')).toHaveTextContent("Couldn't load users. Not available yet.")
+    expect((screen.getByTestId('dsar-user-select') as HTMLSelectElement).options).toHaveLength(1)
+  })
 
   it('renders DSAR table', () => {
     render(<DsarPanel />)

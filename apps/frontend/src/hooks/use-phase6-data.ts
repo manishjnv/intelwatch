@@ -3,16 +3,14 @@
  * @description TanStack Query hooks for Phase 6 services:
  * Billing (:3019) and Admin Ops (:3022).
  * All queries go through nginx → backend services.
+ * S161a: Billing/Admin/Ops hooks are honest — no demo-data fallback on failure
+ * or empty response (same pattern as hooks/use-sessions.ts).
+ * Onboarding hooks still use the demo fallback (converted in a later session).
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
-import { notifyApiError } from './useApiError'
 import {
-  DEMO_BILLING_PLANS, DEMO_USAGE_METERS, DEMO_CURRENT_SUBSCRIPTION,
-  DEMO_PAYMENT_HISTORY, DEMO_BILLING_STATS,
-  DEMO_SERVICE_HEALTH, DEMO_SYSTEM_HEALTH_SUMMARY,
-  DEMO_MAINTENANCE_WINDOWS, DEMO_TENANTS, DEMO_ADMIN_AUDIT, DEMO_ADMIN_STATS,
   DEMO_ONBOARDING_WIZARD, DEMO_PIPELINE_HEALTH, DEMO_MODULE_STATUS,
   DEMO_READINESS_RESULT, DEMO_WELCOME_DASHBOARD,
   type BillingPlan, type UsageMeters, type CurrentSubscription,
@@ -64,30 +62,13 @@ interface QueueAlertsResponse {
   alerts: QueueAlert[]
 }
 
-/** Realistic idle-state demo data — all queues at zero. */
-const DEMO_QUEUE_HEALTH: QueueHealthResponse = {
-  updatedAt: new Date().toISOString(),
-  queues: [
-    'etip-feed-fetch', 'etip-feed-parse', 'etip-normalize', 'etip-deduplicate',
-    'etip-enrich-realtime', 'etip-enrich-batch', 'etip-graph-sync', 'etip-correlate',
-    'etip-alert-evaluate', 'etip-integration-push', 'etip-archive',
-    'etip-report-generate', 'etip-ioc-indexed', 'etip-cache-invalidate',
-  ].map((name, i) => ({
-    name,
-    // Seed a few queues with demo non-zero values so the UI colour-coding is visible
-    waiting:   i === 0 ? 3 : i === 4 ? 12 : 0,
-    active:    i === 4 ? 2 : 0,
-    failed:    i === 6 ? 1 : 0,
-    completed: i < 5 ? Math.floor(Math.random() * 800) + 100 : 0,
-  })),
-}
-
 // ─── Generic helpers ────────────────────────────────────────────
 
 interface ListResponse<T> {
   data: T[]; total: number; page: number; limit: number
 }
 
+/** Onboarding hooks only (not yet converted to honest UI — see S161b). */
 function withDemoFallback<T>(
   result: UseQueryResult<T>,
   demoData: T,
@@ -100,61 +81,69 @@ function withDemoFallback<T>(
 // ─── Billing Hooks ───────────────────────────────────────────────
 
 export function useBillingPlans() {
-  const result = useQuery({
+  return useQuery<BillingPlan[]>({
     queryKey: ['billing-plans'],
-    queryFn: () => api<BillingPlan[]>('/billing/plans').catch(err => notifyApiError(err, 'billing plans', [] as BillingPlan[])),
+    queryFn: () => api<BillingPlan[]>('/billing/plans').then(d => {
+      if (Array.isArray(d) && d.length > 0 && typeof d[0]?.price !== 'number') {
+        throw new Error('Unexpected response from /billing/plans')
+      }
+      return d
+    }),
+    meta: { resource: 'billing plans' },
     staleTime: 300_000,
   })
-  return withDemoFallback(
-    result,
-    DEMO_BILLING_PLANS,
-    d => Array.isArray(d) && d.length > 0 && typeof (d[0] as unknown as Record<string, unknown>)?.priceInr === 'number',
-  )
 }
 
 export function useUsageMeters() {
-  const result = useQuery({
+  return useQuery<UsageMeters>({
     queryKey: ['billing-usage'],
-    queryFn: () => api<UsageMeters>('/billing/usage').catch(() => null as unknown as UsageMeters),
+    queryFn: () => api<UsageMeters>('/billing/usage').then(d => {
+      if (d == null || typeof (d as unknown as Record<string, unknown>)?.apiCalls !== 'object') {
+        throw new Error('Unexpected response from /billing/usage')
+      }
+      return d
+    }),
+    meta: { resource: 'usage meters' },
     staleTime: 60_000,
   })
-  // Validate shape: API returns flat {api_calls,iocs_ingested,...} not nested UsageMeters
-  return withDemoFallback(result, DEMO_USAGE_METERS,
-    d => d != null && typeof (d as unknown as Record<string, unknown>)?.apiCalls === 'object')
 }
 
 export function useCurrentSubscription() {
-  const result = useQuery({
+  return useQuery<CurrentSubscription>({
     queryKey: ['billing-subscription'],
-    queryFn: () => api<CurrentSubscription>('/billing/subscription').catch(() => null as unknown as CurrentSubscription),
+    queryFn: () => api<CurrentSubscription>('/billing/subscription').then(d => {
+      // null = no subscription (free tier); callers read it with ?. — unlike the other guards, not an error
+      if (d != null &&typeof (d as unknown as Record<string, unknown>)?.planId !== 'string') {
+        throw new Error('Unexpected response from /billing/subscription')
+      }
+      return d
+    }),
+    meta: { resource: 'subscription' },
     staleTime: 120_000,
   })
-  return withDemoFallback(result, DEMO_CURRENT_SUBSCRIPTION,
-    d => d != null && typeof (d as unknown as Record<string, unknown>)?.planId === 'string')
 }
 
 export function usePaymentHistory(page = 1) {
-  const empty: ListResponse<PaymentRecord> = { data: [], total: 0, page, limit: 20 }
-  const result = useQuery({
+  return useQuery<ListResponse<PaymentRecord>>({
     queryKey: ['billing-invoices', page],
-    queryFn: () => apiList<PaymentRecord>(`/billing/invoices?page=${page}&limit=20`).catch(() => empty),
+    queryFn: () => apiList<PaymentRecord>(`/billing/invoices?page=${page}&limit=20`),
+    meta: { resource: 'payment history' },
     staleTime: 120_000,
   })
-  return withDemoFallback(
-    result,
-    { data: DEMO_PAYMENT_HISTORY, total: DEMO_PAYMENT_HISTORY.length, page, limit: 20 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useBillingStats() {
-  const result = useQuery({
+  return useQuery<BillingStats>({
     queryKey: ['billing-stats'],
-    queryFn: () => api<BillingStats>('/billing/stats').catch(() => null as unknown as BillingStats),
+    queryFn: () => api<BillingStats>('/billing/stats').then(d => {
+      if (d == null || typeof (d as unknown as Record<string, unknown>)?.currentPlan !== 'string') {
+        throw new Error('Unexpected response from /billing/stats')
+      }
+      return d
+    }),
+    meta: { resource: 'billing stats' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_BILLING_STATS,
-    d => d != null && typeof (d as unknown as Record<string, unknown>)?.currentPlan === 'string')
 }
 
 export function useApplyCoupon() {
@@ -197,31 +186,27 @@ export function useCancelSubscription() {
 // ─── Admin Ops Hooks ─────────────────────────────────────────────
 
 export function useSystemHealth() {
-  const result = useQuery({
+  return useQuery<{ services: ServiceHealth[]; summary: SystemHealthSummary }>({
     queryKey: ['admin-system-health'],
-    queryFn: () => api<{ services: ServiceHealth[]; summary: SystemHealthSummary }>('/admin/system/health').catch(err => notifyApiError(err, 'system health', null as any)),
+    queryFn: () => api<{ services: ServiceHealth[]; summary: SystemHealthSummary }>('/admin/system/health').then(d => {
+      if (d == null || !Array.isArray((d as unknown as Record<string, unknown>)?.services)) {
+        throw new Error('Unexpected response from /admin/system/health')
+      }
+      return d
+    }),
+    meta: { resource: 'system health' },
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
-  return withDemoFallback(
-    result,
-    { services: DEMO_SERVICE_HEALTH, summary: DEMO_SYSTEM_HEALTH_SUMMARY },
-    d => d != null && Array.isArray((d as unknown as Record<string, unknown>)?.services),
-  )
 }
 
 export function useMaintenanceWindows() {
-  const empty: ListResponse<MaintenanceWindow> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery<ListResponse<MaintenanceWindow>>({
     queryKey: ['admin-maintenance'],
-    queryFn: () => apiList<MaintenanceWindow>('/admin/maintenance').catch(() => empty),
+    queryFn: () => apiList<MaintenanceWindow>('/admin/maintenance'),
+    meta: { resource: 'maintenance windows' },
     staleTime: 60_000,
   })
-  return withDemoFallback(
-    result,
-    { data: DEMO_MAINTENANCE_WINDOWS, total: DEMO_MAINTENANCE_WINDOWS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useCreateMaintenanceWindow() {
@@ -250,17 +235,12 @@ export function useDeactivateMaintenance() {
 }
 
 export function useAdminTenants() {
-  const empty: ListResponse<TenantRecord> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery<ListResponse<TenantRecord>>({
     queryKey: ['admin-tenants'],
-    queryFn: () => apiList<TenantRecord>('/admin/tenants').catch(() => empty),
+    queryFn: () => apiList<TenantRecord>('/admin/tenants'),
+    meta: { resource: 'tenants' },
     staleTime: 60_000,
   })
-  return withDemoFallback(
-    result,
-    { data: DEMO_TENANTS, total: DEMO_TENANTS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useSuspendTenant() {
@@ -290,27 +270,26 @@ export function useChangeTenantPlan() {
 }
 
 export function useAdminAuditLog(page = 1) {
-  const empty: ListResponse<AdminAuditEntry> = { data: [], total: 0, page, limit: 50 }
-  const result = useQuery({
+  return useQuery<ListResponse<AdminAuditEntry>>({
     queryKey: ['admin-audit', page],
-    queryFn: () => apiList<AdminAuditEntry>(`/admin/audit?page=${page}&limit=50`).catch(() => empty),
+    queryFn: () => apiList<AdminAuditEntry>(`/admin/audit?page=${page}&limit=50`),
+    meta: { resource: 'audit log' },
     staleTime: 30_000,
   })
-  return withDemoFallback(
-    result,
-    { data: DEMO_ADMIN_AUDIT, total: DEMO_ADMIN_AUDIT.length, page, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useAdminStats() {
-  const result = useQuery({
+  return useQuery<AdminStats>({
     queryKey: ['admin-stats'],
-    queryFn: () => api<AdminStats>('/admin/stats').catch(err => notifyApiError(err, 'admin stats', null as unknown as AdminStats)),
+    queryFn: () => api<AdminStats>('/admin/stats').then(d => {
+      if (d == null || typeof (d as unknown as Record<string, unknown>)?.totalTenants !== 'number') {
+        throw new Error('Unexpected response from /admin/stats')
+      }
+      return d
+    }),
+    meta: { resource: 'admin stats' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_ADMIN_STATS,
-    d => d != null && typeof (d as unknown as Record<string, unknown>)?.totalTenants === 'number')
 }
 
 // ─── DLQ types ────────────────────────────────────────────────────
@@ -329,31 +308,20 @@ interface DlqStatusResponse {
   redisUnavailable?: boolean
 }
 
-/** Demo DLQ data — a few queues with non-zero failed counts. */
-const DEMO_DLQ_STATUS: DlqStatusResponse = {
-  updatedAt: new Date().toISOString(),
-  totalFailed: 3,
-  queues: [
-    'etip-feed-fetch', 'etip-feed-parse', 'etip-normalize', 'etip-deduplicate',
-    'etip-enrich-realtime', 'etip-enrich-batch', 'etip-graph-sync', 'etip-correlate',
-    'etip-alert-evaluate', 'etip-integration-push', 'etip-archive',
-    'etip-report-generate', 'etip-ioc-indexed', 'etip-cache-invalidate',
-  ].map((name, i) => ({ name, failed: i === 4 ? 2 : i === 6 ? 1 : 0 })),
-}
-
 /** Poll DLQ failed counts every 15 s. */
 export function useDlqStatus() {
-  const result = useQuery({
+  return useQuery<DlqStatusResponse>({
     queryKey: ['admin-dlq-status'],
-    queryFn: () => api<DlqStatusResponse>('/admin/dlq').catch(() => null as unknown as DlqStatusResponse),
+    queryFn: () => api<DlqStatusResponse>('/admin/dlq').then(d => {
+      if (d == null || !Array.isArray((d as unknown as Record<string, unknown>)?.queues)) {
+        throw new Error('Unexpected response from /admin/dlq')
+      }
+      return d
+    }),
+    meta: { resource: 'dead-letter queue status' },
     staleTime: 10_000,
     refetchInterval: 15_000,
   })
-  return withDemoFallback(
-    result,
-    DEMO_DLQ_STATUS,
-    d => d != null && Array.isArray((d as unknown as Record<string, unknown>)?.queues),
-  )
 }
 
 /** Retry all failed jobs for a single queue. */
@@ -392,32 +360,34 @@ export function useRetryAllDlq() {
   })
 }
 
-/** Poll live BullMQ queue depths every 10 s. Falls back to demo data when admin-service is unreachable. */
+/** Poll live BullMQ queue depths every 10 s. */
 export function useQueueHealth() {
-  const result = useQuery({
+  return useQuery<QueueHealthResponse>({
     queryKey: ['admin-queue-health'],
-    queryFn: () => api<QueueHealthResponse>('/admin/queues').catch(() => null as unknown as QueueHealthResponse),
+    queryFn: () => api<QueueHealthResponse>('/admin/queues').then(d => {
+      if (d == null || !Array.isArray((d as unknown as Record<string, unknown>)?.queues)) {
+        throw new Error('Unexpected response from /admin/queues')
+      }
+      return d
+    }),
+    meta: { resource: 'queue health' },
     staleTime: 5_000,
     refetchInterval: 10_000,
   })
-  return withDemoFallback(
-    result,
-    DEMO_QUEUE_HEALTH,
-    d => d != null && Array.isArray((d as unknown as Record<string, unknown>)?.queues),
-  )
 }
 
 /** Poll active queue alerts every 30 s. */
 export function useQueueAlerts() {
   return useQuery<QueueAlertsResponse>({
     queryKey: ['admin-queue-alerts'],
-    queryFn: () => api<QueueAlertsResponse>('/admin/queues/alerts').catch(() => ({ alerts: [] })),
+    queryFn: () => api<QueueAlertsResponse>('/admin/queues/alerts'),
+    meta: { resource: 'queue alerts' },
     staleTime: 15_000,
     refetchInterval: 30_000,
   })
 }
 
-// ─── Onboarding Hooks ─────────────────────────────────────────────
+// ─── Onboarding Hooks (still demo-fallback — S161b) ────────────────
 
 export function useOnboardingWizard() {
   const result = useQuery({

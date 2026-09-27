@@ -2,10 +2,10 @@
  * @module hooks/use-plan-builder
  * @description React Query hooks for plan CRUD (super_admin).
  * Endpoints: GET/POST/PUT/DELETE /api/v1/admin/plans
+ * S161a: honest UI — no demo plans on failure or empty response.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { notifyApiError } from './useApiError'
 import type { FeatureKey } from './use-feature-limits'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -49,59 +49,21 @@ export interface PlanDefinitionCreate {
 
 export type PlanDefinitionUpdate = Partial<PlanDefinitionCreate>
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-function demoFeatures(preset: 'free' | 'starter' | 'teams' | 'enterprise'): PlanFeatureLimit[] {
-  const keys: FeatureKey[] = [
-    'ioc_management', 'threat_actors', 'malware_intel', 'vulnerability_intel',
-    'threat_hunting', 'graph_exploration', 'digital_risk_protection', 'correlation_engine',
-    'reports', 'ai_enrichment', 'feed_subscriptions', 'users',
-    'data_retention', 'api_access', 'ioc_storage', 'alerts',
-  ]
-  const configs: Record<'free' | 'starter' | 'teams' | 'enterprise', { enabled: number; daily: number; monthly: number }> = {
-    free:       { enabled: 6,  daily: 100,   monthly: 1000 },
-    starter:    { enabled: 10, daily: 5000,  monthly: 50000 },
-    teams:      { enabled: 14, daily: 50000, monthly: 500000 },
-    enterprise: { enabled: 16, daily: -1,    monthly: -1 },
-  }
-  const cfg = configs[preset]
-  return keys.map((key, i) => ({
-    featureKey: key,
-    enabled: i < cfg.enabled,
-    limitDaily: i < cfg.enabled ? cfg.daily : 0,
-    limitWeekly: -1,
-    limitMonthly: i < cfg.enabled ? cfg.monthly : 0,
-    limitTotal: -1,
-  }))
-}
-
-// DECISION-030/031: prices must match the public catalogue in data/plans.ts (PLANS).
-// priceAnnualInr here is the annual TOTAL — PLANS.priceAnnual is the per-month rate
-// when billed yearly, so priceAnnualInr = 12 * PLANS.priceAnnual for the same plan.
-export const DEMO_PLANS: PlanDefinition[] = [
-  { id: '1', planId: 'free', name: 'Free', description: 'Get started with basic threat intel', priceMonthlyInr: 0, priceAnnualInr: 0, isPublic: true, isDefault: true, sortOrder: 0, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('free'), _count: { tenants: 12 } },
-  { id: '2', planId: 'starter', name: 'Starter', description: 'For small security teams', priceMonthlyInr: 9999, priceAnnualInr: 95988, isPublic: true, isDefault: false, sortOrder: 1, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('starter'), _count: { tenants: 5 } },
-  { id: '3', planId: 'pro', name: 'Teams', description: 'For growing security operations', priceMonthlyInr: 18999, priceAnnualInr: 179988, isPublic: true, isDefault: false, sortOrder: 2, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('teams'), _count: { tenants: 3 } },
-  { id: '4', planId: 'enterprise', name: 'Enterprise', description: 'Unlimited access for large orgs', priceMonthlyInr: 49999, priceAnnualInr: 479988, isPublic: true, isDefault: false, sortOrder: 3, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z', features: demoFeatures('enterprise'), _count: { tenants: 1 } },
-]
-
 // ─── Hook ───────────────────────────────────────────────────
 
 export function usePlanBuilder() {
   const qc = useQueryClient()
-  const empty: PlanDefinition[] = []
 
-  const result = useQuery({
+  const result = useQuery<PlanDefinition[]>({
     queryKey: ['admin-plans'],
     queryFn: () =>
       api<{ data: PlanDefinition[]; total: number }>('/admin/plans')
-        .then(r => r?.data ?? empty)
-        .catch(err => notifyApiError(err, 'plan builder', DEMO_PLANS)),
+        .then(r => r?.data ?? []),
+    meta: { resource: 'plans' },
     staleTime: 60_000,
   })
 
-  const isDemo = !result.isLoading && (result.data?.length ?? 0) === 0
-  const plans = isDemo ? DEMO_PLANS : (result.data ?? [])
+  const plans = result.data ?? []
 
   const createMut = useMutation({
     mutationFn: (body: PlanDefinitionCreate) =>
@@ -124,8 +86,9 @@ export function usePlanBuilder() {
   return {
     plans: [...plans].sort((a, b) => a.sortOrder - b.sortOrder),
     isLoading: result.isLoading,
+    isError: result.isError,
     error: result.error,
-    isDemo,
+    refetch: result.refetch,
     createPlan: createMut.mutateAsync,
     isCreating: createMut.isPending,
     updatePlan: updateMut.mutateAsync,

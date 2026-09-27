@@ -1,6 +1,6 @@
 # Step 5 — Honest UI, missing endpoints, auto-enrich critical IOCs (S161–S166)
 
-**Written:** 2026-09-25 · **Status:** in progress — S161a PR A deployed (PR #44, 2026-09-26); PR B next · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 5, §4 Phase 2 (W6, W7, W8, W13, W17)
+**Written:** 2026-09-25 · **Status:** in progress — S161a PR A deployed (PR #44, 2026-09-26); PR B implemented, PR open — pending merge/deploy · **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 5, §4 Phase 2 (W6, W7, W8, W13, W17)
 **Details from:** docs/S147_APP_WIRING_FOLLOWUPS.md (Follow-ups B and C), DECISION-013, 029, 030, 031.
 **Before you start:** step 3 (persistence) and step 4 (RLS) should be green. Every claim below was checked against the code on 2026-09-25; re-check line numbers, they drift.
 
@@ -217,13 +217,26 @@ Global AI config (UI adapter): `subtasks = config.map(c => ({category, subtask, 
 | S | Module | Work | Size |
 |---|---|---|---|
 | 161a | frontend | Pattern + QueryCache toast + MFA/sessions/feature-limits/billing/admin/users hooks + W17 prices | M |
-| 161a PR A ✅ | frontend | **Done (PR #44, 2026-09-26):** QueryStateView pattern, QueryCache toast, MFA/sessions/feature-limits/tenant-usage hooks, W17 prices, DECISION-035. **PR B next:** billing/admin hooks (`use-phase6-data.ts`) + user hooks (`use-phase5-data.ts`) + `usePlanBuilder` error fallback. Splitting into two PRs did not need an O1 decision first — O1 (sample data) only governs showcase pages, and none of PR A's or PR B's screens are showcase pages, so sample data is never allowed on them regardless of how O1 is answered. | M |
+| 161a PR A ✅ | frontend | **Done (PR #44, 2026-09-26):** QueryStateView pattern, QueryCache toast, MFA/sessions/feature-limits/tenant-usage hooks, W17 prices, DECISION-035. Splitting into two PRs did not need an O1 decision first — O1 (sample data) only governs showcase pages, and none of PR A's or PR B's screens are showcase pages, so sample data is never allowed on them regardless of how O1 is answered. | M |
+| 161a PR B | frontend | **Implemented (2026-09-27), not yet deployed:** PR open — pending merge/deploy. Converts `use-phase6-data.ts` (billing/admin hooks) + `use-phase5-data.ts` (user hooks) + `use-plan-builder.ts` to the throw + `meta.resource` pattern; wires BillingPage, AdminOpsPage, UserManagementPage, BillingPlansTab, SystemTab, PipelinePanel, PlanBuilderPanel, UsersAccessTab, ComplianceReportsPanel to `<QueryStateView>`. Detail: `docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`. Surfaced real billing/admin path+shape mismatches for S163 — see table below. | M |
 | 161b | frontend | Remaining hook files, one PR each (alerting, reporting, phase4, analytics, monitoring, command-center, inline hooks) | M ×2–3 |
 | 162 | user-management-service | `GET /users`, `/users/audit`, `/users/stats` from Prisma | M |
 | 163 | frontend | Paths/shapes: sessions, roles, ticketing, AI global, MFA (if not done in 161a), hide Teams/Invite | S |
 | 164 | ai-enrichment | `GET /enrichment/ioc/:id`, severity gate, lookups vs AI split, per-plan cap | M |
 | 165 | threat-graph | `GET /graph/overview` (+ frontend adapter in the next frontend PR) | S |
 | 166 | customization (or admin-service, O3) | Real tenant list; plan change via gateway; hide fake actions | M |
+
+### 12.1 PR B billing/admin path+shape mismatches (input for S163)
+Verified by converting `use-phase6-data.ts` to throw-on-failure (PR B, full detail in
+`docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`):
+
+| Call | Mismatch |
+|---|---|
+| `GET /billing/plans` | Backend returns `priceInr`/`priceUsd`; frontend type expects `price` |
+| `GET /billing/usage` | Backend returns flat snake_case; frontend expects nested `{apiCalls:{used,limit,resetAt}, …}` |
+| `GET /billing/subscription` | Only `GET /billing/subscriptions` (plural) exists → 404 |
+| `GET /billing/stats` | No route (closest: `/billing/admin/dashboard`, admin-only) → 404 |
+| `GET /admin/stats` | No route (closest: `/admin/audit/stats`) → 404 |
 
 ## 13. Owner decisions needed
 - **O1** Sample data: "Show sample data" button (recommended) or automatic for new tenants (needs tenant `createdAt` in the login response, a user-service change)?

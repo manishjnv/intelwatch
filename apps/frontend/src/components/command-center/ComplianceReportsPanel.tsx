@@ -13,6 +13,7 @@ import {
   type ComplianceReport, type ComplianceReportData,
 } from '@/hooks/use-compliance-reports'
 import { useUsers } from '@/hooks/use-phase5-data'
+import { classifyError } from '@/hooks/useApiError'
 import { toast } from '@/components/ui/Toast'
 import { apiDownload } from '@/lib/api'
 import {
@@ -495,7 +496,7 @@ export function ComplianceReportsList() {
 
 export function DsarPanel() {
   const { data, isLoading } = useDsarExports()
-  const { data: usersData } = useUsers()
+  const { data: usersData, isError: usersError, error: usersErr } = useUsers()
   const genMut = useGenerateDsar()
   const [showGenerate, setShowGenerate] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState('')
@@ -571,6 +572,11 @@ export function DsarPanel() {
               <option key={u.id} value={u.id}>{u.displayName ?? u.email ?? u.id}</option>
             ))}
           </select>
+          {usersError && (
+            <p role="alert" className="text-[10px] text-sev-high break-words" data-testid="dsar-users-error">
+              Couldn&apos;t load users. {classifyError(usersErr)}.
+            </p>
+          )}
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button onClick={() => { setShowGenerate(false); setSelectedUserId('') }} className="px-3 py-1.5 text-xs rounded bg-bg-secondary border border-border text-text-secondary hover:bg-bg-hover">Cancel</button>

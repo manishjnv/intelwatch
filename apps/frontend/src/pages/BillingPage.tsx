@@ -14,6 +14,7 @@ import {
   useCancelSubscription,
   type BillingPlan, type PaymentRecord,
 } from '@/hooks/use-phase6-data'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   TrendingUp, Zap, HardDrive, Users,
@@ -509,15 +510,16 @@ export function BillingPage() {
   const [upgradeTarget, setUpgradeTarget] = useState<string | null>(null)
   const [showCancelModal, setShowCancelModal] = useState(false)
 
-  const { data: plans = [], isDemo: plansDemo } = useBillingPlans()
-  const { data: usage } = useUsageMeters()
-  const { data: subscription } = useCurrentSubscription()
-  const { data: payments } = usePaymentHistory()
+  const plansQuery = useBillingPlans()
+  const usageQuery = useUsageMeters()
+  const subscriptionQuery = useCurrentSubscription()
+  const paymentsQuery = usePaymentHistory()
   const { data: stats } = useBillingStats()
   const cancelMutation = useCancelSubscription()
 
+  const plans = plansQuery.data ?? []
+  const subscription = subscriptionQuery.data
   const currentPlanId = subscription?.planId ?? 'free'
-  const paymentList = payments?.data ?? []
 
   // DECISION-031: plan changes are sales-led (no self-serve checkout yet)
   const handleUpgradeConfirm = () => {
@@ -534,7 +536,7 @@ export function BillingPage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* ─── Stats bar ─── */}
-      <PageStatsBar title="Billing & Subscription" isDemo={plansDemo}>
+      <PageStatsBar title="Billing & Subscription">
         <CompactStat label="Current Plan" value={stats?.currentPlan ?? '—'} />
         <CompactStat label="Monthly Spend" value={stats ? fmtINR(stats.monthlySpend) : '—'} />
         <CompactStat label="Next Billing" value={stats ? fmtDate(stats.nextBillingDate) : '—'} />
@@ -629,18 +631,27 @@ export function BillingPage() {
             </div>
 
             {/* Plan cards grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {plans.map(plan => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  currentPlanId={currentPlanId}
-                  billingCycle={billingCycle}
-                  onUpgrade={id => setUpgradeTarget(id)}
-                  onCancel={() => setShowCancelModal(true)}
-                />
-              ))}
-            </div>
+            <QueryStateView
+              query={plansQuery}
+              resource="billing plans"
+              isEmpty={d => d.length === 0}
+              empty={<p className="text-xs text-text-muted" data-testid="query-empty">No plans available.</p>}
+            >
+              {planList => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {planList.map(plan => (
+                    <PlanCard
+                      key={plan.id}
+                      plan={plan}
+                      currentPlanId={currentPlanId}
+                      billingCycle={billingCycle}
+                      onUpgrade={id => setUpgradeTarget(id)}
+                      onCancel={() => setShowCancelModal(true)}
+                    />
+                  ))}
+                </div>
+              )}
+            </QueryStateView>
 
             {/* Coupon + info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -663,76 +674,89 @@ export function BillingPage() {
         )}
 
         {/* ── Usage tab ── */}
-        {activeTab === 'usage' && usage && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <UsageMeter
-                label="API Calls"
-                used={usage.apiCalls.used}
-                limit={usage.apiCalls.limit}
-                icon={Zap}
-              />
-              <UsageMeter
-                label="IOC Count"
-                used={usage.iocCount.used}
-                limit={usage.iocCount.limit}
-                icon={TrendingUp}
-              />
-              <UsageMeter
-                label="Storage"
-                used={usage.storageGb.used}
-                limit={usage.storageGb.limit}
-                icon={HardDrive}
-                unit=" GB"
-              />
-              <UsageMeter
-                label="Seats"
-                used={usage.seats.used}
-                limit={usage.seats.limit}
-                icon={Users}
-              />
-            </div>
+        {activeTab === 'usage' && (
+          <QueryStateView query={usageQuery} resource="usage meters">
+            {usage => (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <UsageMeter
+                    label="API Calls"
+                    used={usage.apiCalls.used}
+                    limit={usage.apiCalls.limit}
+                    icon={Zap}
+                  />
+                  <UsageMeter
+                    label="IOC Count"
+                    used={usage.iocCount.used}
+                    limit={usage.iocCount.limit}
+                    icon={TrendingUp}
+                  />
+                  <UsageMeter
+                    label="Storage"
+                    used={usage.storageGb.used}
+                    limit={usage.storageGb.limit}
+                    icon={HardDrive}
+                    unit=" GB"
+                  />
+                  <UsageMeter
+                    label="Seats"
+                    used={usage.seats.used}
+                    limit={usage.seats.limit}
+                    icon={Users}
+                  />
+                </div>
 
-            {/* Period info */}
-            <div className="bg-bg-elevated border border-border-subtle rounded-lg p-4 text-xs">
-              <div className="flex flex-wrap gap-6">
-                <div>
-                  <p className="text-text-muted mb-0.5">Billing Period</p>
-                  <p className="text-text-primary font-medium">
-                    {fmtDate(usage.period.start)} — {fmtDate(usage.period.end)}
-                  </p>
+                {/* Period info */}
+                <div className="bg-bg-elevated border border-border-subtle rounded-lg p-4 text-xs">
+                  <div className="flex flex-wrap gap-6">
+                    <div>
+                      <p className="text-text-muted mb-0.5">Billing Period</p>
+                      <p className="text-text-primary font-medium">
+                        {fmtDate(usage.period.start)} — {fmtDate(usage.period.end)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted mb-0.5">API Reset</p>
+                      <p className="text-text-primary font-medium">{fmtDate(usage.apiCalls.resetAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted mb-0.5">Alert Thresholds</p>
+                      <p className="text-text-primary font-medium">80% / 90% / 100%</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-text-muted mb-0.5">API Reset</p>
-                  <p className="text-text-primary font-medium">{fmtDate(usage.apiCalls.resetAt)}</p>
-                </div>
-                <div>
-                  <p className="text-text-muted mb-0.5">Alert Thresholds</p>
-                  <p className="text-text-primary font-medium">80% / 90% / 100%</p>
+
+                {/* CISO tip */}
+                <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 text-[11px] text-text-secondary">
+                  <strong className="text-accent">CISO Note:</strong> API call usage at{' '}
+                  {usagePercent(usage.apiCalls.used, usage.apiCalls.limit)}% — review enrichment
+                  batch sizes or consider upgrading before the reset date to avoid service throttling.
                 </div>
               </div>
-            </div>
-
-            {/* CISO tip */}
-            <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 text-[11px] text-text-secondary">
-              <strong className="text-accent">CISO Note:</strong> API call usage at{' '}
-              {usagePercent(usage.apiCalls.used, usage.apiCalls.limit)}% — review enrichment
-              batch sizes or consider upgrading before the reset date to avoid service throttling.
-            </div>
-          </div>
+            )}
+          </QueryStateView>
         )}
 
         {/* ── Payment history tab ── */}
         {activeTab === 'history' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-text-secondary">
-                {paymentList.length} invoice{paymentList.length !== 1 ? 's' : ''}
-              </h3>
-              <p className="text-[11px] text-text-muted">GST invoices in INR. Click <Download className="w-3 h-3 inline" /> to download PDF.</p>
-            </div>
-            <PaymentHistoryTable payments={paymentList} />
-          </div>
+          <QueryStateView
+            query={paymentsQuery}
+            resource="payment history"
+            isEmpty={d => d.data.length === 0}
+            empty={<div className="px-4 py-8 text-center text-xs text-text-muted" data-testid="query-empty">No payment records found.</div>}
+          >
+            {payments => (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-text-secondary">
+                    {payments.data.length} invoice{payments.data.length !== 1 ? 's' : ''}
+                  </h3>
+                  <p className="text-[11px] text-text-muted">GST invoices in INR. Click <Download className="w-3 h-3 inline" /> to download PDF.</p>
+                </div>
+                <PaymentHistoryTable payments={payments.data} />
+              </div>
+            )}
+          </QueryStateView>
         )}
       </div>
 

@@ -116,6 +116,7 @@ Step 3 persistence sessions → Step 4 DB role + RLS (security review before pus
 ```
 
 **Queue after PR B:**
+0. S163 must fix the billing/admin path+shape mismatches PR B verified (see `docs/S161a_PR_B_HONEST_UI_BILLING_USERS.md`): `/billing/plans` price field (`priceInr`/`priceUsd` vs `price`), `/billing/usage` shape (flat snake_case vs nested), `/billing/subscription` vs the real `/billing/subscriptions` (plural), missing `/billing/stats`, missing `/admin/stats`.
 1. S161b — remaining honest-UI hooks incl. dashboard widgets
 2. S162 — user-management-service `/users` routes
 3. S163 — frontend paths/shapes

@@ -10,15 +10,17 @@ import { render, screen } from '@/test/test-utils'
 
 const mockUseQueueAlerts = vi.fn()
 
+const emptyQuery = { data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }
+
 vi.mock('@/hooks/use-phase6-data', () => ({
-  useSystemHealth:         () => ({ data: null, isDemo: false }),
-  useMaintenanceWindows:   () => ({ data: null }),
-  useAdminTenants:         () => ({ data: null }),
-  useAdminAuditLog:        () => ({ data: null }),
-  useAdminStats:           () => ({ data: null }),
-  useQueueHealth:          () => ({ data: { queues: [], updatedAt: new Date().toISOString() }, isDemo: false }),
+  useSystemHealth:         () => emptyQuery,
+  useMaintenanceWindows:   () => emptyQuery,
+  useAdminTenants:         () => emptyQuery,
+  useAdminAuditLog:        () => emptyQuery,
+  useAdminStats:           () => ({ data: undefined }),
+  useQueueHealth:          () => ({ data: { queues: [], updatedAt: new Date().toISOString() }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useQueueAlerts:          () => mockUseQueueAlerts(),
-  useDlqStatus:            () => ({ data: null, isDemo: false }),
+  useDlqStatus:            () => emptyQuery,
   useRetryDlqQueue:        () => ({ mutate: vi.fn(), isPending: false }),
   useDiscardDlqQueue:      () => ({ mutate: vi.fn(), isPending: false }),
   useRetryAllDlq:          () => ({ mutate: vi.fn(), isPending: false }),
