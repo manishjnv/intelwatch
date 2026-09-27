@@ -700,6 +700,12 @@ about whether the code handles the actual API response. **Check:**
 `grep -rnE "api<\{\s*data" apps/frontend/src/hooks` should return only documented BLOCKED hooks (routes that
 don't exist yet), never a live call site. Detail: `docs/S161b_PR1_RCA45_UNWRAP_SWEEP.md`.
 
+### Issue 46: S164 CI red — lint errors in test files the local gate never linted (2026-09-27)
+**Symptom:** CI run 36332920862 failed at "Typecheck + Lint + Audit"; build and deploy were skipped (prod untouched at 045fb35).
+**Root cause:** `apps/ai-enrichment`'s lint script is `eslint src/ tests/`, but the local pre-push gate ran `eslint src` only, so two unused identifiers in new test files (`tests/enrichment-ioc-route.test.ts` `OTHER_TENANT_ID`, `tests/tenant-budget.test.ts` `beforeEach`) were never linted locally.
+**Fix:** removed both unused identifiers (commit after 57aa75c).
+**Prevention:** the local gate must run each package's own scripts exactly as CI does — `pnpm -r run typecheck` and `pnpm -r run lint` from the repo root (or `pnpm run lint` inside the package) — never a hand-written `eslint src`. Both exited 0 locally before the re-push.
+
 | Session 78 | 2026-03-26 | RCA #43: VPS OOM during build. Fix: CI-built Docker images (GHCR). Deploy 25m→2m41s. Per-plan feed quotas (7 components, 5 modules, 54 tests). Passwordless SSH. All 33 containers healthy. CI run 23597460387 green. |
 | Session 79 | 2026-03-26 | No deploy. Planning/review session: audited 27/27 gap items closed, 3/3 activation phases complete. No code changes. |
 | Session 81 | 2026-03-27 | VPS activation: 20 feeds live, 17K articles, 1.5K IOCs. Fixed frontend MISSING_TENANT 400 (api.ts x-tenant-id injection). Billing pro→teams rename. 33 containers healthy. No new RCA issues. |

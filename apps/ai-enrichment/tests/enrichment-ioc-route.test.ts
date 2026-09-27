@@ -34,7 +34,6 @@ vi.mock('../src/queue.js', () => ({
 
 const AUTH_HEADER = { authorization: 'Bearer test-token' };
 const TENANT_ID = '00000000-0000-0000-0000-000000000099';
-const OTHER_TENANT_ID = '00000000-0000-0000-0000-000000000088';
 
 const ENRICHED_IOC = {
   id: '00000000-0000-0000-0000-000000000010',

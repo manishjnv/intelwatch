@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import pino from 'pino';
 import { TenantBudgetService, PLAN_AI_DEFAULTS } from '../src/services/tenant-budget.js';
 
