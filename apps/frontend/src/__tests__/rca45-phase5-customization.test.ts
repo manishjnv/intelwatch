@@ -21,7 +21,7 @@ vi.mock('@/lib/api', () => ({
 
 import {
   useModuleToggles, usePlanTiers, useSubtaskMappings, useRecommendedModels,
-  useCostEstimate, useAnthropicKeyStatus,
+  useCostEstimate, useAnthropicKeyStatus, useToggleModule,
 } from '@/hooks/use-phase5-data'
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -42,6 +42,24 @@ describe('useModuleToggles — real backend shape (single-wrapped {data,total})'
     expect(result.current.isError).toBe(false)
     expect(result.current.data?.data[0]?.name).toBe('hunting')
     expect(result.current.data?.data[0]?.enabled).toBe(true)
+  })
+
+  // Backend: PUT /customization/modules/:module (module NAME, z.enum) — not PATCH by toggle UUID.
+  it('toggling round-trips: the id handed to the page toggles via PUT /customization/modules/<module name>', async () => {
+    mockApi.mockResolvedValueOnce({
+      data: [{ id: 'uuid-1', tenantId: 't1', module: 'hunting', enabled: true, featureFlags: {}, updatedAt: '2026-01-01', updatedBy: 'u1' }],
+      total: 1,
+    })
+    const { result } = renderHook(() => ({ list: useModuleToggles(), toggle: useToggleModule() }), { wrapper })
+    await waitFor(() => expect(result.current.list.isLoading).toBe(false))
+    const mod = result.current.list.data!.data[0]!
+
+    mockApi.mockResolvedValueOnce({ id: 'uuid-1', module: 'hunting', enabled: false })
+    result.current.toggle.mutate({ id: mod.id, enabled: false })
+
+    await waitFor(() => expect(mockApi).toHaveBeenCalledWith(
+      '/customization/modules/hunting', expect.objectContaining({ method: 'PUT', body: { enabled: false } }),
+    ))
   })
 })
 

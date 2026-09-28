@@ -494,7 +494,8 @@ interface ModuleToggleApi {
 // category — CustomizationPage's card UI for those fields has nothing real to show until the
 // store grows them. name falls back to the raw module id (e.g. "hunting").
 function toModuleToggle(t: ModuleToggleApi): ModuleToggle {
-  return { id: t.id, name: t.module, description: '', enabled: t.enabled, icon: '', dependencies: [], category: '' }
+  // id = module name: the backend keys toggles by module (PUT /customization/modules/:module), not the row UUID.
+  return { id: t.module, name: t.module, description: '', enabled: t.enabled, icon: '', dependencies: [], category: '' }
 }
 
 export function useModuleToggles() {
@@ -558,7 +559,7 @@ export function useToggleModule() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      api<ModuleToggleApi>(`/customization/modules/${id}`, { method: 'PATCH', body: { enabled } }),
+      api<ModuleToggleApi>(`/customization/modules/${id}`, { method: 'PUT', body: { enabled } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['module-toggles'] }); qc.invalidateQueries({ queryKey: ['customization-stats'] }) },
   })
 }
