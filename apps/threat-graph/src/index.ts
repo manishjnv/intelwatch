@@ -23,6 +23,10 @@ import { BatchImportService } from './services/batch-import.js';
 import { DecayCronService } from './services/decay-cron.js';
 import { LayoutPresetsService } from './services/layout-presets.js';
 import { RelationshipTrendingService } from './services/relationship-trending.js';
+import { IocClient } from './clients/ioc-client.js';
+import { GraphSyncWriter } from './services/graph-sync.js';
+import { IocSyncService } from './services/ioc-sync-service.js';
+import { GraphReconciler } from './services/graph-reconciler.js';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -75,12 +79,22 @@ async function main(): Promise<void> {
   const layoutPresets = new LayoutPresetsService(config.TI_GRAPH_MAX_LAYOUT_PRESETS);
   const trending = new RelationshipTrendingService();
 
+  // S171 P3b: IOC → graph sync (client, mapper is stateless, writer, sync service, reconciler)
+  const iocClient = new IocClient(config.TI_IOC_SERVICE_URL, logger);
+  const syncWriter = new GraphSyncWriter();
+  const iocSync = new IocSyncService(iocClient, syncWriter, logger);
+  const reconciler = new GraphReconciler(iocClient, syncWriter, {
+    intervalMs: config.TI_GRAPH_RECONCILE_INTERVAL_MS,
+    fullSyncIntervalMs: config.TI_GRAPH_FULL_SYNC_INTERVAL_MS,
+    pageSize: config.TI_GRAPH_RECONCILE_PAGE_SIZE,
+  }, logger);
+
   // Create BullMQ queue (producer side)
   createGraphSyncQueue();
 
   // Build Fastify app
   const app = await buildApp({
-    config, service,
+    config, service, reconciler,
     extendedDeps: {
       repo, bidirectional, clusterDetection, impactRadius,
       graphDiff, expandNode, stixExport, graphSearch, auditTrail, trending,
@@ -91,16 +105,22 @@ async function main(): Promise<void> {
   });
 
   // Start BullMQ worker (consumer side)
-  const worker = createGraphSyncWorker({ service, logger });
+  const worker = createGraphSyncWorker({ service, iocSync, logger });
 
   // Start decay cron (#18)
   if (config.TI_NODE_ENV !== 'test') {
     decayCron.start();
   }
 
+  // Start IOC→graph reconciler (S171 P3b)
+  if (config.TI_GRAPH_RECONCILE_ENABLED && config.TI_NODE_ENV !== 'test') {
+    reconciler.start();
+  }
+
   // Graceful shutdown
   app.addHook('onClose', async () => {
     decayCron.stop();
+    reconciler.stop();
     await worker.close();
     await closeGraphSyncQueue();
     await closeNeo4jDriver();

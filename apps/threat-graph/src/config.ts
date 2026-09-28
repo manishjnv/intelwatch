@@ -23,6 +23,18 @@ const EnvSchema = z.object({
   TI_GRAPH_DECAY_CRON_INTERVAL: z.coerce.number().int().min(60000).default(21600000), // default 6h
   TI_GRAPH_DECAY_THRESHOLD: z.coerce.number().min(0.1).max(10).default(1.0), // min score drop to trigger update
   TI_GRAPH_MAX_LAYOUT_PRESETS: z.coerce.number().int().min(1).max(100).default(50), // per tenant
+  TI_IOC_SERVICE_URL: z.string().default('http://etip_ioc_intelligence:3007').refine((v) => {
+    try {
+      const u = new URL(v);
+      return (u.protocol === 'http:' || u.protocol === 'https:') && !u.username && !u.password;
+    } catch {
+      return false;
+    }
+  }, { message: 'TI_IOC_SERVICE_URL must be an http(s) URL with no embedded credentials' }),
+  TI_GRAPH_RECONCILE_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  TI_GRAPH_RECONCILE_INTERVAL_MS: z.coerce.number().int().min(60000).default(900000), // 15 min
+  TI_GRAPH_FULL_SYNC_INTERVAL_MS: z.coerce.number().int().min(60000).default(86400000), // 24 h
+  TI_GRAPH_RECONCILE_PAGE_SIZE: z.coerce.number().int().min(1).max(500).default(500),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
