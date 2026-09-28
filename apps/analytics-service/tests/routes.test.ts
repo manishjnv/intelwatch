@@ -9,6 +9,14 @@ import { Aggregator } from '../src/services/aggregator.js';
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
+/** Test fixture: record deterministic points instead of fabricating demo data in prod code. */
+function seedTrend(trends: TrendCalculator, metric: string, days: number, baseValue: number): void {
+  const now = Date.now();
+  for (let d = days; d >= 0; d--) {
+    trends.record(metric, baseValue + d, now - d * 86_400_000);
+  }
+}
+
 describe('Analytics API Routes', () => {
   let app: Awaited<ReturnType<typeof buildApp>>;
   let store: AnalyticsStore;
@@ -22,8 +30,8 @@ describe('Analytics API Routes', () => {
     const config = loadConfig({ TI_LOG_LEVEL: 'silent' });
     store = new AnalyticsStore();
     trends = new TrendCalculator();
-    trends.seedDemo('ioc.total', 1000, 100, 7);
-    trends.seedDemo('alert.open', 30, 10, 7);
+    seedTrend(trends, 'ioc.total', 7, 1000);
+    seedTrend(trends, 'alert.open', 7, 30);
     aggregator = new Aggregator(store, trends);
 
     app = await buildApp({
@@ -172,6 +180,22 @@ describe('Analytics API Routes', () => {
       const body = JSON.parse(res.payload);
       expect(body.metrics).toContain('ioc.total');
       expect(body.metrics).toContain('alert.open');
+    });
+
+    it('returns no fabricated trend data on a freshly built app', async () => {
+      const freshTrends = new TrendCalculator();
+      const freshApp = await buildApp({
+        config: loadConfig({ TI_LOG_LEVEL: 'silent' }),
+        dashboardDeps: { aggregator: new Aggregator(new AnalyticsStore(), freshTrends) },
+        trendDeps: { trends: freshTrends },
+        executiveDeps: { aggregator: new Aggregator(new AnalyticsStore(), freshTrends), store: new AnalyticsStore(), trends: freshTrends },
+      });
+      const res = await freshApp.inject({ method: 'GET', url: '/api/v1/analytics/trends' });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.data).toEqual([]);
+      expect(body.metrics).toEqual([]);
+      await freshApp.close();
     });
   });
 
