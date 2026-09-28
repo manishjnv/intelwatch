@@ -166,12 +166,6 @@ describe('ThreatScoreWidget', () => {
     })
   })
 
-  it('shows Demo badge when isDemo=true', () => {
-    mockAnalytics.isDemo = true
-    render(<ThreatScoreWidget profile={null} />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
-  })
-
   it('boosts score when org profile has industry set', () => {
     const profileNone = null
     const profileSet = { industry: 'finance', techStack: ['nodejs'] }
@@ -246,12 +240,6 @@ describe('ThreatBriefingWidget', () => {
     render(<ThreatBriefingWidget profile={null} />)
     expect(screen.getByText('Not set')).toBeInTheDocument()
   })
-
-  it('shows Demo badge when isDemo=true', () => {
-    mockAnalytics.isDemo = true
-    render(<ThreatBriefingWidget profile={null} />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
-  })
 })
 
 // ═══════════════════════════════════════════════════════════════════
@@ -273,16 +261,8 @@ describe('AttackTechniqueWidget', () => {
   })
 
   it('does not show Beta badge implying live data', () => {
-    mockAnalytics.isDemo = false
     render(<AttackTechniqueWidget />)
     expect(screen.queryByText('Beta')).not.toBeInTheDocument()
-  })
-
-  it('shows Demo badge when isDemo=true', () => {
-    mockAnalytics.isDemo = true
-    render(<AttackTechniqueWidget />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
-    mockAnalytics.isDemo = false
   })
 })
 

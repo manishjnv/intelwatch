@@ -18,7 +18,7 @@ const SEV_TEXT: Record<string, string> = {
 
 export function ThreatLandscapeBanner({ profile }: { profile: OrgProfile }) {
   const navigate = useNavigate()
-  const { topIocs, isDemo } = useAnalyticsDashboard()
+  const { topIocs } = useAnalyticsDashboard()
 
   const riskLabels = profile.businessRisk
     .map(r => BUSINESS_RISKS.find(b => b.value === r)?.label ?? r)
@@ -46,7 +46,6 @@ export function ThreatLandscapeBanner({ profile }: { profile: OrgProfile }) {
           <div className="flex items-center gap-2 mb-1.5">
             <Crosshair className="w-4 h-4 text-purple-400 shrink-0" />
             <span className="text-sm font-semibold text-text-primary">Your Threat Landscape</span>
-            {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
           </div>
           <p className="text-xs text-text-muted">
             <span className="text-text-secondary font-medium">{profile.industry}</span>

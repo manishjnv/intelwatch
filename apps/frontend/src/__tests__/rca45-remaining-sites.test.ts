@@ -58,7 +58,7 @@ describe('useAnalyticsDashboard — trends real backend shape (array, not {data:
     const { result } = renderHook(() => useAnalyticsDashboard('7d'), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.isDemo).toBe(false)
+    expect(result.current.isError).toBe(false)
     expect(result.current.iocTrend).toEqual([{ date: '2026-03-20', count: 4000 }])
     expect(result.current.alertTrend).toEqual([{ date: '2026-03-20', count: 30 }])
   })

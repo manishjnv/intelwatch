@@ -20,7 +20,7 @@ function trendArrow(pctChange: number) {
 interface Props { profile: { industry?: string } | null }
 
 export function ThreatBriefingWidget({ profile }: Props) {
-  const { iocBySeverity, topCves, topActors, iocTrend, isDemo } = useAnalyticsDashboard()
+  const { iocBySeverity, topCves, topActors, iocTrend, isLoading, isError } = useAnalyticsDashboard()
 
   const stats = useMemo(() => {
     // Critical IOC count
@@ -44,10 +44,14 @@ export function ThreatBriefingWidget({ profile }: Props) {
     return { criticalCount, cveCount, topEpss, activeActor, pctChange, hasTrend }
   }, [iocBySeverity, topCves, topActors, iocTrend])
 
+  const showScalars = !isLoading && !isError
+
   // Fewer than 2 points is missing data, not "stable" — don't assert a trend we don't have.
-  const trend = stats.hasTrend
-    ? trendArrow(stats.pctChange)
-    : { icon: <Minus className="w-3 h-3" />, color: 'text-text-muted', label: '—' }
+  const trend = !showScalars
+    ? { icon: <Minus className="w-3 h-3" />, color: 'text-text-muted', label: '—' }
+    : stats.hasTrend
+      ? trendArrow(stats.pctChange)
+      : { icon: <Minus className="w-3 h-3" />, color: 'text-text-muted', label: '—' }
 
   return (
     <div data-testid="threat-briefing-widget" className="mb-6 p-3 bg-bg-secondary rounded-lg border border-border">
@@ -55,7 +59,6 @@ export function ThreatBriefingWidget({ profile }: Props) {
       <div className="flex items-center gap-2 mb-2">
         <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
         <span className="text-xs font-medium text-text-primary">Today&apos;s Briefing</span>
-        {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
       </div>
 
       {/* Stat pills grid */}
@@ -65,7 +68,9 @@ export function ThreatBriefingWidget({ profile }: Props) {
           <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
           <div className="min-w-0">
             <p className="text-[10px] text-text-muted">Critical IOCs</p>
-            <p className="text-sm font-bold text-text-primary tabular-nums">{stats.criticalCount}</p>
+            <p className="text-sm font-bold text-text-primary tabular-nums">
+              {showScalars ? stats.criticalCount : '—'}
+            </p>
           </div>
         </div>
 
@@ -75,8 +80,8 @@ export function ThreatBriefingWidget({ profile }: Props) {
           <div className="min-w-0">
             <p className="text-[10px] text-text-muted">CVEs Tracked</p>
             <p className="text-sm font-bold text-text-primary tabular-nums">
-              {stats.cveCount}
-              {stats.topEpss > 0 && <span className="text-[9px] text-orange-400 ml-1">EPSS {stats.topEpss}%</span>}
+              {showScalars ? stats.cveCount : '—'}
+              {showScalars && stats.topEpss > 0 && <span className="text-[9px] text-orange-400 ml-1">EPSS {stats.topEpss}%</span>}
             </p>
           </div>
         </div>
@@ -87,7 +92,7 @@ export function ThreatBriefingWidget({ profile }: Props) {
           <div className="min-w-0">
             <p className="text-[10px] text-text-muted">Top Actor</p>
             <p className="text-xs font-medium text-text-primary truncate">
-              {stats.activeActor?.name ?? 'None'}
+              {showScalars ? (stats.activeActor?.name ?? 'None') : '—'}
             </p>
           </div>
         </div>
@@ -108,7 +113,7 @@ export function ThreatBriefingWidget({ profile }: Props) {
             <div className="min-w-0">
               <p className="text-[10px] text-text-muted">Your Industry</p>
               <p className="text-[10px] font-medium text-accent truncate">
-                {stats.criticalCount > 0 ? `${stats.criticalCount} threats` : 'Monitoring'}
+                {!showScalars ? '—' : stats.criticalCount > 0 ? `${stats.criticalCount} threats` : 'Monitoring'}
               </p>
             </div>
           </div>

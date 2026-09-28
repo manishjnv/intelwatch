@@ -49,7 +49,7 @@ function setupMocks(overrides?: Partial<ReturnType<typeof mockDashboard>>) {
   mockDashboard.mockReturnValue({
     ...DEMO_ANALYTICS,
     isLoading: false,
-    isDemo: false,
+    isError: false,
     error: null,
     isFetching: false,
     dateRange: { preset: '7d', from: '2026-03-20', to: '2026-03-27' },
@@ -117,15 +117,21 @@ describe('AnalyticsPage', () => {
     expect(screen.getByTestId('auto-refresh-15m')).toBeInTheDocument()
   })
 
-  it('demo banner shown when isDemo', () => {
-    setupMocks({ isDemo: true })
+  it('error banner with Retry shown when isError', () => {
+    setupMocks({ isError: true })
     render(<AnalyticsPage />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
-    expect(screen.getByText('Demo data — connect Analytics Service for live metrics')).toBeInTheDocument()
+    expect(screen.getByTestId('dashboard-error-banner')).toBeInTheDocument()
+    const retryBtn = screen.getByTestId('dashboard-error-retry')
+    fireEvent.click(retryBtn)
+    expect(mockRefetch).toHaveBeenCalled()
   })
 
-  it('full demo fallback renders complete page', () => {
-    setupMocks({ isDemo: true })
+  it('no error banner when isError is false', () => {
+    render(<AnalyticsPage />)
+    expect(screen.queryByTestId('dashboard-error-banner')).not.toBeInTheDocument()
+  })
+
+  it('renders complete page even with fixture data', () => {
     render(<AnalyticsPage />)
     expect(screen.getByTestId('executive-summary')).toBeInTheDocument()
     expect(screen.getByTestId('trend-charts')).toBeInTheDocument()

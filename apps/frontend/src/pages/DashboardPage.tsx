@@ -10,7 +10,8 @@ import { useDashboardStats, useIOCs } from '@/hooks/use-intel-data'
 import { useDashboardMode } from '@/hooks/use-dashboard-mode'
 import { useDashboardView } from '@/hooks/use-dashboard-view'
 import { InvestigationDrawerProvider } from '@/hooks/use-investigation-drawer'
-import { Settings, BarChart3, LineChart } from 'lucide-react'
+import { useAnalyticsDashboard } from '@/hooks/use-analytics-dashboard'
+import { Settings, BarChart3, LineChart, AlertTriangle, RefreshCw } from 'lucide-react'
 
 // Viz components
 import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'
@@ -70,6 +71,7 @@ export function DashboardPage() {
   const { mode, profile } = useDashboardMode()
   const { view, toggleView } = useDashboardView()
   const { data: timelineIocs } = useIOCs({ limit: 15, sortBy: 'createdAt' })
+  const { isError: analyticsError, refetch: refetchAnalytics } = useAnalyticsDashboard()
 
   const timelineEvents = useMemo<TimelineEvent[]>(() => {
     const iocs = timelineIocs?.data ?? []
@@ -125,6 +127,24 @@ export function DashboardPage() {
             {view === 'analyst' ? 'Executive' : 'Analyst'} View
           </button>
         </div>
+
+        {/* Analytics dashboard error banner — one shared banner instead of per-widget error UI */}
+        {analyticsError && (
+          <div
+            data-testid="dashboard-analytics-error-banner"
+            className="p-3 bg-sev-critical/5 border border-sev-critical/20 rounded-lg mb-6 flex items-center gap-2"
+          >
+            <AlertTriangle className="w-4 h-4 text-sev-critical shrink-0" />
+            <span className="text-xs text-text-secondary flex-1">Couldn&apos;t load dashboard analytics</span>
+            <button
+              onClick={() => refetchAnalytics()}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium border border-border text-text-secondary rounded-md hover:bg-bg-hover transition-colors"
+              data-testid="dashboard-analytics-error-retry"
+            >
+              <RefreshCw className="w-3 h-3" /> Retry
+            </button>
+          </div>
+        )}
 
         {/* Conditional: Threat Landscape banner or Org Profile CTA */}
         {mode === 'org-aware' && profile && <ThreatLandscapeBanner profile={profile} />}

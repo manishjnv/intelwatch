@@ -5,11 +5,9 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { Crosshair, ArrowRight } from 'lucide-react'
-import { useAnalyticsDashboard } from '@/hooks/use-analytics-dashboard'
 
 export function AttackTechniqueWidget() {
   const navigate = useNavigate()
-  const { isDemo } = useAnalyticsDashboard()
 
   return (
     <div
@@ -21,7 +19,6 @@ export function AttackTechniqueWidget() {
       <div className="flex items-center gap-2 mb-3">
         <Crosshair className="w-3.5 h-3.5 text-purple-400" />
         <span className="text-xs font-medium text-text-primary">ATT&CK Tactics</span>
-        {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 
