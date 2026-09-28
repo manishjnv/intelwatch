@@ -5,12 +5,13 @@
  */
 import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Shield, Eye, EyeOff, ArrowRight, Check } from 'lucide-react'
+import { Shield, Eye, EyeOff, ArrowRight, Check, Mail } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { PlanCards, PLANS } from '@/components/PlanCards'
 import { salesMailto } from '@/data/plans'
 import { SalesContactNote } from '@/components/SalesContactNote'
 import { TurnstileWidget, CAPTCHA_ENABLED } from '@/components/TurnstileWidget'
+import { useResendVerification } from '@/hooks/use-email-verification'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -32,6 +33,10 @@ export function RegisterPage() {
   const [salesPlan, setSalesPlan] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  // Set when a 409 means "already signed up" — offers a way forward instead of a dead end.
+  const [showResend, setShowResend] = useState(false)
+  const [resendState, setResendState] = useState<'idle' | 'success' | 'rate-limited' | 'error'>('idle')
+  const resend = useResendVerification()
 
   const tenantSlug = useMemo(
     () => tenantName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 63),
@@ -61,6 +66,8 @@ export function RegisterPage() {
     setSelectedPlan(planId)
     setIsSubmitting(true)
     setError('')
+    setShowResend(false)
+    setResendState('idle')
 
     try {
       const res = await fetch('/api/v1/auth/register', {
@@ -86,6 +93,17 @@ export function RegisterPage() {
           setStep('account')
           return
         }
+        if (res.status === 409 && (code === 'EMAIL_ALREADY_REGISTERED' || code === 'CONFLICT')) {
+          setError(
+            code === 'CONFLICT'
+              ? 'An organization with this name already exists.'
+              : (errBody?.error?.message ?? 'Email already registered — please sign in instead'),
+          )
+          setShowResend(true)
+          setIsSubmitting(false)
+          setSelectedPlan(null)
+          return
+        }
         throw new Error(errBody?.error?.message ?? errBody?.message ?? 'Registration failed')
       }
 
@@ -106,6 +124,14 @@ export function RegisterPage() {
       setIsSubmitting(false)
       setSelectedPlan(null)
     }
+  }
+
+  function handleResendVerification() {
+    setResendState('idle')
+    resend.mutate({ email }, {
+      onSuccess: () => setResendState('success'),
+      onError: (err) => setResendState(err.status === 429 ? 'rate-limited' : 'error'),
+    })
   }
 
   // ─── Done State ─────────────────────────────────────────
@@ -152,6 +178,37 @@ export function RegisterPage() {
           orgName={tenantName}
           error={error}
         />
+        {showResend && (
+          <div className="max-w-6xl mx-auto mt-4">
+            <div className="max-w-sm mx-auto p-3 bg-bg-secondary border border-border rounded-lg text-xs text-center">
+              {resendState === 'success' ? (
+                <p className="text-text-secondary">
+                  If that email is registered and unverified, a new verification link is on its way.
+                </p>
+              ) : (
+                <>
+                  <p className="text-text-muted mb-1.5">Already signed up but didn&apos;t get the email?</p>
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resend.isPending}
+                    className="inline-flex items-center gap-1 text-text-link hover:underline"
+                    data-testid="register-resend-verification"
+                  >
+                    <Mail className="w-3 h-3" />
+                    {resend.isPending ? 'Sending...' : 'Resend verification email'}
+                  </button>
+                  {resendState === 'rate-limited' && (
+                    <p className="text-amber-400 mt-1.5">Please wait a few minutes before requesting another email.</p>
+                  )}
+                  {resendState === 'error' && (
+                    <p className="text-sev-critical mt-1.5">Could not send the email — please try again.</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
         {salesPlan && <SalesContactNote planName={salesPlan} />}
       </div>
     )
