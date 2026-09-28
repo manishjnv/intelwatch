@@ -1,7 +1,7 @@
 # Step 6 — Cleanup: empty folders, oversized files, DECISION-032 gate
 
 **Roadmap:** docs/ROADMAP_S149_PLUS.md §3 step 6, §4 Phase 3 (S167–168) · **Module:** chore (repo layout) + docs · **Size:** S + S, then "as touched"
-**Status:** spec, not started. Written 2026-09-25. All counts checked against the repo on that date.
+**Status:** PR 1 (empty folders + scaffold scripts + Folder column) DONE 2026-09-28 (session 171); remaining: DECISION-032 proposal + as-touched file splits. Written 2026-09-25. All counts checked against the repo on that date.
 
 ---
 

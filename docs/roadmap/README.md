@@ -11,7 +11,7 @@ Master plan and order: `docs/ROADMAP_S149_PLUS.md` §3. **Start each session by 
 | 3 | STEP_03_PERSISTENCE.md | All in-memory business stores → Postgres/Redis; CI guard |
 | 4 | STEP_04_DB_ROLE_RLS.md | Least-privilege roles, RLS policies that actually apply |
 | 5 | STEP_05_HONEST_UI.md | Error states instead of demo data, missing endpoints, real Clients, auto-enrich |
-| 6 | STEP_06_CLEANUP.md | Empty folders, files >400 lines, DECISION-032 gate |
+| 6 | STEP_06_CLEANUP.md | Empty folders, files >400 lines, DECISION-032 gate — PR 1 (empty folders + scaffold scripts + Folder column) DONE 2026-09-28 (session 171); remaining: DECISION-032 proposal + as-touched file splits |
 | 7 | STEP_07_CONSOLIDATE_RUNTIME.md | DECISION-032 draft, runtime-host pilot, ~7 deployables |
 | 8 | STEP_08_OBSERVABILITY.md | Alert rules, Alertmanager, request-ID propagation, real metrics |
 | 9 | STEP_09_CONNECTOR_PLUGINS.md | Connector SDK (source + sink), contract tests, SSRF-safe fetch |
