@@ -1,12 +1,12 @@
 /**
  * @module hooks/use-analytics-dashboard
  * @description Comprehensive analytics dashboard hook — fetches all analytics
- * data in parallel with 5-min cache, demo fallbacks, and date range support.
+ * data in parallel with 5-min cache, honest empty/error states (DECISION-048),
+ * and date range support.
  */
 import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { notifyApiError } from './useApiError'
 
 // ─── Date Range ─────────────────────────────────────────────────
 
@@ -32,8 +32,8 @@ export interface AnalyticsSummary {
   totalArticles: number
   totalFeeds: number
   totalAlerts: number
-  avgConfidence: number
-  avgEnrichmentQuality: number
+  avgConfidence: number | null
+  avgEnrichmentQuality: number | null
   pipelineThroughput: number
 }
 
@@ -75,7 +75,28 @@ export interface AnalyticsDashboardData {
   topCves: TopCve[]
 }
 
-// ─── Demo Fallback Data ─────────────────────────────────────────
+// ─── Empty State (DECISION-048: honest empty, never fabricated) ─
+
+export const EMPTY_ANALYTICS: AnalyticsDashboardData = {
+  summary: {
+    totalIocs: 0, totalArticles: 0, totalFeeds: 0, totalAlerts: 0,
+    avgConfidence: null, avgEnrichmentQuality: null, pipelineThroughput: 0,
+  },
+  iocTrend: [],
+  alertTrend: [],
+  iocByType: {},
+  iocBySeverity: {},
+  iocByConfidenceTier: {},
+  iocByLifecycle: {},
+  feedHealth: [],
+  enrichmentStats: { enriched: 0, unenriched: 0, avgQuality: 0, bySource: {} },
+  costStats: { totalCostUsd: 0, costPerArticle: 0, costPerIoc: 0, byModel: {}, trend: [] },
+  topIocs: [],
+  topActors: [],
+  topCves: [],
+}
+
+// ─── Demo Fallback Data (fixture only — a later PR removes it) ──
 
 function daysAgoStr(n: number): string {
   return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
@@ -184,9 +205,9 @@ async function fetchAnalytics(range: DateRange): Promise<AnalyticsDashboardData>
   const actors = val(topActors) as Record<string, unknown>[] | null
   const vulns = val(topVulns) as Record<string, unknown>[] | null
 
-  // If everything failed, return null to trigger demo fallback
+  // If every core source failed, this is a real failure — not a demo trigger.
   const allFailed = [db, tr, dist, cost, enrich].every(v => v === null)
-  if (allFailed) return null as unknown as AnalyticsDashboardData
+  if (allFailed) throw new Error('Analytics unavailable')
 
   const num = (v: unknown) => Number(v ?? 0)
   const iocTrend = (tr ?? []).find(s => s.metric === 'ioc.total')
@@ -198,8 +219,8 @@ async function fetchAnalytics(range: DateRange): Promise<AnalyticsDashboardData>
       totalArticles: num(feed?.totalArticles),
       totalFeeds: num(widgets['active-feeds']?.value),
       totalAlerts: num(alerts?.total ?? widgets['alert-breakdown']?.value),
-      avgConfidence: num(enrich?.highPct ?? 72),
-      avgEnrichmentQuality: num(enrich?.highPct ?? 84),
+      avgConfidence: enrich?.highPct != null ? num(enrich.highPct) : null,
+      avgEnrichmentQuality: enrich?.highPct != null ? num(enrich.highPct) : null,
       pipelineThroughput: num(widgets['processing-rate']?.value ?? 0),
     },
     iocTrend: (iocTrend?.points ?? []).map(p => ({ date: p.timestamp.slice(0, 10), count: p.value })),
@@ -253,26 +274,23 @@ export function useAnalyticsDashboard(initialPreset: DateRangePreset = '7d') {
 
   const result = useQuery({
     queryKey: ['analytics-dashboard-full', dateRange.preset, dateRange.from],
-    queryFn: () => fetchAnalytics(dateRange).catch(err =>
-      notifyApiError(err, 'analytics dashboard', null as unknown as AnalyticsDashboardData),
-    ),
+    queryFn: () => fetchAnalytics(dateRange),
     staleTime: 5 * 60_000,
+    meta: { resource: 'analytics dashboard' },
   })
 
-  const hasData = result.data != null && typeof result.data === 'object' && result.data.summary != null
-  const isDemo = !result.isLoading && !hasData
-  const data: AnalyticsDashboardData = hasData ? result.data : DEMO_ANALYTICS
+  const data = result.data ?? EMPTY_ANALYTICS
 
   return useMemo(() => ({
     ...data,
     isLoading: result.isLoading,
+    isError: result.isError,
     error: result.error,
-    isDemo,
     dateRange,
     setPreset,
     setCustomRange,
     refetch: result.refetch,
     isFetching: result.isFetching,
     dataUpdatedAt: result.dataUpdatedAt,
-  }), [data, result.isLoading, result.error, isDemo, dateRange, setPreset, setCustomRange, result.refetch, result.isFetching, result.dataUpdatedAt])
+  }), [data, result.isLoading, result.isError, result.error, dateRange, setPreset, setCustomRange, result.refetch, result.isFetching, result.dataUpdatedAt])
 }

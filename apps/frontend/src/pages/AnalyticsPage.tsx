@@ -16,7 +16,7 @@ import { ExecutiveSummary } from '@/components/analytics/ExecutiveSummary'
 import { TrendCharts } from '@/components/analytics/TrendCharts'
 import { IntelligenceBreakdown } from '@/components/analytics/IntelligenceBreakdown'
 import {
-  Download, AlertTriangle,
+  Download, AlertTriangle, RefreshCw,
 } from 'lucide-react'
 import React from 'react'
 
@@ -125,17 +125,22 @@ export function AnalyticsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {dashboard.isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect Analytics Service for live metrics</span>
+      {dashboard.isError && (
+        <div className="bg-sev-critical/5 border-b border-sev-critical/20 px-4 py-1.5 flex items-center gap-2" data-testid="dashboard-error-banner">
+          <AlertTriangle className="w-3.5 h-3.5 text-sev-critical shrink-0" />
+          <span className="text-xs text-text-secondary flex-1">Couldn&apos;t load analytics dashboard.</span>
+          <button onClick={() => dashboard.refetch()}
+            className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium border border-border text-text-secondary rounded-md hover:bg-bg-hover transition-colors"
+            data-testid="dashboard-error-retry">
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
         </div>
       )}
 
       <PageStatsBar title="Threat Intelligence Analytics">
         <CompactStat label="Risk Score" value={exec?.riskScore?.toString() ?? '—'}
           color={exec?.riskPosture === 'critical' ? 'text-sev-critical' : exec?.riskPosture === 'high' ? 'text-sev-high' : 'text-sev-medium'} />
-        <CompactStat label="IOCs" value={dashboard.summary.totalIocs.toLocaleString()} />
+        <CompactStat label="IOCs" value={dashboard.isLoading || dashboard.isError ? '—' : dashboard.summary.totalIocs.toLocaleString()} />
         <CompactStat label="Services" value={totalServices > 0 ? `${healthyCount}/${totalServices}` : '—'}
           color={healthyCount === totalServices ? 'text-sev-low' : 'text-sev-medium'} />
         <CompactStat label="Posture" value={exec?.riskPosture?.toUpperCase() ?? '—'} />
@@ -179,7 +184,7 @@ export function AnalyticsPage() {
       {/* Content — 3 vertical sections */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         <SectionErrorBoundary name="executive-summary">
-          <ExecutiveSummary data={dashboard} isDemo={dashboard.isDemo} onNavigate={handleNavigate} />
+          <ExecutiveSummary data={dashboard} onNavigate={handleNavigate} />
         </SectionErrorBoundary>
 
         <SectionErrorBoundary name="trend-charts">

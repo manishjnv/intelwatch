@@ -28,7 +28,7 @@ function severityColor(sev: string): string {
 export function TopCvesWidget() {
   const navigate = useNavigate()
   const { open } = useInvestigationDrawer()
-  const { topCves, isDemo } = useAnalyticsDashboard()
+  const { topCves } = useAnalyticsDashboard()
 
   const cves = useMemo(() =>
     [...topCves]
@@ -46,7 +46,6 @@ export function TopCvesWidget() {
       <div className="flex items-center gap-2 mb-3">
         <ShieldAlert className="w-3.5 h-3.5 text-orange-300" />
         <span className="text-xs font-medium text-text-primary">Top CVEs</span>
-        {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 

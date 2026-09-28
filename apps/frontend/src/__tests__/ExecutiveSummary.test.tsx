@@ -56,10 +56,15 @@ describe('ExecutiveSummary', () => {
     expect(screen.getByTestId('kpi-ai-cost')).toHaveTextContent('$12.47')
   })
 
-  it('demo fallback renders static data', () => {
-    render(<ExecutiveSummary data={DEMO_ANALYTICS} isDemo />)
-    expect(screen.getByText('Demo data — connect services for live metrics')).toBeInTheDocument()
+  it('renders fixture data without a demo indicator', () => {
+    render(<ExecutiveSummary data={DEMO_ANALYTICS} />)
+    expect(screen.queryByText('Demo data — connect services for live metrics')).not.toBeInTheDocument()
     expect(screen.getByTestId('executive-summary')).toBeInTheDocument()
+  })
+
+  it('null avgConfidence renders — instead of a fabricated tier', () => {
+    render(<ExecutiveSummary data={{ ...DEMO_ANALYTICS, summary: { ...DEMO_ANALYTICS.summary, avgConfidence: null } }} />)
+    expect(screen.getByTestId('kpi-confidence')).toHaveTextContent('—')
   })
 
   it('clicking a card triggers onNavigate', () => {

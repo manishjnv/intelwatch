@@ -21,7 +21,7 @@ function healthDot(reliability: number): string {
 
 export function FeedHealthWidget() {
   const navigate = useNavigate()
-  const { feedHealth, isDemo } = useAnalyticsDashboard()
+  const { feedHealth } = useAnalyticsDashboard()
 
   const feeds = feedHealth.slice(0, 6)
   const healthyCount = feeds.filter(f => f.reliability >= 80).length
@@ -46,7 +46,6 @@ export function FeedHealthWidget() {
             )}
           </span>
         )}
-        {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 

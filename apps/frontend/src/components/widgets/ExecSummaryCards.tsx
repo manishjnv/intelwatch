@@ -31,7 +31,7 @@ function deriveRiskLevel(severity: Record<string, number>): string {
 
 export function ExecSummaryCards() {
   const {
-    iocBySeverity, iocTrend, topActors, topCves, summary, feedHealth, isDemo,
+    iocBySeverity, iocTrend, topActors, topCves, summary, feedHealth, isLoading, isError,
   } = useAnalyticsDashboard()
 
   const data = useMemo(() => {
@@ -65,6 +65,8 @@ export function ExecSummaryCards() {
     return { risk, riskKey, pctChange, threats, activeFeedCount, avgReliability, riskSummary }
   }, [iocBySeverity, iocTrend, topActors, topCves, summary, feedHealth])
 
+  const showDash = isLoading || isError
+
   const trendIcon = data.pctChange > 5
     ? <TrendingUp className="w-4 h-4 text-red-400" />
     : data.pctChange < -5
@@ -78,13 +80,12 @@ export function ExecSummaryCards() {
         <div className="flex items-center gap-2 mb-3">
           <Shield className="w-5 h-5 text-text-muted" />
           <span className="text-sm font-medium text-text-primary">Risk Posture</span>
-          {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent ml-auto">Demo</span>}
         </div>
         <div className="flex items-center gap-3 mb-2">
-          <span className={`text-2xl font-bold ${data.risk.color}`}>{data.risk.label}</span>
-          {trendIcon}
+          <span className={`text-2xl font-bold ${data.risk.color}`}>{showDash ? '—' : data.risk.label}</span>
+          {!showDash && trendIcon}
         </div>
-        <p className="text-xs text-text-secondary">{data.riskSummary}</p>
+        <p className="text-xs text-text-secondary">{showDash ? '—' : data.riskSummary}</p>
       </div>
 
       {/* Card 2: Top 3 Threats */}
@@ -115,17 +116,17 @@ export function ExecSummaryCards() {
         </div>
         <div className="space-y-2">
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-text-primary tabular-nums">{data.activeFeedCount}</span>
+            <span className="text-2xl font-bold text-text-primary tabular-nums">{showDash ? '—' : data.activeFeedCount}</span>
             <span className="text-xs text-text-muted">active feeds</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex-1 h-2 bg-bg-elevated rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full bg-green-500"
-                style={{ width: `${data.avgReliability}%` }}
+                style={{ width: `${showDash ? 0 : data.avgReliability}%` }}
               />
             </div>
-            <span className="text-xs text-text-secondary tabular-nums">{data.avgReliability}%</span>
+            <span className="text-xs text-text-secondary tabular-nums">{showDash ? '—' : `${data.avgReliability}%`}</span>
           </div>
           <p className="text-[10px] text-text-muted">Average feed reliability</p>
         </div>

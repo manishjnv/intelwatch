@@ -1,6 +1,6 @@
 /**
- * Tests for use-analytics-dashboard hook — parallel fetch, demo fallback,
- * date range, caching, partial failure, loading/error states.
+ * Tests for use-analytics-dashboard hook — parallel fetch, honest empty/error
+ * states (DECISION-048), date range, caching, partial failure.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@/test/test-utils'
@@ -14,11 +14,8 @@ vi.mock('@/lib/api', () => ({
   api: (...args: unknown[]) => mockApi(...args),
   ApiError: class extends Error { status: number; constructor(s: number, m: string) { super(m); this.status = s } },
 }))
-vi.mock('@/hooks/useApiError', () => ({
-  notifyApiError: vi.fn(),
-}))
 
-import { useAnalyticsDashboard, DEMO_ANALYTICS } from '@/hooks/use-analytics-dashboard'
+import { useAnalyticsDashboard, EMPTY_ANALYTICS } from '@/hooks/use-analytics-dashboard'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -121,17 +118,45 @@ describe('useAnalyticsDashboard', () => {
     const { result } = renderHook(() => useAnalyticsDashboard('7d'), { wrapper: createWrapper() })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
+    expect(result.current.isError).toBe(false)
+    // Failed sections (cost, distributions) come back empty; unaffected sections still populate.
     expect(result.current.summary.totalIocs).toBe(5000)
+    expect(result.current.iocByType).toEqual({})
+    expect(result.current.costStats.totalCostUsd).toBe(0)
+    expect(result.current.summary.avgConfidence).toBe(50)
   })
 
-  it('all endpoints fail → demo fallback data', async () => {
+  it('all endpoints fail → isError true, honest empty fields, no isDemo key', async () => {
     mockApi.mockRejectedValue(new Error('network error'))
     const { result } = renderHook(() => useAnalyticsDashboard('7d'), { wrapper: createWrapper() })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(true)
-    expect(result.current.summary.totalIocs).toBe(DEMO_ANALYTICS.summary.totalIocs)
+    expect(result.current.isError).toBe(true)
+    expect(result.current.summary).toEqual(EMPTY_ANALYTICS.summary)
+    expect(result.current.topIocs).toEqual([])
+    expect('isDemo' in result.current).toBe(false)
+  })
+
+  it('enrichment data missing → avgConfidence and avgEnrichmentQuality are null', async () => {
+    mockApi.mockImplementation((path: string) => {
+      if (path.startsWith('/analytics/trends')) return Promise.resolve(MOCK_TRENDS)
+      if (path.startsWith('/analytics/distributions')) return Promise.resolve({ byType: {}, bySeverity: {}, byConfidenceTier: {}, byLifecycle: {} })
+      if (path.startsWith('/analytics/cost-tracking')) return Promise.resolve({ totalCostUsd: 0, costPerArticle: 0, costPerIoc: 0, byModel: {}, trend: [] })
+      if (path.startsWith('/analytics/enrichment-quality')) return Promise.reject(new Error('fail'))
+      if (path.startsWith('/analytics/feed-performance')) return Promise.resolve({ totalArticles: 0, feeds: [] })
+      if (path.startsWith('/analytics/alert-summary')) return Promise.resolve({ total: 0 })
+      if (path.startsWith('/analytics/top-iocs')) return Promise.resolve([])
+      if (path.startsWith('/analytics/top-actors')) return Promise.resolve([])
+      if (path.startsWith('/analytics/top-vulns')) return Promise.resolve([])
+      if (path.startsWith('/analytics')) return Promise.resolve(MOCK_DASHBOARD)
+      return Promise.resolve(null)
+    })
+    const { result } = renderHook(() => useAnalyticsDashboard('7d'), { wrapper: createWrapper() })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.isError).toBe(false)
+    expect(result.current.summary.avgConfidence).toBeNull()
+    expect(result.current.summary.avgEnrichmentQuality).toBeNull()
   })
 
   it('cache: staleTime prevents immediate refetch', async () => {
@@ -159,12 +184,14 @@ describe('useAnalyticsDashboard', () => {
     expect(diffHours).toBeLessThan(25)
   })
 
-  it('loading state true during fetch', async () => {
+  it('loading state true during fetch → fields equal EMPTY_ANALYTICS, not demo numbers', async () => {
     let resolveApi: (v: unknown) => void
     mockApi.mockReturnValue(new Promise(r => { resolveApi = r }))
 
     const { result } = renderHook(() => useAnalyticsDashboard('7d'), { wrapper: createWrapper() })
     expect(result.current.isLoading).toBe(true)
+    expect(result.current.summary).toEqual(EMPTY_ANALYTICS.summary)
+    expect(result.current.topIocs).toEqual([])
 
     resolveApi!(MOCK_DASHBOARD)
     await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -175,8 +202,8 @@ describe('useAnalyticsDashboard', () => {
     const { result } = renderHook(() => useAnalyticsDashboard('7d'), { wrapper: createWrapper() })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    // Even on error, demo data is provided
-    expect(result.current.isDemo).toBe(true)
+    expect(result.current.isError).toBe(true)
+    expect(result.current.summary).toEqual(EMPTY_ANALYTICS.summary)
   })
 
   it('custom date range works', async () => {

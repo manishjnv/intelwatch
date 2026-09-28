@@ -107,28 +107,30 @@ function KpiCard({ label, value, icon: Icon, delta, invertDelta, sparkline, badg
 
 interface ExecutiveSummaryProps {
   data: AnalyticsDashboardData
-  isDemo?: boolean
   onNavigate?: (section: string) => void
 }
 
-export function ExecutiveSummary({ data, isDemo, onNavigate }: ExecutiveSummaryProps) {
+export function ExecutiveSummary({ data, onNavigate }: ExecutiveSummaryProps) {
   const { summary, iocTrend, feedHealth, costStats } = data
 
   const activeFeedCount = feedHealth.filter(f => f.status === 'active').length
   const totalFeedCount = feedHealth.length || summary.totalFeeds
   const feedPct = totalFeedCount > 0 ? Math.round((activeFeedCount / totalFeedCount) * 100) : 100
   const feedHasFailure = feedHealth.some(f => f.status !== 'active')
-  const enrichPct = summary.totalIocs > 0
-    ? Math.round((data.enrichmentStats.enriched / (data.enrichmentStats.enriched + data.enrichmentStats.unenriched)) * 100)
+  const enrichedTotal = data.enrichmentStats.enriched + data.enrichmentStats.unenriched
+  const enrichPct = summary.totalIocs > 0 && enrichedTotal > 0
+    ? Math.round((data.enrichmentStats.enriched / enrichedTotal) * 100)
     : summary.avgEnrichmentQuality
 
   const activeThreats = (data.iocBySeverity.critical ?? 0) + (data.iocBySeverity.high ?? 0)
   const iocSparkline = iocTrend.map(p => p.count)
   const costTrend = costStats.trend.map(t => t.cost)
 
-  const confTier = summary.avgConfidence >= 80 ? 'High'
+  const confTier = summary.avgConfidence == null ? null
+    : summary.avgConfidence >= 80 ? 'High'
     : summary.avgConfidence >= 50 ? 'Medium' : 'Low'
-  const confColor = confTier === 'High' ? 'text-sev-low' : confTier === 'Medium' ? 'text-sev-medium' : 'text-sev-critical'
+  const confColor = confTier === 'High' ? 'text-sev-low' : confTier === 'Medium' ? 'text-sev-medium'
+    : confTier === 'Low' ? 'text-sev-critical' : 'text-text-muted'
 
   const budgetLimit = 50 // $50/mo default
   const costColor = costStats.totalCostUsd > budgetLimit ? 'text-sev-critical'
@@ -138,11 +140,6 @@ export function ExecutiveSummary({ data, isDemo, onNavigate }: ExecutiveSummaryP
 
   return (
     <section data-testid="executive-summary" className="space-y-2">
-      {isDemo && (
-        <div className="p-1.5 bg-accent/5 border border-accent/20 rounded text-[10px] text-accent">
-          Demo data — connect services for live metrics
-        </div>
-      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         <KpiCard testId="kpi-total-iocs" label="Total IOCs" value={summary.totalIocs.toLocaleString()}
           icon={Shield} sparkline={iocSparkline} delta={iocTrend.length > 1 ? iocTrend[iocTrend.length - 1]!.count - iocTrend[0]!.count : 0}
@@ -161,14 +158,14 @@ export function ExecutiveSummary({ data, isDemo, onNavigate }: ExecutiveSummaryP
         <KpiCard testId="kpi-throughput" label="Throughput" value={`${summary.pipelineThroughput}/hr`}
           icon={Zap} color="text-accent" onClick={nav('trends')} />
 
-        <KpiCard testId="kpi-confidence" label="Avg Confidence" value={`${summary.avgConfidence}%`}
+        <KpiCard testId="kpi-confidence" label="Avg Confidence" value={summary.avgConfidence != null ? `${summary.avgConfidence}%` : '—'}
           icon={Brain}
-          badge={<span className={cn('text-[9px] px-1 py-0.5 rounded-full font-medium', confColor, `bg-current/10`)}>{confTier}</span>}
+          badge={confTier && <span className={cn('text-[9px] px-1 py-0.5 rounded-full font-medium', confColor, `bg-current/10`)}>{confTier}</span>}
           onClick={nav('confidence')} />
 
-        <KpiCard testId="kpi-enrichment" label="Enrichment" value={`${enrichPct}%`}
+        <KpiCard testId="kpi-enrichment" label="Enrichment" value={enrichPct != null ? `${enrichPct}%` : '—'}
           icon={Activity} color="text-sev-low"
-          badge={<div className="w-12 h-1.5 rounded-full bg-bg-elevated overflow-hidden"><div className="h-full bg-sev-low rounded-full" style={{ width: `${enrichPct}%` }} /></div>}
+          badge={<div className="w-12 h-1.5 rounded-full bg-bg-elevated overflow-hidden"><div className="h-full bg-sev-low rounded-full" style={{ width: `${enrichPct ?? 0}%` }} /></div>}
           onClick={nav('enrichment')} />
 
         <KpiCard testId="kpi-ai-cost" label="AI Cost (30d)" value={`$${costStats.totalCostUsd.toFixed(2)}`}

@@ -9,18 +9,6 @@ import { useAnalyticsDashboard, type FeedHealthItem } from '@/hooks/use-analytic
 import { ArrowRight, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-/* ------------------------------------------------------------------ */
-/* Demo quality scores (used when real data lacks IOC-level detail)    */
-/* ------------------------------------------------------------------ */
-const DEMO_QUALITY: { name: string; score: number; critical: number; high: number; avgConf: number }[] = [
-  { name: 'CISA KEV', score: 92, critical: 38, high: 45, avgConf: 95 },
-  { name: 'AlienVault OTX', score: 78, critical: 22, high: 35, avgConf: 82 },
-  { name: 'Abuse.ch URLhaus', score: 71, critical: 15, high: 42, avgConf: 76 },
-  { name: 'NVD CVE', score: 65, critical: 12, high: 28, avgConf: 88 },
-  { name: 'MISP Community', score: 54, critical: 8, high: 22, avgConf: 68 },
-  { name: 'PhishTank', score: 42, critical: 5, high: 18, avgConf: 62 },
-]
-
 interface ScoredFeed {
   name: string
   score: number
@@ -52,11 +40,10 @@ function barColor(score: number): string {
 
 export function FeedValueWidget() {
   const navigate = useNavigate()
-  const { feedHealth, isDemo } = useAnalyticsDashboard()
+  const { feedHealth } = useAnalyticsDashboard()
   const [hoveredFeed, setHoveredFeed] = useState<string | null>(null)
 
   const scored = useMemo(() => {
-    if (feedHealth.length === 0) return DEMO_QUALITY.slice(0, 5)
     return feedHealth
       .map(scoreFeed)
       .sort((a, b) => b.score - a.score)
@@ -74,9 +61,6 @@ export function FeedValueWidget() {
       <div className="flex items-center gap-2 mb-3">
         <Zap className="w-3.5 h-3.5 text-amber-400" />
         <span className="text-xs font-medium text-text-primary">Feed Quality</span>
-        {(isDemo || feedHealth.length === 0) && (
-          <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>
-        )}
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 

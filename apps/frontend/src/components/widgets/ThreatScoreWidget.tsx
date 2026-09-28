@@ -62,7 +62,7 @@ interface Props { profile: { industry?: string; techStack?: string[] } | null }
 export function ThreatScoreWidget({ profile }: Props) {
   const navigate = useNavigate()
   const { open } = useInvestigationDrawer()
-  const { topIocs, topCves, isDemo } = useAnalyticsDashboard()
+  const { topIocs, topCves } = useAnalyticsDashboard()
 
   const scored = useMemo(() => {
     const cveMap = new Map<string, number>(
@@ -89,7 +89,6 @@ export function ThreatScoreWidget({ profile }: Props) {
       <div className="flex items-center gap-2 mb-3">
         <Flame className="w-3.5 h-3.5 text-red-400" />
         <span className="text-xs font-medium text-text-primary">Threat Score</span>
-        {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 

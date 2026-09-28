@@ -26,7 +26,7 @@ function relativeTime(dateStr: string): string {
 
 export function RecentAlertsWidget() {
   const navigate = useNavigate()
-  const { alertTrend, isDemo } = useAnalyticsDashboard()
+  const { alertTrend } = useAnalyticsDashboard()
 
   const alerts = useMemo(() => {
     // alertTrend is a time-series; derive mock recent alerts from it
@@ -61,7 +61,6 @@ export function RecentAlertsWidget() {
             {alerts.reduce((s, a) => s + a.count, 0)}
           </span>
         )}
-        {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-accent">Demo</span>}
         <ArrowRight className="w-3 h-3 text-text-muted ml-auto" />
       </div>
 

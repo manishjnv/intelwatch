@@ -39,7 +39,7 @@ vi.mock('@/hooks/use-analytics-dashboard', async () => {
     ...actual,
     useAnalyticsDashboard: () => ({
       ...(actual as any).DEMO_ANALYTICS,
-      isLoading: false, isDemo: true, error: null, isFetching: false,
+      isLoading: false, isError: false, error: null, isFetching: false,
       dateRange: { preset: '7d', from: '2026-03-20', to: '2026-03-27' },
       setPreset: vi.fn(), setCustomRange: vi.fn(), refetch: vi.fn(), dataUpdatedAt: Date.now(),
     }),
