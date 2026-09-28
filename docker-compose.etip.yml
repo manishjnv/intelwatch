@@ -459,6 +459,7 @@ services:
       TI_RATE_LIMIT_WINDOW_MS: ${TI_RATE_LIMIT_WINDOW_MS:-60000}
       TI_RATE_LIMIT_MAX_REQUESTS: ${TI_RATE_LIMIT_MAX_REQUESTS:-100}
       TI_LOG_LEVEL: ${TI_LOG_LEVEL:-info}
+      TI_IOC_SERVICE_CALLERS: ${TI_IOC_SERVICE_CALLERS:-threat-graph}
     ports:
       - "127.0.0.1:3007:3007"
     depends_on:

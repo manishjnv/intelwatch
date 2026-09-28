@@ -1,5 +1,8 @@
 import type { FastifyInstance, FastifyPluginCallback } from 'fastify';
-import { authenticate, getUser, rbac } from '../plugins/auth.js';
+import {
+  authenticate, getUser, rbac,
+  authenticateUserOrService, authenticateServiceNoTenant, getTenantId,
+} from '../plugins/auth.js';
 import type { IOCService } from '../service.js';
 import {
   ListIocsQuerySchema, CreateIocBodySchema, UpdateIocBodySchema,
@@ -11,12 +14,19 @@ import {
 export function iocRoutes(service: IOCService): FastifyPluginCallback {
   return (app: FastifyInstance, _opts: unknown, done: (err?: Error) => void) => {
 
-    // ── GET / — Paginated IOC list ──────────────────────────────
-    app.get('/', { preHandler: [authenticate] }, async (req, reply) => {
-      const user = getUser(req);
+    // ── GET / — Paginated IOC list (user or service caller, S171) ─
+    app.get('/', { preHandler: [authenticateUserOrService] }, async (req, reply) => {
+      const tenantId = getTenantId(req);
       const query = ListIocsQuerySchema.parse(req.query);
-      const result = await service.listIocs(user.tenantId, query);
+      const result = await service.listIocs(tenantId, query);
       return reply.send({ data: result.items, total: result.total, page: query.page, limit: query.limit });
+    });
+
+    // ── GET /internal/tenants — S171: cross-tenant IOC counts ────
+    // Service-only, cross-tenant — never reachable by a user token.
+    app.get('/internal/tenants', { preHandler: [authenticateServiceNoTenant] }, async (_req, reply) => {
+      const data = await service.listTenantsWithIocs();
+      return reply.send({ data });
     });
 
     // ── POST / — Create manual IOC ──────────────────────────────
@@ -76,11 +86,12 @@ export function iocRoutes(service: IOCService): FastifyPluginCallback {
       return reply.send({ data: report });
     });
 
-    // ── GET /:id — IOC detail with computed accuracy signals ────
-    app.get('/:id', { preHandler: [authenticate] }, async (req, reply) => {
-      const user = getUser(req);
+    // ── GET /:id — IOC detail with computed accuracy signals ─────
+    // (user or service caller, S171)
+    app.get('/:id', { preHandler: [authenticateUserOrService] }, async (req, reply) => {
+      const tenantId = getTenantId(req);
       const { id } = IocIdParamSchema.parse(req.params);
-      const ioc = await service.getIocDetail(user.tenantId, id);
+      const ioc = await service.getIocDetail(tenantId, id);
       return reply.send({ data: ioc });
     });
 

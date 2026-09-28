@@ -1,5 +1,6 @@
 import { type PrismaClient, type Prisma, type IocType, type Severity, type IocLifecycle, type TLP } from '@prisma/client';
 import type { ListIocsQuery, SearchIocsBody, ExportIocsBody } from './schemas/ioc.js';
+import { feedStats, iocCountsByTenant, type FeedStats, type TenantIocSummary } from './repository-aggregates.js';
 
 /** Prisma-backed IOC repository — all queries are tenant-scoped. */
 export class IOCRepository {
@@ -12,7 +13,7 @@ export class IOCRepository {
       iocType?: string[]; severity?: string[]; lifecycle?: string[];
       tlp?: string[]; tags?: string[]; search?: string;
       minConfidence?: number; dateFrom?: Date; dateTo?: Date;
-      feedSourceId?: string;
+      feedSourceId?: string; updatedSince?: string;
     },
   ): Prisma.IocWhereInput {
     const where: Prisma.IocWhereInput = { tenantId };
@@ -43,6 +44,9 @@ export class IOCRepository {
     if (filters.feedSourceId) {
       where.feedSourceId = filters.feedSourceId;
     }
+    if (filters.updatedSince) {
+      where.updatedAt = { gte: new Date(filters.updatedSince) };
+    }
     if (filters.search) {
       const term = filters.search;
       where.OR = [
@@ -63,7 +67,8 @@ export class IOCRepository {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.ioc.findMany({
         where,
-        orderBy: { [query.sort]: query.order },
+        // id tie-breaker: bulk inserts share timestamps; without it offset pages can skip/duplicate rows.
+        orderBy: [{ [query.sort]: query.order }, { id: 'asc' }],
         skip,
         take: query.limit,
       }),
@@ -344,40 +349,8 @@ export class IOCRepository {
   }
 
   /** B3: Per-feed accuracy aggregation. */
-  async getFeedStats(tenantId: string): Promise<Array<{
-    feedSourceId: string; total: number; avgConfidence: number;
-    falsePositiveCount: number; revokedCount: number;
-  }>> {
-    const feeds = await this.prisma.ioc.groupBy({
-      by: ['feedSourceId'],
-      where: { tenantId, feedSourceId: { not: null } },
-      orderBy: { feedSourceId: 'asc' },
-      _count: { _all: true },
-      _avg: { confidence: true },
-    });
-
-    const results: Array<{
-      feedSourceId: string; total: number; avgConfidence: number;
-      falsePositiveCount: number; revokedCount: number;
-    }> = [];
-
-    for (const f of feeds) {
-      if (!f.feedSourceId) continue;
-      const fpCount = await this.prisma.ioc.count({
-        where: { tenantId, feedSourceId: f.feedSourceId, lifecycle: 'false_positive' },
-      });
-      const revokedCount = await this.prisma.ioc.count({
-        where: { tenantId, feedSourceId: f.feedSourceId, lifecycle: 'revoked' },
-      });
-      results.push({
-        feedSourceId: f.feedSourceId,
-        total: f._count._all,
-        avgConfidence: Math.round(f._avg.confidence ?? 0),
-        falsePositiveCount: fpCount,
-        revokedCount,
-      });
-    }
-    return results;
+  async getFeedStats(tenantId: string): Promise<FeedStats[]> {
+    return feedStats(this.prisma, tenantId);
   }
 
   /** B2: Store analyst override in enrichmentData. */
@@ -390,5 +363,10 @@ export class IOCRepository {
       where: { id },
       data: { confidence: override.confidence, enrichmentData: enrichment as Prisma.JsonObject, updatedAt: new Date() },
     });
+  }
+
+  /** Per-tenant IOC counts + latest update time (cross-tenant; service-auth callers only). */
+  async groupByTenant(): Promise<TenantIocSummary[]> {
+    return iocCountsByTenant(this.prisma);
   }
 }
