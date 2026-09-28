@@ -18,6 +18,8 @@ const EnvSchema = z.object({
   TI_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   /** Gates enqueueing analyst-write IOCs to the ES search-index queue (S157). */
   TI_IOC_INDEX_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  /** Comma-separated allowlist of service-JWT issuers allowed to call read-only IOC routes (S171). */
+  TI_IOC_SERVICE_CALLERS: z.string().default('threat-graph'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

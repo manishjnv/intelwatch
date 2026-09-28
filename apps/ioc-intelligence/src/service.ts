@@ -69,6 +69,11 @@ export class IOCService {
     return this.repo.findMany(tenantId, query);
   }
 
+  /** S171: cross-tenant IOC counts for threat-graph reconciliation. Service-auth only. */
+  async listTenantsWithIocs(): Promise<Array<{ tenantId: string; iocCount: number; lastUpdatedAt: Date | null }>> {
+    return this.repo.groupByTenant();
+  }
+
   /** Get single IOC by ID. Throws 404 if not found. */
   async getIoc(tenantId: string, id: string): Promise<IocRecord> {
     const ioc = await this.repo.findById(tenantId, id) as IocRecord | null;

@@ -29,7 +29,7 @@ export const ListIocsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(500).default(50),
   sort: z.enum([
-    'firstSeen', 'lastSeen', 'confidence', 'severity', 'createdAt',
+    'firstSeen', 'lastSeen', 'confidence', 'severity', 'createdAt', 'updatedAt',
   ]).default('lastSeen'),
   order: z.enum(['asc', 'desc']).default('desc'),
   iocType: z.union([IocTypeEnum, z.array(IocTypeEnum)]).optional()
@@ -47,6 +47,8 @@ export const ListIocsQuerySchema = z.object({
   dateTo: z.coerce.date().optional(),
   minConfidence: z.coerce.number().int().min(0).max(100).optional(),
   feedSourceId: z.string().uuid().optional(),
+  /** S171: filter to IOCs updated at/after this instant (threat-graph reconciliation). */
+  updatedSince: z.string().datetime().optional(),
 });
 export type ListIocsQuery = z.infer<typeof ListIocsQuerySchema>;
 
