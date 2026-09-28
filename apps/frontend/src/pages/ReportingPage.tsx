@@ -16,6 +16,7 @@ import {
   type ReportType, type ReportFormat, type ReportStatus,
 } from '@/hooks/use-reporting-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
   FileText, Calendar, LayoutTemplate, Download, Copy, Trash2,
   Plus, Clock, CheckCircle2, XCircle, Loader2,
@@ -240,22 +241,22 @@ export function ReportingPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null)
 
-  const { data: reports, isDemo } = useReports()
+  const reportsQuery = useReports()
   const { data: stats } = useReportStats()
-  const { data: templates } = useReportTemplates()
-  const { data: schedules } = useReportSchedules()
+  const templatesQuery = useReportTemplates()
+  const schedulesQuery = useReportSchedules()
 
   const cloneMut = useCloneReport()
   const bulkDeleteMut = useBulkDeleteReports()
   const deleteSched = useDeleteSchedule()
   const bulkToggle = useBulkToggleSchedules()
 
-  const reportList = reports?.data ?? []
-  const scheduleList = schedules ?? []
-  const templateList = templates ?? []
+  const reportList = reportsQuery.data?.data ?? []
+  const scheduleList = schedulesQuery.data ?? []
+  const templateList = templatesQuery.data ?? []
 
   // Auto-refresh pending/generating reports every 5s
-  const { refetch } = useReports()
+  const { refetch } = reportsQuery
   useEffect(() => {
     const hasPending = reportList.some(r => r.status === 'pending' || r.status === 'generating')
     if (!hasPending) return
@@ -303,7 +304,7 @@ export function ReportingPage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* ─── Stats bar ─── */}
-      <PageStatsBar title="Reporting" isDemo={isDemo}>
+      <PageStatsBar title="Reporting">
         <CompactStat label="Total Reports" value={stats ? String(stats.total) : '—'} />
         <CompactStat label="Completed" value={stats ? String(stats.byStatus.completed) : '—'} />
         <CompactStat label="Failed" value={stats ? String(stats.byStatus.failed) : '—'} highlight={!!stats?.byStatus.failed} />
@@ -365,62 +366,68 @@ export function ReportingPage() {
             {compareIds && <ComparePanel idA={compareIds[0]} idB={compareIds[1]} onClose={() => setCompareIds(null)} />}
 
             {/* Report table */}
-            <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border-subtle">
-                      <th className="text-left px-4 py-3 w-8">
-                        <input type="checkbox" checked={selected.size === reportList.length && reportList.length > 0}
-                          onChange={toggleSelectAll} className="accent-accent" />
-                      </th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Title</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Type</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Format</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Status</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium hidden sm:table-cell">Created</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium hidden lg:table-cell">Time</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportList.map(r => (
-                      <tr key={r.id} className={cn(
-                        'border-b border-border-subtle/50 hover:bg-bg-primary/50 transition-colors',
-                        selected.has(r.id) && 'bg-accent/5',
-                      )}>
-                        <td className="px-4 py-2.5">
-                          <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="accent-accent" />
-                        </td>
-                        <td className="px-4 py-2.5 text-text-primary font-medium max-w-[200px] truncate" title={r.title}>{r.title}</td>
-                        <td className="px-4 py-2.5"><Badge label={r.type} className={TYPE_COLORS[r.type]} /></td>
-                        <td className="px-4 py-2.5 text-text-secondary">{FORMAT_LABELS[r.format]}</td>
-                        <td className="px-4 py-2.5"><StatusBadge status={r.status} /></td>
-                        <td className="px-4 py-2.5 text-text-muted hidden sm:table-cell whitespace-nowrap">{fmtDate(r.createdAt)}</td>
-                        <td className="px-4 py-2.5 text-text-muted hidden lg:table-cell">{r.generationTimeMs ? fmtMs(r.generationTimeMs) : '—'}</td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-1">
-                            {r.status === 'completed' && (
-                              <button onClick={() => handleDownload(r.id)} title="Download"
-                                className="p-1 rounded hover:bg-bg-primary text-text-muted hover:text-accent transition-colors">
-                                <Download className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            <button onClick={() => cloneMut.mutate(r.id)} title="Clone"
-                              className="p-1 rounded hover:bg-bg-primary text-text-muted hover:text-accent transition-colors">
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {reportList.length === 0 && (
-                  <div className="px-4 py-8 text-center text-xs text-text-muted">No reports found. Create your first report above.</div>
-                )}
-              </div>
-            </div>
+            <QueryStateView
+              query={reportsQuery}
+              resource="reports"
+              isEmpty={d => d.data.length === 0}
+              empty={<div className="px-4 py-8 text-center text-xs text-text-muted">No reports yet — generate your first report above.</div>}
+            >
+              {data => (
+                <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border-subtle">
+                          <th className="text-left px-4 py-3 w-8">
+                            <input type="checkbox" checked={selected.size === reportList.length && reportList.length > 0}
+                              onChange={toggleSelectAll} className="accent-accent" />
+                          </th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Title</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Type</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Format</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Status</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium hidden sm:table-cell">Created</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium hidden lg:table-cell">Time</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.data.map(r => (
+                          <tr key={r.id} className={cn(
+                            'border-b border-border-subtle/50 hover:bg-bg-primary/50 transition-colors',
+                            selected.has(r.id) && 'bg-accent/5',
+                          )}>
+                            <td className="px-4 py-2.5">
+                              <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="accent-accent" />
+                            </td>
+                            <td className="px-4 py-2.5 text-text-primary font-medium max-w-[200px] truncate" title={r.title}>{r.title}</td>
+                            <td className="px-4 py-2.5"><Badge label={r.type} className={TYPE_COLORS[r.type]} /></td>
+                            <td className="px-4 py-2.5 text-text-secondary">{FORMAT_LABELS[r.format]}</td>
+                            <td className="px-4 py-2.5"><StatusBadge status={r.status} /></td>
+                            <td className="px-4 py-2.5 text-text-muted hidden sm:table-cell whitespace-nowrap">{fmtDate(r.createdAt)}</td>
+                            <td className="px-4 py-2.5 text-text-muted hidden lg:table-cell">{r.generationTimeMs ? fmtMs(r.generationTimeMs) : '—'}</td>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-1">
+                                {r.status === 'completed' && (
+                                  <button onClick={() => handleDownload(r.id)} title="Download"
+                                    className="p-1 rounded hover:bg-bg-primary text-text-muted hover:text-accent transition-colors">
+                                    <Download className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                <button onClick={() => cloneMut.mutate(r.id)} title="Clone"
+                                  className="p-1 rounded hover:bg-bg-primary text-text-muted hover:text-accent transition-colors">
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </QueryStateView>
           </div>
         )}
 
@@ -448,60 +455,66 @@ export function ReportingPage() {
                 {scheduleList.filter(s => s.enabled).length}/{scheduleList.length} active
               </span>
             </div>
-            <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border-subtle">
-                      <th className="text-left px-4 py-3 w-8">
-                        <input type="checkbox"
-                          checked={selectedSchedules.size === scheduleList.length && scheduleList.length > 0}
-                          onChange={() => setSelectedSchedules(prev => prev.size === scheduleList.length ? new Set() : new Set(scheduleList.map(s => s.id)))}
-                          className="accent-accent" />
-                      </th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Name</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Type</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium hidden sm:table-cell">Cron</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Enabled</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium hidden md:table-cell">Last Run</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium hidden lg:table-cell">Runs</th>
-                      <th className="text-left px-4 py-3 text-text-muted font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scheduleList.map(s => (
-                      <tr key={s.id} className={cn(
-                        'border-b border-border-subtle/50 hover:bg-bg-primary/50 transition-colors',
-                        selectedSchedules.has(s.id) && 'bg-accent/5',
-                      )}>
-                        <td className="px-4 py-2.5">
-                          <input type="checkbox" checked={selectedSchedules.has(s.id)} onChange={() => toggleScheduleSelect(s.id)} className="accent-accent" />
-                        </td>
-                        <td className="px-4 py-2.5 text-text-primary font-medium">{s.name}</td>
-                        <td className="px-4 py-2.5"><Badge label={s.type} className={TYPE_COLORS[s.type]} /></td>
-                        <td className="px-4 py-2.5 text-text-muted font-mono hidden sm:table-cell">{s.cronExpression}</td>
-                        <td className="px-4 py-2.5">
-                          <span className={cn('text-[11px] font-medium', s.enabled ? 'text-sev-low' : 'text-text-muted')}>
-                            {s.enabled ? 'Active' : 'Disabled'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-text-muted hidden md:table-cell whitespace-nowrap">{s.lastRunAt ? fmtDate(s.lastRunAt) : '—'}</td>
-                        <td className="px-4 py-2.5 text-text-secondary hidden lg:table-cell">{s.runCount}</td>
-                        <td className="px-4 py-2.5">
-                          <button onClick={() => deleteSched.mutate(s.id)} title="Delete schedule"
-                            className="p-1 rounded hover:bg-sev-critical/10 text-text-muted hover:text-sev-critical transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {scheduleList.length === 0 && (
-                  <div className="px-4 py-8 text-center text-xs text-text-muted">No schedules configured. Create one to automate report generation.</div>
-                )}
-              </div>
-            </div>
+            <QueryStateView
+              query={schedulesQuery}
+              resource="report schedules"
+              isEmpty={d => d.length === 0}
+              empty={<div className="px-4 py-8 text-center text-xs text-text-muted">No schedules configured. Create one to automate report generation.</div>}
+            >
+              {data => (
+                <div className="bg-bg-elevated rounded-lg border border-border-subtle overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border-subtle">
+                          <th className="text-left px-4 py-3 w-8">
+                            <input type="checkbox"
+                              checked={selectedSchedules.size === scheduleList.length && scheduleList.length > 0}
+                              onChange={() => setSelectedSchedules(prev => prev.size === scheduleList.length ? new Set() : new Set(scheduleList.map(s => s.id)))}
+                              className="accent-accent" />
+                          </th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Name</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Type</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium hidden sm:table-cell">Cron</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Enabled</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium hidden md:table-cell">Last Run</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium hidden lg:table-cell">Runs</th>
+                          <th className="text-left px-4 py-3 text-text-muted font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.map(s => (
+                          <tr key={s.id} className={cn(
+                            'border-b border-border-subtle/50 hover:bg-bg-primary/50 transition-colors',
+                            selectedSchedules.has(s.id) && 'bg-accent/5',
+                          )}>
+                            <td className="px-4 py-2.5">
+                              <input type="checkbox" checked={selectedSchedules.has(s.id)} onChange={() => toggleScheduleSelect(s.id)} className="accent-accent" />
+                            </td>
+                            <td className="px-4 py-2.5 text-text-primary font-medium">{s.name}</td>
+                            <td className="px-4 py-2.5"><Badge label={s.type} className={TYPE_COLORS[s.type]} /></td>
+                            <td className="px-4 py-2.5 text-text-muted font-mono hidden sm:table-cell">{s.cronExpression}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={cn('text-[11px] font-medium', s.enabled ? 'text-sev-low' : 'text-text-muted')}>
+                                {s.enabled ? 'Active' : 'Disabled'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-text-muted hidden md:table-cell whitespace-nowrap">{s.lastRunAt ? fmtDate(s.lastRunAt) : '—'}</td>
+                            <td className="px-4 py-2.5 text-text-secondary hidden lg:table-cell">{s.runCount}</td>
+                            <td className="px-4 py-2.5">
+                              <button onClick={() => deleteSched.mutate(s.id)} title="Delete schedule"
+                                className="p-1 rounded hover:bg-sev-critical/10 text-text-muted hover:text-sev-critical transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </QueryStateView>
           </div>
         )}
 
@@ -509,32 +522,41 @@ export function ReportingPage() {
         {activeTab === 'templates' && (
           <div className="space-y-3">
             <h3 className="text-xs font-semibold text-text-secondary">{templateList.length} templates available</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {templateList.map(tpl => (
-                <div key={tpl.id} className="bg-bg-elevated border border-border-subtle rounded-lg p-4 hover:border-accent/30 transition-colors">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-xs font-semibold text-text-primary">{tpl.name}</h4>
-                    <Badge label={tpl.type} className={TYPE_COLORS[tpl.type]} />
-                  </div>
-                  <p className="text-[11px] text-text-secondary mb-3 leading-relaxed">{tpl.description}</p>
-                  <div className="space-y-1">
-                    <p className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Sections</p>
-                    <div className="flex flex-wrap gap-1">
-                      {tpl.sections.map(s => (
-                        <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-bg-primary border border-border-subtle text-text-muted">{s}</span>
-                      ))}
+            <QueryStateView
+              query={templatesQuery}
+              resource="report templates"
+              isEmpty={d => d.length === 0}
+              empty={<div className="px-4 py-8 text-center text-xs text-text-muted">No report templates available.</div>}
+            >
+              {data => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {data.map(tpl => (
+                    <div key={tpl.id} className="bg-bg-elevated border border-border-subtle rounded-lg p-4 hover:border-accent/30 transition-colors">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-xs font-semibold text-text-primary">{tpl.name}</h4>
+                        <Badge label={tpl.type} className={TYPE_COLORS[tpl.type]} />
+                      </div>
+                      <p className="text-[11px] text-text-secondary mb-3 leading-relaxed">{tpl.description}</p>
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Sections</p>
+                        <div className="flex flex-wrap gap-1">
+                          {tpl.sections.map(s => (
+                            <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-bg-primary border border-border-subtle text-text-muted">{s}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between">
+                        <span className="text-[10px] text-text-muted">Default: {FORMAT_LABELS[tpl.defaultFormat]}</span>
+                        <button onClick={() => { setShowNewReport(true) }}
+                          className="text-[11px] text-accent hover:underline">
+                          Use template →
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between">
-                    <span className="text-[10px] text-text-muted">Default: {FORMAT_LABELS[tpl.defaultFormat]}</span>
-                    <button onClick={() => { setShowNewReport(true) }}
-                      className="text-[11px] text-accent hover:underline">
-                      Use template →
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </QueryStateView>
           </div>
         )}
       </div>

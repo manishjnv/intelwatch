@@ -23,6 +23,7 @@ import {
   Plus, Play, Download, Eye,
 } from 'lucide-react'
 import { ComplianceReportsList, DsarPanel } from './ComplianceReportsPanel'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -97,14 +98,12 @@ const QUICK_TEMPLATES = [
 // ─── Alert Rules Sub-Tab ────────────────────────────────────
 
 function AlertRulesPanel(_props: { isSuperAdmin: boolean }) {
-  const { data: rules } = useAlertRules()
+  const rulesQuery = useAlertRules()
   const toggleRule = useToggleRule()
   const deleteRule = useDeleteRule()
   const createRule = useCreateRule()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newRule, setNewRule] = useState({ name: '', severity: 'medium' as AlertSeverity, entityType: 'ioc', field: 'severity', operator: 'eq', value: '' })
-
-  const ruleList = (rules as AlertRule[] | undefined) ?? []
 
   return (
     <div className="space-y-4" data-testid="alert-rules-panel">
@@ -134,57 +133,64 @@ function AlertRulesPanel(_props: { isSuperAdmin: boolean }) {
       </div>
 
       {/* Rules table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm" data-testid="rules-table">
-          <thead>
-            <tr className="border-b border-border text-left text-text-muted text-xs">
-              <th className="pb-2 pr-4">Name</th>
-              <th className="pb-2 pr-4 hidden sm:table-cell">Condition</th>
-              <th className="pb-2 pr-4">Severity</th>
-              <th className="pb-2 pr-4">Enabled</th>
-              <th className="pb-2 pr-4 hidden md:table-cell">Last Triggered</th>
-              <th className="pb-2 pr-4 hidden md:table-cell">Count</th>
-              <th className="pb-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ruleList.map((rule: AlertRule) => (
-              <tr key={rule.id} className="border-b border-border/50 hover:bg-bg-hover">
-                <td className="py-2 pr-4 font-medium text-text-primary text-xs">{rule.name}</td>
-                <td className="py-2 pr-4 hidden sm:table-cell text-xs text-text-muted truncate max-w-[200px]">
-                  {rule.condition.type}: {String(rule.condition.entity ?? '')} {String(rule.condition.field ?? '')} {String(rule.condition.operator ?? '')} {String(rule.condition.value ?? '')}
-                </td>
-                <td className="py-2 pr-4"><SeverityBadge severity={rule.severity} /></td>
-                <td className="py-2 pr-4">
-                  <button
-                    className={cn('w-8 h-4 rounded-full transition-colors relative', rule.enabled ? 'bg-sev-low' : 'bg-bg-elevated')}
-                    onClick={() => toggleRule.mutate(rule.id)}
-                    data-testid={`toggle-rule-${rule.id}`}
-                  >
-                    <span className={cn('absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform', rule.enabled ? 'left-4' : 'left-0.5')} />
-                  </button>
-                </td>
-                <td className="py-2 pr-4 hidden md:table-cell text-xs text-text-muted">
-                  {rule.lastTriggeredAt ? timeAgo(rule.lastTriggeredAt) : 'Never'}
-                </td>
-                <td className="py-2 pr-4 hidden md:table-cell text-xs text-text-muted">{rule.triggerCount}</td>
-                <td className="py-2">
-                  <button
-                    className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-sev-high"
-                    onClick={() => deleteRule.mutate(rule.id)}
-                    data-testid={`delete-rule-${rule.id}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {ruleList.length === 0 && (
-              <tr><td colSpan={7} className="py-8 text-center text-text-muted text-sm">No alert rules configured</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <QueryStateView query={rulesQuery} resource="alert rules">
+        {rulesData => {
+          const ruleList = rulesData.data
+          return (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="rules-table">
+                <thead>
+                  <tr className="border-b border-border text-left text-text-muted text-xs">
+                    <th className="pb-2 pr-4">Name</th>
+                    <th className="pb-2 pr-4 hidden sm:table-cell">Condition</th>
+                    <th className="pb-2 pr-4">Severity</th>
+                    <th className="pb-2 pr-4">Enabled</th>
+                    <th className="pb-2 pr-4 hidden md:table-cell">Last Triggered</th>
+                    <th className="pb-2 pr-4 hidden md:table-cell">Count</th>
+                    <th className="pb-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ruleList.map((rule: AlertRule) => (
+                    <tr key={rule.id} className="border-b border-border/50 hover:bg-bg-hover">
+                      <td className="py-2 pr-4 font-medium text-text-primary text-xs">{rule.name}</td>
+                      <td className="py-2 pr-4 hidden sm:table-cell text-xs text-text-muted truncate max-w-[200px]">
+                        {rule.condition.type}: {String(rule.condition.entity ?? '')} {String(rule.condition.field ?? '')} {String(rule.condition.operator ?? '')} {String(rule.condition.value ?? '')}
+                      </td>
+                      <td className="py-2 pr-4"><SeverityBadge severity={rule.severity} /></td>
+                      <td className="py-2 pr-4">
+                        <button
+                          className={cn('w-8 h-4 rounded-full transition-colors relative', rule.enabled ? 'bg-sev-low' : 'bg-bg-elevated')}
+                          onClick={() => toggleRule.mutate(rule.id)}
+                          data-testid={`toggle-rule-${rule.id}`}
+                        >
+                          <span className={cn('absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform', rule.enabled ? 'left-4' : 'left-0.5')} />
+                        </button>
+                      </td>
+                      <td className="py-2 pr-4 hidden md:table-cell text-xs text-text-muted">
+                        {rule.lastTriggeredAt ? timeAgo(rule.lastTriggeredAt) : 'Never'}
+                      </td>
+                      <td className="py-2 pr-4 hidden md:table-cell text-xs text-text-muted">{rule.triggerCount}</td>
+                      <td className="py-2">
+                        <button
+                          className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-sev-high"
+                          onClick={() => deleteRule.mutate(rule.id)}
+                          data-testid={`delete-rule-${rule.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {ruleList.length === 0 && (
+                    <tr><td colSpan={7} className="py-8 text-center text-text-muted text-sm">No alert rules configured</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )
+        }}
+      </QueryStateView>
 
       {/* Create Rule Modal */}
       {showCreateModal && (
@@ -286,12 +292,10 @@ function AlertHistoryPanel() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  const { data: alertsData } = useAlerts(1, sevFilter, statusFilter)
+  const alertsQuery = useAlerts(1, sevFilter, statusFilter)
   const ackAlert = useAcknowledgeAlert()
   const resolveAlert = useResolveAlert()
   const bulkAck = useBulkAcknowledge()
-
-  const alerts = (alertsData as { data: Alert[] } | undefined)?.data ?? []
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -335,86 +339,93 @@ function AlertHistoryPanel() {
         )}
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm" data-testid="alerts-table">
-          <thead>
-            <tr className="border-b border-border text-left text-text-muted text-xs">
-              <th className="pb-2 pr-2 w-8">
-                <input type="checkbox" className="rounded border-border accent-accent"
-                  checked={selectedIds.size > 0 && selectedIds.size === alerts.length}
-                  onChange={e => setSelectedIds(e.target.checked ? new Set(alerts.map((a: Alert) => a.id)) : new Set())}
-                />
-              </th>
-              <th className="pb-2 pr-4">Time</th>
-              <th className="pb-2 pr-4">Rule</th>
-              <th className="pb-2 pr-4">Severity</th>
-              <th className="pb-2 pr-4 hidden sm:table-cell">Entity</th>
-              <th className="pb-2 pr-4">Status</th>
-              <th className="pb-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {alerts.map((alert: Alert) => (
-              <React.Fragment key={alert.id}>
-                <tr
-                  className={cn('border-b border-border/50 hover:bg-bg-hover cursor-pointer', expandedId === alert.id && 'bg-bg-hover')}
-                  onClick={() => setExpandedId(expandedId === alert.id ? null : alert.id)}
-                >
-                  <td className="py-2 pr-2" onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" className="rounded border-border accent-accent"
-                      checked={selectedIds.has(alert.id)} onChange={() => toggleSelect(alert.id)}
-                    />
-                  </td>
-                  <td className="py-2 pr-4 text-xs text-text-muted whitespace-nowrap">{fmtDateTime(alert.createdAt)}</td>
-                  <td className="py-2 pr-4 text-xs text-text-primary font-medium truncate max-w-[150px]">{alert.ruleName}</td>
-                  <td className="py-2 pr-4"><SeverityBadge severity={alert.severity} /></td>
-                  <td className="py-2 pr-4 hidden sm:table-cell text-xs text-text-muted truncate max-w-[150px]">{alert.title}</td>
-                  <td className="py-2 pr-4"><StatusBadge status={alert.status} /></td>
-                  <td className="py-2" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-1">
-                      {alert.status === 'open' && (
-                        <button className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-sev-medium" title="Acknowledge"
-                          onClick={() => ackAlert.mutate(alert.id)} data-testid={`ack-${alert.id}`}>
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      {(alert.status === 'open' || alert.status === 'acknowledged') && (
-                        <button className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-sev-low" title="Resolve"
-                          onClick={() => resolveAlert.mutate(alert.id)} data-testid={`resolve-${alert.id}`}>
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-                {expandedId === alert.id && (
-                  <tr className="bg-bg-hover/50">
-                    <td colSpan={7} className="px-4 py-3" data-testid={`alert-detail-${alert.id}`}>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                        <div>
-                          <span className="text-text-muted">Description</span>
-                          <p className="text-text-primary mt-0.5">{alert.description || '—'}</p>
-                        </div>
-                        <div>
-                          <span className="text-text-muted">Acknowledged</span>
-                          <p className="text-text-primary mt-0.5">{alert.acknowledgedBy ? `${alert.acknowledgedBy} at ${fmtDateTime(alert.acknowledgedAt!)}` : 'Not yet'}</p>
-                        </div>
-                        <div>
-                          <span className="text-text-muted">Resolved</span>
-                          <p className="text-text-primary mt-0.5">{alert.resolvedBy ? `${alert.resolvedBy} at ${fmtDateTime(alert.resolvedAt!)}` : 'Not yet'}</p>
-                        </div>
-                      </div>
-                    </td>
+      <QueryStateView query={alertsQuery} resource="alerts">
+        {alertsData => {
+          const alerts = alertsData.data
+          return (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="alerts-table">
+                <thead>
+                  <tr className="border-b border-border text-left text-text-muted text-xs">
+                    <th className="pb-2 pr-2 w-8">
+                      <input type="checkbox" className="rounded border-border accent-accent"
+                        checked={selectedIds.size > 0 && selectedIds.size === alerts.length}
+                        onChange={e => setSelectedIds(e.target.checked ? new Set(alerts.map((a: Alert) => a.id)) : new Set())}
+                      />
+                    </th>
+                    <th className="pb-2 pr-4">Time</th>
+                    <th className="pb-2 pr-4">Rule</th>
+                    <th className="pb-2 pr-4">Severity</th>
+                    <th className="pb-2 pr-4 hidden sm:table-cell">Entity</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2">Actions</th>
                   </tr>
-                )}
-              </React.Fragment>
-            ))}
-            {alerts.length === 0 && (
-              <tr><td colSpan={7} className="py-8 text-center text-text-muted text-sm">No alerts found</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                </thead>
+                <tbody>
+                  {alerts.map((alert: Alert) => (
+                    <React.Fragment key={alert.id}>
+                      <tr
+                        className={cn('border-b border-border/50 hover:bg-bg-hover cursor-pointer', expandedId === alert.id && 'bg-bg-hover')}
+                        onClick={() => setExpandedId(expandedId === alert.id ? null : alert.id)}
+                      >
+                        <td className="py-2 pr-2" onClick={e => e.stopPropagation()}>
+                          <input type="checkbox" className="rounded border-border accent-accent"
+                            checked={selectedIds.has(alert.id)} onChange={() => toggleSelect(alert.id)}
+                          />
+                        </td>
+                        <td className="py-2 pr-4 text-xs text-text-muted whitespace-nowrap">{fmtDateTime(alert.createdAt)}</td>
+                        <td className="py-2 pr-4 text-xs text-text-primary font-medium truncate max-w-[150px]">{alert.ruleName}</td>
+                        <td className="py-2 pr-4"><SeverityBadge severity={alert.severity} /></td>
+                        <td className="py-2 pr-4 hidden sm:table-cell text-xs text-text-muted truncate max-w-[150px]">{alert.title}</td>
+                        <td className="py-2 pr-4"><StatusBadge status={alert.status} /></td>
+                        <td className="py-2" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-1">
+                            {alert.status === 'open' && (
+                              <button className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-sev-medium" title="Acknowledge"
+                                onClick={() => ackAlert.mutate(alert.id)} data-testid={`ack-${alert.id}`}>
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {(alert.status === 'open' || alert.status === 'acknowledged') && (
+                              <button className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-sev-low" title="Resolve"
+                                onClick={() => resolveAlert.mutate(alert.id)} data-testid={`resolve-${alert.id}`}>
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedId === alert.id && (
+                        <tr className="bg-bg-hover/50">
+                          <td colSpan={7} className="px-4 py-3" data-testid={`alert-detail-${alert.id}`}>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                              <div>
+                                <span className="text-text-muted">Description</span>
+                                <p className="text-text-primary mt-0.5">{alert.description || '—'}</p>
+                              </div>
+                              <div>
+                                <span className="text-text-muted">Acknowledged</span>
+                                <p className="text-text-primary mt-0.5">{alert.acknowledgedBy ? `${alert.acknowledgedBy} at ${fmtDateTime(alert.acknowledgedAt!)}` : 'Not yet'}</p>
+                              </div>
+                              <div>
+                                <span className="text-text-muted">Resolved</span>
+                                <p className="text-text-primary mt-0.5">{alert.resolvedBy ? `${alert.resolvedBy} at ${fmtDateTime(alert.resolvedAt!)}` : 'Not yet'}</p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  {alerts.length === 0 && (
+                    <tr><td colSpan={7} className="py-8 text-center text-text-muted text-sm">No alerts found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )
+        }}
+      </QueryStateView>
     </div>
   )
 }

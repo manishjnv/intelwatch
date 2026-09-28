@@ -7,9 +7,9 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useTyposquatScan, type TyposquatCandidate } from '@/hooks/use-phase4-data'
-import { DEMO_TYPOSQUAT_RESULTS } from '@/hooks/phase4-demo-data'
+import { classifyError } from '@/hooks/useApiError'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
-import { Search, Wifi, WifiOff, Play, Radio } from 'lucide-react'
+import { Search, Wifi, WifiOff, Play, Radio, RefreshCw } from 'lucide-react'
 
 // ─── Executive Risk Score Gauge ─────────────────────────────────
 
@@ -177,16 +177,18 @@ export function TyposquatScanner() {
   const [domain, setDomain] = useState('')
   const scanMutation = useTyposquatScan()
   const [results, setResults] = useState<TyposquatCandidate[] | null>(null)
+  const [scannedDomain, setScannedDomain] = useState('')
 
-  const handleScan = () => {
-    if (!domain.trim()) return
-    scanMutation.mutate(domain, {
+  const runScan = (d: string) => {
+    if (!d.trim()) return
+    setScannedDomain(d)
+    scanMutation.mutate(d, {
       onSuccess: (data) => setResults(data?.topCandidates ?? []),
-      onError: () => setResults(DEMO_TYPOSQUAT_RESULTS),
     })
   }
+  const handleScan = () => runScan(domain)
 
-  const displayResults = results ?? (scanMutation.isPending ? null : null)
+  const displayResults = results
 
   return (
     <div className="space-y-3">
@@ -201,7 +203,7 @@ export function TyposquatScanner() {
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleScan()}
-          placeholder="e.g., intelwatch.in"
+          placeholder="e.g., yourcompany.com"
           className="flex-1 px-3 py-1.5 text-sm bg-bg-secondary border border-border rounded-md text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
         />
         <button
@@ -214,20 +216,24 @@ export function TyposquatScanner() {
         </button>
       </div>
 
-      {!results && !scanMutation.isPending && (
-        <button
-          onClick={() => { setDomain('intelwatch.in'); setResults(DEMO_TYPOSQUAT_RESULTS) }}
-          className="text-[10px] text-text-muted hover:text-accent transition-colors"
-        >
-          Try demo scan: intelwatch.in
-        </button>
+      {scanMutation.isError && (
+        <div className="flex items-center gap-2 p-2 bg-sev-critical/5 border border-sev-critical/20 rounded-md text-[10px] text-sev-critical" data-testid="typosquat-scan-error">
+          <span>Scan failed: {classifyError(scanMutation.error)}.</span>
+          <button onClick={() => runScan(scannedDomain || domain)} className="flex items-center gap-1 text-sev-critical hover:underline" data-testid="typosquat-scan-retry">
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      )}
+
+      {results && results.length === 0 && !scanMutation.isPending && (
+        <p className="text-[10px] text-text-muted">No typosquat candidates found for {scannedDomain}.</p>
       )}
 
       {displayResults && displayResults.length > 0 && (
         <div className="space-y-1.5">
           {displayResults.map((c, i) => (
             <div key={i} className="flex items-center gap-3 p-2 bg-bg-secondary rounded border border-border">
-              <TyposquatDiff original={domain || 'intelwatch.in'} squatted={c.domain} />
+              <TyposquatDiff original={scannedDomain} squatted={c.domain} />
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', TYPE_COLORS['typosquatting'])}>
                 {c.method.replace('_', ' ')}
               </span>

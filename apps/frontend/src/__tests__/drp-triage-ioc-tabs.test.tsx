@@ -54,7 +54,7 @@ describe('AlertDetailPanel — Triage Actions', () => {
   })
 
   it('renders triage section with TP/FP/Investigate buttons', () => {
-    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} />)
     expect(screen.getByText('Triage')).toBeTruthy()
     // Triage buttons
     const tpButtons = screen.getAllByText('True Positive')
@@ -65,7 +65,7 @@ describe('AlertDetailPanel — Triage Actions', () => {
   })
 
   it('calls triageMutation with true_positive on TP click', () => {
-    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} />)
     // The triage section's TP button (first one in the Triage section)
     const triageSection = screen.getByText('Triage').parentElement!
     const tpBtn = triageSection.querySelector('button')!
@@ -76,21 +76,23 @@ describe('AlertDetailPanel — Triage Actions', () => {
   })
 
   it('calls triageMutation with investigate on Investigate click', () => {
-    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} />)
     fireEvent.click(screen.getByText('Investigate'))
     expect(mockTriageMutate).toHaveBeenCalledWith({
       id: 'alert-1', verdict: 'investigate', notes: undefined,
     })
   })
 
-  it('disables triage buttons in demo mode', () => {
-    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} isDemo={true} />)
+  it('triage buttons always call the real mutation (no demo gating)', () => {
+    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} />)
     fireEvent.click(screen.getByText('Investigate'))
-    expect(mockTriageMutate).not.toHaveBeenCalled()
+    expect(mockTriageMutate).toHaveBeenCalledWith({
+      id: 'alert-1', verdict: 'investigate', notes: undefined,
+    })
   })
 
   it('includes triage notes when provided', () => {
-    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} />)
     const textarea = screen.getByPlaceholderText('Add investigation notes...')
     fireEvent.change(textarea, { target: { value: 'Suspicious domain' } })
     fireEvent.click(screen.getByText('Investigate'))
@@ -100,7 +102,7 @@ describe('AlertDetailPanel — Triage Actions', () => {
   })
 
   it('still renders legacy verdict feedback section', () => {
-    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={MOCK_ALERT as any} onClose={vi.fn()} />)
     expect(screen.getByText('Verdict Feedback')).toBeTruthy()
   })
 })

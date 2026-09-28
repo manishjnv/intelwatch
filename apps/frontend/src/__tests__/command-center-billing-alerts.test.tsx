@@ -145,8 +145,8 @@ const mockReports = [
 ]
 
 vi.mock('@/hooks/use-alerting-data', () => ({
-  useAlertRules: () => ({ data: mockRules, isLoading: false, isDemo: false }),
-  useAlerts: () => ({ data: { data: mockAlerts, total: 2, page: 1, limit: 50 }, isLoading: false, isDemo: false }),
+  useAlertRules: () => ({ data: { data: mockRules, total: 2, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useAlerts: () => ({ data: { data: mockAlerts, total: 2, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useAcknowledgeAlert: () => ({ mutate: vi.fn() }),
   useResolveAlert: () => ({ mutate: vi.fn() }),
   useBulkAcknowledge: () => ({ mutate: vi.fn() }),

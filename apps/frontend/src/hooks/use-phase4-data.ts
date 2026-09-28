@@ -4,13 +4,10 @@
  * DRP (:3011), Threat Graph (:3012), Correlation Engine (:3013), Hunting (:3014).
  * All queries go through nginx → backend services.
  */
-import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
-import { notifyApiError } from './useApiError'
 import {
-  DEMO_DRP_ALERTS, DEMO_DRP_ALERT_STATS, DEMO_DRP_ASSETS, DEMO_DRP_ASSET_STATS,
-  DEMO_CERTSTREAM_STATUS,
   type DRPAlert, type DRPAlertStats, type DRPAsset, type DRPAssetStats,
   type CertStreamStatus, type TyposquatCandidate,
   type GraphNode, type GraphEdge, type GraphStats, type GraphSubgraph,
@@ -31,10 +28,6 @@ export type {
 
 // ─── Generic helpers ────────────────────────────────────────────
 
-interface ListResponse<T> {
-  data: T[]; total: number; page: number; limit: number
-}
-
 interface QueryParams {
   page?: number; limit?: number; [key: string]: string | number | boolean | undefined
 }
@@ -47,73 +40,131 @@ function buildQuery(params: QueryParams): string {
   return parts.length > 0 ? `?${parts.join('&')}` : ''
 }
 
-function withDemoFallback<T>(
-  result: UseQueryResult<T>,
-  demoData: T,
-  hasData: (d: T | undefined) => boolean,
-) {
-  const isDemo = !result.isLoading && !hasData(result.data)
-  return { ...result, data: isDemo ? demoData : result.data, isDemo }
+// ─── DRP Hooks ──────────────────────────────────────────────────
+// apps/drp-service response shapes differ from the DRPAsset/DRPAlert/*Stats types
+// above (modelled on the old demo data) — these adapters translate real → page shape.
+
+interface DRPAssetApi {
+  id: string; type: string; value: string; displayName: string
+  enabled: boolean; lastScannedAt: string | null; alertCount: number
+  criticality: number; createdAt: string
+}
+function toDRPAsset(a: DRPAssetApi): DRPAsset {
+  return {
+    id: a.id, name: a.displayName, type: a.type as DRPAsset['type'],
+    value: a.value, status: a.enabled ? 'active' : 'paused',
+    lastScanAt: a.lastScannedAt, alertCount: a.alertCount,
+    // ponytail: GET /assets has no computed risk score (that's GET /assets/:id/risk,
+    // one call per asset); criticality (0-1 config value) stands in until that's wired.
+    riskScore: Math.round((a.criticality ?? 0) * 100),
+    createdAt: a.createdAt,
+  }
 }
 
-// ─── DRP Hooks ──────────────────────────────────────────────────
+interface DRPAssetStatsApi {
+  total: number; byType: Record<string, number>; enabled: number; disabled: number; totalAlerts: number
+}
+function toDRPAssetStats(s: DRPAssetStatsApi): DRPAssetStats {
+  // ponytail: no avg-risk field on this endpoint; 0 until server aggregates it
+  return { total: s.total, byType: s.byType, avgRiskScore: 0 }
+}
+
+interface DRPAlertApi {
+  id: string; assetId: string; type: string; severity: string; status: string
+  title: string; description: string; confidence: number
+  assignedTo: string | null; detectedValue: string
+  resolvedAt: string | null; createdAt: string
+}
+function toDRPAlert(a: DRPAlertApi): DRPAlert {
+  return {
+    id: a.id, assetId: a.assetId, type: a.type as DRPAlert['type'],
+    title: a.title, description: a.description,
+    severity: a.severity as DRPAlert['severity'], status: a.status as DRPAlert['status'],
+    detectedValue: a.detectedValue, confidence: a.confidence, assignee: a.assignedTo,
+    createdAt: a.createdAt, resolvedAt: a.resolvedAt,
+    // ponytail: backend has no separate "triaged at" timestamp; SLA badge falls back to open/resolved
+    triagedAt: null,
+  }
+}
+
+interface DRPAlertStatsApi {
+  total: number; byType: Record<string, number>; byStatus: Record<string, number>
+  bySeverity: Record<string, number>; avgConfidence: number; resolutionRate: number
+}
+function toDRPAlertStats(s: DRPAlertStatsApi): DRPAlertStats {
+  return {
+    total: s.total, byType: s.byType, bySeverity: s.bySeverity,
+    open: s.byStatus?.['open'] ?? 0,
+    investigating: s.byStatus?.['investigating'] ?? 0,
+    resolved: s.byStatus?.['resolved'] ?? 0,
+  }
+}
+
+interface CertStreamStatsApi {
+  enabled: boolean; connected: boolean; certificatesProcessed: number
+  matchesThisHour: number; uptime: number
+}
+function toCertStreamStatus(s: CertStreamStatsApi): CertStreamStatus {
+  const hrs = Math.floor(s.uptime / 3_600_000)
+  const mins = Math.floor((s.uptime % 3_600_000) / 60_000)
+  return {
+    enabled: s.enabled, connected: s.connected,
+    matchesLastHour: s.matchesThisHour, totalProcessed: s.certificatesProcessed,
+    uptime: s.enabled ? `${hrs}h ${mins}m` : '—',
+  }
+}
 
 export function useDRPAssets(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  const empty: ListResponse<DRPAsset> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['drp-assets', params],
-    queryFn: () => apiList<DRPAsset>(`/drp/assets${query}`).catch(() => empty),
+    queryFn: async () => {
+      const r = await apiList<DRPAssetApi>(`/drp/assets${query}`)
+      return { ...r, data: r.data.map(toDRPAsset) }
+    },
+    meta: { resource: 'monitored assets' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_DRP_ASSETS, total: DEMO_DRP_ASSETS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useDRPAssetStats() {
-  const empty: DRPAssetStats = { total: 0, byType: {}, avgRiskScore: 0 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['drp-asset-stats'],
-    queryFn: () => api<DRPAssetStats>('/drp/assets/stats').catch(() => empty),
+    queryFn: () => api<DRPAssetStatsApi>('/drp/assets/stats').then(toDRPAssetStats),
+    meta: { resource: 'asset stats' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_DRP_ASSET_STATS, d => (d?.total ?? 0) > 0)
 }
 
 export function useDRPAlerts(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  const empty: ListResponse<DRPAlert> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['drp-alerts', params],
-    queryFn: () => apiList<DRPAlert>(`/drp/alerts${query}`).catch(err => notifyApiError(err, 'DRP alerts', empty)),
+    queryFn: async () => {
+      const r = await apiList<DRPAlertApi>(`/drp/alerts${query}`)
+      return { ...r, data: r.data.map(toDRPAlert) }
+    },
+    meta: { resource: 'DRP alerts' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_DRP_ALERTS, total: DEMO_DRP_ALERTS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useDRPAlertStats() {
-  const empty: DRPAlertStats = { total: 0, open: 0, investigating: 0, resolved: 0, bySeverity: {}, byType: {} }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['drp-alert-stats'],
-    queryFn: () => api<DRPAlertStats>('/drp/alerts/stats').catch(() => empty),
+    queryFn: () => api<DRPAlertStatsApi>('/drp/alerts/stats').then(toDRPAlertStats),
+    meta: { resource: 'alert stats' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result, DEMO_DRP_ALERT_STATS, d => (d?.total ?? 0) > 0)
 }
 
 export function useCertStreamStatus() {
-  const empty: CertStreamStatus = { enabled: false, connected: false, matchesLastHour: 0, totalProcessed: 0, uptime: '—' }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['certstream-status'],
-    queryFn: () => api<CertStreamStatus>('/drp/certstream/status').catch(() => empty),
+    queryFn: () => api<CertStreamStatsApi>('/drp/certstream/status').then(toCertStreamStatus),
+    meta: { resource: 'CertStream status' },
     staleTime: 15_000,
   })
-  return withDemoFallback(result, DEMO_CERTSTREAM_STATUS, d => (d?.totalProcessed ?? 0) > 0)
 }
 
 /** POST /drp/detect/typosquat response shape (backend field is `topCandidates`, not `candidates`). */

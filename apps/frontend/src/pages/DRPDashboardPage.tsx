@@ -13,10 +13,10 @@ import {
   useCertStreamStatus, useDeleteAsset, useScanAsset, useBulkTriageAlerts,
   type DRPAlert, type DRPAsset,
 } from '@/hooks/use-phase4-data'
-import { generateAlertHeatmap } from '@/hooks/phase4-demo-data'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
 import { Pagination } from '@/components/data/Pagination'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { SeverityBadge } from '@etip/shared-ui/components/SeverityBadge'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import {
-  ExecutiveRiskGauge, RiskHeatmap, CertStreamIndicator,
+  ExecutiveRiskGauge, CertStreamIndicator,
   SLABadge, TyposquatScanner,
 } from '@/components/viz/DRPWidgets'
 import { CreateAssetModal, AlertDetailPanel } from '@/components/viz/DRPModals'
@@ -80,15 +80,15 @@ export function DRPDashboardPage() {
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null)
   const [checkedAlertIds, setCheckedAlertIds] = useState<Set<string>>(new Set())
 
-  const { data: alertData, isLoading: alertsLoading, isDemo } = useDRPAlerts({ page: alertPage, ...filters })
+  const alertsQuery = useDRPAlerts({ page: alertPage, ...filters })
+  const { data: alertData, isLoading: alertsLoading } = alertsQuery
   const { data: alertStats } = useDRPAlertStats()
-  const { data: assetData } = useDRPAssets()
+  const assetsQuery = useDRPAssets()
   const { data: assetStats } = useDRPAssetStats()
   const { data: certStatus } = useCertStreamStatus()
   const deleteAssetMutation = useDeleteAsset()
   const scanAssetMutation = useScanAsset()
   const bulkTriageMutation = useBulkTriageAlerts()
-  const heatmapData = useMemo(() => generateAlertHeatmap(), [])
 
   const execRiskScore = useMemo(() => {
     if (!alertStats || !assetStats) return 0
@@ -102,9 +102,10 @@ export function DRPDashboardPage() {
     return Math.min(95, Math.round(openRatio * 25 + sevScore + assetRisk + volumeScore))
   }, [alertStats, assetStats])
 
+  // ponytail: filters/sorts only the loaded page (50 rows) — type/severity/status are also sent
+  // to the server via `filters`, this just re-applies them plus free-text search client-side.
   const alerts = useMemo(() => {
     let items = alertData?.data ?? []
-    if (!isDemo) return items
     if (search) {
       const q = search.toLowerCase()
       items = items.filter(a => a.title.toLowerCase().includes(q) || a.detectedValue.toLowerCase().includes(q))
@@ -118,7 +119,7 @@ export function DRPDashboardPage() {
       const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
       return sortOrder === 'asc' ? cmp : -cmp
     })
-  }, [alertData, isDemo, search, filters, sortBy, sortOrder])
+  }, [alertData, search, filters, sortBy, sortOrder])
 
   const handleSort = (key: string) => {
     if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
@@ -204,7 +205,7 @@ export function DRPDashboardPage() {
         <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
           <button
             onClick={() => scanAssetMutation.mutate(row.id)}
-            disabled={scanAssetMutation.isPending || isDemo}
+            disabled={scanAssetMutation.isPending}
             title="Scan now"
             className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
           >
@@ -213,7 +214,7 @@ export function DRPDashboardPage() {
           </button>
           <button
             onClick={() => deleteAssetMutation.mutate(row.id)}
-            disabled={deleteAssetMutation.isPending || isDemo}
+            disabled={deleteAssetMutation.isPending}
             title="Delete asset"
             className="p-1 rounded text-text-muted hover:text-sev-critical hover:bg-sev-critical/10 transition-colors disabled:opacity-50"
           >
@@ -225,13 +226,6 @@ export function DRPDashboardPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-400/10 text-rose-400 font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect DRP service for live monitoring</span>
-        </div>
-      )}
-
       <PageStatsBar>
         <CompactStat label="Assets" value={assetStats?.total?.toString() ?? '—'} />
         <CompactStat label="Open Alerts" value={alertStats?.open?.toString() ?? '0'} color="text-sev-critical" />
@@ -282,26 +276,9 @@ export function DRPDashboardPage() {
           </div>
         </div>
 
-        {/* Alert Activity Heatmap — full width for visibility */}
-        <div className="p-4 bg-bg-secondary rounded-lg border border-border">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-semibold text-text-primary">Alert Activity</h3>
-              <span className="text-[10px] text-text-muted">Last 90 days</span>
-              <TooltipHelp message="GitHub-style heatmap showing daily alert density. Darker = more alerts. Hover for exact counts." />
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-              <span>Less</span>
-              <div className="w-3 h-3 rounded-sm bg-bg-elevated border border-border/50" />
-              <div className="w-3 h-3 rounded-sm bg-sev-low/40" />
-              <div className="w-3 h-3 rounded-sm bg-sev-medium/50" />
-              <div className="w-3 h-3 rounded-sm bg-sev-high/60" />
-              <div className="w-3 h-3 rounded-sm bg-sev-critical/80" />
-              <span>More</span>
-            </div>
-          </div>
-          <RiskHeatmap data={heatmapData} />
-        </div>
+        {/* ponytail: Alert Activity heatmap removed — it rendered Math.random() fake daily
+            counts unconditionally (DECISION-048 violation). A real 90-day histogram needs
+            GET /drp/analytics/trending wired up; add it back once that's plumbed through. */}
 
         {/* Typosquat Scanner */}
         <div className="p-4 bg-bg-secondary rounded-lg border border-border">
@@ -351,20 +328,30 @@ export function DRPDashboardPage() {
             <FilterBar searchValue={search} onSearchChange={(v) => { setSearch(v); setAlertPage(1) }}
               searchPlaceholder="Search alerts by title, detected value…" filters={ALERT_FILTERS}
               filterValues={filters} onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setAlertPage(1) }} />
-            <DataTable columns={alertColumns} data={alerts} loading={alertsLoading} rowKey={(r) => r.id}
-              sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
-              density={density} severityField={(r) => r.severity} selectedId={selectedAlertId}
-              onRowClick={(r) => setSelectedAlertId(r.id === selectedAlertId ? null : r.id)}
-              emptyMessage="No DRP alerts. Your digital perimeter is clear." />
-            <Pagination page={alertPage} limit={50} total={isDemo ? alerts.length : (alertData?.total ?? 0)}
-              onPageChange={setAlertPage} density={density} onDensityChange={setDensity} />
+            <QueryStateView query={alertsQuery} resource="DRP alerts">
+              {() => (
+                <>
+                  <DataTable columns={alertColumns} data={alerts} loading={alertsLoading} rowKey={(r) => r.id}
+                    sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}
+                    density={density} severityField={(r) => r.severity} selectedId={selectedAlertId}
+                    onRowClick={(r) => setSelectedAlertId(r.id === selectedAlertId ? null : r.id)}
+                    emptyMessage="No DRP alerts. Your digital perimeter is clear." />
+                  <Pagination page={alertPage} limit={50} total={alertData?.total ?? 0}
+                    onPageChange={setAlertPage} density={density} onDensityChange={setDensity} />
+                </>
+              )}
+            </QueryStateView>
           </>
         )}
 
         {/* Asset Table */}
         {activeTab === 'assets' && (
-          <DataTable columns={assetColumns} data={assetData?.data ?? []} loading={false} rowKey={(r) => r.id}
-            density={density} emptyMessage="No monitored assets. Click 'Add Asset' to start monitoring your domains, brands, or executives." />
+          <QueryStateView query={assetsQuery} resource="monitored assets">
+            {(data) => (
+              <DataTable columns={assetColumns} data={data.data} loading={false} rowKey={(r) => r.id}
+                density={density} emptyMessage="No monitored assets. Click 'Add Asset' to start monitoring your domains, brands, or executives." />
+            )}
+          </QueryStateView>
         )}
       </div>
 
@@ -375,7 +362,7 @@ export function DRPDashboardPage() {
       {selectedAlert && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelectedAlertId(null)} />
-          <AlertDetailPanel alert={selectedAlert} onClose={() => setSelectedAlertId(null)} isDemo={isDemo} />
+          <AlertDetailPanel alert={selectedAlert} onClose={() => setSelectedAlertId(null)} />
         </>
       )}
       <ToastContainer />

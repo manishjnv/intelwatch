@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import {
   useAlertHistory, useCreateChannel, type ChannelType,
 } from '@/hooks/use-alerting-data'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { X, Mail, MessageSquare, Webhook } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -28,8 +29,7 @@ const CHANNEL_ICONS: Record<ChannelType, React.FC<{ className?: string }>> = {
 
 /** Slide-in drawer showing an alert's timeline history. */
 export function HistoryDrawer({ alertId, onClose }: { alertId: string; onClose: () => void }) {
-  const { data: history } = useAlertHistory(alertId)
-  const entries = history ?? []
+  const historyQuery = useAlertHistory(alertId)
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
@@ -39,17 +39,23 @@ export function HistoryDrawer({ alertId, onClose }: { alertId: string; onClose: 
           <button onClick={onClose} className="p-1 rounded hover:bg-bg-primary text-text-muted"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-4 space-y-3">
-          {entries.map(e => (
-            <div key={e.id} className="flex gap-3 text-xs">
-              <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
-              <div>
-                <p className="text-text-primary font-medium">{e.action}</p>
-                <p className="text-text-muted">{e.details}</p>
-                <p className="text-text-muted mt-0.5">{e.performedBy} · {fmtDate(e.createdAt)}</p>
-              </div>
-            </div>
-          ))}
-          {entries.length === 0 && <p className="text-xs text-text-muted text-center py-8">No history entries.</p>}
+          <QueryStateView query={historyQuery} resource="alert history">
+            {entries => (
+              <>
+                {entries.map(e => (
+                  <div key={e.id} className="flex gap-3 text-xs">
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
+                    <div>
+                      <p className="text-text-primary font-medium">{e.action}</p>
+                      <p className="text-text-muted">{e.details}</p>
+                      <p className="text-text-muted mt-0.5">{e.performedBy} · {fmtDate(e.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+                {entries.length === 0 && <p className="text-xs text-text-muted text-center py-8">No history entries.</p>}
+              </>
+            )}
+          </QueryStateView>
         </div>
       </div>
     </div>

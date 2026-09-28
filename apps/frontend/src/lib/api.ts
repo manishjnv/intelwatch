@@ -86,10 +86,12 @@ async function doFetch<T>(
   fullUrl: string, method: string, finalHeaders: Record<string, string>,
   body: unknown, auth: boolean,
 ): Promise<T> {
+  // Callers may pass an already-serialized string; re-stringifying it sends a JSON string, not an object.
+  const payload = body == null ? undefined : typeof body === 'string' ? body : JSON.stringify(body)
   const res = await fetch(fullUrl, {
     method,
     headers: finalHeaders,
-    body: body ? JSON.stringify(body) : undefined,
+    body: payload,
   });
 
   // Handle 401 — attempt token refresh once
@@ -102,7 +104,7 @@ async function doFetch<T>(
       const retryRes = await fetch(fullUrl, {
         method,
         headers: finalHeaders,
-        body: body ? JSON.stringify(body) : undefined,
+        body: payload,
       });
       if (retryRes.status === 204) return undefined as T;
       if (!retryRes.ok) {
