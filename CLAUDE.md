@@ -74,7 +74,7 @@ If unsure about impact, scope, or correctness: STOP. Do not write code.
 
 ## VPS Safety — CRITICAL
 Production VPS: 187.127.138.93 (srv1536443.hstgr.cloud) — Hostinger KVM4, 4 vCPU, 16GB RAM, 200GB NVMe, Mumbai
-- `intelwatch.in` = ETIP → etip_* containers → our project (migrated from ti.intelwatch.in)
+- `intelwatch.in` = ETIP → etip_* containers → our project
 Old VPS (72.61.227.64): decommissioned, KVM2 locked 18mo. Do NOT deploy there.
 
 ## VPS SSH Access

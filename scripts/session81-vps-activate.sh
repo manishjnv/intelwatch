@@ -240,10 +240,10 @@ except Exception as e:
 
 print_step "External endpoint verification"
 
-echo "  --- Public API (ti.intelwatch.in) ---"
-EXT_RESP=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "https://ti.intelwatch.in/api/v1/feeds" 2>/dev/null || echo "000")
+echo "  --- Public API (intelwatch.in) ---"
+EXT_RESP=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "https://intelwatch.in/api/v1/feeds" 2>/dev/null || echo "000")
 if [ "$EXT_RESP" = "200" ]; then
-  EXT_FEEDS=$(curl -s "https://ti.intelwatch.in/api/v1/feeds" 2>/dev/null | python3 -c "
+  EXT_FEEDS=$(curl -s "https://intelwatch.in/api/v1/feeds" 2>/dev/null | python3 -c "
 import sys, json
 try:
   d = json.load(sys.stdin)

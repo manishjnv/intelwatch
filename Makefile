@@ -6,7 +6,7 @@
 
 COMPOSE = docker compose -p etip -f docker-compose.etip.yml
 HEALTH_URL = http://localhost:3001/health
-PROD_URL = https://ti.intelwatch.in
+PROD_URL = https://intelwatch.in
 
 .PHONY: install test typecheck lint check build docker-test pre-push push \
         verify logs-errors status stats clean help
@@ -134,7 +134,7 @@ help:
 	@echo "  make push          pre-push + commit + push"
 	@echo ""
 	@echo "Production:"
-	@echo "  make verify        Smoke test ti.intelwatch.in"
+	@echo "  make verify        Smoke test intelwatch.in"
 	@echo ""
 	@echo "Diagnostics:"
 	@echo "  make logs-errors   Error logs (last 3 min)"
