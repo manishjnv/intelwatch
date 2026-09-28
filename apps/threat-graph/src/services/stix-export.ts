@@ -21,6 +21,7 @@ const NODE_TO_STIX_TYPE: Record<NodeType, string> = {
   Infrastructure: 'infrastructure',
   Vulnerability: 'vulnerability',
   Victim: 'identity',
+  AttackPattern: 'attack-pattern',
 };
 
 /** ETIP relationship type → STIX 2.1 relationship name. */
@@ -169,6 +170,15 @@ export class StixExportService {
           name: String(node.properties['name'] ?? ''),
           identity_class: 'organization',
           sectors: node.properties['industry'] ? [String(node.properties['industry'])] : [],
+        };
+      case 'AttackPattern':
+        return {
+          ...base,
+          name: String(node.properties['name'] ?? ''),
+          external_references: [{
+            source_name: 'mitre-attack',
+            external_id: String(node.properties['mitreId'] ?? ''),
+          }],
         };
       default:
         return { ...base, name: String(node.properties['name'] ?? node.id) };

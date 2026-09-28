@@ -144,6 +144,20 @@ describe('Threat Graph — Repository', () => {
       expect(stats.isolatedNodes).toBe(5);
       expect(stats.avgConnections).toBe(5);
     });
+
+    it('never uses the reserved Cypher word `all` as a variable name (RCA: getGraphStats 500s in prod)', async () => {
+      mockRun.mockResolvedValueOnce({ records: [] });
+      mockRun.mockResolvedValueOnce({ records: [] });
+      mockRun.mockResolvedValueOnce({ records: [] });
+
+      await repo.getStats('t1');
+
+      const reservedWordPattern = /\bAS all\b|\bIN all\b|size\(all\)/;
+      for (const call of mockRun.mock.calls) {
+        const cypher = String(call[0]);
+        expect(cypher).not.toMatch(reservedWordPattern);
+      }
+    });
   });
 
   describe('getNeighborsForPropagation', () => {

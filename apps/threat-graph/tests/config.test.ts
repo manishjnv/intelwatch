@@ -69,4 +69,26 @@ describe('Threat Graph — Config', () => {
     const config = loadConfig({ ...validEnv, TI_THREAT_GRAPH_PORT: '9999' });
     expect(config.TI_THREAT_GRAPH_PORT).toBe(9999);
   });
+
+  // R5 — TI_IOC_SERVICE_URL must be a safe http(s) URL.
+
+  it('accepts the default TI_IOC_SERVICE_URL', () => {
+    const config = loadConfig(validEnv);
+    expect(config.TI_IOC_SERVICE_URL).toBe('http://etip_ioc_intelligence:3007');
+  });
+
+  it('rejects a non-http(s) TI_IOC_SERVICE_URL scheme', () => {
+    const env = { ...validEnv, TI_IOC_SERVICE_URL: 'ftp://etip_ioc_intelligence:3007' };
+    expect(() => loadConfig(env)).toThrow('Invalid environment configuration');
+  });
+
+  it('rejects a TI_IOC_SERVICE_URL that is not a URL at all', () => {
+    const env = { ...validEnv, TI_IOC_SERVICE_URL: 'not a url' };
+    expect(() => loadConfig(env)).toThrow('Invalid environment configuration');
+  });
+
+  it('rejects a TI_IOC_SERVICE_URL with embedded credentials', () => {
+    const env = { ...validEnv, TI_IOC_SERVICE_URL: 'http://user:pass@etip_ioc_intelligence:3007' };
+    expect(() => loadConfig(env)).toThrow('Invalid environment configuration');
+  });
 });

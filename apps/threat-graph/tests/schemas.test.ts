@@ -5,14 +5,14 @@ import {
   ClusterQuerySchema, PropagateInputSchema,
   IOCNodeSchema, ThreatActorNodeSchema, MalwareNodeSchema,
   CampaignNodeSchema, InfrastructureNodeSchema, VulnerabilityNodeSchema,
-  VictimNodeSchema, GraphNodeSchema,
-  RELATIONSHIP_RULES,
+  VictimNodeSchema, AttackPatternNodeSchema, GraphNodeSchema,
+  RELATIONSHIP_RULES, IOC_TYPES, IocTypeSchema,
 } from '../src/schemas/graph.js';
 
 describe('Threat Graph — Schemas', () => {
   describe('NodeTypeSchema', () => {
-    it('accepts all 7 node types', () => {
-      const types = ['IOC', 'ThreatActor', 'Malware', 'Campaign', 'Infrastructure', 'Vulnerability', 'Victim'];
+    it('accepts all 8 node types', () => {
+      const types = ['IOC', 'ThreatActor', 'Malware', 'Campaign', 'Infrastructure', 'Vulnerability', 'Victim', 'AttackPattern'];
       for (const t of types) {
         expect(NodeTypeSchema.parse(t)).toBe(t);
       }
@@ -47,9 +47,42 @@ describe('Threat Graph — Schemas', () => {
       expect(RELATIONSHIP_RULES.RESOLVES_TO.to).toContain('IOC');
     });
 
-    it('EXPLOITS: ThreatActor → Vulnerability', () => {
+    it('EXPLOITS: ThreatActor|Malware → Vulnerability', () => {
       expect(RELATIONSHIP_RULES.EXPLOITS.from).toContain('ThreatActor');
+      expect(RELATIONSHIP_RULES.EXPLOITS.from).toContain('Malware');
       expect(RELATIONSHIP_RULES.EXPLOITS.to).toContain('Vulnerability');
+    });
+
+    it('INDICATES: IOC → ThreatActor|Malware|AttackPattern', () => {
+      expect(RELATIONSHIP_RULES.INDICATES.from).toContain('IOC');
+      expect(RELATIONSHIP_RULES.INDICATES.to).toEqual(
+        expect.arrayContaining(['ThreatActor', 'Malware', 'AttackPattern']),
+      );
+    });
+
+    it('USES: ThreatActor|Malware → Malware|AttackPattern', () => {
+      expect(RELATIONSHIP_RULES.USES.from).toEqual(expect.arrayContaining(['ThreatActor', 'Malware']));
+      expect(RELATIONSHIP_RULES.USES.to).toEqual(expect.arrayContaining(['Malware', 'AttackPattern']));
+    });
+  });
+
+  describe('IOC_TYPES / IocTypeSchema', () => {
+    it('matches the Postgres IocType enum values', () => {
+      expect(IOC_TYPES).toEqual([
+        'ip', 'ipv6', 'domain', 'fqdn', 'url', 'email',
+        'hash_md5', 'hash_sha1', 'hash_sha256', 'hash_sha512',
+        'cve', 'asn', 'cidr', 'bitcoin_address', 'unknown',
+      ]);
+    });
+
+    it('accepts every IOC_TYPES value', () => {
+      for (const t of IOC_TYPES) {
+        expect(IocTypeSchema.parse(t)).toBe(t);
+      }
+    });
+
+    it('rejects a value not in IOC_TYPES', () => {
+      expect(() => IocTypeSchema.parse('not-a-type')).toThrow();
     });
   });
 
@@ -100,6 +133,16 @@ describe('Threat Graph — Schemas', () => {
       expect(VictimNodeSchema.parse(node).industry).toBe('Finance');
     });
 
+    it('validates AttackPattern node with mitreId', () => {
+      const node = { ...baseNode, nodeType: 'AttackPattern', mitreId: 'T1059.001', name: 'PowerShell' };
+      expect(AttackPatternNodeSchema.parse(node).mitreId).toBe('T1059.001');
+    });
+
+    it('rejects AttackPattern with invalid mitreId format', () => {
+      const node = { ...baseNode, nodeType: 'AttackPattern', mitreId: 'not-a-mitre-id', name: 'PowerShell' };
+      expect(() => AttackPatternNodeSchema.parse(node)).toThrow();
+    });
+
     it('discriminated union resolves correct schema', () => {
       const ioc = { ...baseNode, nodeType: 'IOC', iocType: 'domain', value: 'evil.com' };
       const parsed = GraphNodeSchema.parse(ioc);
@@ -126,6 +169,16 @@ describe('Threat Graph — Schemas', () => {
     it('accepts Vulnerability with cveId property', () => {
       const input = { nodeType: 'Vulnerability', properties: { cveId: 'CVE-2024-1234' } };
       expect(CreateNodeInputSchema.parse(input).nodeType).toBe('Vulnerability');
+    });
+
+    it('accepts AttackPattern with mitreId property', () => {
+      const input = { nodeType: 'AttackPattern', properties: { mitreId: 'T1059', name: 'Command Interpreter' } };
+      expect(CreateNodeInputSchema.parse(input).nodeType).toBe('AttackPattern');
+    });
+
+    it('rejects AttackPattern without mitreId property', () => {
+      const input = { nodeType: 'AttackPattern', properties: { name: 'Command Interpreter' } };
+      expect(() => CreateNodeInputSchema.parse(input)).toThrow('Missing required property');
     });
   });
 

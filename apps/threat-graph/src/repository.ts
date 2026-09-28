@@ -1,6 +1,7 @@
 import type { Session, Record as Neo4jRecord } from 'neo4j-driver';
 import { createSession } from './driver.js';
 import { AppError } from '@etip/shared-utils';
+import { assertNodeLabel, assertRelType } from './cypher-safety.js';
 import type {
   NodeType, RelationshipType, GraphNodeResponse, GraphEdgeResponse,
   GraphSubgraphResponse, GraphStatsResponse,
@@ -21,11 +22,12 @@ export class GraphRepository {
     id: string,
     properties: Record<string, unknown>,
   ): Promise<GraphNodeResponse> {
+    const safeNodeType = assertNodeLabel(nodeType);
     const session = createSession();
     try {
       const now = new Date().toISOString();
       const result = await session.run(
-        `MERGE (n:${nodeType} {id: $id, tenantId: $tenantId})
+        `MERGE (n:${safeNodeType} {id: $id, tenantId: $tenantId})
          ON CREATE SET n += $props, n.nodeType = $nodeType, n.firstSeen = $now, n.lastSeen = $now
          ON MATCH SET n += $props, n.lastSeen = $now
          RETURN properties(n) AS node`,
@@ -85,13 +87,14 @@ export class GraphRepository {
     confidence: number,
     properties: Record<string, unknown> = {},
   ): Promise<GraphEdgeResponse> {
+    const safeType = assertRelType(type);
     const session = createSession();
     try {
       const now = new Date().toISOString();
       const result = await session.run(
         `MATCH (a {id: $fromNodeId, tenantId: $tenantId})
          MATCH (b {id: $toNodeId, tenantId: $tenantId})
-         MERGE (a)-[r:${type}]->(b)
+         MERGE (a)-[r:${safeType}]->(b)
          ON CREATE SET r.confidence = $confidence, r.firstSeen = $now, r.lastSeen = $now, r += $props
          ON MATCH SET r.confidence = $confidence, r.lastSeen = $now, r += $props
          RETURN type(r) AS relType, r.confidence AS confidence,

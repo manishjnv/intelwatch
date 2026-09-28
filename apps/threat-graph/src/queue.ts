@@ -4,22 +4,50 @@ import { z } from 'zod';
 import type pino from 'pino';
 import { getConfig } from './config.js';
 import type { GraphService } from './service.js';
+import type { IocSyncService } from './services/ioc-sync-service.js';
+import { NODE_TYPES, RelationshipTypeSchema } from './schemas/graph.js';
 
 // ─── Job Schema ──────────────────────────────────────────────────
+// S171 P3b: discriminated union. sync_ioc is the new IOC→graph sync path;
+// upsert_node/create_relationship/propagate are the pre-existing actions.
 
-export const GraphSyncJobSchema = z.object({
+const SyncIocJobSchema = z.object({
+  action: z.literal('sync_ioc'),
   tenantId: z.string().uuid(),
-  action: z.enum(['upsert_node', 'create_relationship', 'propagate']),
-  nodeType: z.string().optional(),
-  nodeId: z.string().optional(),
-  properties: z.record(z.unknown()).optional(),
-  fromNodeId: z.string().optional(),
-  toNodeId: z.string().optional(),
-  relationshipType: z.string().optional(),
-  confidence: z.number().min(0).max(1).optional(),
+  iocId: z.string().uuid(),
 });
 
+const UpsertNodeJobSchema = z.object({
+  action: z.literal('upsert_node'),
+  tenantId: z.string().uuid(),
+  nodeType: z.string(),
+  nodeId: z.string(),
+  properties: z.record(z.unknown()),
+});
+
+const CreateRelationshipJobSchema = z.object({
+  action: z.literal('create_relationship'),
+  tenantId: z.string().uuid(),
+  fromNodeId: z.string(),
+  toNodeId: z.string(),
+  relationshipType: RelationshipTypeSchema,
+  confidence: z.number().min(0).max(1).optional(),
+  properties: z.record(z.unknown()).optional(),
+});
+
+const PropagateJobSchema = z.object({
+  action: z.literal('propagate'),
+  tenantId: z.string().uuid(),
+  nodeId: z.string(),
+});
+
+export const GraphSyncJobSchema = z.discriminatedUnion('action', [
+  SyncIocJobSchema, UpsertNodeJobSchema, CreateRelationshipJobSchema, PropagateJobSchema,
+]);
+
 export type GraphSyncJob = z.infer<typeof GraphSyncJobSchema>;
+
+const NODE_TYPE_SET = new Set<string>(NODE_TYPES);
 
 // ─── Queue (Producer) ────────────────────────────────────────────
 
@@ -68,12 +96,13 @@ export async function closeGraphSyncQueue(): Promise<void> {
 
 export interface GraphWorkerDeps {
   service: GraphService;
+  iocSync: IocSyncService;
   logger: pino.Logger;
 }
 
 /** Creates the GRAPH_SYNC BullMQ worker. */
 export function createGraphSyncWorker(deps: GraphWorkerDeps): Worker<GraphSyncJob> {
-  const { service, logger } = deps;
+  const { service, iocSync, logger } = deps;
   const config = getConfig();
   const url = new URL(config.TI_REDIS_URL);
   const password = decodeURIComponent(url.password || '');
@@ -91,11 +120,23 @@ export function createGraphSyncWorker(deps: GraphWorkerDeps): Worker<GraphSyncJo
       const data = parsed.data;
 
       switch (data.action) {
+        // Sync paths deliberately do NOT trigger BFS risk propagation: hub actors link hundreds of IOCs, so
+        // per-event BFS is O(hub size) queries and inflates scores by association. IOC→entity risk is
+        // covered deterministically by rollupEntityRisk; explicit `propagate` jobs / the API still propagate.
+        case 'sync_ioc': {
+          await iocSync.syncIoc(data.tenantId, data.iocId);
+          break;
+        }
+
         case 'upsert_node': {
-          if (!data.nodeType || !data.properties) {
-            logger.warn({ jobId: job.id }, 'upsert_node missing nodeType or properties');
-            return;
+          // Legacy producer (e.g. ai-enrichment) sending a raw IOC type as nodeType —
+          // route it through the real IOC sync path instead of trusting client-provided properties.
+          if (!NODE_TYPE_SET.has(data.nodeType)) {
+            logger.debug({ jobId: job.id, nodeType: data.nodeType }, 'Legacy upsert_node — routing through sync_ioc');
+            await iocSync.syncIoc(data.tenantId, data.nodeId);
+            break;
           }
+
           await service.createNode(data.tenantId, {
             nodeType: data.nodeType as 'IOC',
             properties: { ...data.properties, id: data.nodeId },
@@ -109,14 +150,10 @@ export function createGraphSyncWorker(deps: GraphWorkerDeps): Worker<GraphSyncJo
         }
 
         case 'create_relationship': {
-          if (!data.fromNodeId || !data.toNodeId || !data.relationshipType) {
-            logger.warn({ jobId: job.id }, 'create_relationship missing required fields');
-            return;
-          }
           await service.createRelationship(data.tenantId, {
             fromNodeId: data.fromNodeId,
             toNodeId: data.toNodeId,
-            type: data.relationshipType as 'USES',
+            type: data.relationshipType,
             confidence: data.confidence ?? 0.5,
             source: 'auto-detected',
             properties: data.properties,
@@ -125,10 +162,6 @@ export function createGraphSyncWorker(deps: GraphWorkerDeps): Worker<GraphSyncJo
         }
 
         case 'propagate': {
-          if (!data.nodeId) {
-            logger.warn({ jobId: job.id }, 'propagate missing nodeId');
-            return;
-          }
           await service.triggerPropagation(data.tenantId, data.nodeId, config.TI_GRAPH_PROPAGATION_MAX_DEPTH);
           break;
         }

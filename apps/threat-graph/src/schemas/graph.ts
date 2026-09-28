@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export const NODE_TYPES = [
   'IOC', 'ThreatActor', 'Malware', 'Campaign',
-  'Infrastructure', 'Vulnerability', 'Victim',
+  'Infrastructure', 'Vulnerability', 'Victim', 'AttackPattern',
 ] as const;
 
 export const NodeTypeSchema = z.enum(NODE_TYPES);
@@ -36,16 +36,16 @@ export const RELATIONSHIP_TYPE_WEIGHTS: Record<RelationshipType, number> = {
   OBSERVED_IN: 0.60,  // IOC → Campaign: weakest direct signal
 };
 
-/** Valid source→target combinations for relationship types. */
+/** Valid source→target combinations for relationship types (STIX 2.1-aligned, P3a). */
 export const RELATIONSHIP_RULES: Record<RelationshipType, { from: NodeType[]; to: NodeType[] }> = {
-  USES:        { from: ['ThreatActor'],  to: ['Malware'] },
+  USES:        { from: ['ThreatActor', 'Malware'], to: ['Malware', 'AttackPattern'] },
   CONDUCTS:    { from: ['ThreatActor'],  to: ['Campaign'] },
   TARGETS:     { from: ['Campaign'],     to: ['Victim'] },
   CONTROLS:    { from: ['Malware'],      to: ['IOC'] },
   RESOLVES_TO: { from: ['IOC'],          to: ['IOC'] },
   HOSTED_ON:   { from: ['IOC'],          to: ['Infrastructure'] },
-  EXPLOITS:    { from: ['ThreatActor'],  to: ['Vulnerability'] },
-  INDICATES:   { from: ['IOC'],          to: ['ThreatActor'] },
+  EXPLOITS:    { from: ['ThreatActor', 'Malware'], to: ['Vulnerability'] },
+  INDICATES:   { from: ['IOC'],          to: ['ThreatActor', 'Malware', 'AttackPattern'] },
   OBSERVED_IN: { from: ['IOC'],          to: ['Campaign'] },
 };
 
@@ -62,9 +62,18 @@ const BaseNodeSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 
+export const IOC_TYPES = [
+  'ip', 'ipv6', 'domain', 'fqdn', 'url', 'email',
+  'hash_md5', 'hash_sha1', 'hash_sha256', 'hash_sha512',
+  'cve', 'asn', 'cidr', 'bitcoin_address', 'unknown',
+] as const;
+
+export const IocTypeSchema = z.enum(IOC_TYPES);
+export type IocType = z.infer<typeof IocTypeSchema>;
+
 export const IOCNodeSchema = BaseNodeSchema.extend({
   nodeType: z.literal('IOC'),
-  iocType: z.enum(['ip', 'domain', 'url', 'hash_md5', 'hash_sha1', 'hash_sha256', 'email', 'cidr', 'asn', 'cve']),
+  iocType: IocTypeSchema,
   value: z.string().min(1).max(2048),
 });
 
@@ -112,6 +121,12 @@ export const VictimNodeSchema = BaseNodeSchema.extend({
   country: z.string().max(2).optional(),
 });
 
+export const AttackPatternNodeSchema = BaseNodeSchema.extend({
+  nodeType: z.literal('AttackPattern'),
+  mitreId: z.string().regex(/^T\d{4}(\.\d{3})?$/),
+  name: z.string().min(1).max(500),
+});
+
 /** Union schema for all node types. */
 export const GraphNodeSchema = z.discriminatedUnion('nodeType', [
   IOCNodeSchema,
@@ -121,6 +136,7 @@ export const GraphNodeSchema = z.discriminatedUnion('nodeType', [
   InfrastructureNodeSchema,
   VulnerabilityNodeSchema,
   VictimNodeSchema,
+  AttackPatternNodeSchema,
 ]);
 
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -139,6 +155,7 @@ export const CreateNodeInputSchema = z.object({
     if (data.nodeType === 'Infrastructure') return data.properties['value'] !== undefined;
     if (data.nodeType === 'Vulnerability') return data.properties['cveId'] !== undefined;
     if (data.nodeType === 'Victim') return data.properties['name'] !== undefined;
+    if (data.nodeType === 'AttackPattern') return data.properties['mitreId'] !== undefined;
     return false;
   },
   { message: 'Missing required property for node type' },

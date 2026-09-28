@@ -10,18 +10,21 @@ import { healthRoutes } from './routes/health.js';
 import { graphRoutes } from './routes/graph.js';
 import { graphExtendedRoutes, type ExtendedRouteDeps } from './routes/graph-extended.js';
 import { graphOperationRoutes, type OperationRouteDeps } from './routes/graph-operations.js';
+import { graphSyncRoutes } from './routes/graph-sync.js';
 import type { GraphService } from './service.js';
+import type { GraphReconciler } from './services/graph-reconciler.js';
 
 export interface BuildAppOptions {
   config: AppConfig;
   service: GraphService;
   extendedDeps: ExtendedRouteDeps;
   operationDeps: OperationRouteDeps;
+  reconciler: GraphReconciler;
 }
 
 /** Builds and returns the configured Fastify instance with all plugins and routes. */
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, service, extendedDeps, operationDeps } = opts;
+  const { config, service, extendedDeps, operationDeps, reconciler } = opts;
 
   const app = Fastify({
     logger: {
@@ -69,6 +72,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(graphRoutes(service), { prefix: '/api/v1/graph' });
   await app.register(graphExtendedRoutes(extendedDeps), { prefix: '/api/v1/graph' });
   await app.register(graphOperationRoutes(operationDeps), { prefix: '/api/v1/graph' });
+  await app.register(graphSyncRoutes(reconciler), { prefix: '/api/v1/graph' });
 
   return app;
 }
