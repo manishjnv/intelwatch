@@ -39,6 +39,20 @@ Users already logged in keep the old stored state until they log in again.
 
 After deploy, trend points build up only from real recorded values; until two exist the pill shows "—". Trend history is still in-memory (analytics is on the Step 3 persistence list).
 
+## PR D — frontend: three more fabricated dashboard widgets
+
+**Problem.** Found in the owner's second live check: on a 0-IOC tenant the dashboard still showed invented data with no "Demo" label — Threat Activity Timeline ("Hash-387", "Actor-552"… from `generateStubEvents()`), Geo Threat Map (hardcoded `DEMO_GEO_DATA`: China 342, Russia 289…), ATT&CK Tactics (counts = `max(topIocs × 8, 40) × fixed weights`, labelled "Beta").
+
+| File | Change |
+|---|---|
+| `apps/frontend/src/components/viz/ThreatTimeline.tsx` | `generateStubEvents` deleted; no events → "No threat activity yet" |
+| `apps/frontend/src/pages/DashboardPage.tsx` | Timeline fed from real IOCs via `useIOCs({ limit: 15, sortBy: 'createdAt' })` (same hook and fields as the Recent IOCs card) |
+| `apps/frontend/src/components/widgets/GeoThreatWidget.tsx` | Fake map, country data and scaling deleted (256 → 28 lines); "Geographic attribution not available yet" until a real per-country source exists |
+| `apps/frontend/src/components/widgets/AttackTechniqueWidget.tsx` | Weight heuristic deleted; "ATT&CK mapping not available yet"; no "Beta" badge implying live data |
+| tests | 6 existing test files updated to assert the empty states; new `dashboard-timeline-wiring.test.tsx` |
+
+Owner decision recorded the same evening: real tenants get **honest empty states**, never demo data (to be logged as DECISION-048). The wider sweep is tracked in `docs/S172_FABRICATED_DATA_AUDIT.md`.
+
 ## Verify
 
 - Tests: frontend 1,996 passed / 2 skipped · user-service 186 · analytics-service 93 — typecheck + lint clean on each (frontend lint: 0 errors, pre-existing warnings only).

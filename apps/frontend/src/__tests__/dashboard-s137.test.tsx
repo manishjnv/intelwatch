@@ -266,38 +266,23 @@ describe('AttackTechniqueWidget', () => {
     expect(screen.getByTestId('attack-technique-widget')).toBeInTheDocument()
   })
 
-  it('shows 8 ATT&CK tactic categories', () => {
+  it('shows honest empty state instead of fabricated tactic counts', () => {
     render(<AttackTechniqueWidget />)
-    expect(screen.getByText('Init Access')).toBeInTheDocument()
-    expect(screen.getByText('Execution')).toBeInTheDocument()
-    expect(screen.getByText('Persistence')).toBeInTheDocument()
-    expect(screen.getByText('Priv Esc')).toBeInTheDocument()
-    expect(screen.getByText('Def Evasion')).toBeInTheDocument()
-    expect(screen.getByText('Cred Access')).toBeInTheDocument()
-    expect(screen.getByText('Discovery')).toBeInTheDocument()
-    expect(screen.getByText('Lateral Mvt')).toBeInTheDocument()
+    expect(screen.getByText('ATT&CK mapping not available yet')).toBeInTheDocument()
+    expect(screen.queryByText('Init Access')).not.toBeInTheDocument()
   })
 
-  it('shows count bubbles for each tactic', () => {
-    render(<AttackTechniqueWidget />)
-    const widget = screen.getByTestId('attack-technique-widget')
-    const counts = widget.querySelectorAll('.font-bold.tabular-nums')
-    expect(counts.length).toBe(8)
-    counts.forEach(el => {
-      expect(parseInt(el.textContent ?? '0', 10)).toBeGreaterThan(0)
-    })
-  })
-
-  it('shows Beta badge when not in demo mode', () => {
+  it('does not show Beta badge implying live data', () => {
     mockAnalytics.isDemo = false
     render(<AttackTechniqueWidget />)
-    expect(screen.getByText('Beta')).toBeInTheDocument()
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument()
   })
 
   it('shows Demo badge when isDemo=true', () => {
     mockAnalytics.isDemo = true
     render(<AttackTechniqueWidget />)
     expect(screen.getByText('Demo')).toBeInTheDocument()
+    mockAnalytics.isDemo = false
   })
 })
 

@@ -8,6 +8,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 
 vi.mock('@/hooks/use-intel-data', () => ({
   useDashboardStats: () => ({ data: null, isDemo: false }),
+  useIOCs: () => ({ data: { data: [], total: 0 }, isLoading: false }),
 }))
 
 vi.mock('@/stores/auth-store', () => ({

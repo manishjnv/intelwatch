@@ -26,7 +26,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
 import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'
 import { AmbientBackground } from '@/components/viz/AmbientBackground'
 import { ParallaxCard } from '@/components/viz/ParallaxCard'
-import { ThreatTimeline, generateStubEvents, type TimelineEvent } from '@/components/viz/ThreatTimeline'
+import { ThreatTimeline, type TimelineEvent } from '@/components/viz/ThreatTimeline'
 
 /* ================================================================ */
 /* SeverityHeatmap (#2)                                              */
@@ -183,18 +183,18 @@ describe('ParallaxCard', () => {
 /* ================================================================ */
 describe('ThreatTimeline', () => {
   it('renders timeline container', () => {
-    render(<ThreatTimeline />)
+    render(<ThreatTimeline events={[{ id: '1', timestamp: '2026-03-21T10:00:00Z', label: 'IP-001', type: 'ip', severity: 'critical' }]} />)
     expect(screen.getByTestId('threat-timeline')).toBeInTheDocument()
   })
 
-  it('renders stub events when no events prop', () => {
+  it('shows empty state and no stub labels when no events prop', () => {
     render(<ThreatTimeline />)
-    const events = screen.getAllByTestId('timeline-event')
-    expect(events.length).toBeGreaterThan(0)
-    expect(events.length).toBeLessThanOrEqual(20)
+    expect(screen.getByText('No threat activity yet')).toBeInTheDocument()
+    expect(screen.queryByText(/^Hash-/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Actor-/)).not.toBeInTheDocument()
   })
 
-  it('renders provided events', () => {
+  it('renders both provided events', () => {
     const events: TimelineEvent[] = [
       { id: '1', timestamp: '2026-03-21T10:00:00Z', label: 'IP-001', type: 'ip', severity: 'critical' },
       { id: '2', timestamp: '2026-03-21T11:00:00Z', label: 'CVE-002', type: 'cve', severity: 'high' },
@@ -204,33 +204,26 @@ describe('ThreatTimeline', () => {
   })
 
   it('respects maxEvents limit', () => {
-    render(<ThreatTimeline maxEvents={5} />)
-    const events = screen.getAllByTestId('timeline-event')
-    expect(events.length).toBeLessThanOrEqual(5)
+    const events: TimelineEvent[] = Array.from({ length: 8 }, (_, i) => ({
+      id: String(i), timestamp: `2026-03-21T1${i}:00:00Z`, label: `IP-00${i}`, type: 'ip', severity: 'low',
+    }))
+    render(<ThreatTimeline events={events} maxEvents={5} />)
+    const rendered = screen.getAllByTestId('timeline-event')
+    expect(rendered.length).toBeLessThanOrEqual(5)
   })
 
   it('shows empty state message', () => {
     render(<ThreatTimeline events={[]} />)
-    expect(screen.getByText('No recent events')).toBeInTheDocument()
+    expect(screen.getByText('No threat activity yet')).toBeInTheDocument()
   })
 
   it('displays section heading', () => {
-    render(<ThreatTimeline />)
+    render(<ThreatTimeline events={[{ id: '1', timestamp: '2026-03-21T10:00:00Z', label: 'IP-001', type: 'ip', severity: 'critical' }]} />)
     expect(screen.getByText('Threat Activity Timeline')).toBeInTheDocument()
   })
 
   it('applies className prop', () => {
     render(<ThreatTimeline className="mt-6" />)
     expect(screen.getByTestId('threat-timeline')).toHaveClass('mt-6')
-  })
-
-  it('generateStubEvents returns sorted events', () => {
-    const events = generateStubEvents(10)
-    expect(events).toHaveLength(10)
-    for (let i = 1; i < events.length; i++) {
-      expect(new Date(events[i]!.timestamp).getTime()).toBeGreaterThanOrEqual(
-        new Date(events[i - 1]!.timestamp).getTime()
-      )
-    }
   })
 })

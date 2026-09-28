@@ -3,9 +3,10 @@
  * @description Dashboard overview — org-aware widgets, severity heatmap,
  * and threat timeline. Customer-facing only.
  */
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth-store'
-import { useDashboardStats } from '@/hooks/use-intel-data'
+import { useDashboardStats, useIOCs } from '@/hooks/use-intel-data'
 import { useDashboardMode } from '@/hooks/use-dashboard-mode'
 import { useDashboardView } from '@/hooks/use-dashboard-view'
 import { InvestigationDrawerProvider } from '@/hooks/use-investigation-drawer'
@@ -13,7 +14,7 @@ import { Settings, BarChart3, LineChart } from 'lucide-react'
 
 // Viz components
 import { SeverityHeatmap } from '@/components/viz/SeverityHeatmap'
-import { ThreatTimeline } from '@/components/viz/ThreatTimeline'
+import { ThreatTimeline, TYPE_LABEL, type TimelineEvent } from '@/components/viz/ThreatTimeline'
 import { AmbientBackground } from '@/components/viz/AmbientBackground'
 
 // Dashboard widgets
@@ -68,6 +69,22 @@ export function DashboardPage() {
   const { data: liveStats } = useDashboardStats()
   const { mode, profile } = useDashboardMode()
   const { view, toggleView } = useDashboardView()
+  const { data: timelineIocs } = useIOCs({ limit: 15, sortBy: 'createdAt' })
+
+  const timelineEvents = useMemo<TimelineEvent[]>(() => {
+    const iocs = timelineIocs?.data ?? []
+    return iocs
+      .map(ioc => ({
+        id: ioc.id,
+        timestamp: ioc.lastSeen ?? ioc.firstSeen,
+        label: ioc.normalizedValue.length > 12
+          ? `${ioc.normalizedValue.slice(0, 10)}…`
+          : ioc.normalizedValue || (TYPE_LABEL[ioc.iocType] ?? ioc.iocType),
+        type: ioc.iocType,
+        severity: ioc.severity,
+      }))
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  }, [timelineIocs])
 
   // Format plan tier for display
   const planLabel = tenant?.plan
@@ -140,7 +157,7 @@ export function DashboardPage() {
             </div>
 
             {/* Threat Timeline */}
-            <ThreatTimeline className="mt-6" />
+            <ThreatTimeline className="mt-6" events={timelineEvents} />
           </>
         )}
       </div>
