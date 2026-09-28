@@ -1,7 +1,7 @@
 /**
  * Tests for GlobalMonitoringPage:
  * - Status badge, pipeline flow, feed health grid, IOC stats,
- *   corroboration leaders, actions, modal, demo fallback, mobile
+ *   corroboration leaders, actions, modal, honest empty/error states, mobile
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
@@ -10,21 +10,39 @@ const mockPause = vi.fn()
 const mockResume = vi.fn()
 const mockRetrigger = vi.fn()
 
-vi.mock('@/hooks/use-global-monitoring', () => ({
-  useGlobalMonitoring: vi.fn(() => MOCK_MONITORING),
-  useGlobalIocStats: vi.fn(() => ({ data: MOCK_IOC_STATS, isDemo: false })),
-  useCorroborationLeaders: vi.fn(() => ({ data: MOCK_LEADERS, isDemo: false })),
-  useSubscriptionStats: vi.fn(() => ({ data: MOCK_SUB_STATS, isDemo: false })),
-}))
+function queryOf<T>(data: T | undefined, overrides: Partial<{ isLoading: boolean; isError: boolean; error: unknown }> = {}) {
+  return {
+    data,
+    isLoading: overrides.isLoading ?? false,
+    isError: overrides.isError ?? false,
+    error: overrides.error ?? null,
+    refetch: vi.fn(),
+  }
+}
 
-vi.mock('@/hooks/use-global-catalog', () => ({
-  useGlobalCatalog: vi.fn(() => ({ data: MOCK_FEEDS, isLoading: false, isDemo: false })),
-  useMySubscriptions: vi.fn(() => ({ data: [], subscribe: vi.fn(), unsubscribe: vi.fn(), isSubscribing: false, isUnsubscribing: false, isLoading: false, isDemo: false })),
-  useGlobalPipelineHealth: vi.fn(() => ({ data: MOCK_PIPELINE, isLoading: false, isDemo: false })),
+let mockFeedQuery = queryOf<typeof MOCK_FEEDS>(undefined)
+let mockPipelineQuery = queryOf<typeof MOCK_PIPELINE>(undefined)
+let mockIocStatsQuery = queryOf<typeof MOCK_IOC_STATS>(undefined)
+let mockLeadersQuery = queryOf<typeof MOCK_LEADERS>(undefined)
+let mockSubStatsQuery = queryOf<typeof MOCK_SUB_STATS>(undefined)
+
+vi.mock('@/hooks/use-global-monitoring', () => ({
+  useGlobalMonitoring: vi.fn(() => ({
+    feedQuery: mockFeedQuery,
+    pipelineQuery: mockPipelineQuery,
+    iocStatsQuery: mockIocStatsQuery,
+    leadersQuery: mockLeadersQuery,
+    subStatsQuery: mockSubStatsQuery,
+    isLoading: false,
+    lastUpdated: new Date(),
+    pausePipeline: mockPause,
+    resumePipeline: mockResume,
+    retriggerFailed: mockRetrigger,
+  })),
 }))
 
 vi.mock('@/stores/auth-store', () => ({
-  useAuthStore: vi.fn((sel: any) => sel({
+  useAuthStore: vi.fn((sel: (state: Record<string, unknown>) => unknown) => sel({
     user: { displayName: 'Admin', email: 'admin@test.com', role: 'super_admin' },
     tenant: { name: 'ACME' },
     accessToken: 'tok',
@@ -66,21 +84,16 @@ const MOCK_SUB_STATS = {
   popularFeeds: [{ name: 'NVD', count: 91 }, { name: 'CISA', count: 78 }],
 }
 
-const MOCK_MONITORING = {
-  pipelineHealth: MOCK_PIPELINE,
-  feedHealth: MOCK_FEEDS,
-  iocStats: MOCK_IOC_STATS,
-  corroborationLeaders: MOCK_LEADERS,
-  subscriptionStats: MOCK_SUB_STATS,
-  isLoading: false, error: null, isDemo: false, lastUpdated: new Date(),
-  pausePipeline: mockPause, resumePipeline: mockResume, retriggerFailed: mockRetrigger,
-}
-
 import { GlobalMonitoringPage } from '@/pages/GlobalMonitoringPage'
 
 describe('GlobalMonitoringPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFeedQuery = queryOf(MOCK_FEEDS)
+    mockPipelineQuery = queryOf(MOCK_PIPELINE)
+    mockIocStatsQuery = queryOf(MOCK_IOC_STATS)
+    mockLeadersQuery = queryOf(MOCK_LEADERS)
+    mockSubStatsQuery = queryOf(MOCK_SUB_STATS)
   })
 
   it('renders status badge (healthy)', () => {
@@ -166,11 +179,25 @@ describe('GlobalMonitoringPage', () => {
     expect((select as HTMLSelectElement).value).toBe('10000')
   })
 
-  it('demo fallback renders banner when isDemo', async () => {
-    const mod = await import('@/hooks/use-global-monitoring')
-    vi.mocked(mod.useGlobalMonitoring).mockReturnValueOnce({ ...MOCK_MONITORING, isDemo: true })
+  it('IOC stats panel shows an error card and Retry when the query fails, never fabricated numbers', () => {
+    mockIocStatsQuery = queryOf(undefined, { isError: true, error: new Error('mismatch') })
     render(<GlobalMonitoringPage />)
-    expect(screen.getByText(/Demo data/)).toBeTruthy()
+    expect(screen.getByTestId('query-error')).toBeTruthy()
+    expect(screen.queryByText('4,820')).toBeNull()
+  })
+
+  it('status badge never shows a stuck/critical verdict when pipeline data is missing', () => {
+    mockPipelineQuery = queryOf(undefined, { isError: true, error: new Error('down') })
+    render(<GlobalMonitoringPage />)
+    // Feeds are all fresh (not stale), so status stays healthy even though pipeline data errored —
+    // the missing pipeline data must never itself be read as "stuck".
+    expect(screen.getByTestId('status-badge').textContent).toBe('healthy')
+  })
+
+  it('status badge shows critical when real pipeline data reports zero throughput', () => {
+    mockPipelineQuery = queryOf({ ...MOCK_PIPELINE, pipeline: { ...MOCK_PIPELINE.pipeline, articlesProcessed24h: 0 } })
+    render(<GlobalMonitoringPage />)
+    expect(screen.getByTestId('status-badge').textContent).toBe('critical')
   })
 
   it('subscription overview shows correct stats', () => {
@@ -178,6 +205,13 @@ describe('GlobalMonitoringPage', () => {
     expect(screen.getByText('Total Subscriptions')).toBeTruthy()
     expect(screen.getByText('42')).toBeTruthy()
     expect(screen.getByText('Unique Tenants')).toBeTruthy()
+  })
+
+  it('subscription overview shows an error card when the (blocked) backend route rejects', () => {
+    mockSubStatsQuery = queryOf(undefined, { isError: true, error: new Error('Not Found') })
+    render(<GlobalMonitoringPage />)
+    expect(screen.getByTestId('query-error')).toBeTruthy()
+    expect(screen.queryByText('Total Subscriptions')).toBeNull()
   })
 
   it('action bar renders all buttons', () => {

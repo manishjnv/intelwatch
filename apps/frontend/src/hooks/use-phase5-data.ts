@@ -3,37 +3,113 @@
  * @description TanStack Query hooks for Phase 5 services:
  * Integration (:3015), User Management (:3016), Customization (:3017).
  * All queries go through nginx → backend services.
+ * Real data or honest empty/error states only — no demo fallback (DECISION-048).
  */
-import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
-import { notifyApiError } from './useApiError'
 import type { SessionInfo } from '@/types/auth-security'
 import {
-  DEMO_SIEM_INTEGRATIONS, DEMO_WEBHOOKS, DEMO_TICKETING,
-  DEMO_STIX_COLLECTIONS, DEMO_BULK_EXPORTS, DEMO_INTEGRATION_STATS,
-  DEMO_MODULE_TOGGLES, DEMO_AI_CONFIGS, DEMO_RISK_WEIGHTS,
-  DEMO_NOTIFICATION_CHANNELS, DEMO_CUSTOMIZATION_STATS,
-  DEMO_PLAN_TIERS, DEMO_SUBTASK_MAPPINGS, DEMO_RECOMMENDED_MODELS, DEMO_COST_ESTIMATE,
-  type SIEMIntegration, type WebhookConfig, type TicketingIntegration,
-  type STIXCollection, type BulkExport, type IntegrationStats,
   type UserRecord, type RoleRecord,
   type SessionRecord, type AuditLogEntry, type UserManagementStats,
-  type ModuleToggle, type AIModelConfig, type RiskWeight,
-  type NotificationChannel, type CustomizationStats,
-  type PlanTierMeta, type SubtaskMapping, type RecommendedSubtask, type CostEstimate,
 } from './phase5-demo-data'
 
-// Re-export types for page consumption
-export type {
-  SIEMIntegration, WebhookConfig, TicketingIntegration,
-  STIXCollection, BulkExport, IntegrationStats,
-  UserRecord, RoleRecord,
-  SessionRecord, AuditLogEntry, UserManagementStats,
-  ModuleToggle, AIModelConfig, RiskWeight,
-  NotificationChannel, CustomizationStats,
-  PlanTierMeta, SubtaskMapping, RecommendedSubtask, CostEstimate,
+// ─── Re-exported page types (real-shape, defined here now) ──────
+
+export interface SIEMIntegration {
+  id: string; name: string; type: 'splunk' | 'sentinel' | 'elastic'
+  status: 'active' | 'disabled'; endpoint: string
+  eventsForwarded: number; lastSync: string | null; latencyMs: number
+  createdAt: string
 }
+
+export interface WebhookConfig {
+  id: string; url: string; events: string[]; status: 'active' | 'disabled'
+  deliveryRate: number; lastTriggered: string | null; secret: string
+  hmacEnabled: boolean; retryCount: number; dlqCount: number; createdAt: string
+}
+
+export interface TicketingIntegration {
+  id: string; name: string; type: 'servicenow' | 'jira'
+  project: string; autoCreateRules: number; status: 'active' | 'disabled'
+  recentTickets: number; createdAt: string
+}
+
+export interface STIXCollection {
+  id: string; name: string; type: 'publish' | 'subscribe'
+  objectCount: number; lastPollOrPush: string | null; status: 'active' | 'paused'
+  pollingInterval: number; createdAt: string
+}
+
+export interface BulkExport {
+  id: string; name: string; format: 'stix' | 'csv' | 'json'
+  schedule: string; lastRun: string | null; nextRun: string | null
+  status: 'active' | 'paused' | 'error'; recordCount: number; createdAt: string
+}
+
+export interface IntegrationStats {
+  total: number; active: number; failing: number
+  eventsPerHour: number; lastSync: string | null
+}
+
+export interface ModuleToggle {
+  id: string; name: string; description: string; enabled: boolean
+  icon: string; dependencies: string[]; category: string
+}
+
+export interface AIModelConfig {
+  id: string; task: string; model: string; maxTokens: number
+  monthlyBudget: number; spent: number; confidenceThreshold: number
+  enabled: boolean
+}
+
+export interface RiskWeight {
+  id: string; factor: string; weight: number; description: string
+  min: number; max: number; default: number
+}
+
+export interface NotificationChannel {
+  id: string; type: 'email' | 'slack' | 'webhook' | 'in_app'
+  name: string; enabled: boolean; severities: string[]
+  quietHoursStart: string | null; quietHoursEnd: string | null
+}
+
+export interface CustomizationStats {
+  modulesEnabled: number; customRules: number
+  aiBudgetUsed: number; theme: string
+}
+
+export interface PlanTierMeta {
+  plan: 'starter' | 'professional' | 'enterprise' | 'custom'
+  displayName: string; description: string; stageModel: string
+  costPer1KArticlesUsd: string; accuracyPct: string; isRecommended: boolean
+}
+
+export interface SubtaskMapping {
+  id: string; tenantId: string; subtask: string; stage: 1 | 2 | 3
+  model: 'haiku' | 'sonnet' | 'opus'; fallbackModel: 'haiku' | 'sonnet' | 'opus'
+  isRecommended: boolean; updatedAt: string
+}
+
+export interface RecommendedSubtask {
+  subtask: string; stage: 1 | 2 | 3
+  recommendedModel: 'haiku' | 'sonnet' | 'opus'; fallbackModel: 'haiku' | 'sonnet' | 'opus'
+  description: string
+}
+
+interface StageEstimate {
+  stage: 1 | 2 | 3; model: 'haiku' | 'sonnet' | 'opus'
+  articles: number; subtasks: number; costUsd: number
+}
+
+export interface CostEstimate {
+  perStage: StageEstimate[]
+  totalMonthlyUsd: number
+  comparedTo: { starter: number; professional: number; enterprise: number }
+}
+
+// Re-export user-management types (untouched hooks below still use these)
+export type { UserRecord, RoleRecord, SessionRecord, AuditLogEntry, UserManagementStats }
 
 // ─── Generic helpers ────────────────────────────────────────────
 
@@ -53,97 +129,183 @@ function buildQuery(params: QueryParams): string {
   return parts.length > 0 ? `?${parts.join('&')}` : ''
 }
 
-function withDemoFallback<T>(
-  result: UseQueryResult<T>,
-  demoData: T,
-  hasData: (d: T | undefined) => boolean,
-) {
-  const isDemo = !result.isLoading && !hasData(result.data)
-  return { ...result, data: isDemo ? demoData : result.data, isDemo }
+// ─── Integration Hooks ──────────────────────────────────────────
+// apps/integration-service's real Integration entity (integrations.ts GET /) has no
+// eventsForwarded/latencyMs/deliveryRate/dlqCount/status-detail fields — those live only on
+// per-item /:id/health (not fetched in a list). Adapters below map what's real and leave the
+// rest at a documented zero (ponytail: wire /:id/health per-row if per-integration metrics
+// become a real requirement).
+
+interface IntegrationApi {
+  id: string; name: string; type: string; enabled: boolean
+  triggers: string[]
+  webhookConfig?: { url: string; secret?: string }
+  siemConfig?: { type: string; url?: string }
+  ticketingConfig?: { type: string; projectKey?: string; tableName?: string }
+  lastUsedAt: string | null; createdAt: string
 }
 
-// ─── Integration Hooks ──────────────────────────────────────────
+const SIEM_TYPE_MAP: Record<string, SIEMIntegration['type']> = {
+  splunk_hec: 'splunk', sentinel: 'sentinel', elastic_siem: 'elastic',
+}
+const SIEM_TYPE_MAP_REV: Record<SIEMIntegration['type'], string> = {
+  splunk: 'splunk_hec', sentinel: 'sentinel', elastic: 'elastic_siem',
+}
+
+function toSIEMIntegration(i: IntegrationApi): SIEMIntegration {
+  return {
+    id: i.id, name: i.name, type: SIEM_TYPE_MAP[i.type] ?? 'splunk',
+    status: i.enabled ? 'active' : 'disabled',
+    endpoint: i.siemConfig?.url ?? '',
+    // ponytail: no per-item event/latency counters on the list endpoint; 0 until wired
+    eventsForwarded: 0, lastSync: i.lastUsedAt, latencyMs: 0,
+    createdAt: i.createdAt,
+  }
+}
+
+function toWebhookConfig(i: IntegrationApi): WebhookConfig {
+  return {
+    id: i.id, url: i.webhookConfig?.url ?? '', events: i.triggers,
+    status: i.enabled ? 'active' : 'disabled',
+    // ponytail: delivery rate / retry / DLQ counts live in webhook-service, not this list
+    deliveryRate: 0, lastTriggered: i.lastUsedAt, secret: '',
+    hmacEnabled: !!i.webhookConfig?.secret, retryCount: 0, dlqCount: 0,
+    createdAt: i.createdAt,
+  }
+}
+
+function toTicketingIntegration(i: IntegrationApi): TicketingIntegration {
+  return {
+    id: i.id, name: i.name,
+    type: i.ticketingConfig?.type === 'servicenow' ? 'servicenow' : 'jira',
+    project: i.ticketingConfig?.projectKey ?? i.ticketingConfig?.tableName ?? '',
+    autoCreateRules: 0, status: i.enabled ? 'active' : 'disabled',
+    // ponytail: recent-ticket count needs a per-integration ticket query, not on this list
+    recentTickets: 0, createdAt: i.createdAt,
+  }
+}
 
 export function useSIEMIntegrations() {
-  const empty: ListResponse<SIEMIntegration> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['siem-integrations'],
-    queryFn: () => apiList<SIEMIntegration>('/integrations/siem').catch(err => notifyApiError(err, 'SIEM integrations', empty)),
+    queryFn: async () => {
+      const r = await apiList<IntegrationApi>('/integrations')
+      const data = r.data.filter(i => ['splunk_hec', 'sentinel', 'elastic_siem'].includes(i.type)).map(toSIEMIntegration)
+      return { data, total: data.length, page: 1, limit: 50 } satisfies ListResponse<SIEMIntegration>
+    },
+    meta: { resource: 'SIEM integrations' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_SIEM_INTEGRATIONS, total: DEMO_SIEM_INTEGRATIONS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useWebhooks() {
-  const empty: ListResponse<WebhookConfig> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['webhooks'],
-    queryFn: () => apiList<WebhookConfig>('/integrations/webhooks').catch(() => empty),
+    queryFn: async () => {
+      const r = await apiList<IntegrationApi>('/integrations?type=webhook')
+      const data = r.data.map(toWebhookConfig)
+      return { ...r, data } satisfies ListResponse<WebhookConfig>
+    },
+    meta: { resource: 'webhooks' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_WEBHOOKS, total: DEMO_WEBHOOKS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useTicketingIntegrations() {
-  const empty: ListResponse<TicketingIntegration> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['ticketing-integrations'],
-    queryFn: () => apiList<TicketingIntegration>('/integrations?type=ticketing').catch(() => empty),
+    queryFn: async () => {
+      const r = await apiList<IntegrationApi>('/integrations')
+      const data = r.data.filter(i => ['servicenow', 'jira'].includes(i.type)).map(toTicketingIntegration)
+      return { data, total: data.length, page: 1, limit: 50 } satisfies ListResponse<TicketingIntegration>
+    },
+    meta: { resource: 'ticketing integrations' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_TICKETING, total: DEMO_TICKETING.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
+// BLOCKED: advancedRoutes only exposes POST/PUT/DELETE + GET /:id/manifest for managed TAXII
+// collections (advanced.ts) — there is no GET list route for ManagedTaxiiCollection. The GET
+// /taxii/collections route that does exist (export.ts) returns a different, hardcoded
+// TaxiiCollection[] (2 fixed feed descriptors, no name/objectCount/pollingInterval fields) that
+// has nothing to do with tenant-created collections — using it would show fabricated-looking
+// data, worse than an honest error. Left calling the (still-missing) list path so the page shows
+// a real error card, not invented rows. Needs a real GET /taxii/collections (managed) route.
 export function useSTIXCollections() {
-  const empty: ListResponse<STIXCollection> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['stix-collections'],
-    queryFn: () => apiList<STIXCollection>('/integrations/stix').catch(() => empty),
+    queryFn: () => apiList<STIXCollection>('/integrations/taxii/managed-collections'),
+    meta: { resource: 'STIX/TAXII collections' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_STIX_COLLECTIONS, total: DEMO_STIX_COLLECTIONS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
+}
+
+interface ExportScheduleApi {
+  id: string; name: string; cronExpression: string; format: BulkExport['format']
+  enabled: boolean; lastRunAt: string | null; lastRunStatus: 'success' | 'failure' | null
+  nextRunAt: string | null; createdAt: string
+}
+function toBulkExport(s: ExportScheduleApi): BulkExport {
+  return {
+    id: s.id, name: s.name, format: s.format, schedule: s.cronExpression,
+    lastRun: s.lastRunAt, nextRun: s.nextRunAt,
+    status: !s.enabled ? 'paused' : s.lastRunStatus === 'failure' ? 'error' : 'active',
+    // ponytail: schedule doesn't carry an aggregate record count; only per-run history does
+    recordCount: 0, createdAt: s.createdAt,
+  }
 }
 
 export function useBulkExports() {
-  const empty: ListResponse<BulkExport> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['bulk-exports'],
-    queryFn: () => apiList<BulkExport>('/integrations/exports').catch(() => empty),
+    queryFn: async () => {
+      const r = await apiList<ExportScheduleApi>('/integrations/export/schedules')
+      return { ...r, data: r.data.map(toBulkExport) }
+    },
+    meta: { resource: 'bulk exports' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_BULK_EXPORTS, total: DEMO_BULK_EXPORTS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
+}
+
+interface IntegrationStatsApi {
+  totalIntegrations: number; enabledIntegrations: number
+  totalLogs: number; failedLogs: number; dlqSize: number; totalTickets: number
+}
+function toIntegrationStats(s: IntegrationStatsApi): IntegrationStats {
+  return {
+    total: s.totalIntegrations, active: s.enabledIntegrations, failing: s.failedLogs,
+    // ponytail: no events/hr or last-sync-across-all-integrations aggregate on this endpoint
+    eventsPerHour: 0, lastSync: null,
+  }
 }
 
 export function useIntegrationStats() {
-  const empty: IntegrationStats = { total: 0, active: 0, failing: 0, eventsPerHour: 0, lastSync: null }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['integration-stats'],
-    queryFn: () => api<IntegrationStats>('/integrations/stats').catch(() => empty),
+    queryFn: () => api<IntegrationStatsApi>('/integrations/stats').then(toIntegrationStats),
+    meta: { resource: 'integration stats' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_INTEGRATION_STATS, d => (d?.total ?? 0) > 0)
 }
 
 export function useCreateSIEM() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { name: string; type: string; endpoint: string; apiKey: string }) =>
-      api<SIEMIntegration>('/integrations/siem', { method: 'POST', body: input }),
+    // ponytail: one generic endpoint+apiKey form covers 3 real config shapes (splunk_hec:
+    // url+token, sentinel: workspaceId+sharedKey, elastic_siem: url+apiKey) — best-effort map;
+    // sentinel needs its own form fields (workspaceId/sharedKey) to be fully correct.
+    mutationFn: (input: { name: string; type: string; endpoint: string; apiKey: string }) => {
+      const siemType = SIEM_TYPE_MAP_REV[input.type as SIEMIntegration['type']] ?? 'splunk_hec'
+      const siemConfig = siemType === 'sentinel'
+        ? { type: siemType, workspaceId: input.endpoint, sharedKey: input.apiKey }
+        : siemType === 'elastic_siem'
+          ? { type: siemType, url: input.endpoint, apiKey: input.apiKey }
+          : { type: siemType, url: input.endpoint, token: input.apiKey }
+      return api<IntegrationApi>('/integrations', {
+        method: 'POST',
+        body: { name: input.name, type: siemType, enabled: true, triggers: ['alert.created'], siemConfig },
+      })
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['siem-integrations'] }); qc.invalidateQueries({ queryKey: ['integration-stats'] }) },
   })
 }
@@ -152,7 +314,14 @@ export function useCreateWebhook() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: { url: string; secret: string; events: string[]; hmacEnabled: boolean }) =>
-      api<WebhookConfig>('/integrations/webhooks', { method: 'POST', body: input }),
+      api<IntegrationApi>('/integrations', {
+        method: 'POST',
+        body: {
+          name: `Webhook — ${input.url}`, type: 'webhook', enabled: true,
+          triggers: input.events.length > 0 ? input.events : ['alert.created'],
+          webhookConfig: { url: input.url, secret: input.secret || undefined, headers: {}, method: 'POST' },
+        },
+      }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['webhooks'] }); qc.invalidateQueries({ queryKey: ['integration-stats'] }) },
   })
 }
@@ -160,8 +329,17 @@ export function useCreateWebhook() {
 export function useCreateTicketing() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { name: string; type: string; instanceUrl: string; credentials: string; defaultProject: string }) =>
-      api<TicketingIntegration>('/integrations/ticketing', { method: 'POST', body: input }),
+    // ponytail: form has no `email` field, required by JiraConfigSchema — jira creates will 400
+    // until the modal collects it; out of scope for this pass (form change, not hook change).
+    mutationFn: (input: { name: string; type: string; instanceUrl: string; credentials: string; defaultProject: string }) => {
+      const ticketingConfig = input.type === 'jira'
+        ? { type: 'jira', baseUrl: input.instanceUrl, email: '', apiToken: input.credentials, projectKey: input.defaultProject, issueType: 'Task' }
+        : { type: 'servicenow', instanceUrl: input.instanceUrl, username: '', password: input.credentials, tableName: input.defaultProject || 'incident' }
+      return api<IntegrationApi>('/integrations', {
+        method: 'POST',
+        body: { name: input.name, type: input.type, enabled: true, triggers: ['alert.created'], ticketingConfig },
+      })
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ticketing-integrations'] }); qc.invalidateQueries({ queryKey: ['integration-stats'] }) },
   })
 }
@@ -170,7 +348,15 @@ export function useCreateSTIXCollection() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: { name: string; type: string; pollingInterval: number }) =>
-      api<STIXCollection>('/integrations/stix', { method: 'POST', body: input }),
+      api<STIXCollection>('/integrations/taxii/collections', {
+        method: 'POST',
+        body: {
+          title: input.name, description: '',
+          canRead: input.type === 'subscribe', canWrite: input.type === 'publish',
+          mediaTypes: ['application/stix+json;version=2.1'],
+          pollingIntervalMinutes: Math.max(1, Math.round(input.pollingInterval / 60)),
+        },
+      }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['stix-collections'] }); qc.invalidateQueries({ queryKey: ['integration-stats'] }) },
   })
 }
@@ -179,18 +365,24 @@ export function useCreateBulkExport() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: { name: string; format: string; schedule: string; severityFilter?: string; dateRange?: string }) =>
-      api<BulkExport>('/integrations/exports', { method: 'POST', body: input }),
+      api<ExportScheduleApi>('/integrations/export/schedules', {
+        method: 'POST',
+        body: {
+          name: input.name, cronExpression: input.schedule, format: input.format,
+          entityType: 'iocs', filters: input.severityFilter ? { severity: input.severityFilter } : {}, enabled: true,
+        },
+      }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bulk-exports'] }); qc.invalidateQueries({ queryKey: ['integration-stats'] }) },
   })
 }
 
 export function useTestSIEMConnection() {
   return useMutation({
-    mutationFn: (id: string) => api<{ success: boolean; latencyMs: number }>(`/integrations/siem/${id}/test`, { method: 'POST' }),
+    mutationFn: (id: string) => api<{ success: boolean; message: string }>(`/integrations/${id}/test`, { method: 'POST' }),
   })
 }
 
-// ─── User Management Hooks ──────────────────────────────────────
+// ─── User Management Hooks (unchanged — S162 already honest) ────
 
 export function useUsers(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
@@ -294,54 +486,43 @@ export function useRevokeSession() {
 
 // ─── Customization Hooks ────────────────────────────────────────
 
+interface ModuleToggleApi {
+  id: string; tenantId: string; module: string; enabled: boolean
+  featureFlags: Record<string, boolean>; updatedAt: string; updatedBy: string
+}
+// ponytail: real ModuleToggle (module-toggle-store.ts) carries no description/icon/dependencies/
+// category — CustomizationPage's card UI for those fields has nothing real to show until the
+// store grows them. name falls back to the raw module id (e.g. "hunting").
+function toModuleToggle(t: ModuleToggleApi): ModuleToggle {
+  return { id: t.id, name: t.module, description: '', enabled: t.enabled, icon: '', dependencies: [], category: '' }
+}
+
 export function useModuleToggles() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['module-toggles'],
     // Backend (module-toggles.ts GET /) sends { data: toggles, total } single-wrapped;
     // apiList() normalizes it (api() alone would drop total — RCA #45).
-    queryFn: () => apiList<ModuleToggle>('/customization/modules').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: async () => {
+      const r = await apiList<ModuleToggleApi>('/customization/modules')
+      return { ...r, data: r.data.map(toModuleToggle) }
+    },
+    meta: { resource: 'module toggles' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_MODULE_TOGGLES, total: DEMO_MODULE_TOGGLES.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
-}
-
-// BLOCKED: frontend calls GET /customization/ai, but aiModelRoutes (registered at prefix
-// /customization/ai) has no handler for the bare path — only /models, /tasks, /budget, /usage,
-// /recommended, /subtasks, /plans, /cost-estimate. The closest analog, GET /ai/tasks, returns
-// TaskMapping[] { id, tenantId, task, model, temperature?, maxTokens?, updatedAt } — it has none
-// of AIModelConfig's monthlyBudget/spent/confidenceThreshold/enabled fields. There is no backend
-// shape today that satisfies this hook's contract; needs a new endpoint, not a response-unwrap
-// fix. Left as a 404 → always-demo fallback (no regression vs. current behavior).
-export function useAIConfigs() {
-  const result = useQuery({
-    queryKey: ['ai-configs'],
-    queryFn: () => api<{ data: AIModelConfig[] }>('/customization/ai').catch(() => ({ data: [] })),
-    staleTime: 60_000,
-  })
-  return withDemoFallback(result,
-    { data: DEMO_AI_CONFIGS },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 // BLOCKED: frontend calls GET /customization/risk-weights, but riskWeightRoutes is registered
 // at prefix /customization/risk with routes under /profiles, /presets, /validate — there is no
 // /customization/risk-weights path at all (404). The real list endpoint is
 // GET /customization/risk/profiles. Fixing the path is a route-repair change, not a response-
-// unwrap fix, and is outside this pass's scope. Left as-is (404 → always-demo, no regression).
+// unwrap fix, and is outside this pass's scope. Left as-is: honest 404 error card.
 export function useRiskWeights() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['risk-weights'],
-    queryFn: () => api<{ data: RiskWeight[] }>('/customization/risk-weights').catch(() => ({ data: [] })),
+    queryFn: () => api<{ data: RiskWeight[] }>('/customization/risk-weights'),
+    meta: { resource: 'risk weights' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_RISK_WEIGHTS },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 // BLOCKED: GET /customization/notifications exists and resolves (notifications.ts GET /), but
@@ -350,35 +531,34 @@ export function useRiskWeights() {
 // severities/quietHours-per-channel. The backend has no concept of named, individually
 // addressable channels; quiet hours are also global (PUT /quiet-hours), not per-channel. This
 // needs a real shape reconciliation (backend or frontend model change), not a response-unwrap
-// fix. Left as-is: the current `.data` read on a non-array object yields undefined → always
-// falls back to demo, same as before this pass (no regression, no crash).
+// fix. Left as-is: the current `.data` read on a non-array object yields undefined → QueryStateView
+// shows an honest empty state (no crash, no regression, no fabricated rows).
 export function useNotificationChannels() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['notification-channels'],
-    queryFn: () => api<{ data: NotificationChannel[] }>('/customization/notifications').catch(() => ({ data: [] })),
+    queryFn: () => api<{ data: NotificationChannel[] }>('/customization/notifications'),
+    meta: { resource: 'notification channels' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_NOTIFICATION_CHANNELS },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
+// BLOCKED: no /customization/stats route exists anywhere in the service (dashboard.ts has
+// /layout, /filters, /preferences; command-center.ts has /queue-stats and period-scoped
+// analytics, neither named /stats). Honest 404 error card until a real aggregate route is added.
 export function useCustomizationStats() {
-  const empty: CustomizationStats = { modulesEnabled: 0, customRules: 0, aiBudgetUsed: 0, theme: 'dark' }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['customization-stats'],
-    queryFn: () => api<CustomizationStats>('/customization/stats').catch(err => notifyApiError(err, 'customization stats', empty)),
+    queryFn: () => api<CustomizationStats>('/customization/stats'),
+    meta: { resource: 'customization stats' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_CUSTOMIZATION_STATS, d => (d?.modulesEnabled ?? 0) > 0)
 }
 
 export function useToggleModule() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      api<ModuleToggle>(`/customization/modules/${id}`, { method: 'PATCH', body: { enabled } }),
+      api<ModuleToggleApi>(`/customization/modules/${id}`, { method: 'PATCH', body: { enabled } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['module-toggles'] }); qc.invalidateQueries({ queryKey: ['customization-stats'] }) },
   })
 }
@@ -426,60 +606,51 @@ export function useTestNotification() {
 }
 
 // ─── AI Plan & Subtask Hooks (F2/F3) ────────────────────────────
+// These 4 endpoints' real shapes (plan-tiers.ts PlanTierMeta, ai-model-store.ts SubtaskMapping /
+// RecommendedSubtask, cost-estimator.ts CostEstimate) match the frontend types field-for-field —
+// no adapter needed.
 
 export function usePlanTiers() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['ai-plan-tiers'],
     // Backend (ai-models.ts GET /plans) sends { data: plans, total } single-wrapped;
     // apiList() normalizes it (api() alone would drop total — RCA #45).
-    queryFn: () => apiList<PlanTierMeta>('/customization/ai/plans').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<PlanTierMeta>('/customization/ai/plans'),
+    meta: { resource: 'AI plan tiers' },
     staleTime: 300_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_PLAN_TIERS, total: DEMO_PLAN_TIERS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useSubtaskMappings() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['ai-subtask-mappings'],
     // Backend (ai-models.ts GET /subtasks) sends { data: mappings, total } single-wrapped.
-    queryFn: () => apiList<SubtaskMapping>('/customization/ai/subtasks').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<SubtaskMapping>('/customization/ai/subtasks'),
+    meta: { resource: 'AI subtask mappings' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_SUBTASK_MAPPINGS, total: DEMO_SUBTASK_MAPPINGS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useRecommendedModels() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['ai-recommended-models'],
     // Backend (ai-models.ts GET /recommended) sends { data: recommended, total } single-wrapped.
-    queryFn: () => apiList<RecommendedSubtask>('/customization/ai/recommended').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<RecommendedSubtask>('/customization/ai/recommended'),
+    meta: { resource: 'recommended AI models' },
     staleTime: 300_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_RECOMMENDED_MODELS, total: DEMO_RECOMMENDED_MODELS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useCostEstimate(plan: string, articles: number) {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['ai-cost-estimate', plan, articles],
     // Backend (ai-models.ts GET /cost-estimate) sends { data: estimate } single-wrapped;
     // api() already unwraps it — the CostEstimate fields are top-level, not nested under .data.
-    queryFn: () => api<CostEstimate>(`/customization/ai/cost-estimate?plan=${encodeURIComponent(plan)}&articles=${articles}`).catch(() => null as unknown as CostEstimate),
+    queryFn: () => api<CostEstimate>(`/customization/ai/cost-estimate?plan=${encodeURIComponent(plan)}&articles=${articles}`),
+    meta: { resource: 'AI cost estimate' },
     staleTime: 60_000,
     enabled: articles > 0,
   })
-  return withDemoFallback(result,
-    DEMO_COST_ESTIMATE,
-    d => d?.totalMonthlyUsd != null,
-  )
 }
 
 export function useApplyPlan() {
@@ -526,16 +697,14 @@ export interface AnthropicKeyStatus {
 
 /** GET /customization/api-keys/anthropic — BYOK key status. Never returns the raw key. */
 export function useAnthropicKeyStatus() {
-  const fallback: AnthropicKeyStatus = { tenantId: 'default', hasKey: false, maskedKey: null }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['anthropic-key-status'],
     // Backend (api-keys.ts) sends { data: status } single-wrapped; api() already unwraps it.
-    queryFn: () =>
-      api<AnthropicKeyStatus>('/customization/api-keys/anthropic')
-        .catch(() => fallback),
+    // Real shape matches AnthropicKeyStatus field-for-field — no adapter needed.
+    queryFn: () => api<AnthropicKeyStatus>('/customization/api-keys/anthropic'),
+    meta: { resource: 'Anthropic API key status' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result, fallback, d => d != null)
 }
 
 /** PUT /customization/api-keys/anthropic — Store tenant Anthropic API key. */

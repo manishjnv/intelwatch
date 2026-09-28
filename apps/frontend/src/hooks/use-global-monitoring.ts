@@ -1,11 +1,12 @@
 /**
  * @module hooks/use-global-monitoring
  * @description TanStack Query hooks for the Global Pipeline Monitoring dashboard.
- * Aggregates data from ingestion + normalization services. Demo fallback for all.
+ * Aggregates data from ingestion + normalization services.
+ * Real data or honest empty/error states only — no demo fallback (DECISION-048).
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { notifyApiError } from './useApiError'
+import type { QueryLike } from '@/components/ui/QueryStateView'
 import {
   useGlobalCatalog, useGlobalPipelineHealth,
   type GlobalCatalogFeed, type PipelineHealth,
@@ -36,82 +37,50 @@ export interface CorroborationLeader {
   firstSeen: string
 }
 
+export interface SubscriptionStats {
+  total: number
+  uniqueTenants: number
+  popularFeeds: { name: string; count: number }[]
+}
+
 export interface MonitoringData {
-  pipelineHealth: PipelineHealth | null
-  feedHealth: GlobalCatalogFeed[]
-  iocStats: GlobalIocStats | null
-  corroborationLeaders: CorroborationLeader[]
-  subscriptionStats: { total: number; uniqueTenants: number; popularFeeds: { name: string; count: number }[] }
+  feedQuery: UseQueryResult<GlobalCatalogFeed[]>
+  // useGlobalPipelineHealth (use-global-catalog.ts) overrides `data` with `?? null`,
+  // which breaks UseQueryResult's discriminated union — QueryLike is the same shape
+  // QueryStateView consumes, so this stays compatible without a strict union.
+  pipelineQuery: QueryLike<PipelineHealth | null>
+  iocStatsQuery: UseQueryResult<GlobalIocStats>
+  leadersQuery: UseQueryResult<CorroborationLeader[]>
+  subStatsQuery: UseQueryResult<SubscriptionStats>
   isLoading: boolean
-  error: Error | null
-  isDemo: boolean
   lastUpdated: Date | null
   pausePipeline: () => void
   resumePipeline: () => void
   retriggerFailed: (queueName: string) => void
 }
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEMO_IOC_STATS: GlobalIocStats = {
-  totalGlobalIOCs: 4820,
-  created24h: 580,
-  enriched24h: 420,
-  unenriched: 145,
-  warninglistFiltered: 312,
-  avgConfidence: 68,
-  highConfidenceCount: 1940,
-  byType: { ip: 1800, domain: 1200, hash: 680, cve: 540, url: 380, email: 220 },
-  byConfidenceTier: { None: 120, Low: 860, Medium: 1900, High: 1940 },
-}
-
-const DEMO_LEADERS: CorroborationLeader[] = [
-  { id: 'gl-1', value: '185.220.101.34', iocType: 'ip', confidence: 95, stixConfidenceTier: 'High', crossFeedCorroboration: 7, sightingSources: ['OTX', 'CISA', 'Abuse.ch', 'NVD', 'MISP', 'THN', 'BleepingComputer'], firstSeen: new Date(Date.now() - 30 * 86_400_000).toISOString() },
-  { id: 'gl-2', value: 'evil-payload.darknet.ru', iocType: 'domain', confidence: 92, stixConfidenceTier: 'High', crossFeedCorroboration: 5, sightingSources: ['OTX', 'Abuse.ch', 'MISP', 'THN', 'GreyNoise'], firstSeen: new Date(Date.now() - 14 * 86_400_000).toISOString() },
-  { id: 'gl-3', value: 'CVE-2024-21887', iocType: 'cve', confidence: 98, stixConfidenceTier: 'High', crossFeedCorroboration: 6, sightingSources: ['NVD', 'CISA', 'THN', 'Rapid7', 'Qualys', 'Tenable'], firstSeen: new Date(Date.now() - 60 * 86_400_000).toISOString() },
-  { id: 'gl-4', value: '45.33.32.156', iocType: 'ip', confidence: 88, stixConfidenceTier: 'High', crossFeedCorroboration: 4, sightingSources: ['Shodan', 'GreyNoise', 'OTX', 'Abuse.ch'], firstSeen: new Date(Date.now() - 7 * 86_400_000).toISOString() },
-  { id: 'gl-5', value: 'a1b2c3d4e5f67890abcdef', iocType: 'hash', confidence: 82, stixConfidenceTier: 'High', crossFeedCorroboration: 3, sightingSources: ['MalwareBazaar', 'VT', 'MISP'], firstSeen: new Date(Date.now() - 5 * 86_400_000).toISOString() },
-  { id: 'gl-6', value: 'CVE-2024-3400', iocType: 'cve', confidence: 96, stixConfidenceTier: 'High', crossFeedCorroboration: 5, sightingSources: ['NVD', 'CISA', 'Palo Alto', 'THN', 'Rapid7'], firstSeen: new Date(Date.now() - 45 * 86_400_000).toISOString() },
-  { id: 'gl-7', value: 'malware-c2.evil.com', iocType: 'domain', confidence: 78, stixConfidenceTier: 'High', crossFeedCorroboration: 3, sightingSources: ['OTX', 'MISP', 'THN'], firstSeen: new Date(Date.now() - 3 * 86_400_000).toISOString() },
-  { id: 'gl-8', value: '192.168.255.99', iocType: 'ip', confidence: 72, stixConfidenceTier: 'High', crossFeedCorroboration: 3, sightingSources: ['GreyNoise', 'Shodan', 'OTX'], firstSeen: new Date(Date.now() - 10 * 86_400_000).toISOString() },
-  { id: 'gl-9', value: 'phishing-kit.zip', iocType: 'hash', confidence: 68, stixConfidenceTier: 'Medium', crossFeedCorroboration: 2, sightingSources: ['MalwareBazaar', 'MISP'], firstSeen: new Date(Date.now() - 2 * 86_400_000).toISOString() },
-  { id: 'gl-10', value: 'CVE-2023-44487', iocType: 'cve', confidence: 90, stixConfidenceTier: 'High', crossFeedCorroboration: 4, sightingSources: ['NVD', 'CISA', 'Cloudflare', 'Google'], firstSeen: new Date(Date.now() - 90 * 86_400_000).toISOString() },
-]
-
-const DEMO_SUB_STATS = {
-  total: 42,
-  uniqueTenants: 8,
-  popularFeeds: [
-    { name: 'NVD CVE Feed', count: 91 },
-    { name: 'CISA KEV Global', count: 78 },
-    { name: 'AlienVault OTX Global', count: 45 },
-  ],
-}
-
-// ─── withDemoFallback ──────────────────────────────────────
-
-function withDemoFallback<T>(
-  result: UseQueryResult<T>,
-  demoData: T,
-  hasData: (d: T | undefined) => boolean,
-) {
-  const isDemo = !result.isLoading && !hasData(result.data)
-  return { ...result, data: isDemo ? demoData : result.data, isDemo }
-}
-
 // ─── IOC Stats Hook ──────────────────────────────────────
 
 export function useGlobalIocStats(refreshInterval: number = 30_000) {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['global-ioc-stats'],
     // Backend sends { data: stats }; api() already unwraps that envelope — stats IS the payload.
-    queryFn: () =>
-      api<GlobalIocStats>('/normalization/global-iocs/stats')
-        .catch(err => notifyApiError(err, 'global IOC stats', null)),
+    // BACKEND GAP: the live route (/normalization/global-iocs/stats -> tenant-overlay-service's
+    // getOverlayStats) returns OverlayStats (totalGlobalIocs, overlayCount, customSeverityCount,
+    // customConfidenceCount, customTagsCount) — not this GlobalIocStats shape. A matching service
+    // (GlobalIocStatsService.getGlobalStats in normalization/src/services/global-ioc-stats.ts)
+    // exists but isn't wired to any route. Guard so the shape mismatch is an honest error, never
+    // fabricated numbers. Fix is a backend route change — out of this frontend-only slice.
+    queryFn: () => api<GlobalIocStats>('/normalization/global-iocs/stats').then(d => {
+      if (d == null || typeof (d as unknown as Record<string, unknown>)?.byType !== 'object') {
+        throw new Error('Unexpected response from /normalization/global-iocs/stats')
+      }
+      return d
+    }),
+    meta: { resource: 'global IOC stats' },
     staleTime: refreshInterval,
     refetchInterval: refreshInterval,
   })
-  return withDemoFallback(result, DEMO_IOC_STATS, d => d != null && (d as GlobalIocStats).totalGlobalIOCs > 0)
 }
 
 // ─── Corroboration Leaders Hook ──────────────────────────
@@ -132,46 +101,45 @@ function toCorroborationLeader(v: Record<string, unknown>): CorroborationLeader 
 }
 
 export function useCorroborationLeaders(refreshInterval: number = 30_000) {
-  const empty: CorroborationLeader[] = []
-  const result = useQuery({
+  return useQuery({
     queryKey: ['global-corroboration-leaders'],
     // Backend sends { data: TenantIocView[] } (no total/page); api() unwraps to the raw array.
+    // NOTE: the route's ListQuerySchema has no sortBy/sortOrder field, so `?sortBy=...` below is
+    // silently dropped and results come back in default (lastSeen desc) order, not corroboration
+    // order — pre-existing backend schema gap, out of scope for this frontend slice.
     queryFn: () =>
       api<Record<string, unknown>[]>('/normalization/global-iocs?sortBy=crossFeedCorroboration&sortOrder=desc&limit=10')
-        .then(r => (r ?? []).map(toCorroborationLeader))
-        .catch(err => notifyApiError(err, 'corroboration leaders', empty)),
+        .then(r => (r ?? []).map(toCorroborationLeader)),
+    meta: { resource: 'corroboration leaders' },
     staleTime: refreshInterval,
     refetchInterval: refreshInterval,
   })
-  return withDemoFallback(result, DEMO_LEADERS, d => (d?.length ?? 0) > 0)
 }
 
 // ─── Subscription Stats Hook ──────────────────────────────
 
 // BLOCKED: no backend route exists at /ingestion/catalog/subscription-stats (only
 // GET /ingestion/catalog/subscriptions, a raw list — not the aggregated {total,uniqueTenants,
-// popularFeeds} shape this hook needs). Always 404s → always demo. Needs a new backend
-// aggregation endpoint before this can be fixed; out of scope for this hook-unwrap pass.
+// popularFeeds} shape this hook needs). Always 404s -> honest error card, not demo. Needs a new
+// backend aggregation endpoint before this can be fixed; out of scope for this frontend slice.
 export function useSubscriptionStats(refreshInterval: number = 60_000) {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['global-subscription-stats'],
-    queryFn: () =>
-      api<typeof DEMO_SUB_STATS>('/ingestion/catalog/subscription-stats')
-        .catch(() => null),
+    queryFn: () => api<SubscriptionStats>('/ingestion/catalog/subscription-stats'),
+    meta: { resource: 'subscription stats' },
     staleTime: refreshInterval,
   })
-  return withDemoFallback(result, DEMO_SUB_STATS, d => d != null && (d as typeof DEMO_SUB_STATS).total > 0)
 }
 
 // ─── Main composite hook ──────────────────────────────────
 
 export function useGlobalMonitoring(refreshInterval: number = 30_000): MonitoringData {
   const qc = useQueryClient()
-  const { data: feedHealth, isLoading: feedsLoading, isDemo: feedsDemo } = useGlobalCatalog()
-  const { data: pipelineHealth, isLoading: healthLoading, isDemo: healthDemo } = useGlobalPipelineHealth()
-  const { data: iocStats, isLoading: statsLoading, isDemo: statsDemo } = useGlobalIocStats(refreshInterval)
-  const { data: leaders, isDemo: leadersDemo } = useCorroborationLeaders(refreshInterval)
-  const { data: subStats, isDemo: subDemo } = useSubscriptionStats(refreshInterval)
+  const feedQuery = useGlobalCatalog()
+  const pipelineQuery = useGlobalPipelineHealth()
+  const iocStatsQuery = useGlobalIocStats(refreshInterval)
+  const leadersQuery = useCorroborationLeaders(refreshInterval)
+  const subStatsQuery = useSubscriptionStats(refreshInterval)
 
   const pauseMut = useMutation({
     mutationFn: () => api('/ingestion/global-pipeline/pause', { method: 'POST' }),
@@ -188,18 +156,15 @@ export function useGlobalMonitoring(refreshInterval: number = 30_000): Monitorin
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['global-pipeline-health'] }),
   })
 
-  const isDemo = feedsDemo || healthDemo || statsDemo || leadersDemo || subDemo
-  const isLoading = feedsLoading || healthLoading || statsLoading
+  const isLoading = feedQuery.isLoading || pipelineQuery.isLoading || iocStatsQuery.isLoading
 
   return {
-    pipelineHealth: pipelineHealth ?? null,
-    feedHealth: feedHealth ?? [],
-    iocStats: iocStats ?? null,
-    corroborationLeaders: leaders ?? [],
-    subscriptionStats: subStats ?? DEMO_SUB_STATS,
+    feedQuery,
+    pipelineQuery,
+    iocStatsQuery,
+    leadersQuery,
+    subStatsQuery,
     isLoading,
-    error: null,
-    isDemo,
     lastUpdated: isLoading ? null : new Date(),
     pausePipeline: () => pauseMut.mutate(),
     resumePipeline: () => resumeMut.mutate(),

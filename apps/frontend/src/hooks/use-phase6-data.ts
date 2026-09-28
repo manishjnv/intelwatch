@@ -3,16 +3,13 @@
  * @description TanStack Query hooks for Phase 6 services:
  * Billing (:3019) and Admin Ops (:3022).
  * All queries go through nginx → backend services.
- * S161a: Billing/Admin/Ops hooks are honest — no demo-data fallback on failure
- * or empty response (same pattern as hooks/use-sessions.ts).
- * Onboarding hooks still use the demo fallback (converted in a later session).
+ * Billing/Admin/Ops/Onboarding hooks are honest — no demo-data fallback on failure
+ * or empty response (DECISION-048; same pattern as hooks/use-sessions.ts).
  */
-import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
 import {
-  DEMO_ONBOARDING_WIZARD, DEMO_PIPELINE_HEALTH, DEMO_MODULE_STATUS,
-  DEMO_READINESS_RESULT, DEMO_WELCOME_DASHBOARD,
   type BillingPlan, type UsageMeters, type CurrentSubscription,
   type PaymentRecord, type BillingStats,
   type ServiceHealth, type SystemHealthSummary,
@@ -66,16 +63,6 @@ interface QueueAlertsResponse {
 
 interface ListResponse<T> {
   data: T[]; total: number; page: number; limit: number
-}
-
-/** Onboarding hooks only (not yet converted to honest UI — see S161b). */
-function withDemoFallback<T>(
-  result: UseQueryResult<T>,
-  demoData: T,
-  hasData: (d: T | undefined) => boolean,
-) {
-  const isDemo = !result.isLoading && !hasData(result.data)
-  return { ...result, data: isDemo ? demoData : result.data, isDemo }
 }
 
 // ─── Billing Hooks ───────────────────────────────────────────────
@@ -392,57 +379,52 @@ export function useQueueAlerts() {
   })
 }
 
-// ─── Onboarding Hooks (still demo-fallback — S161b) ────────────────
+// ─── Onboarding Hooks ───────────────────────────────────────────
 
 export function useOnboardingWizard() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['onboarding-wizard'],
-    queryFn: () => api<OnboardingWizard>('/onboarding/wizard/').catch(() => null as unknown as OnboardingWizard),
+    queryFn: () => api<OnboardingWizard>('/onboarding/wizard/'),
+    meta: { resource: 'onboarding wizard' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_ONBOARDING_WIZARD,
-    d => d != null && typeof d?.completionPercent === 'number')
 }
 
 export function useWelcomeDashboard() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['onboarding-welcome'],
-    queryFn: () => api<WelcomeDashboard>('/onboarding/welcome/').catch(() => null as unknown as WelcomeDashboard),
+    queryFn: () => api<WelcomeDashboard>('/onboarding/welcome/'),
+    meta: { resource: 'welcome dashboard' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_WELCOME_DASHBOARD,
-    d => d != null && typeof d?.completionPercent === 'number')
 }
 
 export function usePipelineHealth() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['onboarding-pipeline-health'],
-    queryFn: () => api<PipelineHealth>('/onboarding/pipeline/health').catch(() => null as unknown as PipelineHealth),
+    queryFn: () => api<PipelineHealth>('/onboarding/pipeline/health'),
+    meta: { resource: 'pipeline health' },
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
-  return withDemoFallback(result, DEMO_PIPELINE_HEALTH,
-    d => d != null && typeof d?.overall === 'string')
 }
 
 export function useModuleReadiness() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['onboarding-modules'],
-    queryFn: () => api<ModuleStatus[]>('/onboarding/modules/').catch(() => [] as ModuleStatus[]),
+    queryFn: () => api<ModuleStatus[]>('/onboarding/modules/'),
+    meta: { resource: 'module readiness' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_MODULE_STATUS,
-    d => Array.isArray(d) && d.length > 0 && d[0]?.module != null)
 }
 
 export function useReadinessCheck() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['onboarding-readiness'],
-    queryFn: () => api<ReadinessResult>('/onboarding/pipeline/readiness').catch(() => null as unknown as ReadinessResult),
+    queryFn: () => api<ReadinessResult>('/onboarding/pipeline/readiness'),
+    meta: { resource: 'readiness check' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_READINESS_RESULT,
-    d => d != null && typeof d?.score === 'number')
 }
 
 export function useCompleteStep() {

@@ -13,6 +13,7 @@ import {
   type STIXCollection, type BulkExport,
 } from '@/hooks/use-phase5-data'
 import { DataTable, type Column } from '@/components/data/DataTable'
+import { QueryStateView, type QueryLike } from '@/components/ui/QueryStateView'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   Radio, Webhook, Ticket, FileJson, Download,
@@ -81,12 +82,17 @@ export function IntegrationPage() {
     else { setSortBy(key); setSortOrder('asc') }
   }
 
-  const { data: stats, isDemo } = useIntegrationStats()
-  const { data: siemData } = useSIEMIntegrations()
-  const { data: webhookData } = useWebhooks()
-  const { data: ticketingData } = useTicketingIntegrations()
-  const { data: stixData } = useSTIXCollections()
-  const { data: exportData } = useBulkExports()
+  const { data: stats } = useIntegrationStats()
+  const siemQuery = useSIEMIntegrations()
+  const { data: siemData } = siemQuery
+  const webhookQuery = useWebhooks()
+  const { data: webhookData } = webhookQuery
+  const ticketingQuery = useTicketingIntegrations()
+  const { data: ticketingData } = ticketingQuery
+  const stixQuery = useSTIXCollections()
+  const { data: stixData } = stixQuery
+  const exportQuery = useBulkExports()
+  const { data: exportData } = exportQuery
 
   const siemColumns: Column<SIEMIntegration>[] = useMemo(() => [
     { key: 'name', label: 'Name', sortable: true, width: '22%',
@@ -169,11 +175,11 @@ export function IntegrationPage() {
   ], [])
 
   const tabContent = {
-    siem: { columns: siemColumns, data: siemData?.data ?? [], rowKey: (r: SIEMIntegration) => r.id, empty: 'No SIEM integrations configured.' },
-    webhooks: { columns: webhookColumns, data: webhookData?.data ?? [], rowKey: (r: WebhookConfig) => r.id, empty: 'No webhooks configured.' },
-    ticketing: { columns: ticketingColumns, data: ticketingData?.data ?? [], rowKey: (r: TicketingIntegration) => r.id, empty: 'No ticketing integrations configured.' },
-    stix: { columns: stixColumns, data: stixData?.data ?? [], rowKey: (r: STIXCollection) => r.id, empty: 'No STIX/TAXII collections configured.' },
-    exports: { columns: exportColumns, data: exportData?.data ?? [], rowKey: (r: BulkExport) => r.id, empty: 'No bulk exports configured.' },
+    siem: { columns: siemColumns, data: siemData?.data ?? [], rowKey: (r: SIEMIntegration) => r.id, empty: 'No SIEM integrations yet — add one.', query: siemQuery, resource: 'SIEM integrations' },
+    webhooks: { columns: webhookColumns, data: webhookData?.data ?? [], rowKey: (r: WebhookConfig) => r.id, empty: 'No webhooks yet — add one.', query: webhookQuery, resource: 'webhooks' },
+    ticketing: { columns: ticketingColumns, data: ticketingData?.data ?? [], rowKey: (r: TicketingIntegration) => r.id, empty: 'No ticketing integrations yet — add one.', query: ticketingQuery, resource: 'ticketing integrations' },
+    stix: { columns: stixColumns, data: stixData?.data ?? [], rowKey: (r: STIXCollection) => r.id, empty: 'No STIX/TAXII collections yet — add one.', query: stixQuery, resource: 'STIX/TAXII collections' },
+    exports: { columns: exportColumns, data: exportData?.data ?? [], rowKey: (r: BulkExport) => r.id, empty: 'No bulk exports yet — add one.', query: exportQuery, resource: 'bulk exports' },
   }
 
   const current = tabContent[activeTab]
@@ -190,19 +196,12 @@ export function IntegrationPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-400/10 text-rose-400 font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect Integration service for live data</span>
-        </div>
-      )}
-
       <PageStatsBar>
         <CompactStat label="Total Integrations" value={stats?.total?.toString() ?? '—'} />
-        <CompactStat label="Active" value={stats?.active?.toString() ?? '0'} color="text-sev-low" />
-        <CompactStat label="Failing" value={stats?.failing?.toString() ?? '0'} color="text-sev-critical" />
-        <CompactStat label="Events/hr" value={stats?.eventsPerHour?.toLocaleString() ?? '0'} color="text-accent" />
-        <CompactStat label="Last Sync" value={timeAgo(stats?.lastSync ?? null)} />
+        <CompactStat label="Active" value={stats?.active?.toString() ?? '—'} color="text-sev-low" />
+        <CompactStat label="Failing" value={stats?.failing?.toString() ?? '—'} color="text-sev-critical" />
+        <CompactStat label="Events/hr" value={stats?.eventsPerHour?.toLocaleString() ?? '—'} color="text-accent" />
+        <CompactStat label="Last Sync" value={stats ? timeAgo(stats.lastSync) : '—'} />
       </PageStatsBar>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
@@ -223,38 +222,45 @@ export function IntegrationPage() {
           </button>
         </div>
 
-        {/* Tab Summary Cards */}
-        {activeTab === 'siem' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            {(siemData?.data ?? []).map(s => (
-              <div key={s.id} className="p-3 bg-bg-secondary rounded-lg border border-border cursor-pointer hover:border-accent/30 transition-colors"
-                onClick={() => setSelectedItem({ tab: 'siem', item: s })}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-text-primary truncate">{s.name}</span>
-                  <StatusBadge status={s.status} />
+        {/* Tab Content */}
+        <QueryStateView query={current.query as unknown as QueryLike<unknown>} resource={current.resource}>
+          {() => (
+            <div className="space-y-4">
+              {/* Tab Summary Cards */}
+              {activeTab === 'siem' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  {(siemData?.data ?? []).map(s => (
+                    <div key={s.id} className="p-3 bg-bg-secondary rounded-lg border border-border cursor-pointer hover:border-accent/30 transition-colors"
+                      onClick={() => setSelectedItem({ tab: 'siem', item: s })}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-text-primary truncate">{s.name}</span>
+                        <StatusBadge status={s.status} />
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] text-text-muted">
+                        <span><Activity className="w-3 h-3 inline mr-0.5" />{s.eventsForwarded.toLocaleString()}</span>
+                        <span>{s.latencyMs}ms</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-3 text-[10px] text-text-muted">
-                  <span><Activity className="w-3 h-3 inline mr-0.5" />{s.eventsForwarded.toLocaleString()}</span>
-                  <span>{s.latencyMs}ms</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
 
-        {/* Data Table */}
-        <DataTable
-          columns={current.columns as any}
-          data={sortedData}
-          loading={false}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-          rowKey={current.rowKey as any}
-          density="compact"
-          onRowClick={(r: any) => setSelectedItem({ tab: activeTab, item: r })}
-          emptyMessage={current.empty}
-        />
+              {/* Data Table */}
+              <DataTable
+                columns={current.columns as any}
+                data={sortedData}
+                loading={false}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                rowKey={current.rowKey as any}
+                density="compact"
+                onRowClick={(r: any) => setSelectedItem({ tab: activeTab, item: r })}
+                emptyMessage={current.empty}
+              />
+            </div>
+          )}
+        </QueryStateView>
       </div>
 
       {/* Modals */}
@@ -268,7 +274,7 @@ export function IntegrationPage() {
       {selectedItem && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelectedItem(null)} />
-          <IntegrationDetailPanel tab={selectedItem.tab} item={selectedItem.item} onClose={() => setSelectedItem(null)} isDemo={isDemo} />
+          <IntegrationDetailPanel tab={selectedItem.tab} item={selectedItem.item} onClose={() => setSelectedItem(null)} />
         </>
       )}
     </div>

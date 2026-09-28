@@ -69,14 +69,15 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useTestNotification: () => mockUseTestNotification(),
   // AI plan / subtask hooks (F2/F3) — apiList()/api() already unwrap the {data:...} envelope,
   // so the mocked hook result is the plain payload, not double-wrapped (RCA #45).
-  usePlanTiers:         () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true }),
-  useSubtaskMappings:   () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true }),
-  useRecommendedModels: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: true }),
-  useCostEstimate:      () => ({ data: null, isDemo: true }),
+  // Honest-UI (DECISION-048): hooks are plain react-query results, no isDemo.
+  usePlanTiers:         () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSubtaskMappings:   () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useRecommendedModels: () => ({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useCostEstimate:      () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useApplyPlan:         () => ({ mutate: vi.fn(), isPending: false }),
   useSetSubtaskModel:   () => ({ mutate: vi.fn(), isPending: false }),
   // BYOK hooks
-  useAnthropicKeyStatus: () => ({ data: { tenantId: 'default', hasKey: false, maskedKey: null }, isDemo: false, isLoading: false }),
+  useAnthropicKeyStatus: () => ({ data: { tenantId: 'default', hasKey: false, maskedKey: null }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSaveAnthropicKey:   () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useDeleteAnthropicKey: () => ({ mutate: vi.fn(), isPending: false }),
 }))
@@ -186,12 +187,12 @@ const NOTIF_CHANNEL = {
 
 function setupDefaultMocks() {
   // Integration
-  mockUseSIEMIntegrations.mockReturnValue({ data: { data: [SIEM], total: 1, page: 1, limit: 50 } })
-  mockUseWebhooks.mockReturnValue({ data: { data: [WEBHOOK], total: 1, page: 1, limit: 50 } })
-  mockUseTicketingIntegrations.mockReturnValue({ data: { data: [TICKETING], total: 1, page: 1, limit: 50 } })
-  mockUseSTIXCollections.mockReturnValue({ data: { data: [STIX], total: 1, page: 1, limit: 50 } })
-  mockUseBulkExports.mockReturnValue({ data: { data: [EXPORT], total: 1, page: 1, limit: 50 } })
-  mockUseIntegrationStats.mockReturnValue({ data: { total: 14, active: 11, failing: 2, eventsPerHour: 2840, lastSync: new Date().toISOString() }, isDemo: true })
+  mockUseSIEMIntegrations.mockReturnValue({ data: { data: [SIEM], total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseWebhooks.mockReturnValue({ data: { data: [WEBHOOK], total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseTicketingIntegrations.mockReturnValue({ data: { data: [TICKETING], total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseSTIXCollections.mockReturnValue({ data: { data: [STIX], total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseBulkExports.mockReturnValue({ data: { data: [EXPORT], total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseIntegrationStats.mockReturnValue({ data: { total: 14, active: 11, failing: 2, eventsPerHour: 2840, lastSync: new Date().toISOString() }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseCreateSIEM.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseCreateWebhook.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseCreateTicketing.mockReturnValue({ mutate: vi.fn(), isPending: false })
@@ -207,12 +208,12 @@ function setupDefaultMocks() {
   mockUseUserManagementStats.mockReturnValue({ data: { totalUsers: 6, activeSessions: 3, teams: 4, roles: 6, mfaPercent: 67 }, isDemo: true })
   mockUseRevokeSession.mockReturnValue({ mutate: vi.fn(), isPending: false })
 
-  // Customization
-  mockUseModuleToggles.mockReturnValue({ data: { data: [MODULE, MODULE_DISABLED] } })
-  mockUseAIConfigs.mockReturnValue({ data: { data: [AI_CONFIG] } })
-  mockUseRiskWeights.mockReturnValue({ data: { data: [RISK_WEIGHT] } })
-  mockUseNotificationChannels.mockReturnValue({ data: { data: [NOTIF_CHANNEL] } })
-  mockUseCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31.6, theme: 'dark' }, isDemo: true })
+  // Customization — honest-UI (DECISION-048): plain react-query shape, no isDemo.
+  mockUseModuleToggles.mockReturnValue({ data: { data: [MODULE, MODULE_DISABLED] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseAIConfigs.mockReturnValue({ data: { data: [AI_CONFIG] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseRiskWeights.mockReturnValue({ data: { data: [RISK_WEIGHT] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseNotificationChannels.mockReturnValue({ data: { data: [NOTIF_CHANNEL] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31.6, theme: 'dark' }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseToggleModule.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseUpdateAIConfig.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseUpdateRiskWeight.mockReturnValue({ mutate: vi.fn(), isPending: false })
@@ -235,10 +236,23 @@ describe('IntegrationPage', () => {
     IntegrationPage = mod.IntegrationPage
   })
 
-  it('renders demo banner in demo mode', () => {
+  it('renders no demo banner (DECISION-048 — real data or honest empty/error only)', () => {
     render(<IntegrationPage />)
-    expect(screen.getByText('Demo')).toBeTruthy()
-    expect(screen.getByText(/Demo data — connect Integration service/)).toBeTruthy()
+    expect(screen.queryByText('Demo')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Demo data — connect Integration service/)).not.toBeInTheDocument()
+  })
+
+  it('shows an error card with Retry when a tab query fails', () => {
+    mockUseSIEMIntegrations.mockReturnValue({ data: undefined, isLoading: false, isError: true, error: new Error('down'), refetch: vi.fn() })
+    render(<IntegrationPage />)
+    expect(screen.getByTestId('query-error')).toBeTruthy()
+    expect(screen.getByTestId('query-retry')).toBeTruthy()
+  })
+
+  it('shows an honest empty state when a tab has no integrations', () => {
+    mockUseSIEMIntegrations.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+    render(<IntegrationPage />)
+    expect(screen.getByText('No SIEM integrations yet — add one.')).toBeTruthy()
   })
 
   it('renders stats bar with integration metrics', () => {
@@ -507,12 +521,6 @@ describe('CustomizationPage', () => {
     CustomizationPage = mod.CustomizationPage
   })
 
-  it('renders demo banner in demo mode', () => {
-    render(<CustomizationPage />)
-    expect(screen.getByText('Demo')).toBeTruthy()
-    expect(screen.getByText(/Demo data — connect Customization service/)).toBeTruthy()
-  })
-
   it('renders stats bar with customization metrics', () => {
     render(<CustomizationPage />)
     expect(screen.getByTestId('stat-Modules Enabled')).toBeTruthy()
@@ -660,7 +668,7 @@ describe('Phase 5 cross-page', () => {
 
     const { IntegrationPage } = await import('@/pages/IntegrationPage')
     render(<IntegrationPage />)
-    expect(screen.getByText('No SIEM integrations configured.')).toBeTruthy()
+    expect(screen.getByText('No SIEM integrations yet — add one.')).toBeTruthy()
   })
 
   it('user management handles empty user list', async () => {
@@ -671,10 +679,11 @@ describe('Phase 5 cross-page', () => {
   })
 
   it('customization handles empty module list', async () => {
-    mockUseModuleToggles.mockReturnValue({ data: { data: [] } })
+    mockUseModuleToggles.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
     const { CustomizationPage } = await import('@/pages/CustomizationPage')
     render(<CustomizationPage />)
-    // Should not crash with empty modules
+    // Should not crash with empty modules — honest empty state renders instead
     expect(screen.getByText('Modules')).toBeTruthy()
+    expect(screen.getByTestId('query-empty')).toBeTruthy()
   })
 })

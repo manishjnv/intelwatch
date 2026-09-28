@@ -38,7 +38,7 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useUpdateNotificationChannel: () => ({ mutate: vi.fn(), isPending: false }),
   useTestNotification:      () => ({ mutate: vi.fn(), isPending: false }),
   // BYOK hooks — stub for tests that don't focus on the API keys card
-  useAnthropicKeyStatus:    () => ({ data: { tenantId: 'default', hasKey: false, maskedKey: null }, isDemo: false, isLoading: false }),
+  useAnthropicKeyStatus:    () => ({ data: { tenantId: 'default', hasKey: false, maskedKey: null }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSaveAnthropicKey:      () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useDeleteAnthropicKey:    () => ({ mutate: vi.fn(), isPending: false }),
 }))
@@ -77,16 +77,16 @@ const DEMO_COST = {
 }
 
 function setupDefaults() {
-  mockPlanTiers.mockReturnValue({ data: { data: DEMO_PLANS }, isDemo: true })
-  mockSubtaskMappings.mockReturnValue({ data: { data: DEMO_SUBTASKS }, isDemo: true })
-  mockRecommendedModels.mockReturnValue({ data: { data: [] }, isDemo: true })
-  mockCostEstimate.mockReturnValue({ data: DEMO_COST, isDemo: true })
+  mockPlanTiers.mockReturnValue({ data: { data: DEMO_PLANS }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockSubtaskMappings.mockReturnValue({ data: { data: DEMO_SUBTASKS }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockRecommendedModels.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockCostEstimate.mockReturnValue({ data: DEMO_COST, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockApplyPlan.mockReturnValue({ mutate: vi.fn(), isPending: false })
-  mockModuleToggles.mockReturnValue({ data: { data: [] }, isDemo: false })
-  mockAIConfigs.mockReturnValue({ data: { data: [] }, isDemo: false })
-  mockRiskWeights.mockReturnValue({ data: { data: [] }, isDemo: false })
-  mockNotificationChannels.mockReturnValue({ data: { data: [] }, isDemo: false })
-  mockCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31, theme: 'dark' }, isDemo: false })
+  mockModuleToggles.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockAIConfigs.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockRiskWeights.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockNotificationChannels.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31, theme: 'dark' }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
 }
 
 // ─── Tests ──────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ describe('CustomizationPage — AI Config tab', () => {
     it('clicking Apply Plan opens confirmation modal, then Confirm calls applyPlan.mutate', () => {
       const mutateMock = vi.fn()
       mockApplyPlan.mockReturnValue({ mutate: mutateMock, isPending: false })
-      mockCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31, theme: 'dark' }, isDemo: false })
+      mockCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31, theme: 'dark' }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
       renderAITab()
       const applyBtn = screen.getByText(/Apply.*Plan/i)
       fireEvent.click(applyBtn)
