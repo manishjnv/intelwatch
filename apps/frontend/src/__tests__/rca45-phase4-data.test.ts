@@ -53,7 +53,6 @@ describe('useHuntTemplates — real backend shape (single-wrapped {data,total})'
     })
     const { result } = renderHook(() => useHuntTemplates(), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data?.total).toBe(7)
     expect(result.current.data?.data).toHaveLength(1)
   })

@@ -8,7 +8,6 @@ import { render, screen, fireEvent } from '@/test/test-utils'
 // ─── Mock hooks ─────────────────────────────────────────────────
 
 const mockDashboard = vi.fn()
-const mockUseAnalyticsWidgets = vi.fn()
 const mockUseExecutiveSummary = vi.fn()
 const mockUseServiceHealth = vi.fn()
 
@@ -21,8 +20,6 @@ vi.mock('@/hooks/use-analytics-dashboard', async () => {
 })
 
 vi.mock('@/hooks/use-analytics-data', () => ({
-  useAnalyticsWidgets: () => mockUseAnalyticsWidgets(),
-  useAnalyticsTrends: () => ({ data: { data: [], period: '7d', metrics: [] } }),
   useExecutiveSummary: () => mockUseExecutiveSummary(),
   useServiceHealth: () => mockUseServiceHealth(),
 }))
@@ -62,7 +59,6 @@ function setupMocks(overrides?: Partial<ReturnType<typeof mockDashboard>>) {
     dataUpdatedAt: Date.now(),
     ...overrides,
   })
-  mockUseAnalyticsWidgets.mockReturnValue({ data: { widgets: {}, generatedAt: '', cacheHit: false } })
   mockUseExecutiveSummary.mockReturnValue({
     data: { riskScore: 58, riskPosture: 'medium', keyMetrics: [], topThreats: [], recommendations: [], generatedAt: '' },
   })

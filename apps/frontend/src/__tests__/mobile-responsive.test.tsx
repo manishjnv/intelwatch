@@ -24,17 +24,11 @@ vi.mock('@etip/shared-ui/components/SeverityBadge', () => ({
 
 // ── AnalyticsPage mocks ───────────────────────────────────────────
 
-const MOCK_WIDGETS = [
-  { id: 'w1', label: 'Total IOCs', value: '1,234', trend: { direction: 'up', deltaPercent: 5.2 } },
-  { id: 'w2', label: 'Active Feeds', value: '12', trend: null },
-]
 const MOCK_HEALTH = [
   { service: 'api-gateway', status: 'healthy', latencyMs: 12, uptime: 99.9 },
   { service: 'ingestion', status: 'healthy', latencyMs: 20, uptime: 98.5 },
 ]
 vi.mock('@/hooks/use-analytics-data', () => ({
-  useAnalyticsWidgets: () => ({ data: { widgets: MOCK_WIDGETS, isDemo: true }, isDemo: true }),
-  useAnalyticsTrends: () => ({ data: [] }),
   useExecutiveSummary: () => ({ data: { summary: '', keyMetrics: [], riskLevel: 'low', riskScore: 42, riskPosture: 'medium', topThreats: [], recommendations: [], generatedAt: '' } }),
   useServiceHealth: () => ({ data: MOCK_HEALTH }),
 }))

@@ -16,6 +16,7 @@ import {
   CreateHuntModal, HuntStatusControls,
   AddHypothesisForm, AddEvidenceForm,
 } from '@/components/viz/HuntingModals'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import { TooltipHelp } from '@etip/shared-ui/components/TooltipHelp'
@@ -364,7 +365,8 @@ export function HuntingWorkbenchPage() {
   const [removedEvidenceIds, setRemovedEvidenceIds] = useState<Set<string>>(new Set())
   const [templateForHunt, setTemplateForHunt] = useState<HuntTemplate | null>(null)
 
-  const { data: sessionData, isDemo } = useHuntSessions()
+  const sessionsQuery = useHuntSessions()
+  const { data: sessionData } = sessionsQuery
   const { data: stats } = useHuntStats()
   const { data: hypothesisData } = useHuntHypotheses(selectedHuntId)
   const { data: evidenceData } = useHuntEvidence(selectedHuntId)
@@ -434,14 +436,6 @@ export function HuntingWorkbenchPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Demo banner */}
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect Hunting service for live workbench</span>
-        </div>
-      )}
-
       {/* Stats bar */}
       <PageStatsBar>
         <CompactStat label="Total Hunts" value={stats?.total?.toString() ?? '—'} />
@@ -484,21 +478,24 @@ export function HuntingWorkbenchPage() {
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-sm font-semibold text-text-primary">Hunt Sessions</h2>
               </div>
-              {sessions.map(session => (
-                <HuntSessionCard
-                  key={session.id}
-                  session={session}
-                  isSelected={selectedHuntId === session.id}
-                  onClick={() => setSelectedHuntId(session.id === selectedHuntId ? null : session.id)}
-                />
-              ))}
-              {sessions.length === 0 && (
-                <div className="text-center py-8 text-text-muted">
-                  <Crosshair className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No hunt sessions</p>
-                  <p className="text-xs mt-1">Create a new hunt or use a playbook template</p>
-                </div>
-              )}
+              <QueryStateView query={sessionsQuery} resource="hunt sessions"
+                isEmpty={() => sessions.length === 0}
+                empty={
+                  <div className="text-center py-8 text-text-muted">
+                    <Crosshair className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">No hunts yet — start a hunt</p>
+                    <p className="text-xs mt-1">Create a new hunt or use a playbook template</p>
+                  </div>
+                }>
+                {() => sessions.map(session => (
+                  <HuntSessionCard
+                    key={session.id}
+                    session={session}
+                    isSelected={selectedHuntId === session.id}
+                    onClick={() => setSelectedHuntId(session.id === selectedHuntId ? null : session.id)}
+                  />
+                ))}
+              </QueryStateView>
             </div>
 
             {/* Right: Hunt detail */}
@@ -521,7 +518,7 @@ export function HuntingWorkbenchPage() {
                       </div>
                       {/* H4: Hunt status controls */}
                       <div className="mt-2">
-                        <HuntStatusControls huntId={selectedSession.id} status={selectedSession.status} isDemo={isDemo} />
+                        <HuntStatusControls huntId={selectedSession.id} status={selectedSession.status} />
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -570,7 +567,7 @@ export function HuntingWorkbenchPage() {
 
                   {/* H2: Add Hypothesis */}
                   {detailTab === 'hypotheses' && showAddHypothesis && (
-                    <AddHypothesisForm huntId={selectedSession.id} isDemo={isDemo}
+                    <AddHypothesisForm huntId={selectedSession.id}
                       onDone={() => setShowAddHypothesis(false)} />
                   )}
                   {detailTab === 'hypotheses' && !showAddHypothesis && (
@@ -587,7 +584,7 @@ export function HuntingWorkbenchPage() {
 
                   {/* H3: Add Evidence */}
                   {detailTab === 'evidence' && showAddEvidence && (
-                    <AddEvidenceForm huntId={selectedSession.id} isDemo={isDemo}
+                    <AddEvidenceForm huntId={selectedSession.id}
                       onDone={() => setShowAddEvidence(false)} />
                   )}
                   {detailTab === 'evidence' && !showAddEvidence && (

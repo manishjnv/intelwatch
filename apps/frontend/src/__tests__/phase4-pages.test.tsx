@@ -39,6 +39,8 @@ const mockUseHuntStats = vi.fn()
 const mockUseHuntHypotheses = vi.fn()
 const mockUseHuntEvidence = vi.fn()
 const mockUseHuntTemplates = vi.fn()
+const mockCreateTicketMutate = vi.fn()
+const mockAddToHuntMutate = vi.fn()
 
 vi.mock('@/hooks/use-phase4-data', () => ({
   useDRPAlerts: (...args: any[]) => mockUseDRPAlerts(...args),
@@ -62,8 +64,8 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useAddHypothesis: () => mockUseAddHypothesis(),
   useAddEvidence: () => mockUseAddEvidence(),
   useCorrelationFeedback: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false }),
-  useCreateTicket: () => ({ mutate: vi.fn(), isPending: false }),
-  useAddToHunt: () => ({ mutate: vi.fn(), isPending: false }),
+  useCreateTicket: () => ({ mutate: mockCreateTicketMutate, isPending: false }),
+  useAddToHunt: () => ({ mutate: mockAddToHuntMutate, isPending: false }),
   useGraphNodes: (...args: any[]) => mockUseGraphNodes(...args),
   useGraphStats: () => mockUseGraphStats(),
   useGraphSearch: (...args: any[]) => mockUseGraphSearch(...args),
@@ -470,11 +472,6 @@ describe('CorrelationPage', () => {
     CorrelationPage = mod.CorrelationPage
   })
 
-  it('renders demo banner', () => {
-    render(<CorrelationPage />)
-    expect(screen.getByText(/Demo data — connect Correlation Engine/)).toBeTruthy()
-  })
-
   it('renders stats bar', () => {
     render(<CorrelationPage />)
     expect(screen.getByTestId('stat-Correlations')).toBeTruthy()
@@ -513,7 +510,7 @@ describe('CorrelationPage', () => {
   })
 
   it('shows empty state with no data', () => {
-    mockUseCorrelations.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isDemo: false })
+    mockUseCorrelations.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
     render(<CorrelationPage />)
     expect(screen.getByText(/No correlations found/)).toBeTruthy()
   })
@@ -534,11 +531,6 @@ describe('CorrelationPage', () => {
     expect(screen.getAllByText('APT28').length).toBeGreaterThanOrEqual(2)
   })
 
-  it('shows demo mode warning in detail panel', () => {
-    render(<CorrelationPage />)
-    fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
-    expect(screen.getByText(/Feedback disabled in demo mode/)).toBeTruthy()
-  })
 })
 
 // ─── Hunting Workbench Tests ────────────────────────────────────
@@ -548,11 +540,6 @@ describe('HuntingWorkbenchPage', () => {
   beforeEach(async () => {
     const mod = await import('@/pages/HuntingWorkbenchPage')
     HuntingWorkbenchPage = mod.HuntingWorkbenchPage
-  })
-
-  it('renders demo banner', () => {
-    render(<HuntingWorkbenchPage />)
-    expect(screen.getByText(/Demo data — connect Hunting service/)).toBeTruthy()
   })
 
   it('renders stats bar', () => {
@@ -601,9 +588,9 @@ describe('HuntingWorkbenchPage', () => {
   })
 
   it('shows empty state when no sessions', () => {
-    mockUseHuntSessions.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: false })
+    mockUseHuntSessions.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
     render(<HuntingWorkbenchPage />)
-    expect(screen.getByText(/No hunt sessions/)).toBeTruthy()
+    expect(screen.getByText(/No hunts yet/)).toBeTruthy()
   })
 
   it('renders pivot chain when evidence has entity values', () => {
@@ -787,19 +774,24 @@ describe('CorrelationPage — Interactivity', () => {
     expect(screen.getByText('Add to Hunt')).toBeTruthy()
   })
 
-  it('shows toast when Create Ticket clicked', async () => {
+  it('Create Ticket calls the real mutation', () => {
     render(<CorrelationPage />)
     fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
     fireEvent.click(screen.getByText('Create Ticket'))
-    // Toast renders in the DOM
-    expect(await screen.findByText(/Ticket created via integration-service/)).toBeTruthy()
+    expect(mockCreateTicketMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ correlationId: 'corr-1' }),
+      expect.any(Object),
+    )
   })
 
-  it('shows toast when Add to Hunt clicked', async () => {
+  it('Add to Hunt calls the real mutation for a single active hunt', () => {
     render(<CorrelationPage />)
     fireEvent.click(screen.getByText('Shared C2 Infrastructure'))
     fireEvent.click(screen.getByText('Add to Hunt'))
-    expect(await screen.findByText(/Added to active hunt session/)).toBeTruthy()
+    expect(mockAddToHuntMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ entityType: 'correlation', entityId: 'corr-1' }),
+      expect.any(Object),
+    )
   })
 
   it('entity chips are clickable buttons', () => {
@@ -844,10 +836,12 @@ describe('CorrelationPage — Interactivity', () => {
     expect(screen.getByText('Export STIX')).toBeTruthy()
   })
 
-  it('auto-correlate button shows loading state in demo mode', () => {
+  it('auto-correlate button calls the real correlation mutation', () => {
+    const mutate = vi.fn()
+    mockUseTriggerCorrelation.mockReturnValue({ mutate, isPending: false })
     render(<CorrelationPage />)
     fireEvent.click(screen.getByText('Auto-Correlate'))
-    expect(screen.getByText('Correlating…')).toBeTruthy()
+    expect(mutate).toHaveBeenCalled()
   })
 
   it('search filters correlations by entity labels', () => {
