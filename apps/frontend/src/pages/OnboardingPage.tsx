@@ -13,6 +13,7 @@ import {
 } from '@/hooks/use-phase6-data'
 import { FeedSelectionStep } from '@/components/FeedSelectionStep'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { CheckCircle2, Circle, Clock, SkipForward, Play, Rocket } from 'lucide-react'
 
 // ─── Constants ───────────────────────────────────────────────────
@@ -201,65 +202,69 @@ function ModulesTab({ modules }: { modules: ModuleStatus[] }) {
 // ─── Quick Start Tab ─────────────────────────────────────────────
 
 function QuickStartTab() {
-  const { data: welcome } = useWelcomeDashboard()
+  const welcomeQuery = useWelcomeDashboard()
   const seedDemo = useSeedDemo()
 
-  if (!welcome) return null
-  const stats = welcome.stats
-
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Feeds Active',    value: stats.feedsActive },
-          { label: 'IOCs Ingested',   value: stats.iocsIngested.toLocaleString() },
-          { label: 'Team Members',    value: stats.teamMembers },
-          { label: 'Modules Enabled', value: stats.modulesEnabled },
-        ].map(s => (
-          <div key={s.label} className="bg-bg-elevated border border-border-subtle rounded-lg p-4 text-center">
-            <p className="text-xl font-bold text-text-primary">{s.value}</p>
-            <p className="text-xs text-text-muted mt-1">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {welcome.nextStep && (
-        <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-accent mb-0.5">Next Step</p>
-            <p className="text-sm text-text-primary">{STEP_LABELS[welcome.nextStep] ?? welcome.nextStep}</p>
-          </div>
-          <Rocket className="w-5 h-5 text-accent opacity-60" />
-        </div>
-      )}
-
-      {welcome.tips.length > 0 && (
-        <div className="bg-bg-elevated border border-border-subtle rounded-lg p-4">
-          <h3 className="text-xs font-semibold text-text-primary mb-3">Getting Started Tips</h3>
-          <ul className="space-y-3">
-            {welcome.tips.map(tip => (
-              <li key={tip.id} className="flex items-start gap-3">
-                <CheckCircle2 className="w-3.5 h-3.5 text-sev-low shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-medium text-text-secondary">{tip.title}</p>
-                  <p className="text-[11px] text-text-muted mt-0.5">{tip.content}</p>
+    <QueryStateView query={welcomeQuery} resource="quick start dashboard">
+      {welcome => {
+        const stats = welcome.stats
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: 'Feeds Active',    value: stats.feedsActive },
+                { label: 'IOCs Ingested',   value: stats.iocsIngested.toLocaleString() },
+                { label: 'Team Members',    value: stats.teamMembers },
+                { label: 'Modules Enabled', value: stats.modulesEnabled },
+              ].map(s => (
+                <div key={s.label} className="bg-bg-elevated border border-border-subtle rounded-lg p-4 text-center">
+                  <p className="text-xl font-bold text-text-primary">{s.value}</p>
+                  <p className="text-xs text-text-muted mt-1">{s.label}</p>
                 </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+              ))}
+            </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={() => seedDemo.mutate({})}
-          disabled={seedDemo.isPending}
-          className="px-4 py-2 text-xs font-medium bg-teal-400/15 text-teal-400 border border-teal-400/30 rounded-lg hover:bg-teal-400/25 disabled:opacity-50 transition-colors"
-        >
-          {seedDemo.isPending ? 'Seeding…' : 'Seed Demo Data'}
-        </button>
-      </div>
-    </div>
+            {welcome.nextStep && (
+              <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-accent mb-0.5">Next Step</p>
+                  <p className="text-sm text-text-primary">{STEP_LABELS[welcome.nextStep] ?? welcome.nextStep}</p>
+                </div>
+                <Rocket className="w-5 h-5 text-accent opacity-60" />
+              </div>
+            )}
+
+            {welcome.tips.length > 0 && (
+              <div className="bg-bg-elevated border border-border-subtle rounded-lg p-4">
+                <h3 className="text-xs font-semibold text-text-primary mb-3">Getting Started Tips</h3>
+                <ul className="space-y-3">
+                  {welcome.tips.map(tip => (
+                    <li key={tip.id} className="flex items-start gap-3">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-sev-low shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-medium text-text-secondary">{tip.title}</p>
+                        <p className="text-[11px] text-text-muted mt-0.5">{tip.content}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => seedDemo.mutate({})}
+                disabled={seedDemo.isPending}
+                className="px-4 py-2 text-xs font-medium bg-teal-400/15 text-teal-400 border border-teal-400/30 rounded-lg hover:bg-teal-400/25 disabled:opacity-50 transition-colors"
+              >
+                {seedDemo.isPending ? 'Seeding…' : 'Seed Demo Data'}
+              </button>
+            </div>
+          </div>
+        )
+      }}
+    </QueryStateView>
   )
 }
 
@@ -277,21 +282,21 @@ const TABS: { key: OnboardingTab; label: string }[] = [
 export function OnboardingPage() {
   const [activeTab, setActiveTab] = useState<OnboardingTab>('wizard')
 
-  const { data: wizard, isDemo: wizardDemo } = useOnboardingWizard()
-  const { data: pipeline } = usePipelineHealth()
-  const { data: modules = [] } = useModuleReadiness()
-  const { data: readiness } = useReadinessCheck()
+  const wizardQuery = useOnboardingWizard()
+  const pipelineQuery = usePipelineHealth()
+  const modulesQuery = useModuleReadiness()
+  const readinessQuery = useReadinessCheck()
 
-  const completionPct  = wizard?.completionPercent ?? 0
-  const modulesEnabled = modules.filter(m => m.enabled).length
-  const pipelineStatus = pipeline?.overall ?? '—'
-  const readinessScore = readiness ? `${readiness.score}/${readiness.maxScore}` : '—'
+  const completionPct  = wizardQuery.data ? `${wizardQuery.data.completionPercent}%` : '—'
+  const modulesEnabled = modulesQuery.data ? String(modulesQuery.data.filter(m => m.enabled).length) : '—'
+  const pipelineStatus = pipelineQuery.data?.overall ?? '—'
+  const readinessScore = readinessQuery.data ? `${readinessQuery.data.score}/${readinessQuery.data.maxScore}` : '—'
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <PageStatsBar title="Onboarding & Setup" isDemo={wizardDemo}>
-        <CompactStat label="Completion"      value={`${completionPct}%`} />
-        <CompactStat label="Modules Enabled" value={String(modulesEnabled)} />
+      <PageStatsBar title="Onboarding & Setup">
+        <CompactStat label="Completion"      value={completionPct} />
+        <CompactStat label="Modules Enabled" value={modulesEnabled} />
         <CompactStat label="Pipeline"        value={pipelineStatus} />
         <CompactStat label="Readiness"       value={readinessScore} />
       </PageStatsBar>
@@ -314,10 +319,22 @@ export function OnboardingPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {activeTab === 'wizard'     && wizard   && <WizardTab   wizard={wizard} />}
-        {activeTab === 'pipeline'   && pipeline  && <PipelineTab pipeline={pipeline} />}
-        {activeTab === 'modules'                 && <ModulesTab  modules={modules} />}
-        {activeTab === 'quickstart'              && <QuickStartTab />}
+        {activeTab === 'wizard' && (
+          <QueryStateView query={wizardQuery} resource="onboarding wizard">
+            {wizard => <WizardTab wizard={wizard} />}
+          </QueryStateView>
+        )}
+        {activeTab === 'pipeline' && (
+          <QueryStateView query={pipelineQuery} resource="pipeline health">
+            {pipeline => <PipelineTab pipeline={pipeline} />}
+          </QueryStateView>
+        )}
+        {activeTab === 'modules' && (
+          <QueryStateView query={modulesQuery} resource="module status">
+            {modules => <ModulesTab modules={modules} />}
+          </QueryStateView>
+        )}
+        {activeTab === 'quickstart' && <QuickStartTab />}
       </div>
     </div>
   )

@@ -7,15 +7,16 @@
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  useModuleToggles, useAIConfigs, useRiskWeights,
+  useModuleToggles, useRiskWeights,
   useNotificationChannels, useCustomizationStats,
   useToggleModule, useUpdateRiskWeight,
   useResetRiskWeights, useUpdateNotificationChannel, useTestNotification,
   usePlanTiers, useSubtaskMappings, useRecommendedModels, useCostEstimate, useApplyPlan, useSetSubtaskModel,
   useAnthropicKeyStatus, useSaveAnthropicKey, useDeleteAnthropicKey,
-  type ModuleToggle, type AIModelConfig, type RiskWeight, type NotificationChannel,
+  type ModuleToggle, type RiskWeight, type NotificationChannel,
   type PlanTierMeta, type SubtaskMapping,
 } from '@/hooks/use-phase5-data'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   Puzzle, Brain, Scale, LayoutDashboard, Bell,
@@ -40,21 +41,15 @@ const TABS: { key: CustomTab; label: string; icon: React.FC<{ className?: string
 export function CustomizationPage() {
   const [activeTab, setActiveTab] = useState<CustomTab>('modules')
 
-  const { data: stats, isDemo } = useCustomizationStats()
-  const { data: moduleData } = useModuleToggles()
-  const { data: aiData } = useAIConfigs()
-  const { data: riskData } = useRiskWeights()
-  const { data: notifData } = useNotificationChannels()
+  const statsQuery = useCustomizationStats()
+  const moduleQuery = useModuleToggles()
+  const riskQuery = useRiskWeights()
+  const notifQuery = useNotificationChannels()
+
+  const stats = statsQuery.data
 
   return (
     <div className="flex flex-col h-full">
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-400/10 text-rose-400 font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect Customization service for live config</span>
-        </div>
-      )}
-
       <PageStatsBar>
         <CompactStat label="Modules Enabled" value={stats?.modulesEnabled?.toString() ?? '—'} />
         <CompactStat label="Custom Rules" value={stats?.customRules?.toString() ?? '0'} />
@@ -76,11 +71,38 @@ export function CustomizationPage() {
           ))}
         </div>
 
-        {activeTab === 'modules' && <ModulesTab modules={moduleData?.data ?? []} isDemo={isDemo} />}
-        {activeTab === 'ai' && <AIConfigTab configs={aiData?.data ?? []} isDemo={isDemo ?? false} />}
-        {activeTab === 'risk' && <RiskWeightsTab weights={riskData?.data ?? []} isDemo={isDemo} />}
+        {activeTab === 'modules' && (
+          <QueryStateView
+            query={moduleQuery}
+            resource="modules"
+            isEmpty={d => (d.data?.length ?? 0) === 0}
+            empty={<div data-testid="query-empty" className="text-xs text-text-muted">No modules found — check the Customization service module registry.</div>}
+          >
+            {d => <ModulesTab modules={d.data ?? []} />}
+          </QueryStateView>
+        )}
+        {activeTab === 'ai' && <AIConfigTab />}
+        {activeTab === 'risk' && (
+          <QueryStateView
+            query={riskQuery}
+            resource="risk weights"
+            isEmpty={d => (d.data?.length ?? 0) === 0}
+            empty={<div data-testid="query-empty" className="text-xs text-text-muted">No risk weight factors configured yet.</div>}
+          >
+            {d => <RiskWeightsTab weights={d.data ?? []} />}
+          </QueryStateView>
+        )}
         {activeTab === 'dashboard' && <DashboardConfigTab />}
-        {activeTab === 'notifications' && <NotificationsTab channels={notifData?.data ?? []} isDemo={isDemo} />}
+        {activeTab === 'notifications' && (
+          <QueryStateView
+            query={notifQuery}
+            resource="notification channels"
+            isEmpty={d => (d.data?.length ?? 0) === 0}
+            empty={<div data-testid="query-empty" className="text-xs text-text-muted">No notification channels yet — add one to start routing alerts.</div>}
+          >
+            {d => <NotificationsTab channels={d.data ?? []} />}
+          </QueryStateView>
+        )}
       </div>
     </div>
   )
@@ -88,7 +110,7 @@ export function CustomizationPage() {
 
 // ─── Modules Tab ────────────────────────────────────────────────
 
-function ModulesTab({ modules, isDemo }: { modules: ModuleToggle[]; isDemo: boolean }) {
+function ModulesTab({ modules }: { modules: ModuleToggle[] }) {
   const toggleMutation = useToggleModule()
 
   const categories = useMemo(() => {
@@ -110,8 +132,8 @@ function ModulesTab({ modules, isDemo }: { modules: ModuleToggle[]; isDemo: bool
             {mods.map(mod => (
               <div key={mod.id} className="p-3 bg-bg-secondary rounded-lg border border-border flex items-start gap-3">
                 <button
-                  onClick={() => { if (!isDemo) toggleMutation.mutate({ id: mod.id, enabled: !mod.enabled }) }}
-                  disabled={isDemo || toggleMutation.isPending}
+                  onClick={() => toggleMutation.mutate({ id: mod.id, enabled: !mod.enabled })}
+                  disabled={toggleMutation.isPending}
                   className="mt-0.5 shrink-0">
                   {mod.enabled
                     ? <ToggleRight className="w-5 h-5 text-sev-low" />
@@ -150,16 +172,15 @@ const STAGE_LABEL: Record<number, string> = { 1: 'S1', 2: 'S2', 3: 'S3' }
 
 const AI_MODELS = ['haiku', 'sonnet', 'opus'] as const
 
-function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) {
-  const { data: planData } = usePlanTiers()
-  const { data: subtaskData } = useSubtaskMappings()
-  const { data: recData } = useRecommendedModels()
+function AIConfigTab() {
+  const planQuery = usePlanTiers()
+  const subtaskQuery = useSubtaskMappings()
+  const recQuery = useRecommendedModels()
   const applyPlanMutation = useApplyPlan()
   const setSubtaskModelMutation = useSetSubtaskModel()
 
-  const plans = planData?.data ?? []
-  const subtasks = subtaskData?.data ?? []
-  const recommended = recData?.data ?? []
+  const plans = planQuery.data?.data ?? []
+  const recommended = recQuery.data?.data ?? []
   const recMap = useMemo(() =>
     Object.fromEntries(recommended.map(r => [r.subtask, r.recommendedModel])),
   [recommended])
@@ -168,11 +189,10 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
   const [articleCount, setArticleCount] = useState(1000)
   const [confirmPlan, setConfirmPlan] = useState<string | null>(null)
 
-  const { data: costData } = useCostEstimate(selectedPlan, articleCount)
-  const cost = costData
+  const { data: cost } = useCostEstimate(selectedPlan, articleCount)
 
   const handleApplyPlan = () => {
-    if (isDemo || selectedPlan === 'custom') return
+    if (selectedPlan === 'custom') return
     setConfirmPlan(selectedPlan)
   }
 
@@ -211,7 +231,7 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
         {selectedPlan !== 'custom' && (
           <button
             onClick={handleApplyPlan}
-            disabled={isDemo || applyPlanMutation.isPending}
+            disabled={applyPlanMutation.isPending}
             className="mt-2 text-[10px] px-3 py-1.5 rounded bg-accent text-bg-primary font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
             {applyPlanMutation.isPending ? 'Applying…' : `Apply ${plans.find(p => p.plan === selectedPlan)?.displayName ?? ''} Plan`}
           </button>
@@ -223,62 +243,74 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
         {/* 12-subtask table */}
         <div className="flex-1 min-w-0">
           <h3 className="text-[10px] text-text-muted uppercase font-medium mb-2">12 Pipeline Subtasks</h3>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="bg-bg-elevated border-b border-border">
-                  <th className="px-3 py-2 text-left text-text-muted font-medium">Subtask</th>
-                  <th className="px-2 py-2 text-center text-text-muted font-medium">Stg</th>
-                  <th className="px-2 py-2 text-left text-text-muted font-medium">Model</th>
-                  <th className="px-2 py-2 text-left text-text-muted font-medium">Fallback</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subtasks.map((m: SubtaskMapping, i: number) => {
-                  const rec = recMap[m.subtask]
-                  const isRec = m.model === rec
-                  return (
-                    <tr key={m.id}
-                      className={cn('border-b border-border/50 last:border-0',
-                        i % 2 === 0 ? 'bg-bg-secondary' : 'bg-bg-primary')}>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-text-primary font-mono">{m.subtask.replace(/_/g, ' ')}</span>
-                          {isRec && <Star className="w-2.5 h-2.5 text-amber-400 fill-current shrink-0" />}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 text-center">
-                        <span className={cn('text-[9px] px-1 py-0.5 rounded font-medium',
-                          m.stage === 1 ? 'bg-accent/10 text-accent'
-                          : m.stage === 2 ? 'bg-sev-medium/10 text-sev-medium'
-                          : 'bg-sev-low/10 text-sev-low')}>
-                          {STAGE_LABEL[m.stage]}
-                        </span>
-                      </td>
-                      <td className="px-2 py-2">
-                        {selectedPlan === 'custom' ? (
-                          <select
-                            value={m.model}
-                            disabled={isDemo || setSubtaskModelMutation.isPending}
-                            onChange={e => setSubtaskModelMutation.mutate({ subtask: m.subtask, model: e.target.value })}
-                            className="text-[10px] font-mono bg-bg-primary border border-border rounded px-1 py-0.5 text-text-primary disabled:opacity-50 capitalize">
-                            {AI_MODELS.map(model => (
-                              <option key={model} value={model} className="capitalize">{model}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className={cn('font-mono font-medium capitalize', MODEL_COLOR[m.model])}>{m.model}</span>
-                        )}
-                      </td>
-                      <td className="px-2 py-2">
-                        <span className={cn('font-mono text-text-muted capitalize')}>{m.fallbackModel}</span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <QueryStateView
+            query={subtaskQuery}
+            resource="pipeline subtasks"
+            isEmpty={d => (d.data?.length ?? 0) === 0}
+            empty={<div data-testid="query-empty" className="text-xs text-text-muted">No subtask mappings configured yet.</div>}
+          >
+            {d => {
+              const subtasks = d.data ?? []
+              return (
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="bg-bg-elevated border-b border-border">
+                        <th className="px-3 py-2 text-left text-text-muted font-medium">Subtask</th>
+                        <th className="px-2 py-2 text-center text-text-muted font-medium">Stg</th>
+                        <th className="px-2 py-2 text-left text-text-muted font-medium">Model</th>
+                        <th className="px-2 py-2 text-left text-text-muted font-medium">Fallback</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subtasks.map((m: SubtaskMapping, i: number) => {
+                        const rec = recMap[m.subtask]
+                        const isRec = m.model === rec
+                        return (
+                          <tr key={m.id}
+                            className={cn('border-b border-border/50 last:border-0',
+                              i % 2 === 0 ? 'bg-bg-secondary' : 'bg-bg-primary')}>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-text-primary font-mono">{m.subtask.replace(/_/g, ' ')}</span>
+                                {isRec && <Star className="w-2.5 h-2.5 text-amber-400 fill-current shrink-0" />}
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                              <span className={cn('text-[9px] px-1 py-0.5 rounded font-medium',
+                                m.stage === 1 ? 'bg-accent/10 text-accent'
+                                : m.stage === 2 ? 'bg-sev-medium/10 text-sev-medium'
+                                : 'bg-sev-low/10 text-sev-low')}>
+                                {STAGE_LABEL[m.stage]}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2">
+                              {selectedPlan === 'custom' ? (
+                                <select
+                                  value={m.model}
+                                  disabled={setSubtaskModelMutation.isPending}
+                                  onChange={e => setSubtaskModelMutation.mutate({ subtask: m.subtask, model: e.target.value })}
+                                  className="text-[10px] font-mono bg-bg-primary border border-border rounded px-1 py-0.5 text-text-primary disabled:opacity-50 capitalize">
+                                  {AI_MODELS.map(model => (
+                                    <option key={model} value={model} className="capitalize">{model}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className={cn('font-mono font-medium capitalize', MODEL_COLOR[m.model])}>{m.model}</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-2">
+                              <span className={cn('font-mono text-text-muted capitalize')}>{m.fallbackModel}</span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            }}
+          </QueryStateView>
         </div>
 
         {/* Cost sidebar */}
@@ -378,24 +410,19 @@ function AIConfigTab({ isDemo }: { configs: AIModelConfig[]; isDemo: boolean }) 
 // ─── Provider API Keys Card ──────────────────────────────────────
 
 function ProviderApiKeysCard() {
-  const { data: keyData, isDemo } = useAnthropicKeyStatus()
+  const keyQuery = useAnthropicKeyStatus()
   const saveMutation = useSaveAnthropicKey()
   const deleteMutation = useDeleteAnthropicKey()
   const [keyInput, setKeyInput] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const status = keyData
-  const hasKey = status?.hasKey ?? false
-  const maskedKey = status?.maskedKey ?? null
-
   const handleSave = () => {
     const trimmed = keyInput.trim()
-    if (!trimmed || isDemo) return
+    if (!trimmed) return
     saveMutation.mutate(trimmed, { onSuccess: () => setKeyInput('') })
   }
 
   const handleDelete = () => {
-    if (isDemo) return
     if (!confirmDelete) { setConfirmDelete(true); return }
     deleteMutation.mutate(undefined, { onSuccess: () => setConfirmDelete(false) })
   }
@@ -407,67 +434,76 @@ function ProviderApiKeysCard() {
         <h3 className="text-xs font-semibold text-text-primary">Provider API Keys</h3>
       </div>
 
-      {/* Anthropic key row */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-text-secondary">Anthropic API Key</span>
-          {hasKey
-            ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-sev-low/10 text-sev-low font-medium">Configured</span>
-            : <span className="text-[10px] px-1.5 py-0.5 rounded bg-sev-medium/10 text-sev-medium font-medium">Using platform key</span>
-          }
-        </div>
+      <QueryStateView
+        query={keyQuery}
+        resource="the Anthropic key status"
+      >
+        {status => {
+          const hasKey = status?.hasKey ?? false
+          const maskedKey = status?.maskedKey ?? null
+          return (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-text-secondary">Anthropic API Key</span>
+                {hasKey
+                  ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-sev-low/10 text-sev-low font-medium">Configured</span>
+                  : <span className="text-[10px] px-1.5 py-0.5 rounded bg-sev-medium/10 text-sev-medium font-medium">Using platform key</span>
+                }
+              </div>
 
-        {hasKey ? (
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-[11px] text-text-muted bg-bg-primary px-2 py-1 rounded border border-border font-mono truncate">
-              {maskedKey}
-            </code>
-            <button
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending || isDemo}
-              aria-label="Remove Anthropic API key"
-              className={cn(
-                'flex items-center gap-1 text-[10px] px-2 py-1 rounded border transition-colors disabled:opacity-50',
-                confirmDelete
-                  ? 'border-sev-high text-sev-high hover:bg-sev-high/10'
-                  : 'border-border text-text-muted hover:text-sev-high hover:border-sev-high',
-              )}>
-              <Trash2 className="w-3 h-3" />
-              {confirmDelete ? 'Confirm remove' : 'Remove'}
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <input
-              type="password"
-              value={keyInput}
-              onChange={e => setKeyInput(e.target.value)}
-              placeholder="sk-ant-..."
-              disabled={isDemo}
-              className="flex-1 text-[11px] bg-bg-primary border border-border rounded px-2 py-1 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
-            />
-            <button
-              onClick={handleSave}
-              disabled={!keyInput.trim() || saveMutation.isPending || isDemo}
-              className="text-[10px] px-3 py-1 rounded bg-accent text-bg-primary font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
-              {saveMutation.isPending ? 'Saving…' : 'Save Key'}
-            </button>
-          </div>
-        )}
+              {hasKey ? (
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-[11px] text-text-muted bg-bg-primary px-2 py-1 rounded border border-border font-mono truncate">
+                    {maskedKey}
+                  </code>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                    aria-label="Remove Anthropic API key"
+                    className={cn(
+                      'flex items-center gap-1 text-[10px] px-2 py-1 rounded border transition-colors disabled:opacity-50',
+                      confirmDelete
+                        ? 'border-sev-high text-sev-high hover:bg-sev-high/10'
+                        : 'border-border text-text-muted hover:text-sev-high hover:border-sev-high',
+                    )}>
+                    <Trash2 className="w-3 h-3" />
+                    {confirmDelete ? 'Confirm remove' : 'Remove'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    value={keyInput}
+                    onChange={e => setKeyInput(e.target.value)}
+                    placeholder="sk-ant-..."
+                    className="flex-1 text-[11px] bg-bg-primary border border-border rounded px-2 py-1 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
+                  />
+                  <button
+                    onClick={handleSave}
+                    disabled={!keyInput.trim() || saveMutation.isPending}
+                    className="text-[10px] px-3 py-1 rounded bg-accent text-bg-primary font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+                    {saveMutation.isPending ? 'Saving…' : 'Save Key'}
+                  </button>
+                </div>
+              )}
 
-        {saveMutation.isError && (
-          <p className="text-[10px] text-sev-high">
-            Failed to save key — ensure it starts with &quot;sk-ant-&quot;
-          </p>
-        )}
-      </div>
+              {saveMutation.isError && (
+                <p className="text-[10px] text-sev-high">
+                  Failed to save key — ensure it starts with &quot;sk-ant-&quot;
+                </p>
+              )}
+            </div>
+          )
+        }}
+      </QueryStateView>
     </div>
   )
 }
 
 // ─── Risk Weights Tab ───────────────────────────────────────────
 
-function RiskWeightsTab({ weights, isDemo }: { weights: RiskWeight[]; isDemo: boolean }) {
+function RiskWeightsTab({ weights }: { weights: RiskWeight[] }) {
   const updateMutation = useUpdateRiskWeight()
   const resetMutation = useResetRiskWeights()
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({})
@@ -481,7 +517,7 @@ function RiskWeightsTab({ weights, isDemo }: { weights: RiskWeight[]; isDemo: bo
 
   const handleSave = (w: RiskWeight) => {
     const val = localWeights[w.id]
-    if (val != null && val !== w.weight && !isDemo) {
+    if (val != null && val !== w.weight) {
       updateMutation.mutate({ id: w.id, weight: val })
     }
   }
@@ -498,8 +534,8 @@ function RiskWeightsTab({ weights, isDemo }: { weights: RiskWeight[]; isDemo: bo
             Math.abs(totalWeight - 1) < 0.01 ? 'text-sev-low' : 'text-sev-critical')}>
             Total: {totalWeight.toFixed(2)}
           </span>
-          <button onClick={() => { setLocalWeights({}); if (!isDemo) resetMutation.mutate() }}
-            disabled={isDemo || resetMutation.isPending}
+          <button onClick={() => { setLocalWeights({}); resetMutation.mutate() }}
+            disabled={resetMutation.isPending}
             className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-bg-elevated text-text-muted hover:text-text-secondary transition-colors disabled:opacity-50">
             <RotateCcw className="w-3 h-3" /> Reset
           </button>
@@ -523,7 +559,7 @@ function RiskWeightsTab({ weights, isDemo }: { weights: RiskWeight[]; isDemo: bo
                 <input type="range" min={w.min} max={w.max} step={0.01} value={val}
                   onChange={e => handleChange(w, parseFloat(e.target.value))}
                   onMouseUp={() => handleSave(w)} onTouchEnd={() => handleSave(w)}
-                  className="flex-1 h-1 accent-[var(--accent)]" disabled={isDemo} />
+                  className="flex-1 h-1 accent-[var(--accent)]" />
                 <span className="text-[10px] text-text-muted tabular-nums w-6">{w.max}</span>
               </div>
               {val !== w.default && (
@@ -604,7 +640,7 @@ function DashboardConfigTab() {
 
 // ─── Notifications Tab ──────────────────────────────────────────
 
-function NotificationsTab({ channels, isDemo }: { channels: NotificationChannel[]; isDemo: boolean }) {
+function NotificationsTab({ channels }: { channels: NotificationChannel[] }) {
   const updateMutation = useUpdateNotificationChannel()
   const testMutation = useTestNotification()
 
@@ -625,8 +661,8 @@ function NotificationsTab({ channels, isDemo }: { channels: NotificationChannel[
               <span className="text-xs font-medium text-text-primary">{ch.name}</span>
             </div>
             <button
-              onClick={() => { if (!isDemo) updateMutation.mutate({ id: ch.id, enabled: !ch.enabled }) }}
-              disabled={isDemo || updateMutation.isPending}>
+              onClick={() => updateMutation.mutate({ id: ch.id, enabled: !ch.enabled })}
+              disabled={updateMutation.isPending}>
               {ch.enabled
                 ? <ToggleRight className="w-5 h-5 text-sev-low" />
                 : <ToggleLeft className="w-5 h-5 text-text-muted" />}
@@ -640,13 +676,12 @@ function NotificationsTab({ channels, isDemo }: { channels: NotificationChannel[
               {SEVERITY_OPTIONS.map(sev => (
                 <button key={sev} type="button"
                   onClick={() => {
-                    if (isDemo) return
                     const newSevs = ch.severities.includes(sev)
                       ? ch.severities.filter(s => s !== sev)
                       : [...ch.severities, sev]
                     updateMutation.mutate({ id: ch.id, severities: newSevs })
                   }}
-                  disabled={isDemo || updateMutation.isPending}
+                  disabled={updateMutation.isPending}
                   className={cn('text-[10px] px-2 py-0.5 rounded-full border transition-colors capitalize',
                     ch.severities.includes(sev)
                       ? sev === 'critical' ? 'bg-sev-critical/10 text-sev-critical border-sev-critical/30'
@@ -669,8 +704,8 @@ function NotificationsTab({ channels, isDemo }: { channels: NotificationChannel[
 
           {/* Test button */}
           <button
-            onClick={() => { if (!isDemo) testMutation.mutate(ch.id) }}
-            disabled={isDemo || testMutation.isPending || !ch.enabled}
+            onClick={() => testMutation.mutate(ch.id)}
+            disabled={testMutation.isPending || !ch.enabled}
             className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50">
             <Send className="w-3 h-3" />
             {testMutation.isPending ? 'Sending…' : 'Test Notification'}

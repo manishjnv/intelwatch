@@ -21,7 +21,7 @@ vi.mock('@/lib/api', () => ({
 
 import {
   useModuleToggles, usePlanTiers, useSubtaskMappings, useRecommendedModels,
-  useCostEstimate, useAnthropicKeyStatus,
+  useCostEstimate, useAnthropicKeyStatus, useToggleModule,
 } from '@/hooks/use-phase5-data'
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -32,15 +32,34 @@ function wrapper({ children }: { children: React.ReactNode }) {
 beforeEach(() => { mockApi.mockReset() })
 
 describe('useModuleToggles — real backend shape (single-wrapped {data,total})', () => {
-  it('real module list comes through, not demo', async () => {
+  it('real module list comes through, adapted from the ModuleToggleStore shape', async () => {
     mockApi.mockResolvedValueOnce({
-      data: [{ id: 'mod-x', name: 'Real Module', description: 'd', enabled: true, icon: 'Zap', dependencies: [], category: 'Pipeline' }],
+      data: [{ id: 'mod-x', tenantId: 't1', module: 'hunting', enabled: true, featureFlags: {}, updatedAt: '2026-01-01', updatedBy: 'u1' }],
       total: 1,
     })
     const { result } = renderHook(() => useModuleToggles(), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
-    expect(result.current.data?.data[0]?.name).toBe('Real Module')
+    expect(result.current.isError).toBe(false)
+    expect(result.current.data?.data[0]?.name).toBe('hunting')
+    expect(result.current.data?.data[0]?.enabled).toBe(true)
+  })
+
+  // Backend: PUT /customization/modules/:module (module NAME, z.enum) — not PATCH by toggle UUID.
+  it('toggling round-trips: the id handed to the page toggles via PUT /customization/modules/<module name>', async () => {
+    mockApi.mockResolvedValueOnce({
+      data: [{ id: 'uuid-1', tenantId: 't1', module: 'hunting', enabled: true, featureFlags: {}, updatedAt: '2026-01-01', updatedBy: 'u1' }],
+      total: 1,
+    })
+    const { result } = renderHook(() => ({ list: useModuleToggles(), toggle: useToggleModule() }), { wrapper })
+    await waitFor(() => expect(result.current.list.isLoading).toBe(false))
+    const mod = result.current.list.data!.data[0]!
+
+    mockApi.mockResolvedValueOnce({ id: 'uuid-1', module: 'hunting', enabled: false })
+    result.current.toggle.mutate({ id: mod.id, enabled: false })
+
+    await waitFor(() => expect(mockApi).toHaveBeenCalledWith(
+      '/customization/modules/hunting', expect.objectContaining({ method: 'PUT', body: { enabled: false } }),
+    ))
   })
 })
 
@@ -49,7 +68,6 @@ describe('usePlanTiers / useSubtaskMappings / useRecommendedModels — apiList n
     mockApi.mockResolvedValueOnce({ data: [{ plan: 'starter', displayName: 'Starter', costPer1KArticlesUsd: '1', accuracyPct: '80%', isRecommended: false }], total: 1 })
     const { result } = renderHook(() => usePlanTiers(), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data?.data[0]?.plan).toBe('starter')
   })
 
@@ -57,7 +75,6 @@ describe('usePlanTiers / useSubtaskMappings / useRecommendedModels — apiList n
     mockApi.mockResolvedValueOnce({ data: [{ id: 's1', tenantId: 't1', subtask: 'ioc_triage', stage: 1, model: 'claude-haiku-4-5', fallbackModel: 'claude-haiku-4-5', isRecommended: true, updatedAt: '2026-01-01' }], total: 1 })
     const { result } = renderHook(() => useSubtaskMappings(), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data?.data[0]?.subtask).toBe('ioc_triage')
   })
 
@@ -65,7 +82,6 @@ describe('usePlanTiers / useSubtaskMappings / useRecommendedModels — apiList n
     mockApi.mockResolvedValueOnce({ data: [{ subtask: 'ioc_triage', stage: 1, recommendedModel: 'claude-haiku-4-5', fallbackModel: 'claude-haiku-4-5', description: 'd' }], total: 1 })
     const { result } = renderHook(() => useRecommendedModels(), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data?.data[0]?.subtask).toBe('ioc_triage')
   })
 })
@@ -75,7 +91,6 @@ describe('useCostEstimate — real backend shape (single-wrapped {data: estimate
     mockApi.mockResolvedValueOnce({ totalMonthlyUsd: 123.45, breakdown: {} })
     const { result } = renderHook(() => useCostEstimate('professional', 1000), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data?.totalMonthlyUsd).toBe(123.45)
   })
 })
@@ -85,7 +100,6 @@ describe('useAnthropicKeyStatus — real backend shape (single-wrapped {data: st
     mockApi.mockResolvedValueOnce({ tenantId: 'tenant-1', hasKey: true, maskedKey: 'sk-ant-***abcd' })
     const { result } = renderHook(() => useAnthropicKeyStatus(), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data?.hasKey).toBe(true)
     expect(result.current.data?.maskedKey).toBe('sk-ant-***abcd')
   })

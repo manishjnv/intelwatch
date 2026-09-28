@@ -15,17 +15,17 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useAnthropicKeyStatus:       () => mockAnthropicKeyStatus(),
   useSaveAnthropicKey:         () => mockSaveAnthropicKey(),
   useDeleteAnthropicKey:       () => mockDeleteAnthropicKey(),
-  usePlanTiers:                () => ({ data: { data: [] }, isDemo: true }),
-  useSubtaskMappings:          () => ({ data: { data: [] }, isDemo: true }),
-  useRecommendedModels:        () => ({ data: { data: [] }, isDemo: true }),
-  useCostEstimate:             () => ({ data: null, isDemo: true }),
+  usePlanTiers:                () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSubtaskMappings:          () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useRecommendedModels:        () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useCostEstimate:             () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useApplyPlan:                () => ({ mutate: vi.fn(), isPending: false }),
   useSetSubtaskModel:          () => ({ mutate: vi.fn(), isPending: false }),
-  useModuleToggles:            () => ({ data: { data: [] }, isDemo: true }),
-  useAIConfigs:                () => ({ data: { data: [] }, isDemo: true }),
-  useRiskWeights:              () => ({ data: { data: [] }, isDemo: true }),
-  useNotificationChannels:     () => ({ data: { data: [] }, isDemo: true }),
-  useCustomizationStats:       () => ({ data: { modulesEnabled: 0, customRules: 0, aiBudgetUsed: 0, theme: 'dark' }, isDemo: true }),
+  useModuleToggles:            () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useAIConfigs:                () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useRiskWeights:              () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useNotificationChannels:     () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useCustomizationStats:       () => ({ data: { modulesEnabled: 0, customRules: 0, aiBudgetUsed: 0, theme: 'dark' }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useToggleModule:             () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateAIConfig:           () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateRiskWeight:         () => ({ mutate: vi.fn(), isPending: false }),
@@ -47,8 +47,7 @@ vi.mock('@/stores/sidebar-store', () => ({ useSidebarStore: vi.fn(() => ({ isOpe
 function setupNoKey() {
   mockAnthropicKeyStatus.mockReturnValue({
     data: { tenantId: 'default', hasKey: false, maskedKey: null },
-    isDemo: false,
-    isLoading: false,
+    isLoading: false, isError: false, error: null, refetch: vi.fn(),
   })
   mockSaveAnthropicKey.mockReturnValue({ mutate: vi.fn(), isPending: false, isError: false })
   mockDeleteAnthropicKey.mockReturnValue({ mutate: vi.fn(), isPending: false })
@@ -57,8 +56,7 @@ function setupNoKey() {
 function setupHasKey(maskedKey = 'sk-ant-api...5678') {
   mockAnthropicKeyStatus.mockReturnValue({
     data: { tenantId: 'default', hasKey: true, maskedKey },
-    isDemo: false,
-    isLoading: false,
+    isLoading: false, isError: false, error: null, refetch: vi.fn(),
   })
   mockSaveAnthropicKey.mockReturnValue({ mutate: vi.fn(), isPending: false, isError: false })
   mockDeleteAnthropicKey.mockReturnValue({ mutate: vi.fn(), isPending: false })
@@ -111,7 +109,7 @@ describe('ProviderApiKeysCard — interactions', () => {
     const mutateFn = vi.fn()
     mockAnthropicKeyStatus.mockReturnValue({
       data: { tenantId: 'default', hasKey: false, maskedKey: null },
-      isDemo: false, isLoading: false,
+      isLoading: false, isError: false, error: null, refetch: vi.fn(),
     })
     mockSaveAnthropicKey.mockReturnValue({ mutate: mutateFn, isPending: false, isError: false })
     mockDeleteAnthropicKey.mockReturnValue({ mutate: vi.fn(), isPending: false })

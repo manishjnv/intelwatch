@@ -6,9 +6,10 @@
  */
 import { useState } from 'react'
 import { useGlobalMonitoring } from '@/hooks/use-global-monitoring'
-import type { QueueHealthEntry } from '@/hooks/use-global-catalog'
+import type { QueueHealthEntry, GlobalCatalogFeed } from '@/hooks/use-global-catalog'
 import { AdmiraltyBadge } from '@/components/AdmiraltyBadge'
 import { StixConfidenceBadge } from '@/components/StixConfidenceBadge'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import {
@@ -36,10 +37,12 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function getOverallStatus(data: ReturnType<typeof useGlobalMonitoring>): string {
-  const feeds = data.feedHealth
+function getOverallStatus(feeds: GlobalCatalogFeed[], pipelineQuery: ReturnType<typeof useGlobalMonitoring>['pipelineQuery']): string {
   const stale = feeds.filter(f => f.enabled && f.lastFetchAt && Date.now() - new Date(f.lastFetchAt).getTime() > 7_200_000)
-  const stuck = data.pipelineHealth?.pipeline?.articlesProcessed24h === 0 && !data.isDemo
+  // Stuck check only fires on real, loaded pipeline data — never on missing/errored data
+  // (no verdict is more honest than a guessed one; DECISION-048).
+  const hasRealPipelineData = pipelineQuery.data != null && !pipelineQuery.isError
+  const stuck = hasRealPipelineData && pipelineQuery.data!.pipeline.articlesProcessed24h === 0
   if (stale.length > feeds.filter(f => f.enabled).length * 0.5 || stuck) return 'critical'
   if (stale.length > 0) return 'degraded'
   return 'healthy'
@@ -97,7 +100,7 @@ function PipelineFlow({ queues }: { queues: QueueHealthEntry[] }) {
 }
 
 /* ─── Feed Health Card ──────────────────────────────────── */
-function FeedCard({ feed }: { feed: ReturnType<typeof useGlobalMonitoring>['feedHealth'][0] }) {
+function FeedCard({ feed }: { feed: GlobalCatalogFeed }) {
   const isStale = feed.enabled && feed.lastFetchAt && Date.now() - new Date(feed.lastFetchAt).getTime() > 7_200_000
   const isDisabledByFailure = !feed.enabled && feed.consecutiveFailures >= 3
   const borderColor = isDisabledByFailure ? 'border-sev-critical' : isStale ? 'border-amber-400' : 'border-border'
@@ -149,8 +152,9 @@ export function GlobalMonitoringPage() {
   const [, setSelectedIocId] = useState<string | null>(null)
   const user = useAuthStore(s => s.user)
   const monitoring = useGlobalMonitoring(refreshInterval)
-  const { pipelineHealth, feedHealth, iocStats, corroborationLeaders, subscriptionStats, isDemo } = monitoring
-  const status = getOverallStatus(monitoring)
+  const { feedQuery, pipelineQuery, iocStatsQuery, leadersQuery, subStatsQuery } = monitoring
+  const feedHealth = feedQuery.data ?? []
+  const status = getOverallStatus(feedHealth, pipelineQuery)
 
   if (user?.role !== 'super_admin' && user?.role !== 'admin') {
     return <div className="p-6 text-text-muted">Access restricted to administrators.</div>
@@ -158,13 +162,6 @@ export function GlobalMonitoringPage() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {isDemo && (
-        <div className="bg-bg-elevated border-b border-border px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">Demo</span>
-          <span className="text-xs text-text-muted">Demo data — connect backend for live pipeline</span>
-        </div>
-      )}
-
       {/* Header */}
       <div className="p-4 sm:p-6 border-b border-border flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -191,118 +188,144 @@ export function GlobalMonitoringPage() {
         {/* Section 1: Pipeline Flow */}
         <section>
           <h2 className="text-sm font-medium text-text-primary mb-3">Pipeline Flow</h2>
-          <PipelineFlow queues={pipelineHealth?.queues ?? []} />
+          <PipelineFlow queues={pipelineQuery.data?.queues ?? []} />
         </section>
 
         {/* Section 2: Feed Health Grid */}
         <section>
           <h2 className="text-sm font-medium text-text-primary mb-3">Feed Health ({feedHealth.length})</h2>
-          <div data-testid="feed-health-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-            {feedHealth.map(feed => <FeedCard key={feed.id} feed={feed} />)}
-          </div>
+          <QueryStateView
+            query={feedQuery}
+            resource="global feed catalog"
+            isEmpty={d => d.length === 0}
+            empty={<div className="text-xs text-text-muted">No global feeds configured yet.</div>}
+          >
+            {feeds => (
+              <div data-testid="feed-health-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                {feeds.map(feed => <FeedCard key={feed.id} feed={feed} />)}
+              </div>
+            )}
+          </QueryStateView>
         </section>
 
         {/* Section 3: IOC Stats */}
-        {iocStats && (
-          <section>
-            <h2 className="text-sm font-medium text-text-primary mb-3">IOC Pipeline Stats</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-              <StatCard label="Total Global IOCs" value={iocStats.totalGlobalIOCs} color="text-accent" />
-              <StatCard label="Created 24h" value={iocStats.created24h} />
-              <StatCard label="Enriched 24h" value={iocStats.enriched24h} />
-              <StatCard label="Unenriched" value={iocStats.unenriched} color="text-amber-400" />
-              <StatCard label="Warninglist Filtered" value={iocStats.warninglistFiltered} sub="Known-good excluded" />
-              <StatCard label="Avg Confidence" value={iocStats.avgConfidence} sub={iocStats.avgConfidence >= 70 ? 'High' : iocStats.avgConfidence >= 30 ? 'Medium' : 'Low'} />
-              <StatCard label="High-Confidence" value={iocStats.highConfidenceCount} sub="Score ≥ 70" color="text-sev-low" />
-            </div>
+        <section>
+          <h2 className="text-sm font-medium text-text-primary mb-3">IOC Pipeline Stats</h2>
+          <QueryStateView query={iocStatsQuery} resource="global IOC stats">
+            {iocStats => (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                  <StatCard label="Total Global IOCs" value={iocStats.totalGlobalIOCs} color="text-accent" />
+                  <StatCard label="Created 24h" value={iocStats.created24h} />
+                  <StatCard label="Enriched 24h" value={iocStats.enriched24h} />
+                  <StatCard label="Unenriched" value={iocStats.unenriched} color="text-amber-400" />
+                  <StatCard label="Warninglist Filtered" value={iocStats.warninglistFiltered} sub="Known-good excluded" />
+                  <StatCard label="Avg Confidence" value={iocStats.avgConfidence} sub={iocStats.avgConfidence >= 70 ? 'High' : iocStats.avgConfidence >= 30 ? 'Medium' : 'Low'} />
+                  <StatCard label="High-Confidence" value={iocStats.highConfidenceCount} sub="Score ≥ 70" color="text-sev-low" />
+                </div>
 
-            {/* Confidence + Type distribution */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-              <div className="p-3 bg-bg-secondary rounded-lg border border-border">
-                <span className="text-xs font-medium text-text-primary mb-2 block">Confidence Tiers</span>
-                {Object.entries(iocStats.byConfidenceTier).map(([tier, count]) => {
-                  const pct = iocStats.totalGlobalIOCs > 0 ? Math.round(count / iocStats.totalGlobalIOCs * 100) : 0
-                  const colors: Record<string, string> = { High: 'bg-sev-low', Medium: 'bg-amber-400', Low: 'bg-sev-critical', None: 'bg-text-muted' }
-                  return (
-                    <div key={tier} className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] text-text-muted w-12 shrink-0">{tier}</span>
-                      <div className="flex-1 h-1.5 bg-bg-elevated rounded-full overflow-hidden">
-                        <div className={cn('h-full rounded-full', colors[tier] ?? 'bg-text-muted')} style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-[10px] tabular-nums text-text-secondary w-16 text-right">{count.toLocaleString()} ({pct}%)</span>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="p-3 bg-bg-secondary rounded-lg border border-border">
-                <span className="text-xs font-medium text-text-primary mb-2 block">IOC Type Distribution</span>
-                {Object.entries(iocStats.byType).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
-                  const pct = iocStats.totalGlobalIOCs > 0 ? Math.round(count / iocStats.totalGlobalIOCs * 100) : 0
-                  return (
-                    <div key={type} className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] text-text-muted w-12 shrink-0 uppercase font-mono">{type}</span>
-                      <div className="flex-1 h-1.5 bg-bg-elevated rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-[10px] tabular-nums text-text-secondary w-16 text-right">{count.toLocaleString()} ({pct}%)</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </section>
-        )}
+                {/* Confidence + Type distribution */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                  <div className="p-3 bg-bg-secondary rounded-lg border border-border">
+                    <span className="text-xs font-medium text-text-primary mb-2 block">Confidence Tiers</span>
+                    {Object.entries(iocStats.byConfidenceTier).map(([tier, count]) => {
+                      const pct = iocStats.totalGlobalIOCs > 0 ? Math.round(count / iocStats.totalGlobalIOCs * 100) : 0
+                      const colors: Record<string, string> = { High: 'bg-sev-low', Medium: 'bg-amber-400', Low: 'bg-sev-critical', None: 'bg-text-muted' }
+                      return (
+                        <div key={tier} className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] text-text-muted w-12 shrink-0">{tier}</span>
+                          <div className="flex-1 h-1.5 bg-bg-elevated rounded-full overflow-hidden">
+                            <div className={cn('h-full rounded-full', colors[tier] ?? 'bg-text-muted')} style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-[10px] tabular-nums text-text-secondary w-16 text-right">{count.toLocaleString()} ({pct}%)</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="p-3 bg-bg-secondary rounded-lg border border-border">
+                    <span className="text-xs font-medium text-text-primary mb-2 block">IOC Type Distribution</span>
+                    {Object.entries(iocStats.byType).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
+                      const pct = iocStats.totalGlobalIOCs > 0 ? Math.round(count / iocStats.totalGlobalIOCs * 100) : 0
+                      return (
+                        <div key={type} className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] text-text-muted w-12 shrink-0 uppercase font-mono">{type}</span>
+                          <div className="flex-1 h-1.5 bg-bg-elevated rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-[10px] tabular-nums text-text-secondary w-16 text-right">{count.toLocaleString()} ({pct}%)</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </QueryStateView>
+        </section>
 
         {/* Section 4: Corroboration Leaders */}
         <section>
           <h2 className="text-sm font-medium text-text-primary mb-3">Corroboration Leaders (Top 10)</h2>
-          <div className="overflow-x-auto">
-            <table data-testid="corroboration-table" className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 px-2 text-text-muted font-medium">Value</th>
-                  <th className="text-left py-2 px-2 text-text-muted font-medium">Type</th>
-                  <th className="text-left py-2 px-2 text-text-muted font-medium">Confidence</th>
-                  <th className="text-left py-2 px-2 text-text-muted font-medium">Sources</th>
-                  <th className="text-left py-2 px-2 text-text-muted font-medium">First Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {corroborationLeaders.map(row => (
-                  <tr
-                    key={row.id}
-                    data-testid="corroboration-row"
-                    className="border-b border-border/50 hover:bg-bg-elevated/50 cursor-pointer transition-colors"
-                    onClick={() => setSelectedIocId(row.id)}
-                  >
-                    <td className="py-1.5 px-2 font-mono text-text-primary truncate max-w-[200px]">{row.value}</td>
-                    <td className="py-1.5 px-2 uppercase text-text-muted font-mono">{row.iocType}</td>
-                    <td className="py-1.5 px-2"><StixConfidenceBadge score={row.confidence} variant="compact" /></td>
-                    <td className="py-1.5 px-2 text-text-secondary">{row.crossFeedCorroboration} feeds</td>
-                    <td className="py-1.5 px-2 text-text-muted">{timeAgo(row.firstSeen)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <QueryStateView
+            query={leadersQuery}
+            resource="corroboration leaders"
+            isEmpty={d => d.length === 0}
+            empty={<div className="text-xs text-text-muted">No corroborated IOCs yet.</div>}
+          >
+            {leaders => (
+              <div className="overflow-x-auto">
+                <table data-testid="corroboration-table" className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-2 text-text-muted font-medium">Value</th>
+                      <th className="text-left py-2 px-2 text-text-muted font-medium">Type</th>
+                      <th className="text-left py-2 px-2 text-text-muted font-medium">Confidence</th>
+                      <th className="text-left py-2 px-2 text-text-muted font-medium">Sources</th>
+                      <th className="text-left py-2 px-2 text-text-muted font-medium">First Seen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaders.map(row => (
+                      <tr
+                        key={row.id}
+                        data-testid="corroboration-row"
+                        className="border-b border-border/50 hover:bg-bg-elevated/50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedIocId(row.id)}
+                      >
+                        <td className="py-1.5 px-2 font-mono text-text-primary truncate max-w-[200px]">{row.value}</td>
+                        <td className="py-1.5 px-2 uppercase text-text-muted font-mono">{row.iocType}</td>
+                        <td className="py-1.5 px-2"><StixConfidenceBadge score={row.confidence} variant="compact" /></td>
+                        <td className="py-1.5 px-2 text-text-secondary">{row.crossFeedCorroboration} feeds</td>
+                        <td className="py-1.5 px-2 text-text-muted">{timeAgo(row.firstSeen)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </QueryStateView>
         </section>
 
         {/* Section 5: Subscriptions */}
         <section>
           <h2 className="text-sm font-medium text-text-primary mb-3">Subscription Overview</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <StatCard label="Total Subscriptions" value={subscriptionStats.total} />
-            <StatCard label="Unique Tenants" value={subscriptionStats.uniqueTenants} />
-            <div className="p-3 bg-bg-secondary rounded-lg border border-border">
-              <span className="text-[10px] text-text-muted block mb-1">Most Popular Feeds</span>
-              {subscriptionStats.popularFeeds.map(f => (
-                <div key={f.name} className="flex items-center justify-between text-[10px]">
-                  <span className="text-text-secondary truncate">{f.name}</span>
-                  <span className="text-text-muted tabular-nums">{f.count}</span>
+          <QueryStateView query={subStatsQuery} resource="subscription stats">
+            {subscriptionStats => (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <StatCard label="Total Subscriptions" value={subscriptionStats.total} />
+                <StatCard label="Unique Tenants" value={subscriptionStats.uniqueTenants} />
+                <div className="p-3 bg-bg-secondary rounded-lg border border-border">
+                  <span className="text-[10px] text-text-muted block mb-1">Most Popular Feeds</span>
+                  {subscriptionStats.popularFeeds.map(f => (
+                    <div key={f.name} className="flex items-center justify-between text-[10px]">
+                      <span className="text-text-secondary truncate">{f.name}</span>
+                      <span className="text-text-muted tabular-nums">{f.count}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            )}
+          </QueryStateView>
         </section>
 
         {/* Section 6: Actions */}

@@ -298,8 +298,8 @@ function timeAgo(iso: string | null): string {
   return `${Math.round(hrs / 24)}d ago`
 }
 
-export function IntegrationDetailPanel({ tab, item, onClose, isDemo }: {
-  tab: string; item: any; onClose: () => void; isDemo: boolean
+export function IntegrationDetailPanel({ tab, item, onClose }: {
+  tab: string; item: any; onClose: () => void
 }) {
   const testMutation = useTestSIEMConnection()
 
@@ -383,8 +383,8 @@ export function IntegrationDetailPanel({ tab, item, onClose, isDemo }: {
         {/* Actions */}
         {tab === 'siem' && (
           <button
-            onClick={() => { if (!isDemo) testMutation.mutate(item.id) }}
-            disabled={testMutation.isPending || isDemo}
+            onClick={() => testMutation.mutate(item.id)}
+            disabled={testMutation.isPending}
             className="w-full py-2 text-xs font-medium bg-accent/10 text-accent border border-accent/20 rounded hover:bg-accent/20 transition-colors disabled:opacity-50">
             {testMutation.isPending ? 'Testing…' : 'Test Connection'}
           </button>
