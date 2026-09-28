@@ -4,6 +4,7 @@ import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
 import { buildApp } from './app.js';
 import { disconnectPrisma } from './prisma.js';
 import { initNeo4jDriver, closeNeo4jDriver } from './driver.js';
+import { runGraphMigrations } from './migrations/runner.js';
 import { GraphRepository } from './repository.js';
 import { GraphService } from './service.js';
 import { RiskPropagationEngine } from './propagation.js';
@@ -37,6 +38,16 @@ async function main(): Promise<void> {
 
   // Initialize Neo4j driver
   initNeo4jDriver(config.TI_NEO4J_URL);
+
+  // Run versioned graph migrations (P3a). Read APIs must stay up even if
+  // this fails, so we log and continue booting rather than exit(1); 3b's
+  // reconciler checks getMigrationStatus() before it starts and refuses to
+  // run against an un-migrated graph.
+  try {
+    await runGraphMigrations(logger);
+  } catch (err) {
+    logger.error({ err }, 'Graph migrations failed — continuing boot with degraded graph state');
+  }
 
   // Create service layer
   const repo = new GraphRepository();

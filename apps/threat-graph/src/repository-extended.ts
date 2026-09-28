@@ -1,4 +1,5 @@
 import { createSession } from './driver.js';
+import { assertRelType } from './cypher-safety.js';
 import type {
   NodeType, RelationshipType, GraphEdgeResponse, GraphStatsResponse, GraphSubgraphResponse, GraphNodeResponse,
 } from './schemas/graph.js';
@@ -50,12 +51,12 @@ export async function getGraphStats(tenantId: string): Promise<GraphStatsRespons
        OPTIONAL MATCH (n)-[r]-()
        WITH n, labels(n)[0] AS label, count(r) AS connections
        ORDER BY connections DESC
-       WITH collect({id: n.id, type: label, label: coalesce(n.name, n.value, n.cveId, n.id), connections: connections}) AS all
-       WITH all,
-            [x IN all WHERE x.connections = 0] AS isolated,
-            [x IN all[0..10]] AS top10
-       RETURN top10, size(isolated) AS isolatedCount, size(all) AS totalNodes,
-              reduce(s = 0, x IN all | s + x.connections) AS totalConnections`,
+       WITH collect({id: n.id, type: label, label: coalesce(n.name, n.value, n.cveId, n.id), connections: connections}) AS allNodes
+       WITH allNodes,
+            [x IN allNodes WHERE x.connections = 0] AS isolated,
+            [x IN allNodes[0..10]] AS top10
+       RETURN top10, size(isolated) AS isolatedCount, size(allNodes) AS totalNodes,
+              reduce(s = 0, x IN allNodes | s + x.connections) AS totalConnections`,
       { tenantId },
     );
 
@@ -109,10 +110,11 @@ export async function getRelationship(
   type: RelationshipType,
   toId: string,
 ): Promise<GraphEdgeResponse | null> {
+  const safeType = assertRelType(type);
   const session = createSession();
   try {
     const result = await session.run(
-      `MATCH (a {id: $fromId, tenantId: $tenantId})-[r:${type}]->(b {id: $toId, tenantId: $tenantId})
+      `MATCH (a {id: $fromId, tenantId: $tenantId})-[r:${safeType}]->(b {id: $toId, tenantId: $tenantId})
        RETURN type(r) AS relType, r.confidence AS confidence, r.source AS source,
               a.id AS fromNodeId, b.id AS toNodeId,
               r.firstSeen AS firstSeen, r.lastSeen AS lastSeen, properties(r) AS props`,
@@ -142,11 +144,12 @@ export async function updateRelationship(
   toId: string,
   updates: Record<string, unknown>,
 ): Promise<GraphEdgeResponse | null> {
+  const safeType = assertRelType(type);
   const session = createSession();
   try {
     const now = new Date().toISOString();
     const result = await session.run(
-      `MATCH (a {id: $fromId, tenantId: $tenantId})-[r:${type}]->(b {id: $toId, tenantId: $tenantId})
+      `MATCH (a {id: $fromId, tenantId: $tenantId})-[r:${safeType}]->(b {id: $toId, tenantId: $tenantId})
        SET r += $updates, r.lastSeen = $now
        RETURN type(r) AS relType, r.confidence AS confidence, r.source AS source,
               a.id AS fromNodeId, b.id AS toNodeId,
@@ -226,10 +229,11 @@ export async function deleteRelationshipFn(
   type: RelationshipType,
   toId: string,
 ): Promise<boolean> {
+  const safeType = assertRelType(type);
   const session = createSession();
   try {
     const result = await session.run(
-      `MATCH (a {id: $fromId, tenantId: $tenantId})-[r:${type}]->(b {id: $toId, tenantId: $tenantId})
+      `MATCH (a {id: $fromId, tenantId: $tenantId})-[r:${safeType}]->(b {id: $toId, tenantId: $tenantId})
        DELETE r
        RETURN count(r) AS deleted`,
       { fromId, toId, tenantId },

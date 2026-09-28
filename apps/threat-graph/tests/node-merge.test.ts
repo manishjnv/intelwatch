@@ -133,7 +133,7 @@ describe('NodeMergeService', () => {
         .mockResolvedValueOnce({
           records: [
             makeRecord({ relType: 'CONTROLS', fromId: SOURCE_ID, toId: otherNodeId, rProps: {} }),
-            makeRecord({ relType: 'RELATED_TO', fromId: otherNodeId, toId: SOURCE_ID, rProps: {} }),
+            makeRecord({ relType: 'USES', fromId: otherNodeId, toId: SOURCE_ID, rProps: {} }),
           ],
         })
         // Two MERGE calls for creating the transferred relationships

@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { createSession } from '../driver.js';
 import { AppError } from '@etip/shared-utils';
+import { assertRelType } from '../cypher-safety.js';
 import { GraphRepository } from '../repository.js';
 import { GraphService } from '../service.js';
 import type { MergeNodesInput, MergeResult, SplitNodeInput, SplitResult } from '../schemas/operations.js';
@@ -51,7 +52,7 @@ export class NodeMergeService {
 
       let relsTransferred = 0;
       for (const rec of transferResult.records) {
-        const relType = String(rec.get('relType'));
+        const relType = assertRelType(String(rec.get('relType')));
         const fromId = String(rec.get('fromId'));
         const toId = String(rec.get('toId'));
         const rProps = (rec.get('rProps') ?? {}) as Record<string, unknown>;
@@ -148,9 +149,11 @@ export class NodeMergeService {
         const isTarget = rel.toNodeId === input.sourceNodeId;
         if (!isSource && !isTarget) continue;
 
+        const safeRelType = assertRelType(rel.type);
+
         // Delete old relationship
         await session.run(
-          `MATCH (a {id: $fromId, tenantId: $tenantId})-[r:${rel.type}]->(b {id: $toId, tenantId: $tenantId})
+          `MATCH (a {id: $fromId, tenantId: $tenantId})-[r:${safeRelType}]->(b {id: $toId, tenantId: $tenantId})
            DELETE r`,
           { fromId: rel.fromNodeId, toId: rel.toNodeId, tenantId },
         );
@@ -160,7 +163,7 @@ export class NodeMergeService {
         const newTo = isTarget ? newId : rel.toNodeId;
         await session.run(
           `MATCH (a {id: $fromId, tenantId: $tenantId}), (b {id: $toId, tenantId: $tenantId})
-           CREATE (a)-[r:${rel.type} {confidence: 0.5, firstSeen: $now, lastSeen: $now, source: 'analyst-confirmed'}]->(b)`,
+           CREATE (a)-[r:${safeRelType} {confidence: 0.5, firstSeen: $now, lastSeen: $now, source: 'analyst-confirmed'}]->(b)`,
           { fromId: newFrom, toId: newTo, tenantId, now: new Date().toISOString() },
         );
         moved++;
