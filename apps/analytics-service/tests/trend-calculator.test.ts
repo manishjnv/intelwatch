@@ -75,23 +75,11 @@ describe('TrendCalculator', () => {
     });
   });
 
-  describe('seedDemo', () => {
-    it('seeds N+1 data points', () => {
-      calc.seedDemo('ioc.total', 1000, 100, 30);
-      const trend = calc.getTrend('ioc.total', 31);
-      expect(trend).not.toBeNull();
-      // seedDemo records days+1 points; getTrend may drop the oldest due to Date.now() drift
-      expect(trend!.points.length).toBeGreaterThanOrEqual(30);
-      expect(trend!.points.length).toBeLessThanOrEqual(31);
-    });
-
-    it('values are within expected range', () => {
-      calc.seedDemo('test.metric', 100, 10, 7);
-      const trend = calc.getTrend('test.metric', 7);
-      for (const point of trend!.points) {
-        expect(point.value).toBeGreaterThanOrEqual(0);
-        expect(point.value).toBeLessThanOrEqual(200);
-      }
+  describe('no fabricated data', () => {
+    it('returns no trend/points for ioc.total on a fresh instance', () => {
+      expect(calc.getTrend('ioc.total', 30)).toBeNull();
+      expect(calc.getMetrics()).toEqual([]);
+      expect(calc.getAllTrends(30)).toEqual([]);
     });
   });
 

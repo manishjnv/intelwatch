@@ -114,16 +114,6 @@ export class TrendCalculator {
     for (const list of this.snapshots.values()) total += list.length;
     return total;
   }
-
-  /** Seed demo trend data for a metric over N days. */
-  seedDemo(metric: string, baseValue: number, variance: number, days: number): void {
-    const now = Date.now();
-    for (let d = days; d >= 0; d--) {
-      const ts = now - d * 86_400_000;
-      const jitter = (Math.random() - 0.5) * 2 * variance;
-      this.record(metric, Math.max(0, Math.round(baseValue + jitter)), ts);
-    }
-  }
 }
 
 function metricLabel(metric: string): string {

@@ -22,21 +22,7 @@ async function main(): Promise<void> {
   const trends = new TrendCalculator(90);
   const aggregator = new Aggregator(store, trends);
 
-  // 4. Seed demo trend data for immediate visualization
-  trends.seedDemo('ioc.total', 1200, 200, 30);
-  trends.seedDemo('ioc.critical', 45, 15, 30);
-  trends.seedDemo('alert.open', 35, 12, 30);
-  trends.seedDemo('alert.total', 240, 40, 30);
-  trends.seedDemo('feed.active', 8, 2, 30);
-  trends.seedDemo('enrichment.rate', 85, 8, 30);
-  trends.seedDemo('actor.active', 12, 4, 30);
-  trends.seedDemo('malware.families', 28, 8, 30);
-  trends.seedDemo('vuln.critical', 15, 5, 30);
-  trends.seedDemo('correlation.matches', 65, 20, 30);
-  trends.seedDemo('processing.rate', 150, 40, 30);
-  logger.info({ metrics: trends.getMetrics().length }, 'Seeded demo trend data');
-
-  // 5. Periodic: purge old cache + trend data
+  // 4. Periodic: purge old cache + trend data
   const maintenanceInterval = setInterval(() => {
     const purgedCache = store.purgeExpired();
     const purgedTrends = trends.purgeOld();
@@ -45,7 +31,7 @@ async function main(): Promise<void> {
     }
   }, 300_000); // every 5 min
 
-  // 6. Build Fastify app with DI
+  // 5. Build Fastify app with DI
   const app = await buildApp({
     config,
     dashboardDeps: { aggregator },
@@ -53,7 +39,7 @@ async function main(): Promise<void> {
     executiveDeps: { aggregator, store, trends },
   });
 
-  // 7. Graceful shutdown
+  // 6. Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down analytics-service...');
     clearInterval(maintenanceInterval);
@@ -63,7 +49,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => { void shutdown('SIGINT'); });
   process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
 
-  // 8. Start listening
+  // 7. Start listening
   await app.listen({ port: config.TI_SERVICE_PORT, host: config.TI_SERVICE_HOST });
   logger.info({ port: config.TI_SERVICE_PORT }, 'Analytics service ready');
 }
