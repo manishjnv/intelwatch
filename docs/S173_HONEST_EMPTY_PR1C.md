@@ -46,7 +46,7 @@ Updated: `byok-card.test.tsx`, `customization-ai.test.tsx`, `phase5-pages.test.t
 
 Frontend suite: 2,043 passed + 2 skipped (was 2,008 + 2). Typecheck 0 errors, lint 0 errors.
 
-Backend response shapes verified against actual handlers: `apps/integration-service/src/schemas/integration.ts` (SIEM/Webhook/Ticketing payloads, test endpoint), `apps/customization-service/src/schemas/customization.ts` (module toggles, risk profiles, notification channels), `apps/onboarding-service/src/schemas/onboarding.ts` (steps, guidance), `apps/api-gateway/src/routes/global-monitoring.ts` (IOC stats, leaders, subscription stats).
+Backend response shapes verified against actual handlers: `apps/integration-service/src/routes/integrations.ts` + `schemas/integration.ts` (SIEM/Webhook/Ticketing payloads, stats, test endpoint), `apps/customization/src/routes/` (module toggles, AI plans/subtasks/cost estimate, API keys, risk, notifications), `apps/onboarding/src/routes/` (wizard, welcome, pipeline, modules), `apps/normalization/src/routes/tenant-overlay.ts` (global IOC stats and list).
 
 ## How to verify
 
