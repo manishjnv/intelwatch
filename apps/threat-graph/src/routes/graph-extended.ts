@@ -22,6 +22,7 @@ import {
   RelationshipParamsSchema,
   UpdateRelationshipSchema,
   AuditQuerySchema,
+  OverviewQuerySchema,
 } from '../schemas/search.js';
 import type { RelationshipType } from '../schemas/graph.js';
 
@@ -42,6 +43,16 @@ export interface ExtendedRouteDeps {
 /** Creates a Fastify plugin with all P1+P2 improvement routes. */
 export function graphExtendedRoutes(deps: ExtendedRouteDeps) {
   return async function routes(app: FastifyInstance): Promise<void> {
+
+    // ─── S165 GET /overview — top-connected nodes + edges between them ──
+    app.get('/overview', {
+      preHandler: [authenticate, rbac('graph:read')],
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      const user = getUser(req);
+      const query = OverviewQuerySchema.parse(req.query);
+      const result = await deps.repo.getOverviewSubgraph(user.tenantId, query.limit);
+      return reply.send({ data: result });
+    });
 
     // ─── #6 GET /nodes/:id/relationships — Bidirectional ───────────
     app.get('/nodes/:id/relationships', {

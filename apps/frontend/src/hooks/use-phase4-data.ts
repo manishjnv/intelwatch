@@ -11,7 +11,6 @@ import { notifyApiError } from './useApiError'
 import {
   DEMO_DRP_ALERTS, DEMO_DRP_ALERT_STATS, DEMO_DRP_ASSETS, DEMO_DRP_ASSET_STATS,
   DEMO_CERTSTREAM_STATUS,
-  DEMO_GRAPH_NODES, DEMO_GRAPH_EDGES, DEMO_GRAPH_STATS,
   DEMO_CORRELATIONS, DEMO_CORRELATION_STATS, DEMO_CAMPAIGNS,
   DEMO_HUNT_SESSIONS, DEMO_HUNT_STATS, DEMO_HUNT_HYPOTHESES,
   DEMO_HUNT_EVIDENCE, DEMO_HUNT_TEMPLATES,
@@ -22,6 +21,7 @@ import {
   type HuntSession, type HuntStats, type HuntHypothesis,
   type HuntEvidence, type HuntTemplate,
 } from './phase4-demo-data'
+import { toGraphSubgraph, type GraphApiSubgraph } from './graph-adapter'
 
 // Re-export types for page consumption
 export type {
@@ -253,27 +253,20 @@ export function useBulkTriageAlerts() {
 
 // ─── Threat Graph Hooks ─────────────────────────────────────────
 
-export function useGraphNodes(params: QueryParams = {}) {
-  const query = buildQuery(params)
-  const result = useQuery({
-    queryKey: ['graph-nodes', params],
-    queryFn: () => api<GraphSubgraph>(`/graph/entity/root${query}`).catch(() => ({ nodes: [], edges: [] })),
+export function useGraphNodes(limit = 50) {
+  return useQuery({
+    queryKey: ['graph-overview', limit],
+    queryFn: () => api<GraphApiSubgraph>(`/graph/overview?limit=${limit}`).then(toGraphSubgraph),
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { nodes: DEMO_GRAPH_NODES, edges: DEMO_GRAPH_EDGES },
-    d => (d?.nodes?.length ?? 0) > 0,
-  )
 }
 
 export function useGraphStats() {
-  const empty: GraphStats = { totalNodes: 0, totalEdges: 0, byType: {}, avgRiskScore: 0 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['graph-stats'],
-    queryFn: () => api<GraphStats>('/graph/stats').catch(() => empty),
+    queryFn: () => api<GraphStats>('/graph/stats'),
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_GRAPH_STATS, d => (d?.totalNodes ?? 0) > 0)
 }
 
 export function useGraphSearch(query: string) {
@@ -288,7 +281,10 @@ export function useGraphSearch(query: string) {
 export function useNodeNeighbors(nodeId: string | null) {
   return useQuery({
     queryKey: ['graph-neighbors', nodeId],
-    queryFn: () => api<GraphSubgraph>(`/graph/entity/${nodeId}?hops=1&limit=20`).catch(() => ({ nodes: [], edges: [] })),
+    // A 404 here legitimately means "this entity isn't in the graph yet" — keep the fallback.
+    queryFn: () => api<GraphApiSubgraph>(`/graph/entity/${nodeId}?hops=1&limit=20`)
+      .then(toGraphSubgraph)
+      .catch(() => ({ nodes: [], edges: [] })),
     enabled: !!nodeId,
     staleTime: 60_000,
   })

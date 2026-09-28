@@ -8,22 +8,8 @@ import type {
 import {
   getGraphStats, getRelationship as getRelFn,
   updateRelationship as updateRelFn, deleteRelationshipFn,
+  getOverviewSubgraph as getOverviewSubgraphFn, toNodeResponse,
 } from './repository-extended.js';
-
-/** Extracts a node response from a Neo4j record. */
-function toNodeResponse(record: Record<string, unknown>): GraphNodeResponse {
-  const props = { ...(record as Record<string, unknown>) };
-  const id = String(props['id'] ?? '');
-  const nodeType = String(props['nodeType'] ?? 'IOC') as NodeType;
-  const riskScore = Number(props['riskScore'] ?? 0);
-  const confidence = Number(props['confidence'] ?? 0);
-  delete props['id'];
-  delete props['nodeType'];
-  delete props['riskScore'];
-  delete props['confidence'];
-  delete props['tenantId'];
-  return { id, nodeType, riskScore, confidence, properties: props };
-}
 
 
 /** Neo4j repository — all graph database operations. */
@@ -269,6 +255,11 @@ export class GraphRepository {
   /** Gets graph statistics (P0 #5). Delegated to repository-extended.ts. */
   async getStats(tenantId: string): Promise<GraphStatsResponse> {
     return getGraphStats(tenantId);
+  }
+
+  /** Gets top-connected nodes + edges between them (S165). Delegated to repository-extended.ts. */
+  async getOverviewSubgraph(tenantId: string, limit: number): Promise<GraphSubgraphResponse> {
+    return getOverviewSubgraphFn(tenantId, limit);
   }
 
   /** Gets neighbors with risk scores for propagation (internal use). P1 #9: includes relType. */

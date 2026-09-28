@@ -14,7 +14,7 @@ import {
 } from '@/hooks/use-phase4-data'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
-  GitBranch, Search, ZoomIn, ZoomOut, Maximize2, Minimize2,
+  Search, ZoomIn, ZoomOut, Maximize2, Minimize2,
   Plus, Route, Download,
 } from 'lucide-react'
 import { toast, ToastContainer } from '@/components/ui/Toast'
@@ -59,7 +59,7 @@ export function ThreatGraphPage() {
   const [pathSourceId, setPathSourceId] = useState<string | null>(null)
   const [pathTargetId, setPathTargetId] = useState<string | null>(null)
 
-  const { data: graphData, isDemo } = useGraphNodes()
+  const { data: graphData, isLoading: graphLoading, isError: graphError, refetch: refetchGraph } = useGraphNodes()
   const { data: graphStats } = useGraphStats()
   const { data: searchResults } = useGraphSearch(searchQuery)
   const { data: pathResult } = useGraphPath(pathSourceId, pathTargetId)
@@ -235,15 +235,15 @@ export function ThreatGraphPage() {
     const link = g.append('g').selectAll('line').data(simLinks).join('line')
       .attr('stroke', 'var(--border)')
       .attr('stroke-opacity', 0.5)
-      .attr('stroke-width', d => Math.max(1, d.confidence / 30))
+      .attr('stroke-width', d => Math.max(1, (d.confidence * 100) / 30))
       .attr('cursor', 'pointer')
       .on('mouseover', function (event: any, d: SimLink) {
-        d3.select(this).attr('stroke-opacity', 0.9).attr('stroke-width', Math.max(2, d.confidence / 20))
+        d3.select(this).attr('stroke-opacity', 0.9).attr('stroke-width', Math.max(2, (d.confidence * 100) / 20))
         const rect = containerRef.current?.getBoundingClientRect()
-        if (rect) setEdgeTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 32, type: d.relationshipType.replace(/_/g, ' '), confidence: d.confidence })
+        if (rect) setEdgeTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 32, type: d.relationshipType.replace(/_/g, ' '), confidence: Math.round(d.confidence * 100) })
       })
       .on('mouseout', function (_e: any, d: SimLink) {
-        d3.select(this).attr('stroke-opacity', 0.5).attr('stroke-width', Math.max(1, d.confidence / 30))
+        d3.select(this).attr('stroke-opacity', 0.5).attr('stroke-width', Math.max(1, (d.confidence * 100) / 30))
         setEdgeTooltip(null)
       })
 
@@ -396,17 +396,10 @@ export function ThreatGraphPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-400/10 text-cyan-400 font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo graph — connect Graph service for live data</span>
-        </div>
-      )}
-
       <PageStatsBar>
         <CompactStat label="Nodes" value={graphStats?.totalNodes?.toString() ?? '—'} />
         <CompactStat label="Edges" value={graphStats?.totalEdges?.toString() ?? '—'} />
-        <CompactStat label="Avg Risk" value={graphStats?.avgRiskScore?.toString() ?? '—'} color="text-sev-high" />
+        <CompactStat label="Avg Links" value={graphStats?.avgConnections?.toString() ?? '—'} color="text-sev-high" />
       </PageStatsBar>
 
       {/* Controls bar */}
@@ -462,13 +455,20 @@ export function ThreatGraphPage() {
       <div className="flex-1 flex overflow-hidden">
         <div ref={containerRef} className="flex-1 relative bg-bg-base">
           <svg ref={svgRef} className="w-full h-full" />
-          {filteredNodes.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-text-muted">
-                <GitBranch className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">No graph data available</p>
-                <p className="text-xs mt-1">Connect the Threat Graph service or clear filters</p>
-              </div>
+          {graphLoading && (
+            <div className="absolute inset-0 flex items-center justify-center" data-testid="graph-loading">
+              <p className="text-xs text-text-muted">Loading threat graph…</p>
+            </div>
+          )}
+          {!graphLoading && graphError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2" data-testid="graph-error">
+              <p className="text-xs text-text-muted">Couldn't load threat graph</p>
+              <button onClick={() => refetchGraph()} className="text-xs px-2 py-1 rounded border border-border bg-bg-secondary text-text-muted hover:text-text-primary">Retry</button>
+            </div>
+          )}
+          {!graphLoading && !graphError && filteredNodes.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center px-6" data-testid="graph-empty">
+              <p className="text-xs text-text-muted text-center">{allNodes.length === 0 ? 'No graph entities yet — relationships appear as feeds are ingested and enriched.' : 'No entities match the current filters.'}</p>
             </div>
           )}
           {/* Edge hover tooltip */}

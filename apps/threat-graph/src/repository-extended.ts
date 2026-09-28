@@ -1,14 +1,29 @@
 import { createSession } from './driver.js';
 import type {
-  NodeType, RelationshipType, GraphEdgeResponse, GraphStatsResponse,
+  NodeType, RelationshipType, GraphEdgeResponse, GraphStatsResponse, GraphSubgraphResponse, GraphNodeResponse,
 } from './schemas/graph.js';
 
 /**
  * Extended graph repository methods split from main repository.ts
  * to stay under the 400-line file limit.
  *
- * Contains: getStats (P0 #5), relationship CRUD (P2 #14).
+ * Contains: getStats (P0 #5), relationship CRUD (P2 #14), overview (S165).
  */
+
+/** Extracts a node response from a Neo4j record. */
+export function toNodeResponse(record: Record<string, unknown>): GraphNodeResponse {
+  const props = { ...(record as Record<string, unknown>) };
+  const id = String(props['id'] ?? '');
+  const nodeType = String(props['nodeType'] ?? 'IOC') as NodeType;
+  const riskScore = Number(props['riskScore'] ?? 0);
+  const confidence = Number(props['confidence'] ?? 0);
+  delete props['id'];
+  delete props['nodeType'];
+  delete props['riskScore'];
+  delete props['confidence'];
+  delete props['tenantId'];
+  return { id, nodeType, riskScore, confidence, properties: props };
+}
 
 /** Gets graph statistics (P0 #5). */
 export async function getGraphStats(tenantId: string): Promise<GraphStatsResponse> {
@@ -152,6 +167,53 @@ export async function updateRelationship(
         lastSeen: rec.get('lastSeen'),
       },
     };
+  } finally {
+    await session.close();
+  }
+}
+
+/** Gets the top-N most-connected nodes of a tenant plus edges between them (S165). */
+export async function getOverviewSubgraph(tenantId: string, limit: number): Promise<GraphSubgraphResponse> {
+  const session = createSession();
+  try {
+    const result = await session.run(
+      `MATCH (n {tenantId: $tenantId})
+       OPTIONAL MATCH (n)-[r]-(m {tenantId: $tenantId})
+       WITH n, count(r) AS connections
+       ORDER BY connections DESC, n.id ASC
+       LIMIT toInteger($limit)
+       WITH collect(n) AS topNodes,
+            collect({node: properties(n), label: labels(n)[0]}) AS nodeData
+       UNWIND topNodes AS a
+       OPTIONAL MATCH (a)-[r]->(b)
+       WHERE b IN topNodes
+       WITH nodeData, collect(DISTINCT CASE WHEN r IS NULL THEN NULL ELSE {
+         type: type(r), fromId: a.id, toId: b.id,
+         confidence: r.confidence, firstSeen: r.firstSeen, lastSeen: r.lastSeen
+       } END) AS edgeData
+       RETURN nodeData, edgeData`,
+      { tenantId, limit: Number(limit) },
+    );
+
+    if (result.records.length === 0) return { nodes: [], edges: [] };
+
+    const record = result.records[0]!;
+    const rawNodes = (record.get('nodeData') ?? []) as Array<{ node: Record<string, unknown>; label: string }>;
+    const rawEdges = (record.get('edgeData') ?? []) as Array<Record<string, unknown> | null>;
+
+    const nodes = rawNodes.map((rn) => toNodeResponse({ ...rn.node, nodeType: rn.label }));
+    const edges = rawEdges
+      .filter((re): re is Record<string, unknown> => re !== null)
+      .map((re) => ({
+        id: `${re['fromId']}-${re['type']}-${re['toId']}`,
+        type: String(re['type']) as RelationshipType,
+        fromNodeId: String(re['fromId']),
+        toNodeId: String(re['toId']),
+        confidence: Number(re['confidence'] ?? 0.5),
+        properties: { firstSeen: re['firstSeen'], lastSeen: re['lastSeen'] },
+      }));
+
+    return { nodes, edges };
   } finally {
     await session.close();
   }

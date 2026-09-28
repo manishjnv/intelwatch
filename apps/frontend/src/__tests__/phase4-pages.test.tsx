@@ -240,8 +240,8 @@ function setupDefaultMocks() {
   mockUseChangeHuntStatus.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseAddHypothesis.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseAddEvidence.mockReturnValue({ mutate: vi.fn(), isPending: false })
-  mockUseGraphNodes.mockReturnValue({ data: { nodes: [{ id: 'n1', entityType: 'threat_actor', label: 'APT28', riskScore: 92, properties: {}, createdAt: '' }], edges: [] }, isDemo: true })
-  mockUseGraphStats.mockReturnValue({ data: { totalNodes: 15, totalEdges: 18, byType: { ioc: 5 }, avgRiskScore: 85 } })
+  mockUseGraphNodes.mockReturnValue({ data: { nodes: [{ id: 'n1', entityType: 'threat_actor', label: 'APT28', riskScore: 92, properties: {}, createdAt: '' }], edges: [] }, isLoading: false, isError: false, refetch: vi.fn() })
+  mockUseGraphStats.mockReturnValue({ data: { totalNodes: 15, totalEdges: 18, nodesByType: { ioc: 5 }, edgesByType: {}, mostConnected: [], isolatedNodes: 0, avgConnections: 1.2 } })
   mockUseGraphSearch.mockReturnValue({ data: { nodes: [] } })
   mockUseNodeNeighbors.mockReturnValue({ data: { nodes: [], edges: [] } })
   mockUseCorrelations.mockReturnValue({ data: { data: [CORRELATION], total: 1, page: 1, limit: 50 }, isLoading: false, isDemo: true })
@@ -397,16 +397,11 @@ describe('ThreatGraphPage', () => {
     ThreatGraphPage = mod.ThreatGraphPage
   })
 
-  it('renders demo banner', () => {
-    render(<ThreatGraphPage />)
-    expect(screen.getByText(/Demo graph/)).toBeTruthy()
-  })
-
   it('renders stats bar with node and edge counts', () => {
     render(<ThreatGraphPage />)
     expect(screen.getByTestId('stat-Nodes')).toBeTruthy()
     expect(screen.getByTestId('stat-Edges')).toBeTruthy()
-    expect(screen.getByTestId('stat-Avg Risk')).toBeTruthy()
+    expect(screen.getByTestId('stat-Avg Links')).toBeTruthy()
   })
 
   it('renders search input', () => {
@@ -436,9 +431,9 @@ describe('ThreatGraphPage', () => {
   })
 
   it('shows empty state when no nodes', () => {
-    mockUseGraphNodes.mockReturnValue({ data: { nodes: [], edges: [] }, isDemo: true })
+    mockUseGraphNodes.mockReturnValue({ data: { nodes: [], edges: [] }, isLoading: false, isError: false, refetch: vi.fn() })
     render(<ThreatGraphPage />)
-    expect(screen.getByText('No graph data available')).toBeTruthy()
+    expect(screen.getByTestId('graph-empty')).toBeTruthy()
   })
 
   it('renders Path Finder toggle button', () => {
@@ -763,7 +758,7 @@ describe('ThreatGraphPage — Expand + Add Node (C1)', () => {
         ],
         edges: [],
       },
-      isDemo: true,
+      isLoading: false, isError: false, refetch: vi.fn(),
     })
     render(<ThreatGraphPage />)
     // SVG renders but we can't easily right-click D3 nodes in jsdom

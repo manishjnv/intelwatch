@@ -200,6 +200,14 @@ export const AuditQuerySchema = z.object({
 
 export type AuditQuery = z.infer<typeof AuditQuerySchema>;
 
+// ─── S165 Graph Overview ──────────────────────────────────────────
+
+export const OverviewQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).default(50),
+});
+
+export type OverviewQuery = z.infer<typeof OverviewQuerySchema>;
+
 export interface PropagationAuditEntry {
   id: string;
   timestamp: string;

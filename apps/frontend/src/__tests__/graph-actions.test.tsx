@@ -13,10 +13,10 @@ vi.mock('@/hooks/use-phase4-data', () => ({
       nodes: [{ id: 'n1', entityType: 'ip', label: '1.2.3.4', riskScore: 50, properties: {}, createdAt: '2024-01-01' }],
       edges: [],
     },
-    isDemo: false,
+    isLoading: false, isError: false, refetch: vi.fn(),
   })),
   useGraphStats: vi.fn(() => ({
-    data: { totalNodes: 5, totalEdges: 3, avgRiskScore: 42, byType: {} },
+    data: { totalNodes: 5, totalEdges: 3, avgConnections: 0.6, nodesByType: {}, edgesByType: {}, mostConnected: [], isolatedNodes: 0 },
   })),
   useGraphSearch: vi.fn(() => ({ data: { nodes: [] } })),
   useGraphPath: vi.fn(() => ({ data: null })),

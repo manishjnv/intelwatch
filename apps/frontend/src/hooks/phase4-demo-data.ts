@@ -99,7 +99,7 @@ export const DEMO_CERTSTREAM_STATUS: CertStreamStatus = {
 // ─── Threat Graph Types & Demo Data ─────────────────────────────
 
 export interface GraphNode {
-  id: string; entityType: 'ioc' | 'threat_actor' | 'malware' | 'vulnerability' | 'campaign'
+  id: string; entityType: 'ioc' | 'threat_actor' | 'malware' | 'vulnerability' | 'campaign' | 'infrastructure' | 'victim'
   label: string; riskScore: number; properties: Record<string, unknown>
   createdAt: string
 }
@@ -115,60 +115,9 @@ export interface GraphSubgraph {
 
 export interface GraphStats {
   totalNodes: number; totalEdges: number
-  byType: Record<string, number>; avgRiskScore: number
-}
-
-const gn = (id: string, type: GraphNode['entityType'], label: string, risk: number, props: Record<string, unknown> = {}): GraphNode => ({
-  id, entityType: type, label, riskScore: risk, properties: props, createdAt: daysAgo(Math.floor(Math.random() * 30)),
-})
-
-const ge = (id: string, src: string, tgt: string, rel: string, conf: number): GraphEdge => ({
-  id, sourceId: src, targetId: tgt, relationshipType: rel, confidence: conf, properties: {},
-})
-
-export const DEMO_GRAPH_NODES: GraphNode[] = [
-  gn('n1', 'threat_actor', 'APT28', 92, { aliases: ['Fancy Bear', 'Sofacy'], country: 'RU' }),
-  gn('n2', 'threat_actor', 'Lazarus Group', 88, { aliases: ['Hidden Cobra'], country: 'KP' }),
-  gn('n3', 'malware', 'Cobalt Strike', 85, { malwareType: 'RAT', platforms: ['Windows'] }),
-  gn('n4', 'malware', 'Emotet', 80, { malwareType: 'loader', platforms: ['Windows'] }),
-  gn('n5', 'ioc', '185.220.101.34', 92, { iocType: 'ip', severity: 'critical' }),
-  gn('n6', 'ioc', 'evil-payload.darknet.ru', 95, { iocType: 'domain', severity: 'critical' }),
-  gn('n7', 'ioc', '91.219.236.174', 78, { iocType: 'ip', severity: 'high' }),
-  gn('n8', 'vulnerability', 'CVE-2024-21762', 96, { cvss: 9.8, exploitAvailable: true }),
-  gn('n9', 'vulnerability', 'CVE-2024-3400', 85, { cvss: 9.1, exploitAvailable: true }),
-  gn('n10', 'campaign', 'Operation Fancy Storm', 90, { startDate: daysAgo(30), targetSectors: ['government', 'defense'] }),
-  gn('n11', 'campaign', 'Dark Seoul 2.0', 82, { startDate: daysAgo(45), targetSectors: ['financial', 'cryptocurrency'] }),
-  gn('n12', 'ioc', 'c2-beacon.malware.top', 82, { iocType: 'domain', severity: 'high' }),
-  gn('n13', 'malware', 'LockBit', 90, { malwareType: 'ransomware', platforms: ['Windows', 'Linux'] }),
-  gn('n14', 'ioc', 'CVE-2024-1709', 78, { iocType: 'cve', severity: 'high' }),
-  gn('n15', 'threat_actor', 'FIN7', 75, { aliases: ['Carbanak'], country: 'UA' }),
-]
-
-export const DEMO_GRAPH_EDGES: GraphEdge[] = [
-  ge('e1', 'n1', 'n3', 'uses', 92),
-  ge('e2', 'n1', 'n5', 'controls', 88),
-  ge('e3', 'n1', 'n10', 'attributed_to', 85),
-  ge('e4', 'n2', 'n4', 'uses', 80),
-  ge('e5', 'n2', 'n7', 'controls', 75),
-  ge('e6', 'n2', 'n11', 'attributed_to', 82),
-  ge('e7', 'n3', 'n5', 'communicates_with', 90),
-  ge('e8', 'n3', 'n12', 'communicates_with', 85),
-  ge('e9', 'n4', 'n7', 'communicates_with', 78),
-  ge('e10', 'n6', 'n3', 'delivers', 92),
-  ge('e11', 'n8', 'n1', 'exploited_by', 80),
-  ge('e12', 'n9', 'n2', 'exploited_by', 70),
-  ge('e13', 'n10', 'n6', 'targets', 88),
-  ge('e14', 'n10', 'n8', 'leverages', 82),
-  ge('e15', 'n11', 'n13', 'deploys', 78),
-  ge('e16', 'n13', 'n14', 'exploits', 72),
-  ge('e17', 'n15', 'n4', 'uses', 68),
-  ge('e18', 'n15', 'n12', 'controls', 70),
-]
-
-export const DEMO_GRAPH_STATS: GraphStats = {
-  totalNodes: 15, totalEdges: 18,
-  byType: { ioc: 5, threat_actor: 3, malware: 3, vulnerability: 2, campaign: 2 },
-  avgRiskScore: 85,
+  nodesByType: Record<string, number>; edgesByType: Record<string, number>
+  mostConnected: Array<{ id: string; type: string; label: string; connections: number }>
+  isolatedNodes: number; avgConnections: number
 }
 
 // ─── Correlation Engine Types & Demo Data ───────────────────────

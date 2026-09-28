@@ -22,6 +22,8 @@ export const NODE_COLORS: Record<string, string> = {
   malware: '#f59e0b',
   vulnerability: '#a855f7',
   campaign: '#06b6d4',
+  infrastructure: '#10b981',
+  victim: '#ec4899',
 }
 
 export const NODE_LABELS: Record<string, string> = {
@@ -30,6 +32,8 @@ export const NODE_LABELS: Record<string, string> = {
   malware: 'Malware',
   vulnerability: 'Vulnerability',
   campaign: 'Campaign',
+  infrastructure: 'Infrastructure',
+  victim: 'Victim',
 }
 
 const NODE_ICONS: Record<string, React.FC<{ className?: string }>> = {
@@ -168,7 +172,7 @@ export function NodeDetailPanel({ node, edges, allNodes, onClose, onPathFind }: 
                 <span className="text-text-muted">{direction}</span>
                 <span className="text-text-primary truncate flex-1">{other?.label ?? otherId}</span>
                 <span className="text-[9px] text-text-muted shrink-0">{edge.relationshipType.replace('_', ' ')}</span>
-                <span className="text-[9px] tabular-nums text-text-muted">{edge.confidence}%</span>
+                <span className="text-[9px] tabular-nums text-text-muted">{Math.round(edge.confidence * 100)}%</span>
               </div>
             )
           })}
