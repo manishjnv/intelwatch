@@ -57,7 +57,7 @@ if [ "$SPEC_SOURCE" = "url" ]; then
   echo "→ Fetching OpenAPI spec from $SPEC_URL ..."
   curl -sf "$SPEC_URL" -o "$SPEC_FILE" || {
     echo "✗ Failed to fetch spec. Is the API server running?"
-    echo "  Try: ETIP_API_URL=https://ti.intelwatch.in bash scripts/generate-sdk.sh"
+    echo "  Try: ETIP_API_URL=https://intelwatch.in bash scripts/generate-sdk.sh"
     exit 1
   }
   echo "  ✓ Saved to $SPEC_FILE"
@@ -117,7 +117,7 @@ pip install -e .
 ```python
 from intelwatch_sdk import ApiClient, Configuration, IOCsApi
 
-config = Configuration(host="https://ti.intelwatch.in/api/v1/public")
+config = Configuration(host="https://intelwatch.in/api/v1/public")
 config.api_key["X-API-Key"] = "etip_your_api_key_here"
 
 client = ApiClient(config)
@@ -139,7 +139,7 @@ npm install
 import { Configuration, IOCsApi } from '@intelwatch/sdk';
 
 const config = new Configuration({
-  basePath: 'https://ti.intelwatch.in/api/v1/public',
+  basePath: 'https://intelwatch.in/api/v1/public',
   headers: { 'X-API-Key': 'etip_your_api_key_here' },
 });
 

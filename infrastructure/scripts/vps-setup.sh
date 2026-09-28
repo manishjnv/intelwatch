@@ -186,37 +186,9 @@ CONFEOF
     log "Created docker/nginx/conf.d/default.conf"
 fi
 
-# ─── Step 5: Add Nginx server block for ti.intelwatch.in ─────
-log "Setting up Nginx server block for ti.intelwatch.in..."
-
-NGINX_AVAILABLE="/etc/nginx/sites-available/ti.intelwatch.in"
-NGINX_ENABLED="/etc/nginx/sites-enabled/ti.intelwatch.in"
-
-if [ -f "$NGINX_AVAILABLE" ]; then
-    warn "Server block already exists at $NGINX_AVAILABLE, skipping."
-else
-    cp infrastructure/nginx/ti.intelwatch.in "$NGINX_AVAILABLE"
-    log "Copied server block to $NGINX_AVAILABLE"
-fi
-
-if [ ! -L "$NGINX_ENABLED" ]; then
-    ln -s "$NGINX_AVAILABLE" "$NGINX_ENABLED"
-    log "Enabled server block"
-fi
-
-# Test nginx config before reloading
-log "Testing Nginx configuration..."
-nginx -t
-if [ $? -ne 0 ]; then
-    err "Nginx config test FAILED! Removing ETIP server block."
-    rm -f "$NGINX_ENABLED"
-    exit 1
-fi
-
-# Reload nginx (does NOT restart — zero downtime for existing site)
-log "Reloading Nginx (zero-downtime)..."
-systemctl reload nginx
-log "Nginx reloaded. ti.intelwatch.in server block active."
+# ─── Step 5: Public ingress ──────────────────────────────────
+# intelwatch.in reaches etip_nginx through the Cloudflare Tunnel (TLS at Cloudflare);
+# no host nginx server block or certbot certificate is needed.
 
 # ─── Step 6: Start ETIP infrastructure containers ────────────
 log "Starting ETIP containers..."
@@ -245,8 +217,6 @@ log ""
 log "Next steps:"
 log "  1. Edit /opt/intelwatch/.env with production secrets"
 log "  2. Start containers: docker compose -p etip -f docker-compose.etip.yml up -d"
-log "  3. Verify: curl http://ti.intelwatch.in/health"
-log "  4. Add SSL: certbot --nginx -d ti.intelwatch.in"
-log "  5. Verify: curl https://ti.intelwatch.in/health"
+log "  3. Verify: curl https://intelwatch.in/health (via Cloudflare Tunnel)"
 log ""
 warn "Remember: NEVER touch containers/configs that don't have the etip_ prefix!"
