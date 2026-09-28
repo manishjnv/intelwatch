@@ -1,6 +1,6 @@
 # IOC Intelligence Service (Module 07)
 
-**Port:** 3007 | **Queue:** N/A (reads from DB) | **Status:** 🔨 WIP | **Tests:** 119
+**Port:** 3007 | **Queue:** N/A (reads from DB) | **Status:** ✅ Deployed | **Tests:** 172
 
 ## What It Does
 Analyst-facing CRUD, search, pivot, lifecycle management, export, and bulk operations for IOCs.
@@ -44,7 +44,8 @@ IOC Intelligence :3007 → reads IOCs, provides analyst CRUD/search/pivot/export
 |--------|------|------|-------------|
 | GET | /health | - | Health check |
 | GET | /ready | - | Readiness check |
-| GET | /api/v1/ioc | JWT | Paginated list with 10 filter params |
+| GET | /api/v1/ioc | JWT or service JWT | Paginated list with 10 filter params; `updatedSince`+`sort=updatedAt`+id tie-breaker for reconciliation callers |
+| GET | /api/v1/ioc/internal/tenants | Service JWT only | `[{tenantId, iocCount, lastUpdatedAt}]`, cross-tenant — for reconciliation; not routable from the internet (nginx 404s `/api/v1/ioc/internal/`) |
 | POST | /api/v1/ioc | JWT+RBAC | Create manual IOC (analyst-submitted) |
 | POST | /api/v1/ioc/bulk | JWT+RBAC | Bulk: set_severity, set_lifecycle, add/remove/set tags |
 | GET | /api/v1/ioc/stats | JWT | Counts by type/severity/lifecycle + avg confidence |
@@ -52,7 +53,7 @@ IOC Intelligence :3007 → reads IOCs, provides analyst CRUD/search/pivot/export
 | POST | /api/v1/ioc/export | JWT | CSV/JSON with profiles (D2) + provenance (D1) |
 | GET | /api/v1/ioc/campaigns | JWT | C3: Auto-detected campaign clusters |
 | GET | /api/v1/ioc/feed-accuracy | JWT | B3: Per-feed accuracy report |
-| GET | /api/v1/ioc/:id | JWT | Detail with computed signals (A1-A5) |
+| GET | /api/v1/ioc/:id | JWT or service JWT | Detail with computed signals (A1-A5) |
 | PUT | /api/v1/ioc/:id | JWT+RBAC | Update + B1 FP propagation + B2 analyst override |
 | DELETE | /api/v1/ioc/:id | JWT+RBAC | Soft delete (lifecycle → revoked) |
 | GET | /api/v1/ioc/:id/pivot | JWT | Related IOCs + A4 inferred relationships |
@@ -73,6 +74,7 @@ IOC Intelligence :3007 → reads IOCs, provides analyst CRUD/search/pivot/export
 | D2 | Export profiles | high_fidelity (≥80), monitoring (≥40), research (all) presets | Yes |
 | D3 | Timeline | Confidence history + lifecycle events (from Chunk 1) | Partial |
 | S157 | Search-index sync | Create, update, revoke (soft-delete), bulk, and lifecycle-transition all send an `IOC_INDEX` job (full doc for create/update, `action:'delete'` on hard-delete paths). Bulk `updateMany` re-reads the affected ids and `addBulk`s | Yes |
+| S171 | Service-to-service read access | `authenticateService`/`authenticateUserOrService` (plugins/auth.ts) — 60s service JWT, audience `ioc-intelligence`, issuer allowlisted via `TI_IOC_SERVICE_CALLERS` (default `threat-graph`), UUID `x-tenant-id` required; never sets `req.user`, so write/export/search/bulk routes stay unreachable with a service token. Built for threat-graph's IOC hydration (`docs/S171_IOC_SERVICE_AUTH.md`) | Yes |
 
 ## Config
 | Env Var | Default | Purpose |
@@ -84,3 +86,4 @@ IOC Intelligence :3007 → reads IOCs, provides analyst CRUD/search/pivot/export
 | TI_JWT_SECRET | - | JWT signing secret |
 | TI_SERVICE_JWT_SECRET | - | Service-to-service JWT |
 | TI_IOC_INDEX_ENABLED | true | S157: gate for search-index sync on analyst writes |
+| TI_IOC_SERVICE_CALLERS | threat-graph | S171: comma-separated allowlist of service JWT issuers permitted on `GET /ioc`, `/:id`, `/internal/tenants` |
