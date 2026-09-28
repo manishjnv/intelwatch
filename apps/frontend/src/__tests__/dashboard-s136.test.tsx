@@ -127,21 +127,20 @@ vi.mock('@/hooks/use-dashboard-mode', () => ({
 import { GeoThreatWidget } from '@/components/widgets/GeoThreatWidget'
 
 describe('GeoThreatWidget', () => {
-  it('renders country bar chart with 8 countries', () => {
+  it('renders the widget frame with heading', () => {
     render(<GeoThreatWidget profile={null} />)
     expect(screen.getByTestId('geo-threat-widget')).toBeInTheDocument()
-    expect(screen.getByText('China')).toBeInTheDocument()
-    expect(screen.getByText('Russia')).toBeInTheDocument()
-    expect(screen.getByText('United States')).toBeInTheDocument()
-    expect(screen.getByText('Iran')).toBeInTheDocument()
-  })
-
-  it('shows Geo Threat Map heading', () => {
-    render(<GeoThreatWidget profile={null} />)
     expect(screen.getByText('Geo Threat Map')).toBeInTheDocument()
   })
 
-  it('highlights country matching org profile geography', () => {
+  it('shows honest empty state instead of fake countries', () => {
+    render(<GeoThreatWidget profile={null} />)
+    expect(screen.getByText('Geographic attribution not available yet')).toBeInTheDocument()
+    expect(screen.queryByText('China')).not.toBeInTheDocument()
+    expect(screen.queryByText('342')).not.toBeInTheDocument()
+  })
+
+  it('renders the same empty state regardless of org profile', () => {
     const profile = {
       industry: 'Technology' as const,
       techStack: { os: [], cloud: [], network: [], database: [], web: [] },
@@ -150,39 +149,7 @@ describe('GeoThreatWidget', () => {
       geography: { country: 'India', region: 'Asia' },
     }
     render(<GeoThreatWidget profile={profile} />)
-    // Dot-map should render with SVG circles (India gets a dot via COUNTRY_GEO)
-    const dotMap = screen.getByTestId('geo-dot-map')
-    expect(dotMap).toBeInTheDocument()
-    // Top 5 legend is visible
-    expect(screen.getByTestId('geo-legend')).toBeInTheDocument()
-  })
-
-  it('does not highlight when profile country does not match', () => {
-    const profile = {
-      industry: 'Technology' as const,
-      techStack: { os: [], cloud: [], network: [], database: [], web: [] },
-      businessRisk: [] as import('@/types/org-profile').BusinessRisk[],
-      orgSize: 'smb' as const,
-      geography: { country: 'Germany', region: 'Europe' },
-    }
-    render(<GeoThreatWidget profile={profile} />)
-    // China should be in top 5 legend without highlight ring
-    expect(screen.getByText('China')).toBeInTheDocument()
-  })
-
-  it('shows Demo badge when isDemo is true', () => {
-    const origDemo = mockAnalytics.isDemo
-    mockAnalytics.isDemo = true
-    render(<GeoThreatWidget profile={null} />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
-    mockAnalytics.isDemo = origDemo
-  })
-
-  it('renders country names in legend', () => {
-    render(<GeoThreatWidget profile={null} />)
-    // Top 5 countries should appear in the legend
-    expect(screen.getByText('China')).toBeInTheDocument()
-    expect(screen.getByText('Russia')).toBeInTheDocument()
+    expect(screen.getByText('Geographic attribution not available yet')).toBeInTheDocument()
   })
 })
 
@@ -240,10 +207,10 @@ describe('DashboardPage — full widget grid', () => {
     expect(screen.queryByTestId('profile-match-widget')).not.toBeInTheDocument()
   })
 
-  it('GeoThreatWidget renders dot-map when profile geography is set', () => {
+  it('GeoThreatWidget renders honest empty state in the dashboard grid', () => {
     render(<DashboardPage />)
-    expect(screen.getByTestId('geo-dot-map')).toBeInTheDocument()
-    expect(screen.getByTestId('geo-legend')).toBeInTheDocument()
+    expect(screen.getByTestId('geo-threat-widget')).toBeInTheDocument()
+    expect(screen.getByText('Geographic attribution not available yet')).toBeInTheDocument()
   })
 })
 

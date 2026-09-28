@@ -19,6 +19,7 @@ vi.mock('@/stores/auth-store', () => ({
 
 vi.mock('@/hooks/use-intel-data', () => ({
   useDashboardStats: () => ({ data: { totalIOCs: 25, activeFeeds: 5, enrichedToday: 10, criticalIOCs: 3 }, isDemo: false }),
+  useIOCs: () => ({ data: { data: [], total: 0 }, isLoading: false }),
 }))
 
 // ─── Mock viz/widget components ────────────────────────────────

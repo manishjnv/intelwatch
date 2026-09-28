@@ -341,39 +341,23 @@ describe('InvestigationDrawer', () => {
 
 import { GeoThreatWidget } from '@/components/widgets/GeoThreatWidget'
 
-describe('GeoThreatWidget (S138 dot-map)', () => {
-  it('renders the SVG dot-map container', () => {
+describe('GeoThreatWidget (S138)', () => {
+  it('renders honest empty state, no dot-map', () => {
     render(<GeoThreatWidget profile={null} />)
-    expect(screen.getByTestId('geo-dot-map')).toBeInTheDocument()
+    expect(screen.getByText('Geographic attribution not available yet')).toBeInTheDocument()
+    expect(screen.queryByTestId('geo-dot-map')).not.toBeInTheDocument()
   })
 
-  it('renders the top-5 legend', () => {
+  it('does not render fake countries in the widget', () => {
     render(<GeoThreatWidget profile={null} />)
-    expect(screen.getByTestId('geo-legend')).toBeInTheDocument()
-    expect(screen.getByText('China')).toBeInTheDocument()
-    expect(screen.getByText('Russia')).toBeInTheDocument()
+    expect(screen.queryByText('China')).not.toBeInTheDocument()
+    expect(screen.queryByText('Russia')).not.toBeInTheDocument()
   })
 
-  it('contains SVG circles for threat dots', () => {
-    const { container } = render(<GeoThreatWidget profile={null} />)
-    const circles = container.querySelectorAll('circle')
-    expect(circles.length).toBeGreaterThan(0)
-  })
-
-  it('highlights org country when profile is set', () => {
+  it('shows the same empty state when profile geography is set', () => {
     const profile = { geography: { country: 'Russia' } }
     render(<GeoThreatWidget profile={profile as never} />)
-    // Russia should be in top-5 legend
-    expect(screen.getByText('Russia')).toBeInTheDocument()
-  })
-
-  it('shows empty state when no data', () => {
-    const original = mockAnalytics.topActors
-    mockAnalytics.topActors = []
-    render(<GeoThreatWidget profile={null} />)
-    // Still shows demo geo data (hardcoded)
-    expect(screen.getByTestId('geo-dot-map')).toBeInTheDocument()
-    mockAnalytics.topActors = original
+    expect(screen.getByText('Geographic attribution not available yet')).toBeInTheDocument()
   })
 })
 
@@ -384,9 +368,10 @@ describe('GeoThreatWidget (S138 dot-map)', () => {
 import { DashboardPage } from '@/pages/DashboardPage'
 
 describe('DashboardPage (S138 integration)', () => {
-  it('renders GeoThreatWidget with dot-map', () => {
+  it('renders GeoThreatWidget with honest empty state', () => {
     render(<DashboardPage />)
-    expect(screen.getByTestId('geo-dot-map')).toBeInTheDocument()
+    expect(screen.getByTestId('geo-threat-widget')).toBeInTheDocument()
+    expect(screen.getByText('Geographic attribution not available yet')).toBeInTheDocument()
   })
 
   it('renders RecentIocWidget with freshness indicators', () => {

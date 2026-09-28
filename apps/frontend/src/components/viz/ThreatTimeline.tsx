@@ -29,7 +29,7 @@ const SEV_NODE: Record<string, string> = {
   info: 'bg-text-muted border-slate-500/40',
 }
 
-const TYPE_LABEL: Record<string, string> = {
+export const TYPE_LABEL: Record<string, string> = {
   ip: 'IP', domain: 'Domain', url: 'URL', hash_sha256: 'Hash',
   cve: 'CVE', email: 'Email', actor: 'Actor', malware: 'Malware',
 }
@@ -39,38 +39,13 @@ function formatDate(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
 }
 
-/** Generate stub timeline events for demo */
-export function generateStubEvents(count = 15): TimelineEvent[] {
-  const types = ['ip', 'domain', 'url', 'cve', 'hash_sha256', 'actor', 'malware']
-  const sevs = ['critical', 'high', 'medium', 'low', 'info']
-  const now = Date.now()
-
-  return Array.from({ length: count }, (_, i) => {
-    const seed = (i * 2654435761) >>> 0
-    const type = types[seed % types.length]!
-    const sev = sevs[(seed >> 4) % sevs.length]!
-    const ts = now - (count - i) * 3600000 * (1 + (seed % 3))
-
-    return {
-      id: `stub-${i}`,
-      timestamp: new Date(ts).toISOString(),
-      label: `${TYPE_LABEL[type] ?? type}-${(seed % 900 + 100).toString()}`,
-      type,
-      severity: sev,
-    }
-  }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-}
-
 export function ThreatTimeline({ events, maxEvents = 20, className }: ThreatTimelineProps) {
-  const data = useMemo(() => {
-    const source = events ?? generateStubEvents()
-    return source.slice(0, maxEvents)
-  }, [events, maxEvents])
+  const data = useMemo(() => (events ?? []).slice(0, maxEvents), [events, maxEvents])
 
   if (data.length === 0) {
     return (
-      <div className={cn('rounded-lg border border-border bg-bg-secondary/30 p-4', className)}>
-        <p className="text-xs text-text-muted text-center">No recent events</p>
+      <div className={cn('rounded-lg border border-border bg-bg-secondary/30 p-4', className)} data-testid="threat-timeline">
+        <p className="text-xs text-text-muted text-center">No threat activity yet</p>
       </div>
     )
   }
