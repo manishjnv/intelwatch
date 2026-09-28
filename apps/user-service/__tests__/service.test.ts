@@ -186,6 +186,25 @@ describe('UserService', () => {
       expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'USER_LOGIN' }) }));
     });
 
+    it('returns tenant with exactly {id, name, slug, plan} — no extra Prisma columns (e.g. settings)', async () => {
+      const { hashPassword } = await import('@etip/shared-auth');
+      const hash = await hashPassword('SecurePassword123!');
+      const userWithHash = { ...mockUser, passwordHash: hash };
+      vi.mocked(prisma.user.findMany).mockResolvedValue([userWithHash] as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(userWithHash as never);
+      vi.mocked(prisma.session.create).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.session.update).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(userWithHash as never);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+      const result = await service.login({ email: 'analyst@acme.com', password: 'SecurePassword123!', ipAddress: '127.0.0.1', userAgent: 'test-agent' });
+      expect('tenant' in result).toBe(true);
+      expect((result as { tenant: unknown }).tenant).toEqual({
+        id: mockTenant.id, name: mockTenant.name, slug: mockTenant.slug, plan: mockTenant.plan,
+      });
+      expect((result as { tenant: Record<string, unknown> }).tenant).not.toHaveProperty('settings');
+    });
+
     it('#86: rejects nonexistent email', async () => {
       vi.mocked(prisma.user.findMany).mockResolvedValue([] as never);
       vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
@@ -349,6 +368,21 @@ describe('UserService', () => {
       // checkMfaRequired → findUserForMfa(userId) must run against the matched candidate (user-b), never candidates[0] (user-a)
       expect(prisma.user.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'user-b' } }));
       expect(prisma.user.findUnique).not.toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'user-a' } }));
+    });
+  });
+
+  describe('completeLoginAfterMfa', () => {
+    it('returns tenant with exactly {id, name, slug, plan} alongside tokens + user', async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+      vi.mocked(prisma.session.create).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.session.update).mockResolvedValue(mockSession as never);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+      const result = await service.completeLoginAfterMfa(mockUser.id, mockTenant.id, '127.0.0.1', 'test-agent');
+      expect(result.accessToken).toBeTruthy();
+      expect(result.user.email).toBe(mockUser.email);
+      expect(result.tenant).toEqual({ id: mockTenant.id, name: mockTenant.name, slug: mockTenant.slug, plan: mockTenant.plan });
+      expect(result.tenant).not.toHaveProperty('settings');
     });
   });
 

@@ -32,7 +32,9 @@ export interface RegisterResult {
   emailJobPayload?: { queue: string; data: { type: string; userId: string; email: string; token: string; tenantName: string } };
 }
 
-export interface LoginResult extends AuthTokens { user: SafeUserResult; }
+export interface SafeTenantResult { id: string; name: string; slug: string; plan: string }
+
+export type LoginResult = AuthTokens & { user: SafeUserResult; tenant: SafeTenantResult };
 
 /** Returned when MFA is required or enforcement requires MFA setup */
 export interface MfaLoginResult {
@@ -178,7 +180,7 @@ export class UserService {
       entityType: 'session', ipAddress: input.ipAddress, userAgent: input.userAgent,
     });
 
-    return { ...tokens, user: this._toSafeUser(user) };
+    return { ...tokens, user: this._toSafeUser(user), tenant: this._toSafeTenant(user.tenant) };
   }
 
   /** Complete login after successful MFA verification — creates session + returns tokens */
@@ -194,7 +196,7 @@ export class UserService {
       changes: { mfaVerified: true },
     });
 
-    return { ...tokens, user: this._toSafeUser(user) };
+    return { ...tokens, user: this._toSafeUser(user), tenant: this._toSafeTenant(user.tenant) };
   }
 
   async refreshTokens(input: RefreshInput): Promise<AuthTokens> {
@@ -298,5 +300,10 @@ export class UserService {
 
   private _toSafeUser(user: { id: string; email: string; displayName: string; role: string; tenantId: string; avatarUrl: string | null; }): SafeUserResult {
     return { id: user.id, email: user.email, displayName: user.displayName, role: user.role, tenantId: user.tenantId, avatarUrl: user.avatarUrl };
+  }
+
+  // explicit allowlist — never spread the Prisma tenant row, it carries settings/limits columns
+  private _toSafeTenant(tenant: { id: string; name: string; slug: string; plan: string }): SafeTenantResult {
+    return { id: tenant.id, name: tenant.name, slug: tenant.slug, plan: tenant.plan };
   }
 }
