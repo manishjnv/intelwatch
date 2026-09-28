@@ -1,8 +1,11 @@
 # SESSION HANDOFF DOCUMENT
 **Date:** 2026-09-28
-**Session:** 168 (label S168 — RCA #49 + RCA #50 fixed and deployed: webhook "Test connection" 500 + demo stat tiles, self-service sign-up CAPTCHA + Contact Sales. This closing update also covers the full session span since the last handoff, S161b PR1 through S167.)
+**Session:** 169 (planning-only — reviewed Phase 13 roadmap, generated detailed session prompts for S161b/S162/S163/S164/S165; no code changes, no deploy)
+**Previous session:** 168 (RCA #49 + RCA #50 fixed and deployed: webhook "Test connection" 500 + demo stat tiles, self-service sign-up CAPTCHA + Contact Sales. That closing update also covers the full session span since the prior handoff, S161b PR1 through S167.)
 
-**Session Summary (current, read this first):** This session's deploys, in order (commit range `c68d452..ddcb6be`, 22 commits, 134 files, +8,823/−1,466), all on master, all deployed unless docs-only:
+**S169 Summary:** Planning session — owner requested detailed task prompts for all remaining Step 5 work. Generated self-contained session prompts for S161b (remaining demo-fallback hooks + api() unwrap sweep), S162 (/users routes), S163 (billing/admin shape fixes), S164 (ai-enrichment auto-enrich), S165 (threat-graph /graph/overview). Note: S161b PR1, S162, S164, S166, S167, S168 were already completed by other sessions before these prompts were generated — the prompts for those are now historical reference only. S163 and S165 remain actionable. No code, no deploy, no decisions.
+
+**S168 Summary (prior session, still the latest code session — read this for code context):** This session's deploys, in order (commit range `c68d452..ddcb6be`, 22 commits, 134 files, +8,823/−1,466), all on master, all deployed unless docs-only:
 
 - **S161b PR 1** (`255b49f`, docs-only follow-up `db0b250`): RCA #45 double-unwrap sweep across 17 frontend hooks (`api<{data}>` already unwraps — fixed ~40 sites).
 - **S162** (`045fb35`, docs `2c98451`): user-management-service real `/users`, `/users/stats`, `/users/audit` routes from Prisma, tenant from nginx-verified `x-tenant-id` (401 if missing). DECISION-037.
