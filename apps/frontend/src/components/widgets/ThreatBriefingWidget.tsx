@@ -39,11 +39,15 @@ export function ThreatBriefingWidget({ profile }: Props) {
     const today = trend[1]?.count ?? trend[0]?.count ?? 0
     const yesterday = trend.length > 1 ? trend[0]!.count : today
     const pctChange = yesterday > 0 ? ((today - yesterday) / yesterday) * 100 : 0
+    const hasTrend = iocTrend.length >= 2
 
-    return { criticalCount, cveCount, topEpss, activeActor, pctChange }
+    return { criticalCount, cveCount, topEpss, activeActor, pctChange, hasTrend }
   }, [iocBySeverity, topCves, topActors, iocTrend])
 
-  const trend = trendArrow(stats.pctChange)
+  // Fewer than 2 points is missing data, not "stable" — don't assert a trend we don't have.
+  const trend = stats.hasTrend
+    ? trendArrow(stats.pctChange)
+    : { icon: <Minus className="w-3 h-3" />, color: 'text-text-muted', label: '—' }
 
   return (
     <div data-testid="threat-briefing-widget" className="mb-6 p-3 bg-bg-secondary rounded-lg border border-border">
