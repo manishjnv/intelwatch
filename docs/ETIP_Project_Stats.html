@@ -78,7 +78,7 @@ li strong { color: var(--text-primary); }
 <div class="container">
   <h1>ETIP Project Status</h1>
   <p class="subtitle">Enterprise Threat Intelligence Platform — Latest Status</p>
-  <span class="version">Session 173 &middot; 2026-09-29 &middot; Honest-empty-states sweep PR 1 (DECISION-048): PR #61 merged (ad46f0c) &mdash; hunting/correlation/analytics show real data or honest empty/error states, never demo data (8 hooks in use-phase4-data.ts converted to plain useQuery + QueryStateView, dead demo widgets removed). CI/CD run 36471944056 green. Master ad46f0c, VPS ad46f0c, 32/32 healthy. 9,179 tests passed + 2 skipped (was 9,174). Next: sweep PR 1b (DRP + alerting + reporting withDemoFallback), then PR 1c, then graph visual redesign, then AI enrichment runner (DECISION-045).</span>
+  <span class="version">Session 173 &middot; 2026-09-29 &middot; Honest-empty-states sweep PRs 1–1d complete (DECISION-048): PR #61 merged (ad46f0c), PR #62 (0441dc5, sweep 1b DRP/alerting/reporting), PR #63 (2af3883, sweep 1c integrations/customization/onboarding), PR #64 (318c719, dashboard analytics hook fix). All deployed with `/health` + `/ready` 200, 32/32 containers healthy, new frontend bundle live. Master 318c719, VPS HEAD 318c719. Frontend 2,073 + 2 skipped (was 1,995 + 2). Real monorepo total 9,257 passed + 2 skipped (was 9,179 + 2). RCA issues #57–#61 fixed. Next: audit PR 2 (Command Center use-command-center.ts demo stats, IocListPage feedCount={12}, /search demo swap) plus two widget hooks still reading isDemo, then audit PRs 3–5, then backend wiring follow-ups found in the sweep.</span>
 </div>
 </div>
 
@@ -89,7 +89,7 @@ li strong { color: var(--text-primary); }
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Modules Built</div></div>
     <div class="stat-card"><div class="stat-value">32</div><div class="stat-label">Docker Containers</div></div>
-    <div class="stat-card"><div class="stat-value">9,179</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat-card"><div class="stat-value">9,257</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat-card"><div class="stat-value">~650</div><div class="stat-label">API Endpoints</div></div>
     <div class="stat-card"><div class="stat-value">173</div><div class="stat-label">Dev Sessions</div></div>
     <div class="stat-card"><div class="stat-value">56</div><div class="stat-label">RCA Issues (All Fixed)</div></div>
