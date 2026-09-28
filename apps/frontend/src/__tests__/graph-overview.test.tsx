@@ -98,9 +98,23 @@ describe('toGraphSubgraph', () => {
     expect(n.label).toBe('CVE-2024-1234')
   })
 
-  it('falls back to id when no name field is present', () => {
+  it('falls back to "<type>:<short id>" when no name field is present', () => {
     const n = result.nodes.find(n => n.id === 'no-name-1')!
-    expect(n.label).toBe('no-name-1')
+    expect(n.label).toBe('campaign:no-name-')
+  })
+
+  it('maps lowercase IOC-type labels written by graph-sync (production shape)', () => {
+    const prod = toGraphSubgraph({
+      nodes: [
+        { id: '01602dd4-2d28-41bd-943f-5c229e78aaaa', nodeType: 'cve' as never, riskScore: 0, confidence: 0,
+          properties: { firstSeen: '2026-04-13T18:37:12Z', enrichmentStatus: 'enriched' } },
+        { id: 'b2', nodeType: 'domain' as never, riskScore: 0, confidence: 0, properties: {} },
+        { id: 'b3', nodeType: 'hash_sha256' as never, riskScore: 0, confidence: 0, properties: {} },
+      ],
+      edges: [],
+    })
+    expect(prod.nodes.map(n => n.entityType)).toEqual(['vulnerability', 'ioc', 'ioc'])
+    expect(prod.nodes[0]!.label).toBe('cve:01602dd4')
   })
 
   it('maps Infrastructure nodeType', () => {

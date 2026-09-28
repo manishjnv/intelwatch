@@ -144,6 +144,14 @@ describe('Threat Graph — Repository', () => {
       expect(stats.isolatedNodes).toBe(5);
       expect(stats.avgConnections).toBe(5);
     });
+
+    it('never uses the Neo4j 5 reserved function name `all` as a Cypher variable (RCA #52)', async () => {
+      mockRun.mockResolvedValue({ records: [] });
+      await repo.getStats('t1');
+      for (const [cypher] of mockRun.mock.calls as Array<[string]>) {
+        expect(cypher).not.toMatch(/\bAS all\b|\bIN all\b|size\(all\)/);
+      }
+    });
   });
 
   describe('getNeighborsForPropagation', () => {

@@ -37,25 +37,26 @@ const ENTITY_TYPE_MAP: Record<string, GraphNode['entityType']> = {
   Victim: 'victim',
 }
 
+// Graph-sync currently labels IOC nodes by their IOC type (cve, domain, url, hash_*, ...).
 function toEntityType(nodeType: string): GraphNode['entityType'] {
-  return ENTITY_TYPE_MAP[nodeType] ?? (nodeType.toLowerCase() as GraphNode['entityType'])
+  const mapped = ENTITY_TYPE_MAP[nodeType]
+  if (mapped) return mapped
+  return nodeType.toLowerCase() === 'cve' ? 'vulnerability' : 'ioc'
 }
 
-function toLabel(id: string, properties: Record<string, unknown>): string {
-  const name = properties?.name
-  if (typeof name === 'string' && name) return name
-  const value = properties?.value
-  if (typeof value === 'string' && value) return value
-  const cveId = properties?.cveId
-  if (typeof cveId === 'string' && cveId) return cveId
-  return id
+function toLabel(id: string, nodeType: string, properties: Record<string, unknown>): string {
+  for (const key of ['name', 'value', 'cveId'] as const) {
+    const v = properties?.[key]
+    if (typeof v === 'string' && v) return v
+  }
+  return `${nodeType.toLowerCase()}:${id.slice(0, 8)}`
 }
 
 export function toGraphSubgraph(raw: GraphApiSubgraph): GraphSubgraph {
   const nodes: GraphNode[] = (raw?.nodes ?? []).map(n => ({
     id: n.id,
     entityType: toEntityType(n.nodeType),
-    label: toLabel(n.id, n.properties ?? {}),
+    label: toLabel(n.id, String(n.nodeType ?? ''), n.properties ?? {}),
     riskScore: Number(n.riskScore ?? 0),
     properties: n.properties ?? {},
     createdAt: String((n.properties ?? {}).firstSeen ?? ''),

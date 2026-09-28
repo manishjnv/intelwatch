@@ -50,12 +50,12 @@ export async function getGraphStats(tenantId: string): Promise<GraphStatsRespons
        OPTIONAL MATCH (n)-[r]-()
        WITH n, labels(n)[0] AS label, count(r) AS connections
        ORDER BY connections DESC
-       WITH collect({id: n.id, type: label, label: coalesce(n.name, n.value, n.cveId, n.id), connections: connections}) AS all
-       WITH all,
-            [x IN all WHERE x.connections = 0] AS isolated,
-            [x IN all[0..10]] AS top10
-       RETURN top10, size(isolated) AS isolatedCount, size(all) AS totalNodes,
-              reduce(s = 0, x IN all | s + x.connections) AS totalConnections`,
+       WITH collect({id: n.id, type: label, label: coalesce(n.name, n.value, n.cveId, n.id), connections: connections}) AS allNodes
+       WITH allNodes,
+            [x IN allNodes WHERE x.connections = 0] AS isolated,
+            [x IN allNodes[0..10]] AS top10
+       RETURN top10, size(isolated) AS isolatedCount, size(allNodes) AS totalNodes,
+              reduce(s = 0, x IN allNodes | s + x.connections) AS totalConnections`,
       { tenantId },
     );
 
