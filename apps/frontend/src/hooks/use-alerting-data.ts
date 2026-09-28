@@ -2,14 +2,12 @@
  * @module hooks/use-alerting-data
  * @description TanStack Query hooks for Alerting Service (port 3023).
  * All queries go through nginx → /api/v1/alerts/*.
- * Demo fallback when backend is unreachable.
+ * Real data or honest empty/error states only — no demo fallback (DECISION-048).
  */
-import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { notifyApiError } from './useApiError'
+import { apiList } from '@/lib/api-list'
 import {
-  DEMO_RULES, DEMO_ALERTS, DEMO_CHANNELS, DEMO_ESCALATIONS,
-  DEMO_STATS, DEMO_TEMPLATES, DEMO_HISTORY,
   type AlertRule, type Alert, type NotificationChannel, type EscalationPolicy,
   type AlertStats, type AlertTemplate, type AlertHistoryEntry,
   type AlertSeverity, type AlertStatus, type ChannelType, type RuleConditionType,
@@ -22,21 +20,6 @@ export type {
   AlertSeverity, AlertStatus, ChannelType, RuleConditionType,
 }
 
-// ─── Generic helpers ────────────────────────────────────────────
-
-interface ListResponse<T> {
-  data: T[]; total: number; page: number; limit: number
-}
-
-function withDemoFallback<T>(
-  result: UseQueryResult<T>,
-  demoData: T,
-  hasData: (d: T | undefined) => boolean,
-) {
-  const isDemo = !result.isLoading && !hasData(result.data)
-  return { ...result, data: isDemo ? demoData : result.data, isDemo }
-}
-
 // ─── Alert Queries ──────────────────────────────────────────────
 
 /** Fetch paginated alerts with optional severity/status filters. */
@@ -45,110 +28,90 @@ export function useAlerts(page = 1, severity?: AlertSeverity, status?: AlertStat
   if (severity) params.set('severity', severity)
   if (status) params.set('status', status)
 
-  const empty: ListResponse<Alert> = { data: [], total: 0, page, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['alerts', page, severity, status],
-    queryFn: () => api<Alert[] | ListResponse<Alert>>(`/alerts?${params}`)
-      .then(raw => Array.isArray(raw) ? { data: raw, total: raw.length, page, limit: 50 } : raw)
-      .catch(err => notifyApiError(err, 'alerts', empty)),
+    queryFn: () => apiList<Alert>(`/alerts?${params}`),
+    meta: { resource: 'alerts' },
     staleTime: 15_000,
   })
-  return withDemoFallback(
-    result,
-    { data: DEMO_ALERTS, total: DEMO_ALERTS.length, page, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 /** Fetch alert stats. */
 export function useAlertStats() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['alert-stats'],
-    queryFn: () => api<AlertStats>('/alerts/stats').catch(err => notifyApiError(err, 'alert stats', null as unknown as AlertStats)),
+    queryFn: () => api<AlertStats>('/alerts/stats'),
+    meta: { resource: 'alert stats' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result, DEMO_STATS,
-    d => typeof (d as unknown as Record<string, unknown>)?.total === 'number' && typeof (d as unknown as Record<string, unknown>)?.bySeverity === 'object')
 }
 
 /** Fetch alert history timeline. */
 export function useAlertHistory(alertId?: string) {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['alert-history', alertId],
-    queryFn: () => api<AlertHistoryEntry[]>(`/alerts/${alertId}/history`).catch(() => [] as AlertHistoryEntry[]),
+    queryFn: () => api<AlertHistoryEntry[]>(`/alerts/${alertId}/history`),
+    meta: { resource: 'alert history' },
     enabled: !!alertId,
     staleTime: 30_000,
   })
-  return withDemoFallback(result, DEMO_HISTORY,
-    d => Array.isArray(d) && d.length > 0 && typeof d[0]?.action === 'string')
 }
 
 /** Search alerts by keyword. */
 export function useAlertSearch(query: string) {
-  const empty: ListResponse<Alert> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['alert-search', query],
-    queryFn: () => api<Alert[] | ListResponse<Alert>>(`/alerts/search?q=${encodeURIComponent(query)}`)
-      .then(raw => Array.isArray(raw) ? { data: raw, total: raw.length, page: 1, limit: 50 } : raw)
-      .catch(() => empty),
+    queryFn: () => apiList<Alert>(`/alerts/search?q=${encodeURIComponent(query)}`),
+    meta: { resource: 'alert search' },
     enabled: query.length >= 2,
     staleTime: 15_000,
   })
-  return withDemoFallback(
-    result,
-    { data: DEMO_ALERTS.filter(a => a.title.toLowerCase().includes(query.toLowerCase())), total: 0, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 // ─── Rule Queries ───────────────────────────────────────────────
 
 /** Fetch alert rules. */
 export function useAlertRules() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['alert-rules'],
-    queryFn: () => api<AlertRule[]>('/alerts/rules').catch(err => notifyApiError(err, 'alert rules', [] as AlertRule[])),
+    queryFn: () => apiList<AlertRule>('/alerts/rules'),
+    meta: { resource: 'alert rules' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result, DEMO_RULES,
-    d => Array.isArray(d) && d.length > 0 && typeof d[0]?.condition === 'object')
 }
 
 /** Fetch rule templates. */
 export function useAlertTemplates() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['alert-templates'],
-    queryFn: () => api<AlertTemplate[]>('/alerts/templates').catch(() => [] as AlertTemplate[]),
+    queryFn: () => api<AlertTemplate[]>('/alerts/templates'),
+    meta: { resource: 'alert templates' },
     staleTime: 300_000,
   })
-  return withDemoFallback(result, DEMO_TEMPLATES,
-    d => Array.isArray(d) && d.length > 0 && typeof d[0]?.conditionType === 'string')
 }
 
 // ─── Channel Queries ────────────────────────────────────────────
 
 /** Fetch notification channels. */
 export function useNotificationChannels() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['notification-channels'],
-    queryFn: () => api<NotificationChannel[]>('/alerts/channels').catch(err => notifyApiError(err, 'notification channels', [] as NotificationChannel[])),
+    queryFn: () => apiList<NotificationChannel>('/alerts/channels'),
+    meta: { resource: 'notification channels' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_CHANNELS,
-    d => Array.isArray(d) && d.length > 0 && typeof d[0]?.type === 'string')
 }
 
 // ─── Escalation Queries ─────────────────────────────────────────
 
 /** Fetch escalation policies. */
 export function useEscalationPolicies() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['escalation-policies'],
-    queryFn: () => api<EscalationPolicy[]>('/alerts/escalations').catch(() => [] as EscalationPolicy[]),
+    queryFn: () => apiList<EscalationPolicy>('/alerts/escalations'),
+    meta: { resource: 'escalation policies' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_ESCALATIONS,
-    d => Array.isArray(d) && d.length > 0 && Array.isArray(d[0]?.steps))
 }
 
 // ─── Alert Mutations ────────────────────────────────────────────

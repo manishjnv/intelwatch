@@ -1,7 +1,7 @@
 /**
  * Tests for AlertingPage: 4 tabs (Rules/Alerts/Channels/Escalations),
- * stats bar, demo fallback, severity/status filters, bulk actions,
- * history drawer, channel create modal, escalation policy display.
+ * stats bar, real data only (DECISION-048 — no demo fallback), severity/status
+ * filters, bulk actions, history drawer, channel create modal, escalation policy display.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
@@ -99,12 +99,17 @@ const TEMPLATES = [
 const mutateFn = vi.fn()
 const mutationResult = { mutate: mutateFn, isPending: false }
 
+/** Successful query result shape (QueryStateView reads isLoading/isError/data/refetch). */
+function queryOk<T>(data: T) {
+  return { data, isLoading: false, isError: false, error: null, refetch: vi.fn() }
+}
+
 function setupMocks() {
-  mockUseAlertRules.mockReturnValue({ data: RULES, isDemo: false })
-  mockUseAlerts.mockReturnValue({ data: { data: ALERTS, total: ALERTS.length, page: 1, limit: 50 }, isDemo: false })
+  mockUseAlertRules.mockReturnValue(queryOk({ data: RULES, total: RULES.length, page: 1, limit: 50 }))
+  mockUseAlerts.mockReturnValue(queryOk({ data: ALERTS, total: ALERTS.length, page: 1, limit: 50 }))
   mockUseAlertStats.mockReturnValue({ data: STATS })
-  mockUseNotificationChannels.mockReturnValue({ data: CHANNELS })
-  mockUseEscalationPolicies.mockReturnValue({ data: ESCALATIONS })
+  mockUseNotificationChannels.mockReturnValue(queryOk({ data: CHANNELS, total: CHANNELS.length, page: 1, limit: 50 }))
+  mockUseEscalationPolicies.mockReturnValue(queryOk({ data: ESCALATIONS, total: ESCALATIONS.length, page: 1, limit: 50 }))
   mockUseAlertTemplates.mockReturnValue({ data: TEMPLATES })
   mockUseToggleRule.mockReturnValue(mutationResult)
   mockUseDeleteRule.mockReturnValue(mutationResult)
@@ -461,42 +466,46 @@ describe('AlertingPage', () => {
 
   // ── Empty states ──
   describe('Empty states', () => {
-    it('shows empty state when no rules', async () => {
-      mockUseAlertRules.mockReturnValue({ data: [], isDemo: false })
+    it('shows honest empty state when no rules, no demo banner', async () => {
+      mockUseAlertRules.mockReturnValue(queryOk({ data: [], total: 0, page: 1, limit: 50 }))
       mockUseAlertTemplates.mockReturnValue({ data: [] })
       await renderPage()
-      expect(screen.getByText(/No alert rules/)).toBeInTheDocument()
+      expect(screen.getByText(/No alert rules yet/)).toBeInTheDocument()
+      expect(screen.queryByText('Demo')).not.toBeInTheDocument()
+      expect(screen.queryByText(/Demo data/)).not.toBeInTheDocument()
     })
 
     it('shows empty state when no alerts match filters', async () => {
-      mockUseAlerts.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: false })
+      mockUseAlerts.mockReturnValue(queryOk({ data: [], total: 0, page: 1, limit: 50 }))
       await renderPage()
       fireEvent.click(screen.getByText('Alerts'))
       expect(screen.getByText(/No alerts match/)).toBeInTheDocument()
     })
 
     it('shows empty state when no channels', async () => {
-      mockUseNotificationChannels.mockReturnValue({ data: [] })
+      mockUseNotificationChannels.mockReturnValue(queryOk({ data: [], total: 0, page: 1, limit: 50 }))
       await renderPage()
       fireEvent.click(screen.getByText('Channels'))
       expect(screen.getByText(/No notification channels/)).toBeInTheDocument()
     })
 
     it('shows empty state when no escalation policies', async () => {
-      mockUseEscalationPolicies.mockReturnValue({ data: [] })
+      mockUseEscalationPolicies.mockReturnValue(queryOk({ data: [], total: 0, page: 1, limit: 50 }))
       await renderPage()
       fireEvent.click(screen.getByText('Escalation Policies'))
       expect(screen.getByText(/No escalation policies/)).toBeInTheDocument()
     })
   })
 
-  // ── Demo mode ──
-  describe('Demo mode', () => {
-    it('passes isDemo to PageStatsBar', async () => {
-      mockUseAlertRules.mockReturnValue({ data: RULES, isDemo: true })
+  // ── Error states ──
+  describe('Error states', () => {
+    it('shows query-error card with Retry when rules fail to load', async () => {
+      const refetch = vi.fn()
+      mockUseAlertRules.mockReturnValue({ data: undefined, isLoading: false, isError: true, error: new Error('unreachable'), refetch })
       await renderPage()
-      // The isDemo prop is passed to PageStatsBar — verify it renders
-      expect(screen.getByTestId('page-stats-bar')).toBeInTheDocument()
+      expect(screen.getByTestId('query-error')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('query-retry'))
+      expect(refetch).toHaveBeenCalled()
     })
   })
 })

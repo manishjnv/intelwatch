@@ -183,8 +183,8 @@ const STATUS_ICONS: Record<string, React.FC<{ className?: string }>> = {
   false_positive: XCircle,
 }
 
-export function AlertDetailPanel({ alert, onClose, isDemo }: {
-  alert: DRPAlert; onClose: () => void; isDemo: boolean
+export function AlertDetailPanel({ alert, onClose }: {
+  alert: DRPAlert; onClose: () => void
 }) {
   const [triageNotes, setTriageNotes] = useState('')
   const [showTakedown, setShowTakedown] = useState(false)
@@ -252,7 +252,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
               <button
                 key={s}
                 onClick={() => handleStatusChange(s)}
-                disabled={statusMutation.isPending || isDemo}
+                disabled={statusMutation.isPending}
                 className="text-[10px] px-2 py-1 rounded-md border border-border text-text-secondary hover:text-accent hover:border-accent/30 transition-colors disabled:opacity-50"
               >
                 {s.replace('_', ' ')}
@@ -271,7 +271,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
             }
             <button
               onClick={handleAssignToMe}
-              disabled={assignMutation.isPending || isDemo}
+              disabled={assignMutation.isPending}
               className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md border border-border text-text-secondary hover:text-accent hover:border-accent/30 transition-colors disabled:opacity-50"
             >
               <UserPlus className="w-3 h-3" />
@@ -286,8 +286,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
           <textarea
             value={triageNotes}
             onChange={e => setTriageNotes(e.target.value)}
-            placeholder={isDemo ? 'Connect backend to add notes...' : 'Add investigation notes...'}
-            disabled={isDemo}
+            placeholder="Add investigation notes..."
             rows={3}
             className="w-full px-3 py-2 text-xs bg-bg-secondary border border-border rounded-md text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none disabled:opacity-50"
           />
@@ -299,7 +298,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => triageMutation.mutate({ id: alert.id, verdict: 'true_positive', notes: triageNotes || undefined })}
-              disabled={triageMutation.isPending || isDemo}
+              disabled={triageMutation.isPending}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-critical/10 border border-sev-critical/20 text-sev-critical hover:bg-sev-critical/20 transition-colors disabled:opacity-50"
             >
               <ThumbsDown className="w-3 h-3" />
@@ -307,7 +306,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
             </button>
             <button
               onClick={() => triageMutation.mutate({ id: alert.id, verdict: 'false_positive', notes: triageNotes || undefined })}
-              disabled={triageMutation.isPending || isDemo}
+              disabled={triageMutation.isPending}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-low/10 border border-sev-low/20 text-sev-low hover:bg-sev-low/20 transition-colors disabled:opacity-50"
             >
               <ThumbsUp className="w-3 h-3" />
@@ -315,7 +314,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
             </button>
             <button
               onClick={() => triageMutation.mutate({ id: alert.id, verdict: 'investigate', notes: triageNotes || undefined })}
-              disabled={triageMutation.isPending || isDemo}
+              disabled={triageMutation.isPending}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
             >
               <Eye className="w-3 h-3" />
@@ -333,7 +332,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleFeedback('true_positive')}
-              disabled={feedbackMutation.isPending || isDemo}
+              disabled={feedbackMutation.isPending}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-critical/10 border border-sev-critical/20 text-sev-critical hover:bg-sev-critical/20 transition-colors disabled:opacity-50"
             >
               <ThumbsDown className="w-3 h-3" />
@@ -341,7 +340,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
             </button>
             <button
               onClick={() => handleFeedback('false_positive')}
-              disabled={feedbackMutation.isPending || isDemo}
+              disabled={feedbackMutation.isPending}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-low/10 border border-sev-low/20 text-sev-low hover:bg-sev-low/20 transition-colors disabled:opacity-50"
             >
               <ThumbsUp className="w-3 h-3" />
@@ -358,7 +357,7 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
           <div>
             <h4 className="text-[10px] text-text-muted uppercase mb-2">Takedown</h4>
             {!showTakedown ? (
-              <button onClick={() => setShowTakedown(true)} disabled={isDemo}
+              <button onClick={() => setShowTakedown(true)}
                 data-testid="takedown-btn"
                 className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-rose-400/10 border border-rose-400/20 text-rose-400 hover:bg-rose-400/20 transition-colors disabled:opacity-50">
                 <Gavel className="w-3 h-3" />Request Takedown
@@ -401,12 +400,6 @@ export function AlertDetailPanel({ alert, onClose, isDemo }: {
             )}
           </div>
         </div>
-
-        {isDemo && (
-          <div className="p-2 bg-accent/5 border border-accent/20 rounded-md text-[10px] text-accent">
-            Actions disabled in demo mode. Connect the DRP service backend to enable triage, assignment, and feedback.
-          </div>
-        )}
       </div>
     </div>
   )

@@ -57,4 +57,17 @@ describe('api() Content-Type header', () => {
     expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json')
     expect(init.body).toBe(JSON.stringify({ name: 'n' }))
   })
+
+  // 16 hooks pass body: JSON.stringify(x); re-stringifying sent a JSON *string* and every
+  // backend Zod object schema rejected it (reporting, admin tenant/plan, onboarding writes).
+  it('sends an already-serialized string body as-is, not double-encoded', async () => {
+    const fetchMock = vi.fn(async () => jsonRes({ id: 'r1' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api('/reports', { method: 'POST', body: JSON.stringify({ title: 't' }) })
+
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1]
+    expect(init.body).toBe('{"title":"t"}')
+    expect(JSON.parse(init.body as string)).toEqual({ title: 't' })
+  })
 })

@@ -223,9 +223,9 @@ const TEMPLATE = {
 }
 
 function setupDefaultMocks() {
-  mockUseDRPAlerts.mockReturnValue({ data: { data: [DRP_ALERT], total: 1, page: 1, limit: 50 }, isLoading: false, isDemo: true })
+  mockUseDRPAlerts.mockReturnValue({ data: { data: [DRP_ALERT], total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseDRPAlertStats.mockReturnValue({ data: { total: 8, open: 4, investigating: 2, resolved: 1, bySeverity: { critical: 2, high: 3 }, byType: { typosquatting: 4 } } })
-  mockUseDRPAssets.mockReturnValue({ data: { data: [DRP_ASSET], total: 1, page: 1, limit: 50 } })
+  mockUseDRPAssets.mockReturnValue({ data: { data: [DRP_ASSET], total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseDRPAssetStats.mockReturnValue({ data: { total: 5, byType: { domain: 2 }, avgRiskScore: 43 } })
   mockUseCertStreamStatus.mockReturnValue({ data: { enabled: true, connected: true, matchesLastHour: 3, totalProcessed: 128450, uptime: '14h' } })
   mockUseTyposquatScan.mockReturnValue({ mutate: vi.fn(), isPending: false })
@@ -271,12 +271,6 @@ describe('DRPDashboardPage', () => {
     DRPDashboardPage = mod.DRPDashboardPage
   })
 
-  it('renders demo banner in demo mode', () => {
-    render(<DRPDashboardPage />)
-    expect(screen.getByText('Demo')).toBeTruthy()
-    expect(screen.getByText(/Demo data — connect DRP service/)).toBeTruthy()
-  })
-
   it('renders stats bar with asset and alert counts', () => {
     render(<DRPDashboardPage />)
     expect(screen.getByTestId('stat-Assets')).toBeTruthy()
@@ -295,15 +289,10 @@ describe('DRPDashboardPage', () => {
     expect(screen.getByText('Connected')).toBeTruthy()
   })
 
-  it('renders alert activity heatmap', () => {
-    render(<DRPDashboardPage />)
-    expect(screen.getByText('Alert Activity')).toBeTruthy()
-  })
-
   it('renders typosquat scanner section', () => {
     render(<DRPDashboardPage />)
     expect(screen.getByText('Typosquat Scanner')).toBeTruthy()
-    expect(screen.getByPlaceholderText('e.g., intelwatch.in')).toBeTruthy()
+    expect(screen.getByPlaceholderText('e.g., yourcompany.com')).toBeTruthy()
   })
 
   it('renders alert table with severity badge', () => {
@@ -381,12 +370,6 @@ describe('DRPDashboardPage', () => {
     render(<DRPDashboardPage />)
     fireEvent.click(screen.getByText('Typosquat: test.com → t3st.com'))
     expect(screen.getByText('Assign to me')).toBeTruthy()
-  })
-
-  it('shows demo mode warning in alert detail when in demo', () => {
-    render(<DRPDashboardPage />)
-    fireEvent.click(screen.getByText('Typosquat: test.com → t3st.com'))
-    expect(screen.getByText(/Actions disabled in demo mode/)).toBeTruthy()
   })
 })
 

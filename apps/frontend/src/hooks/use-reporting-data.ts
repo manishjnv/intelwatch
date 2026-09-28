@@ -2,16 +2,14 @@
  * @module hooks/use-reporting-data
  * @description TanStack Query hooks for Reporting Service (port 3021).
  * All queries go through nginx → /api/v1/reports/*.
- * Demo fallback when backend is unreachable.
+ * DECISION-048: real data or an honest empty/error state — no demo fallback.
  */
-import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
-import { notifyApiError } from './useApiError'
-import {
-  DEMO_REPORTS, DEMO_SCHEDULES, DEMO_TEMPLATES, DEMO_REPORT_STATS, DEMO_COMPARISON,
-  type Report, type ReportSchedule, type ReportTemplate, type ReportStats,
-  type ReportComparison, type ReportType, type ReportFormat,
+import type {
+  Report, ReportSchedule, ReportTemplate, ReportStats,
+  ReportComparison, ReportType, ReportFormat,
 } from './reporting-demo-data'
 
 // Re-export types for page consumption
@@ -21,21 +19,6 @@ export type {
 }
 export type { ReportStatus } from './reporting-demo-data'
 
-// ─── Generic helpers ────────────────────────────────────────────
-
-interface ListResponse<T> {
-  data: T[]; total: number; page: number; limit: number
-}
-
-function withDemoFallback<T>(
-  result: UseQueryResult<T>,
-  demoData: T,
-  hasData: (d: T | undefined) => boolean,
-) {
-  const isDemo = !result.isLoading && !hasData(result.data)
-  return { ...result, data: isDemo ? demoData : result.data, isDemo }
-}
-
 // ─── Report Queries ─────────────────────────────────────────────
 
 export function useReports(page = 1, type?: ReportType, status?: string) {
@@ -43,62 +26,111 @@ export function useReports(page = 1, type?: ReportType, status?: string) {
   if (type) params.set('type', type)
   if (status) params.set('status', status)
 
-  const empty: ListResponse<Report> = { data: [], total: 0, page, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['reports', page, type, status],
-    queryFn: () => apiList<Report>(`/reports?${params}`).catch(err => notifyApiError(err, 'reports', empty)),
+    queryFn: () => apiList<Report>(`/reports?${params}`),
+    meta: { resource: 'reports' },
     staleTime: 30_000,
   })
-  return withDemoFallback(
-    result,
-    { data: DEMO_REPORTS, total: DEMO_REPORTS.length, page, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
+// Real backend shape: GET /reports/stats -> { reports: {total,byStatus,byType,avgGenerationTimeMs}, schedules: {activeSchedules} }.
+// ponytail: flatten here to the flat ReportStats shape the page reads, rather than reshaping the page.
 export function useReportStats() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['report-stats'],
-    queryFn: () => api<ReportStats>('/reports/stats').catch(err => notifyApiError(err, 'report stats', null as unknown as ReportStats)),
+    queryFn: async () => {
+      const raw = await api<{
+        reports: { total: number; byStatus: Record<string, number>; byType: Record<string, number>; avgGenerationTimeMs: number }
+        schedules: { activeSchedules: number }
+      }>('/reports/stats')
+      return {
+        total: raw.reports.total,
+        byStatus: raw.reports.byStatus,
+        byType: raw.reports.byType,
+        avgGenerationTimeMs: raw.reports.avgGenerationTimeMs,
+        activeSchedules: raw.schedules.activeSchedules,
+      } as ReportStats
+    },
+    meta: { resource: 'report stats' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_REPORT_STATS,
-    d => d != null && typeof (d as unknown as Record<string, unknown>)?.total === 'number')
 }
 
+// Real backend template shape: { id, name, reportType, description, sections: TemplateSection[] }
+// (no defaultFormat). ponytail: adapt to the page's {type, sections: string[], defaultFormat} shape here.
 export function useReportTemplates() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['report-templates'],
-    queryFn: () => api<ReportTemplate[]>('/reports/templates').catch(() => [] as ReportTemplate[]),
+    queryFn: async () => {
+      const raw = await api<Array<{
+        id: string; name: string; reportType: ReportType; description: string
+        sections: { id: string; title: string }[]
+      }>>('/reports/templates')
+      return raw.map(t => ({
+        id: t.id,
+        type: t.reportType,
+        name: t.name,
+        description: t.description,
+        sections: t.sections.map(s => s.title),
+        defaultFormat: 'html' as ReportFormat,
+      })) satisfies ReportTemplate[]
+    },
     staleTime: 300_000,
   })
-  return withDemoFallback(result, DEMO_TEMPLATES,
-    d => Array.isArray(d) && d.length > 0 && typeof d[0]?.type === 'string')
 }
 
 // ─── Schedule Queries ───────────────────────────────────────────
 
+// Real backend schedule field is `reportType`, not `type`. ponytail: rename here.
 export function useReportSchedules() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['report-schedules'],
-    queryFn: () => api<ReportSchedule[]>('/reports/schedule').catch(err => notifyApiError(err, 'report schedules', [] as ReportSchedule[])),
+    queryFn: async () => {
+      const raw = await api<Array<Omit<ReportSchedule, 'type'> & { reportType: ReportType }>>('/reports/schedule')
+      return raw.map(({ reportType, ...rest }) => ({ ...rest, type: reportType })) satisfies ReportSchedule[]
+    },
+    meta: { resource: 'report schedules' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result, DEMO_SCHEDULES,
-    d => Array.isArray(d) && d.length > 0 && typeof d[0]?.cronExpression === 'string')
 }
 
 // ─── Comparison Query ───────────────────────────────────────────
 
+interface BackendComparisonResult {
+  reportA: { id: string; title: string; dateRange: { from: string; to: string } }
+  reportB: { id: string; title: string; dateRange: { from: string; to: string } }
+  sectionDeltas: {
+    title: string
+    changes: { metric: string; a: number; b: number; delta: number; percentChange: number }[]
+  }[]
+}
+
+// Real backend returns riskScore + sectionDeltas (per-section metric deltas), not a flat
+// changes list. ponytail: flatten sectionDeltas into the page's flat {valueA,valueB,deltaPercent} rows.
 export function useReportComparison(idA?: string, idB?: string) {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['report-compare', idA, idB],
-    queryFn: () => api<ReportComparison>(`/reports/${idA}/compare/${idB}`).catch(() => null as unknown as ReportComparison),
+    queryFn: async () => {
+      const raw = await api<BackendComparisonResult>(`/reports/${idA}/compare/${idB}`)
+      return {
+        reportA: { id: raw.reportA.id, title: raw.reportA.title, generatedAt: raw.reportA.dateRange.to },
+        reportB: { id: raw.reportB.id, title: raw.reportB.title, generatedAt: raw.reportB.dateRange.to },
+        changes: raw.sectionDeltas.flatMap(sd =>
+          sd.changes.map(c => ({
+            metric: `${sd.title}: ${c.metric}`,
+            valueA: c.a,
+            valueB: c.b,
+            delta: c.delta,
+            deltaPercent: c.percentChange,
+          })),
+        ),
+      } satisfies ReportComparison
+    },
     enabled: !!idA && !!idB,
+    meta: { resource: 'report comparison' },
     staleTime: 120_000,
   })
-  return withDemoFallback(result, DEMO_COMPARISON,
-    d => d != null && Array.isArray((d as unknown as Record<string, unknown>)?.changes))
 }
 
 // ─── Mutations ──────────────────────────────────────────────────
@@ -139,7 +171,10 @@ export function useCreateSchedule() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: { name: string; type: ReportType; format: ReportFormat; cronExpression: string; enabled: boolean }) =>
-      api<ReportSchedule>('/reports/schedule', { method: 'POST', body: JSON.stringify(body) }),
+      api<ReportSchedule>('/reports/schedule', {
+        method: 'POST',
+        body: JSON.stringify({ ...body, reportType: body.type, type: undefined }),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['report-schedules'] })
       qc.invalidateQueries({ queryKey: ['report-stats'] })

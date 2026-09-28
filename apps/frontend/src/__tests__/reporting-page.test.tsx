@@ -78,10 +78,10 @@ const mutateFn = vi.fn()
 const mutationResult = { mutate: mutateFn, isPending: false }
 
 function setupMocks() {
-  mockUseReports.mockReturnValue({ data: { data: REPORTS, total: REPORTS.length, page: 1, limit: 50 }, isDemo: false, refetch: vi.fn() })
+  mockUseReports.mockReturnValue({ data: { data: REPORTS, total: REPORTS.length, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseReportStats.mockReturnValue({ data: STATS })
-  mockUseReportTemplates.mockReturnValue({ data: TEMPLATES })
-  mockUseReportSchedules.mockReturnValue({ data: SCHEDULES })
+  mockUseReportTemplates.mockReturnValue({ data: TEMPLATES, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseReportSchedules.mockReturnValue({ data: SCHEDULES, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseReportComparison.mockReturnValue({ data: null })
   mockUseCreateReport.mockReturnValue(mutationResult)
   mockUseCloneReport.mockReturnValue(mutationResult)
@@ -238,9 +238,9 @@ describe('ReportingPage — Reports Tab', () => {
   })
 
   it('shows empty state when no reports', () => {
-    mockUseReports.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isDemo: false, refetch: vi.fn() })
+    mockUseReports.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
     render(<ReportingPage />)
-    expect(screen.getByText(/No reports found/)).toBeInTheDocument()
+    expect(screen.getByText(/No reports yet/)).toBeInTheDocument()
   })
 })
 
@@ -334,7 +334,7 @@ describe('ReportingPage — Schedules Tab', () => {
   })
 
   it('shows empty state when no schedules', () => {
-    mockUseReportSchedules.mockReturnValue({ data: [] })
+    mockUseReportSchedules.mockReturnValue({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() })
     render(<ReportingPage />)
     fireEvent.click(screen.getByText('Schedules'))
     expect(screen.getByText(/No schedules configured/)).toBeInTheDocument()
@@ -420,15 +420,9 @@ describe('ReportingPage — Templates Tab', () => {
   })
 })
 
-// ─── Demo Fallback ──────────────────────────────────────────────
+// ─── Honest rendering ───────────────────────────────────────────
 
-describe('ReportingPage — Demo Fallback', () => {
-  it('passes isDemo to PageStatsBar', () => {
-    mockUseReports.mockReturnValue({ data: { data: REPORTS, total: REPORTS.length, page: 1, limit: 50 }, isDemo: true, refetch: vi.fn() })
-    render(<ReportingPage />)
-    expect(screen.getByTestId('page-stats-bar')).toBeInTheDocument()
-  })
-
+describe('ReportingPage — Honest rendering', () => {
   it('renders gracefully with null stats', () => {
     mockUseReportStats.mockReturnValue({ data: null })
     render(<ReportingPage />)

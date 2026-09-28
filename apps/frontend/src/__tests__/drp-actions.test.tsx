@@ -18,7 +18,7 @@ const ALERTS = [
 
 // ─── Hook mocks (shared across both parts) ───────────────────────
 vi.mock('@/hooks/use-phase4-data', () => ({
-  useDRPAlerts: () => ({ data: { data: ALERTS, total: 3, page: 1, limit: 50 }, isLoading: false, isDemo: true }),
+  useDRPAlerts: () => ({ data: { data: ALERTS, total: 3, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useDRPAlertStats: () => ({ data: { total: 3, open: 3, investigating: 0, resolved: 0, bySeverity: {}, byType: {} } }),
   useDRPAssetStats: () => ({ data: { total: 0, byType: {}, avgRiskScore: 0 } }),
   useDRPAssets: () => ({ data: { data: [], total: 0, page: 1, limit: 50 } }),
@@ -32,11 +32,6 @@ vi.mock('@/hooks/use-phase4-data', () => ({
   useAlertFeedback: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false }),
   useTriageAlert: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false }),
   useRequestTakedown: () => ({ mutate: mockTakedown, isPending: false }),
-}))
-
-vi.mock('@/hooks/phase4-demo-data', () => ({
-  generateAlertHeatmap: () => [],
-  DEMO_TYPOSQUAT_RESULTS: [],
 }))
 
 vi.mock('@/components/ui/Toast', () => ({
@@ -155,26 +150,26 @@ describe('AlertDetailPanel — takedown button', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it('takedown button is visible for typosquatting alert', () => {
-    render(<AlertDetailPanel alert={TYPOSQUAT_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={TYPOSQUAT_ALERT as any} onClose={vi.fn()} />)
     expect(screen.getByTestId('takedown-btn')).toBeTruthy()
   })
 
   it('clicking takedown button opens the takedown form', () => {
-    render(<AlertDetailPanel alert={TYPOSQUAT_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={TYPOSQUAT_ALERT as any} onClose={vi.fn()} />)
     expect(screen.queryByTestId('takedown-form')).toBeNull()
     fireEvent.click(screen.getByTestId('takedown-btn'))
     expect(screen.getByTestId('takedown-form')).toBeTruthy()
   })
 
   it('submit button is disabled when provider field is empty', () => {
-    render(<AlertDetailPanel alert={TYPOSQUAT_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={TYPOSQUAT_ALERT as any} onClose={vi.fn()} />)
     fireEvent.click(screen.getByTestId('takedown-btn'))
     const submitBtn = screen.getByTestId('takedown-submit') as HTMLButtonElement
     expect(submitBtn.disabled).toBe(true)
   })
 
   it('filling provider and clicking submit calls takedownMutation.mutate', () => {
-    render(<AlertDetailPanel alert={TYPOSQUAT_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={TYPOSQUAT_ALERT as any} onClose={vi.fn()} />)
     fireEvent.click(screen.getByTestId('takedown-btn'))
     fireEvent.change(screen.getByPlaceholderText('Registrar / hosting provider'), { target: { value: 'GoDaddy' } })
     const submitBtn = screen.getByTestId('takedown-submit') as HTMLButtonElement
@@ -187,7 +182,7 @@ describe('AlertDetailPanel — takedown button', () => {
   })
 
   it('takedown button is NOT visible for non-domain alert type', () => {
-    render(<AlertDetailPanel alert={DARK_WEB_ALERT as any} onClose={vi.fn()} isDemo={false} />)
+    render(<AlertDetailPanel alert={DARK_WEB_ALERT as any} onClose={vi.fn()} />)
     expect(screen.queryByTestId('takedown-btn')).toBeNull()
   })
 })
