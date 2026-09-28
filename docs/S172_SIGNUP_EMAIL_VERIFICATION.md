@@ -34,13 +34,26 @@ admin-service already owns the Resend client (invite emails), `TI_RESEND_API_KEY
 
 ## PR 2 — api-gateway routes (`s172/verify-routes`)
 
-Documented in the PR 2 section of this file when that PR lands.
+| File | Change |
+|---|---|
+| `apps/api-gateway/src/routes/email-queue.ts` (new) | `enqueueEmailJob()` — lazy BullMQ `Queue(QUEUES.EMAIL_SEND)` (same `TI_REDIS_URL` pattern as `search-backfill.ts`); rejects any other queue name (`INVALID_EMAIL_QUEUE`); job options `attempts: 5`, exponential backoff 30 s, `removeOnComplete: true`, `removeOnFail: { age: 86400 }` so job data does not linger in Redis; a 5 s cap (`EMAIL_QUEUE_TIMEOUT`) because `maxRetriesPerRequest: null` would otherwise make `add()` wait forever while Redis is down |
+| `apps/api-gateway/src/routes/auth.ts` | `POST /register` enqueues the verification job and replies with an explicit allowlist `{ user, tenant, message }` (the internal queue payload is not returned). Enqueue failure is logged and the sign-up still returns 201 — the user can resend. New `POST /verify-email` (`token` must be 64 lowercase hex; 200 / 404 `INVALID_TOKEN` / 410 `TOKEN_EXPIRED`) and `POST /resend-verification` (`email`; always the generic message; 429 `RATE_LIMITED` inside the 5-minute cooldown) |
+| `apps/api-gateway/tests/email-queue.test.ts` (new), `tests/auth-verification.test.ts` (new), `tests/auth.integration.test.ts` | 26 new tests: register reply never carries the queue payload, 201 even when enqueue fails, verify/resend status codes and body shapes, enqueue only when user-service produced a payload, queue-name guard, `CONFIG_ERROR`, timeout. The register mock now matches the real `RegisterResult` (register never returned tokens) |
+
+No user-service or frontend change: the frontend already calls these routes and shows the "check your email" state after sign-up; `VerifyEmailPage` maps 410 → expired and anything else → invalid.
+
+**Adversarial review** (Sonnet takeover — codex quota exhausted until 2026-09-29): accepted. Follow-ups, not blocking:
+
+- `findUnverifiedByEmail` uses `findFirst` on a non-unique email. Safe today because only `register()` creates unverified users and it rejects an email that exists in any tenant; two concurrent sign-ups with the same address could still create two unverified rows.
+- The resend cooldown is derived from `emailVerifyExpires − 24 h`; store an explicit sent-at time if the expiry ever changes.
+- `markVerified` also sets `active: true`. Safe because deactivation and offboarding never reset `emailVerified`; keep that invariant.
 
 ## Verify
 
-- `pnpm --filter @etip/admin-service test` → 203 passed (was 195); typecheck + lint clean; `pnpm install --frozen-lockfile` passes.
-- After deploy: `docker logs etip_admin | grep -i "resend email sender initialised"` and no `email-send: worker error` lines.
+- `pnpm --filter @etip/admin-service test` → 203 passed (was 195); `pnpm --filter @etip/api-gateway test` → 324 passed (was 298); typecheck + lint clean on both; `pnpm install --frozen-lockfile` passes.
+- After deploy of PR 1: `docker logs etip_admin | grep -i "resend email sender initialised"` and no `email-send: worker error` lines.
+- After deploy of PR 2 — owner live test, fresh incognito tab: sign up with a real mailbox → email arrives from `noreply@intelwatch.in` → link opens `/auth/verify-email?token=…` → "Email verified" → log in. Also: request a resend from the login page for a stuck older sign-up.
 
 ## Rollback
 
-Revert the PR 1 merge commit. Queued jobs (if PR 2 is live) wait in Redis until a consumer returns; nothing else depends on the worker. Restore point: tag `safe-point-2026-09-28-s172-email`.
+Revert the PR 2 merge commit first (stops enqueueing), then PR 1 if needed. Queued jobs wait in Redis until a consumer returns; nothing else depends on the worker. Restore point: tag `safe-point-2026-09-28-s172-email`.

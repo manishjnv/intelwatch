@@ -10,12 +10,17 @@ import { loadJwtConfig, signAccessToken, signRefreshToken } from '@etip/shared-a
 import { AppError } from '@etip/shared-utils';
 
 // ── Mock user-service — Prisma layer is replaced ─────────────────────
+// Matches the real RegisterResult shape (service.ts): { user, tenant, message, emailJobPayload? }.
+// No accessToken/refreshToken — register() no longer logs the user in (email must be verified first).
+const MOCK_VERIFICATION_TOKEN = 'a'.repeat(64);
 const mockRegisterResult = {
-  accessToken: 'mock-access-token',
-  refreshToken: 'mock-refresh-token',
-  expiresIn: 900,
   user: { id: 'u-001', email: 'test@acme.com', displayName: 'Test User', role: 'tenant_admin', tenantId: 't-001', avatarUrl: null },
   tenant: { id: 't-001', name: 'ACME', slug: 'acme', plan: 'free' },
+  message: 'Account created. Please verify your email within 24 hours.',
+  emailJobPayload: {
+    queue: 'etip-email-send',
+    data: { type: 'email_verification', userId: 'u-001', email: 'test@acme.com', token: MOCK_VERIFICATION_TOKEN, tenantName: 'ACME' },
+  },
 };
 
 const mockLoginResult = {
@@ -50,8 +55,17 @@ vi.mock('@etip/user-service', () => ({
     logout: mockLogout,
     getProfile: mockGetProfile,
   })),
+  verifyEmail: vi.fn(),
+  resendVerification: vi.fn(),
   prisma: { $disconnect: vi.fn() },
   disconnectPrisma: vi.fn(),
+}));
+
+// auth.ts statically imports email-queue.js, so its mock factory runs at module-load
+// time — the referenced mock fn must come from vi.hoisted() to avoid a TDZ error.
+const { mockEnqueueEmailJob } = vi.hoisted(() => ({ mockEnqueueEmailJob: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('../src/routes/email-queue.js', () => ({
+  enqueueEmailJob: mockEnqueueEmailJob,
 }));
 
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -114,6 +128,7 @@ describe('Auth Integration Tests', () => {
     mockRefreshTokens.mockResolvedValue(mockRefreshResult);
     mockLogout.mockResolvedValue(undefined);
     mockGetProfile.mockResolvedValue(mockProfile);
+    mockEnqueueEmailJob.mockResolvedValue(undefined);
   });
 
   // ── Full Auth Flow ─────────────────────────────────────────────────
@@ -134,9 +149,10 @@ describe('Auth Integration Tests', () => {
       });
       expect(regRes.statusCode).toBe(201);
       const regBody = regRes.json();
-      expect(regBody.data.accessToken).toBe('mock-access-token');
       expect(regBody.data.user.email).toBe('test@acme.com');
       expect(regBody.data.tenant.slug).toBe('acme');
+      expect(regBody.data.message).toBe(mockRegisterResult.message);
+      expect(regBody.data.emailJobPayload).toBeUndefined();
       expect(mockRegister).toHaveBeenCalledWith(
         expect.objectContaining({ email: 'test@acme.com', tenantSlug: 'acme' }),
       );
@@ -321,4 +337,33 @@ describe('Auth Integration Tests', () => {
       expect(res.json().error.code).toBe('VALIDATION_ERROR');
     });
   });
+
+  // ── Register: verification token never leaks to the client ────────
+
+  describe('register — email verification token handling', () => {
+    const registerPayload = {
+      email: 'test@acme.com',
+      password: 'SecurePassword123!',
+      displayName: 'Test User',
+      tenantName: 'ACME',
+      tenantSlug: 'acme',
+    };
+
+    it('201: response has no emailJobPayload and the raw body never contains the token', async () => {
+      const res = await app.inject({ method: 'POST', url: '/api/v1/auth/register', payload: registerPayload });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().data.emailJobPayload).toBeUndefined();
+      expect(res.body).not.toContain(MOCK_VERIFICATION_TOKEN);
+      expect(mockEnqueueEmailJob).toHaveBeenCalledOnce();
+      expect(mockEnqueueEmailJob).toHaveBeenCalledWith(mockRegisterResult.emailJobPayload);
+    });
+
+    it('still returns 201 when enqueueEmailJob rejects', async () => {
+      mockEnqueueEmailJob.mockRejectedValue(new Error('redis down'));
+      const res = await app.inject({ method: 'POST', url: '/api/v1/auth/register', payload: registerPayload });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().data.user.email).toBe('test@acme.com');
+    });
+  });
+
 });

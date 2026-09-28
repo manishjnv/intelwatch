@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AppError } from '@etip/shared-utils';
 import { authenticate, getUser } from '../plugins/auth.js';
 import { SYSTEM_TENANT_SLUG } from '@etip/shared-auth';
+import { enqueueEmailJob } from './email-queue.js';
 
 const RegisterBodySchema = z.object({
   email: z.string().email(),
@@ -24,6 +25,14 @@ const LoginBodySchema = z.object({
 
 const RefreshBodySchema = z.object({
   refreshToken: z.string().min(1),
+});
+
+const VerifyEmailBodySchema = z.object({
+  token: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+const ResendVerificationBodySchema = z.object({
+  email: z.string().email().max(254),
 });
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
@@ -107,7 +116,47 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       }).catch(() => { /* fire-and-forget — invite claim is best-effort */ });
     }
 
-    return reply.status(201).send({ data: result });
+    // emailJobPayload is an internal queue payload: enqueue it for admin-service's email
+    // consumer and reply with an explicit allowlist — never spread `result` into the reply.
+    if (result.emailJobPayload) {
+      try {
+        await enqueueEmailJob(result.emailJobPayload);
+      } catch (err) {
+        req.log.error(
+          { err: (err as Error).message, userId: result.user.id },
+          'verification email enqueue failed'
+        );
+        // don't fail registration — the user can request a resend
+      }
+    }
+
+    return reply.status(201).send({
+      data: { user: result.user, tenant: result.tenant, message: result.message },
+    });
+  });
+
+  app.post('/verify-email', async (req: FastifyRequest, reply: FastifyReply) => {
+    const body = VerifyEmailBodySchema.parse(req.body);
+    const { verifyEmail } = await import('@etip/user-service');
+    const result = await verifyEmail(body.token, req.ip, req.headers['user-agent'] ?? '');
+    return reply.status(200).send({ data: result });
+  });
+
+  app.post('/resend-verification', async (req: FastifyRequest, reply: FastifyReply) => {
+    const body = ResendVerificationBodySchema.parse(req.body);
+    const { resendVerification } = await import('@etip/user-service');
+    const result = await resendVerification(body.email, req.ip, req.headers['user-agent'] ?? '');
+
+    if (result._queuePayload) {
+      try {
+        await enqueueEmailJob(result._queuePayload);
+      } catch (err) {
+        req.log.error({ err: (err as Error).message }, 'resend verification email enqueue failed');
+        // still respond with the generic message — no enumeration signal
+      }
+    }
+
+    return reply.status(200).send({ data: { message: result.message } });
   });
 
   app.post('/login', async (req: FastifyRequest, reply: FastifyReply) => {
