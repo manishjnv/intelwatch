@@ -67,12 +67,12 @@ const HUNT_ACTIVE_1 = { id: 'hunt-1', name: 'APT28 Hunt', status: 'active', hunt
 const HUNT_ACTIVE_2 = { id: 'hunt-2', name: 'Emotet Analysis', status: 'active', huntType: 'indicator', createdBy: 'Analyst', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), findingsCount: 2, evidenceCount: 3, hypothesisCount: 1, score: 60, description: 'test' }
 
 function setupMocks(hunts = [HUNT_ACTIVE_1], ticketingIntegrations: any[] = [{ id: 'int-1', name: 'Jira', type: 'jira' }]) {
-  mockUseCorrelations.mockReturnValue({ data: { data: [CORRELATION], total: 1, page: 1, limit: 50 }, isLoading: false, isDemo: true })
+  mockUseCorrelations.mockReturnValue({ data: { data: [CORRELATION], total: 1, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseCorrelationStats.mockReturnValue({ data: { total: 1, byType: {}, bySeverity: { critical: 1 }, suppressedCount: 0, avgConfidence: 91 } })
-  mockUseCampaigns.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 } })
+  mockUseCampaigns.mockReturnValue({ data: { data: [], total: 0, page: 1, limit: 50 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseTriggerCorrelation.mockReturnValue({ mutate: mockMutate, isPending: false })
-  mockUseHuntSessions.mockReturnValue({ data: { data: hunts, total: hunts.length, page: 1, limit: 50 }, isDemo: true })
-  mockUseTicketingIntegrations.mockReturnValue({ data: { data: ticketingIntegrations, total: ticketingIntegrations.length, page: 1, limit: 50 }, isDemo: false })
+  mockUseHuntSessions.mockReturnValue({ data: { data: hunts, total: hunts.length, page: 1, limit: 50 } })
+  mockUseTicketingIntegrations.mockReturnValue({ data: { data: ticketingIntegrations, total: ticketingIntegrations.length, page: 1, limit: 50 } })
 }
 
 function openDetailPanel() {
@@ -109,11 +109,13 @@ describe('CorrelationPage — Create Ticket button', () => {
     expect(screen.getByText('Create Ticket')).toBeTruthy()
   })
 
-  it('shows toast in demo mode instead of calling mutation', () => {
+  it('calls the create-ticket mutation with correlation details', () => {
     openDetailPanel()
     fireEvent.click(screen.getByText('Create Ticket'))
-    // In demo mode, toast is shown, mutation is NOT called
-    expect(mockTicketMutate).not.toHaveBeenCalled()
+    expect(mockTicketMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ correlationId: 'corr-1', title: 'Shared C2 Infrastructure' }),
+      expect.any(Object),
+    )
   })
 })
 
@@ -123,12 +125,14 @@ describe('CorrelationPage — Add to Hunt button', () => {
     expect(screen.getByText('Add to Hunt')).toBeTruthy()
   })
 
-  it('directly adds to single active hunt without selector (demo)', () => {
+  it('directly adds to single active hunt without selector', () => {
     setupMocks([HUNT_ACTIVE_1])
     openDetailPanel()
     fireEvent.click(screen.getByText('Add to Hunt'))
-    // Demo mode: toast shown, no mutation
-    expect(mockHuntMutate).not.toHaveBeenCalled()
+    expect(mockHuntMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ huntId: 'hunt-1', entityType: 'correlation', entityId: 'corr-1' }),
+      expect.any(Object),
+    )
   })
 
   it('shows hunt selector dropdown when multiple active hunts', () => {

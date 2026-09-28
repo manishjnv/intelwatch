@@ -166,7 +166,7 @@ describe('CorrelationPage — Auto-Correlate button', () => {
   it('disables the Auto-Correlate button when correlateMutation.isPending is true', () => {
     correlatePending = true
     render(<CorrelationPage />)
-    const btn = screen.getByText('Auto-Correlate').closest('button') as HTMLButtonElement
+    const btn = screen.getByText('Correlating…').closest('button') as HTMLButtonElement
     expect(btn.disabled).toBe(true)
   })
 })

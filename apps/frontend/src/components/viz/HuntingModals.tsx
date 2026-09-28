@@ -179,8 +179,8 @@ const STATUS_ACTIONS: Record<string, { label: string; next: string; icon: React.
   ],
 }
 
-export function HuntStatusControls({ huntId, status, isDemo }: {
-  huntId: string; status: string; isDemo: boolean
+export function HuntStatusControls({ huntId, status }: {
+  huntId: string; status: string
 }) {
   const statusMutation = useChangeHuntStatus()
   const actions = STATUS_ACTIONS[status] ?? []
@@ -190,7 +190,7 @@ export function HuntStatusControls({ huntId, status, isDemo }: {
       {actions.map(({ label, next, icon: Icon, color }) => (
         <button key={next}
           onClick={() => statusMutation.mutate({ huntId, status: next })}
-          disabled={statusMutation.isPending || isDemo}
+          disabled={statusMutation.isPending}
           className={cn('flex items-center gap-1 text-[10px] px-2 py-1 rounded-md border border-border hover:border-current/30 transition-colors disabled:opacity-50', color)}>
           <Icon className="w-3 h-3" />{label}
         </button>
@@ -201,8 +201,8 @@ export function HuntStatusControls({ huntId, status, isDemo }: {
 
 // ─── Add Hypothesis Form ────────────────────────────────────────
 
-export function AddHypothesisForm({ huntId, onDone, isDemo }: {
-  huntId: string; onDone: () => void; isDemo: boolean
+export function AddHypothesisForm({ huntId, onDone }: {
+  huntId: string; onDone: () => void
 }) {
   const [statement, setStatement] = useState('')
   const [rationale, setRationale] = useState('')
@@ -226,17 +226,17 @@ export function AddHypothesisForm({ huntId, onDone, isDemo }: {
         <span className="text-xs font-medium text-text-primary">New Hypothesis</span>
       </div>
       <input type="text" value={statement} onChange={e => setStatement(e.target.value)}
-        placeholder="Hypothesis statement..." disabled={isDemo}
+        placeholder="Hypothesis statement..."
         className="w-full px-2.5 py-1.5 text-xs bg-bg-primary border border-border rounded text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50" />
       <textarea value={rationale} onChange={e => setRationale(e.target.value)} rows={2}
-        placeholder="Rationale — why do you think this is true?" disabled={isDemo}
+        placeholder="Rationale — why do you think this is true?"
         className="w-full px-2.5 py-1.5 text-xs bg-bg-primary border border-border rounded text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none disabled:opacity-50" />
       <input type="text" value={techniques} onChange={e => setTechniques(e.target.value)}
-        placeholder="MITRE techniques (comma-separated): T1059.001, T1021" disabled={isDemo}
+        placeholder="MITRE techniques (comma-separated): T1059.001, T1021"
         className="w-full px-2.5 py-1.5 text-xs bg-bg-primary border border-border rounded text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50" />
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onDone} className="text-[10px] px-2 py-1 text-text-muted">Cancel</button>
-        <button type="submit" disabled={!statement.trim() || !rationale.trim() || addMutation.isPending || isDemo}
+        <button type="submit" disabled={!statement.trim() || !rationale.trim() || addMutation.isPending}
           className="text-[10px] px-3 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded hover:bg-purple-500/20 disabled:opacity-50">
           Add Hypothesis
         </button>
@@ -247,8 +247,8 @@ export function AddHypothesisForm({ huntId, onDone, isDemo }: {
 
 // ─── Add Evidence Form ──────────────────────────────────────────
 
-export function AddEvidenceForm({ huntId, onDone, isDemo }: {
-  huntId: string; onDone: () => void; isDemo: boolean
+export function AddEvidenceForm({ huntId, onDone }: {
+  huntId: string; onDone: () => void
 }) {
   const [type, setType] = useState('ioc_match')
   const [title, setTitle] = useState('')
@@ -281,17 +281,17 @@ export function AddEvidenceForm({ huntId, onDone, isDemo }: {
         ))}
       </div>
       <input type="text" value={title} onChange={e => setTitle(e.target.value)}
-        placeholder="Evidence title..." disabled={isDemo}
+        placeholder="Evidence title..."
         className="w-full px-2.5 py-1.5 text-xs bg-bg-primary border border-border rounded text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50" />
       <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
-        placeholder="Description of the evidence..." disabled={isDemo}
+        placeholder="Description of the evidence..."
         className="w-full px-2.5 py-1.5 text-xs bg-bg-primary border border-border rounded text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none disabled:opacity-50" />
       <input type="text" value={entityValue} onChange={e => setEntityValue(e.target.value)}
-        placeholder="IOC value (optional): 185.220.101.34" disabled={isDemo}
+        placeholder="IOC value (optional): 185.220.101.34"
         className="w-full px-2.5 py-1.5 text-xs bg-bg-primary border border-border rounded text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50" />
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onDone} className="text-[10px] px-2 py-1 text-text-muted">Cancel</button>
-        <button type="submit" disabled={!title.trim() || !description.trim() || addMutation.isPending || isDemo}
+        <button type="submit" disabled={!title.trim() || !description.trim() || addMutation.isPending}
           className="text-[10px] px-3 py-1 bg-accent/10 text-accent border border-accent/20 rounded hover:bg-accent/20 disabled:opacity-50">
           Add Evidence
         </button>

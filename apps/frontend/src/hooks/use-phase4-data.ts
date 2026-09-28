@@ -11,9 +11,6 @@ import { notifyApiError } from './useApiError'
 import {
   DEMO_DRP_ALERTS, DEMO_DRP_ALERT_STATS, DEMO_DRP_ASSETS, DEMO_DRP_ASSET_STATS,
   DEMO_CERTSTREAM_STATUS,
-  DEMO_CORRELATIONS, DEMO_CORRELATION_STATS, DEMO_CAMPAIGNS,
-  DEMO_HUNT_SESSIONS, DEMO_HUNT_STATS, DEMO_HUNT_HYPOTHESES,
-  DEMO_HUNT_EVIDENCE, DEMO_HUNT_TEMPLATES,
   type DRPAlert, type DRPAlertStats, type DRPAsset, type DRPAssetStats,
   type CertStreamStatus, type TyposquatCandidate,
   type GraphNode, type GraphEdge, type GraphStats, type GraphSubgraph,
@@ -294,38 +291,30 @@ export function useNodeNeighbors(nodeId: string | null) {
 
 export function useCorrelations(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  const empty: ListResponse<CorrelationResult> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['correlations', params],
-    queryFn: () => apiList<CorrelationResult>(`/correlations${query}`).catch(err => notifyApiError(err, 'correlations', empty)),
+    queryFn: () => apiList<CorrelationResult>(`/correlations${query}`),
+    meta: { resource: 'correlations' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_CORRELATIONS, total: DEMO_CORRELATIONS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useCorrelationStats() {
-  const empty: CorrelationStats = { total: 0, byType: {}, bySeverity: {}, suppressedCount: 0, avgConfidence: 0 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['correlation-stats'],
-    queryFn: () => api<CorrelationStats>('/correlations/stats').catch(() => empty),
+    queryFn: () => api<CorrelationStats>('/correlations/stats'),
+    meta: { resource: 'correlation stats' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result, DEMO_CORRELATION_STATS, d => (d?.total ?? 0) > 0)
 }
 
 export function useCampaigns() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['campaigns'],
-    queryFn: () => apiList<CampaignCluster>('/correlations/campaigns').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<CampaignCluster>('/correlations/campaigns'),
+    meta: { resource: 'campaigns' },
     staleTime: 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_CAMPAIGNS, total: DEMO_CAMPAIGNS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useTriggerCorrelation() {
@@ -374,68 +363,52 @@ export function useBulkCorrelationFeedback() {
 
 export function useHuntSessions(params: QueryParams = {}) {
   const query = buildQuery({ page: 1, limit: 50, ...params })
-  const empty: ListResponse<HuntSession> = { data: [], total: 0, page: 1, limit: 50 }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['hunt-sessions', params],
-    queryFn: () => apiList<HuntSession>(`/hunts${query}`).catch(() => empty),
+    queryFn: () => apiList<HuntSession>(`/hunts${query}`),
+    meta: { resource: 'hunt sessions' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_HUNT_SESSIONS, total: DEMO_HUNT_SESSIONS.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useHuntStats() {
-  const empty: HuntStats = { total: 0, active: 0, completed: 0, totalFindings: 0, avgScore: 0, byType: {} }
-  const result = useQuery({
+  return useQuery({
     queryKey: ['hunt-stats'],
-    queryFn: () => api<HuntStats>('/hunts/stats').catch(() => empty),
+    queryFn: () => api<HuntStats>('/hunts/stats'),
+    meta: { resource: 'hunt stats' },
     staleTime: 30_000,
   })
-  return withDemoFallback(result, DEMO_HUNT_STATS, d => (d?.total ?? 0) > 0)
 }
 
 export function useHuntHypotheses(huntId: string | null) {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['hunt-hypotheses', huntId],
-    queryFn: () => apiList<HuntHypothesis>(`/hunts/${huntId}/hypotheses`).catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<HuntHypothesis>(`/hunts/${huntId}/hypotheses`),
+    meta: { resource: 'hunt hypotheses' },
     enabled: !!huntId,
     staleTime: 30_000,
   })
-  const demoFiltered = DEMO_HUNT_HYPOTHESES.filter(h => h.huntId === huntId)
-  return withDemoFallback(result,
-    { data: demoFiltered, total: demoFiltered.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useHuntEvidence(huntId: string | null) {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['hunt-evidence', huntId],
-    queryFn: () => apiList<HuntEvidence>(`/hunts/${huntId}/evidence`).catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<HuntEvidence>(`/hunts/${huntId}/evidence`),
+    meta: { resource: 'hunt evidence' },
     enabled: !!huntId,
     staleTime: 30_000,
   })
-  const demoFiltered = DEMO_HUNT_EVIDENCE.filter(e => e.huntId === huntId)
-  return withDemoFallback(result,
-    { data: demoFiltered, total: demoFiltered.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useHuntTemplates() {
-  const result = useQuery({
+  return useQuery({
     queryKey: ['hunt-templates'],
     // Backend sends { data: HuntTemplate[], total } single-wrapped; apiList() normalizes it
     // (api() alone would drop total — RCA #45).
-    queryFn: () => apiList<HuntTemplate>('/hunts/templates').catch(() => ({ data: [], total: 0, page: 1, limit: 50 })),
+    queryFn: () => apiList<HuntTemplate>('/hunts/templates'),
+    meta: { resource: 'hunt templates' },
     staleTime: 5 * 60_000,
   })
-  return withDemoFallback(result,
-    { data: DEMO_HUNT_TEMPLATES, total: DEMO_HUNT_TEMPLATES.length, page: 1, limit: 50 },
-    d => (d?.data?.length ?? 0) > 0,
-  )
 }
 
 export function useCreateHunt() {

@@ -52,3 +52,12 @@ Spot-verified in code: `IocListPage.tsx:210` `feedCount={12}` literal; `withDemo
 3. List-page demo rows + `PageStatsBar` (shared-ui — owner approval) + enrichment/investigation fake vendor verdicts (#2, #3 above).
 4. Delete demo datasets that are no longer referenced (incl. the owner-name/domain ones).
 5. Backend: enrichment stats source (private notes).
+
+**Correction (2026-09-29, S173).** `withDemoFallback` above is not one shared helper — it is 7 identical private copies, one each in `use-analytics-data.ts`, `use-phase4-data.ts`, `use-alerting-data.ts`, `use-reporting-data.ts`, `use-phase5-data.ts`, `use-phase6-data.ts`, `use-global-monitoring.ts`, with roughly 63 call sites across them. There is no single fix location — each file needs its own PR.
+
+- **PR 1 — DONE in S173** (branch `s173/honest-empty-analytics-hooks`, see `docs/S173_HONEST_EMPTY_PR1.md`): hunting + correlation hooks and analytics executive/service-health hooks in `use-phase4-data.ts` / `use-analytics-data.ts`.
+- **New PR 1b:** DRP (5 hooks in `use-phase4-data.ts` + `DRPWidgets.tsx` "Try demo scan" CTA + `DRPModals.tsx`), alerting (`use-alerting-data.ts`, 8 call sites), reporting (`use-reporting-data.ts`, 5 call sites).
+- **New PR 1c:** integration/customization (`use-phase5-data.ts`, 14 call sites), onboarding (`use-phase6-data.ts`, 5 call sites), global monitoring (`use-global-monitoring.ts`, 3 call sites, super-admin only).
+- **New item:** `hooks/use-analytics-dashboard.ts` (~line 201-202) swaps in `DEMO_ANALYTICS` when the dashboard request fails and fabricates `avgConfidence ?? 72` / `avgEnrichmentQuality ?? 84` — own PR, feeds every dashboard widget.
+- **New bug found:** on `/correlation`, "Create Ticket" always fails validation. Frontend `useCreateTicket` (`use-phase4-data.ts`) sends `{correlationId, tenantId, title, description}`, but integration-service's `POST /integrations/tickets` schema (`apps/integration-service/src/schemas/integration.ts:250-251`) requires `integrationId` (uuid) + `alertId`, neither of which the frontend sends. Tenant is taken from the JWT server-side — the `tenantId` field in the request body is ignored, so this is not a security issue, just a broken request shape. The button is disabled unless a ticketing integration is configured, so this is low-traffic but still needs its own fix.
+- Original PRs 2–5 above are unchanged and run after 1b/1c.

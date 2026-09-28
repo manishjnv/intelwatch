@@ -14,6 +14,7 @@ import {
 } from '@/hooks/use-phase4-data'
 import { useTicketingIntegrations } from '@/hooks/use-phase5-data'
 import { CorrelationDetailDrawer } from '@/components/CorrelationDetailDrawer'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import { toast, ToastContainer } from '@/components/ui/Toast'
 import { DataTable, type Column, type Density } from '@/components/data/DataTable'
 import { FilterBar, type FilterOption } from '@/components/data/FilterBar'
@@ -207,11 +208,11 @@ function ConfidenceBar({ value }: { value: number }) {
 
 // ─── Correlation Detail Panel ───────────────────────────────────
 
-function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondNavigate,
+function CorrelationDetail({ corr, onClose, onKillChainClick, onDiamondNavigate,
   onInvestigate, onCreateTicket, onAddToHunt, activeHunts, ticketPending, huntPending,
   ticketingConfigured,
 }: {
-  corr: CorrelationResult; onClose: () => void; isDemo: boolean
+  corr: CorrelationResult; onClose: () => void
   onKillChainClick?: (phase: string) => void
   onDiamondNavigate?: (route: string, search: string) => void
   onInvestigate?: (corr: CorrelationResult) => void
@@ -258,12 +259,12 @@ function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondN
           <h4 className="text-[10px] text-text-muted uppercase mb-2">Verdict Feedback</h4>
           <div className="flex items-center gap-2">
             <button onClick={() => handleFeedback('true_positive')}
-              disabled={feedbackMutation.isPending || isDemo}
+              disabled={feedbackMutation.isPending}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-critical/10 border border-sev-critical/20 text-sev-critical hover:bg-sev-critical/20 transition-colors disabled:opacity-50">
               <Target className="w-3 h-3" />True Positive
             </button>
             <button onClick={() => handleFeedback('false_positive')}
-              disabled={feedbackMutation.isPending || isDemo}
+              disabled={feedbackMutation.isPending}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-md bg-sev-low/10 border border-sev-low/20 text-sev-low hover:bg-sev-low/20 transition-colors disabled:opacity-50">
               <X className="w-3 h-3" />False Positive
             </button>
@@ -363,12 +364,6 @@ function CorrelationDetail({ corr, onClose, isDemo, onKillChainClick, onDiamondN
             <div className="flex justify-between"><span className="text-text-muted">Created</span><span className="text-text-primary tabular-nums">{new Date(corr.createdAt).toLocaleString()}</span></div>
           </div>
         </div>
-
-        {isDemo && (
-          <div className="p-2 bg-accent/5 border border-accent/20 rounded-md text-[10px] text-accent">
-            Feedback disabled in demo mode. Connect the Correlation Engine to enable TP/FP verdicts.
-          </div>
-        )}
       </div>
     </div>
   )
@@ -387,14 +382,15 @@ export function CorrelationPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'correlations' | 'campaigns'>('correlations')
   const [killChainFilter, setKillChainFilter] = useState<string | null>(null)
-  const [autoCorrelating, setAutoCorrelating] = useState(false)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
 
   const [drawerCorrId, setDrawerCorrId] = useState<string | null>(null)
 
-  const { data: corrData, isLoading, isDemo } = useCorrelations({ page, ...filters })
+  const corrQuery = useCorrelations({ page, ...filters })
+  const { data: corrData, isLoading } = corrQuery
   const { data: stats } = useCorrelationStats()
-  const { data: campData } = useCampaigns()
+  const campQuery = useCampaigns()
+  const { data: campData } = campQuery
   const correlateMutation = useTriggerCorrelation()
   const ticketMutation = useCreateTicket()
   const huntMutation = useAddToHunt()
@@ -413,10 +409,6 @@ export function CorrelationPage() {
   }, [])
 
   const handleCreateTicket = useCallback((corr: CorrelationResult) => {
-    if (isDemo) {
-      toast('Ticket created via integration-service (demo)', 'success')
-      return
-    }
     ticketMutation.mutate(
       { correlationId: corr.id, tenantId: 'default', title: corr.title, description: corr.description },
       {
@@ -424,13 +416,9 @@ export function CorrelationPage() {
         onError: () => toast('Failed to create ticket', 'error'),
       },
     )
-  }, [isDemo, ticketMutation])
+  }, [ticketMutation])
 
   const handleAddToHunt = useCallback((corr: CorrelationResult, huntId: string) => {
-    if (isDemo) {
-      toast('Added to active hunt session (demo)', 'success')
-      return
-    }
     huntMutation.mutate(
       { huntId, entityType: 'correlation', entityId: corr.id },
       {
@@ -438,19 +426,14 @@ export function CorrelationPage() {
         onError: () => toast('Failed to add to hunt', 'error'),
       },
     )
-  }, [isDemo, huntMutation])
+  }, [huntMutation])
 
   const handleAutoCorrelate = useCallback(() => {
-    if (isDemo) {
-      setAutoCorrelating(true)
-      setTimeout(() => {
-        setAutoCorrelating(false)
-        toast('Correlation complete: 3 new correlations, 1 campaign detected', 'success')
-      }, 2000)
-    } else {
-      correlateMutation.mutate()
-    }
-  }, [isDemo, correlateMutation])
+    // Success counts render in the result banner below; only failures need a toast.
+    correlateMutation.mutate(undefined, {
+      onError: () => toast('Correlation run failed', 'error'),
+    })
+  }, [correlateMutation])
 
   const handleDiamondNavigate = useCallback((route: string, search: string) => {
     navigate(`${route}?search=${encodeURIComponent(search)}`)
@@ -461,9 +444,9 @@ export function CorrelationPage() {
     setSelectedId(null)
   }, [])
 
+  // ponytail: filters/sorts only the loaded page (50 rows); send search/killChain/sort to /correlations once tenants exceed one page
   const correlations = useMemo(() => {
     let items = corrData?.data ?? []
-    if (!isDemo) return items
     if (search) {
       const q = search.toLowerCase()
       items = items.filter(c =>
@@ -481,7 +464,7 @@ export function CorrelationPage() {
       const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
       return sortOrder === 'asc' ? cmp : -cmp
     })
-  }, [corrData, isDemo, search, filters, killChainFilter, sortBy, sortOrder])
+  }, [corrData, search, filters, killChainFilter, sortBy, sortOrder])
 
   const handleSort = useCallback((key: string) => {
     if (sortBy === key) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
@@ -560,14 +543,6 @@ export function CorrelationPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Demo banner */}
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect Correlation Engine for live analysis</span>
-        </div>
-      )}
-
       {/* Stats bar */}
       <PageStatsBar>
         <CompactStat label="Correlations" value={stats?.total?.toString() ?? '—'} />
@@ -605,11 +580,11 @@ export function CorrelationPage() {
         )}
         <button
           onClick={handleAutoCorrelate}
-          disabled={correlateMutation.isPending || autoCorrelating}
+          disabled={correlateMutation.isPending}
           className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-md hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
         >
-          <Play className={cn('w-3 h-3', (correlateMutation.isPending || autoCorrelating) && 'animate-spin')} />
-          {autoCorrelating ? 'Correlating…' : 'Auto-Correlate'}
+          <Play className={cn('w-3 h-3', correlateMutation.isPending && 'animate-spin')} />
+          {correlateMutation.isPending ? 'Correlating…' : 'Auto-Correlate'}
         </button>
       </div>
 
@@ -647,49 +622,59 @@ export function CorrelationPage() {
               onFilterChange={(k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1) }}
             />
 
-            <DataTable
-              columns={columns}
-              data={correlations}
-              loading={isLoading}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-              rowKey={(r) => r.id}
-              density={density}
-              severityField={(r) => r.severity}
-              selectedId={selectedId}
-              onRowClick={(r) => setSelectedId(r.id === selectedId ? null : r.id)}
-              emptyMessage="No correlations found. Click Auto-Correlate to start analysis."
-            />
+            <QueryStateView query={corrQuery} resource="correlations">
+              {() => (
+                <>
+                  <DataTable
+                    columns={columns}
+                    data={correlations}
+                    loading={isLoading}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                    rowKey={(r) => r.id}
+                    density={density}
+                    severityField={(r) => r.severity}
+                    selectedId={selectedId}
+                    onRowClick={(r) => setSelectedId(r.id === selectedId ? null : r.id)}
+                    emptyMessage="No correlations found. Click Auto-Correlate to start analysis."
+                  />
 
-            <Pagination
-              page={page} limit={50} total={isDemo ? correlations.length : (corrData?.total ?? 0)}
-              onPageChange={setPage} density={density} onDensityChange={setDensity}
-            />
+                  <Pagination
+                    page={page} limit={50} total={corrData?.total ?? 0}
+                    onPageChange={setPage} density={density} onDensityChange={setDensity}
+                  />
+                </>
+              )}
+            </QueryStateView>
           </>
         )}
 
         {/* #11: Campaign Attribution Cards */}
         {activeTab === 'campaigns' && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-rose-400" />
-              <h2 className="text-sm font-semibold text-text-primary">Campaign Clusters</h2>
-              <TooltipHelp message="Automated campaign attribution using DBSCAN clustering with MITRE ATT&CK technique mapping." />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(campData?.data ?? []).map(camp => (
-                <CampaignCard key={camp.id} campaign={camp} />
-              ))}
-            </div>
-            {(campData?.data ?? []).length === 0 && (
-              <div className="text-center py-12 text-text-muted">
-                <Layers className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">No campaigns detected yet</p>
-                <p className="text-xs mt-1">Run auto-correlation to discover campaign clusters</p>
+          <QueryStateView query={campQuery} resource="campaigns">
+            {() => (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-rose-400" />
+                  <h2 className="text-sm font-semibold text-text-primary">Campaign Clusters</h2>
+                  <TooltipHelp message="Automated campaign attribution using DBSCAN clustering with MITRE ATT&CK technique mapping." />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(campData?.data ?? []).map(camp => (
+                    <CampaignCard key={camp.id} campaign={camp} />
+                  ))}
+                </div>
+                {(campData?.data ?? []).length === 0 && (
+                  <div className="text-center py-12 text-text-muted">
+                    <Layers className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">No campaigns detected yet</p>
+                    <p className="text-xs mt-1">Run auto-correlation to discover campaign clusters</p>
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </QueryStateView>
         )}
       </div>
 
@@ -697,7 +682,7 @@ export function CorrelationPage() {
       {selectedCorrelation && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelectedId(null)} />
-          <CorrelationDetail corr={selectedCorrelation} onClose={() => setSelectedId(null)} isDemo={isDemo}
+          <CorrelationDetail corr={selectedCorrelation} onClose={() => setSelectedId(null)}
             onKillChainClick={handleKillChainClick} onDiamondNavigate={handleDiamondNavigate}
             onInvestigate={handleInvestigate} onCreateTicket={handleCreateTicket} onAddToHunt={handleAddToHunt}
             activeHunts={activeHunts} ticketPending={ticketMutation.isPending} huntPending={huntMutation.isPending}
