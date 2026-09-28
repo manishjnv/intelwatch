@@ -4,7 +4,7 @@
 
 **Owner decision (2026-09-28, to be logged as DECISION-048): honest empty states.** A real customer tenant never sees demo data. Every page shows real data or an empty state with a next step ("No hunts yet — Start a hunt", "Activate a feed"). Demo content only in an explicit demo tenant / demo mode for sales. Labelled demo for real tenants is not acceptable.
 
-Owner-observed in production on a new tenant (in addition to the table below): `/iocs` summary "12 active feeds" / "62% covered" while Total = 0; `/search` 20 demo IOCs with only a small "demo" chip; `/hunting` and `/correlation` full demo workbenches behind a "Demo data — connect … service" banner (one demo hunt is credited "by Manish" and references "@intelwatch.in credentials"); most Command Center tabs show default data. A page-by-page audit of every route is being added below.
+Owner-observed in production on a new tenant (in addition to the table below): `/iocs` summary "12 active feeds" / "62% covered" while Total = 0; `/search` 20 demo IOCs with only a small "demo" chip; `/hunting` and `/correlation` full demo workbenches behind a "Demo data — connect … service" banner (one demo hunt is credited to the owner by name and references the company's own domain); most Command Center tabs show default data. A page-by-page audit of every route is being added below.
 
 Found after the owner's live test showed fake numbers on a brand-new tenant's dashboard. Already fixed in S172 (PRs #57, #59 and the honest-dashboard-widgets PR): Today's Briefing IOC-trend pill, analytics demo trend seeding, Threat Activity Timeline stub events, Geo Threat Map `DEMO_GEO_DATA`, ATT&CK Tactics weight heuristic.
 
@@ -44,7 +44,7 @@ Spot-verified in code: `IocListPage.tsx:210` `feedCount={12}` literal; `withDemo
 | `/threat-actors`, `/malware`, `/vulnerabilities`, `/iocs` lists | demo rows when empty (+3 fake MITRE IDs on actors) | list hooks + `ThreatActorListPage.tsx:49/66` | empty states |
 | Real already | Users & Access tab, Billing plan panels, Graph exploration (404 → empty) | — | keep |
 
-**Demo datasets contain the owner's name and domain** (`phase4-demo-data.ts`: hunts `createdBy: 'Manish'`, "@intelwatch.in credentials"; DRP alerts "Manish Kumar", `intelwatch.in`) — remove regardless.
+**Demo datasets contain the owner's name and domain** (`phase4-demo-data.ts`: a hunt's `createdBy` and DRP alert text use the owner's name and the company domain) — remove regardless.
 
 **Suggested PR order (frontend unless noted):**
 1. `withDemoFallback` → never swaps demo data for a real tenant; distinguish empty (200 + `[]`) from error (surface via `QueryStateView`, DECISION-035) — fixes hunting, correlation, analytics widgets at once.
