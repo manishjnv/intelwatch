@@ -2,6 +2,8 @@
 
 **Date:** 2026-09-28 · **Session:** 172 · **Owner queue item:** #1 (self-service sign-up never completed)
 
+**Status: deployed and owner-verified 2026-09-28.**
+
 ## Problem
 
 A new self-service sign-up creates an inactive, unverified tenant admin (`apps/user-service/src/service.ts` `register()`), and login refuses unverified users (`EMAIL_NOT_VERIFIED`). The verification email that should unlock the account was never delivered, so **every new sign-up was stuck**.

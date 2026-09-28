@@ -24,3 +24,31 @@ Found after the owner's live test showed fake numbers on a brand-new tenant's da
 | 10 | `components/command-center/TenantSettings.tsx:39` | `DEMO_ORG_PROFILE` as initial form state | No (form default) | Low | n/a |
 
 **Suggested order:** 2 + 3 (fake vendor verdicts — highest trust risk) → 1 + 4 (one shared-component root cause) → 5–8 → 9–10. Pattern that works and can be reused: the `isDemo` + visible amber "Demo" pill (e.g. FeedValueWidget); better still for a paying tenant, an honest empty state.
+
+## Page-by-page audit (second sweep, 2026-09-28) — root causes and fix plan
+
+Spot-verified in code: `IocListPage.tsx:210` `feedCount={12}` literal; `withDemoFallback` definition below.
+
+**Root cause (shared):** `withDemoFallback()` in `apps/frontend/src/hooks/use-analytics-data.ts:22-29` sets `isDemo = !isLoading && !hasData(data)` and swaps in demo data. Almost every `queryFn` also does `.catch(() => empty)`, so a legitimate empty tenant (200 + `[]`) and a failed request look identical → **every new tenant is guaranteed to see demo data**. Same pattern in `hooks/use-command-center.ts:221-227` (Command Center Overview / Configuration / Billing header stats) and `hooks/use-es-search.ts:297` (/search).
+
+| Route | What a new tenant sees | Source | Fix |
+|---|---|---|---|
+| `/iocs` summary | "12 active feeds" | `IocListPage.tsx:210` hardcoded `feedCount={12}` | real tenant feed count or "—" |
+| `/iocs` summary | "62 % covered" enrichment | backend stats source needs fixing (details in private notes) | backend fix, then honest value |
+| `/search` | 20 demo IOCs, small chip | `use-es-search.ts:297-484` (`DEMO_ES_RESULTS`, `DEMO_FACETS`) | empty → "No results" |
+| `/hunting` | 5 demo hunts behind a banner | `use-phase4-data.ts:375-397` via `withDemoFallback`; data `phase4-demo-data.ts:239-243` | empty → "No hunts yet — Start a hunt" |
+| `/correlation` | 6 demo correlations + campaigns | `use-phase4-data.ts:295-330` | empty → "No correlations yet" |
+| `/drp` | demo assets/alerts + "Try demo scan" CTA | `DRPWidgets.tsx:204-230`, `phase4-demo-data.ts:58-73` | empty state + real scan CTA |
+| `/command-center` Overview, Configuration, Billing headers | `DEMO_TENANT_STATS` / `DEMO_GLOBAL_STATS` / `DEMO_QUEUE_STATS` / `DEMO_PROVIDER_KEYS` | `use-command-center.ts:71-114, 221-227` | real or "—" |
+| `/command-center` Settings | `DEMO_BACKUPS` (fake backup/restore buttons), `DEMO_ORG_PROFILE` form default | `BackupsPanel.tsx:10-19`, `TenantSettings.tsx:39` | empty/disabled; blank form |
+| `/threat-actors`, `/malware`, `/vulnerabilities`, `/iocs` lists | demo rows when empty (+3 fake MITRE IDs on actors) | list hooks + `ThreatActorListPage.tsx:49/66` | empty states |
+| Real already | Users & Access tab, Billing plan panels, Graph exploration (404 → empty) | — | keep |
+
+**Demo datasets contain the owner's name and domain** (`phase4-demo-data.ts`: hunts `createdBy: 'Manish'`, "@intelwatch.in credentials"; DRP alerts "Manish Kumar", `intelwatch.in`) — remove regardless.
+
+**Suggested PR order (frontend unless noted):**
+1. `withDemoFallback` → never swaps demo data for a real tenant; distinguish empty (200 + `[]`) from error (surface via `QueryStateView`, DECISION-035) — fixes hunting, correlation, analytics widgets at once.
+2. `use-command-center.ts` same change; `IocListPage` `feedCount`; `use-es-search.ts` demo swap.
+3. List-page demo rows + `PageStatsBar` (shared-ui — owner approval) + enrichment/investigation fake vendor verdicts (#2, #3 above).
+4. Delete demo datasets that are no longer referenced (incl. the owner-name/domain ones).
+5. Backend: enrichment stats source (private notes).

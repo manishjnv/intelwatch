@@ -1,6 +1,8 @@
 # Admin Ops Service — Module 22
 
-**Status:** ✅ Feature-Complete (5 core + 5 P0 + queue monitor + queue cache) | **Tests:** 195 | **Port:** 3022 | **Session:** 83
+**Status:** ✅ Feature-Complete (5 core + 5 P0 + queue monitor + queue cache + email-send worker) | **Tests:** 203 | **Port:** 3022 | **Session:** 172
+
+**S172 addition:** BullMQ worker (`src/workers/email-send-worker.ts`) consumes `etip-email-send` (`QUEUES.EMAIL_SEND`) and sends the sign-up verification email via Resend (`sendVerificationEmail` in `src/services/email-sender.ts`), started only when `TI_RESEND_API_KEY` is set. Zod-validated jobs, `UnrecoverableError` on bad data, concurrency 5, limiter 2/s, throws on a Resend `{error}` response. Email body carries no user-typed sign-up input (phishing-relay guard on the verified `intelwatch.in` domain).
 
 Platform administration service for ETIP. System health monitoring, maintenance windows, backup/restore, tenant administration, audit dashboard, and operational intelligence.
 
