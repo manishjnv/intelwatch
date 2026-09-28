@@ -12,6 +12,8 @@ import { ScheduledMaintenanceStore } from './services/scheduled-maintenance-stor
 import { TenantAnalyticsStore } from './services/tenant-analytics-store.js';
 import { AdminActivityStore } from './services/admin-activity-store.js';
 import { initEmailSender } from './services/email-sender.js';
+import { startEmailSendWorker } from './workers/email-send-worker.js';
+import type { Worker } from 'bullmq';
 
 async function main(): Promise<void> {
   // 1. Config + Logger
@@ -22,7 +24,13 @@ async function main(): Promise<void> {
 
   // 1b. Email sender (optional — skipped if Resend key not set)
   initEmailSender(config);
-  if (config.TI_RESEND_API_KEY) logger.info('Resend email sender initialised');
+  let emailWorker: Worker | undefined;
+  if (config.TI_RESEND_API_KEY) {
+    logger.info('Resend email sender initialised');
+    emailWorker = startEmailSendWorker(config, logger);
+  } else {
+    logger.warn('TI_RESEND_API_KEY not set — email-send worker not started; verification emails stay queued');
+  }
 
   // 2. Auth secrets
   loadJwtConfig(env);
@@ -61,6 +69,7 @@ async function main(): Promise<void> {
   // 5. Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down admin-service...');
+    await emailWorker?.close();
     await app.close();
     process.exit(0);
   };

@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { AppError } from '@etip/shared-utils';
 import type { AdminConfig } from '../config.js';
 
 let resend: Resend | null = null;
@@ -88,4 +89,85 @@ export async function sendInviteEmail(params: InviteEmailParams): Promise<void> 
     html,
     text: `Hi ${params.ownerName},\n\nYou've been invited to join ${params.orgName} on IntelWatch ETIP.\n\nSet up your account: ${inviteLink}\n\nThis invite is for ${params.to} only.`,
   });
+}
+
+interface VerificationEmailParams {
+  to: string;
+  token: string;
+  platformUrl: string;
+}
+
+/**
+ * Send a sign-up email-verification link via Resend.
+ * No sign-up input (org/display name) is rendered: the recipient address is also sign-up
+ * input, so any echoed text would let anyone send their own words from our domain.
+ */
+export async function sendVerificationEmail(params: VerificationEmailParams): Promise<void> {
+  if (!resend) {
+    throw new AppError(503, 'Email sender not configured', 'EMAIL_NOT_CONFIGURED');
+  }
+
+  const verifyLink = `${params.platformUrl}/auth/verify-email?token=${encodeURIComponent(params.token)}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#0a0f1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
+    <!-- Header -->
+    <div style="padding:24px 32px;background:linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%);">
+      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">
+        IntelWatch ETIP
+      </h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">
+        Enterprise Threat Intelligence Platform
+      </p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:32px;">
+      <p style="color:#e2e8f0;font-size:15px;margin:0 0 8px;">
+        Welcome to IntelWatch ETIP,
+      </p>
+      <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px;">
+        Please verify your email address to activate your IntelWatch ETIP account.
+      </p>
+
+      <!-- CTA Button -->
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${verifyLink}"
+           style="display:inline-block;padding:12px 32px;background:#0ea5e9;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
+          Verify email
+        </a>
+      </div>
+
+      <p style="color:#64748b;font-size:12px;line-height:1.5;margin:24px 0 0;">
+        This link expires in 24 hours. If you didn't sign up for IntelWatch ETIP, you can safely ignore this email.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:16px 32px;border-top:1px solid #1e293b;text-align:center;">
+      <p style="color:#475569;font-size:11px;margin:0;">
+        &copy; ${new Date().getFullYear()} IntelWatch &middot; intelwatch.in
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Welcome to IntelWatch ETIP,\n\nPlease verify your email address to activate your IntelWatch ETIP account.\n\nVerify: ${verifyLink}\n\nThis link expires in 24 hours. If you didn't sign up, you can ignore this email.`;
+
+  const { error } = await resend.emails.send({
+    from: fromEmail,
+    to: params.to,
+    subject: 'Verify your email — IntelWatch ETIP',
+    html,
+    text,
+  });
+
+  if (error) {
+    throw new AppError(502, `Resend send failed: ${error.name}`, 'EMAIL_SEND_FAILED');
+  }
 }
