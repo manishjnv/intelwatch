@@ -49,12 +49,12 @@ vi.mock('@/hooks/use-analytics-dashboard', async () => {
 // ── HuntingWorkbenchPage mocks ────────────────────────────────────
 
 vi.mock('@/hooks/use-phase4-data', () => ({
-  useHuntSessions: () => ({ data: { data: [], total: 0 }, isDemo: true }),
+  useHuntSessions: () => ({ data: { data: [], total: 0 } }),
   useHuntStats: () => ({ data: { total: 0, active: 0, completed: 0, avgDuration: 0 } }),
   useHuntHypotheses: () => ({ data: [] }),
   useHuntEvidence: () => ({ data: [] }),
   useHuntTemplates: () => ({ data: [] }),
-  useCorrelations: () => ({ data: { data: [], total: 0 }, isDemo: true }),
+  useCorrelations: () => ({ data: { data: [], total: 0 } }),
   useCorrelationStats: () => ({ data: null }),
   useCampaigns: () => ({ data: [] }),
   useTriggerCorrelation: () => ({ mutate: vi.fn(), isPending: false }),
