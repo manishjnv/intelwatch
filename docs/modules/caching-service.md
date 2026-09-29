@@ -1,6 +1,6 @@
 # Caching & Archival Service (Module 25)
 
-**Port:** 3025 | **Status:** ✅ Deployed | **Tests:** 94 | **Session:** 58
+**Port:** 3025 | **Status:** ✅ Deployed | **Tests:** 112 | **Session:** 58 (archive off by default since S175, D4)
 
 ## Features
 
@@ -47,6 +47,7 @@
 | TI_MINIO_ACCESS_KEY | - | MinIO access key |
 | TI_MINIO_SECRET_KEY | - | MinIO secret key |
 | TI_MINIO_BUCKET | etip-archives | Archive bucket name |
+| TI_ARCHIVE_ENABLED | false | Archive cron + `POST /archive/run` are no-ops until the engine archives real data (it only generates sample records today) — S175 D4 |
 | TI_ARCHIVE_CRON | 0 2 * * * | Archive schedule (daily 2am) |
 | TI_ARCHIVE_RETENTION_DAYS | 365 | Cold storage retention |
 | TI_ARCHIVE_AGE_DAYS | 60 | Hot→cold threshold |
