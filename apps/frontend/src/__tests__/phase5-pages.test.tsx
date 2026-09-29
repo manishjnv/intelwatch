@@ -26,16 +26,14 @@ const mockUseAuditLog = vi.fn()
 const mockUseUserManagementStats = vi.fn()
 const mockUseRevokeSession = vi.fn()
 const mockUseModuleToggles = vi.fn()
-const mockUseAIConfigs = vi.fn()
 const mockUseRiskWeights = vi.fn()
+const mockUseRiskPresets = vi.fn()
 const mockUseNotificationChannels = vi.fn()
-const mockUseCustomizationStats = vi.fn()
+const mockUseAiBudgetUsage = vi.fn()
 const mockUseToggleModule = vi.fn()
-const mockUseUpdateAIConfig = vi.fn()
 const mockUseUpdateRiskWeight = vi.fn()
 const mockUseResetRiskWeights = vi.fn()
 const mockUseUpdateNotificationChannel = vi.fn()
-const mockUseTestNotification = vi.fn()
 
 vi.mock('@/hooks/use-phase5-data', () => ({
   useSIEMIntegrations: () => mockUseSIEMIntegrations(),
@@ -56,17 +54,16 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useAuditLog: (...args: any[]) => mockUseAuditLog(...args),
   useUserManagementStats: () => mockUseUserManagementStats(),
   useRevokeSession: () => mockUseRevokeSession(),
+  IOC_TYPES: ['ip', 'domain', 'url', 'hash_md5', 'hash_sha1', 'hash_sha256', 'email', 'cve', 'cidr', 'asn', 'ja3', 'mutex', 'registry_key'],
   useModuleToggles: () => mockUseModuleToggles(),
-  useAIConfigs: () => mockUseAIConfigs(),
-  useRiskWeights: () => mockUseRiskWeights(),
+  useRiskWeights: (iocType: string) => mockUseRiskWeights(iocType),
+  useRiskPresets: () => mockUseRiskPresets(),
   useNotificationChannels: () => mockUseNotificationChannels(),
-  useCustomizationStats: () => mockUseCustomizationStats(),
+  useAiBudgetUsage: () => mockUseAiBudgetUsage(),
   useToggleModule: () => mockUseToggleModule(),
-  useUpdateAIConfig: () => mockUseUpdateAIConfig(),
   useUpdateRiskWeight: () => mockUseUpdateRiskWeight(),
   useResetRiskWeights: () => mockUseResetRiskWeights(),
   useUpdateNotificationChannel: () => mockUseUpdateNotificationChannel(),
-  useTestNotification: () => mockUseTestNotification(),
   // AI plan / subtask hooks (F2/F3) — apiList()/api() already unwrap the {data:...} envelope,
   // so the mocked hook result is the plain payload, not double-wrapped (RCA #45).
   // Honest-UI (DECISION-048): hooks are plain react-query results, no isDemo.
@@ -167,20 +164,22 @@ const MODULE_DISABLED = {
   enabled: false, icon: 'Eye', dependencies: ['Digital Risk Protection'], category: 'Protection',
 }
 
-const AI_CONFIG = {
-  id: 'ai-1', task: 'IOC Triage', model: 'claude-haiku-4-5', maxTokens: 512,
-  monthlyBudget: 50, spent: 18.40, confidenceThreshold: 0.7, enabled: true,
+// Real backend shape (risk-weight-store.ts WeightProfile) — one profile per IOC type.
+const RISK_PROFILE = {
+  id: 'rp-1', tenantId: 'default', iocType: 'ip',
+  weights: { source_reliability: 0.35, freshness: 0.2, corroboration: 0.2, specificity: 0.15, context: 0.1 },
+  decayRate: 0.05, updatedAt: '2026-01-01', updatedBy: 'system',
 }
 
-const RISK_WEIGHT = {
-  id: 'rw-1', factor: 'Severity', weight: 0.35, description: 'Impact severity',
-  min: 0, max: 1, default: 0.35,
-}
-
-const NOTIF_CHANNEL = {
-  id: 'notif-1', type: 'email', name: 'Security Team Email',
-  enabled: true, severities: ['critical', 'high'],
-  quietHoursStart: null, quietHoursEnd: null,
+// Synthesized shape useNotificationChannels() returns (3 fixed channels + global quiet hours) —
+// real backend is a single NotificationPreferences object, not a list (notification-store.ts).
+const NOTIF_PREFS = {
+  channels: [
+    { id: 'email', type: 'email', name: 'Email', enabled: true, threshold: 'high', config: {} },
+    { id: 'webhook', type: 'webhook', name: 'Webhook', enabled: false, threshold: 'medium', config: {} },
+    { id: 'in_app', type: 'in_app', name: 'In-app', enabled: true, threshold: 'medium', config: {} },
+  ],
+  quietHours: { enabled: false, start: '22:00', end: '07:00', timezone: 'UTC', daysOfWeek: ['mon'] },
 }
 
 // ─── Setup ──────────────────────────────────────────────────────
@@ -210,16 +209,14 @@ function setupDefaultMocks() {
 
   // Customization — honest-UI (DECISION-048): plain react-query shape, no isDemo.
   mockUseModuleToggles.mockReturnValue({ data: { data: [MODULE, MODULE_DISABLED] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
-  mockUseAIConfigs.mockReturnValue({ data: { data: [AI_CONFIG] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
-  mockUseRiskWeights.mockReturnValue({ data: { data: [RISK_WEIGHT] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
-  mockUseNotificationChannels.mockReturnValue({ data: { data: [NOTIF_CHANNEL] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
-  mockUseCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31.6, theme: 'dark' }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseRiskWeights.mockReturnValue({ data: RISK_PROFILE, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseRiskPresets.mockReturnValue({ data: { data: [{ name: 'balanced', weights: { source_reliability: 0.25, freshness: 0.2, corroboration: 0.2, specificity: 0.2, context: 0.15 } }], total: 1 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseNotificationChannels.mockReturnValue({ data: NOTIF_PREFS, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockUseAiBudgetUsage.mockReturnValue({ data: { totalTokens: 0, byTask: {}, dailyUsage: 0, monthlyUsage: 0, budgetUtilization: 0.316 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockUseToggleModule.mockReturnValue({ mutate: vi.fn(), isPending: false })
-  mockUseUpdateAIConfig.mockReturnValue({ mutate: vi.fn(), isPending: false })
-  mockUseUpdateRiskWeight.mockReturnValue({ mutate: vi.fn(), isPending: false })
+  mockUseUpdateRiskWeight.mockReturnValue({ mutate: vi.fn(), isPending: false, isError: false, error: null })
   mockUseResetRiskWeights.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockUseUpdateNotificationChannel.mockReturnValue({ mutate: vi.fn(), isPending: false })
-  mockUseTestNotification.mockReturnValue({ mutate: vi.fn(), isPending: false })
 }
 
 beforeEach(() => {
@@ -521,12 +518,12 @@ describe('CustomizationPage', () => {
     CustomizationPage = mod.CustomizationPage
   })
 
-  it('renders stats bar with customization metrics', () => {
+  it('renders stats bar with real module count and AI budget usage, no Custom Rules/Theme tile', () => {
     render(<CustomizationPage />)
     expect(screen.getByTestId('stat-Modules Enabled')).toBeTruthy()
-    expect(screen.getByTestId('stat-Custom Rules')).toBeTruthy()
     expect(screen.getByTestId('stat-AI Budget Used')).toBeTruthy()
-    expect(screen.getByTestId('stat-Theme')).toBeTruthy()
+    expect(screen.queryByTestId('stat-Custom Rules')).toBeNull()
+    expect(screen.queryByTestId('stat-Theme')).toBeNull()
   })
 
   it('renders all 5 tab buttons', () => {
@@ -579,21 +576,20 @@ describe('CustomizationPage', () => {
   it('switches to Risk Weights tab and shows sliders', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('Risk Weights'))
-    expect(screen.getByText('Severity')).toBeTruthy()
-    expect(screen.getByText('Impact severity')).toBeTruthy()
+    expect(screen.getByText('Source Reliability')).toBeTruthy()
     expect(screen.getByText('Risk Score Weights')).toBeTruthy()
   })
 
   it('shows weight total', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('Risk Weights'))
-    expect(screen.getByText('Total: 0.35')).toBeTruthy()
+    expect(screen.getByText('Total: 1.00')).toBeTruthy()
   })
 
-  it('shows reset button on Risk Weights tab', () => {
+  it('shows the reset-to-balanced button on Risk Weights tab', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('Risk Weights'))
-    expect(screen.getByText('Reset')).toBeTruthy()
+    expect(screen.getByText('Reset all IOC types to balanced')).toBeTruthy()
   })
 
   it('shows score preview on Risk Weights tab', () => {
@@ -625,27 +621,25 @@ describe('CustomizationPage', () => {
     expect(screen.getByText('Risk Score')).toBeTruthy()
   })
 
-  it('switches to Notifications tab and shows channels', () => {
+  it('switches to Notifications tab and shows the 3 fixed channels', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('Notifications'))
     expect(screen.getByText('Alert Channels')).toBeTruthy()
-    expect(screen.getByText('Security Team Email')).toBeTruthy()
-    // Type badge uses CSS uppercase, DOM text is lowercase
-    expect(screen.getByText('email')).toBeTruthy()
+    expect(screen.getByText('Email')).toBeTruthy()
+    expect(screen.getByText('Webhook')).toBeTruthy()
+    expect(screen.getByText('In-app')).toBeTruthy()
   })
 
-  it('shows severity routing buttons on notification channels', () => {
+  it('shows a minimum-severity selector on each notification channel', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('Notifications'))
-    // Channel has critical and high enabled
-    const critBtns = screen.getAllByText('critical')
-    expect(critBtns.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Minimum severity').length).toBe(3)
   })
 
-  it('shows test notification button', () => {
+  it('does not show a test notification button (no backend route)', () => {
     render(<CustomizationPage />)
     fireEvent.click(screen.getByText('Notifications'))
-    expect(screen.getByText('Test Notification')).toBeTruthy()
+    expect(screen.queryByText('Test Notification')).toBeNull()
   })
 
   it('renders refresh interval selector on Dashboard tab', () => {

@@ -1,7 +1,8 @@
 /**
  * @module hooks/use-es-search
- * @description Enhanced Elasticsearch IOC search hook with URL sync, faceted filters, demo fallback.
+ * @description Enhanced Elasticsearch IOC search hook with URL sync, faceted filters.
  * Connects to es-indexing service (port 3020) via GET /api/v1/search/iocs.
+ * Real data only (DECISION-048): empty/error states are honest, no demo fallback.
  */
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -9,7 +10,6 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
 import { useDebouncedValue } from './useDebouncedValue'
-import { notifyApiError } from './useApiError'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -77,11 +77,6 @@ interface EsApiResponse {
   }
 }
 
-const EMPTY_RESPONSE: EsApiResponse = {
-  total: 0, page: 1, limit: 50, data: [],
-  aggregations: { by_type: [], by_severity: [], by_tlp: [] },
-}
-
 // ─── URL param helpers ──────────────────────────────────────
 
 function filtersFromParams(params: URLSearchParams): EsSearchFilters {
@@ -120,7 +115,7 @@ function filtersToParams(query: string, filters: EsSearchFilters, sortBy: string
   return p
 }
 
-// ─── Demo data ──────────────────────────────────────────────
+// ─── Fixture data (test-only, see note below) ─────────────────
 
 function daysAgo(n: number): string {
   return new Date(Date.now() - n * 86_400_000).toISOString()
@@ -149,20 +144,8 @@ export const DEMO_ES_RESULTS: EsSearchResult[] = [
   { id: 'es-20', iocType: 'email', value: 'ceo@company-invoice.biz', severity: 'medium', confidence: 58, tags: ['bec', 'impersonation'], firstSeen: daysAgo(4), lastSeen: daysAgo(1), enriched: false, tlp: 'AMBER' },
 ]
 
-const DEMO_FACETS: EsSearchFacets = {
-  byType: [
-    { key: 'ip', count: 5 }, { key: 'domain', count: 6 }, { key: 'cve', count: 3 },
-    { key: 'hash_sha256', count: 2 }, { key: 'url', count: 2 }, { key: 'email', count: 2 },
-  ],
-  bySeverity: [
-    { key: 'critical', count: 7 }, { key: 'high', count: 5 },
-    { key: 'medium', count: 4 }, { key: 'low', count: 4 },
-  ],
-  byTlp: [
-    { key: 'RED', count: 6 }, { key: 'AMBER', count: 5 },
-    { key: 'GREEN', count: 4 }, { key: 'WHITE', count: 5 },
-  ],
-}
+// ponytail: DEMO_ES_RESULTS above is kept only because existing test files
+// import it as fixture data — it is no longer used by the hook itself.
 
 // ─── Export helpers ──────────────────────────────────────────
 
@@ -230,22 +213,19 @@ export function useEsSearch() {
 
   const result = useQuery({
     queryKey: ['es-search', apiParams],
-    queryFn: async (): Promise<EsApiResponse> => {
-      return api<EsApiResponse>(`/search/iocs?${apiParams}`)
-        .catch(err => notifyApiError(err, 'IOC search', EMPTY_RESPONSE))
-    },
+    queryFn: () => api<EsApiResponse>(`/search/iocs?${apiParams}`),
+    meta: { resource: 'IOC search' },
     enabled: !!tenantId,
     staleTime: 30_000,
     retry: 1,
   })
 
-  // Transform API response to component-friendly shape
+  // Transform API response to component-friendly shape (real data only, no demo swap)
   const apiData = result.data
-  const hasApiData = !!apiData && apiData.data?.length > 0
 
   const rawResults: EsSearchResult[] = useMemo(() => {
-    if (!hasApiData) return []
-    return apiData!.data.map(d => ({
+    if (!apiData?.data?.length) return []
+    return apiData.data.map(d => ({
       id: d.iocId,
       iocType: d.type,
       value: d.value,
@@ -260,7 +240,7 @@ export function useEsSearch() {
       campaignIds: d.campaignIds,
       actorIds: d.actorIds,
     }))
-  }, [hasApiData, apiData])
+  }, [apiData])
 
   // Client-side confidence filtering (ES doesn't support range queries on confidence)
   const results = useMemo(() => {
@@ -285,17 +265,16 @@ export function useEsSearch() {
   }, [rawResults, filters])
 
   const facets: EsSearchFacets = useMemo(() => {
-    if (!hasApiData || !apiData?.aggregations) return { byType: [], bySeverity: [], byTlp: [] }
-    const agg = apiData.aggregations
+    const agg = apiData?.aggregations
+    if (!agg) return { byType: [], bySeverity: [], byTlp: [] }
     return {
       byType: agg.by_type ?? [],
       bySeverity: agg.by_severity ?? [],
       byTlp: agg.by_tlp ?? [],
     }
-  }, [hasApiData, apiData])
+  }, [apiData])
 
-  const isDemo = !result.isLoading && !hasApiData && !result.isError
-  const searchTimeMs = hasApiData ? (apiData as any)?.took ?? 0 : 0
+  const searchTimeMs = (apiData as any)?.took ?? 0
 
   // Public setters
   const setQuery = useCallback((q: string) => {
@@ -322,117 +301,15 @@ export function useEsSearch() {
   }, [])
 
   const exportResults = useCallback((format: 'csv' | 'json') => {
-    const data = isDemo ? DEMO_ES_RESULTS : results
-    if (format === 'csv') exportCsv(data)
-    else exportJson(data)
-  }, [results, isDemo])
+    if (format === 'csv') exportCsv(results)
+    else exportJson(results)
+  }, [results])
 
-  // Parse search syntax: type:ip, severity:critical, tag:malware, "exact phrase"
-  const parsedQuery = useMemo(() => {
-    let q = debouncedQuery.trim()
-    const syntaxTypes: string[] = []
-    const syntaxSeverities: string[] = []
-    const syntaxTags: string[] = []
-
-    // Extract type:xxx
-    q = q.replace(/\btype:(\w+)/gi, (_, val) => { syntaxTypes.push(val.toLowerCase()); return '' })
-    // Extract severity:xxx
-    q = q.replace(/\bseverity:(\w+)/gi, (_, val) => { syntaxSeverities.push(val.toLowerCase()); return '' })
-    // Extract tag:xxx
-    q = q.replace(/\btag:([\w-]+)/gi, (_, val) => { syntaxTags.push(val.toLowerCase()); return '' })
-    // Extract "exact phrase"
-    const exactPhrases: string[] = []
-    q = q.replace(/"([^"]+)"/g, (_, phrase) => { exactPhrases.push(phrase.toLowerCase()); return '' })
-
-    return { text: q.trim(), syntaxTypes, syntaxSeverities, syntaxTags, exactPhrases }
-  }, [debouncedQuery])
-
-  // Apply client-side filtering to demo data
-  const demoFiltered = useMemo(() => {
-    if (!isDemo) return DEMO_ES_RESULTS
-    let data = [...DEMO_ES_RESULTS]
-    const { text, syntaxTypes, syntaxSeverities, syntaxTags, exactPhrases } = parsedQuery
-
-    // Text search (remaining text after syntax extraction)
-    if (text) {
-      const q = text.toLowerCase()
-      data = data.filter(r =>
-        r.value.toLowerCase().includes(q) ||
-        r.tags.some(t => t.toLowerCase().includes(q)) ||
-        r.iocType.toLowerCase().includes(q)
-      )
-    }
-
-    // Exact phrase matching
-    for (const phrase of exactPhrases) {
-      data = data.filter(r =>
-        r.value.toLowerCase().includes(phrase) ||
-        r.tags.some(t => t.toLowerCase().includes(phrase))
-      )
-    }
-
-    // Search syntax filters (merged with sidebar filters)
-    const allTypes = [...(filters.type ?? []), ...syntaxTypes]
-    const allSeverities = [...(filters.severity ?? []), ...syntaxSeverities]
-
-    if (allTypes.length) {
-      data = data.filter(r => allTypes.includes(r.iocType))
-    }
-    if (allSeverities.length) {
-      data = data.filter(r => allSeverities.includes(r.severity))
-    }
-    if (syntaxTags.length) {
-      data = data.filter(r => syntaxTags.some(tag => r.tags.some(t => t.toLowerCase().includes(tag))))
-    }
-
-    // Sidebar-only filters (TLP, enriched, confidence)
-    if (filters.tlp?.length) {
-      data = data.filter(r => filters.tlp!.includes(r.tlp))
-    }
-    if (filters.enriched != null) {
-      data = data.filter(r => r.enriched === filters.enriched)
-    }
-    if (filters.confidenceMin != null) {
-      data = data.filter(r => r.confidence >= filters.confidenceMin!)
-    }
-
-    // Sort
-    if (sortBy === 'confidence_desc') data.sort((a, b) => b.confidence - a.confidence)
-    else if (sortBy === 'severity_desc') {
-      const sevOrder: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1, info: 0 }
-      data.sort((a, b) => (sevOrder[b.severity] ?? 0) - (sevOrder[a.severity] ?? 0))
-    }
-    else if (sortBy === 'lastSeen_desc') data.sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime())
-    else if (sortBy === 'firstSeen_asc') data.sort((a, b) => new Date(a.firstSeen).getTime() - new Date(b.firstSeen).getTime())
-
-    return data
-  }, [isDemo, parsedQuery, filters, sortBy])
-
-  // Recompute facets from filtered demo data
-  const demoFacets: EsSearchFacets = useMemo(() => {
-    if (!isDemo) return DEMO_FACETS
-    const base = demoFiltered.length > 0 ? DEMO_ES_RESULTS : []
-    const byType: Record<string, number> = {}
-    const bySeverity: Record<string, number> = {}
-    const byTlp: Record<string, number> = {}
-    for (const r of base) {
-      byType[r.iocType] = (byType[r.iocType] ?? 0) + 1
-      bySeverity[r.severity] = (bySeverity[r.severity] ?? 0) + 1
-      byTlp[r.tlp] = (byTlp[r.tlp] ?? 0) + 1
-    }
-    return {
-      byType: Object.entries(byType).map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
-      bySeverity: Object.entries(bySeverity).map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
-      byTlp: Object.entries(byTlp).map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
-    }
-  }, [isDemo, demoFiltered])
-
-  // Paginate demo results
-  const demoPaginated = useMemo(() => {
-    if (!isDemo) return demoFiltered
-    const start = (page - 1) * pageSize
-    return demoFiltered.slice(start, start + pageSize)
-  }, [isDemo, demoFiltered, page, pageSize])
+  // ponytail: search syntax (type:/severity:/tag:/"exact phrase") used to be parsed
+  // client-side but only ever applied to the demo dataset above — the real API call
+  // never received it (apiParams just sends the raw debounced query as `q`). Removing
+  // the demo pipeline removes that dead parsing too. Real syntax-aware search is a
+  // separate backend feature, not a regression introduced here — flagged in report.
 
   // ─── Selection ──────────────────────────────────────────────
 
@@ -450,12 +327,11 @@ export function useEsSearch() {
   }, [])
 
   const toggleSelectAll = useCallback(() => {
-    const allResults = isDemo ? demoPaginated : results
     setSelectedIds(prev => {
-      if (prev.size === allResults.length) return new Set()
-      return new Set(allResults.map(r => r.id))
+      if (prev.size === results.length) return new Set()
+      return new Set(results.map(r => r.id))
     })
-  }, [isDemo, demoPaginated, results])
+  }, [results])
 
   const bulkSearch = useCallback((values: string[]) => {
     const joined = values.join(' OR ')
@@ -477,12 +353,13 @@ export function useEsSearch() {
     setPageSize,
 
     // Results
-    results: isDemo ? demoPaginated : results,
-    totalCount: isDemo ? demoFiltered.length : (apiData?.total ?? 0),
-    facets: isDemo ? demoFacets : facets,
+    results,
+    totalCount: apiData?.total ?? 0,
+    facets,
     isLoading: result.isLoading,
-    isDemo,
+    isError: result.isError,
     error: result.error,
+    refetch: result.refetch,
     searchTimeMs,
 
     // Actions

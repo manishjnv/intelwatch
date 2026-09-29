@@ -27,6 +27,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useIOCPivot: (...args: any[]) => mockUseIOCPivot(...args),
   useIOCTimeline: (...args: any[]) => mockUseIOCTimeline(...args),
   useUpdateIOCLifecycle: () => mockUseUpdateIOCLifecycle(),
+  useFeeds: () => ({ data: { data: [], total: 0 }, isLoading: false }),
 }))
 
 vi.mock('@/hooks/use-enrichment-data', () => ({

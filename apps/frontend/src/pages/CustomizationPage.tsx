@@ -7,20 +7,21 @@
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  useModuleToggles, useRiskWeights,
-  useNotificationChannels, useCustomizationStats,
+  useModuleToggles, useRiskWeights, useRiskPresets,
+  useNotificationChannels, useAiBudgetUsage,
   useToggleModule, useUpdateRiskWeight,
-  useResetRiskWeights, useUpdateNotificationChannel, useTestNotification,
+  useResetRiskWeights, useUpdateNotificationChannel,
   usePlanTiers, useSubtaskMappings, useRecommendedModels, useCostEstimate, useApplyPlan, useSetSubtaskModel,
   useAnthropicKeyStatus, useSaveAnthropicKey, useDeleteAnthropicKey,
-  type ModuleToggle, type RiskWeight, type NotificationChannel,
+  IOC_TYPES,
+  type ModuleToggle, type WeightPreset, type NotificationThreshold,
   type PlanTierMeta, type SubtaskMapping,
 } from '@/hooks/use-phase5-data'
 import { QueryStateView } from '@/components/ui/QueryStateView'
 import { PageStatsBar, CompactStat } from '@etip/shared-ui/components/PageStatsBar'
 import {
   Puzzle, Brain, Scale, LayoutDashboard, Bell,
-  ToggleLeft, ToggleRight, AlertTriangle, Send,
+  ToggleLeft, ToggleRight, AlertTriangle,
   RotateCcw, Sliders, Star, Key, Trash2,
 } from 'lucide-react'
 
@@ -41,22 +42,24 @@ const TABS: { key: CustomTab; label: string; icon: React.FC<{ className?: string
 export function CustomizationPage() {
   const [activeTab, setActiveTab] = useState<CustomTab>('modules')
 
-  const statsQuery = useCustomizationStats()
   const moduleQuery = useModuleToggles()
-  const riskQuery = useRiskWeights()
+  const usageQuery = useAiBudgetUsage()
   const notifQuery = useNotificationChannels()
 
-  const stats = statsQuery.data
+  // Real sources only (DECISION-048): modules-enabled from the same list the Modules tab
+  // renders, AI budget from the real monthly usage-vs-limit figure. No Custom Rules / Theme
+  // tiles — neither has a backend source (no custom-rules model, no theme-preference route).
+  const modulesEnabled = moduleQuery.data ? moduleQuery.data.data.filter(m => m.enabled).length : null
+  const aiBudgetUsedPct = usageQuery.data ? Math.round(usageQuery.data.budgetUtilization * 100) : null
 
   return (
     <div className="flex flex-col h-full">
       <PageStatsBar>
-        <CompactStat label="Modules Enabled" value={stats?.modulesEnabled?.toString() ?? '—'} />
-        <CompactStat label="Custom Rules" value={stats?.customRules?.toString() ?? '0'} />
-        <CompactStat label="AI Budget Used" value={`${stats?.aiBudgetUsed ?? 0}%`} color={
-          (stats?.aiBudgetUsed ?? 0) >= 80 ? 'text-sev-critical' : (stats?.aiBudgetUsed ?? 0) >= 50 ? 'text-sev-medium' : 'text-sev-low'
+        <CompactStat label="Modules Enabled" value={modulesEnabled != null ? String(modulesEnabled) : '—'} />
+        <CompactStat label="AI Budget Used" value={aiBudgetUsedPct != null ? `${aiBudgetUsedPct}%` : '—'} color={
+          aiBudgetUsedPct == null ? undefined
+            : aiBudgetUsedPct >= 80 ? 'text-sev-critical' : aiBudgetUsedPct >= 50 ? 'text-sev-medium' : 'text-sev-low'
         } />
-        <CompactStat label="Theme" value={stats?.theme ?? 'dark'} />
       </PageStatsBar>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
@@ -82,25 +85,17 @@ export function CustomizationPage() {
           </QueryStateView>
         )}
         {activeTab === 'ai' && <AIConfigTab />}
-        {activeTab === 'risk' && (
-          <QueryStateView
-            query={riskQuery}
-            resource="risk weights"
-            isEmpty={d => (d.data?.length ?? 0) === 0}
-            empty={<div data-testid="query-empty" className="text-xs text-text-muted">No risk weight factors configured yet.</div>}
-          >
-            {d => <RiskWeightsTab weights={d.data ?? []} />}
-          </QueryStateView>
-        )}
+        {/* Owns its own IOC-type selector + query — no list to be empty/error at this level. */}
+        {activeTab === 'risk' && <RiskWeightsTab />}
         {activeTab === 'dashboard' && <DashboardConfigTab />}
         {activeTab === 'notifications' && (
           <QueryStateView
             query={notifQuery}
             resource="notification channels"
-            isEmpty={d => (d.data?.length ?? 0) === 0}
+            isEmpty={d => d.channels.length === 0}
             empty={<div data-testid="query-empty" className="text-xs text-text-muted">No notification channels yet — add one to start routing alerts.</div>}
           >
-            {d => <NotificationsTab channels={d.data ?? []} />}
+            {d => <NotificationsTab channels={d.channels} quietHours={d.quietHours} />}
           </QueryStateView>
         )}
       </div>
@@ -502,88 +497,152 @@ function ProviderApiKeysCard() {
 }
 
 // ─── Risk Weights Tab ───────────────────────────────────────────
+// Real backend (risk-weight-store.ts): one WeightProfile per IOC type, weights keyed by the
+// 5 fixed factors. No factor-name or IOC-type list endpoint exists, so both are hardcoded here
+// to mirror the backend's WEIGHT_FACTORS / IOC_TYPES constants (schemas/customization.ts).
 
-function RiskWeightsTab({ weights }: { weights: RiskWeight[] }) {
-  const updateMutation = useUpdateRiskWeight()
-  const resetMutation = useResetRiskWeights()
-  const [localWeights, setLocalWeights] = useState<Record<string, number>>({})
+const FACTOR_LABELS: Record<string, string> = {
+  source_reliability: 'Source Reliability',
+  freshness: 'Freshness',
+  corroboration: 'Corroboration',
+  specificity: 'Specificity',
+  context: 'Context',
+}
 
-  const getWeight = (w: RiskWeight) => localWeights[w.id] ?? w.weight
-  const totalWeight = weights.reduce((sum, w) => sum + getWeight(w), 0)
+const FACTOR_DESCRIPTIONS: Record<string, string> = {
+  source_reliability: 'How trustworthy the reporting source has historically been.',
+  freshness: 'How recently the indicator was last observed.',
+  corroboration: 'How many independent sources report the same indicator.',
+  specificity: 'How narrowly the indicator identifies a single asset or actor.',
+  context: 'How much surrounding threat context is available.',
+}
 
-  const handleChange = (w: RiskWeight, val: number) => {
-    setLocalWeights(prev => ({ ...prev, [w.id]: val }))
-  }
-
-  const handleSave = (w: RiskWeight) => {
-    const val = localWeights[w.id]
-    if (val != null && val !== w.weight) {
-      updateMutation.mutate({ id: w.id, weight: val })
-    }
-  }
+function RiskWeightsTab() {
+  const presetsQuery = useRiskPresets()
+  const [iocType, setIocType] = useState<string>('ip')
+  const balanced = presetsQuery.data?.data.find((p: WeightPreset) => p.name === 'balanced')
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-xs font-semibold text-text-primary">Risk Score Weights</h3>
-          <p className="text-[10px] text-text-muted mt-0.5">Adjust how each factor contributes to composite risk scores. Weights should sum to 1.0.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={cn('text-xs tabular-nums font-medium',
-            Math.abs(totalWeight - 1) < 0.01 ? 'text-sev-low' : 'text-sev-critical')}>
-            Total: {totalWeight.toFixed(2)}
-          </span>
-          <button onClick={() => { setLocalWeights({}); resetMutation.mutate() }}
-            disabled={resetMutation.isPending}
-            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-bg-elevated text-text-muted hover:text-text-secondary transition-colors disabled:opacity-50">
-            <RotateCcw className="w-3 h-3" /> Reset
-          </button>
-        </div>
+      <div className="flex items-center gap-2">
+        <label className="text-[10px] text-text-muted uppercase font-medium">IOC Type</label>
+        <select value={iocType} onChange={e => setIocType(e.target.value)}
+          className="text-xs bg-bg-primary border border-border rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent">
+          {IOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
       </div>
-
-      <div className="space-y-3">
-        {weights.map(w => {
-          const val = getWeight(w)
-          return (
-            <div key={w.id} className="p-3 bg-bg-secondary rounded-lg border border-border">
-              <div className="flex items-center justify-between mb-1">
-                <div>
-                  <span className="text-xs font-medium text-text-primary">{w.factor}</span>
-                  <p className="text-[10px] text-text-muted">{w.description}</p>
-                </div>
-                <span className="text-sm font-bold tabular-nums text-accent">{val.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-text-muted tabular-nums w-6">{w.min}</span>
-                <input type="range" min={w.min} max={w.max} step={0.01} value={val}
-                  onChange={e => handleChange(w, parseFloat(e.target.value))}
-                  onMouseUp={() => handleSave(w)} onTouchEnd={() => handleSave(w)}
-                  className="flex-1 h-1 accent-[var(--accent)]" />
-                <span className="text-[10px] text-text-muted tabular-nums w-6">{w.max}</span>
-              </div>
-              {val !== w.default && (
-                <div className="text-[10px] text-sev-medium mt-1">
-                  Default: {w.default.toFixed(2)} (changed by {((val - w.default) * 100).toFixed(0)}%)
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Preview Panel */}
-      <div className="p-4 bg-bg-secondary rounded-lg border border-border">
-        <h3 className="text-[10px] text-text-muted uppercase font-medium mb-2">Score Preview</h3>
-        <p className="text-[10px] text-text-muted mb-2">Sample IOC with all factors at 0.8:</p>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl font-bold tabular-nums text-text-primary">
-            {(weights.reduce((sum, w) => sum + getWeight(w) * 0.8, 0) * 100).toFixed(0)}
-          </span>
-          <span className="text-[10px] text-text-muted">/ 100 composite score</span>
-        </div>
-      </div>
+      {/* key={iocType} remounts on type change so local draft state resets cleanly. */}
+      <RiskProfileEditor key={iocType} iocType={iocType} balanced={balanced} />
     </div>
+  )
+}
+
+function RiskProfileEditor({ iocType, balanced }: { iocType: string; balanced?: WeightPreset }) {
+  const profileQuery = useRiskWeights(iocType)
+  const updateMutation = useUpdateRiskWeight()
+  const resetMutation = useResetRiskWeights()
+  const [draft, setDraft] = useState<Record<string, number> | null>(null)
+
+  return (
+    <QueryStateView
+      query={profileQuery}
+      resource="risk weight profile"
+      isEmpty={d => Object.keys(d.weights).length === 0}
+      empty={<div data-testid="query-empty" className="text-xs text-text-muted">No risk weight factors configured yet.</div>}
+    >
+      {profile => {
+        const weights = draft ?? profile.weights
+        const factors = Object.keys(weights)
+        const total = factors.reduce((sum, f) => sum + weights[f]!, 0)
+        const canSave = Math.abs(total - 1) < 0.001 && !updateMutation.isPending
+
+        const handleChange = (factor: string, val: number) =>
+          setDraft({ ...weights, [factor]: val })
+
+        const handleSave = () => {
+          if (!canSave) return
+          updateMutation.mutate({ iocType, weights }, { onSuccess: () => setDraft(null) })
+        }
+
+        const handleResetBalanced = () => {
+          resetMutation.mutate('balanced', { onSuccess: () => setDraft(null) })
+        }
+
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h3 className="text-xs font-semibold text-text-primary">Risk Score Weights</h3>
+                <p className="text-[10px] text-text-muted mt-0.5">Adjust how each factor contributes to the {iocType} composite risk score. Weights must sum to 1.0.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={cn('text-xs tabular-nums font-medium',
+                  Math.abs(total - 1) < 0.001 ? 'text-sev-low' : 'text-sev-critical')}>
+                  Total: {total.toFixed(2)}
+                </span>
+                <button onClick={handleSave} disabled={!canSave}
+                  className="text-[10px] px-3 py-1 rounded bg-accent text-bg-primary font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+                  {updateMutation.isPending ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={handleResetBalanced}
+                  disabled={resetMutation.isPending}
+                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-bg-elevated text-text-muted hover:text-text-secondary transition-colors disabled:opacity-50">
+                  <RotateCcw className="w-3 h-3" /> Reset all IOC types to balanced
+                </button>
+              </div>
+            </div>
+
+            {updateMutation.isError && (
+              <p className="text-[10px] text-sev-high">
+                {updateMutation.error instanceof Error ? updateMutation.error.message : 'Failed to save weights'}
+              </p>
+            )}
+
+            <div className="space-y-3">
+              {factors.map(factor => {
+                const val = weights[factor]!
+                const def = balanced?.weights[factor]
+                return (
+                  <div key={factor} className="p-3 bg-bg-secondary rounded-lg border border-border">
+                    <div className="flex items-center justify-between mb-1">
+                      <div>
+                        <span className="text-xs font-medium text-text-primary">{FACTOR_LABELS[factor] ?? factor}</span>
+                        {FACTOR_DESCRIPTIONS[factor] && <p className="text-[10px] text-text-muted">{FACTOR_DESCRIPTIONS[factor]}</p>}
+                      </div>
+                      <span className="text-sm font-bold tabular-nums text-accent">{val.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-text-muted tabular-nums w-6">0</span>
+                      <input type="range" min={0} max={1} step={0.01} value={val}
+                        onChange={e => handleChange(factor, parseFloat(e.target.value))}
+                        className="flex-1 h-1 accent-[var(--accent)]" />
+                      <span className="text-[10px] text-text-muted tabular-nums w-6">1</span>
+                    </div>
+                    {def != null && Math.abs(val - def) > 0.001 && (
+                      <div className="text-[10px] text-sev-medium mt-1">
+                        Default: {def.toFixed(2)} (changed by {((val - def) * 100).toFixed(0)}%)
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Preview Panel */}
+            <div className="p-4 bg-bg-secondary rounded-lg border border-border">
+              <h3 className="text-[10px] text-text-muted uppercase font-medium mb-2">Score Preview</h3>
+              <p className="text-[10px] text-text-muted mb-2">Sample IOC with all factors at 0.8:</p>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-bold tabular-nums text-text-primary">
+                  {(factors.reduce((sum, f) => sum + weights[f]! * 0.8, 0) * 100).toFixed(0)}
+                </span>
+                <span className="text-[10px] text-text-muted">/ 100 composite score</span>
+              </div>
+            </div>
+          </div>
+        )
+      }}
+    </QueryStateView>
   )
 }
 
@@ -639,18 +698,32 @@ function DashboardConfigTab() {
 }
 
 // ─── Notifications Tab ──────────────────────────────────────────
+// Real backend (notification-store.ts): a single per-user NotificationPreferences object with
+// exactly the 3 fixed channels below and one global (not per-channel) quiet-hours window.
+// No test-notification route exists — the Test Notification button was removed (see the
+// use-phase5-data.ts comment above the deleted useTestNotification).
 
-function NotificationsTab({ channels }: { channels: NotificationChannel[] }) {
+const THRESHOLD_OPTIONS: NotificationThreshold[] = ['info', 'low', 'medium', 'high', 'critical']
+
+interface NotificationChannelRow {
+  id: string; type: string; name: string; enabled: boolean
+  threshold: NotificationThreshold; config: Record<string, string>
+}
+
+interface QuietHoursRow { enabled: boolean; start: string; end: string; timezone: string }
+
+function NotificationsTab({ channels, quietHours }: { channels: NotificationChannelRow[]; quietHours: QuietHoursRow }) {
   const updateMutation = useUpdateNotificationChannel()
-  const testMutation = useTestNotification()
-
-  const SEVERITY_OPTIONS = ['critical', 'high', 'medium', 'low']
 
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-xs font-semibold text-text-primary">Alert Channels</h3>
         <p className="text-[10px] text-text-muted mt-0.5">Configure where and when notifications are delivered.</p>
+      </div>
+
+      <div className="text-[10px] text-text-muted">
+        Quiet hours: {quietHours.enabled ? `${quietHours.start} — ${quietHours.end} (${quietHours.timezone})` : 'Off'}
       </div>
 
       {channels.map(ch => (
@@ -661,7 +734,7 @@ function NotificationsTab({ channels }: { channels: NotificationChannel[] }) {
               <span className="text-xs font-medium text-text-primary">{ch.name}</span>
             </div>
             <button
-              onClick={() => updateMutation.mutate({ id: ch.id, enabled: !ch.enabled })}
+              onClick={() => updateMutation.mutate({ channel: ch.id, enabled: !ch.enabled, threshold: ch.threshold, config: ch.config })}
               disabled={updateMutation.isPending}>
               {ch.enabled
                 ? <ToggleRight className="w-5 h-5 text-sev-low" />
@@ -669,47 +742,19 @@ function NotificationsTab({ channels }: { channels: NotificationChannel[] }) {
             </button>
           </div>
 
-          {/* Severity routing */}
+          {/* Minimum severity threshold */}
           <div className="space-y-1">
-            <span className="text-[10px] text-text-muted">Severity Routing</span>
-            <div className="flex items-center gap-1.5">
-              {SEVERITY_OPTIONS.map(sev => (
-                <button key={sev} type="button"
-                  onClick={() => {
-                    const newSevs = ch.severities.includes(sev)
-                      ? ch.severities.filter(s => s !== sev)
-                      : [...ch.severities, sev]
-                    updateMutation.mutate({ id: ch.id, severities: newSevs })
-                  }}
-                  disabled={updateMutation.isPending}
-                  className={cn('text-[10px] px-2 py-0.5 rounded-full border transition-colors capitalize',
-                    ch.severities.includes(sev)
-                      ? sev === 'critical' ? 'bg-sev-critical/10 text-sev-critical border-sev-critical/30'
-                        : sev === 'high' ? 'bg-sev-high/10 text-sev-high border-sev-high/30'
-                        : sev === 'medium' ? 'bg-sev-medium/10 text-sev-medium border-sev-medium/30'
-                        : 'bg-sev-low/10 text-sev-low border-sev-low/30'
-                      : 'bg-bg-elevated text-text-muted border-border')}>
-                  {sev}
-                </button>
+            <label className="text-[10px] text-text-muted">Minimum severity</label>
+            <select
+              value={ch.threshold}
+              disabled={updateMutation.isPending}
+              onChange={e => updateMutation.mutate({ channel: ch.id, enabled: ch.enabled, threshold: e.target.value as NotificationThreshold, config: ch.config })}
+              className="block text-[10px] font-mono bg-bg-primary border border-border rounded px-2 py-1 text-text-primary disabled:opacity-50 capitalize">
+              {THRESHOLD_OPTIONS.map(t => (
+                <option key={t} value={t} className="capitalize">{t}</option>
               ))}
-            </div>
+            </select>
           </div>
-
-          {/* Quiet hours */}
-          {(ch.quietHoursStart || ch.quietHoursEnd) && (
-            <div className="flex items-center gap-2 text-[10px] text-text-muted">
-              <span>Quiet hours: {ch.quietHoursStart} — {ch.quietHoursEnd}</span>
-            </div>
-          )}
-
-          {/* Test button */}
-          <button
-            onClick={() => testMutation.mutate(ch.id)}
-            disabled={testMutation.isPending || !ch.enabled}
-            className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50">
-            <Send className="w-3 h-3" />
-            {testMutation.isPending ? 'Sending…' : 'Test Notification'}
-          </button>
         </div>
       ))}
     </div>

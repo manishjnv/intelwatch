@@ -29,7 +29,7 @@ import type { IOCRecord } from '@/hooks/use-intel-data'
 import type { EsSearchFilters, EsSearchResult } from '@/hooks/use-es-search'
 import {
   Search, Download, ChevronDown, Database, Zap, X,
-  Upload, Bookmark,
+  Upload, Bookmark, AlertTriangle, RefreshCw,
 } from 'lucide-react'
 
 // ─── Constants ───────────────────────────────────────────────
@@ -50,7 +50,7 @@ export function SearchPage() {
   const {
     query, setQuery, filters, setFilters, sortBy, setSortBy,
     page, setPage, pageSize, setPageSize,
-    results, totalCount, facets, isLoading, isDemo, searchTimeMs,
+    results, totalCount, facets, isLoading, isError, refetch, searchTimeMs,
     clearAll, exportResults, selectedIds, toggleSelection,
     clearSelection, toggleSelectAll, bulkSearch,
   } = useEsSearch()
@@ -129,7 +129,7 @@ export function SearchPage() {
   }, [])
 
   const hasQuery = query.trim().length > 0
-  const hasResults = results.length > 0 || isDemo
+  const hasResults = results.length > 0
 
   // Build active filter pills
   const filterPills = useMemo(() => {
@@ -220,14 +220,13 @@ export function SearchPage() {
       </div>
 
       {/* Search stats bar */}
-      {(hasResults || isLoading) && (
+      {(hasResults || isLoading) && !isError && (
         <SearchStatsBar
           totalCount={totalCount}
           searchTimeMs={searchTimeMs}
           page={page}
           pageSize={pageSize}
           facets={facets}
-          isDemo={isDemo}
         />
       )}
 
@@ -269,16 +268,22 @@ export function SearchPage() {
             defaultSplit={55}
             left={
               <div className="overflow-y-auto h-full px-4 pb-4">
-                {!hasQuery && !isDemo && results.length === 0 ? (
+                {isError ? (
+                  <ErrorState onRetry={refetch} />
+                ) : !hasQuery && results.length === 0 ? (
                   <InitialState />
                 ) : viewMode === 'card' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pt-2" data-testid="card-view">
-                    {results.map(r => (
-                      <SearchResultCard key={r.id} result={r} query={query}
-                        selected={selectedIds.has(r.id)} onSelect={toggleSelection}
-                        onClick={handleRowClick} onContextMenu={handleContextMenu} />
-                    ))}
-                  </div>
+                  results.length === 0 && !isLoading ? (
+                    <NoResultsState />
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pt-2" data-testid="card-view">
+                      {results.map(r => (
+                        <SearchResultCard key={r.id} result={r} query={query}
+                          selected={selectedIds.has(r.id)} onSelect={toggleSelection}
+                          onClick={handleRowClick} onContextMenu={handleContextMenu} />
+                      ))}
+                    </div>
+                  )
                 ) : (
                   <SearchResultsTable
                     results={results} totalCount={totalCount} page={page}
@@ -293,7 +298,7 @@ export function SearchPage() {
                 )}
               </div>
             }
-            right={selectedRecord ? <IocDetailPanel record={selectedRecord} isDemo={isDemo} /> : null}
+            right={selectedRecord ? <IocDetailPanel record={selectedRecord} isDemo={false} /> : null}
             showRight={!!selectedRecord}
           />
         </div>
@@ -329,6 +334,31 @@ export function SearchPage() {
         onSearch={handleBulkSearch}
         results={results}
       />
+    </div>
+  )
+}
+
+// ─── Error / empty states ──────────────────────────────────────
+
+function ErrorState({ onRetry }: { onRetry: () => unknown }) {
+  return (
+    <div role="alert" className="flex flex-col items-center justify-center py-20 text-center gap-3" data-testid="search-error-state">
+      <AlertTriangle className="w-8 h-8 text-sev-high" />
+      <p className="text-sm font-medium text-text-primary">Couldn&apos;t load search results</p>
+      <button onClick={() => onRetry()}
+        className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-border text-text-secondary rounded-lg hover:bg-bg-hover transition-colors"
+        data-testid="search-retry-btn">
+        <RefreshCw className="w-3.5 h-3.5" /> Retry
+      </button>
+    </div>
+  )
+}
+
+function NoResultsState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center gap-2" data-testid="search-no-results">
+      <Search className="w-8 h-8 text-text-muted" />
+      <p className="text-sm text-text-secondary">No results — try a different query</p>
     </div>
   )
 }

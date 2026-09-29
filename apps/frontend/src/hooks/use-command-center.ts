@@ -1,18 +1,33 @@
 /**
  * @module hooks/use-command-center
  * @description Comprehensive Command Center hook — parallel fetch of global stats,
- * tenant stats, tenant list, queue stats, provider keys. Role-aware data gating,
- * 5-min cache, demo fallbacks, mutations for provider keys and model assignments.
+ * tenant stats, tenant list (merged with real tenant metadata from admin-service),
+ * queue stats, provider keys. Honest data only (DECISION-048): no demo fallback,
+ * loading/error render an EMPTY shape and the page shows an error banner + Retry.
  */
 import { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { apiList } from '@/lib/api-list'
 import { useAuthStore } from '@/stores/auth-store'
-import { notifyApiError } from './useApiError'
+
+/**
+ * Real shape of GET /admin/tenants rows (apps/admin-service/src/services/tenant-store.ts
+ * TenantRecord) — deliberately NOT the `TenantRecord` type in use-phase6-data.ts/
+ * phase6-demo-data.ts, whose seats/usedSeats/domain/iocCount/feedCount/'trial' status
+ * do not exist on the real endpoint (separate pre-existing bug, out of this slice's scope).
+ */
+interface AdminTenantRow {
+  id: string
+  name: string
+  plan: string
+  status: TenantStatus
+}
 
 // ─── Types ──────────────────────────────────────────────────────
 
 export type Period = 'day' | 'week' | 'month'
+export type TenantStatus = 'active' | 'suspended' | 'pending' | 'deleted'
 
 export interface GlobalStats {
   totalCostUsd: number
@@ -31,19 +46,22 @@ export interface TenantStats {
   costByProvider: Record<string, number>
   costByItemType: Record<string, number>
   consumptionTrend: { date: string; count: number }[]
-  budgetUsedPercent: number
-  budgetLimitUsd: number
+  /** ponytail: no service tracks a per-tenant AI budget today. Always undefined — render '—'. */
+  budgetUsedPercent?: number
+  budgetLimitUsd?: number
 }
 
 export interface TenantListItem {
   tenantId: string
-  name: string
-  plan: string
-  members: number
   itemsConsumed: number
   attributedCostUsd: number
-  status: 'active' | 'suspended' | 'over_limit'
-  usagePercent: number
+  /** From admin-service /admin/tenants; undefined while that lookup is loading/errored. */
+  name?: string
+  plan?: string
+  status?: TenantStatus
+  /** ponytail: no service exposes per-tenant member count or a usage%/budget metric today. */
+  members?: number
+  usagePercent?: number
 }
 
 export interface QueueStats {
@@ -62,113 +80,82 @@ export interface ProviderKeyStatus {
   updatedAt: string | null
 }
 
-// ─── Demo Data ──────────────────────────────────────────────────
+// ─── Empty shapes — loading/error placeholders, never fabricated numbers ─
 
-function daysAgoStr(n: number): string {
-  return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
+export const EMPTY_GLOBAL_STATS: GlobalStats = {
+  totalCostUsd: 0, totalItems: 0, itemsBySubtask: {},
+  costByProvider: {}, costByModel: {}, costBySubtask: {}, costTrend: [],
 }
 
-const DEMO_GLOBAL_STATS: GlobalStats = {
-  totalCostUsd: 142.30,
-  totalItems: 12450,
-  itemsBySubtask: { triage: 5200, extraction: 3800, classification: 1400, summarization: 1200, risk_scoring: 850 },
-  costByProvider: { anthropic: 112.40, openai: 18.50, google: 11.40 },
-  costByModel: { 'claude-sonnet-4-6': 95.20, 'claude-haiku-4-5': 17.20, 'gpt-4o': 18.50, 'gemini-2.5-pro': 11.40 },
-  costBySubtask: { triage: 15.60, extraction: 62.30, classification: 8.40, summarization: 31.20, risk_scoring: 24.80 },
-  costTrend: Array.from({ length: 7 }, (_, i) => ({
-    date: daysAgoStr(6 - i),
-    cost: Number((18 + Math.sin(i * 0.9) * 6).toFixed(2)),
-  })),
+export const EMPTY_TENANT_STATS: TenantStats = {
+  tenantId: '', itemsConsumed: 0, attributedCostUsd: 0,
+  costByProvider: {}, costByItemType: {}, consumptionTrend: [],
 }
 
-const DEMO_TENANT_STATS: TenantStats = {
-  tenantId: 'demo-tenant',
-  itemsConsumed: 3200,
-  attributedCostUsd: 23.45,
-  costByProvider: { anthropic: 18.20, openai: 3.10, google: 2.15 },
-  costByItemType: { ioc: 12.40, article: 8.50, report: 2.55 },
-  consumptionTrend: Array.from({ length: 30 }, (_, i) => ({
-    date: daysAgoStr(29 - i),
-    count: Math.round(80 + Math.sin(i * 0.4) * 30),
-  })),
-  budgetUsedPercent: 62,
-  budgetLimitUsd: 37.00,
+export const EMPTY_QUEUE_STATS: QueueStats = {
+  pendingItems: 0, processingRate: 0, bySubtask: {},
 }
 
-const DEMO_TENANT_LIST: TenantListItem[] = [
-  { tenantId: 't1', name: 'Acme Corp', plan: 'teams', members: 12, itemsConsumed: 8400, attributedCostUsd: 28.30, status: 'active', usagePercent: 76 },
-  { tenantId: 't2', name: 'ThreatDefend', plan: 'enterprise', members: 8, itemsConsumed: 6200, attributedCostUsd: 21.10, status: 'active', usagePercent: 56 },
-  { tenantId: 't3', name: 'SecOps Inc', plan: 'starter', members: 3, itemsConsumed: 2100, attributedCostUsd: 7.20, status: 'active', usagePercent: 42 },
-  { tenantId: 't4', name: 'CyberWatch', plan: 'teams', members: 5, itemsConsumed: 4800, attributedCostUsd: 35.00, status: 'over_limit', usagePercent: 100 },
-  { tenantId: 't5', name: 'NullSec', plan: 'free', members: 1, itemsConsumed: 45, attributedCostUsd: 0, status: 'suspended', usagePercent: 0 },
-]
+// ─── Backend raw shapes (apps/customization/src/services/command-center-queries.ts) ─
 
-const DEMO_QUEUE_STATS: QueueStats = {
-  pendingItems: 34,
-  processingRate: 42,
-  stuckItems: 0,
-  oldestAge: '< 2m',
-  bySubtask: { triage: 12, extraction: 8, scoring: 6, attribution: 4, others: 4 },
+interface RawGlobalStats {
+  totalCostUsd: number
+  totalItemsProcessed: number
+  byDay: Array<{ date: string; costUsd: number; itemCount: number }>
+  byProvider: Record<string, { costUsd: number; itemCount: number }>
+  byModel: Record<string, { costUsd: number; itemCount: number }>
+  bySubtask: Record<string, { costUsd: number; itemCount: number }>
 }
 
-const DEMO_PROVIDER_KEYS: ProviderKeyStatus[] = [
-  { provider: 'anthropic', keyMasked: 'sk-ant-api0•••••abc1', isValid: true, lastTested: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { provider: 'openai', keyMasked: null, isValid: false, lastTested: null, updatedAt: null },
-  { provider: 'google', keyMasked: null, isValid: false, lastTested: null, updatedAt: null },
-]
+interface RawTenantStats {
+  tenantId: string
+  totalConsumed: number
+  totalAttributedCostUsd: number
+  byProvider: Record<string, { count: number; costUsd: number }>
+  byItemType: Record<string, { count: number; costUsd: number }>
+  byDay: Array<{ date: string; count: number; costUsd: number }>
+}
 
-// ─── Fetch Functions ────────────────────────────────────────────
+interface RawTenantListEntry {
+  tenantId: string
+  itemsConsumed: number
+  attributedCostUsd: number
+}
 
-async function fetchGlobalStats(period: Period): Promise<GlobalStats | null> {
-  try {
-    return await api<GlobalStats>(`/customization/command-center/global-stats?period=${period}`)
-  } catch (err) {
-    notifyApiError(err, 'command center global stats', null)
-    return null
+function mapVal<T, R>(rec: Record<string, T>, fn: (v: T) => R): Record<string, R> {
+  return Object.fromEntries(Object.entries(rec).map(([k, v]) => [k, fn(v)]))
+}
+
+function adaptGlobalStats(raw: RawGlobalStats): GlobalStats {
+  return {
+    totalCostUsd: raw.totalCostUsd,
+    totalItems: raw.totalItemsProcessed,
+    itemsBySubtask: mapVal(raw.bySubtask, v => v.itemCount),
+    costByProvider: mapVal(raw.byProvider, v => v.costUsd),
+    costByModel: mapVal(raw.byModel, v => v.costUsd),
+    costBySubtask: mapVal(raw.bySubtask, v => v.costUsd),
+    costTrend: raw.byDay.map(d => ({ date: d.date, cost: d.costUsd })),
   }
 }
 
-async function fetchTenantStats(period: Period): Promise<TenantStats | null> {
-  try {
-    return await api<TenantStats>(`/customization/command-center/tenant-stats?period=${period}`)
-  } catch (err) {
-    notifyApiError(err, 'command center tenant stats', null)
-    return null
+function adaptTenantStats(raw: RawTenantStats): TenantStats {
+  return {
+    tenantId: raw.tenantId,
+    itemsConsumed: raw.totalConsumed,
+    attributedCostUsd: raw.totalAttributedCostUsd,
+    costByProvider: mapVal(raw.byProvider, v => v.costUsd),
+    costByItemType: mapVal(raw.byItemType, v => v.costUsd),
+    consumptionTrend: raw.byDay.map(d => ({ date: d.date, count: d.count })),
   }
 }
 
-async function fetchTenantList(period: Period): Promise<TenantListItem[] | null> {
-  try {
-    const res = await api<TenantListItem[]>(`/customization/command-center/tenant-list?period=${period}`)
-    return res
-  } catch (err) {
-    notifyApiError(err, 'command center tenant list', null)
-    return null
-  }
-}
-
-async function fetchQueueStats(): Promise<QueueStats | null> {
-  try {
-    return await api<QueueStats>(`/customization/command-center/queue-stats`)
-  } catch (err) {
-    notifyApiError(err, 'command center queue stats', null)
-    return null
-  }
-}
-
-async function fetchProviderKeys(): Promise<ProviderKeyStatus[] | null> {
-  try {
-    return await api<ProviderKeyStatus[]>(`/customization/provider-keys`)
-  } catch (err) {
-    notifyApiError(err, 'provider keys', null)
-    return null
-  }
-}
+const STALE = 5 * 60_000
 
 // ─── Hook ───────────────────────────────────────────────────────
 
 export function useCommandCenter() {
   const user = useAuthStore(s => s.user)
+  const tenant = useAuthStore(s => s.tenant)
   const isSuperAdmin = user?.role === 'super_admin'
   const qc = useQueryClient()
 
@@ -178,53 +165,88 @@ export function useCommandCenter() {
 
   const globalStatsQuery = useQuery({
     queryKey: ['command-center', 'global-stats', period],
-    queryFn: () => fetchGlobalStats(period),
-    staleTime: 5 * 60_000,
+    queryFn: () => api<RawGlobalStats>(`/customization/command-center/global-stats?period=${period}`).then(adaptGlobalStats),
+    meta: { resource: 'command center global stats' },
+    staleTime: STALE,
     enabled: isSuperAdmin,
   })
 
   const tenantStatsQuery = useQuery({
     queryKey: ['command-center', 'tenant-stats', period],
-    queryFn: () => fetchTenantStats(period),
-    staleTime: 5 * 60_000,
+    queryFn: () => api<RawTenantStats>(`/customization/command-center/tenant-stats?period=${period}`).then(adaptTenantStats),
+    meta: { resource: 'command center tenant stats' },
+    staleTime: STALE,
   })
 
   const tenantListQuery = useQuery({
     queryKey: ['command-center', 'tenant-list', period],
-    queryFn: () => fetchTenantList(period),
-    staleTime: 5 * 60_000,
+    queryFn: () => api<RawTenantListEntry[]>(`/customization/command-center/tenant-list?period=${period}`),
+    meta: { resource: 'command center tenant list' },
+    staleTime: STALE,
+    enabled: isSuperAdmin,
+  })
+
+  // Real tenant metadata (name/plan/status) — separate service, merged below.
+  // Shares the queryKey used by hooks/use-phase6-data's useAdminTenants for cache reuse.
+  const tenantMetaQuery = useQuery({
+    queryKey: ['admin-tenants'],
+    queryFn: () => apiList<AdminTenantRow>('/admin/tenants'),
+    meta: { resource: 'tenants' },
+    staleTime: 60_000,
     enabled: isSuperAdmin,
   })
 
   const queueStatsQuery = useQuery({
     queryKey: ['command-center', 'queue-stats'],
-    queryFn: fetchQueueStats,
-    staleTime: 5 * 60_000,
+    queryFn: () => api<QueueStats>(`/customization/command-center/queue-stats`),
+    meta: { resource: 'command center queue stats' },
+    staleTime: STALE,
     enabled: isSuperAdmin,
   })
 
   const providerKeysQuery = useQuery({
     queryKey: ['command-center', 'provider-keys'],
-    queryFn: fetchProviderKeys,
-    staleTime: 5 * 60_000,
+    queryFn: () => api<ProviderKeyStatus[]>(`/customization/provider-keys`),
+    meta: { resource: 'provider keys' },
+    staleTime: STALE,
     enabled: isSuperAdmin,
   })
 
-  // ── Demo detection ────────────────────────────────────────────
+  // ── Honest values (EMPTY shape while loading/error — never demo numbers) ──
 
   const isLoading = isSuperAdmin
     ? globalStatsQuery.isLoading || tenantListQuery.isLoading
     : tenantStatsQuery.isLoading
 
-  const hasGlobalData = globalStatsQuery.data != null && typeof globalStatsQuery.data === 'object' && globalStatsQuery.data.totalItems != null
-  const hasTenantData = tenantStatsQuery.data != null && typeof tenantStatsQuery.data === 'object' && tenantStatsQuery.data.itemsConsumed != null
-  const isDemo = !isLoading && (isSuperAdmin ? !hasGlobalData : !hasTenantData)
+  const isError = isSuperAdmin
+    ? globalStatsQuery.isError || tenantListQuery.isError || tenantMetaQuery.isError
+      || queueStatsQuery.isError || providerKeysQuery.isError
+    : tenantStatsQuery.isError
 
-  const globalStats: GlobalStats = hasGlobalData ? globalStatsQuery.data! : DEMO_GLOBAL_STATS
-  const tenantStats: TenantStats = hasTenantData ? tenantStatsQuery.data! : DEMO_TENANT_STATS
-  const tenantList: TenantListItem[] = tenantListQuery.data ?? DEMO_TENANT_LIST
-  const queueStats: QueueStats = queueStatsQuery.data ?? DEMO_QUEUE_STATS
-  const providerKeys: ProviderKeyStatus[] = providerKeysQuery.data ?? DEMO_PROVIDER_KEYS
+  const globalStats: GlobalStats = globalStatsQuery.data ?? EMPTY_GLOBAL_STATS
+  const tenantStats: TenantStats = tenantStatsQuery.data ?? EMPTY_TENANT_STATS
+  const queueStats: QueueStats = queueStatsQuery.data ?? EMPTY_QUEUE_STATS
+  const providerKeys: ProviderKeyStatus[] = providerKeysQuery.data ?? []
+
+  const tenantMetaById = useMemo(() => {
+    const rows = tenantMetaQuery.data?.data ?? []
+    return new Map(rows.map(t => [t.id, t]))
+  }, [tenantMetaQuery.data])
+
+  const tenantList: TenantListItem[] = useMemo(() => {
+    const rows = tenantListQuery.data ?? []
+    return rows.map(r => {
+      const meta = tenantMetaById.get(r.tenantId)
+      return {
+        tenantId: r.tenantId,
+        itemsConsumed: r.itemsConsumed,
+        attributedCostUsd: r.attributedCostUsd,
+        name: meta?.name,
+        plan: meta?.plan,
+        status: meta?.status,
+      }
+    })
+  }, [tenantListQuery.data, tenantMetaById])
 
   // ── Mutations ─────────────────────────────────────────────────
 
@@ -247,13 +269,14 @@ export function useCommandCenter() {
 
   const refetchAll = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ['command-center'] })
+    void qc.invalidateQueries({ queryKey: ['admin-tenants'] })
   }, [qc])
 
   return useMemo(() => ({
     // Role
     isSuperAdmin,
     userRole: user?.role ?? 'tenant_admin',
-    tenantPlan: 'teams' as string, // from auth store tenant
+    tenantPlan: tenant?.plan ?? 'free',
 
     // Data
     globalStats,
@@ -264,7 +287,7 @@ export function useCommandCenter() {
 
     // State
     isLoading,
-    isDemo,
+    isError,
     period,
     setPeriod,
     refetchAll,
@@ -280,11 +303,12 @@ export function useCommandCenter() {
     // Loading states
     isFetching: globalStatsQuery.isFetching || tenantStatsQuery.isFetching,
   }), [
-    isSuperAdmin, user?.role, globalStats, tenantStats, tenantList, queueStats, providerKeys,
-    isLoading, isDemo, period, setPeriod, refetchAll,
+    isSuperAdmin, user?.role, tenant?.plan, globalStats, tenantStats, tenantList, queueStats, providerKeys,
+    isLoading, isError, period, setPeriod, refetchAll,
     setProviderKey.mutate, setProviderKey.isPending,
     testProviderKey.mutateAsync, testProviderKey.isPending,
     removeProviderKey.mutate, removeProviderKey.isPending,
     globalStatsQuery.isFetching, tenantStatsQuery.isFetching,
   ])
 }
+

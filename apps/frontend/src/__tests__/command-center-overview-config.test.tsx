@@ -41,7 +41,7 @@ function makeMockCommandCenter(overrides = {}) {
     ],
     queueStats: { pendingItems: 34, processingRate: 42, stuckItems: 0, oldestAge: '< 2m', bySubtask: {} },
     providerKeys: [],
-    isLoading: false, isDemo: false, period: 'month' as const,
+    isLoading: false, isError: false, period: 'month' as const,
     setPeriod: vi.fn(), refetchAll: vi.fn(), isFetching: false,
     setProviderKey: vi.fn(), isSettingKey: false,
     testProviderKey: vi.fn(), isTestingKey: false,

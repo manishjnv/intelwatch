@@ -1,6 +1,8 @@
 /**
  * @module __tests__/use-command-center.test
- * @description Tests for the Command Center data hook.
+ * @description Tests for the Command Center data hook — honest data only
+ * (DECISION-048): EMPTY shape while loading/on error, isError surfaced,
+ * never a demo fallback.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
@@ -9,19 +11,19 @@ import React from 'react'
 
 // Mock auth store
 const mockUser = { id: 'u1', email: 'admin@test.com', displayName: 'Admin', role: 'super_admin', tenantId: 't1', avatarUrl: null }
+const mockTenant = { id: 't1', name: 'Test', slug: 'test', plan: 'starter' }
 vi.mock('@/stores/auth-store', () => ({
-  useAuthStore: (selector: (s: any) => any) => selector({ user: mockUser, accessToken: 'token', tenant: { id: 't1', name: 'Test', slug: 'test', plan: 'teams' } }),
+  useAuthStore: (selector: (s: any) => any) => selector({ user: mockUser, accessToken: 'token', tenant: mockTenant }),
 }))
 
-// Mock api
+// Mock api — every call rejects, so the hook must surface isError, never demo data.
 vi.mock('@/lib/api', () => ({
   api: vi.fn().mockRejectedValue(new Error('not connected')),
   ApiError: class extends Error { status: number; code: string; constructor(s: number, c: string, m: string) { super(m); this.status = s; this.code = c } },
 }))
 
-// Mock notifyApiError
-vi.mock('@/hooks/useApiError', () => ({
-  notifyApiError: vi.fn((_err, _resource, fallback) => fallback),
+vi.mock('@/lib/api-list', () => ({
+  apiList: vi.fn().mockRejectedValue(new Error('not connected')),
 }))
 
 import { useCommandCenter } from '@/hooks/use-command-center'
@@ -36,12 +38,12 @@ function createWrapper() {
 describe('useCommandCenter', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('returns demo data when API is unreachable', async () => {
+  it('surfaces isError and an EMPTY shape when every query fails — never demo data', async () => {
     const { result } = renderHook(() => useCommandCenter(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(true)
-    expect(result.current.globalStats.totalItems).toBe(12450)
-    expect(result.current.globalStats.totalCostUsd).toBe(142.30)
+    expect(result.current.isError).toBe(true)
+    expect(result.current.globalStats.totalItems).toBe(0)
+    expect(result.current.globalStats.totalCostUsd).toBe(0)
   })
 
   it('identifies super_admin role', async () => {
@@ -50,26 +52,29 @@ describe('useCommandCenter', () => {
     expect(result.current.isSuperAdmin).toBe(true)
   })
 
-  it('returns demo tenant list with 5 tenants', async () => {
+  it('returns an empty tenant list on failure, never fabricated tenants', async () => {
     const { result } = renderHook(() => useCommandCenter(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.tenantList).toHaveLength(5)
-    expect(result.current.tenantList[0]!.name).toBe('Acme Corp')
+    expect(result.current.tenantList).toHaveLength(0)
   })
 
-  it('returns demo queue stats', async () => {
+  it('returns EMPTY queue stats on failure', async () => {
     const { result } = renderHook(() => useCommandCenter(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.queueStats.pendingItems).toBe(34)
-    expect(result.current.queueStats.processingRate).toBe(42)
+    expect(result.current.queueStats.pendingItems).toBe(0)
+    expect(result.current.queueStats.processingRate).toBe(0)
   })
 
-  it('returns demo provider keys', async () => {
+  it('returns an empty provider key list on failure', async () => {
     const { result } = renderHook(() => useCommandCenter(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.providerKeys).toHaveLength(3)
-    expect(result.current.providerKeys[0]!.provider).toBe('anthropic')
-    expect(result.current.providerKeys[0]!.isValid).toBe(true)
+    expect(result.current.providerKeys).toHaveLength(0)
+  })
+
+  it('reads tenantPlan from the real auth-store tenant, never a hardcoded plan', async () => {
+    const { result } = renderHook(() => useCommandCenter(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.tenantPlan).toBe('starter')
   })
 
   it('defaults to month period', async () => {
@@ -85,11 +90,11 @@ describe('useCommandCenter', () => {
     expect(result.current.period).toBe('week')
   })
 
-  it('returns tenant stats with demo data', async () => {
+  it('returns EMPTY tenant stats (with budget fields undefined) on failure', async () => {
     const { result } = renderHook(() => useCommandCenter(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.tenantStats.itemsConsumed).toBe(3200)
-    expect(result.current.tenantStats.budgetUsedPercent).toBe(62)
+    expect(result.current.tenantStats.itemsConsumed).toBe(0)
+    expect(result.current.tenantStats.budgetUsedPercent).toBeUndefined()
   })
 
   it('has refetchAll function', async () => {

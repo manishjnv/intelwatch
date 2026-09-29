@@ -12,6 +12,7 @@ const mockSaveAnthropicKey = vi.fn()
 const mockDeleteAnthropicKey = vi.fn()
 
 vi.mock('@/hooks/use-phase5-data', () => ({
+  IOC_TYPES: ['ip', 'domain', 'url', 'hash_md5', 'hash_sha1', 'hash_sha256', 'email', 'cve', 'cidr', 'asn', 'ja3', 'mutex', 'registry_key'],
   useAnthropicKeyStatus:       () => mockAnthropicKeyStatus(),
   useSaveAnthropicKey:         () => mockSaveAnthropicKey(),
   useDeleteAnthropicKey:       () => mockDeleteAnthropicKey(),
@@ -22,16 +23,14 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useApplyPlan:                () => ({ mutate: vi.fn(), isPending: false }),
   useSetSubtaskModel:          () => ({ mutate: vi.fn(), isPending: false }),
   useModuleToggles:            () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
-  useAIConfigs:                () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
-  useRiskWeights:              () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
-  useNotificationChannels:     () => ({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
-  useCustomizationStats:       () => ({ data: { modulesEnabled: 0, customRules: 0, aiBudgetUsed: 0, theme: 'dark' }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useRiskWeights:              () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useRiskPresets:              () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useNotificationChannels:     () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useAiBudgetUsage:            () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useToggleModule:             () => ({ mutate: vi.fn(), isPending: false }),
-  useUpdateAIConfig:           () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateRiskWeight:         () => ({ mutate: vi.fn(), isPending: false }),
   useResetRiskWeights:         () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateNotificationChannel: () => ({ mutate: vi.fn(), isPending: false }),
-  useTestNotification:         () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/stores/auth-store', () => ({

@@ -8,7 +8,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
-import { notifyApiError } from './useApiError'
 // Demo data imports removed — no fallback to fake data
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -179,10 +178,11 @@ export interface EnrichmentResult {
 export function useEnrichmentStats() {
   const result = useQuery({
     queryKey: ['enrichment-stats'],
-    queryFn: () => api<EnrichmentStats>('/enrichment/stats').catch(err => notifyApiError(err, 'enrichment stats', null)),
+    queryFn: () => api<EnrichmentStats>('/enrichment/stats'),
     staleTime: 30_000,
+    meta: { resource: 'enrichment stats' },
   })
-  return { ...result, data: result.data ?? null, isDemo: false }
+  return { ...result, data: result.data ?? null }
 }
 
 /** Pending IOCs awaiting enrichment */
@@ -249,10 +249,11 @@ export function useIOCEnrichment(iocId: string | null) {
 export function useCostStats() {
   const result = useQuery({
     queryKey: ['enrichment-cost-stats'],
-    queryFn: () => api<CostStats>('/enrichment/cost/stats').catch(err => notifyApiError(err, 'cost stats', null)),
+    queryFn: () => api<CostStats>('/enrichment/cost/stats'),
     staleTime: 60_000,
+    meta: { resource: 'cost stats' },
   })
-  return { ...result, data: result.data ?? null, isDemo: false }
+  return { ...result, data: result.data ?? null }
 }
 
 /** Per-IOC cost breakdown */
@@ -269,10 +270,11 @@ export function useIOCCost(iocId: string | null) {
 export function useBudgetStatus() {
   const result = useQuery({
     queryKey: ['enrichment-budget'],
-    queryFn: () => api<BudgetStatus>('/enrichment/cost/budget').catch(err => notifyApiError(err, 'budget status', null)),
+    queryFn: () => api<BudgetStatus>('/enrichment/cost/budget'),
     staleTime: 30_000,
+    meta: { resource: 'budget status' },
   })
-  return { ...result, data: result.data ?? null, isDemo: false }
+  return { ...result, data: result.data ?? null }
 }
 
 // ─── Enrichment Source Breakdown ─────────────────────────────────
@@ -291,41 +293,43 @@ export interface EnrichmentSourceData {
   bySource: Record<string, SourceBreakdown>
 }
 
-// Demo fallback removed — no fake data
-
 /** Enrichment source breakdown for dashboard widget */
 export function useEnrichmentSourceBreakdown() {
   const result = useQuery({
     queryKey: ['enrichment-source-breakdown'],
-    queryFn: () => api<EnrichmentSourceData>('/analytics/enrichment-quality').catch(() => null),
+    // ponytail: /analytics/enrichment-quality actually returns confidence-tier stats
+    // (see EnrichmentQuality below), not a per-source breakdown — the backend has no
+    // such endpoint yet. Only trust a response that actually has `bySource`, so this
+    // never crashes on the real shape and is honest that the data isn't there.
+    queryFn: () => api<Partial<EnrichmentSourceData>>('/analytics/enrichment-quality'),
     staleTime: 300_000,
+    meta: { resource: 'enrichment source breakdown' },
   })
-  return { ...result, data: result.data ?? null, isDemo: false }
+  const data = result.data?.bySource ? (result.data as EnrichmentSourceData) : null
+  return { ...result, data }
 }
 
 // ─── AI Cost Summary ─────────────────────────────────────────────
 
+// ponytail: matches the real analytics-service /cost-tracking shape (CostTrackingData
+// in aggregator.ts). There is no 30-day delta or monthly budget on the backend today —
+// dropped rather than fabricated; use useBudgetStatus() for real (daily) budget data.
 export interface AiCostSummary {
-  totalCost30d: number
-  previousCost30d: number
-  deltaPercent: number
-  budgetMonthly: number
-  budgetUtilization: number
+  totalCostUsd: number
   byModel: Record<string, number>
   costPerArticle: number
   costPerIoc: number
 }
 
-// Demo fallback removed — no fake data
-
-/** 30-day AI cost summary for dashboard widget */
+/** AI cost summary (all-time, as reported by the backend) for dashboard widget */
 export function useAiCostSummary() {
   const result = useQuery({
     queryKey: ['ai-cost-summary'],
-    queryFn: () => api<AiCostSummary>('/analytics/cost-tracking').catch(() => null),
+    queryFn: () => api<AiCostSummary>('/analytics/cost-tracking'),
     staleTime: 300_000,
+    meta: { resource: 'AI cost summary' },
   })
-  return { ...result, data: result.data ?? null, isDemo: false }
+  return { ...result, data: result.data ?? null }
 }
 
 // ─── Enrichment Quality (from analytics service) ────────────────
@@ -341,14 +345,13 @@ export interface EnrichmentQuality {
   lowPct: number
 }
 
-// Demo fallback removed — no fake data
-
 /** Confidence tier breakdown — sourced from analytics aggregator (5-min cache) */
 export function useEnrichmentQuality() {
   const result = useQuery({
     queryKey: ['enrichment-quality'],
-    queryFn: () => api<EnrichmentQuality>('/analytics/enrichment-quality').catch(() => null),
+    queryFn: () => api<EnrichmentQuality>('/analytics/enrichment-quality'),
     staleTime: 300_000,
+    meta: { resource: 'enrichment quality' },
   })
-  return { ...result, data: result.data ?? null, isDemo: false }
+  return { ...result, data: result.data ?? null }
 }

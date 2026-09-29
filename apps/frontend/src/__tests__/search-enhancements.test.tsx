@@ -141,7 +141,6 @@ describe('SearchStatsBar', () => {
       bySeverity: [{ key: 'critical', count: 10 }, { key: 'high', count: 15 }],
       byTlp: [],
     },
-    isDemo: false,
   }
 
   it('shows result count', () => {
@@ -164,9 +163,9 @@ describe('SearchStatsBar', () => {
     expect(screen.getByTestId('result-count')).toHaveTextContent('No results')
   })
 
-  it('shows demo badge when isDemo', () => {
-    render(<SearchStatsBar {...defaultProps} isDemo={true} />)
-    expect(screen.getByText('demo')).toBeInTheDocument()
+  it('never renders a demo badge (DECISION-048: real tenants see real data only)', () => {
+    render(<SearchStatsBar {...defaultProps} />)
+    expect(screen.queryByText('demo')).not.toBeInTheDocument()
   })
 })
 

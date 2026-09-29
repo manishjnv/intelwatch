@@ -12,7 +12,6 @@ interface SearchStatsBarProps {
   page: number
   pageSize: number
   facets: EsSearchFacets
-  isDemo: boolean
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -32,7 +31,7 @@ const TYPE_COLORS: Record<string, string> = {
   email: 'bg-green-400',
 }
 
-export function SearchStatsBar({ totalCount, searchTimeMs, page, pageSize, facets, isDemo }: SearchStatsBarProps) {
+export function SearchStatsBar({ totalCount, searchTimeMs, page, pageSize, facets }: SearchStatsBarProps) {
   const start = (page - 1) * pageSize + 1
   const end = Math.min(page * pageSize, totalCount)
   const total = facets.byType.reduce((sum, b) => sum + b.count, 0) || totalCount
@@ -86,12 +85,6 @@ export function SearchStatsBar({ totalCount, searchTimeMs, page, pageSize, facet
       {totalCount > 0 && (
         <span className="text-text-muted ml-auto tabular-nums" data-testid="pagination-info">
           Showing {start}–{end} of {totalCount.toLocaleString()}
-        </span>
-      )}
-
-      {isDemo && (
-        <span className="text-[10px] text-accent/70 bg-accent/5 px-1.5 py-0.5 rounded border border-accent/15">
-          demo
         </span>
       )}
     </div>

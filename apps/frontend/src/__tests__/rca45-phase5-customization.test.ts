@@ -4,9 +4,12 @@
  * (module toggles, AI plan tiers, subtask mappings, recommended models, cost estimate,
  * BYOK Anthropic key). Each was typed api<{data:...}> when api() already unwraps that
  * envelope, so `.data` reads were always undefined and these always showed demo data.
- * useAIConfigs/useRiskWeights/useNotificationChannels are intentionally NOT covered here —
- * they are BLOCKED (wrong/mismatched backend paths, not a simple unwrap fix; see hook
- * comments in use-phase5-data.ts).
+ *
+ * Also covers the S173 PR2 rewiring of the Risk Weights / Notifications hooks off their
+ * BLOCKED placeholder paths onto the real customization-service routes: GET/PUT
+ * /customization/risk/profiles/:type, POST /customization/risk/presets/apply, GET
+ * /customization/notifications (single NotificationPreferences object synthesized into the
+ * 3 fixed channels), PUT /customization/notifications/channels/:channel.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@/test/test-utils'
@@ -22,6 +25,8 @@ vi.mock('@/lib/api', () => ({
 import {
   useModuleToggles, usePlanTiers, useSubtaskMappings, useRecommendedModels,
   useCostEstimate, useAnthropicKeyStatus, useToggleModule,
+  useRiskWeights, useUpdateRiskWeight, useResetRiskWeights,
+  useNotificationChannels, useUpdateNotificationChannel,
 } from '@/hooks/use-phase5-data'
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -102,5 +107,79 @@ describe('useAnthropicKeyStatus — real backend shape (single-wrapped {data: st
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.data?.hasKey).toBe(true)
     expect(result.current.data?.maskedKey).toBe('sk-ant-***abcd')
+  })
+})
+
+describe('useRiskWeights — GET /customization/risk/profiles/:type', () => {
+  it('fetches the weight profile for the given IOC type', async () => {
+    mockApi.mockResolvedValueOnce({
+      id: 'rp-1', tenantId: 'default', iocType: 'domain',
+      weights: { source_reliability: 0.25, freshness: 0.2, corroboration: 0.2, specificity: 0.2, context: 0.15 },
+      decayRate: 0.05, updatedAt: '2026-01-01', updatedBy: 'system',
+    })
+    const { result } = renderHook(() => useRiskWeights('domain'), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(mockApi).toHaveBeenCalledWith('/customization/risk/profiles/domain')
+    expect(result.current.data?.iocType).toBe('domain')
+    expect(result.current.data?.weights.source_reliability).toBe(0.25)
+  })
+})
+
+describe('useUpdateRiskWeight — PUT /customization/risk/profiles/:type with the full weights map', () => {
+  it('sends the full weights map (not a single-factor patch)', async () => {
+    const weights = { source_reliability: 0.3, freshness: 0.2, corroboration: 0.2, specificity: 0.2, context: 0.1 }
+    mockApi.mockResolvedValueOnce({ id: 'rp-1', tenantId: 'default', iocType: 'ip', weights, decayRate: 0.05, updatedAt: '2026-01-01', updatedBy: 'u1' })
+    const { result } = renderHook(() => useUpdateRiskWeight(), { wrapper })
+    result.current.mutate({ iocType: 'ip', weights })
+    await waitFor(() => expect(mockApi).toHaveBeenCalledWith(
+      '/customization/risk/profiles/ip',
+      expect.objectContaining({ method: 'PUT', body: { weights, decayRate: undefined } }),
+    ))
+  })
+})
+
+describe('useResetRiskWeights — POST /customization/risk/presets/apply', () => {
+  it('applies the balanced preset by default', async () => {
+    mockApi.mockResolvedValueOnce([])
+    const { result } = renderHook(() => useResetRiskWeights(), { wrapper })
+    result.current.mutate(undefined)
+    await waitFor(() => expect(mockApi).toHaveBeenCalledWith(
+      '/customization/risk/presets/apply',
+      expect.objectContaining({ method: 'POST', body: { preset: 'balanced' } }),
+    ))
+  })
+})
+
+describe('useNotificationChannels — synthesizes the 3 fixed channels from the single NotificationPreferences object', () => {
+  it('GET /customization/notifications returns exactly email/webhook/in_app', async () => {
+    mockApi.mockResolvedValueOnce({
+      userId: 'u1', tenantId: 'default',
+      channels: {
+        email: { enabled: false, threshold: 'medium', config: {} },
+        webhook: { enabled: false, threshold: 'medium', config: {} },
+        in_app: { enabled: true, threshold: 'medium', config: {} },
+      },
+      quietHours: { enabled: false, start: '22:00', end: '07:00', timezone: 'UTC', daysOfWeek: ['mon'] },
+      digest: { frequency: 'daily', modules: [] },
+      moduleToggles: {}, updatedAt: '2026-01-01',
+    })
+    const { result } = renderHook(() => useNotificationChannels(), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(mockApi).toHaveBeenCalledWith('/customization/notifications')
+    expect(result.current.data?.channels.map(c => c.id)).toEqual(['email', 'webhook', 'in_app'])
+    expect(result.current.data?.channels.find(c => c.id === 'in_app')?.enabled).toBe(true)
+    expect(result.current.data?.quietHours.timezone).toBe('UTC')
+  })
+})
+
+describe('useUpdateNotificationChannel — PUT /customization/notifications/channels/:channel', () => {
+  it('sends enabled + threshold + config to the real channel route', async () => {
+    mockApi.mockResolvedValueOnce({ enabled: true, threshold: 'high', config: {} })
+    const { result } = renderHook(() => useUpdateNotificationChannel(), { wrapper })
+    result.current.mutate({ channel: 'email', enabled: true, threshold: 'high', config: {} })
+    await waitFor(() => expect(mockApi).toHaveBeenCalledWith(
+      '/customization/notifications/channels/email',
+      expect.objectContaining({ method: 'PUT', body: { enabled: true, threshold: 'high', config: {} } }),
+    ))
   })
 })

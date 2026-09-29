@@ -81,7 +81,8 @@ const DEFAULT_HOOK = {
   totalCount: 0,
   facets: { byType: [], bySeverity: [], byTlp: [] },
   isLoading: false,
-  isDemo: false,
+  isError: false,
+  refetch: vi.fn(),
   error: null,
   searchTimeMs: 0,
   clearAll: vi.fn(),
@@ -140,10 +141,34 @@ describe('SearchPage', () => {
     expect(exportResults).toHaveBeenCalledWith('csv')
   })
 
-  it('shows demo indicator when isDemo', () => {
-    mockUseEsSearch.mockReturnValue({ ...DEFAULT_HOOK, isDemo: true, results: DEMO_ES_RESULTS, totalCount: 20 })
+  it('never renders a demo indicator (DECISION-048: real data only)', () => {
+    mockUseEsSearch.mockReturnValue({ ...DEFAULT_HOOK, results: DEMO_ES_RESULTS, totalCount: 20 })
     render(<SearchPage />)
-    expect(screen.getByText('demo')).toBeInTheDocument()
+    expect(screen.queryByText('demo')).not.toBeInTheDocument()
+  })
+
+  it('shows error state with Retry when the search query rejects', () => {
+    const refetch = vi.fn()
+    mockUseEsSearch.mockReturnValue({ ...DEFAULT_HOOK, query: 'test', isError: true, refetch, error: new Error('boom') })
+    render(<SearchPage />)
+    expect(screen.getByTestId('search-error-state')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('search-retry-btn'))
+    expect(refetch).toHaveBeenCalled()
+  })
+
+  it('shows honest empty state (table view) when a query returns no results', () => {
+    mockUseEsSearch.mockReturnValue({ ...DEFAULT_HOOK, query: 'nomatch', results: [], totalCount: 0 })
+    render(<SearchPage />)
+    expect(screen.getByTestId('results-empty')).toBeInTheDocument()
+    expect(screen.getByText('No IOCs match your search')).toBeInTheDocument()
+  })
+
+  it('shows honest empty state (card view) when a query returns no results', () => {
+    mockUseEsSearch.mockReturnValue({ ...DEFAULT_HOOK, query: 'nomatch', results: [], totalCount: 0 })
+    render(<SearchPage />)
+    fireEvent.click(screen.getByTestId('view-card'))
+    expect(screen.getByTestId('search-no-results')).toBeInTheDocument()
+    expect(screen.getByText('No results — try a different query')).toBeInTheDocument()
   })
 
   it('renders results table when results exist', () => {
@@ -189,10 +214,10 @@ describe('SearchPage', () => {
     expect(screen.getByTestId('mobile-sidebar-overlay')).toBeInTheDocument()
   })
 
-  it('renders demo fallback with 20 results', () => {
+  it('renders all rows when 20 real results are returned', () => {
     mockUseEsSearch.mockReturnValue({
       ...DEFAULT_HOOK,
-      isDemo: true,
+      query: 'test',
       results: DEMO_ES_RESULTS,
       totalCount: DEMO_ES_RESULTS.length,
     })

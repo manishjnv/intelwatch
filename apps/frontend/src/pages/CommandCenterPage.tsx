@@ -106,8 +106,8 @@ export function CommandCenterPage() {
   const effectiveTab = visibleTabs.find(t => t.id === activeTab) ? activeTab : visibleTabs[0]?.id ?? 'overview'
 
   // Badge counts
-  const overLimitCount = cc.tenantList.filter(t => t.status === 'over_limit').length
-  const clientsBadge = overLimitCount > 0 ? overLimitCount : null
+  const suspendedCount = cc.tenantList.filter(t => t.status === 'suspended').length
+  const clientsBadge = suspendedCount > 0 ? suspendedCount : null
 
   function getBadge(tabId: TabId): number | null {
     if (tabId === 'clients') return clientsBadge
@@ -127,11 +127,19 @@ export function CommandCenterPage() {
 
   return (
     <div data-testid="command-center-page" className="flex flex-col h-full">
-      {/* Demo banner */}
-      {cc.isDemo && (
-        <div className="bg-bg-elevated border-b border-border px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium" data-testid="demo-badge">Demo</span>
-          <span className="text-xs text-text-muted">Demo data — connect backend for live stats</span>
+      {/* Error banner */}
+      {cc.isError && (
+        <div role="alert" className="bg-bg-elevated border-b border-border px-4 py-1.5 flex items-center gap-2" data-testid="cc-error-banner">
+          <AlertTriangle className="w-3.5 h-3.5 text-sev-high" />
+          <span className="text-xs text-text-muted">Couldn&apos;t load some Command Center data.</span>
+          <button
+            type="button"
+            onClick={cc.refetchAll}
+            className="ml-1 text-xs font-medium text-accent hover:underline"
+            data-testid="cc-error-retry"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -139,19 +147,19 @@ export function CommandCenterPage() {
       <PageStatsBar>
         {cc.isSuperAdmin ? (
           <>
-            <CompactStat icon={<Activity className="w-3 h-3" />} label="Processed" value={cc.globalStats.totalItems.toLocaleString()} />
-            <CompactStat icon={<DollarSign className="w-3 h-3" />} label="AI Cost" value={`$${cc.globalStats.totalCostUsd.toFixed(2)}`} color="text-purple-400" />
-            <CompactStat icon={<Building2 className="w-3 h-3" />} label="Tenants" value={String(cc.tenantList.filter(t => t.status === 'active').length)} />
-            <CompactStat icon={<TrendingUp className="w-3 h-3" />} label="Consumption" value={cc.tenantList.reduce((s, t) => s + t.itemsConsumed, 0).toLocaleString()} color="text-sev-low" />
-            <CompactStat icon={<ListOrdered className="w-3 h-3" />} label="Queue" value={`${cc.queueStats.pendingItems} pending`} />
-            <CompactStat icon={<AlertTriangle className="w-3 h-3" />} label="Alerts" value={overLimitCount > 0 ? `${overLimitCount} over limit` : 'None'} color={overLimitCount > 0 ? 'text-sev-high' : undefined} />
+            <CompactStat icon={<Activity className="w-3 h-3" />} label="Processed" value={cc.isError ? '—' : cc.globalStats.totalItems.toLocaleString()} />
+            <CompactStat icon={<DollarSign className="w-3 h-3" />} label="AI Cost" value={cc.isError ? '—' : `$${cc.globalStats.totalCostUsd.toFixed(2)}`} color="text-purple-400" />
+            <CompactStat icon={<Building2 className="w-3 h-3" />} label="Tenants" value={cc.isError ? '—' : String(cc.tenantList.filter(t => t.status === 'active').length)} />
+            <CompactStat icon={<TrendingUp className="w-3 h-3" />} label="Consumption" value={cc.isError ? '—' : cc.tenantList.reduce((s, t) => s + t.itemsConsumed, 0).toLocaleString()} color="text-sev-low" />
+            <CompactStat icon={<ListOrdered className="w-3 h-3" />} label="Queue" value={cc.isError ? '—' : `${cc.queueStats.pendingItems} pending`} />
+            <CompactStat icon={<AlertTriangle className="w-3 h-3" />} label="Suspended" value={cc.isError ? '—' : suspendedCount > 0 ? String(suspendedCount) : 'None'} color={suspendedCount > 0 ? 'text-sev-high' : undefined} />
           </>
         ) : (
           <>
-            <CompactStat icon={<Activity className="w-3 h-3" />} label="Consumed" value={cc.tenantStats.itemsConsumed.toLocaleString()} />
-            <CompactStat icon={<DollarSign className="w-3 h-3" />} label="AI Cost" value={`$${cc.tenantStats.attributedCostUsd.toFixed(2)}`} color="text-purple-400" />
+            <CompactStat icon={<Activity className="w-3 h-3" />} label="Consumed" value={cc.isError ? '—' : cc.tenantStats.itemsConsumed.toLocaleString()} />
+            <CompactStat icon={<DollarSign className="w-3 h-3" />} label="AI Cost" value={cc.isError ? '—' : `$${cc.tenantStats.attributedCostUsd.toFixed(2)}`} color="text-purple-400" />
             <CompactStat icon={<BarChart3 className="w-3 h-3" />} label="Feeds" value="—" />
-            <CompactStat icon={<TrendingUp className="w-3 h-3" />} label="Budget" value={`${cc.tenantStats.budgetUsedPercent}%`} color={cc.tenantStats.budgetUsedPercent > 80 ? 'text-sev-high' : 'text-sev-low'} />
+            <CompactStat icon={<TrendingUp className="w-3 h-3" />} label="Budget" value={!cc.isError && cc.tenantStats.budgetUsedPercent != null ? `${cc.tenantStats.budgetUsedPercent}%` : '—'} color={(cc.tenantStats.budgetUsedPercent ?? 0) > 80 ? 'text-sev-high' : 'text-sev-low'} />
           </>
         )}
         <button

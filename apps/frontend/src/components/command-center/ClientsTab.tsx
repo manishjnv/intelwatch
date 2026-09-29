@@ -40,11 +40,12 @@ function SummaryCard({ icon, label, value, sublabel, color }: {
 
 // ─── Plan Badge ─────────────────────────────────────────────────
 
-function PlanBadge({ plan }: { plan: string }) {
+function PlanBadge({ plan }: { plan?: string }) {
+  if (!plan) return <span className="text-xs text-text-muted">—</span>
   const colors: Record<string, string> = {
     free: 'bg-bg-elevated text-text-muted',
     starter: 'bg-sev-low/20 text-sev-low',
-    teams: 'bg-accent/20 text-accent',
+    pro: 'bg-accent/20 text-accent',
     enterprise: 'bg-purple-400/20 text-purple-400',
   }
   return (
@@ -56,7 +57,9 @@ function PlanBadge({ plan }: { plan: string }) {
 
 // ─── Usage Dots ─────────────────────────────────────────────────
 
-function UsageDots({ percent }: { percent: number }) {
+/** ponytail: no backend service tracks per-tenant usage% today — renders '—' until one does. */
+function UsageDots({ percent }: { percent?: number }) {
+  if (percent == null) return <span className="text-xs text-text-muted">—</span>
   const filled = Math.min(5, Math.round(percent / 20))
   return (
     <div className="flex gap-0.5">
@@ -103,10 +106,10 @@ function TenantDetailDrawer({ tenant, data, onClose }: {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
-          <h3 className="text-lg font-semibold text-text-primary">{tenant.name}</h3>
+          <h3 className="text-lg font-semibold text-text-primary">{tenant.name ?? tenant.tenantId}</h3>
           <div className="flex items-center gap-2 mt-1">
             <PlanBadge plan={tenant.plan} />
-            <span className="text-xs text-text-muted">{tenant.members} members</span>
+            <span className="text-xs text-text-muted">{tenant.members != null ? `${tenant.members} members` : '— members'}</span>
           </div>
         </div>
         <button onClick={onClose} className="p-1 text-text-muted hover:text-text-primary" data-testid="close-drawer">
@@ -119,10 +122,10 @@ function TenantDetailDrawer({ tenant, data, onClose }: {
         <div className="flex items-center gap-2">
           <span className="text-xs text-text-muted">Status:</span>
           <span className={cn(
-            'text-xs font-medium',
-            tenant.status === 'active' ? 'text-sev-low' : tenant.status === 'over_limit' ? 'text-sev-high' : 'text-text-muted',
+            'text-xs font-medium capitalize',
+            tenant.status === 'active' ? 'text-sev-low' : tenant.status === 'suspended' || tenant.status === 'deleted' ? 'text-sev-high' : 'text-text-muted',
           )}>
-            {tenant.status === 'over_limit' ? 'Over Monthly Limit' : tenant.status === 'suspended' ? 'Suspended' : 'Active'}
+            {tenant.status ?? '—'}
           </span>
         </div>
       </div>
@@ -183,7 +186,7 @@ function TenantDetailDrawer({ tenant, data, onClose }: {
 
       {/* Offboard Action */}
       <div className="p-4 border-t border-border">
-        <OffboardingPanel triggerForTenant={{ tenantId: tenant.tenantId, orgName: tenant.name }} />
+        <OffboardingPanel triggerForTenant={{ tenantId: tenant.tenantId, orgName: tenant.name ?? tenant.tenantId }} />
       </div>
     </div>
   )
@@ -200,7 +203,7 @@ export function ClientsTab({ data }: ClientsTabProps) {
 
   const filteredTenants = useMemo(() => {
     return data.tenantList.filter(t => {
-      if (searchQuery && !t.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      if (searchQuery && !(t.name ?? t.tenantId).toLowerCase().includes(searchQuery.toLowerCase())) return false
       if (planFilter !== 'all' && t.plan !== planFilter) return false
       if (statusFilter !== 'all' && t.status !== statusFilter) return false
       return true
@@ -210,7 +213,8 @@ export function ClientsTab({ data }: ClientsTabProps) {
   const totalCost = data.tenantList.reduce((s, t) => s + t.attributedCostUsd, 0)
   const totalItems = data.tenantList.reduce((s, t) => s + t.itemsConsumed, 0)
   const activeTenants = data.tenantList.filter(t => t.status === 'active').length
-  const overLimitCount = data.tenantList.filter(t => t.status === 'over_limit').length
+  const suspendedCount = data.tenantList.filter(t => t.status === 'suspended').length
+  const pendingCount = data.tenantList.filter(t => t.status === 'pending').length
   const freeTierCount = data.tenantList.filter(t => t.plan === 'free').length
 
   const columns: Column<TenantListItem>[] = [
@@ -218,9 +222,9 @@ export function ClientsTab({ data }: ClientsTabProps) {
       key: 'name', label: 'Tenant', sortable: true, width: '25%',
       render: (row) => (
         <div className="flex items-center gap-2">
-          {row.status === 'over_limit' && <AlertTriangle className="w-3 h-3 text-sev-high shrink-0" />}
+          {row.status === 'deleted' && <AlertTriangle className="w-3 h-3 text-sev-high shrink-0" />}
           <span className={cn('text-text-primary', row.status === 'suspended' && 'opacity-60 line-through')}>
-            {row.name}
+            {row.name ?? row.tenantId}
           </span>
         </div>
       ),
@@ -231,7 +235,7 @@ export function ClientsTab({ data }: ClientsTabProps) {
     },
     {
       key: 'members', label: 'Members', sortable: true, width: '10%',
-      render: (row) => <span className="tabular-nums text-text-muted">{row.members}</span>,
+      render: (row) => <span className="tabular-nums text-text-muted">{row.members ?? '—'}</span>,
     },
     {
       key: 'itemsConsumed', label: 'Items', sortable: true, width: '14%',
@@ -253,6 +257,12 @@ export function ClientsTab({ data }: ClientsTabProps) {
 
   return (
     <div data-testid="clients-tab" className="space-y-6 max-w-6xl">
+      {data.isError && (
+        <div role="alert" className="text-xs text-sev-high border border-border rounded-lg p-3 bg-bg-elevated" data-testid="clients-error-banner">
+          Couldn&apos;t load some tenant data — the numbers below may be incomplete.{' '}
+          <button type="button" onClick={data.refetchAll} className="font-medium underline">Retry</button>
+        </div>
+      )}
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="summary-cards">
         <SummaryCard
@@ -277,10 +287,10 @@ export function ClientsTab({ data }: ClientsTabProps) {
         />
         <SummaryCard
           icon={<AlertTriangle className="w-4 h-4" />}
-          label="Over Limit"
-          value={String(overLimitCount)}
-          sublabel={`${data.tenantList.filter(t => t.status === 'suspended').length} suspended`}
-          color={overLimitCount > 0 ? 'text-sev-high' : 'text-text-muted'}
+          label="Suspended"
+          value={String(suspendedCount)}
+          sublabel={`${pendingCount} pending invite`}
+          color={suspendedCount > 0 ? 'text-sev-high' : 'text-text-muted'}
         />
       </div>
 
@@ -306,7 +316,7 @@ export function ClientsTab({ data }: ClientsTabProps) {
           <option value="all">All Plans</option>
           <option value="free">Free</option>
           <option value="starter">Starter</option>
-          <option value="teams">Teams</option>
+          <option value="pro">Pro</option>
           <option value="enterprise">Enterprise</option>
         </select>
         <select
@@ -317,7 +327,7 @@ export function ClientsTab({ data }: ClientsTabProps) {
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
-          <option value="over_limit">Over Limit</option>
+          <option value="pending">Pending</option>
           <option value="suspended">Suspended</option>
         </select>
         <div className="ml-auto">
@@ -338,8 +348,8 @@ export function ClientsTab({ data }: ClientsTabProps) {
         rowKey={(r) => r.tenantId}
         density="compact"
         onRowClick={(row) => setSelectedTenant(row)}
-        emptyMessage="No tenants match your filters"
-        severityField={(row) => row.status === 'over_limit' ? 'high' : row.status === 'suspended' ? 'low' : undefined}
+        emptyMessage={data.tenantList.length === 0 ? 'No tenants yet' : 'No tenants match your filters'}
+        severityField={(row) => row.status === 'deleted' ? 'high' : row.status === 'suspended' ? 'low' : undefined}
       />
 
       {/* Offboarding Pipeline */}
