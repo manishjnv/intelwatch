@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-12%20command%20center%20v2.1-00ff88)
-![Tests](https://img.shields.io/badge/tests-9174%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-9300%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://intelwatch.in/health
@@ -24,7 +24,7 @@
 | Threat Actor Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 190 |
 | Malware Intel Service (CRUD, 15 accuracy improvements) | ✅ Live on VPS | 149 |
 | Vulnerability Intel Service (CRUD, 15 accuracy improvements, EPSS live API) | ✅ Live on VPS | 131 |
-| Frontend (React 18 + Vite, 20 data pages, 21 viz components, demo fallbacks all 5 entity types + reporting + alerting + analytics, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons, feed health indicators, request dedup, org-aware dashboard 9 widgets, IOC Intelligence best-in-class, Search page best-in-class, real ⌘K search, honest UI core (QueryStateView) incl. billing/admin/users, real Integrations tab + API keys panel, sign-up CAPTCHA fix, real Threat Graph data) | ✅ Live on VPS | 1,990 (2 skipped) |
+| Frontend (React 18 + Vite, 20 data pages, 21 viz components, D3 code-split, mobile responsive, detail panels, error toasts, search debounce, loading skeletons, feed health indicators, request dedup, org-aware dashboard 9 widgets, IOC Intelligence best-in-class, Search page best-in-class, real ⌘K search, honest UI core (QueryStateView) incl. billing/admin/users/DRP/alerting/reporting/integrations/customization/Command Center/search, real Integrations tab + API keys panel, sign-up CAPTCHA fix, real Threat Graph data, honest empty states everywhere — no demo fallbacks for real tenants, DECISION-048) | ✅ Live on VPS | 2,116 (2 skipped) |
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 35 endpoints, real STIX-aligned data pipeline synced from ioc-intelligence with periodic reconciliation — 12,171 nodes, 26,804 relationships in prod) | ✅ Live on VPS | 399 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |
