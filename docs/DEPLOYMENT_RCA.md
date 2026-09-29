@@ -835,7 +835,7 @@ don't exist yet), never a live call site. Detail: `docs/S161b_PR1_RCA45_UNWRAP_S
 
 ### Issue 64: Plan feature flags (`enabled:false`) enforced only in the gateway preHandler, not on nginx-proxied service routes
 
-**Symptom:** A tenant on a plan that disabled a feature (e.g. Free → `digital_risk_protection`) could still call that feature's API directly (`fetch('/api/v1/drp/assets')` returned 200, not a plan-denial error). The frontend `FeatureGate` component hid the UI entry point, but nothing on the server rejected the request. Found in the S161a review (2026-09-26); fixed and deployed S174.
+**Symptom:** A tenant on a plan that disabled a feature (e.g. Free → `digital_risk_protection`) could still call that feature's API directly (e.g. `/api/v1/drp/*` reached the DRP service with no plan check — found by code review, not observed in production traffic). The frontend `FeatureGate` component hid the UI entry point, but nothing on the server rejected the request. Found in the S161a review (2026-09-26); fixed and deployed S174.
 
 **Root cause:** `apps/api-gateway/src/plugins/quota-enforcement.ts` (route map `apps/api-gateway/src/config/feature-routes.ts`) enforces `enabled:false` correctly, but only for requests that flow through the api-gateway's own `preHandler`. nginx (`docker/nginx/conf.d/default.conf`) proxies 14 `/api/v1/*` paths (iocs, ioc, actors, malware, vulnerabilities, graph, correlations, hunts, drp, search, enrichment, feeds, reports, alerts) straight to their backend services with only `service-auth.inc` (identity/JWT verification, S147) in front — no feature check ever ran on that path.
 
