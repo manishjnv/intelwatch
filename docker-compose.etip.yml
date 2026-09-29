@@ -1166,6 +1166,9 @@ services:
       TI_NODE_ENV: ${TI_NODE_ENV:-production}
       TI_SERVICE_PORT: 3023
       TI_SERVICE_HOST: 0.0.0.0
+      # Step 3 S154: Prisma-backed rule/channel/escalation/maintenance stores
+      TI_DATABASE_URL: postgresql://${TI_POSTGRES_USER:-etip_user}:${TI_POSTGRES_PASSWORD}@etip_postgres:5432/${TI_POSTGRES_DB:-etip}?schema=public
+      TI_ALERTING_ENCRYPTION_KEY: ${TI_ALERTING_ENCRYPTION_KEY:?TI_ALERTING_ENCRYPTION_KEY is required}
       TI_REDIS_URL: redis://:${TI_REDIS_PASSWORD}@etip_redis:6379/0
       TI_JWT_SECRET: ${TI_JWT_SECRET:?TI_JWT_SECRET is required}
       TI_SERVICE_JWT_SECRET: ${TI_SERVICE_JWT_SECRET:?TI_SERVICE_JWT_SECRET is required}
@@ -1179,6 +1182,8 @@ services:
     ports:
       - "127.0.0.1:3023:3023"
     depends_on:
+      etip_postgres:
+        condition: service_healthy
       etip_redis:
         condition: service_healthy
     healthcheck:
@@ -1192,7 +1197,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 384M
 
   # ─── Analytics Service — Dashboard analytics & trend aggregation (Module 24) ────
   etip_analytics:

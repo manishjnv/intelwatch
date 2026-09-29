@@ -3,6 +3,7 @@ import { AppError } from '@etip/shared-utils';
 import type { MaintenanceStore, CreateMaintenanceDto, UpdateMaintenanceDto } from '../services/maintenance-store.js';
 import { z } from 'zod';
 import { validate } from '../utils/validate.js';
+import { requestTenant } from '../plugins/tenant-guard.js';
 
 export interface MaintenanceRouteDeps {
   maintenanceStore: MaintenanceStore;
@@ -35,7 +36,7 @@ export function maintenanceRoutes(deps: MaintenanceRouteDeps) {
     // POST /api/v1/alerts/maintenance-windows — Create window
     app.post('/', async (req: FastifyRequest<{ Body: CreateMaintenanceDto }>, reply: FastifyReply) => {
       const body = validate(CreateMaintenanceSchema, req.body);
-      const window = maintenanceStore.create(body);
+      const window = await maintenanceStore.create(body);
       return reply.status(201).send({ data: window });
     });
 
@@ -46,7 +47,7 @@ export function maintenanceRoutes(deps: MaintenanceRouteDeps) {
       const limit = parseInt(req.query.limit || '20', 10);
       const active = req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined;
 
-      const result = maintenanceStore.list(tenantId, { active, page, limit });
+      const result = await maintenanceStore.list(tenantId, { active, page, limit });
       return reply.send({
         data: result.data,
         meta: { total: result.total, page: result.page, limit: result.limit, totalPages: result.totalPages },
@@ -58,7 +59,7 @@ export function maintenanceRoutes(deps: MaintenanceRouteDeps) {
       '/:id',
       async (req: FastifyRequest<{ Params: { id: string }; Body: UpdateMaintenanceDto }>, reply: FastifyReply) => {
         const body = validate(UpdateMaintenanceSchema, req.body);
-        const window = maintenanceStore.update(req.params.id, body);
+        const window = await maintenanceStore.update(req.params.id, body, requestTenant(req));
         if (!window) throw new AppError(404, `Maintenance window not found: ${req.params.id}`, 'NOT_FOUND');
         return reply.send({ data: window });
       },
@@ -66,7 +67,7 @@ export function maintenanceRoutes(deps: MaintenanceRouteDeps) {
 
     // DELETE /api/v1/alerts/maintenance-windows/:id — Delete window
     app.delete('/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const deleted = maintenanceStore.delete(req.params.id);
+      const deleted = await maintenanceStore.delete(req.params.id, requestTenant(req));
       if (!deleted) throw new AppError(404, `Maintenance window not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.status(204).send();
     });

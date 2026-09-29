@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import type { NotificationChannel } from './channel-store.js';
 import type { Alert } from './alert-store.js';
 import { getLogger } from '../logger.js';
+import { maskUrl } from './channel-crypto.js';
 
 export interface NotificationResult {
   channelId: string;
@@ -168,7 +169,7 @@ export class Notifier {
     logger.info(
       {
         channelId: channel.id,
-        url: config.webhook.url,
+        url: maskUrl(config.webhook.url), // the URL itself may carry a token — never log it in full
         method: config.webhook.method,
         alertId: alert.id,
         signed: !!signature,

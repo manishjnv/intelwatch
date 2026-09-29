@@ -81,8 +81,8 @@ describe('Template routes', () => {
       url: '/api/v1/alerts/templates/tpl-apt-pattern/apply',
       payload: { tenantId: 'tenant-1' },
     });
-    expect(ruleStore.count('tenant-1')).toBe(1);
-    const rules = ruleStore.getEnabledRules('tenant-1');
+    expect(await ruleStore.count('tenant-1')).toBe(1);
+    const rules = await ruleStore.getEnabledRules('tenant-1');
     expect(rules[0].name).toBe('APT Actor Pattern');
   });
 });

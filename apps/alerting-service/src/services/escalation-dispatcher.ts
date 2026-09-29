@@ -52,8 +52,8 @@ export class EscalationDispatcher {
   }
 
   /** Register an alert for escalation tracking. Called when an alert is created with an escalation policy. */
-  track(alertId: string, policyId: string): void {
-    const policy = this.deps.escalationStore.getById(policyId);
+  async track(alertId: string, policyId: string): Promise<void> {
+    const policy = await this.deps.escalationStore.getById(policyId);
     if (!policy || !policy.enabled || policy.steps.length === 0) return;
 
     const firstStep = policy.steps[0]!;
@@ -91,7 +91,8 @@ export class EscalationDispatcher {
         continue;
       }
 
-      const policy = this.deps.escalationStore.getById(pending.policyId);
+      // Scoped to the alert's tenant: a rule pointing at another tenant's policy never escalates
+      const policy = await this.deps.escalationStore.getById(pending.policyId, alert.tenantId);
       if (!policy || !policy.enabled) {
         this.pending.delete(alertId);
         continue;
@@ -159,7 +160,7 @@ export class EscalationDispatcher {
     });
 
     // Send notifications to step channels
-    const channels = this.deps.channelStore.getByIds(channelIds);
+    const channels = await this.deps.channelStore.getByIds(channelIds, alert.tenantId);
     if (channels.length > 0) {
       const results = await this.deps.notifier.notifyAll(channels, alert);
       const failed = results.filter((r) => !r.success);

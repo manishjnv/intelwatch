@@ -39,3 +39,17 @@ export function enforceTenant(req: FastifyRequest): void {
   }
 }
 
+/**
+ * Reads the caller's tenant for by-id store lookups (Step 3 S154 tenant scoping).
+ * enforceTenant() has already reconciled query/body against the verified header,
+ * so any of the three sources reflects the same authenticated tenant.
+ */
+export function requestTenant(req: FastifyRequest): string | undefined {
+  const query = req.query as Record<string, unknown> | undefined;
+  const body = req.body as Record<string, unknown> | undefined;
+  if (typeof query?.tenantId === 'string') return query.tenantId;
+  if (typeof body?.tenantId === 'string') return body.tenantId;
+  const header = req.headers['x-tenant-id'];
+  return typeof header === 'string' ? header : undefined;
+}
+

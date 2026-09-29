@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client';
 import { loadConfig } from './config.js';
 import { initLogger } from './logger.js';
 import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
@@ -13,6 +14,8 @@ import { AlertHistory } from './services/alert-history.js';
 import { EscalationDispatcher } from './services/escalation-dispatcher.js';
 import { AlertGroupStore } from './services/alert-group-store.js';
 import { MaintenanceStore } from './services/maintenance-store.js';
+import { ChannelCrypto } from './services/channel-crypto.js';
+import { createPrismaRepos, type AlertingRepos } from './repository.js';
 import { AlertWorker } from './workers/alert-worker.js';
 import { EventEmitter } from 'node:events';
 import { GlobalIocAlertHandler, type SubscriptionRepository, type TenantSubscription } from './handlers/global-ioc-alert-handler.js';
@@ -28,17 +31,29 @@ async function main(): Promise<void> {
   loadJwtConfig(env);
   loadServiceJwtSecret(env);
 
-  // 3. Core services (in-memory — DECISION-013)
-  const ruleStore = new RuleStore();
+  // 3. Persistence (Step 3 S154) — Postgres when configured, in-memory otherwise (dev only)
+  let prisma: PrismaClient | undefined;
+  let repos: AlertingRepos | undefined;
+  if (config.TI_DATABASE_URL) {
+    prisma = new PrismaClient();
+    await prisma.$connect(); // fail startup if the DB is unreachable
+    repos = createPrismaRepos(prisma, new ChannelCrypto(config.TI_ALERTING_ENCRYPTION_KEY!));
+    logger.info('Alerting persistence: Postgres');
+  } else {
+    logger.warn('Alerting persistence: memory (dev only, data lost on restart)');
+  }
+
+  // 4. Core services
+  const ruleStore = new RuleStore(repos?.rules);
   const alertStore = new AlertStore(config.TI_ALERT_MAX_PER_TENANT);
-  const channelStore = new ChannelStore();
-  const escalationStore = new EscalationStore();
+  const channelStore = new ChannelStore(repos?.channels);
+  const escalationStore = new EscalationStore(repos?.escalations);
   const ruleEngine = new RuleEngine();
   const notifier = new Notifier();
   const dedupStore = new DedupStore(5); // 5-minute dedup window
   const alertHistory = new AlertHistory();
   const alertGroupStore = new AlertGroupStore(30); // 30-minute group window
-  const maintenanceStore = new MaintenanceStore();
+  const maintenanceStore = new MaintenanceStore(repos?.maintenance);
 
   // 4. Escalation dispatcher (auto-escalate after policy delays)
   const escalationDispatcher = new EscalationDispatcher({
@@ -129,6 +144,7 @@ async function main(): Promise<void> {
     escalationDispatcher.stop();
     await alertWorker.stop();
     await app.close();
+    await prisma?.$disconnect();
     process.exit(0);
   };
   process.on('SIGINT', () => { void shutdown('SIGINT'); });

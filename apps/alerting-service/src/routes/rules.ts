@@ -11,6 +11,7 @@ import {
   type ListRulesQuery,
 } from '../schemas/alert.js';
 import { validate } from '../utils/validate.js';
+import { requestTenant } from '../plugins/tenant-guard.js';
 
 export interface RuleRouteDeps {
   ruleStore: RuleStore;
@@ -24,14 +25,14 @@ export function ruleRoutes(deps: RuleRouteDeps) {
     // POST /api/v1/alerts/rules — Create alert rule
     app.post('/', async (req: FastifyRequest<{ Body: CreateRuleDto }>, reply: FastifyReply) => {
       const body = validate(CreateRuleSchema, req.body);
-      const rule = ruleStore.create(body);
+      const rule = await ruleStore.create(body);
       return reply.status(201).send({ data: rule });
     });
 
     // GET /api/v1/alerts/rules — List rules
     app.get('/', async (req: FastifyRequest<{ Querystring: ListRulesQuery }>, reply: FastifyReply) => {
       const query = validate(ListRulesQuerySchema, req.query);
-      const result = ruleStore.list(query.tenantId, {
+      const result = await ruleStore.list(query.tenantId, {
         type: query.type,
         severity: query.severity,
         enabled: query.enabled,
@@ -47,7 +48,7 @@ export function ruleRoutes(deps: RuleRouteDeps) {
 
     // GET /api/v1/alerts/rules/:id — Get rule detail
     app.get('/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const rule = ruleStore.getById(req.params.id);
+      const rule = await ruleStore.getById(req.params.id, requestTenant(req));
       if (!rule) throw new AppError(404, `Rule not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.send({ data: rule });
     });
@@ -55,14 +56,14 @@ export function ruleRoutes(deps: RuleRouteDeps) {
     // PUT /api/v1/alerts/rules/:id — Update rule
     app.put('/:id', async (req: FastifyRequest<{ Params: { id: string }; Body: UpdateRuleDto }>, reply: FastifyReply) => {
       const body = validate(UpdateRuleSchema, req.body);
-      const rule = ruleStore.update(req.params.id, body);
+      const rule = await ruleStore.update(req.params.id, body, requestTenant(req));
       if (!rule) throw new AppError(404, `Rule not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.send({ data: rule });
     });
 
     // DELETE /api/v1/alerts/rules/:id — Delete rule
     app.delete('/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const deleted = ruleStore.delete(req.params.id);
+      const deleted = await ruleStore.delete(req.params.id, requestTenant(req));
       if (!deleted) throw new AppError(404, `Rule not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.status(204).send();
     });
@@ -75,7 +76,7 @@ export function ruleRoutes(deps: RuleRouteDeps) {
         if (typeof enabled !== 'boolean') {
           throw new AppError(400, 'Field "enabled" (boolean) is required', 'VALIDATION_ERROR');
         }
-        const rule = ruleStore.toggle(req.params.id, enabled);
+        const rule = await ruleStore.toggle(req.params.id, enabled, requestTenant(req));
         if (!rule) throw new AppError(404, `Rule not found: ${req.params.id}`, 'NOT_FOUND');
         return reply.send({ data: rule });
       },
@@ -85,7 +86,7 @@ export function ruleRoutes(deps: RuleRouteDeps) {
     app.post(
       '/:id/test',
       async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const rule = ruleStore.getById(req.params.id);
+        const rule = await ruleStore.getById(req.params.id, requestTenant(req));
         if (!rule) throw new AppError(404, `Rule not found: ${req.params.id}`, 'NOT_FOUND');
 
         const result = ruleEngine.evaluate(rule);

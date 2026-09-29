@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AppError } from '@etip/shared-utils';
 import type { RuleStore } from '../services/rule-store.js';
 import { getTemplates, getTemplateById } from '../services/rule-templates.js';
+import { requestTenant } from '../plugins/tenant-guard.js';
 
 export interface TemplateRouteDeps {
   ruleStore: RuleStore;
@@ -33,8 +34,8 @@ export function templateRoutes(deps: TemplateRouteDeps) {
         const template = getTemplateById(req.params.id);
         if (!template) throw new AppError(404, `Template not found: ${req.params.id}`, 'NOT_FOUND');
 
-        const tenantId = req.body?.tenantId ?? 'default';
-        const rule = ruleStore.create({ ...template.rule, tenantId });
+        const tenantId = requestTenant(req) ?? 'default';
+        const rule = await ruleStore.create({ ...template.rule, tenantId });
 
         return reply.status(201).send({ data: rule });
       },
