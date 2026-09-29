@@ -167,6 +167,8 @@ Two changes from the billing pattern, on purpose: (1) **no per-call silent fallb
 
 ### 5.1 alerting-service (S154 + S155)
 
+S176: 4 of the 7 §6.1 models shipped with S154; Alert/AlertHistoryEntry/AlertGroup come with S155. No configMasked/keyVersion columns (mask computed on read).
+
 | File | Change |
 |---|---|
 | `prisma/schema.prisma` | Add 7 models from §6.1 (shared file; see §11 D2) |
@@ -359,8 +361,8 @@ bash scripts/check-memory-stores.sh && echo OK
 | S | Module | Work | Size |
 |---|---|---|---|
 | 154-0 | ops | Deploy: schema push before app recreate, fail on push failure. Add guard + baseline | S ✅ S175 |
-| 154 | alerting-service | Models (7) + rules, channels (encrypted), escalations, maintenance → Postgres | L (≈12 files) |
-| 155 | alerting-service | Alerts, history, groups, dedup, dispatcher, worker → Postgres | L (≈10 files) |
+| 154 | alerting-service | Models (4 of 7) + rules, channels (encrypted), escalations, maintenance → Postgres | L (≈12 files) ✅ S176, PR #68 |
+| 155 | alerting-service | Alerts, history, groups, dedup, dispatcher, worker → Postgres + models Alert, AlertHistoryEntry, AlertGroup | L (≈10 files) |
 | 156 | integration-service 🔒 | Models (6) + integrations, logs; encryption fixes; masking; compose key | L |
 | 157 | integration-service | Deliveries/DLQ, tickets, export schedules/runs, rotation, audit; Redis JSON for routing/mapping/templates | L |
 | 158a | drp-service | Models (5) + assets, alerts, scans | L |

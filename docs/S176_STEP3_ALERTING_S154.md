@@ -110,4 +110,6 @@ SELECT config_enc FROM alert_channels;
 
 ## Deploy result
 
-pending
+PR #68: commits `a653895` (feat) + `973d897` (docs), merge `3e2a73f`. CI/CD run 36617017423: Test, Type-check, Lint & Audit success; Build & Push Docker Images success; Deploy to VPS success.
+
+VPS verification (2026-09-30): HEAD `3e2a73f`, 32/32 containers healthy; the 4 tables exist; `etip_alerting` logs "Alerting persistence: Postgres", 0 "fall back"/"in-memory" lines; a disabled test rule + test Slack channel survived `docker restart etip_alerting` (read back 200), `alert_channels.config_enc` starts with `'v1:'` and holds no plaintext, the API returned the masked URL, and the channel test route worked; test rows deleted (204, 0 left); memory guard OK; `etip_alerting` 43.34 MiB / 384 MiB.
