@@ -1,6 +1,80 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-09-29
+**Session:** 174
+**Session Summary:** Plan feature flags (`enabled:false`) were enforced only in the api-gateway's `preHandler` — nginx proxied 14 `/api/v1/*` service paths straight to the backend with identity checks only, so a tenant whose plan disabled a feature could still call it directly. PR #66 fixes this at the nginx edge: 14 locations set `X-Etip-Feature`, `auth-verify.ts` checks the plan and returns 403 `FEATURE_NOT_AVAILABLE`. A real trap was found and guarded during the fix: an `auth_request` subrequest re-runs server-level `set`/`rewrite` directives, so a server-level default for the same variable would have silently failed the check open — proven on a throwaway nginx container, guarded with a dedicated 31-test file that asserts no such default exists.
+
+## ✅ Changes Made (Session 174)
+
+| Commit(s) | Description |
+|---|---|
+| `d2ca0ac` → merge `e240372` | PR #66: 14 nginx locations set `$etip_feature`/`X-Etip-Feature`; `auth-verify.ts` checks `getPlanLimits` and returns 403 `FEATURE_NOT_AVAILABLE`; `error_page 403 = @etip_plan_denied;` for the JSON body; `nginx-feature-map.test.ts` guards against the auth_request variable-clobber trap (RCA #64). |
+
+VPS HEAD `e240372`, 32/32 `etip_` containers healthy. api-gateway 366/366 (was 355), typecheck/lint clean, frontend unchanged (2,116 + 2 skipped). Real monorepo total 9,342 passed + 2 skipped (was 9,300 + 2). Full detail: `docs/S174_PLAN_FEATURE_GATE.md`.
+
+## 📁 Files / Documents Affected (Session 174)
+
+**New doc:** `docs/S174_PLAN_FEATURE_GATE.md`.
+
+**Code touched:** `docker/nginx/conf.d/default.conf`, `docker/nginx/conf.d/service-auth.inc`, `apps/api-gateway/src/routes/auth-verify.ts`, `apps/api-gateway/tests/auth-verify.test.ts`, `apps/api-gateway/tests/nginx-feature-map.test.ts` (new).
+
+**Modified (docs, this pass):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md` (this file), `docs/DEPLOYMENT_RCA.md` (RCA #64), `docs/ETIP_Project_Stats.html`.
+
+## 🔧 Decisions & Rationale (Session 174)
+
+No new DECISION entries. Applies the same server-side-enforcement principle behind S147c/RCA #48 (auth) to plan-level authorization: a feature hidden in the UI only is not gated — the server must reject it regardless of client.
+
+## 🧪 Deploy Verification Results (Session 174)
+
+```
+PR #66 → e240372 : api-gateway 366/366, typecheck/lint clean, frontend unchanged.
+                    nginx -t clean on the live config, no new warnings.
+                    Runtime semantics verified in a throwaway nginx:1.27-alpine container (6/6):
+                      gated route -> 403 JSON FEATURE_NOT_AVAILABLE; mapped route with feature
+                      enabled -> 200; unmapped route sends no X-Etip-Feature header; a client-sent
+                      X-Etip-Feature header cannot inject or override the server-computed value.
+                    VPS HEAD e240372, 32/32 healthy, public / and /health 200,
+                    unauthenticated /api/v1/drp/assets 401 (auth still required first).
+Real monorepo test total: 9,342 passed + 2 skipped (was 9,300 + 2).
+Reviews: etip-reviewer PASS. Codex adversarial review: no bypass found;
+1 Low UI note (no friendly "upgrade" copy for this 403 shape yet — cosmetic).
+Sensitive-content grep before commit: clean (no secrets/PII/unfixed-vuln details/@-emails).
+```
+
+## ⚠️ Open Items / Next Steps (Session 174)
+
+**Ordered task queue (one task per fresh session), item 1 from S173 now DONE:**
+1. ~~Owner-scheduled private item #1~~ — DONE this session (plan-enforcement gap, PR #66).
+2. Audit PR 3: fake vendor verdicts in IOC detail / investigation panels (`EnrichmentDetailPanel`, `InvestigationDrawer`), demo rows on IOC/malware/vulnerability/threat-actor lists, fake MITRE IDs on actors, `PageStatsBar` Demo badge (shared-ui — needs owner approval).
+3. Audit PR 4: delete unused demo datasets and dead code (e.g. `use-search-data.ts`, `DEMO_*` fixtures now only used by tests).
+4. Wiring fixes found in the S173 sweep (unchanged, still open): `apiList` drops pagination totals; broken request bodies (correlation Create Ticket, DRP bulk triage + takedown, Jira/ServiceNow creation form); frontend admin `TenantRecord` type vs real `/admin/tenants` shape; missing/mismatched backend routes (TAXII managed-collection list, global IOC stats, `/ingestion/catalog/subscription-stats`, `/analytics/feed-performance` shape, per-source enrichment breakdown, test-notification route).
+5. New from this session — deferred, tracked in `docs/S174_PLAN_FEATURE_GATE.md`: (a) daily/monthly usage counters still not applied on nginx-proxied routes (`auth_request` can't return 429 or roll back a counted request); (b) Command Center Alerts & Reports tab has no plan check (no impact today, alerts/reports enabled on every seeded plan); (c) `apps/api-gateway/src/config/feature-routes.ts` has stale entries (`/hunting`, `/correlation`, `/threat-actors`, `/integrations`→`api_access`) that don't match the live nginx-served paths.
+6. Remaining hooks still reading `isDemo`: access reviews, break-glass, campaigns; `useFeeds` swallows errors.
+7. Graph visual redesign — needs owner reference designs; load the ui-design-workflow skill.
+8. AI enrichment runner (DECISION-045).
+9. Owner-scheduled security fix (includes private items — see private notes); needs owner go-ahead + adversarial review.
+10. Step 3 (no data in memory) — blocked on owner decisions D1–D7.
+
+**Owner actions:** browser check — log in as a Free-plan tenant, DevTools console `fetch('/api/v1/drp/assets').then(r=>r.status)`, expect `403` + `FEATURE_NOT_AVAILABLE`; click through dashboard/IOCs/search to confirm nothing else broke (unblocks closing item 1 fully). Plus carried over from S173: unblock task 2 (`PageStatsBar` OK to touch), task 7 (reference designs), task 9 (go-ahead), task 10 (D1–D7 decisions).
+
+## 🔁 How to Resume (Session 174)
+
+```
+Run /session-start, then start task 2 (audit PR 3) from this file.
+
+Frozen / do-not-touch without explicit instruction: shared-* packages (Tier 1, api-gateway
+included) — additive only, list every consumer before any change; shared-ui needs owner approval
+before task 2's PageStatsBar change. intelwatch.in and ti-platform-* containers — never touch.
+nginx conf.d changes must pass `nginx -t` inside the live container before merge (deploy
+force-recreates etip_nginx; a bad config = outage) and must not add a server-level `set` for any
+variable read inside an auth_request location (RCA #64).
+```
+
+---
+
+# Previous session
+
+**Date:** 2026-09-29
 **Session:** 173
 **Session Summary:** DECISION-048 honest-empty-states sweep COMPLETE + audit PR 2 + Customization wiring. Every page swept this session shows real data, an honest empty state, or an error card with Retry — no demo fallbacks remain in the swept hooks. 5 PRs merged and deployed. **PR #61** closes `/hunting` + `/correlation` + `/analytics`. **PR #62** closes DRP + alerting + reporting and fixes a request-body double-encoding bug that had been silently rejecting 16 write calls. **PR #63** closes integrations + customization + onboarding + global monitoring and fixes the module-toggle endpoint. **PR #64** stops the dashboard analytics hook from ever rendering demo numbers, on load or on error. **PR #65** (audit PR 2) fixes Command Center stats, `/search`, the IOC active-feed count, enrichment/AI-cost widgets, and wires Customization risk-weights/notifications/stats to real backend routes.
 
