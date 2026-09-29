@@ -71,7 +71,7 @@ This was proven directly: with a server-level `set $etip_feature "";` added on n
 
 ## Tests
 
-api-gateway 366/366 (was 355 + 11 new). Typecheck clean. Lint 0 errors. Frontend unchanged (2,116 + 2 skipped). Real monorepo total 9,342 passed + 2 skipped (was 9,300 + 2).
+api-gateway 366/366 (was 324; +11 auth-verify, +31 nginx map). Typecheck clean. Lint 0 errors. Frontend unchanged (2,116 + 2 skipped). Real monorepo total 9,342 passed + 2 skipped (was 9,300 + 2).
 
 ## How to verify
 
@@ -96,7 +96,7 @@ console.log(r.status, await r.text());
 
 ## Reviews
 
-`etip-reviewer` agent: PASS. Codex adversarial review: no bypass found; one Low-severity UI note (frontend doesn't yet show a friendly "upgrade" message for this specific 403 shape — cosmetic, not a security gap).
+`etip-reviewer` agent: PASS. Codex adversarial review: no bypass found; one Low-severity UI note — the Command Center Alerts & Reports tab fetches `/alerts` and `/reports` without a plan check, so it would show error cards if a plan ever disabled those features (no impact today: both are enabled on every seeded plan). Deferred, see follow-up 2 below.
 
 ## Rollback
 

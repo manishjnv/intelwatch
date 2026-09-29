@@ -9,8 +9,12 @@
 | Commit(s) | Description |
 |---|---|
 | `d2ca0ac` → merge `e240372` | PR #66: 14 nginx locations set `$etip_feature`/`X-Etip-Feature`; `auth-verify.ts` checks `getPlanLimits` and returns 403 `FEATURE_NOT_AVAILABLE`; `error_page 403 = @etip_plan_denied;` for the JSON body; `nginx-feature-map.test.ts` guards against the auth_request variable-clobber trap (RCA #64). |
+| `e8bd4e6`, `2523c99` | Post-deploy docs: `S174_PLAN_FEATURE_GATE.md`, RCA #64, PROJECT_STATE, handoff, stats; RCA symptom reworded (found by review, not observed). |
+| `c5c6459`, `1aa8e9a` | Owner check snippet fixed (must send the Bearer token); owner browser check PASSED recorded. |
+| `0abcbda` | DECISION-049 (Step 3 D1–D7 accepted) + DECISION-050 (functional first); queue now starts Step 3. |
+| session-end commit | PROJECT_STATE WIP rewrite, handoff corrections, README badge. |
 
-VPS HEAD `e240372`, 32/32 `etip_` containers healthy. api-gateway 366/366 (was 355), typecheck/lint clean, frontend unchanged (2,116 + 2 skipped). Real monorepo total 9,342 passed + 2 skipped (was 9,300 + 2). Full detail: `docs/S174_PLAN_FEATURE_GATE.md`.
+VPS HEAD `e240372`, 32/32 `etip_` containers healthy. api-gateway 366/366 (was 324), typecheck/lint clean, frontend unchanged (2,116 + 2 skipped). Real monorepo total 9,342 passed + 2 skipped (was 9,300 + 2). Full detail: `docs/S174_PLAN_FEATURE_GATE.md`.
 
 ## 📁 Files / Documents Affected (Session 174)
 
@@ -18,11 +22,11 @@ VPS HEAD `e240372`, 32/32 `etip_` containers healthy. api-gateway 366/366 (was 3
 
 **Code touched:** `docker/nginx/conf.d/default.conf`, `docker/nginx/conf.d/service-auth.inc`, `apps/api-gateway/src/routes/auth-verify.ts`, `apps/api-gateway/tests/auth-verify.test.ts`, `apps/api-gateway/tests/nginx-feature-map.test.ts` (new).
 
-**Modified (docs, this pass):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md` (this file), `docs/DEPLOYMENT_RCA.md` (RCA #64), `docs/ETIP_Project_Stats.html`.
+**Modified (docs):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md` (this file), `docs/DEPLOYMENT_RCA.md` (RCA #64), `docs/ETIP_Project_Stats.html`, `docs/DECISIONS_LOG.md` (049, 050), `docs/roadmap/STEP_03_PERSISTENCE.md` (unblocked), `README.md` (test badge).
 
 ## 🔧 Decisions & Rationale (Session 174)
 
-No new DECISION entries. Applies the same server-side-enforcement principle behind S147c/RCA #48 (auth) to plan-level authorization: a feature hidden in the UI only is not gated — the server must reject it regardless of client.
+**DECISION-049** — Step 3 owner decisions D1–D7 accepted as recommended (Redis `noeviction` + 512 MB, additive Prisma models per module session, 503 on DB error, archive off, TAXII store check, reporting before Step 4, one-time credential re-entry). **DECISION-050** — functional work first; audits only at a minimal level inside feature tasks (owner: "do audit only at minimal level just to ensure functionality is working"). The PR #66 fix itself needed no new decision: it applies the same server-side-enforcement principle behind S147c/RCA #48 (auth) to plan-level authorization: a feature hidden in the UI only is not gated — the server must reject it regardless of client.
 
 ## 🧪 Deploy Verification Results (Session 174)
 
@@ -37,7 +41,11 @@ PR #66 → e240372 : api-gateway 366/366, typecheck/lint clean, frontend unchang
                     unauthenticated /api/v1/drp/assets 401 (auth still required first).
 Real monorepo test total: 9,342 passed + 2 skipped (was 9,300 + 2).
 Reviews: etip-reviewer PASS. Codex adversarial review: no bypass found;
-1 Low UI note (no friendly "upgrade" copy for this 403 shape yet — cosmetic).
+1 Low UI note (Command Center Alerts & Reports tab fetches /alerts + /reports with no
+plan check — no impact today, both enabled on every seeded plan; deferred).
+Owner browser check PASSED: Free-plan tenant_admin (incognito) -> /api/v1/drp/assets
+403 FEATURE_NOT_AVAILABLE (digital_risk_protection); ~11k repeated calls from an
+accidental DevTools Live Expression all returned the same 403, no errors.
 Sensitive-content grep before commit: clean (no secrets/PII/unfixed-vuln details/@-emails).
 ```
 
