@@ -9,3 +9,6 @@ auth_request_set $etip_auth_role   $upstream_http_x_auth_role;
 proxy_set_header x-tenant-id $etip_auth_tenant;
 proxy_set_header x-user-id   $etip_auth_user;
 proxy_set_header x-user-role $etip_auth_role;
+# S174: the only 403 /_etip_auth returns is "plan disables this location's feature"; answer in JSON.
+# (Upstream 403s pass through untouched — proxy_intercept_errors is off.)
+error_page 403 = @etip_plan_denied;
