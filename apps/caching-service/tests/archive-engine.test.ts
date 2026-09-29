@@ -1,7 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ArchiveEngine } from '../src/services/archive-engine.js';
 import { ArchiveStore } from '../src/services/archive-store.js';
+import { loadConfig } from '../src/config.js';
 import { gunzipSync } from 'node:zlib';
+
+describe('config TI_ARCHIVE_ENABLED', () => {
+  it('defaults to false', () => {
+    expect(loadConfig({}).TI_ARCHIVE_ENABLED).toBe(false);
+  });
+
+  it('parses true', () => {
+    expect(loadConfig({ TI_ARCHIVE_ENABLED: 'true' }).TI_ARCHIVE_ENABLED).toBe(true);
+  });
+});
 
 // Mock MinIO client
 function createMockMinioClient() {
@@ -23,6 +34,7 @@ const defaultConfig = {
   retentionDays: 365,
   batchSize: 10000,
   cronExpression: '0 2 * * *',
+  enabled: true,
 };
 
 describe('ArchiveEngine', () => {
@@ -202,6 +214,32 @@ describe('ArchiveEngine', () => {
       expect(status.lastRunAt).toBeTruthy();
       expect(status.lastRunResult).toBe('success');
       expect(status.lastRunRecords).toBeGreaterThan(0);
+    });
+  });
+
+  describe('disabled (TI_ARCHIVE_ENABLED=false)', () => {
+    it('runOnce resolves null without touching MinIO or counters', async () => {
+      const disabledEngine = new ArchiveEngine(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockMinio as any,
+        store,
+        { ...defaultConfig, enabled: false },
+      );
+      const result = await disabledEngine.runOnce('tenant-1');
+      expect(result).toBeNull();
+      expect(mockMinio.putObject).not.toHaveBeenCalled();
+      expect(disabledEngine.getStatus().totalRuns).toBe(0);
+    });
+
+    it('startCron does not start the cron', () => {
+      const disabledEngine = new ArchiveEngine(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockMinio as any,
+        store,
+        { ...defaultConfig, enabled: false },
+      );
+      disabledEngine.startCron();
+      expect(disabledEngine.getStatus().cronRunning).toBe(false);
     });
   });
 

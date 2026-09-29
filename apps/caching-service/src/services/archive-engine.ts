@@ -19,6 +19,8 @@ export interface ArchiveEngineConfig {
   retentionDays: number;
   batchSize: number;
   cronExpression: string;
+  /** false = cron never starts and runOnce is a no-op returning null. */
+  enabled: boolean;
 }
 
 /** Archive job status. */
@@ -70,6 +72,10 @@ export class ArchiveEngine {
 
   /** Start the archive cron job. */
   startCron(): void {
+    if (!this.config.enabled) {
+      getLogger().info('Archive disabled (TI_ARCHIVE_ENABLED=false) — cron not started');
+      return;
+    }
     if (this.cronTask) return;
     this.cronTask = cron.schedule(this.config.cronExpression, () => {
       void this.runOnce();
@@ -92,6 +98,7 @@ export class ArchiveEngine {
    * In production this would query PostgreSQL for records > ageDays old.
    */
   async runOnce(tenantId: string = 'default'): Promise<ArchiveManifest | null> {
+    if (!this.config.enabled) return null;
     const logger = getLogger();
     const startTime = Date.now();
     this.totalRuns++;

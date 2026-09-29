@@ -32,6 +32,7 @@ lint:
 
 ## Run test + typecheck + lint (full local validation)
 check: test typecheck lint
+	bash scripts/check-memory-stores.sh
 	@echo "✅ All checks passed"
 
 # ─── Docker ───────────────────────────────────────────────────

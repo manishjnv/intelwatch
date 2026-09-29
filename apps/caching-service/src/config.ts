@@ -28,6 +28,8 @@ const ConfigSchema = z.object({
   TI_MINIO_BUCKET: z.string().default('etip-archive'),
 
   // Archive
+  // off until the engine archives real data (it only generates sample records today) — D4
+  TI_ARCHIVE_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   TI_ARCHIVE_CRON: z.string().default('0 2 * * *'),
   TI_ARCHIVE_AGE_DAYS: z.coerce.number().int().min(1).default(60),
   TI_ARCHIVE_RETENTION_DAYS: z.coerce.number().int().min(30).default(365),

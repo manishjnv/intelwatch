@@ -50,6 +50,7 @@ async function main(): Promise<void> {
     retentionDays: config.TI_ARCHIVE_RETENTION_DAYS,
     batchSize: config.TI_ARCHIVE_BATCH_SIZE,
     cronExpression: config.TI_ARCHIVE_CRON,
+    enabled: config.TI_ARCHIVE_ENABLED,
   });
 
   // 6. Start background processes
