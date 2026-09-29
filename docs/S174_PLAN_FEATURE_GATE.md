@@ -87,9 +87,12 @@ api-gateway 366/366 (was 355 + 11 new). Typecheck clean. Lint 0 errors. Frontend
 
 **Owner browser check (PENDING):** log in as a Free-plan tenant, open DevTools console, run:
 ```js
-fetch('/api/v1/drp/assets').then(r => r.status)
+const a = JSON.parse(localStorage.getItem('etip_auth'));
+console.log('role:', a.user?.role, '| plan:', a.tenant?.plan);
+const r = await fetch('/api/v1/drp/assets', { headers: { Authorization: 'Bearer ' + a.accessToken } });
+console.log(r.status, await r.text());
 ```
-Expect `403` and a JSON body with `code: "FEATURE_NOT_AVAILABLE"`. Then click through a few other pages (dashboard, IOCs, search) to confirm nothing else broke — those features are enabled on every seeded plan today, so they should behave exactly as before.
+(The SPA sends a Bearer token from `localStorage.etip_auth`, not a cookie — a bare `fetch` without it returns 401.) Expect `403` and a JSON body with `code: "FEATURE_NOT_AVAILABLE"`. Then click through a few other pages (dashboard, IOCs, search) to confirm nothing else broke — those features are enabled on every seeded plan today, so they should behave exactly as before.
 
 ## Reviews
 
