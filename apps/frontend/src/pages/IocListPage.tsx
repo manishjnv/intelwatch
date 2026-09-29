@@ -5,7 +5,7 @@
  */
 import { useState, useMemo, useCallback, type MouseEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useIOCs, useIOCStats, useUpdateIOCLifecycle, type IOCRecord } from '@/hooks/use-intel-data'
+import { useIOCs, useIOCStats, useUpdateIOCLifecycle, useFeeds, type IOCRecord } from '@/hooks/use-intel-data'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useMultiSelect } from '@/hooks/use-multi-select'
 import { DataTable, type Density } from '@/components/data/DataTable'
@@ -57,6 +57,8 @@ export function IocListPage() {
 
   const { data, isLoading, isDemo } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
+  const { data: feedsData, isLoading: feedsLoading } = useFeeds({ limit: 100 })
+  const activeFeedCount = feedsData?.data.filter(f => f.status === 'active').length
   const { data: enrichmentStats } = useEnrichmentStats()
   const { data: campaignData } = useCampaigns({ limit: 50 })
   const lifecycleMutation = useUpdateIOCLifecycle()
@@ -207,7 +209,7 @@ export function IocListPage() {
       <IocStatsCards
         stats={stats as { total: number; byType: Record<string, number>; bySeverity: Record<string, number>; byLifecycle: Record<string, number> } | null}
         enrichmentStats={enrichmentStats as { total: number; enriched: number; pending: number; failed: number } | null}
-        feedCount={12}
+        feedCount={feedsLoading ? undefined : activeFeedCount}
       />
 
       <SplitPane

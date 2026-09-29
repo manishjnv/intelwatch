@@ -14,12 +14,12 @@ const mockRecommendedModels = vi.fn()
 const mockCostEstimate = vi.fn()
 const mockApplyPlan = vi.fn()
 const mockModuleToggles = vi.fn()
-const mockAIConfigs = vi.fn()
 const mockRiskWeights = vi.fn()
 const mockNotificationChannels = vi.fn()
-const mockCustomizationStats = vi.fn()
+const mockAiBudgetUsage = vi.fn()
 
 vi.mock('@/hooks/use-phase5-data', () => ({
+  IOC_TYPES: ['ip', 'domain', 'url', 'hash_md5', 'hash_sha1', 'hash_sha256', 'email', 'cve', 'cidr', 'asn', 'ja3', 'mutex', 'registry_key'],
   usePlanTiers:             () => mockPlanTiers(),
   useSubtaskMappings:       () => mockSubtaskMappings(),
   useRecommendedModels:     () => mockRecommendedModels(),
@@ -27,16 +27,14 @@ vi.mock('@/hooks/use-phase5-data', () => ({
   useApplyPlan:             () => mockApplyPlan(),
   useSetSubtaskModel:       () => ({ mutate: vi.fn(), isPending: false }),
   useModuleToggles:         () => mockModuleToggles(),
-  useAIConfigs:             () => mockAIConfigs(),
   useRiskWeights:           () => mockRiskWeights(),
+  useRiskPresets:           () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useNotificationChannels:  () => mockNotificationChannels(),
-  useCustomizationStats:    () => mockCustomizationStats(),
+  useAiBudgetUsage:         () => mockAiBudgetUsage(),
   useToggleModule:          () => ({ mutate: vi.fn(), isPending: false }),
-  useUpdateAIConfig:        () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateRiskWeight:      () => ({ mutate: vi.fn(), isPending: false }),
   useResetRiskWeights:      () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateNotificationChannel: () => ({ mutate: vi.fn(), isPending: false }),
-  useTestNotification:      () => ({ mutate: vi.fn(), isPending: false }),
   // BYOK hooks — stub for tests that don't focus on the API keys card
   useAnthropicKeyStatus:    () => ({ data: { tenantId: 'default', hasKey: false, maskedKey: null }, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSaveAnthropicKey:      () => ({ mutate: vi.fn(), isPending: false, isError: false }),
@@ -83,10 +81,9 @@ function setupDefaults() {
   mockCostEstimate.mockReturnValue({ data: DEMO_COST, isLoading: false, isError: false, error: null, refetch: vi.fn() })
   mockApplyPlan.mockReturnValue({ mutate: vi.fn(), isPending: false })
   mockModuleToggles.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
-  mockAIConfigs.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
-  mockRiskWeights.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
-  mockNotificationChannels.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
-  mockCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31, theme: 'dark' }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockRiskWeights.mockReturnValue({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockNotificationChannels.mockReturnValue({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() })
+  mockAiBudgetUsage.mockReturnValue({ data: { totalTokens: 0, byTask: {}, dailyUsage: 0, monthlyUsage: 0, budgetUtilization: 0.31 }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
 }
 
 // ─── Tests ──────────────────────────────────────────────────────
@@ -206,7 +203,6 @@ describe('CustomizationPage — AI Config tab', () => {
     it('clicking Apply Plan opens confirmation modal, then Confirm calls applyPlan.mutate', () => {
       const mutateMock = vi.fn()
       mockApplyPlan.mockReturnValue({ mutate: mutateMock, isPending: false })
-      mockCustomizationStats.mockReturnValue({ data: { modulesEnabled: 8, customRules: 6, aiBudgetUsed: 31, theme: 'dark' }, isLoading: false, isError: false, error: null, refetch: vi.fn() })
       renderAITab()
       const applyBtn = screen.getByText(/Apply.*Plan/i)
       fireEvent.click(applyBtn)

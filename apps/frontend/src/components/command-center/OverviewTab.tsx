@@ -116,6 +116,7 @@ interface OverviewTabProps {
 
 function SuperAdminOverview({ data }: OverviewTabProps) {
   const { globalStats, queueStats } = data
+  const showDash = data.isLoading || data.isError
 
   const costTimelinePoints = useMemo(() =>
     globalStats.costTrend.map(t => ({ label: t.date.slice(5), value: t.cost })),
@@ -154,14 +155,14 @@ function SuperAdminOverview({ data }: OverviewTabProps) {
     <div data-testid="overview-tab" className="space-y-4 max-w-6xl">
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Total AI Cost" value={formatUsd(globalStats.totalCostUsd)}
+        <KpiCard label="Total AI Cost" value={showDash ? '—' : formatUsd(globalStats.totalCostUsd)}
           sparkline={costSparkValues} color="text-purple-400" testId="kpi-total-cost" />
-        <KpiCard label="Items Processed" value={globalStats.totalItems.toLocaleString()}
+        <KpiCard label="Items Processed" value={showDash ? '—' : globalStats.totalItems.toLocaleString()}
           color="text-accent" testId="kpi-total-items" />
         <KpiCard label="Providers Active"
-          value={String(Object.keys(globalStats.costByProvider).filter(k => (globalStats.costByProvider[k] ?? 0) > 0).length)}
+          value={showDash ? '—' : String(Object.keys(globalStats.costByProvider).filter(k => (globalStats.costByProvider[k] ?? 0) > 0).length)}
           color="text-sev-low" testId="kpi-providers" />
-        <KpiCard label="Subtasks" value={String(Object.keys(globalStats.costBySubtask).length)}
+        <KpiCard label="Subtasks" value={showDash ? '—' : String(Object.keys(globalStats.costBySubtask).length)}
           color="text-cyan-400" testId="kpi-subtasks" />
       </div>
 
@@ -196,6 +197,7 @@ function SuperAdminOverview({ data }: OverviewTabProps) {
 
 function TenantAdminOverview({ data }: OverviewTabProps) {
   const { tenantStats, tenantPlan } = data
+  const showDash = data.isLoading || data.isError
   const user = useAuthStore(s => s.user)
   const tenant = useAuthStore(s => s.tenant)
   const isFree = tenantPlan === 'free'
@@ -233,12 +235,12 @@ function TenantAdminOverview({ data }: OverviewTabProps) {
 
       {/* Usage KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Items Consumed" value={tenantStats.itemsConsumed.toLocaleString()}
+        <KpiCard label="Items Consumed" value={showDash ? '—' : tenantStats.itemsConsumed.toLocaleString()}
           sparkline={consumptionSparkValues} color="text-accent" testId="kpi-consumed" />
-        <KpiCard label="Budget Limit" value={formatUsd(tenantStats.budgetLimitUsd)}
+        <KpiCard label="Budget Limit" value={!showDash && tenantStats.budgetLimitUsd != null ? formatUsd(tenantStats.budgetLimitUsd) : '—'}
           color="text-sev-low" testId="kpi-budget-limit" />
-        <KpiCard label="Budget Used" value={`${tenantStats.budgetUsedPercent}%`}
-          color={tenantStats.budgetUsedPercent > 80 ? 'text-sev-high' : 'text-sev-low'}
+        <KpiCard label="Budget Used" value={!showDash && tenantStats.budgetUsedPercent != null ? `${tenantStats.budgetUsedPercent}%` : '—'}
+          color={(tenantStats.budgetUsedPercent ?? 0) > 80 ? 'text-sev-high' : 'text-sev-low'}
           testId="kpi-budget-used" />
         <KpiCard label="Plan" value={tenantPlan.charAt(0).toUpperCase() + tenantPlan.slice(1)}
           color="text-purple-400" testId="kpi-plan" />
@@ -249,11 +251,17 @@ function TenantAdminOverview({ data }: OverviewTabProps) {
         <AreaChart points={consumptionPoints} height={160} color="var(--accent)" />
       </ChartCard>
 
-      {/* Budget Gauge */}
-      <ChartCard title="Budget Usage" testId="chart-budget-gauge">
-        <BudgetBar usedPercent={tenantStats.budgetUsedPercent}
-          label={`${formatUsd(tenantStats.attributedCostUsd)} of ${formatUsd(tenantStats.budgetLimitUsd)} used`} />
-      </ChartCard>
+      {/* Budget Gauge — no service tracks a per-tenant budget today (ponytail: honest gap) */}
+      {tenantStats.budgetUsedPercent != null && tenantStats.budgetLimitUsd != null ? (
+        <ChartCard title="Budget Usage" testId="chart-budget-gauge">
+          <BudgetBar usedPercent={tenantStats.budgetUsedPercent}
+            label={`${formatUsd(tenantStats.attributedCostUsd)} of ${formatUsd(tenantStats.budgetLimitUsd)} used`} />
+        </ChartCard>
+      ) : (
+        <ChartCard title="Budget Usage" testId="chart-budget-gauge">
+          <p className="text-xs text-text-muted">Budget tracking is not available yet.</p>
+        </ChartCard>
+      )}
     </div>
   )
 }

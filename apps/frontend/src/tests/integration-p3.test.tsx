@@ -20,6 +20,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   }),
   useUpdateIOCLifecycle: () => ({ mutate: vi.fn(), isPending: false }),
   useDashboardStats: () => ({ data: { totalIOCs: 100, criticalIOCs: 5, activeFeeds: 10, enrichedToday: 50 }, isDemo: false }),
+  useFeeds: () => ({ data: { data: [], total: 0 }, isLoading: false }),
 }))
 
 vi.mock('@/hooks/use-enrichment-data', () => ({

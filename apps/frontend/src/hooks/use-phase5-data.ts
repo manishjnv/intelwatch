@@ -63,20 +63,48 @@ export interface AIModelConfig {
   enabled: boolean
 }
 
-export interface RiskWeight {
-  id: string; factor: string; weight: number; description: string
-  min: number; max: number; default: number
+// Real backend (risk-weight-store.ts WeightProfile / schemas/customization.ts). One profile per
+// IOC type; weights keyed by the 5 fixed factors below (mirrors backend WEIGHT_FACTORS —
+// no list endpoint for factor names exists, so this is hardcoded like IOC_TYPES).
+export const IOC_TYPES = [
+  'ip', 'domain', 'url', 'hash_md5', 'hash_sha1', 'hash_sha256',
+  'email', 'cve', 'cidr', 'asn', 'ja3', 'mutex', 'registry_key',
+] as const
+export type IocType = (typeof IOC_TYPES)[number]
+
+export const WEIGHT_FACTORS = [
+  'source_reliability', 'freshness', 'corroboration', 'specificity', 'context',
+] as const
+export type WeightFactor = (typeof WEIGHT_FACTORS)[number]
+
+export interface WeightProfile {
+  id: string; tenantId: string; iocType: string
+  weights: Record<string, number>; decayRate: number
+  updatedAt: string; updatedBy: string
 }
+
+export interface WeightPreset { name: string; weights: Record<string, number> }
+
+// Real backend (notification-store.ts NotificationPreferences). Always exactly the 3 fixed
+// channels (getDefault seeds all of NOTIFICATION_CHANNELS) — never a variable-length list.
+export const NOTIFICATION_CHANNELS = ['email', 'webhook', 'in_app'] as const
+export type NotificationChannelType = (typeof NOTIFICATION_CHANNELS)[number]
+
+export type NotificationThreshold = 'info' | 'low' | 'medium' | 'high' | 'critical'
 
 export interface NotificationChannel {
-  id: string; type: 'email' | 'slack' | 'webhook' | 'in_app'
-  name: string; enabled: boolean; severities: string[]
-  quietHoursStart: string | null; quietHoursEnd: string | null
+  id: NotificationChannelType; type: NotificationChannelType
+  name: string; enabled: boolean; threshold: NotificationThreshold
+  config: Record<string, string>
 }
 
-export interface CustomizationStats {
-  modulesEnabled: number; customRules: number
-  aiBudgetUsed: number; theme: string
+export interface QuietHours {
+  enabled: boolean; start: string; end: string; timezone: string; daysOfWeek: string[]
+}
+
+export interface NotificationPrefsView {
+  channels: NotificationChannel[]
+  quietHours: QuietHours
 }
 
 export interface PlanTierMeta {
@@ -512,45 +540,77 @@ export function useModuleToggles() {
   })
 }
 
-// BLOCKED: frontend calls GET /customization/risk-weights, but riskWeightRoutes is registered
-// at prefix /customization/risk with routes under /profiles, /presets, /validate — there is no
-// /customization/risk-weights path at all (404). The real list endpoint is
-// GET /customization/risk/profiles. Fixing the path is a route-repair change, not a response-
-// unwrap fix, and is outside this pass's scope. Left as-is: honest 404 error card.
-export function useRiskWeights() {
+/** GET /customization/risk/profiles/:type — the weight profile for one IOC type. */
+export function useRiskWeights(iocType: string) {
   return useQuery({
-    queryKey: ['risk-weights'],
-    queryFn: () => api<{ data: RiskWeight[] }>('/customization/risk-weights'),
-    meta: { resource: 'risk weights' },
+    queryKey: ['risk-profile', iocType],
+    queryFn: () => api<WeightProfile>(`/customization/risk/profiles/${iocType}`),
+    meta: { resource: 'risk weight profile' },
     staleTime: 60_000,
   })
 }
 
-// BLOCKED: GET /customization/notifications exists and resolves (notifications.ts GET /), but
-// it returns a single per-user NotificationPreferences object — { channels: Record<string,
-// {enabled, threshold, config}> } — not a NotificationChannel[] list with id/type/name/
-// severities/quietHours-per-channel. The backend has no concept of named, individually
-// addressable channels; quiet hours are also global (PUT /quiet-hours), not per-channel. This
-// needs a real shape reconciliation (backend or frontend model change), not a response-unwrap
-// fix. Left as-is: the current `.data` read on a non-array object yields undefined → QueryStateView
-// shows an honest empty state (no crash, no regression, no fabricated rows).
+/** GET /customization/risk/presets — the 3 named weight presets (conservative/balanced/aggressive). */
+export function useRiskPresets() {
+  return useQuery({
+    queryKey: ['risk-presets'],
+    queryFn: () => apiList<WeightPreset>('/customization/risk/presets'),
+    meta: { resource: 'risk weight presets' },
+    staleTime: 300_000,
+  })
+}
+
+const CHANNEL_NAMES: Record<NotificationChannelType, string> = {
+  email: 'Email', webhook: 'Webhook', in_app: 'In-app',
+}
+
+interface NotificationPrefsApi {
+  channels: Record<string, { enabled: boolean; threshold: NotificationThreshold; config: Record<string, string> }>
+  quietHours: QuietHours
+}
+
+/**
+ * GET /customization/notifications — real shape is a single per-user NotificationPreferences
+ * object (notification-store.ts), not a list. Synthesized into the 3 fixed channels the page
+ * renders as cards; getDefault() always seeds all 3, so none are ever missing.
+ */
 export function useNotificationChannels() {
   return useQuery({
     queryKey: ['notification-channels'],
-    queryFn: () => api<{ data: NotificationChannel[] }>('/customization/notifications'),
+    queryFn: async () => {
+      const prefs = await api<NotificationPrefsApi>('/customization/notifications')
+      const channels: NotificationChannel[] = NOTIFICATION_CHANNELS.map(ch => {
+        const c = prefs.channels[ch]
+        return {
+          id: ch, type: ch, name: CHANNEL_NAMES[ch],
+          enabled: c?.enabled ?? false,
+          threshold: c?.threshold ?? 'medium',
+          config: c?.config ?? {},
+        }
+      })
+      return { channels, quietHours: prefs.quietHours } satisfies NotificationPrefsView
+    },
     meta: { resource: 'notification channels' },
     staleTime: 60_000,
   })
 }
 
-// BLOCKED: no /customization/stats route exists anywhere in the service (dashboard.ts has
-// /layout, /filters, /preferences; command-center.ts has /queue-stats and period-scoped
-// analytics, neither named /stats). Honest 404 error card until a real aggregate route is added.
-export function useCustomizationStats() {
+interface AiUsageApi {
+  totalTokens: number; byTask: Record<string, number>
+  dailyUsage: number; monthlyUsage: number; budgetUtilization: number
+}
+
+/**
+ * GET /customization/ai/usage?period=month — real monthly-usage-vs-budget figure
+ * (ai-model-store.ts getUsageStats; budgetUtilization = monthlyUsage / monthlyTokenLimit,
+ * already computed server-side). Replaces the removed useCustomizationStats (no
+ * /customization/stats route exists — dashboard.ts/command-center.ts have no such path).
+ */
+export function useAiBudgetUsage() {
   return useQuery({
-    queryKey: ['customization-stats'],
-    queryFn: () => api<CustomizationStats>('/customization/stats'),
-    meta: { resource: 'customization stats' },
+    queryKey: ['ai-usage-monthly'],
+    queryFn: () => api<AiUsageApi>('/customization/ai/usage?period=month'),
+    meta: { resource: 'AI budget usage' },
     staleTime: 60_000,
   })
 }
@@ -560,7 +620,7 @@ export function useToggleModule() {
   return useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       api<ModuleToggleApi>(`/customization/modules/${id}`, { method: 'PUT', body: { enabled } }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['module-toggles'] }); qc.invalidateQueries({ queryKey: ['customization-stats'] }) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['module-toggles'] }) },
   })
 }
 
@@ -573,38 +633,43 @@ export function useUpdateAIConfig() {
   })
 }
 
+/** PUT /customization/risk/profiles/:type — full weights map (must sum to 1.0, server-enforced). */
 export function useUpdateRiskWeight() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, weight }: { id: string; weight: number }) =>
-      api<RiskWeight>(`/customization/risk-weights/${id}`, { method: 'PATCH', body: { weight } }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['risk-weights'] }) },
+    mutationFn: ({ iocType, weights, decayRate }: { iocType: string; weights: Record<string, number>; decayRate?: number }) =>
+      api<WeightProfile>(`/customization/risk/profiles/${iocType}`, { method: 'PUT', body: { weights, decayRate } }),
+    onSuccess: (_data, vars) => { qc.invalidateQueries({ queryKey: ['risk-profile', vars.iocType] }) },
   })
 }
 
+/** POST /customization/risk/presets/apply — applies a named preset to every IOC type at once. */
 export function useResetRiskWeights() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api<void>('/customization/risk-weights/reset', { method: 'POST' }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['risk-weights'] }) },
+    mutationFn: (preset?: string) =>
+      api<WeightProfile[]>('/customization/risk/presets/apply', { method: 'POST', body: { preset: preset ?? 'balanced' } }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['risk-profile'] }) },
   })
 }
 
+/** PUT /customization/notifications/channels/:channel — enabled/threshold/config for one channel. */
 export function useUpdateNotificationChannel() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...update }: { id: string; enabled?: boolean; severities?: string[]; quietHoursStart?: string | null; quietHoursEnd?: string | null }) =>
-      api<NotificationChannel>(`/customization/notifications/${id}`, { method: 'PATCH', body: update }),
+    mutationFn: ({ channel, enabled, threshold, config }: { channel: string; enabled: boolean; threshold: NotificationThreshold; config?: Record<string, string> }) =>
+      api<{ enabled: boolean; threshold: string; config: Record<string, string> }>(
+        `/customization/notifications/channels/${channel}`,
+        { method: 'PUT', body: { enabled, threshold, config: config ?? {} } },
+      ),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['notification-channels'] }) },
   })
 }
 
-export function useTestNotification() {
-  return useMutation({
-    mutationFn: (channelId: string) =>
-      api<{ success: boolean }>(`/customization/notifications/${channelId}/test`, { method: 'POST' }),
-  })
-}
+// No test-notification route exists on the customization service (notifications.ts has GET /,
+// PUT /, PUT /channels/:channel, DELETE /channels/:channel, PUT|GET /quiet-hours, PUT|GET
+// /digest — nothing under /test). useTestNotification and its "Test Notification" button are
+// removed rather than left calling a 404.
 
 // ─── AI Plan & Subtask Hooks (F2/F3) ────────────────────────────
 // These 4 endpoints' real shapes (plan-tiers.ts PlanTierMeta, ai-model-store.ts SubtaskMapping /

@@ -24,11 +24,11 @@ const mockCommandCenter = {
   tenantStats: { tenantId: 't1', itemsConsumed: 3200, attributedCostUsd: 23.45, costByProvider: {}, costByItemType: {}, consumptionTrend: [], budgetUsedPercent: 62, budgetLimitUsd: 37 },
   tenantList: [
     { tenantId: 't1', name: 'Acme', plan: 'teams', members: 5, itemsConsumed: 1000, attributedCostUsd: 10, status: 'active', usagePercent: 50 },
-    { tenantId: 't2', name: 'Bad', plan: 'free', members: 1, itemsConsumed: 50, attributedCostUsd: 0, status: 'over_limit', usagePercent: 100 },
+    { tenantId: 't2', name: 'Bad', plan: 'free', members: 1, itemsConsumed: 50, attributedCostUsd: 0, status: 'suspended', usagePercent: 100 },
   ],
   queueStats: { pendingItems: 34, processingRate: 42, stuckItems: 0, oldestAge: '< 2m', bySubtask: {} },
   providerKeys: [{ provider: 'anthropic', keyMasked: 'sk-***', isValid: true, lastTested: null, updatedAt: null }],
-  isLoading: false, isDemo: false, period: 'month' as const,
+  isLoading: false, isError: false, period: 'month' as const,
   setPeriod: vi.fn(), refetchAll: vi.fn(), isFetching: false,
   setProviderKey: vi.fn(), isSettingKey: false,
   testProviderKey: vi.fn(), isTestingKey: false,
@@ -172,7 +172,7 @@ describe('CommandCenterPage', () => {
     expect(screen.getByTestId('clients-tab')).toBeInTheDocument()
   })
 
-  it('shows clients badge when over_limit tenants exist', () => {
+  it('shows clients badge when suspended tenants exist', () => {
     render(<CommandCenterPage />)
     const badge = screen.getByTestId('tab-clients')
     expect(badge.textContent).toContain('1')
@@ -185,10 +185,11 @@ describe('CommandCenterPage', () => {
     expect(skeletons.length).toBeGreaterThan(0)
   })
 
-  it('shows demo badge when isDemo', () => {
-    mockCommandCenter.isDemo = true
+  it('shows an error banner with Retry when isError', () => {
+    mockCommandCenter.isError = true
     render(<CommandCenterPage />)
-    expect(screen.getByTestId('demo-badge')).toBeInTheDocument()
-    mockCommandCenter.isDemo = false
+    expect(screen.getByTestId('cc-error-banner')).toBeInTheDocument()
+    expect(screen.getByTestId('cc-error-retry')).toBeInTheDocument()
+    mockCommandCenter.isError = false
   })
 })

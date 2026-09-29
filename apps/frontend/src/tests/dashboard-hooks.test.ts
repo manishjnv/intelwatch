@@ -7,10 +7,7 @@ import { createElement } from 'react'
 const mockApi = vi.fn()
 vi.mock('@/lib/api', () => ({
   api: (...args: unknown[]) => mockApi(...args),
-}))
-
-vi.mock('@/hooks/useApiError', () => ({
-  notifyApiError: vi.fn((_err: unknown, _ctx: string, fallback: unknown) => fallback),
+  ApiError: class extends Error { status: number; constructor(s: number, m: string) { super(m); this.status = s } },
 }))
 
 // Import hooks after mocking
@@ -29,7 +26,7 @@ describe('useEnrichmentSourceBreakdown', () => {
   beforeEach(() => { vi.clearAllMocks() })
   afterEach(() => { vi.restoreAllMocks() })
 
-  it('fetches from /analytics/enrichment-quality endpoint', async () => {
+  it('fetches from /analytics/enrichment-quality and trusts a response with bySource', async () => {
     // api() already unwraps json.data, so mock returns the inner object directly
     const apiData = {
       avgQuality: 80, enrichedCount: 100, unenrichedCount: 20,
@@ -42,16 +39,28 @@ describe('useEnrichmentSourceBreakdown', () => {
 
     expect(mockApi).toHaveBeenCalledWith('/analytics/enrichment-quality')
     expect(result.current.data?.avgQuality).toBe(80)
-    expect(result.current.isDemo).toBe(false)
+    expect(result.current).not.toHaveProperty('isDemo')
   })
 
-  it('returns null when API fails (no demo fallback)', async () => {
+  it('the real backend shape today (confidence tiers, no bySource) yields honest null, not a crash', async () => {
+    // This is what /analytics/enrichment-quality actually returns right now —
+    // EnrichmentQuality, not the per-source breakdown this hook wants.
+    mockApi.mockResolvedValueOnce({ total: 100, highPct: 60, mediumPct: 30, lowPct: 10 })
+
+    const { result } = renderHook(() => useEnrichmentSourceBreakdown(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.isError).toBe(false)
+    expect(result.current.data).toBeNull()
+  })
+
+  it('on API failure, isError is true and data is null (no demo fallback)', async () => {
     mockApi.mockRejectedValueOnce(new Error('Network error'))
 
     const { result } = renderHook(() => useEnrichmentSourceBreakdown(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.isDemo).toBe(false)
+    expect(result.current.isError).toBe(true)
     expect(result.current.data).toBeNull()
   })
 })
@@ -60,11 +69,11 @@ describe('useAiCostSummary', () => {
   beforeEach(() => { vi.clearAllMocks() })
   afterEach(() => { vi.restoreAllMocks() })
 
-  it('fetches from /analytics/cost-tracking endpoint', async () => {
-    // api() already unwraps json.data, so mock returns the inner object directly
+  it('fetches from /analytics/cost-tracking and maps the real CostTrackingData shape', async () => {
+    // api() already unwraps json.data; this is the real analytics-service shape
+    // (aggregator.getCostTracking) — no 30-day delta or monthly budget exist server-side.
     const apiData = {
-      totalCost30d: 20, previousCost30d: 18, deltaPercent: 11,
-      budgetMonthly: 100, budgetUtilization: 20,
+      totalCostUsd: 20,
       byModel: { Haiku: 5, Sonnet: 15 },
       costPerArticle: 0.03, costPerIoc: 0.06,
     }
@@ -74,17 +83,17 @@ describe('useAiCostSummary', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(mockApi).toHaveBeenCalledWith('/analytics/cost-tracking')
-    expect(result.current.data?.totalCost30d).toBe(20)
-    expect(result.current.isDemo).toBe(false)
+    expect(result.current.data?.totalCostUsd).toBe(20)
+    expect(result.current).not.toHaveProperty('isDemo')
   })
 
-  it('returns null when API fails (no demo fallback)', async () => {
+  it('on API failure, isError is true and data is null (no demo fallback)', async () => {
     mockApi.mockRejectedValueOnce(new Error('Network error'))
 
     const { result } = renderHook(() => useAiCostSummary(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.isDemo).toBe(false)
+    expect(result.current.isError).toBe(true)
     expect(result.current.data).toBeNull()
   })
 })

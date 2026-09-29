@@ -19,7 +19,7 @@ function makeMockCC(overrides = {}) {
       consumptionTrend: [], budgetUsedPercent: 62, budgetLimitUsd: 37,
     },
     tenantList: [], queueStats: { pendingItems: 0, processingRate: 0, stuckItems: 0, oldestAge: '0', bySubtask: {} },
-    providerKeys: [], isLoading: false, isDemo: false, period: 'month' as const,
+    providerKeys: [], isLoading: false, isError: false, period: 'month' as const,
     setPeriod: vi.fn(), refetchAll: vi.fn(), isFetching: false,
     setProviderKey: vi.fn(), isSettingKey: false,
     testProviderKey: vi.fn(), isTestingKey: false,

@@ -34,7 +34,7 @@ const baseMockCC = {
     { provider: 'openai', keyMasked: null, isValid: false, lastTested: null, updatedAt: null },
     { provider: 'google', keyMasked: null, isValid: false, lastTested: null, updatedAt: null },
   ],
-  isLoading: false, isDemo: false, period: 'month' as const,
+  isLoading: false, isError: false, period: 'month' as const,
   setPeriod: vi.fn(), refetchAll: vi.fn(), isFetching: false,
   setProviderKey: vi.fn(), isSettingKey: false,
   testProviderKey: vi.fn().mockResolvedValue({ success: true }),

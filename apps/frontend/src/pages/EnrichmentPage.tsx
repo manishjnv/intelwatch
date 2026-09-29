@@ -85,14 +85,12 @@ export function EnrichmentPage() {
   const [density, setDensity] = useState<Density>('compact')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  const { data: stats, isDemo: isStatsDemo } = useEnrichmentStats()
+  const { data: stats } = useEnrichmentStats()
   const { data: pendingData, isLoading: pendingLoading } = useEnrichmentPending(pendingPage)
-  const { data: costStats, isDemo: isCostDemo } = useCostStats()
+  const { data: costStats } = useCostStats()
   const { data: budget } = useBudgetStatus()
   const triggerMutation = useTriggerEnrichment()
   const batchMutation = useBatchEnrichment()
-
-  const isDemo = isStatsDemo || isCostDemo
 
   const pendingRows = useMemo(() => pendingData?.data ?? [], [pendingData])
 
@@ -174,14 +172,6 @@ export function EnrichmentPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Demo banner */}
-      {isDemo && (
-        <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">Demo</span>
-          <span className="text-xs text-[var(--text-muted)]">Demo data — connect backend for live enrichment</span>
-        </div>
-      )}
-
       {/* Stats bar */}
       <PageStatsBar>
         <CompactStat icon={<Brain className="w-3 h-3" />} label="Total IOCs" value={stats?.total?.toLocaleString() ?? '—'} />

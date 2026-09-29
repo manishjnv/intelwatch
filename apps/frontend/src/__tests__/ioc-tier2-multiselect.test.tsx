@@ -17,6 +17,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useIOCs: () => ({ data: { data: MOCK_IOCS, total: 3, page: 1, limit: 50 }, isLoading: false, isDemo: false }),
   useIOCStats: () => ({ data: { total: 3, byType: {}, bySeverity: {}, byLifecycle: {} } }),
   useUpdateIOCLifecycle: () => ({ mutate: mockMutate }),
+  useFeeds: () => ({ data: { data: [], total: 0 }, isLoading: false }),
 }))
 vi.mock('@/hooks/use-enrichment-data', () => ({ useEnrichmentStats: () => ({ data: null }) }))
 vi.mock('@/hooks/use-campaigns', () => ({ useCampaigns: () => ({ data: { data: [] } }) }))

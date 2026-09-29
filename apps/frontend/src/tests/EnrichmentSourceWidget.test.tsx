@@ -24,7 +24,7 @@ vi.mock('@/hooks/use-enrichment-data', () => ({
 describe('EnrichmentSourceWidget', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockHook.mockReturnValue({ data: mockData, isDemo: false, isLoading: false })
+    mockHook.mockReturnValue({ data: mockData, isLoading: false, isError: false })
   })
 
   it('renders avg quality score', () => {
@@ -54,22 +54,35 @@ describe('EnrichmentSourceWidget', () => {
   it('hides warning when unenriched backlog <= 100', () => {
     mockHook.mockReturnValue({
       data: { ...mockData, unenrichedCount: 50 },
-      isDemo: false, isLoading: false,
+      isLoading: false, isError: false,
     })
     render(<EnrichmentSourceWidget />)
     expect(screen.queryByTestId('unenriched-warning')).not.toBeInTheDocument()
   })
 
-  it('renders demo badge and static data in demo mode', () => {
-    mockHook.mockReturnValue({ data: mockData, isDemo: true, isLoading: false })
+  it('never renders a Demo pill', () => {
     render(<EnrichmentSourceWidget />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
-    expect(screen.getByTestId('avg-quality')).toHaveTextContent('72')
+    expect(screen.queryByText('Demo')).not.toBeInTheDocument()
   })
 
-  it('renders nothing when data is null', () => {
-    mockHook.mockReturnValue({ data: null, isDemo: false, isLoading: true })
+  it('shows "—" and no source bars while loading (no demo data, honest state)', () => {
+    mockHook.mockReturnValue({ data: null, isLoading: true, isError: false })
     render(<EnrichmentSourceWidget />)
-    expect(screen.queryByTestId('enrichment-source-widget')).not.toBeInTheDocument()
+    expect(screen.getByTestId('enrichment-source-widget')).toBeInTheDocument()
+    expect(screen.getByTestId('avg-quality')).toHaveTextContent('—')
+    expect(screen.queryByTestId('source-bar-Shodan')).not.toBeInTheDocument()
+  })
+
+  it('shows "—" and a failure note on error (no demo data)', () => {
+    mockHook.mockReturnValue({ data: null, isLoading: false, isError: true })
+    render(<EnrichmentSourceWidget />)
+    expect(screen.getByTestId('avg-quality')).toHaveTextContent('—')
+    expect(screen.getByText('Failed to load')).toBeInTheDocument()
+  })
+
+  it('shows an honest empty state when data is null but the query succeeded', () => {
+    mockHook.mockReturnValue({ data: null, isLoading: false, isError: false })
+    render(<EnrichmentSourceWidget />)
+    expect(screen.getByText('No enrichment data yet')).toBeInTheDocument()
   })
 })

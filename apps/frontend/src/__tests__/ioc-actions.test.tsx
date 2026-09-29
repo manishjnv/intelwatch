@@ -19,6 +19,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useIOCPivot:           vi.fn(() => ({ data: null, isLoading: false })),
   useIOCTimeline:        vi.fn(() => ({ data: null, isLoading: false })),
   useUpdateIOCLifecycle: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useFeeds:              vi.fn(() => ({ data: { data: [], total: 0 }, isLoading: false })),
 }))
 
 vi.mock('@/hooks/useDebouncedValue', () => ({

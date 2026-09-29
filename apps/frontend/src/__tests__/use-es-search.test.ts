@@ -25,7 +25,7 @@ vi.mock('@/stores/auth-store', () => ({
     selector({ user: { tenantId: 'test-tenant' } }),
 }))
 
-import { useEsSearch, DEMO_ES_RESULTS } from '@/hooks/use-es-search'
+import { useEsSearch } from '@/hooks/use-es-search'
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -60,12 +60,21 @@ describe('useEsSearch', () => {
     mockApi.mockResolvedValue(MOCK_RESPONSE)
   })
 
-  it('returns demo data when API returns empty', async () => {
+  it('returns honest empty results when API returns empty (no demo fallback)', async () => {
     mockApi.mockResolvedValue({ total: 0, page: 1, limit: 50, data: [], aggregations: { by_type: [], by_severity: [], by_tlp: [] } })
     const { result } = renderHook(() => useEsSearch(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(true)
-    expect(result.current.results.length).toBe(DEMO_ES_RESULTS.length)
+    expect(result.current.results).toEqual([])
+    expect(result.current.totalCount).toBe(0)
+  })
+
+  it('surfaces isError + refetch when the API call rejects', async () => {
+    mockApi.mockRejectedValue(new Error('network down'))
+    const { result } = renderHook(() => useEsSearch(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 })
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.results).toEqual([])
+    expect(typeof result.current.refetch).toBe('function')
   })
 
   it('returns API data when available', async () => {
@@ -73,6 +82,7 @@ describe('useEsSearch', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     // Since query is 'test' from URL, API should be called
     await waitFor(() => expect(mockApi).toHaveBeenCalled())
+    expect(result.current.results.length).toBe(2)
   })
 
   it('setQuery updates query state', async () => {
@@ -124,10 +134,8 @@ describe('useEsSearch', () => {
   it('facets are returned from API response', async () => {
     const { result } = renderHook(() => useEsSearch(), { wrapper: createWrapper('/search?q=test') })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    // If API returns data, facets should be populated
-    if (!result.current.isDemo) {
-      expect(result.current.facets.byType.length).toBeGreaterThan(0)
-    }
+    // Facets come straight from the API response
+    expect(result.current.facets.byType.length).toBeGreaterThan(0)
   })
 
   it('confidence filter applied client-side', async () => {
@@ -136,10 +144,8 @@ describe('useEsSearch', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     act(() => result.current.setFilters({ confidenceMin: 90 }))
     // After filtering, only results with confidence >= 90 should remain
-    if (!result.current.isDemo) {
-      const allAbove = result.current.results.every(r => r.confidence >= 90)
-      expect(allAbove).toBe(true)
-    }
+    const allAbove = result.current.results.every(r => r.confidence >= 90)
+    expect(allAbove).toBe(true)
   })
 
   it('exportResults calls CSV export without error', () => {

@@ -15,6 +15,7 @@ vi.mock('@/hooks/use-intel-data', () => ({
   useIOCStats: (...args: any[]) => mockUseIOCStats(...args),
   useUpdateIOCLifecycle: () => ({ mutate: vi.fn() }),
   useDashboardStats: vi.fn(() => ({ data: null })),
+  useFeeds: () => ({ data: { data: [], total: 0 }, isLoading: false }),
 }))
 
 vi.mock('@/components/viz/SplitPane', () => ({
