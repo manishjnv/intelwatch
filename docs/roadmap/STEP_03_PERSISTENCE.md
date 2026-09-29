@@ -1,6 +1,6 @@
 # Step 3 — No business data in memory (Phase 1, S154–S159)
 
-**Written:** 2026-09-25. **Status:** spec, not started. **Parent:** docs/ROADMAP_S149_PLUS.md §3 step 3, §4 Phase 1. **Follows:** DECISION-027 (Postgres for business entities, Redis JSON for config, memory only for caches). It ends DECISION-013 for the modules below. DECISION-022 (correlation-engine in memory + Redis checkpoint) stays, but depends on decision D1.
+**Written:** 2026-09-25. **Status:** spec, not started — **unblocked 2026-09-29: owner accepted D1–D7 as recommended (DECISION-049); next functional work per DECISION-050.** Session labels S154–S159 below are the original plan numbers (those numbers were used by other sessions); run the rows in order from S175. Re-verify §3 against current code first (S168 added an `integrations` table). **Parent:** docs/ROADMAP_S149_PLUS.md §3 step 3, §4 Phase 1. **Follows:** DECISION-027 (Postgres for business entities, Redis JSON for config, memory only for caches). It ends DECISION-013 for the modules below. DECISION-022 (correlation-engine in memory + Redis checkpoint) stays, but depends on decision D1.
 
 ---
 
@@ -375,6 +375,8 @@ bash scripts/check-memory-stores.sh && echo OK
 "L" here is above the CLAUDE.md M budget. Each is still one module. If the owner wants strict M, split S154/S155/S156/S157 in two again (store layer, then callers).
 
 ## 11. Owner decisions needed
+
+**All 7 accepted as recommended by the owner on 2026-09-29 (DECISION-049).**
 
 | # | Question | Recommendation |
 |---|---|---|

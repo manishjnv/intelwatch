@@ -43,28 +43,30 @@ Sensitive-content grep before commit: clean (no secrets/PII/unfixed-vuln details
 
 ## ⚠️ Open Items / Next Steps (Session 174)
 
-**Ordered task queue (one task per fresh session), item 1 from S173 now DONE:**
-1. ~~Owner-scheduled private item #1~~ — DONE this session (plan-enforcement gap, PR #66).
-2. Audit PR 3: fake vendor verdicts in IOC detail / investigation panels (`EnrichmentDetailPanel`, `InvestigationDrawer`), demo rows on IOC/malware/vulnerability/threat-actor lists, fake MITRE IDs on actors, `PageStatsBar` Demo badge (shared-ui — needs owner approval).
-3. Audit PR 4: delete unused demo datasets and dead code (e.g. `use-search-data.ts`, `DEMO_*` fixtures now only used by tests).
-4. Wiring fixes found in the S173 sweep (unchanged, still open): `apiList` drops pagination totals; broken request bodies (correlation Create Ticket, DRP bulk triage + takedown, Jira/ServiceNow creation form); frontend admin `TenantRecord` type vs real `/admin/tenants` shape; missing/mismatched backend routes (TAXII managed-collection list, global IOC stats, `/ingestion/catalog/subscription-stats`, `/analytics/feed-performance` shape, per-source enrichment breakdown, test-notification route).
-5. New from this session — deferred, tracked in `docs/S174_PLAN_FEATURE_GATE.md`: (a) daily/monthly usage counters still not applied on nginx-proxied routes (`auth_request` can't return 429 or roll back a counted request); (b) Command Center Alerts & Reports tab has no plan check (no impact today, alerts/reports enabled on every seeded plan); (c) `apps/api-gateway/src/config/feature-routes.ts` has stale entries (`/hunting`, `/correlation`, `/threat-actors`, `/integrations`→`api_access`) that don't match the live nginx-served paths.
-6. Remaining hooks still reading `isDemo`: access reviews, break-glass, campaigns; `useFeeds` swallows errors.
-7. Graph visual redesign — needs owner reference designs; load the ui-design-workflow skill.
-8. AI enrichment runner (DECISION-045).
-9. Owner-scheduled security fix (includes private items — see private notes); needs owner go-ahead + adversarial review.
-10. Step 3 (no data in memory) — blocked on owner decisions D1–D7.
+**Owner re-prioritised 2026-09-29 (DECISION-050): functional work first, no standalone audit sessions.** Every functional task does a *minimal* audit of the pages it touches (real data or honest empty state, no crash) and removes fake data it meets there.
 
-**Owner actions:** ~~browser check~~ **PASSED 2026-09-29** — Free-plan `tenant_admin` in incognito got `403` + `FEATURE_NOT_AVAILABLE` (`digital_risk_protection`) on `/api/v1/drp/assets` (snippet in `docs/S174_PLAN_FEATURE_GATE.md`; it sends the Bearer token from `localStorage.etip_auth`, a bare fetch returns 401). Item 1 closed. Plus carried over from S173: unblock task 2 (`PageStatsBar` OK to touch), task 7 (reference designs), task 9 (go-ahead), task 10 (D1–D7 decisions).
+**Ordered task queue (one task per fresh session):**
+1. ~~Plan-enforcement gap~~ — DONE this session (PR #66, owner browser check PASSED).
+2. **Step 3 — no business data in memory** (`docs/roadmap/STEP_03_PERSISTENCE.md`; D1–D7 accepted as recommended, DECISION-049). Run the §10 rows in order, one per session. **First session (S175): the `154-0` ops row** — deploy pushes the schema *before* recreating app containers and fails the deploy if the push fails; plus D1 (Redis `noeviction` + `maxmemory 512mb` in `docker-compose.etip.yml`) and D4 (`TI_ARCHIVE_ENABLED=false`). Re-verify spec §3 against current code first (S168 added an `integrations` table). Then alerting (2 sessions), integration (2), DRP (2), hunting, small ones.
+3. Wiring fixes found in the S173 sweep: `apiList` drops pagination totals; broken request bodies (correlation Create Ticket, DRP bulk triage + takedown, Jira/ServiceNow creation form); frontend admin `TenantRecord` type vs real `/admin/tenants` shape; missing/mismatched backend routes (TAXII managed-collection list, global IOC stats, `/ingestion/catalog/subscription-stats`, `/analytics/feed-performance` shape, per-source enrichment breakdown, test-notification route).
+4. AI enrichment runner (DECISION-045) — also replaces the fake vendor verdicts in `EnrichmentDetailPanel` / `InvestigationDrawer` with real ones.
+5. Graph visual redesign — needs owner reference designs; load the ui-design-workflow skill.
+6. Owner-scheduled security fix (includes private items — see private notes); needs owner go-ahead + adversarial review; before the first real customer.
+7. Folded into the tasks above, no own session: rest of old audit PR 3 (demo rows on IOC/malware/vuln/actor lists, fake MITRE IDs on actors, `PageStatsBar` Demo badge — shared-ui still needs owner approval), remaining `isDemo` hooks (access reviews, break-glass, campaigns; `useFeeds` swallows errors). Old audit PR 4 (dead demo code) waits until something needs it.
+8. Deferred from S174, tracked in `docs/S174_PLAN_FEATURE_GATE.md`: (a) daily/monthly usage counters not applied on nginx-proxied routes; (b) Command Center Alerts & Reports tab has no plan check (no impact today); (c) `apps/api-gateway/src/config/feature-routes.ts` stale entries (`/hunting`, `/correlation`, `/threat-actors`, `/integrations`→`api_access`).
 
-## 🔁 How to Resume (Session 174)
+**Owner actions:** ~~browser check~~ **PASSED 2026-09-29** — Free-plan `tenant_admin` in incognito got `403` + `FEATURE_NOT_AVAILABLE` (`digital_risk_protection`) on `/api/v1/drp/assets` (snippet in `docs/S174_PLAN_FEATURE_GATE.md`; it sends the Bearer token from `localStorage.etip_auth`, a bare fetch returns 401 — paste at the console prompt, NOT as a Live Expression, which re-runs every 250 ms). ~~D1–D7~~ accepted. Still open: graph reference designs (task 5), security-fix go-ahead (task 6), `PageStatsBar` OK (only if a task needs it).
+
+## 🔁 How to Resume (Session 175)
 
 ```
-Run /session-start, then start task 2 (audit PR 3) from this file.
+Run /session-start, then start task 2 (Step 3, first row `154-0` ops + D1 + D4) from this file.
+Module: devops (deploy.yml + docker-compose.etip.yml) — deploy ordering changes can cause an outage:
+dry-run what you can, keep the change small, and verify the next deploy end to end.
 
 Frozen / do-not-touch without explicit instruction: shared-* packages (Tier 1, api-gateway
 included) — additive only, list every consumer before any change; shared-ui needs owner approval
-before task 2's PageStatsBar change. intelwatch.in and ti-platform-* containers — never touch.
+for any PageStatsBar change. intelwatch.in and ti-platform-* containers — never touch.
 nginx conf.d changes must pass `nginx -t` inside the live container before merge (deploy
 force-recreates etip_nginx; a bad config = outage) and must not add a server-level `set` for any
 variable read inside an auth_request location (RCA #64).
