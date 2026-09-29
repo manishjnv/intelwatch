@@ -52,6 +52,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm exec prisma generate --schema=prisma/schema.prisma
 
+      - name: Memory-store guard (Step 3 — no business data in process memory)
+        run: bash scripts/check-memory-stores.sh
+
       - name: Build (tsc -b — strict dependency order, generates .d.ts for cross-package imports)
         run: pnpm exec tsc -b tsconfig.build.json
 

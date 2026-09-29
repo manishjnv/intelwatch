@@ -1,6 +1,6 @@
 # Step 3 — No business data in memory (Phase 1, S154–S159)
 
-**Written:** 2026-09-25. **Status:** spec, not started — **unblocked 2026-09-29: owner accepted D1–D7 as recommended (DECISION-049); next functional work per DECISION-050.** Session labels S154–S159 below are the original plan numbers (those numbers were used by other sessions); run the rows in order from S175. Re-verify §3 against current code first (S168 added an `integrations` table). **Parent:** docs/ROADMAP_S149_PLUS.md §3 step 3, §4 Phase 1. **Follows:** DECISION-027 (Postgres for business entities, Redis JSON for config, memory only for caches). It ends DECISION-013 for the modules below. DECISION-022 (correlation-engine in memory + Redis checkpoint) stays, but depends on decision D1.
+**Written:** 2026-09-25. **Status:** spec, not started — **unblocked 2026-09-29: owner accepted D1–D7 as recommended (DECISION-049); next functional work per DECISION-050.** Session labels S154–S159 below are the original plan numbers (those numbers were used by other sessions); run the rows in order from S175. Re-verify §3 against current code first (S168 added an `integrations` table). **S175 (2026-09-29): row 154-0 done — deploy ordering and D1 were already live (see docs/S175_STEP3_OPS_PREREQ.md); D4 archive off + CI guard added.** **Parent:** docs/ROADMAP_S149_PLUS.md §3 step 3, §4 Phase 1. **Follows:** DECISION-027 (Postgres for business entities, Redis JSON for config, memory only for caches). It ends DECISION-013 for the modules below. DECISION-022 (correlation-engine in memory + Redis checkpoint) stays, but depends on decision D1.
 
 ---
 
@@ -21,7 +21,7 @@ Every restart or deploy of a service must keep what users created: alert rules, 
 | Fact | Evidence |
 |---|---|
 | One shared Prisma schema, 36 models, 1,064 lines | `prisma/schema.prisma` (datasource reads `TI_DATABASE_URL`, line 9–12) |
-| Deploy syncs schema with `prisma db push --accept-data-loss`, **after** app containers are recreated, and **continues even if all 5 tries fail** | `deploy.yml:192` (recreate) then `deploy.yml:195–206` (push) |
+| Deploy syncs schema with `prisma db push --accept-data-loss`, **after** app containers are recreated, and **continues even if all 5 tries fail** | `deploy.yml:192` (recreate) then `deploy.yml:195–206` (push). **Fixed:** already not true in current code — `scripts/deploy-vps.sh` starts infra (lines 86–88), syncs schema with a pre-deploy `pg_dump`, retries 3 times, aborts on data loss, and exits 1 on failure (lines 90–157), **then** recreates app containers (lines 159–161); no `--accept-data-loss`. Verified S175, no change needed. |
 | `prisma/migrations/0001–0004` exist but deploy never runs them | DEPLOYMENT_RCA.md:452–454 (switched to `db push`) |
 | Prisma client is generated in the image | `Dockerfile:61–63` |
 | Only 12 containers get `TI_DATABASE_URL`: api, ingestion, normalization, enrichment, ioc, actor, malware, vuln, graph, user-mgmt, customization, billing | `docker-compose.etip.yml:236…988`. **alerting, integration, drp, hunting, analytics, caching, onboarding, reporting have none** |
@@ -29,7 +29,7 @@ Every restart or deploy of a service must keep what users created: alert rules, 
 | Billing pattern detail: on any DB error the store **silently falls back** to its in-memory Map, per call | `plan-store.ts:212–225` (`catch { /* fall through */ }`) |
 | `@etip/shared-persistence` (`RedisJsonStore`) exists but **no app imports it** | `packages/shared-persistence/src/redis-json-store.ts`; grep of `apps/*/src` finds 0 users |
 | `RedisJsonStore` keys expire after **7 days** by default and save with a 5 s debounce | `redis-json-store.ts:75–76` |
-| Redis runs `--maxmemory 256mb --maxmemory-policy allkeys-lru` | `docker-compose.etip.yml:47–48` |
+| Redis runs `--maxmemory 256mb --maxmemory-policy allkeys-lru` | `docker-compose.etip.yml:47–48`. **Fixed:** already not true in current code — compose runs `--maxmemory 1gb --maxmemory-policy noeviction` (STEP_00B U7), container limit 1280M; live VPS check S175 (HEAD `e240372`) confirms `maxmemory-policy=noeviction`, `maxmemory=1073741824`, `evicted_keys=0`. Verified S175, no change needed. |
 
 The last row matters: with `allkeys-lru`, Redis may delete **any** key when it fills up, including BullMQ job keys and any "durable" JSON we store there. Redis JSON is only safe for business data after the owner changes this (see §11, decision D1).
 
@@ -160,10 +160,10 @@ Two changes from the billing pattern, on purpose: (1) **no per-call silent fallb
 
 | File | Change |
 |---|---|
-| `.github/workflows/deploy.yml:186–206` | Run `prisma db push` **after infra starts and before app recreate**. Fail the deploy (don't continue) if all 5 tries fail |
-| `scripts/check-memory-stores.sh` (new) | The CI guard from §7 |
-| `scripts/memory-store-baseline.txt` (new) | Known legacy stores, each tagged with the session that removes it |
-| `.github/workflows/deploy.yml` test job (`:66–80`) + `Makefile` `check` target | Run the guard |
+| `.github/workflows/deploy.yml:186–206` | Already done in scripts/deploy-vps.sh (S150) |
+| `scripts/check-memory-stores.sh` (new) | Done S175 |
+| `scripts/memory-store-baseline.txt` (new) | Done S175 |
+| `.github/workflows/deploy.yml` test job (`:66–80`) + `Makefile` `check` target | Done S175 |
 
 ### 5.1 alerting-service (S154 + S155)
 
@@ -329,7 +329,7 @@ new=$(comm -23 <(echo "$hits" | cut -d: -f1,3- | sed 's/[[:space:]]\+/ /g' | sor
                <(sort -u scripts/memory-store-baseline.txt))
 if [ -n "$new" ]; then echo "In-memory store without 'memory-ok:' tag:"; echo "$new"; exit 1; fi
 ```
-- The baseline lists today's legacy stores (path + line text, no line numbers). The pattern matches **156** lines in `apps/*/src` today; tag the real caches, baseline the rest, and CI is green on day one.
+- The baseline lists today's legacy stores (path + line text, no line numbers). The pattern matches **156** lines in `apps/*/src` today (158 at S175 baseline); tag the real caches, baseline the rest, and CI is green on day one.
 - It is a **ratchet**: each migration session deletes its lines from the baseline. New untagged Maps fail CI. The `/review` skill asks: "new `memory-ok` tag — is it really a cache?"
 
 ## 8. Tests
@@ -358,7 +358,7 @@ bash scripts/check-memory-stores.sh && echo OK
 
 | S | Module | Work | Size |
 |---|---|---|---|
-| 154-0 | ops | Deploy: schema push before app recreate, fail on push failure. Add guard + baseline | S |
+| 154-0 | ops | Deploy: schema push before app recreate, fail on push failure. Add guard + baseline | S ✅ S175 |
 | 154 | alerting-service | Models (7) + rules, channels (encrypted), escalations, maintenance → Postgres | L (≈12 files) |
 | 155 | alerting-service | Alerts, history, groups, dedup, dispatcher, worker → Postgres | L (≈10 files) |
 | 156 | integration-service 🔒 | Models (6) + integrations, logs; encryption fixes; masking; compose key | L |
