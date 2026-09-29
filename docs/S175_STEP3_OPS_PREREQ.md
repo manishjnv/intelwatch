@@ -105,3 +105,20 @@ To re-enable the archive only (without a full revert): add `TI_ARCHIVE_ENABLED: 
 - Next Step 3 row is **S154** (alerting-service): models + rules/channels/escalations/maintenance → Postgres.
 - Tag real caches with `// memory-ok: ...` inside each module's own migration session, not here — this session only baselined what already exists.
 - Delete the existing sample archive objects in MinIO and rebuild the index from real data in **S159b**.
+
+## Deploy result
+
+PR #67 (branch commit `9c4e242`, merge commit `3de537f`). CI/CD run 36606869933: Test, Build & Push Docker Images, Deploy to VPS all success.
+
+Tests: caching-service 108 → 112. Real monorepo total: 9,346 passed + 2 skipped, 0 failed, 33 packages (was 9,342 + 2).
+
+Post-deploy verification (VPS):
+- HEAD `3de537f`, deploy status ok, log "schema unchanged, skipping push"
+- 32/32 `etip_` containers healthy
+- `etip_caching` log: "Archive disabled (TI_ARCHIVE_ENABLED=false) — cron not started"
+- Redis `maxmemory-policy` = `noeviction`
+- Local `/health` 200, public `https://intelwatch.in/health` 200, `/login` 200
+
+Reviews: etip-reviewer PASS (non-blocking note: the guard only sees single-line field declarations). codex:rescue not run — not security-adjacent (config flag + CI script).
+
+No new RCA issues.

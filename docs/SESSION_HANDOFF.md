@@ -1,6 +1,81 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-09-29
+**Session:** 175
+**Session Summary:** Step 3 (persistence) row `154-0` is the ops prerequisite plus owner decisions D1 and D4 (DECISION-049). Re-verifying spec §3 against current code found two of the four items already done by earlier work: deploy ordering (`scripts/deploy-vps.sh`, S150) already pushes the schema before recreating app containers and fails the deploy if the push fails, and D1 (Redis `noeviction`) was already live from STEP_00B. Only D4 (archive off) and the CI memory-store guard needed new work this session. PR #67 turns off caching-service's archive cron/route by default (`TI_ARCHIVE_ENABLED=false`) so it stops writing sample records to MinIO, and wires a CI ratchet guard against new untagged in-memory stores.
+
+## ✅ Changes Made (Session 175)
+
+| Commit(s) | Description |
+|---|---|
+| `9c4e242` → merge `3de537f` | PR #67: `TI_ARCHIVE_ENABLED` defaults `false` in caching-service (`config.ts`, `index.ts`, `archive-engine.ts` — `runOnce()` returns `null`, `startCron()` logs and skips); `scripts/check-memory-stores.sh` + `scripts/memory-store-baseline.txt` (158-entry baseline) wired into `.github/workflows/deploy.yml` test job and `Makefile` `check` target; +4 archive-engine tests. |
+
+VPS HEAD `3de537f`, 32/32 `etip_` containers healthy. caching-service 112/112 (was 108). Real monorepo total 9,346 passed + 2 skipped, 0 failed, 33 packages (was 9,342 + 2). Full detail: `docs/S175_STEP3_OPS_PREREQ.md`.
+
+## 📁 Files / Documents Affected (Session 175)
+
+**New doc:** `docs/S175_STEP3_OPS_PREREQ.md`.
+
+**Code touched:** `apps/caching-service/src/config.ts`, `apps/caching-service/src/index.ts`, `apps/caching-service/src/services/archive-engine.ts`, `apps/caching-service/tests/archive-engine.test.ts`, `scripts/check-memory-stores.sh` (new), `scripts/memory-store-baseline.txt` (new), `.github/workflows/deploy.yml`, `Makefile`.
+
+**Modified (docs):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md` (this file), `docs/DEPLOYMENT_RCA.md`, `docs/ETIP_Project_Stats.html`.
+
+## 🔧 Decisions & Rationale (Session 175)
+
+No new DECISION entries this session — DECISION-049 (Step 3 D1–D7 accepted as recommended, recorded in S174) is what this session executes for D1 and D4. No new decision was needed for the deploy-ordering re-verification or the CI guard: both are mechanical follow-through on the already-accepted spec.
+
+## 🧪 Deploy Verification Results (Session 175)
+
+```
+PR #67 → 3de537f : caching-service 112/112 (was 108).
+                    CI run 36606869933: Test, Build & Push Docker Images, Deploy to VPS all success.
+                    CI log: "memory-store guard: OK".
+VPS HEAD 3de537f, deploy status ok, log "schema unchanged, skipping push", 32/32 etip
+containers healthy. etip_caching log: "Archive disabled (TI_ARCHIVE_ENABLED=false) —
+cron not started". Redis maxmemory-policy noeviction. Local /health 200, public
+https://intelwatch.in/health 200, /login 200.
+Real monorepo test total: 9,346 passed + 2 skipped, 0 failed, 33 packages (was 9,342 + 2).
+Reviews: etip-reviewer PASS (non-blocking note: the guard only sees single-line field
+declarations). codex:rescue not run — not security-adjacent (config flag + CI script).
+No new RCA issues.
+```
+
+## ⚠️ Open Items / Next Steps (Session 175)
+
+**Ordered task queue (one task per fresh session):**
+1. ~~Plan-enforcement gap~~ — DONE S174 (PR #66, owner browser check PASSED).
+2. **Step 3 — no business data in memory** (`docs/roadmap/STEP_03_PERSISTENCE.md`; D1–D7 accepted as recommended, DECISION-049). Run the §10 rows in order, one per session. ~~First session (S175): the `154-0` ops row~~ — **DONE this session** (D4 archive off + CI memory-store guard; deploy ordering and D1 were already live, no change needed). **Next: row S154 — alerting-service** (models (7) + rules, channels (encrypted), escalations, maintenance → Postgres; spec §5.1/§6.1). Then S155 alerting, S156/S157 integration, S158a/b DRP, S159 hunting, small ones.
+3. Wiring fixes found in the S173 sweep: `apiList` drops pagination totals; broken request bodies (correlation Create Ticket, DRP bulk triage + takedown, Jira/ServiceNow creation form); frontend admin `TenantRecord` type vs real `/admin/tenants` shape; missing/mismatched backend routes (TAXII managed-collection list, global IOC stats, `/ingestion/catalog/subscription-stats`, `/analytics/feed-performance` shape, per-source enrichment breakdown, test-notification route).
+4. AI enrichment runner (DECISION-045) — also replaces the fake vendor verdicts in `EnrichmentDetailPanel` / `InvestigationDrawer` with real ones.
+5. Graph visual redesign — needs owner reference designs; load the ui-design-workflow skill.
+6. Owner-scheduled security fix (includes private items — see private notes); needs owner go-ahead + adversarial review; before the first real customer.
+7. Folded into the tasks above, no own session: rest of old audit PR 3 (demo rows on IOC/malware/vuln/actor lists, fake MITRE IDs on actors, `PageStatsBar` Demo badge — shared-ui still needs owner approval), remaining `isDemo` hooks (access reviews, break-glass, campaigns; `useFeeds` swallows errors). Old audit PR 4 (dead demo code) waits until something needs it.
+8. Deferred from S174, tracked in `docs/S174_PLAN_FEATURE_GATE.md`: (a) daily/monthly usage counters not applied on nginx-proxied routes; (b) Command Center Alerts & Reports tab has no plan check (no impact today); (c) `apps/api-gateway/src/config/feature-routes.ts` stale entries (`/hunting`, `/correlation`, `/threat-actors`, `/integrations`→`api_access`).
+9. From S175: existing sample archive objects in the MinIO bucket `etip-archive` are not deleted by the D4 change — deleting them and rebuilding the index from real data is row S159b.
+
+**Owner actions:** none required this session (ops/config change, no user-facing behavior). Still open: graph reference designs (task 5), security-fix go-ahead (task 6), `PageStatsBar` OK (only if a task needs it).
+
+## 🔁 How to Resume (Session 176)
+
+```
+Run /session-start, then start Step 3 row S154 (alerting-service → Postgres, spec
+docs/roadmap/STEP_03_PERSISTENCE.md §5.1/§6.1). Module: alerting-service;
+prisma/schema.prisma additive models only (D2); fail with 503 on DB error (D3);
+delete alerting lines from scripts/memory-store-baseline.txt as they move.
+
+Frozen / do-not-touch without explicit instruction: shared-* packages (Tier 1, api-gateway
+included) — additive only, list every consumer before any change; shared-ui needs owner approval
+for any PageStatsBar change. intelwatch.in and ti-platform-* containers — never touch.
+nginx conf.d changes must pass `nginx -t` inside the live container before merge (deploy
+force-recreates etip_nginx; a bad config = outage) and must not add a server-level `set` for any
+variable read inside an auth_request location (RCA #64).
+```
+
+---
+
+# Previous session
+
+**Date:** 2026-09-29
 **Session:** 174
 **Session Summary:** Plan feature flags (`enabled:false`) were enforced only in the api-gateway's `preHandler` — nginx proxied 14 `/api/v1/*` service paths straight to the backend with identity checks only, so a tenant whose plan disabled a feature could still call it directly. PR #66 fixes this at the nginx edge: 14 locations set `X-Etip-Feature`, `auth-verify.ts` checks the plan and returns 403 `FEATURE_NOT_AVAILABLE`. A real trap was found and guarded during the fix: an `auth_request` subrequest re-runs server-level `set`/`rewrite` directives, so a server-level default for the same variable would have silently failed the check open — proven on a throwaway nginx container, guarded with a dedicated 31-test file that asserts no such default exists.
 
@@ -53,32 +128,7 @@ Sensitive-content grep before commit: clean (no secrets/PII/unfixed-vuln details
 
 **Owner re-prioritised 2026-09-29 (DECISION-050): functional work first, no standalone audit sessions.** Every functional task does a *minimal* audit of the pages it touches (real data or honest empty state, no crash) and removes fake data it meets there.
 
-**Ordered task queue (one task per fresh session):**
-1. ~~Plan-enforcement gap~~ — DONE this session (PR #66, owner browser check PASSED).
-2. **Step 3 — no business data in memory** (`docs/roadmap/STEP_03_PERSISTENCE.md`; D1–D7 accepted as recommended, DECISION-049). Run the §10 rows in order, one per session. **First session (S175): the `154-0` ops row** — deploy pushes the schema *before* recreating app containers and fails the deploy if the push fails; plus D1 (Redis `noeviction` + `maxmemory 512mb` in `docker-compose.etip.yml`) and D4 (`TI_ARCHIVE_ENABLED=false`). Re-verify spec §3 against current code first (S168 added an `integrations` table). Then alerting (2 sessions), integration (2), DRP (2), hunting, small ones.
-3. Wiring fixes found in the S173 sweep: `apiList` drops pagination totals; broken request bodies (correlation Create Ticket, DRP bulk triage + takedown, Jira/ServiceNow creation form); frontend admin `TenantRecord` type vs real `/admin/tenants` shape; missing/mismatched backend routes (TAXII managed-collection list, global IOC stats, `/ingestion/catalog/subscription-stats`, `/analytics/feed-performance` shape, per-source enrichment breakdown, test-notification route).
-4. AI enrichment runner (DECISION-045) — also replaces the fake vendor verdicts in `EnrichmentDetailPanel` / `InvestigationDrawer` with real ones.
-5. Graph visual redesign — needs owner reference designs; load the ui-design-workflow skill.
-6. Owner-scheduled security fix (includes private items — see private notes); needs owner go-ahead + adversarial review; before the first real customer.
-7. Folded into the tasks above, no own session: rest of old audit PR 3 (demo rows on IOC/malware/vuln/actor lists, fake MITRE IDs on actors, `PageStatsBar` Demo badge — shared-ui still needs owner approval), remaining `isDemo` hooks (access reviews, break-glass, campaigns; `useFeeds` swallows errors). Old audit PR 4 (dead demo code) waits until something needs it.
-8. Deferred from S174, tracked in `docs/S174_PLAN_FEATURE_GATE.md`: (a) daily/monthly usage counters not applied on nginx-proxied routes; (b) Command Center Alerts & Reports tab has no plan check (no impact today); (c) `apps/api-gateway/src/config/feature-routes.ts` stale entries (`/hunting`, `/correlation`, `/threat-actors`, `/integrations`→`api_access`).
-
-**Owner actions:** ~~browser check~~ **PASSED 2026-09-29** — Free-plan `tenant_admin` in incognito got `403` + `FEATURE_NOT_AVAILABLE` (`digital_risk_protection`) on `/api/v1/drp/assets` (snippet in `docs/S174_PLAN_FEATURE_GATE.md`; it sends the Bearer token from `localStorage.etip_auth`, a bare fetch returns 401 — paste at the console prompt, NOT as a Live Expression, which re-runs every 250 ms). ~~D1–D7~~ accepted. Still open: graph reference designs (task 5), security-fix go-ahead (task 6), `PageStatsBar` OK (only if a task needs it).
-
-## 🔁 How to Resume (Session 175)
-
-```
-Run /session-start, then start task 2 (Step 3, first row `154-0` ops + D1 + D4) from this file.
-Module: devops (deploy.yml + docker-compose.etip.yml) — deploy ordering changes can cause an outage:
-dry-run what you can, keep the change small, and verify the next deploy end to end.
-
-Frozen / do-not-touch without explicit instruction: shared-* packages (Tier 1, api-gateway
-included) — additive only, list every consumer before any change; shared-ui needs owner approval
-for any PageStatsBar change. intelwatch.in and ti-platform-* containers — never touch.
-nginx conf.d changes must pass `nginx -t` inside the live container before merge (deploy
-force-recreates etip_nginx; a bad config = outage) and must not add a server-level `set` for any
-variable read inside an auth_request location (RCA #64).
-```
+**Owner actions:** ~~browser check~~ **PASSED 2026-09-29** — Free-plan `tenant_admin` in incognito got `403` + `FEATURE_NOT_AVAILABLE` (`digital_risk_protection`) on `/api/v1/drp/assets` (snippet in `docs/S174_PLAN_FEATURE_GATE.md`; it sends the Bearer token from `localStorage.etip_auth`, a bare fetch returns 401 — paste at the console prompt, NOT as a Live Expression, which re-runs every 250 ms). ~~D1–D7~~ accepted.
 
 ---
 
