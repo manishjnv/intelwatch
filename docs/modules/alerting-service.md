@@ -1,6 +1,6 @@
 # Alerting Service (Module 23)
 
-**Port:** 3023 | **Status:** ✅ Deployed | **Tests:** 306 (22 files) | **Endpoints:** 35
+**Port:** 3023 | **Status:** ✅ Deployed | **Tests:** 377 (29 files) | **Endpoints:** 35
 
 Real-time alert rule engine with notification channels, escalation policies, and alert lifecycle management.
 
@@ -8,17 +8,19 @@ Real-time alert rule engine with notification channels, escalation policies, and
 
 | Feature | File | Description |
 |---------|------|-------------|
-| Alert Rules | services/rule-store.ts | CRUD + toggle, 5 types (threshold/pattern/anomaly/absence/composite) |
-| Alert Lifecycle | services/alert-store.ts | FSM: open→ack→resolve/suppress/escalate, bulk ops |
-| Notification Channels | services/channel-store.ts | Email, Slack, webhook with HMAC-SHA256 signing |
-| Escalation Policies | services/escalation-store.ts | Multi-step auto-escalate with repeat |
+| Alert Rules | services/rule-store.ts | CRUD + toggle, 5 types (threshold/pattern/anomaly/absence/composite); Postgres-backed (S154), tenant-scoped by-id lookups |
+| Alert Lifecycle | services/alert-store.ts | FSM: open→ack→resolve/suppress/escalate, bulk ops; in-memory (Postgres in S155) |
+| Notification Channels | services/channel-store.ts | Email, Slack, webhook with HMAC-SHA256 signing; Postgres-backed (S154), tenant-scoped by-id lookups |
+| Channel encryption | services/channel-crypto.ts | AES-256-GCM at rest (`'v1:' + base64(iv‖ciphertext‖tag)`); API responses return a masked config (webhook/Slack URLs → `https://host/****`, secrets/header values → `****`) |
+| Postgres persistence | repository.ts, repository-prisma.ts | `Repo<T>` interface + `MemoryRepo` (dev/tests) + 4 Prisma repos for rules/channels/escalations/maintenance windows; DB errors surface as `AppError` 503 `DB_UNAVAILABLE`, never a silent fallback to memory |
+| Escalation Policies | services/escalation-store.ts | Multi-step auto-escalate with repeat; Postgres-backed (S154), tenant-scoped by-id lookups |
 | Rule Engine | services/rule-engine.ts | Event buffer, 5 condition types, composite AND/OR |
-| Deduplication | services/dedup-store.ts | SHA-256 fingerprint, 5-min dedup window |
-| Alert History | services/alert-history.ts | Immutable audit trail per alert |
-| Alert Grouping | services/alert-group-store.ts | Incident fingerprint, 30-min group window |
+| Deduplication | services/dedup-store.ts | SHA-256 fingerprint, 5-min dedup window; in-memory (Postgres in S155) |
+| Alert History | services/alert-history.ts | Immutable audit trail per alert; in-memory (Postgres in S155) |
+| Alert Grouping | services/alert-group-store.ts | Incident fingerprint, 30-min group window; in-memory (Postgres in S155) |
 | Rule Templates | services/rule-templates.ts | 6 built-in templates (IOC rate, feed absence, APT, anomaly, CVE, DRP) |
-| Maintenance Windows | services/maintenance-store.ts | Suppress rules during scheduled windows |
-| Notification Retry | services/notifier.ts | Exponential backoff (1s/4s/16s), 3 retries |
+| Maintenance Windows | services/maintenance-store.ts | Suppress rules during scheduled windows; Postgres-backed (S154), tenant-scoped by-id lookups |
+| Notification Retry | services/notifier.ts | Exponential backoff (1s/4s/16s), 3 retries; logs webhook URL origin only, not the full URL; Slack/webhook/email delivery itself is log-only, not yet wired to a real send |
 | Alert Search | services/alert-store.ts | Full-text across title/description/ruleName |
 | BullMQ Worker | workers/alert-worker.ts | Consumes etip-alert-evaluate queue |
 
@@ -72,6 +74,8 @@ Real-time alert rule engine with notification channels, escalation policies, and
 | TI_ALERT_MAX_PER_TENANT | 5000 | Max alerts per tenant |
 | TI_ALERT_RETENTION_DAYS | 90 | Alert retention |
 | TI_REDIS_URL | redis://localhost:6379/0 | Redis for BullMQ |
+| TI_DATABASE_URL | — | Postgres connection (required when TI_NODE_ENV=production) |
+| TI_ALERTING_ENCRYPTION_KEY | — | AES-256-GCM key for channel config at rest, 32 random bytes as base64 (`openssl rand -base64 32`); required whenever TI_DATABASE_URL is set |
 
 ## Queue
 

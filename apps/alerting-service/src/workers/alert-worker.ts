@@ -121,12 +121,12 @@ export class AlertWorker {
     this.deps.ruleEngine.pushEvent(event);
 
     // 2. Get all enabled rules for this tenant
-    const rules = this.deps.ruleStore.getEnabledRules(payload.tenantId);
+    const rules = await this.deps.ruleStore.getEnabledRules(payload.tenantId);
 
     // 3. Evaluate each rule (skip if in maintenance window)
     for (const rule of rules) {
-      if (this.deps.ruleStore.isInCooldown(rule.id)) continue;
-      if (this.deps.maintenanceStore.isRuleSuppressed(payload.tenantId, rule.id)) continue;
+      if (await this.deps.ruleStore.isInCooldown(rule.id)) continue;
+      if (await this.deps.maintenanceStore.isRuleSuppressed(payload.tenantId, rule.id)) continue;
 
       const result = this.deps.ruleEngine.evaluate(rule);
       if (!result.triggered) continue;
@@ -154,7 +154,7 @@ export class AlertWorker {
 
       try {
         const alert = this.deps.alertStore.create(alertInput);
-        this.deps.ruleStore.markTriggered(rule.id);
+        await this.deps.ruleStore.markTriggered(rule.id);
         this.deps.dedupStore.record(fingerprint, alert.id, rule.id);
 
         // Record creation in history
@@ -187,12 +187,12 @@ export class AlertWorker {
 
         // 6. Track for escalation if rule has an escalation policy
         if (rule.escalationPolicyId) {
-          this.deps.escalationDispatcher.track(alert.id, rule.escalationPolicyId);
+          await this.deps.escalationDispatcher.track(alert.id, rule.escalationPolicyId);
         }
 
         // 7. Send notifications
         if (rule.channelIds.length > 0) {
-          const channels = this.deps.channelStore.getByIds(rule.channelIds);
+          const channels = await this.deps.channelStore.getByIds(rule.channelIds, rule.tenantId);
           const results = await this.deps.notifier.notifyAll(channels, alert);
           const failedNotifs = results.filter((r) => !r.success);
           if (failedNotifs.length > 0) {

@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AppError } from '@etip/shared-utils';
-import type { ChannelStore } from '../services/channel-store.js';
+import type { ChannelStore, NotificationChannel } from '../services/channel-store.js';
 import type { Notifier } from '../services/notifier.js';
+import { maskChannelConfig } from '../services/channel-crypto.js';
 import {
   CreateChannelSchema,
   UpdateChannelSchema,
@@ -11,10 +12,16 @@ import {
   type ListChannelsQuery,
 } from '../schemas/alert.js';
 import { validate } from '../utils/validate.js';
+import { requestTenant } from '../plugins/tenant-guard.js';
 
 export interface ChannelRouteDeps {
   channelStore: ChannelStore;
   notifier: Notifier;
+}
+
+/** Masks the channel's config before it leaves the service (secrets never round-trip to the client). */
+function toResponse(channel: NotificationChannel) {
+  return { ...channel, config: maskChannelConfig(channel.config) };
 }
 
 export function channelRoutes(deps: ChannelRouteDeps) {
@@ -24,21 +31,21 @@ export function channelRoutes(deps: ChannelRouteDeps) {
     // POST /api/v1/alerts/channels — Create channel
     app.post('/', async (req: FastifyRequest<{ Body: CreateChannelDto }>, reply: FastifyReply) => {
       const body = validate(CreateChannelSchema, req.body);
-      const channel = channelStore.create(body);
-      return reply.status(201).send({ data: channel });
+      const channel = await channelStore.create(body);
+      return reply.status(201).send({ data: toResponse(channel) });
     });
 
     // GET /api/v1/alerts/channels — List channels
     app.get('/', async (req: FastifyRequest<{ Querystring: ListChannelsQuery }>, reply: FastifyReply) => {
       const query = validate(ListChannelsQuerySchema, req.query);
-      const result = channelStore.list(query.tenantId, {
+      const result = await channelStore.list(query.tenantId, {
         type: query.type,
         page: query.page,
         limit: query.limit,
       });
 
       return reply.send({
-        data: result.data,
+        data: result.data.map(toResponse),
         meta: { total: result.total, page: result.page, limit: result.limit, totalPages: result.totalPages },
       });
     });
@@ -48,28 +55,28 @@ export function channelRoutes(deps: ChannelRouteDeps) {
       '/:id',
       async (req: FastifyRequest<{ Params: { id: string }; Body: UpdateChannelDto }>, reply: FastifyReply) => {
         const body = validate(UpdateChannelSchema, req.body);
-        const channel = channelStore.update(req.params.id, body);
+        const channel = await channelStore.update(req.params.id, body, requestTenant(req));
         if (!channel) throw new AppError(404, `Channel not found: ${req.params.id}`, 'NOT_FOUND');
-        return reply.send({ data: channel });
+        return reply.send({ data: toResponse(channel) });
       },
     );
 
     // DELETE /api/v1/alerts/channels/:id — Delete channel
     app.delete('/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const deleted = channelStore.delete(req.params.id);
+      const deleted = await channelStore.delete(req.params.id, requestTenant(req));
       if (!deleted) throw new AppError(404, `Channel not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.status(204).send();
     });
 
-    // POST /api/v1/alerts/channels/:id/test — Send test notification
+    // POST /api/v1/alerts/channels/:id/test — Send test notification (uses the real, decrypted channel)
     app.post(
       '/:id/test',
       async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const channel = channelStore.getById(req.params.id);
+        const channel = await channelStore.getById(req.params.id, requestTenant(req));
         if (!channel) throw new AppError(404, `Channel not found: ${req.params.id}`, 'NOT_FOUND');
 
         const result = await notifier.sendTest(channel);
-        channelStore.recordTest(channel.id, result.success);
+        await channelStore.recordTest(channel.id, result.success);
 
         return reply.send({ data: result });
       },

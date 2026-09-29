@@ -10,6 +10,7 @@ import {
   type ListEscalationsQuery,
 } from '../schemas/alert.js';
 import { validate } from '../utils/validate.js';
+import { requestTenant } from '../plugins/tenant-guard.js';
 
 export interface EscalationRouteDeps {
   escalationStore: EscalationStore;
@@ -22,14 +23,14 @@ export function escalationRoutes(deps: EscalationRouteDeps) {
     // POST /api/v1/alerts/escalations — Create escalation policy
     app.post('/', async (req: FastifyRequest<{ Body: CreateEscalationDto }>, reply: FastifyReply) => {
       const body = validate(CreateEscalationSchema, req.body);
-      const policy = escalationStore.create(body);
+      const policy = await escalationStore.create(body);
       return reply.status(201).send({ data: policy });
     });
 
     // GET /api/v1/alerts/escalations — List policies
     app.get('/', async (req: FastifyRequest<{ Querystring: ListEscalationsQuery }>, reply: FastifyReply) => {
       const query = validate(ListEscalationsQuerySchema, req.query);
-      const result = escalationStore.list(query.tenantId, {
+      const result = await escalationStore.list(query.tenantId, {
         page: query.page,
         limit: query.limit,
       });
@@ -45,7 +46,7 @@ export function escalationRoutes(deps: EscalationRouteDeps) {
       '/:id',
       async (req: FastifyRequest<{ Params: { id: string }; Body: UpdateEscalationDto }>, reply: FastifyReply) => {
         const body = validate(UpdateEscalationSchema, req.body);
-        const policy = escalationStore.update(req.params.id, body);
+        const policy = await escalationStore.update(req.params.id, body, requestTenant(req));
         if (!policy) throw new AppError(404, `Escalation policy not found: ${req.params.id}`, 'NOT_FOUND');
         return reply.send({ data: policy });
       },
@@ -53,7 +54,7 @@ export function escalationRoutes(deps: EscalationRouteDeps) {
 
     // DELETE /api/v1/alerts/escalations/:id — Delete policy
     app.delete('/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const deleted = escalationStore.delete(req.params.id);
+      const deleted = await escalationStore.delete(req.params.id, requestTenant(req));
       if (!deleted) throw new AppError(404, `Escalation policy not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.status(204).send();
     });

@@ -46,15 +46,15 @@ describe('Maintenance routes', () => {
   });
 
   it('GET lists maintenance windows', async () => {
-    store.create(validWindow);
+    await store.create(validWindow);
     const res = await app.inject({ method: 'GET', url: '/api/v1/alerts/maintenance-windows' });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.length).toBe(1);
   });
 
   it('GET filters active windows', async () => {
-    store.create(validWindow);
-    store.create({
+    await store.create(validWindow);
+    await store.create({
       ...validWindow, name: 'Past',
       startAt: new Date(Date.now() - 7200_000).toISOString(),
       endAt: new Date(Date.now() - 3600_000).toISOString(),
@@ -66,7 +66,7 @@ describe('Maintenance routes', () => {
   });
 
   it('PUT updates a window', async () => {
-    const w = store.create(validWindow);
+    const w = await store.create(validWindow);
     const res = await app.inject({
       method: 'PUT', url: `/api/v1/alerts/maintenance-windows/${w.id}`,
       payload: { name: 'Renamed' },
@@ -84,7 +84,7 @@ describe('Maintenance routes', () => {
   });
 
   it('DELETE removes a window — 204', async () => {
-    const w = store.create(validWindow);
+    const w = await store.create(validWindow);
     const res = await app.inject({ method: 'DELETE', url: `/api/v1/alerts/maintenance-windows/${w.id}` });
     expect(res.statusCode).toBe(204);
   });

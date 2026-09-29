@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { CreateEscalationDto, UpdateEscalationDto, EscalationStep } from '../schemas/alert.js';
+import { MemoryRepo, type Repo } from '../repository.js';
 
 export interface EscalationPolicy {
   id: string;
@@ -25,12 +26,15 @@ export interface ListEscalationsResult {
   totalPages: number;
 }
 
-/** In-memory escalation policy store (DECISION-013). */
+/**
+ * Escalation policy store (Step 3 S154). Backed by Postgres via `repo` in
+ * production; an in-memory MemoryRepo when no repo is injected (dev/test only).
+ */
 export class EscalationStore {
-  private policies = new Map<string, EscalationPolicy>();
+  constructor(private readonly repo: Repo<EscalationPolicy> = new MemoryRepo<EscalationPolicy>()) {}
 
   /** Create a new escalation policy. */
-  create(dto: CreateEscalationDto): EscalationPolicy {
+  async create(dto: CreateEscalationDto): Promise<EscalationPolicy> {
     const now = new Date().toISOString();
     const policy: EscalationPolicy = {
       id: randomUUID(),
@@ -42,20 +46,21 @@ export class EscalationStore {
       createdAt: now,
       updatedAt: now,
     };
-    this.policies.set(policy.id, policy);
+    return this.repo.save(policy);
+  }
+
+  /** Get policy by ID, optionally scoped to a tenant. */
+  async getById(id: string, tenantId?: string): Promise<EscalationPolicy | undefined> {
+    const policy = await this.repo.get(id);
+    if (!policy) return undefined;
+    if (tenantId !== undefined && policy.tenantId !== tenantId) return undefined;
     return policy;
   }
 
-  /** Get policy by ID. */
-  getById(id: string): EscalationPolicy | undefined {
-    return this.policies.get(id);
-  }
-
   /** List policies for a tenant. */
-  list(tenantId: string, opts: ListEscalationsOptions): ListEscalationsResult {
-    const items = Array.from(this.policies.values())
-      .filter((p) => p.tenantId === tenantId)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // ponytail: sort/paginate in JS over the tenant's rows; push into SQL if a tenant ever has thousands of policies.
+  async list(tenantId: string, opts: ListEscalationsOptions): Promise<ListEscalationsResult> {
+    const items = (await this.repo.list(tenantId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
     const total = items.length;
     const totalPages = Math.ceil(total / opts.limit) || 1;
@@ -66,26 +71,30 @@ export class EscalationStore {
   }
 
   /** Update a policy. */
-  update(id: string, dto: UpdateEscalationDto): EscalationPolicy | undefined {
-    const policy = this.policies.get(id);
+  async update(id: string, dto: UpdateEscalationDto, tenantId?: string): Promise<EscalationPolicy | undefined> {
+    const policy = await this.getById(id, tenantId);
     if (!policy) return undefined;
 
-    if (dto.name !== undefined) policy.name = dto.name;
-    if (dto.steps !== undefined) policy.steps = dto.steps;
-    if (dto.repeatAfterMinutes !== undefined) policy.repeatAfterMinutes = dto.repeatAfterMinutes;
-    if (dto.enabled !== undefined) policy.enabled = dto.enabled;
-    policy.updatedAt = new Date().toISOString();
-
-    return policy;
+    const updated: EscalationPolicy = {
+      ...policy,
+      name: dto.name ?? policy.name,
+      steps: dto.steps ?? policy.steps,
+      repeatAfterMinutes: dto.repeatAfterMinutes ?? policy.repeatAfterMinutes,
+      enabled: dto.enabled ?? policy.enabled,
+      updatedAt: new Date().toISOString(),
+    };
+    return this.repo.save(updated);
   }
 
   /** Delete a policy. Returns true if deleted. */
-  delete(id: string): boolean {
-    return this.policies.delete(id);
+  async delete(id: string, tenantId?: string): Promise<boolean> {
+    const policy = await this.getById(id, tenantId);
+    if (!policy) return false;
+    return this.repo.delete(id);
   }
 
-  /** Clear all policies (for testing). */
+  /** Clear all policies (test-only; only affects the in-memory backend). */
   clear(): void {
-    this.policies.clear();
+    if (this.repo instanceof MemoryRepo) this.repo.clear();
   }
 }

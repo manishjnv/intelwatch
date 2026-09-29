@@ -15,7 +15,7 @@ export function statsRoutes(deps: StatsRouteDeps) {
     app.get('/', async (req: FastifyRequest<{ Querystring: { tenantId?: string } }>, reply: FastifyReply) => {
       const tenantId = (req.query as Record<string, string>).tenantId || 'default';
       const alertStats = alertStore.stats(tenantId);
-      const ruleCount = ruleStore.count(tenantId);
+      const ruleCount = await ruleStore.count(tenantId);
 
       return reply.send({
         data: {

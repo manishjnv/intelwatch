@@ -16,6 +16,16 @@ const ConfigSchema = z.object({
   TI_ALERT_RETENTION_DAYS: z.coerce.number().int().min(1).default(90),
   // Downstream pipeline flag
   TI_INTEGRATION_PUSH_ENABLED: z.coerce.boolean().default(true),
+  // Step 3 S154: alerting persistence (Postgres) + channel config encryption
+  TI_DATABASE_URL: z.string().min(1).optional(),
+  TI_ALERTING_ENCRYPTION_KEY: z.string().min(1).optional(),
+}).superRefine((cfg, ctx) => {
+  if (cfg.TI_NODE_ENV === 'production' && !cfg.TI_DATABASE_URL) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['TI_DATABASE_URL'], message: 'TI_DATABASE_URL is required in production' });
+  }
+  if (cfg.TI_DATABASE_URL && !cfg.TI_ALERTING_ENCRYPTION_KEY) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['TI_ALERTING_ENCRYPTION_KEY'], message: 'TI_ALERTING_ENCRYPTION_KEY is required when TI_DATABASE_URL is set' });
+  }
 });
 
 export type AlertingConfig = z.infer<typeof ConfigSchema>;

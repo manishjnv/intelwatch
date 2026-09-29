@@ -24,8 +24,8 @@ describe('EscalationDispatcher', () => {
     dispatcher = new EscalationDispatcher(deps, 100); // 100ms check interval for tests
   });
 
-  it('tracks an alert for escalation', () => {
-    const policy = deps.escalationStore.create({
+  it('tracks an alert for escalation', async () => {
+    const policy = await deps.escalationStore.create({
       name: 'P1',
       tenantId: 'tenant-1',
       steps: [{ delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] }],
@@ -38,27 +38,42 @@ describe('EscalationDispatcher', () => {
       title: 'Test', description: 'test',
     });
 
-    dispatcher.track(alert.id, policy.id);
+    await dispatcher.track(alert.id, policy.id);
     expect(dispatcher.trackedCount()).toBe(1);
   });
 
-  it('does not track if policy does not exist', () => {
-    dispatcher.track('alert-1', 'non-existent-policy');
+  it('does not escalate with a policy owned by another tenant', async () => {
+    const policy = await deps.escalationStore.create({
+      name: 'Other tenant', tenantId: 'tenant-2',
+      steps: [{ delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] }],
+      repeatAfterMinutes: 0, enabled: true,
+    });
+    const alert = deps.alertStore.create({
+      ruleId: 'rule-1', ruleName: 'R1', tenantId: 'tenant-1', severity: 'critical',
+      title: 'Test', description: 'test',
+    });
+    await dispatcher.track(alert.id, policy.id);
+    expect(await dispatcher.checkEscalations()).toBe(0);
     expect(dispatcher.trackedCount()).toBe(0);
   });
 
-  it('does not track if policy is disabled', () => {
-    const policy = deps.escalationStore.create({
+  it('does not track if policy does not exist', async () => {
+    await dispatcher.track('alert-1', 'non-existent-policy');
+    expect(dispatcher.trackedCount()).toBe(0);
+  });
+
+  it('does not track if policy is disabled', async () => {
+    const policy = await deps.escalationStore.create({
       name: 'P1', tenantId: 'tenant-1',
       steps: [{ delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] }],
       repeatAfterMinutes: 0, enabled: false,
     });
-    dispatcher.track('alert-1', policy.id);
+    await dispatcher.track('alert-1', policy.id);
     expect(dispatcher.trackedCount()).toBe(0);
   });
 
-  it('untracks an alert', () => {
-    const policy = deps.escalationStore.create({
+  it('untracks an alert', async () => {
+    const policy = await deps.escalationStore.create({
       name: 'P1', tenantId: 'tenant-1',
       steps: [{ delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] }],
       repeatAfterMinutes: 0, enabled: true,
@@ -67,19 +82,19 @@ describe('EscalationDispatcher', () => {
       ruleId: 'rule-1', ruleName: 'R1', tenantId: 'tenant-1', severity: 'high',
       title: 'Test', description: 'test',
     });
-    dispatcher.track(alert.id, policy.id);
+    await dispatcher.track(alert.id, policy.id);
     dispatcher.untrack(alert.id);
     expect(dispatcher.trackedCount()).toBe(0);
   });
 
   it('escalates alert when step delay is 0', async () => {
-    const channel = deps.channelStore.create({
+    const channel = await deps.channelStore.create({
       name: 'Email', tenantId: 'tenant-1',
       config: { type: 'email', email: { recipients: ['soc@example.com'] } },
       enabled: true,
     });
 
-    const policy = deps.escalationStore.create({
+    const policy = await deps.escalationStore.create({
       name: 'P1', tenantId: 'tenant-1',
       steps: [{ delayMinutes: 0, channelIds: [channel.id] }],
       repeatAfterMinutes: 0, enabled: true,
@@ -90,7 +105,7 @@ describe('EscalationDispatcher', () => {
       title: 'Test', description: 'test',
     });
 
-    dispatcher.track(alert.id, policy.id);
+    await dispatcher.track(alert.id, policy.id);
     const escalated = await dispatcher.checkEscalations();
     expect(escalated).toBe(1);
 
@@ -105,7 +120,7 @@ describe('EscalationDispatcher', () => {
   });
 
   it('skips escalation if alert is resolved', async () => {
-    const policy = deps.escalationStore.create({
+    const policy = await deps.escalationStore.create({
       name: 'P1', tenantId: 'tenant-1',
       steps: [{ delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] }],
       repeatAfterMinutes: 0, enabled: true,
@@ -117,14 +132,14 @@ describe('EscalationDispatcher', () => {
     });
     deps.alertStore.resolve(alert.id, 'user-1');
 
-    dispatcher.track(alert.id, policy.id);
+    await dispatcher.track(alert.id, policy.id);
     const escalated = await dispatcher.checkEscalations();
     expect(escalated).toBe(0);
     expect(dispatcher.trackedCount()).toBe(0);
   });
 
   it('advances through multiple steps', async () => {
-    const policy = deps.escalationStore.create({
+    const policy = await deps.escalationStore.create({
       name: 'Multi-step', tenantId: 'tenant-1',
       steps: [
         { delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] },
@@ -138,7 +153,7 @@ describe('EscalationDispatcher', () => {
       title: 'Test', description: 'test',
     });
 
-    dispatcher.track(alert.id, policy.id);
+    await dispatcher.track(alert.id, policy.id);
 
     // Step 1
     await dispatcher.checkEscalations();
@@ -152,7 +167,7 @@ describe('EscalationDispatcher', () => {
   });
 
   it('repeats policy when repeatAfterMinutes > 0', async () => {
-    const policy = deps.escalationStore.create({
+    const policy = await deps.escalationStore.create({
       name: 'Repeating', tenantId: 'tenant-1',
       steps: [{ delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] }],
       repeatAfterMinutes: 1, enabled: true,
@@ -163,7 +178,7 @@ describe('EscalationDispatcher', () => {
       title: 'Test', description: 'test',
     });
 
-    dispatcher.track(alert.id, policy.id);
+    await dispatcher.track(alert.id, policy.id);
     await dispatcher.checkEscalations();
 
     // Should still be tracked (will repeat)
@@ -171,21 +186,21 @@ describe('EscalationDispatcher', () => {
   });
 
   it('removes tracking if alert is deleted', async () => {
-    const policy = deps.escalationStore.create({
+    const policy = await deps.escalationStore.create({
       name: 'P1', tenantId: 'tenant-1',
       steps: [{ delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] }],
       repeatAfterMinutes: 0, enabled: true,
     });
 
     // Track a non-existent alert
-    dispatcher.track('non-existent', policy.id);
+    await dispatcher.track('non-existent', policy.id);
     // Force the pending entry (normally track checks the policy, not the alert)
     await dispatcher.checkEscalations();
     expect(dispatcher.trackedCount()).toBe(0);
   });
 
-  it('clears all pending escalations', () => {
-    const policy = deps.escalationStore.create({
+  it('clears all pending escalations', async () => {
+    const policy = await deps.escalationStore.create({
       name: 'P1', tenantId: 'tenant-1',
       steps: [{ delayMinutes: 0, channelIds: ['00000000-0000-0000-0000-000000000001'] }],
       repeatAfterMinutes: 0, enabled: true,
@@ -194,7 +209,7 @@ describe('EscalationDispatcher', () => {
       ruleId: 'rule-1', ruleName: 'R1', tenantId: 'tenant-1', severity: 'high',
       title: 'Test', description: 'test',
     });
-    dispatcher.track(alert.id, policy.id);
+    await dispatcher.track(alert.id, policy.id);
     dispatcher.clear();
     expect(dispatcher.trackedCount()).toBe(0);
   });

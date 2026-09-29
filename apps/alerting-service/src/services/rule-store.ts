@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { CreateRuleDto, UpdateRuleDto, RuleCondition, AlertSeverity } from '../schemas/alert.js';
+import { MemoryRepo, type Repo } from '../repository.js';
 
 export interface AlertRule {
   id: string;
@@ -35,12 +36,15 @@ export interface ListRulesResult {
   totalPages: number;
 }
 
-/** In-memory store for alert rules (DECISION-013). */
+/**
+ * Alert rule store (Step 3 S154). Backed by Postgres via `repo` in production;
+ * an in-memory MemoryRepo when no repo is injected (dev/test only).
+ */
 export class RuleStore {
-  private rules = new Map<string, AlertRule>();
+  constructor(private readonly repo: Repo<AlertRule> = new MemoryRepo<AlertRule>()) {}
 
   /** Create a new alert rule. */
-  create(dto: CreateRuleDto): AlertRule {
+  async create(dto: CreateRuleDto): Promise<AlertRule> {
     const now = new Date().toISOString();
     const rule: AlertRule = {
       id: randomUUID(),
@@ -59,18 +63,21 @@ export class RuleStore {
       createdAt: now,
       updatedAt: now,
     };
-    this.rules.set(rule.id, rule);
+    return this.repo.save(rule);
+  }
+
+  /** Get a single rule by ID, optionally scoped to a tenant. */
+  async getById(id: string, tenantId?: string): Promise<AlertRule | undefined> {
+    const rule = await this.repo.get(id);
+    if (!rule) return undefined;
+    if (tenantId !== undefined && rule.tenantId !== tenantId) return undefined;
     return rule;
   }
 
-  /** Get a single rule by ID. */
-  getById(id: string): AlertRule | undefined {
-    return this.rules.get(id);
-  }
-
   /** List rules for a tenant with optional filters. */
-  list(tenantId: string, opts: ListRulesOptions): ListRulesResult {
-    let items = Array.from(this.rules.values()).filter((r) => r.tenantId === tenantId);
+  // ponytail: filters/sort/paginate in JS over the tenant's rows; push into SQL if a tenant ever has thousands of rules.
+  async list(tenantId: string, opts: ListRulesOptions): Promise<ListRulesResult> {
+    let items = await this.repo.list(tenantId);
 
     if (opts.type) {
       items = items.filter((r) => r.condition.type === opts.type);
@@ -92,68 +99,70 @@ export class RuleStore {
     return { data, total, page: opts.page, limit: opts.limit, totalPages };
   }
 
-  /** Update a rule. Returns updated rule or undefined if not found. */
-  update(id: string, dto: UpdateRuleDto): AlertRule | undefined {
-    const rule = this.rules.get(id);
+  /** Update a rule. Returns updated rule or undefined if not found (or owned by another tenant). */
+  async update(id: string, dto: UpdateRuleDto, tenantId?: string): Promise<AlertRule | undefined> {
+    const rule = await this.getById(id, tenantId);
     if (!rule) return undefined;
 
-    if (dto.name !== undefined) rule.name = dto.name;
-    if (dto.description !== undefined) rule.description = dto.description;
-    if (dto.severity !== undefined) rule.severity = dto.severity;
-    if (dto.condition !== undefined) rule.condition = dto.condition;
-    if (dto.enabled !== undefined) rule.enabled = dto.enabled;
-    if (dto.channelIds !== undefined) rule.channelIds = dto.channelIds;
-    if (dto.escalationPolicyId !== undefined) rule.escalationPolicyId = dto.escalationPolicyId;
-    if (dto.cooldownMinutes !== undefined) rule.cooldownMinutes = dto.cooldownMinutes;
-    if (dto.tags !== undefined) rule.tags = dto.tags;
-    rule.updatedAt = new Date().toISOString();
-
-    return rule;
+    const updated: AlertRule = {
+      ...rule,
+      name: dto.name ?? rule.name,
+      description: dto.description ?? rule.description,
+      severity: dto.severity ?? rule.severity,
+      condition: dto.condition ?? rule.condition,
+      enabled: dto.enabled ?? rule.enabled,
+      channelIds: dto.channelIds ?? rule.channelIds,
+      escalationPolicyId: dto.escalationPolicyId ?? rule.escalationPolicyId,
+      cooldownMinutes: dto.cooldownMinutes ?? rule.cooldownMinutes,
+      tags: dto.tags ?? rule.tags,
+      updatedAt: new Date().toISOString(),
+    };
+    return this.repo.save(updated);
   }
 
-  /** Delete a rule. Returns true if deleted. */
-  delete(id: string): boolean {
-    return this.rules.delete(id);
+  /** Delete a rule. Returns true if deleted (and owned by the given tenant, if provided). */
+  async delete(id: string, tenantId?: string): Promise<boolean> {
+    const rule = await this.getById(id, tenantId);
+    if (!rule) return false;
+    return this.repo.delete(id);
   }
 
   /** Toggle a rule's enabled state. */
-  toggle(id: string, enabled: boolean): AlertRule | undefined {
-    const rule = this.rules.get(id);
+  async toggle(id: string, enabled: boolean, tenantId?: string): Promise<AlertRule | undefined> {
+    const rule = await this.getById(id, tenantId);
     if (!rule) return undefined;
-    rule.enabled = enabled;
-    rule.updatedAt = new Date().toISOString();
-    return rule;
+    return this.repo.save({ ...rule, enabled, updatedAt: new Date().toISOString() });
   }
 
   /** Mark a rule as triggered (updates lastTriggeredAt + triggerCount). */
-  markTriggered(id: string): void {
-    const rule = this.rules.get(id);
-    if (rule) {
-      rule.lastTriggeredAt = new Date().toISOString();
-      rule.triggerCount++;
-    }
+  async markTriggered(id: string): Promise<void> {
+    const rule = await this.repo.get(id);
+    if (!rule) return;
+    await this.repo.save({ ...rule, lastTriggeredAt: new Date().toISOString(), triggerCount: rule.triggerCount + 1 });
   }
 
   /** Check if a rule is in cooldown. */
-  isInCooldown(id: string): boolean {
-    const rule = this.rules.get(id);
+  async isInCooldown(id: string): Promise<boolean> {
+    const rule = await this.repo.get(id);
     if (!rule || !rule.lastTriggeredAt || rule.cooldownMinutes === 0) return false;
     const cooldownEnd = new Date(rule.lastTriggeredAt).getTime() + rule.cooldownMinutes * 60_000;
     return Date.now() < cooldownEnd;
   }
 
   /** Get all enabled rules for a tenant. */
-  getEnabledRules(tenantId: string): AlertRule[] {
-    return Array.from(this.rules.values()).filter((r) => r.tenantId === tenantId && r.enabled);
+  async getEnabledRules(tenantId: string): Promise<AlertRule[]> {
+    const items = await this.repo.list(tenantId);
+    return items.filter((r) => r.enabled);
   }
 
   /** Get total rule count for a tenant. */
-  count(tenantId: string): number {
-    return Array.from(this.rules.values()).filter((r) => r.tenantId === tenantId).length;
+  async count(tenantId: string): Promise<number> {
+    const items = await this.repo.list(tenantId);
+    return items.length;
   }
 
-  /** Clear all rules (for testing). */
+  /** Clear all rules (test-only; only affects the in-memory backend). */
   clear(): void {
-    this.rules.clear();
+    if (this.repo instanceof MemoryRepo) this.repo.clear();
   }
 }

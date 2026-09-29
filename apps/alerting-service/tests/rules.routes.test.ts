@@ -72,8 +72,8 @@ describe('Rule routes', () => {
   // ─── GET /api/v1/alerts/rules ──────────────────────────────────────
 
   it('GET lists rules with pagination', async () => {
-    ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
-    ruleStore.create({ ...validRule, name: 'Rule 2', tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    await ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    await ruleStore.create({ ...validRule, name: 'Rule 2', tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
 
     const res = await app.inject({ method: 'GET', url: '/api/v1/alerts/rules?page=1&limit=1' });
     expect(res.statusCode).toBe(200);
@@ -84,7 +84,7 @@ describe('Rule routes', () => {
   });
 
   it('GET filters by type', async () => {
-    ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    await ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
     const res = await app.inject({ method: 'GET', url: '/api/v1/alerts/rules?type=pattern' });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.length).toBe(0);
@@ -93,7 +93,7 @@ describe('Rule routes', () => {
   // ─── GET /api/v1/alerts/rules/:id ──────────────────────────────────
 
   it('GET returns rule detail', async () => {
-    const rule = ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    const rule = await ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
     const res = await app.inject({ method: 'GET', url: `/api/v1/alerts/rules/${rule.id}` });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.id).toBe(rule.id);
@@ -107,7 +107,7 @@ describe('Rule routes', () => {
   // ─── PUT /api/v1/alerts/rules/:id ──────────────────────────────────
 
   it('PUT updates a rule', async () => {
-    const rule = ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    const rule = await ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
     const res = await app.inject({
       method: 'PUT',
       url: `/api/v1/alerts/rules/${rule.id}`,
@@ -129,10 +129,10 @@ describe('Rule routes', () => {
   // ─── DELETE /api/v1/alerts/rules/:id ───────────────────────────────
 
   it('DELETE removes a rule — 204', async () => {
-    const rule = ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    const rule = await ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
     const res = await app.inject({ method: 'DELETE', url: `/api/v1/alerts/rules/${rule.id}` });
     expect(res.statusCode).toBe(204);
-    expect(ruleStore.getById(rule.id)).toBeUndefined();
+    expect(await ruleStore.getById(rule.id)).toBeUndefined();
   });
 
   it('DELETE returns 404 for non-existent rule', async () => {
@@ -143,7 +143,7 @@ describe('Rule routes', () => {
   // ─── PUT /api/v1/alerts/rules/:id/toggle ───────────────────────────
 
   it('PUT toggle disables a rule', async () => {
-    const rule = ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    const rule = await ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
     const res = await app.inject({
       method: 'PUT',
       url: `/api/v1/alerts/rules/${rule.id}/toggle`,
@@ -154,7 +154,7 @@ describe('Rule routes', () => {
   });
 
   it('PUT toggle rejects missing enabled field', async () => {
-    const rule = ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    const rule = await ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
     const res = await app.inject({
       method: 'PUT',
       url: `/api/v1/alerts/rules/${rule.id}/toggle`,
@@ -175,7 +175,7 @@ describe('Rule routes', () => {
   // ─── POST /api/v1/alerts/rules/:id/test ────────────────────────────
 
   it('POST test dry-runs a rule', async () => {
-    const rule = ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
+    const rule = await ruleStore.create({ ...validRule, tenantId: 'default', enabled: true, cooldownMinutes: 15 } as any);
     const res = await app.inject({ method: 'POST', url: `/api/v1/alerts/rules/${rule.id}/test` });
     expect(res.statusCode).toBe(200);
     const body = res.json();

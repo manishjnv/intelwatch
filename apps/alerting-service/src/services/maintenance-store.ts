@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { MemoryRepo, type Repo } from '../repository.js';
 
 export interface MaintenanceWindow {
   id: string;
@@ -48,12 +49,15 @@ export interface ListMaintenanceResult {
   totalPages: number;
 }
 
-/** In-memory maintenance window store. */
+/**
+ * Maintenance window store (Step 3 S154). Backed by Postgres via `repo` in
+ * production; an in-memory MemoryRepo when no repo is injected (dev/test only).
+ */
 export class MaintenanceStore {
-  private windows = new Map<string, MaintenanceWindow>();
+  constructor(private readonly repo: Repo<MaintenanceWindow> = new MemoryRepo<MaintenanceWindow>()) {}
 
   /** Create a maintenance window. */
-  create(dto: CreateMaintenanceDto): MaintenanceWindow {
+  async create(dto: CreateMaintenanceDto): Promise<MaintenanceWindow> {
     const now = new Date().toISOString();
     const window: MaintenanceWindow = {
       id: randomUUID(),
@@ -68,18 +72,21 @@ export class MaintenanceStore {
       createdAt: now,
       updatedAt: now,
     };
-    this.windows.set(window.id, window);
+    return this.repo.save(window);
+  }
+
+  /** Get by ID, optionally scoped to a tenant. */
+  async getById(id: string, tenantId?: string): Promise<MaintenanceWindow | undefined> {
+    const window = await this.repo.get(id);
+    if (!window) return undefined;
+    if (tenantId !== undefined && window.tenantId !== tenantId) return undefined;
     return window;
   }
 
-  /** Get by ID. */
-  getById(id: string): MaintenanceWindow | undefined {
-    return this.windows.get(id);
-  }
-
   /** List windows for a tenant. */
-  list(tenantId: string, opts: ListMaintenanceOptions): ListMaintenanceResult {
-    let items = Array.from(this.windows.values()).filter((w) => w.tenantId === tenantId);
+  // ponytail: filters/sort/paginate in JS over the tenant's rows; push into SQL if a tenant ever has thousands of windows.
+  async list(tenantId: string, opts: ListMaintenanceOptions): Promise<ListMaintenanceResult> {
+    let items = await this.repo.list(tenantId);
     const now = Date.now();
 
     if (opts.active === true) {
@@ -99,31 +106,35 @@ export class MaintenanceStore {
   }
 
   /** Update a window. */
-  update(id: string, dto: UpdateMaintenanceDto): MaintenanceWindow | undefined {
-    const w = this.windows.get(id);
+  async update(id: string, dto: UpdateMaintenanceDto, tenantId?: string): Promise<MaintenanceWindow | undefined> {
+    const w = await this.getById(id, tenantId);
     if (!w) return undefined;
 
-    if (dto.name !== undefined) w.name = dto.name;
-    if (dto.startAt !== undefined) w.startAt = dto.startAt;
-    if (dto.endAt !== undefined) w.endAt = dto.endAt;
-    if (dto.suppressAllRules !== undefined) w.suppressAllRules = dto.suppressAllRules;
-    if (dto.ruleIds !== undefined) w.ruleIds = dto.ruleIds;
-    if (dto.reason !== undefined) w.reason = dto.reason;
-    w.updatedAt = new Date().toISOString();
-
-    return w;
+    const updated: MaintenanceWindow = {
+      ...w,
+      name: dto.name ?? w.name,
+      startAt: dto.startAt ?? w.startAt,
+      endAt: dto.endAt ?? w.endAt,
+      suppressAllRules: dto.suppressAllRules ?? w.suppressAllRules,
+      ruleIds: dto.ruleIds ?? w.ruleIds,
+      reason: dto.reason ?? w.reason,
+      updatedAt: new Date().toISOString(),
+    };
+    return this.repo.save(updated);
   }
 
   /** Delete a window. */
-  delete(id: string): boolean {
-    return this.windows.delete(id);
+  async delete(id: string, tenantId?: string): Promise<boolean> {
+    const w = await this.getById(id, tenantId);
+    if (!w) return false;
+    return this.repo.delete(id);
   }
 
   /** Check if a specific rule is suppressed by any active maintenance window. */
-  isRuleSuppressed(tenantId: string, ruleId: string): boolean {
+  async isRuleSuppressed(tenantId: string, ruleId: string): Promise<boolean> {
     const now = Date.now();
-    for (const w of this.windows.values()) {
-      if (w.tenantId !== tenantId) continue;
+    const items = await this.repo.list(tenantId);
+    for (const w of items) {
       if (new Date(w.startAt).getTime() > now || new Date(w.endAt).getTime() <= now) continue;
       // Active window
       if (w.suppressAllRules) return true;
@@ -133,18 +144,18 @@ export class MaintenanceStore {
   }
 
   /** Check if ANY rules are suppressed for a tenant (all-rules window active). */
-  isAllRulesSuppressed(tenantId: string): boolean {
+  async isAllRulesSuppressed(tenantId: string): Promise<boolean> {
     const now = Date.now();
-    for (const w of this.windows.values()) {
-      if (w.tenantId !== tenantId) continue;
+    const items = await this.repo.list(tenantId);
+    for (const w of items) {
       if (new Date(w.startAt).getTime() > now || new Date(w.endAt).getTime() <= now) continue;
       if (w.suppressAllRules) return true;
     }
     return false;
   }
 
-  /** Clear all (for testing). */
+  /** Clear all (test-only; only affects the in-memory backend). */
   clear(): void {
-    this.windows.clear();
+    if (this.repo instanceof MemoryRepo) this.repo.clear();
   }
 }

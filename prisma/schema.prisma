@@ -1084,3 +1084,75 @@ model Integration {
   @@index([tenantId])
   @@map("integrations")
 }
+
+// ─── Alerting (Step 3 S154) ─────────────────────────────────────────
+// No relation to Tenant on purpose (Tenant model untouched); offboarding purge deletes by tenant_id (S159e).
+// Additive-only from here on: deploy uses `prisma db push`.
+
+model AlertRule {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  name               String    @db.VarChar(200)
+  description        String    @default("")
+  severity           String    @db.VarChar(20)
+  condition          Json
+  enabled            Boolean   @default(true)
+  channelIds         String[]  @map("channel_ids")
+  escalationPolicyId String?   @map("escalation_policy_id")
+  cooldownMinutes    Int       @default(15) @map("cooldown_minutes")
+  tags               String[]
+  lastTriggeredAt    DateTime? @map("last_triggered_at")
+  triggerCount       Int       @default(0) @map("trigger_count")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId, enabled])
+  @@map("alert_rules")
+}
+
+model AlertChannel {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  name            String    @db.VarChar(200)
+  type            String    @db.VarChar(20)
+  configEnc       String    @map("config_enc") // AES-256-GCM of the full config JSON
+  enabled         Boolean   @default(true)
+  lastTestedAt    DateTime? @map("last_tested_at")
+  lastTestSuccess Boolean?  @map("last_test_success")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId, type])
+  @@map("alert_channels")
+}
+
+model AlertEscalationPolicy {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  name               String   @db.VarChar(200)
+  steps              Json
+  repeatAfterMinutes Int      @default(0) @map("repeat_after_minutes")
+  enabled            Boolean  @default(true)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("alert_escalation_policies")
+}
+
+model AlertMaintenanceWindow {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  name             String   @db.VarChar(200)
+  startAt          DateTime @map("start_at")
+  endAt            DateTime @map("end_at")
+  suppressAllRules Boolean  @default(true) @map("suppress_all_rules")
+  ruleIds          String[] @map("rule_ids")
+  reason           String   @default("")
+  createdBy        String   @default("system") @map("created_by") @db.VarChar(100)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId, startAt, endAt])
+  @@map("alert_maintenance_windows")
+}
