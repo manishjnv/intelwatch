@@ -55,7 +55,7 @@ Sensitive-content grep before commit: clean (no secrets/PII/unfixed-vuln details
 9. Owner-scheduled security fix (includes private items — see private notes); needs owner go-ahead + adversarial review.
 10. Step 3 (no data in memory) — blocked on owner decisions D1–D7.
 
-**Owner actions:** browser check — log in as a Free-plan tenant, DevTools console snippet in `docs/S174_PLAN_FEATURE_GATE.md` (sends the Bearer token from `localStorage.etip_auth`; a bare fetch returns 401), expect `403` + `FEATURE_NOT_AVAILABLE`; click through dashboard/IOCs/search to confirm nothing else broke (unblocks closing item 1 fully). Plus carried over from S173: unblock task 2 (`PageStatsBar` OK to touch), task 7 (reference designs), task 9 (go-ahead), task 10 (D1–D7 decisions).
+**Owner actions:** ~~browser check~~ **PASSED 2026-09-29** — Free-plan `tenant_admin` in incognito got `403` + `FEATURE_NOT_AVAILABLE` (`digital_risk_protection`) on `/api/v1/drp/assets` (snippet in `docs/S174_PLAN_FEATURE_GATE.md`; it sends the Bearer token from `localStorage.etip_auth`, a bare fetch returns 401). Item 1 closed. Plus carried over from S173: unblock task 2 (`PageStatsBar` OK to touch), task 7 (reference designs), task 9 (go-ahead), task 10 (D1–D7 decisions).
 
 ## 🔁 How to Resume (Session 174)
 

@@ -85,7 +85,7 @@ api-gateway 366/366 (was 355 + 11 new). Typecheck clean. Lint 0 errors. Frontend
 
 **Live VPS (after deploy):** CI/CD green, VPS HEAD `e240372`, 32/32 containers healthy, live nginx config confirmed to contain all 14 feature directives, no nginx warnings/errors in logs, public `/` and `/health` 200, unauthenticated `/api/v1/drp/assets` 401 (auth still required first, as before).
 
-**Owner browser check (PENDING):** log in as a Free-plan tenant, open DevTools console, run:
+**Owner browser check (PASSED 2026-09-29 — Free-plan `tenant_admin` in incognito got `403` + `FEATURE_NOT_AVAILABLE` / `digital_risk_protection`):** log in as a Free-plan tenant, open DevTools console, run:
 ```js
 const a = JSON.parse(localStorage.getItem('etip_auth'));
 console.log('role:', a.user?.role, '| plan:', a.tenant?.plan);
