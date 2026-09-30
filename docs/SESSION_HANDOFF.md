@@ -1,7 +1,27 @@
 # SESSION HANDOFF DOCUMENT
 
-**Date:** 2026-09-30
-**Session:** 177 part 2
+**Date:** 2026-10-01
+**Session:** 177 (PR #71)
+**Session Summary:** No demo data (DECISION-048 reaffirmed) + offboarding deactivate-only, keeps tenant data (DECISION-052) — DONE, deployed and verified. Onboarding's `DemoSeeder` and its catalog deleted, `RealSeeder` no longer seeds sample IOCs/actors/malware; frontend `isDemo` sweep completed (all remaining fallbacks removed, `hooks/demo-data.ts` deleted); offboarding is now deactivate-only (block tenant+users, end sessions, revoke API keys/SCIM, disable SSO — no purge), the never-scheduled purge worker/`external-purge.ts`/archive-worker deleted (recoverable from `17a7737`). codex:rescue verdict REVISE on the offboarding change — 1 finding (empty-string purge date reachable), fixed pre-merge (`@etip/shared-types` purge fields now nullable). PR #71 merged `75e5570`, CI/CD run 36763489579 green. VPS HEAD `75e5570`, 32/32 healthy. Tests: onboarding 276→219, user-management-service 375→366, frontend 2,082→1,998. Real monorepo total **9,415 passed, 2 skipped, 0 failed, 33 packages** (was 9,566). Detail: `docs/S177_NO_DEMO_DATA_KEEP_TENANT_DATA.md`.
+
+## PR #71 (2026-10-01)
+
+| Commit(s) | Description |
+|---|---|
+| `647805d` | feat: onboarding — remove demo/sample data seeding |
+| `b56fb54` | feat: offboarding deactivates the tenant and keeps all data (no purge) |
+| `6134e95` | feat: frontend — remove remaining demo-data fallbacks (DECISION-048) |
+| `48fcdc2` | docs: DECISION-052 offboarding keeps data; demo data removed (PR #71) — session doc, backlog, module docs |
+| merge (PR #71 → `75e5570`) | PR #71 merged; CI/CD run 36763489579 green (Test, Build & Push, Deploy to VPS) |
+
+**Live checks:** `GET /onboarding/welcome/demo-available` + `/demo-status` → 404; served bundle contains "Deactivated · data retained" (1), "Reactivate" (5), "Not enriched yet." (2), no "Seed Demo Data"/"days until purge"; `NOAUTH` = 0 and 0 restarts on `etip_onboarding`/`etip_user_management`/`etip_alerting`/`etip_caching`.
+
+**Finding:** `apps/frontend/src/pages/OnboardingPage.tsx` is unrouted (`/onboarding` redirects to `/command-center#settings`, `App.tsx:110`) — the old "Seed Demo Data" button was never reachable in prod. Added to `docs/PENDING_WORK.md` §3.
+
+---
+
+## Session 177 part 2 (PR #70) — original content below
+
 **Session Summary:** Step 3 rows **S159/S159d/S159e** done, deployed and verified — hunting-service moved off its remaining in-memory Maps onto Postgres (one generic `hunting_docs` table, key `(kind, id)`, 8 kinds, DECISION-051 pattern, not `RedisJsonStore`), onboarding's module readiness/checklist/demo/tour state moved to Redis, and the offboarding purge worker widened to cover every tenant table plus Redis `etip:{tenantId}:*`. codex:rescue found 2 gaps (purge missed 8 older tenant tables; `ExternalPurger` accepted non-UUID tenant ids) — both fixed before merge. PR #70 merged `47201c0`, CI/CD run 36688149148 green. VPS HEAD `47201c0`, 32/32 healthy. hunting-service 251/251, onboarding 276/276, user-management-service 375/375. Real monorepo total **9,566 passed, 2 skipped, 0 failed, 33 packages** (was 9,524).
 
 Previous (Session 177 part 1): Step 3 rows **S155–S158b** done, deployed and verified — alerting-service alerts/history/groups (dedup + escalation state as columns), integration-service logs/deliveries/tickets + generic `integration_docs` config/audit table, and drp-service assets/alerts/scans/takedowns/feedback all moved off in-process memory onto Postgres (12 new additive tables). Found and fixed the same session: alerting-service worker and caching-service cache-invalidation listener both dropped the Redis password and used the wrong BullMQ prefix (RCA #66), integration exports sent hard-coded demo IOCs (RCA #67), `integration_docs`'s first-cut primary key would have let two doc kinds collide (RCA #68, caught in review). PR #69 merged `e10897d`.
@@ -111,33 +131,27 @@ Security: codex:rescue verdict ACCEPT (all by-id paths, save helpers, integratio
   IOC export fetch, cross-tenant background jobs, error paths across all 3 services).
 ```
 
-## ⚠️ Open Items / Next Steps (Session 177 part 2)
+## ⚠️ Open Items / Next Steps (Session 177, PR #71)
 
-**Full backlog: `docs/PENDING_WORK.md`** (all roadmap steps, SEO G1–G7 + weekly brief B1–B3, standing backlog, owner inputs, stale docs). Ordered queue (one task per fresh session):
+**Full backlog: `docs/PENDING_WORK.md`** (all roadmap steps, SEO G1–G7 + weekly brief B1–B3, standing backlog, owner inputs, stale docs). Both owner decisions this row depended on are now resolved (DECISION-048 no demo data, DECISION-052 offboarding keeps data). Ordered queue (one task per fresh session):
 
-1. **Wire the offboarding purge scheduler** — `runPurgeCheck` exists but no daily job calls it, `ExternalPurger.fromEnv` is never invoked, and `etip_user_management` lacks the Neo4j/ES env it would need. Destructive; needs an owner go-ahead first.
-2. Owner decision on onboarding's "Seed Demo Data" button (`apps/frontend/src/pages/OnboardingPage.tsx:257`, `POST /onboarding/welcome/seed-demo`) — it writes fabricated IOCs/actors/malware/vulnerabilities into the tenant's real stores (DECISION-048 conflict). Remove the button/route, or restrict to a demo tenant.
-3. **Step 3 row S159b** — caching-service archive rebuild from MinIO (archive is currently off), then S159c analytics tenant trends (grouped with the owner-scheduled security fix). Backlog modules: reporting, customization, user-management in-memory stores, correlation-engine.
-4. Wiring fixes from the S173 sweep (see PENDING_WORK §3); S177 follow-ups (admin-service raw-LPUSH producer, api-gateway quota-enforcement raw-LPUSH, ALERT_EVALUATE producers missing retry/backoff, integration DLQ "retry" doesn't resend, exports support only `iocs`, `RedisJsonStore` data-loss traps, alert worker concurrency-5 dedup race, escalation dispatcher single-instance assumption, `integration-store.ts` at 397/400 lines).
-5. AI enrichment runner (DECISION-045).
-6. Graph visual redesign — needs owner reference designs.
-7. Owner-scheduled security fix (includes private items — see private notes); owner go-ahead + adversarial review; before the first real customer.
-8. Folded in, no own session: audit PR 3 leftovers, remaining `isDemo` hooks, S174 plan-gate leftovers, alert notification delivery (log-only today).
-9. Parallel any time: SEO G1 (sitemap from routes + self-hosted fonts, small frontend task).
+1. **Step 3 row S159b** — caching-service archive rebuild from MinIO (archive is currently off), then S159c analytics tenant trends (grouped with the owner-scheduled security fix). Backlog modules: reporting, customization, user-management in-memory stores, correlation-engine.
+2. Wiring fixes from the S173 sweep (see PENDING_WORK §3); S177 follow-ups (admin-service raw-LPUSH producer, api-gateway quota-enforcement raw-LPUSH, ALERT_EVALUATE producers missing retry/backoff, integration DLQ "retry" doesn't resend, exports support only `iocs`, `RedisJsonStore` data-loss traps, alert worker concurrency-5 dedup race, escalation dispatcher single-instance assumption, `integration-store.ts` at 397/400 lines); the two missing backend routes found in PR #71 (access-review stats, super-admin tenant SSO view); delete or route the unrouted `OnboardingPage.tsx`.
+3. AI enrichment runner (DECISION-045).
+4. Graph visual redesign — needs owner reference designs.
+5. Owner-scheduled security fix (includes private items — see private notes); owner go-ahead + adversarial review; before the first real customer.
+6. Folded in, no own session: audit PR 3 leftovers, remaining `isDemo` hooks, S174 plan-gate leftovers, alert notification delivery (log-only today).
+7. Parallel any time: SEO G1 (sitemap from routes + self-hosted fonts, small frontend task).
 
-**Owner actions:** offboarding purge scheduler go-ahead (destructive), "Seed Demo Data" decision. Still open: graph designs, security-fix go-ahead, `PageStatsBar` OK, Step 15 P2 decisions, DECISION-032, SEO O-S1, brief O-B1–B3.
+**Owner actions still open:** graph designs, security-fix go-ahead, `PageStatsBar` OK, Step 15 P2 decisions, DECISION-032, SEO O-S1, brief O-B1–B3.
 
 ## 🔁 How to Resume (Session 178)
 
 ```
-Run /session-start. Next task needs an owner go-ahead first: wire the offboarding
-purge scheduler (runPurgeCheck is never called by a daily job, ExternalPurger.fromEnv
-is never invoked, and etip_user_management lacks the Neo4j/ES env it would need —
-this is destructive). If the owner has not yet approved, move to the next queue item:
-the owner decision on onboarding's "Seed Demo Data" button (DECISION-048 conflict),
-then Step 3 row S159b (caching-service archive rebuild from MinIO — spec
-docs/roadmap/STEP_03_PERSISTENCE.md). Module: user-management-service (purge) or
-caching-service (S159b) depending on which is unblocked.
+Run /session-start. Next task: Step 3 row S159b — caching-service archive rebuild
+from MinIO (spec docs/roadmap/STEP_03_PERSISTENCE.md). Module: caching-service.
+No owner go-ahead needed — the offboarding-purge and seed-demo decisions that
+blocked prior sessions are now resolved via PR #71 (DECISION-048/052).
 
 Frozen / do-not-touch without explicit instruction: shared-* packages (Tier 1, api-gateway
 included) — additive only, list every consumer before any change; shared-ui needs owner approval

@@ -33,7 +33,7 @@ Two owner decisions, 2026-09-30:
 | user-service | 185 | 185 (unchanged) |
 | frontend | 2,082 | 1,998 |
 
-Test cases for deleted demo constants/routes were removed, not left failing. Full local gate green (lockfile, memory guard, typecheck, lint, tests). CI total: TBD (post-deploy).
+Test cases for deleted demo constants/routes were removed, not left failing. Full local gate green (lockfile, memory guard, typecheck, lint, tests). CI total: **9,415 passed, 2 skipped, 0 failed, 33 packages** (was 9,566 after PR #70 — the drop is tests of deleted demo/purge code, not a regression).
 
 ## Review
 
@@ -56,4 +56,17 @@ Test cases for deleted demo constants/routes were removed, not left failing. Ful
 
 `git reset --hard safe-point-2026-09-30-s177-nodemo` (before merge), or revert PR #71's merge commit after. The deleted purge worker files are recoverable individually from commit `17a7737` if a one-off purge is ever needed.
 
-**Deploy result:** TBD (post-deploy).
+## Deploy result
+
+PR #71 merged as `75e5570` ("Merge pull request #71 from manishjnv/s177/no-demo-data-deactivate-offboarding"). CI/CD run 36763489579: Test ✓, Build & Push ✓, Deploy to VPS ✓. VPS HEAD `75e5570`, 32/32 `etip_*` containers healthy.
+
+**Live checks (2026-10-01):**
+- `GET /api/v1/onboarding/welcome/demo-available` and `/demo-status` → 404 (routes removed).
+- Served frontend bundle contains "Deactivated · data retained" (1), "Reactivate" (5), "Not enriched yet." (2); contains no "Seed Demo Data" and no "days until purge".
+- `NOAUTH` = 0 and 0 restarts on `etip_onboarding`, `etip_user_management`, `etip_alerting`, `etip_caching`.
+
+**Finding — unrouted OnboardingPage:** `apps/frontend/src/pages/OnboardingPage.tsx` is not routed — `/onboarding` redirects to `/command-center#settings` (`App.tsx:110`) — so the old "Seed Demo Data" button was never reachable in the live app. This is consistent with the zero DEMO/ONBOARDING production rows found above. Added to `docs/PENDING_WORK.md` §3: delete the unrouted page (and its tests), or route it.
+
+**Owner decisions now live:** DECISION-048 (no demo data — onboarding seeding + frontend `isDemo` fallbacks removed) and DECISION-052 (offboarding deactivates + keeps data, no purge).
+
+**Next engineering queue** (`docs/PENDING_WORK.md`): S159b caching archive rebuild from MinIO, backlog persistence modules (reporting, customization, user-management in-memory stores, correlation-engine), wiring fixes incl. the two missing backend routes (access-review stats, super-admin tenant SSO view), AI enrichment runner, graph redesign (needs owner references), owner-scheduled security fix, SEO G1 in parallel.

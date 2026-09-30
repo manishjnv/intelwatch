@@ -1,6 +1,6 @@
 # User Management Service
 
-**Port:** 3016 | **Status:** ✅ Deployed (FEATURE-COMPLETE) | **Tests:** 366
+**Port:** 3016 | **Status:** ✅ Deployed (FEATURE-COMPLETE, PR #71 `75e5570`) | **Tests:** 366
 
 ## What It Does
 Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, SOC2 audit logging, quarterly access review automation (I-17), compliance report generation (I-18), real user directory (S162), and API key management with server-side RBAC (S167). Mostly in-memory (DECISION-013 pattern) — the user directory and API keys read/write through Prisma.

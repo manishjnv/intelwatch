@@ -1,6 +1,6 @@
 # Onboarding Service (Module 18)
 
-**Port:** 3018 | **Status:** ✅ Deployed | **Tests:** 219 | **Endpoints:** 32
+**Port:** 3018 | **Status:** ✅ Deployed (PR #71 `75e5570`) | **Tests:** 219 | **Endpoints:** 32
 
 ## Demo/sample seeding removed (S177, PR #71, DECISION-048)
 
