@@ -90,8 +90,12 @@ export class GlobalIocAlertHandler {
         },
       };
 
-      this.alertStore.create(input);
-      notified++;
+      try {
+        await this.alertStore.create(input);
+        notified++;
+      } catch (err) {
+        this.logger?.warn({ tenantId: sub.tenantId, err }, 'Failed to create global IOC alert for tenant');
+      }
     }
 
     this.logger?.info(
@@ -144,8 +148,12 @@ export class GlobalIocAlertHandler {
         },
       };
 
-      this.alertStore.create(input);
-      notified++;
+      try {
+        await this.alertStore.create(input);
+        notified++;
+      } catch (err) {
+        this.logger?.warn({ tenantId: sub.tenantId, err }, 'Failed to create global IOC updated alert for tenant');
+      }
     }
 
     this.logger?.info(

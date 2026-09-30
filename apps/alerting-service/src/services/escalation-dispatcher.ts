@@ -13,20 +13,17 @@ export interface EscalationDispatcherDeps {
   alertHistory: AlertHistory;
 }
 
-interface PendingEscalation {
-  alertId: string;
-  policyId: string;
-  currentStep: number;
-  nextEscalationAt: number;
-}
-
 /**
- * Connects escalation policies to the alert lifecycle.
- * Tracks open/escalated alerts with policies and auto-escalates after step delays.
+ * Connects escalation policies to the alert lifecycle (Step 3 S155).
+ * Escalation state (policyId/step/nextEscalationAt) lives on the alert row itself —
+ * no in-process pending map — so it survives a restart and works across replicas
+ * reading the same alert.
  * Runs on a periodic check interval.
+ *
+ * // ponytail: single alerting instance assumed; two instances could double-escalate
+ * // the same due alert — add `SELECT ... FOR UPDATE SKIP LOCKED` if this service is ever scaled out.
  */
 export class EscalationDispatcher {
-  private pending = new Map<string, PendingEscalation>();
   private interval: ReturnType<typeof setInterval> | null = null;
   private readonly deps: EscalationDispatcherDeps;
   private readonly checkIntervalMs: number;
@@ -39,7 +36,9 @@ export class EscalationDispatcher {
   /** Start the periodic escalation check. */
   start(): void {
     if (this.interval) return;
-    this.interval = setInterval(() => { void this.checkEscalations(); }, this.checkIntervalMs);
+    this.interval = setInterval(() => {
+      this.checkEscalations().catch((err) => getLogger().error({ err }, 'Escalation check failed'));
+    }, this.checkIntervalMs);
     getLogger().info('Escalation dispatcher started');
   }
 
@@ -52,69 +51,65 @@ export class EscalationDispatcher {
   }
 
   /** Register an alert for escalation tracking. Called when an alert is created with an escalation policy. */
-  async track(alertId: string, policyId: string): Promise<void> {
-    const policy = await this.deps.escalationStore.getById(policyId);
+  async track(alertId: string, policyId: string, tenantId: string): Promise<void> {
+    const policy = await this.deps.escalationStore.getById(policyId, tenantId);
     if (!policy || !policy.enabled || policy.steps.length === 0) return;
 
     const firstStep = policy.steps[0]!;
-    this.pending.set(alertId, {
-      alertId,
-      policyId,
-      currentStep: 0,
-      nextEscalationAt: Date.now() + firstStep.delayMinutes * 60_000,
+    await this.deps.alertStore.setEscalation(alertId, {
+      escalationPolicyId: policyId,
+      escalationStep: 0,
+      nextEscalationAt: new Date(Date.now() + firstStep.delayMinutes * 60_000).toISOString(),
     });
   }
 
-  /** Remove an alert from escalation tracking (e.g., when resolved). */
-  untrack(alertId: string): void {
-    this.pending.delete(alertId);
-  }
-
-  /** Check all pending escalations and execute any that are due. */
+  /** Check all due escalations across tenants and execute any that are ready. */
   async checkEscalations(): Promise<number> {
     const logger = getLogger();
-    const now = Date.now();
+    const now = new Date();
     let escalated = 0;
 
-    for (const [alertId, pending] of this.pending) {
-      if (now < pending.nextEscalationAt) continue;
+    const due = await this.deps.alertStore.listDueEscalations(now);
 
-      const alert = this.deps.alertStore.getById(alertId);
-      if (!alert) {
-        this.pending.delete(alertId);
-        continue;
-      }
-
-      // Skip if already resolved or suppressed
-      if (alert.status === 'resolved' || alert.status === 'suppressed') {
-        this.pending.delete(alertId);
+    for (const alert of due) {
+      if (alert.status === 'resolved' || alert.status === 'suppressed' || !alert.escalationPolicyId) {
+        await this.deps.alertStore.setEscalation(alert.id, {
+          escalationPolicyId: alert.escalationPolicyId,
+          escalationStep: alert.escalationStep,
+          nextEscalationAt: null,
+        });
         continue;
       }
 
       // Scoped to the alert's tenant: a rule pointing at another tenant's policy never escalates
-      const policy = await this.deps.escalationStore.getById(pending.policyId, alert.tenantId);
+      const policy = await this.deps.escalationStore.getById(alert.escalationPolicyId, alert.tenantId);
       if (!policy || !policy.enabled) {
-        this.pending.delete(alertId);
+        await this.deps.alertStore.setEscalation(alert.id, {
+          escalationPolicyId: alert.escalationPolicyId,
+          escalationStep: alert.escalationStep,
+          nextEscalationAt: null,
+        });
         continue;
       }
 
-      const step = policy.steps[pending.currentStep];
+      const step = policy.steps[alert.escalationStep];
       if (!step) {
-        this.handleRepeatOrStop(pending, policy);
+        await this.handleRepeatOrStop(alert, policy);
         continue;
       }
 
-      // Execute escalation step
-      await this.executeStep(alert, policy, pending, step.channelIds, step.notifyMessage);
+      await this.executeStep(alert, policy, step.channelIds, step.notifyMessage);
       escalated++;
 
-      // Advance to next step
-      const nextStep = pending.currentStep + 1;
-      if (nextStep < policy.steps.length) {
-        pending.currentStep = nextStep;
-        pending.nextEscalationAt = now + policy.steps[nextStep]!.delayMinutes * 60_000;
+      const nextStepIdx = alert.escalationStep + 1;
+      if (nextStepIdx < policy.steps.length) {
+        await this.deps.alertStore.setEscalation(alert.id, {
+          escalationPolicyId: policy.id,
+          escalationStep: nextStepIdx,
+          nextEscalationAt: new Date(now.getTime() + policy.steps[nextStepIdx]!.delayMinutes * 60_000).toISOString(),
+        });
       } else {
-        this.handleRepeatOrStop(pending, policy);
+        await this.handleRepeatOrStop(alert, policy);
       }
     }
 
@@ -125,41 +120,29 @@ export class EscalationDispatcher {
   private async executeStep(
     alert: Alert,
     policy: EscalationPolicy,
-    pending: PendingEscalation,
     channelIds: string[],
     message?: string | null,
   ): Promise<void> {
     const logger = getLogger();
+    const fromStatus = alert.status; // record the status BEFORE the escalation mutation
 
-    // Escalate the alert status
     try {
-      if (alert.status === 'open' || alert.status === 'acknowledged' || alert.status === 'escalated') {
-        // Only transition if valid
-        if (alert.status !== 'escalated') {
-          this.deps.alertStore.escalate(alert.id);
-        } else {
-          // Already escalated — increment level manually
-          alert.escalationLevel++;
-          alert.escalatedAt = new Date().toISOString();
-          alert.updatedAt = new Date().toISOString();
-        }
-      }
+      await this.deps.alertStore.autoEscalate(alert);
     } catch (err) {
       logger.warn({ alertId: alert.id, err }, 'Could not escalate alert status');
     }
 
-    // Record in history
-    this.deps.alertHistory.record({
+    await this.deps.alertHistory.record({
+      tenantId: alert.tenantId,
       alertId: alert.id,
       action: 'auto_escalate',
-      fromStatus: alert.status,
+      fromStatus,
       toStatus: 'escalated',
       actor: 'escalation-dispatcher',
-      reason: `Policy "${policy.name}" step ${pending.currentStep + 1}: ${message ?? 'auto-escalation'}`,
-      metadata: { policyId: policy.id, step: pending.currentStep + 1 },
+      reason: `Policy "${policy.name}" step ${alert.escalationStep + 1}: ${message ?? 'auto-escalation'}`,
+      metadata: { policyId: policy.id, step: alert.escalationStep + 1 },
     });
 
-    // Send notifications to step channels
     const channels = await this.deps.channelStore.getByIds(channelIds, alert.tenantId);
     if (channels.length > 0) {
       const results = await this.deps.notifier.notifyAll(channels, alert);
@@ -170,28 +153,24 @@ export class EscalationDispatcher {
     }
 
     logger.info(
-      { alertId: alert.id, policyId: policy.id, step: pending.currentStep + 1, level: alert.escalationLevel },
+      { alertId: alert.id, policyId: policy.id, step: alert.escalationStep + 1 },
       'Escalation step executed',
     );
   }
 
-  private handleRepeatOrStop(pending: PendingEscalation, policy: EscalationPolicy): void {
+  private async handleRepeatOrStop(alert: Alert, policy: EscalationPolicy): Promise<void> {
     if (policy.repeatAfterMinutes > 0) {
-      // Reset to step 0 and schedule repeat
-      pending.currentStep = 0;
-      pending.nextEscalationAt = Date.now() + policy.repeatAfterMinutes * 60_000;
+      await this.deps.alertStore.setEscalation(alert.id, {
+        escalationPolicyId: policy.id,
+        escalationStep: 0,
+        nextEscalationAt: new Date(Date.now() + policy.repeatAfterMinutes * 60_000).toISOString(),
+      });
     } else {
-      this.pending.delete(pending.alertId);
+      await this.deps.alertStore.setEscalation(alert.id, {
+        escalationPolicyId: policy.id,
+        escalationStep: alert.escalationStep,
+        nextEscalationAt: null,
+      });
     }
-  }
-
-  /** Get count of alerts being tracked for escalation. */
-  trackedCount(): number {
-    return this.pending.size;
-  }
-
-  /** Clear all pending escalations (for testing). */
-  clear(): void {
-    this.pending.clear();
   }
 }

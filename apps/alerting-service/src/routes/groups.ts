@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AppError } from '@etip/shared-utils';
 import type { AlertGroupStore } from '../services/alert-group-store.js';
+import { requestTenant } from '../plugins/tenant-guard.js';
 
 export interface GroupRouteDeps {
   alertGroupStore: AlertGroupStore;
@@ -17,7 +18,7 @@ export function groupRoutes(deps: GroupRouteDeps) {
       const page = parseInt(req.query.page || '1', 10);
       const limit = parseInt(req.query.limit || '20', 10);
 
-      const result = alertGroupStore.list(tenantId, { status, page, limit });
+      const result = await alertGroupStore.list(tenantId, { status, page, limit });
       return reply.send({
         data: result.data,
         meta: { total: result.total, page: result.page, limit: result.limit, totalPages: result.totalPages },
@@ -26,14 +27,14 @@ export function groupRoutes(deps: GroupRouteDeps) {
 
     // GET /api/v1/alerts/groups/:id — Get group detail
     app.get('/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const group = alertGroupStore.getById(req.params.id);
+      const group = await alertGroupStore.getById(req.params.id, requestTenant(req));
       if (!group) throw new AppError(404, `Group not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.send({ data: group });
     });
 
     // POST /api/v1/alerts/groups/:id/resolve — Resolve a group
     app.post('/:id/resolve', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const group = alertGroupStore.resolveGroup(req.params.id);
+      const group = await alertGroupStore.resolveGroup(req.params.id, requestTenant(req));
       if (!group) throw new AppError(404, `Group not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.send({ data: group });
     });

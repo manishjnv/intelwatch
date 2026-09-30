@@ -26,7 +26,7 @@ export interface EvaluationResult {
  */
 export class RuleEngine {
   /** Recent events buffer: tenantId -> events (kept for max window) */
-  private eventBuffer = new Map<string, EvaluationEvent[]>();
+  private eventBuffer = new Map<string, EvaluationEvent[]>(); // memory-ok: buffer — threshold window, capped + age-trimmed, rebuilt from new events (Step 3 §3.2 MEM)
   private readonly maxBufferPerTenant: number;
   private readonly maxBufferAgeMs: number;
 

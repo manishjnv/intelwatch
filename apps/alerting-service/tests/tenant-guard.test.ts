@@ -25,7 +25,7 @@ describe('Tenant guard', () => {
   }
 
   beforeAll(async () => {
-    alertStore = new AlertStore(100);
+    alertStore = new AlertStore(undefined, 100);
     app = await buildApp({
       config: loadConfig({}),
       alertDeps: { alertStore, alertHistory: new AlertHistory() },
@@ -35,7 +35,7 @@ describe('Tenant guard', () => {
   });
 
   afterAll(async () => { await app.close(); });
-  beforeEach(() => { alertStore.clear(); alertFor('tenant-a'); alertFor('tenant-b'); });
+  beforeEach(async () => { alertStore.clear(); await alertFor('tenant-a'); await alertFor('tenant-b'); });
 
   it('rejects a query tenantId that differs from the authenticated tenant', async () => {
     const res = await app.inject({

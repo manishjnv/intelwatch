@@ -15,6 +15,18 @@ import type { MaintenanceWindow } from './services/maintenance-store.js';
 import type { ChannelCrypto } from './services/channel-crypto.js';
 import { isUuid, dbCall, type Repo } from './repository.js';
 
+/** Prisma P2002 = unique constraint violation. */
+function isP2002(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2002';
+}
+
+/** Strips these keys from a Prisma create-input, producing the payload safe for `updateMany` (never re-sets id/tenantId/createdAt). */
+function omitKeys<T extends object, K extends keyof T>(obj: T, keys: readonly K[]): Omit<T, K> {
+  const copy = { ...obj } as Record<string, unknown>;
+  for (const k of keys) delete copy[k as string];
+  return copy as Omit<T, K>;
+}
+
 // ─── AlertRule ─────────────────────────────────────────────────────
 
 function toDbRule(row: AlertRule): Prisma.AlertRuleUncheckedCreateInput {
@@ -76,9 +88,19 @@ export function createRuleRepo(prisma: PrismaClient): Repo<AlertRule> {
     async save(row) {
       if (!isUuid(row.tenantId)) throw new AppError(400, 'tenantId must be a UUID', 'VALIDATION_ERROR');
       const data = toDbRule(row);
+      const updateData = omitKeys(data, ['id', 'tenantId', 'createdAt']);
       return dbCall(async () => {
-        const saved = await prisma.alertRule.upsert({ where: { id: row.id }, create: data, update: data });
-        return fromDbRule(saved);
+        const res = await prisma.alertRule.updateMany({ where: { id: row.id, tenantId: row.tenantId }, data: updateData });
+        if (res.count === 0) {
+          try {
+            await prisma.alertRule.create({ data });
+          } catch (err) {
+            if (isP2002(err)) throw new AppError(409, 'Record id already in use', 'CONFLICT');
+            throw err;
+          }
+        }
+        const saved = await prisma.alertRule.findFirst({ where: { id: row.id, tenantId: row.tenantId } });
+        return fromDbRule(saved!);
       });
     },
     async delete(id) {
@@ -142,9 +164,19 @@ export function createChannelRepo(prisma: PrismaClient, crypto: ChannelCrypto): 
     async save(row) {
       if (!isUuid(row.tenantId)) throw new AppError(400, 'tenantId must be a UUID', 'VALIDATION_ERROR');
       const data = toDbChannel(row, crypto);
+      const updateData = omitKeys(data, ['id', 'tenantId', 'createdAt']);
       return dbCall(async () => {
-        const saved = await prisma.alertChannel.upsert({ where: { id: row.id }, create: data, update: data });
-        return fromDbChannel(saved, crypto);
+        const res = await prisma.alertChannel.updateMany({ where: { id: row.id, tenantId: row.tenantId }, data: updateData });
+        if (res.count === 0) {
+          try {
+            await prisma.alertChannel.create({ data });
+          } catch (err) {
+            if (isP2002(err)) throw new AppError(409, 'Record id already in use', 'CONFLICT');
+            throw err;
+          }
+        }
+        const saved = await prisma.alertChannel.findFirst({ where: { id: row.id, tenantId: row.tenantId } });
+        return fromDbChannel(saved!, crypto);
       });
     },
     async delete(id) {
@@ -204,9 +236,19 @@ export function createEscalationRepo(prisma: PrismaClient): Repo<EscalationPolic
     async save(row) {
       if (!isUuid(row.tenantId)) throw new AppError(400, 'tenantId must be a UUID', 'VALIDATION_ERROR');
       const data = toDbEscalation(row);
+      const updateData = omitKeys(data, ['id', 'tenantId', 'createdAt']);
       return dbCall(async () => {
-        const saved = await prisma.alertEscalationPolicy.upsert({ where: { id: row.id }, create: data, update: data });
-        return fromDbEscalation(saved);
+        const res = await prisma.alertEscalationPolicy.updateMany({ where: { id: row.id, tenantId: row.tenantId }, data: updateData });
+        if (res.count === 0) {
+          try {
+            await prisma.alertEscalationPolicy.create({ data });
+          } catch (err) {
+            if (isP2002(err)) throw new AppError(409, 'Record id already in use', 'CONFLICT');
+            throw err;
+          }
+        }
+        const saved = await prisma.alertEscalationPolicy.findFirst({ where: { id: row.id, tenantId: row.tenantId } });
+        return fromDbEscalation(saved!);
       });
     },
     async delete(id) {
@@ -272,9 +314,19 @@ export function createMaintenanceRepo(prisma: PrismaClient): Repo<MaintenanceWin
     async save(row) {
       if (!isUuid(row.tenantId)) throw new AppError(400, 'tenantId must be a UUID', 'VALIDATION_ERROR');
       const data = toDbMaintenance(row);
+      const updateData = omitKeys(data, ['id', 'tenantId', 'createdAt']);
       return dbCall(async () => {
-        const saved = await prisma.alertMaintenanceWindow.upsert({ where: { id: row.id }, create: data, update: data });
-        return fromDbMaintenance(saved);
+        const res = await prisma.alertMaintenanceWindow.updateMany({ where: { id: row.id, tenantId: row.tenantId }, data: updateData });
+        if (res.count === 0) {
+          try {
+            await prisma.alertMaintenanceWindow.create({ data });
+          } catch (err) {
+            if (isP2002(err)) throw new AppError(409, 'Record id already in use', 'CONFLICT');
+            throw err;
+          }
+        }
+        const saved = await prisma.alertMaintenanceWindow.findFirst({ where: { id: row.id, tenantId: row.tenantId } });
+        return fromDbMaintenance(saved!);
       });
     },
     async delete(id) {

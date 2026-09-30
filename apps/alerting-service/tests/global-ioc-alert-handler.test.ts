@@ -36,7 +36,7 @@ describe('GlobalIocAlertHandler', () => {
   let subs: TenantSubscription[];
 
   beforeEach(() => {
-    alertStore = new AlertStore(1000);
+    alertStore = new AlertStore(undefined, 1000);
     vi.spyOn(alertStore, 'create');
     subs = [
       makeSub('tenant-1', { minSeverity: 'high', minConfidence: 80 }),

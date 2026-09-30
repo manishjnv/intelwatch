@@ -12,11 +12,11 @@ describe('Alert routes', () => {
   let ruleStore: RuleStore;
   let alertHistory: AlertHistory;
 
-  function createTestAlert() {
+  async function createTestAlert(tenantId = 'default') {
     return alertStore.create({
       ruleId: '00000000-0000-0000-0000-000000000001',
       ruleName: 'Test Rule',
-      tenantId: 'default',
+      tenantId,
       severity: 'high',
       title: 'Test Alert',
       description: 'Something happened',
@@ -25,7 +25,7 @@ describe('Alert routes', () => {
 
   beforeAll(async () => {
     const config = loadConfig({});
-    alertStore = new AlertStore(100);
+    alertStore = new AlertStore(undefined, 100);
     ruleStore = new RuleStore();
     alertHistory = new AlertHistory();
     app = await buildApp({
@@ -49,8 +49,8 @@ describe('Alert routes', () => {
   // ─── GET /api/v1/alerts ────────────────────────────────────────────
 
   it('GET lists alerts with pagination', async () => {
-    createTestAlert();
-    createTestAlert();
+    await createTestAlert();
+    await createTestAlert();
     const res = await app.inject({ method: 'GET', url: '/api/v1/alerts?page=1&limit=1' });
     expect(res.statusCode).toBe(200);
     const body = res.json();
@@ -59,8 +59,8 @@ describe('Alert routes', () => {
   });
 
   it('GET filters by severity', async () => {
-    createTestAlert();
-    alertStore.create({
+    await createTestAlert();
+    await alertStore.create({
       ruleId: 'r2', ruleName: 'R2', tenantId: 'default', severity: 'low', title: 'Low', description: 'x',
     });
     const res = await app.inject({ method: 'GET', url: '/api/v1/alerts?severity=high' });
@@ -68,9 +68,9 @@ describe('Alert routes', () => {
   });
 
   it('GET filters by status', async () => {
-    const a = createTestAlert();
-    createTestAlert();
-    alertStore.acknowledge(a.id, 'user-1');
+    const a = await createTestAlert();
+    await createTestAlert();
+    await alertStore.acknowledge(a.id, 'user-1');
     const res = await app.inject({ method: 'GET', url: '/api/v1/alerts?status=acknowledged' });
     expect(res.json().data.length).toBe(1);
   });
@@ -78,7 +78,7 @@ describe('Alert routes', () => {
   // ─── GET /api/v1/alerts/:id ────────────────────────────────────────
 
   it('GET returns alert detail', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     const res = await app.inject({ method: 'GET', url: `/api/v1/alerts/${alert.id}` });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.id).toBe(alert.id);
@@ -92,7 +92,7 @@ describe('Alert routes', () => {
   // ─── POST /api/v1/alerts/:id/acknowledge ───────────────────────────
 
   it('POST acknowledges an alert', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/alerts/${alert.id}/acknowledge`,
@@ -104,7 +104,7 @@ describe('Alert routes', () => {
   });
 
   it('POST acknowledge uses system as default userId', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/alerts/${alert.id}/acknowledge`,
@@ -116,7 +116,7 @@ describe('Alert routes', () => {
   // ─── POST /api/v1/alerts/:id/resolve ───────────────────────────────
 
   it('POST resolves an alert', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/alerts/${alert.id}/resolve`,
@@ -128,8 +128,8 @@ describe('Alert routes', () => {
   });
 
   it('POST resolve on resolved alert returns 409', async () => {
-    const alert = createTestAlert();
-    alertStore.resolve(alert.id, 'user-1');
+    const alert = await createTestAlert();
+    await alertStore.resolve(alert.id, 'user-1');
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/alerts/${alert.id}/resolve`,
@@ -141,7 +141,7 @@ describe('Alert routes', () => {
   // ─── POST /api/v1/alerts/:id/suppress ──────────────────────────────
 
   it('POST suppresses an alert', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/alerts/${alert.id}/suppress`,
@@ -153,7 +153,7 @@ describe('Alert routes', () => {
   });
 
   it('POST suppress with default duration', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/alerts/${alert.id}/suppress`,
@@ -166,7 +166,7 @@ describe('Alert routes', () => {
   // ─── POST /api/v1/alerts/:id/escalate ──────────────────────────────
 
   it('POST escalates an alert', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/alerts/${alert.id}/escalate`,
@@ -179,8 +179,8 @@ describe('Alert routes', () => {
   // ─── POST /api/v1/alerts/bulk-acknowledge ──────────────────────────
 
   it('POST bulk acknowledges alerts', async () => {
-    const a1 = createTestAlert();
-    const a2 = createTestAlert();
+    const a1 = await createTestAlert();
+    const a2 = await createTestAlert();
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/alerts/bulk-acknowledge',
@@ -202,8 +202,8 @@ describe('Alert routes', () => {
   // ─── POST /api/v1/alerts/bulk-resolve ──────────────────────────────
 
   it('POST bulk resolves alerts', async () => {
-    const a1 = createTestAlert();
-    const a2 = createTestAlert();
+    const a1 = await createTestAlert();
+    const a2 = await createTestAlert();
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/alerts/bulk-resolve',
@@ -216,10 +216,10 @@ describe('Alert routes', () => {
   // ─── GET /api/v1/alerts/stats ──────────────────────────────────────
 
   it('GET returns alert stats', async () => {
-    createTestAlert();
-    createTestAlert();
-    const a3 = createTestAlert();
-    alertStore.resolve(a3.id, 'user-1');
+    await createTestAlert();
+    await createTestAlert();
+    const a3 = await createTestAlert();
+    await alertStore.resolve(a3.id, 'user-1');
 
     const res = await app.inject({ method: 'GET', url: '/api/v1/alerts/stats' });
     expect(res.statusCode).toBe(200);
@@ -240,7 +240,7 @@ describe('Alert routes', () => {
   // ─── GET /api/v1/alerts/:id/history ────────────────────────────────
 
   it('GET returns alert history timeline', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     // Trigger an acknowledge to generate history
     await app.inject({
       method: 'POST',
@@ -259,7 +259,7 @@ describe('Alert routes', () => {
   });
 
   it('GET returns empty history for new alert', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     const res = await app.inject({ method: 'GET', url: `/api/v1/alerts/${alert.id}/history` });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.length).toBe(0);
@@ -271,7 +271,7 @@ describe('Alert routes', () => {
   });
 
   it('history records multiple lifecycle transitions', async () => {
-    const alert = createTestAlert();
+    const alert = await createTestAlert();
     await app.inject({
       method: 'POST',
       url: `/api/v1/alerts/${alert.id}/acknowledge`,
@@ -288,5 +288,74 @@ describe('Alert routes', () => {
     expect(timeline.length).toBe(2);
     expect(timeline[0].action).toBe('acknowledge');
     expect(timeline[1].action).toBe('resolve');
+  });
+
+  // ─── Cross-tenant scoping (Step 3 S155) ─────────────────────────────
+  // enforceTenant() rejects a query/body tenantId that mismatches x-tenant-id, so
+  // tenant B's request must simply omit tenantId and rely on the header.
+
+  it('GET /:id returns 404 for another tenant\'s alert', async () => {
+    const alert = await createTestAlert('tenant-a');
+    const res = await app.inject({
+      method: 'GET', url: `/api/v1/alerts/${alert.id}`,
+      headers: { 'x-tenant-id': 'tenant-b' },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('POST acknowledge returns 404 for another tenant\'s alert', async () => {
+    const alert = await createTestAlert('tenant-a');
+    const res = await app.inject({
+      method: 'POST', url: `/api/v1/alerts/${alert.id}/acknowledge`,
+      headers: { 'x-tenant-id': 'tenant-b' }, payload: {},
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('POST resolve returns 404 for another tenant\'s alert', async () => {
+    const alert = await createTestAlert('tenant-a');
+    const res = await app.inject({
+      method: 'POST', url: `/api/v1/alerts/${alert.id}/resolve`,
+      headers: { 'x-tenant-id': 'tenant-b' }, payload: {},
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('POST suppress returns 404 for another tenant\'s alert', async () => {
+    const alert = await createTestAlert('tenant-a');
+    const res = await app.inject({
+      method: 'POST', url: `/api/v1/alerts/${alert.id}/suppress`,
+      headers: { 'x-tenant-id': 'tenant-b' }, payload: {},
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('POST escalate returns 404 for another tenant\'s alert', async () => {
+    const alert = await createTestAlert('tenant-a');
+    const res = await app.inject({
+      method: 'POST', url: `/api/v1/alerts/${alert.id}/escalate`,
+      headers: { 'x-tenant-id': 'tenant-b' },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('GET /:id/history returns 404 for another tenant\'s alert', async () => {
+    const alert = await createTestAlert('tenant-a');
+    const res = await app.inject({
+      method: 'GET', url: `/api/v1/alerts/${alert.id}/history`,
+      headers: { 'x-tenant-id': 'tenant-b' },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('POST bulk-acknowledge puts a foreign-tenant id in failed', async () => {
+    const alert = await createTestAlert('tenant-a');
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/alerts/bulk-acknowledge',
+      headers: { 'x-tenant-id': 'tenant-b' }, payload: { ids: [alert.id] },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.acknowledged).toBe(0);
+    expect(res.json().data.failed).toContain(alert.id);
   });
 });

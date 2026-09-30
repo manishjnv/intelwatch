@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { MemoryAlertHistoryRepo, type AlertHistoryRepo } from '../repository.js';
 
 export interface HistoryEntry {
   id: string;
@@ -13,15 +14,17 @@ export interface HistoryEntry {
 }
 
 /**
- * Immutable audit trail for alert state changes.
+ * Immutable audit trail for alert state changes (Step 3 S155).
  * Every lifecycle transition is recorded with who, when, from→to, and why.
- * Entries are append-only — no update or delete.
+ * Entries are append-only — no update or delete. Backed by Postgres via `repo`
+ * in production; an in-memory MemoryAlertHistoryRepo when no repo is injected (dev/test only).
  */
 export class AlertHistory {
-  private entries: HistoryEntry[] = [];
+  constructor(private readonly repo: AlertHistoryRepo = new MemoryAlertHistoryRepo()) {}
 
   /** Record a state change. */
-  record(input: {
+  async record(input: {
+    tenantId: string;
     alertId: string;
     action: string;
     fromStatus: string | null;
@@ -29,9 +32,10 @@ export class AlertHistory {
     actor: string;
     reason?: string;
     metadata?: Record<string, unknown>;
-  }): HistoryEntry {
-    const entry: HistoryEntry = {
+  }): Promise<HistoryEntry> {
+    const entry: HistoryEntry & { tenantId: string } = {
       id: randomUUID(),
+      tenantId: input.tenantId,
       alertId: input.alertId,
       action: input.action,
       fromStatus: input.fromStatus,
@@ -41,31 +45,16 @@ export class AlertHistory {
       metadata: input.metadata ?? {},
       timestamp: new Date().toISOString(),
     };
-    this.entries.push(entry);
-    return entry;
+    return this.repo.append(entry);
   }
 
   /** Get full timeline for an alert (oldest first). */
-  getTimeline(alertId: string): HistoryEntry[] {
-    return this.entries
-      .filter((e) => e.alertId === alertId)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  async getTimeline(alertId: string): Promise<HistoryEntry[]> {
+    return this.repo.listByAlert(alertId);
   }
 
-  /** Get recent history entries across all alerts for a tenant (for audit dashboard). */
-  getRecent(limit: number = 50): HistoryEntry[] {
-    return this.entries
-      .slice(-limit)
-      .reverse();
-  }
-
-  /** Count total history entries. */
-  count(): number {
-    return this.entries.length;
-  }
-
-  /** Clear all entries (for testing). */
+  /** Clear all entries (test-only; only affects the in-memory backend). */
   clear(): void {
-    this.entries = [];
+    if (this.repo instanceof MemoryAlertHistoryRepo) this.repo.clear();
   }
 }

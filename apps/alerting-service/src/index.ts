@@ -9,7 +9,6 @@ import { ChannelStore } from './services/channel-store.js';
 import { EscalationStore } from './services/escalation-store.js';
 import { RuleEngine } from './services/rule-engine.js';
 import { Notifier } from './services/notifier.js';
-import { DedupStore } from './services/dedup-store.js';
 import { AlertHistory } from './services/alert-history.js';
 import { EscalationDispatcher } from './services/escalation-dispatcher.js';
 import { AlertGroupStore } from './services/alert-group-store.js';
@@ -45,14 +44,13 @@ async function main(): Promise<void> {
 
   // 4. Core services
   const ruleStore = new RuleStore(repos?.rules);
-  const alertStore = new AlertStore(config.TI_ALERT_MAX_PER_TENANT);
+  const alertStore = new AlertStore(repos?.alerts, config.TI_ALERT_MAX_PER_TENANT, 5); // 5-minute dedup window
   const channelStore = new ChannelStore(repos?.channels);
   const escalationStore = new EscalationStore(repos?.escalations);
   const ruleEngine = new RuleEngine();
   const notifier = new Notifier();
-  const dedupStore = new DedupStore(5); // 5-minute dedup window
-  const alertHistory = new AlertHistory();
-  const alertGroupStore = new AlertGroupStore(30); // 30-minute group window
+  const alertHistory = new AlertHistory(repos?.history);
+  const alertGroupStore = new AlertGroupStore(repos?.groups, 30); // 30-minute group window
   const maintenanceStore = new MaintenanceStore(repos?.maintenance);
 
   // 4. Escalation dispatcher (auto-escalate after policy delays)
@@ -72,7 +70,6 @@ async function main(): Promise<void> {
     channelStore,
     ruleEngine,
     notifier,
-    dedupStore,
     alertHistory,
     escalationDispatcher,
     alertGroupStore,
@@ -116,19 +113,18 @@ async function main(): Promise<void> {
     logger.info('Global IOC alert handler: DISABLED');
   }
 
-  // 7. Periodic maintenance: unsuppress expired + purge dedup cache
+  // 7. Periodic maintenance: unsuppress expired alerts
   const maintenanceInterval = setInterval(() => {
-    const unsuppressed = alertStore.unsuppressExpired();
-    if (unsuppressed > 0) logger.info({ count: unsuppressed }, 'Unsuppressed expired alerts');
-    const purged = dedupStore.purgeExpired();
-    if (purged > 0) logger.debug({ purged }, 'Purged expired dedup entries');
+    alertStore.unsuppressExpired()
+      .then((count) => { if (count > 0) logger.info({ count }, 'Unsuppressed expired alerts'); })
+      .catch((err) => logger.warn({ err }, 'Unsuppress sweep failed'));
   }, 60_000);
 
   // 7. Build Fastify app with DI
   const app = await buildApp({
     config,
     ruleDeps: { ruleStore, ruleEngine },
-    alertDeps: { alertStore, alertHistory, escalationDispatcher },
+    alertDeps: { alertStore, alertHistory },
     channelDeps: { channelStore, notifier },
     escalationDeps: { escalationStore },
     statsDeps: { alertStore, ruleStore },
