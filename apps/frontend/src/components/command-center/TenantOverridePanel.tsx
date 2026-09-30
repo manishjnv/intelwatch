@@ -5,9 +5,10 @@
  */
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Pencil, Trash2, X, Clock } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Clock, AlertTriangle, RefreshCw } from 'lucide-react'
 import { useTenantOverrides, type TenantFeatureOverride, type OverrideCreate } from '@/hooks/use-tenant-overrides'
 import { FEATURE_KEYS, FEATURE_LABELS, type FeatureKey } from '@/hooks/use-feature-limits'
+import { classifyError } from '@/hooks/useApiError'
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -145,7 +146,7 @@ interface TenantOverridePanelProps {
 }
 
 export function TenantOverridePanel({ tenantId, planDefaults: _planDefaults }: TenantOverridePanelProps) {
-  const { overrides, isLoading, isDemo, createOverride, updateOverride, deleteOverride, isCreating, isUpdating, isDeleting } = useTenantOverrides(tenantId)
+  const { overrides, isLoading, isError, error, refetch, createOverride, updateOverride, deleteOverride, isCreating, isUpdating, isDeleting } = useTenantOverrides(tenantId)
   const [editingOverride, setEditingOverride] = useState<TenantFeatureOverride | null | 'new'>(null)
 
   async function handleSave(data: OverrideCreate) {
@@ -162,12 +163,24 @@ export function TenantOverridePanel({ tenantId, planDefaults: _planDefaults }: T
     return <div className="h-20 rounded-lg bg-bg-elevated animate-pulse" />
   }
 
+  if (isError) {
+    return (
+      <div role="alert" className="p-3 rounded-lg border border-border bg-bg-primary text-xs" data-testid="tenant-override-error">
+        <div className="flex items-center gap-2 text-text-primary font-medium">
+          <AlertTriangle className="w-3.5 h-3.5 text-sev-high" /> Couldn&apos;t load feature overrides
+        </div>
+        <p className="text-text-muted mt-0.5">{classifyError(error)}.</p>
+        <button onClick={() => refetch()} className="mt-2 flex items-center gap-1 text-text-secondary hover:text-text-primary">
+          <RefreshCw className="w-3 h-3" /> Retry
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3" data-testid="tenant-override-panel">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-text-primary">
-          Feature Overrides {isDemo && <span className="text-[10px] text-sev-medium">(demo)</span>}
-        </h4>
+        <h4 className="text-sm font-semibold text-text-primary">Feature Overrides</h4>
         <button
           onClick={() => setEditingOverride('new')}
           className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded bg-accent text-bg-primary hover:bg-accent/90"

@@ -31,7 +31,6 @@ describe('useBreakGlassAudit — real api() return shape', () => {
     mockApi.mockResolvedValueOnce([entry])
     const { result } = renderHook(() => useBreakGlassAudit({ page: 1 }), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data.data).toEqual([{ ...entry, ip: '—', location: '—', details: null, riskLevel: 'critical' }])
   })
 
@@ -52,6 +51,14 @@ describe('useBreakGlassAudit — real api() return shape', () => {
     mockApi.mockResolvedValueOnce([])
     const { result } = renderHook(() => useBreakGlassAudit({ page: 1 }), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data.data).toEqual([])
+  })
+
+  it('a failed request surfaces isError — not a silent demo fallback (DECISION-048)', async () => {
+    const { ApiError } = await import('@/lib/api')
+    mockApi.mockRejectedValueOnce(new ApiError(500, 'SERVER_ERROR', 'boom'))
+    const { result } = renderHook(() => useBreakGlassAudit({ page: 1 }), { wrapper })
+    await waitFor(() => expect(result.current.isError).toBe(true))
     expect(result.current.data.data).toEqual([])
   })
 })

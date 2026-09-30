@@ -5,7 +5,6 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { notifyApiError } from './useApiError'
 import type { FeatureKey } from './use-feature-limits'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -36,23 +35,6 @@ export interface OverrideCreate {
 
 export type OverrideUpdate = Omit<OverrideCreate, 'featureKey'>
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEMO_OVERRIDES: TenantFeatureOverride[] = [
-  {
-    id: 'ov-1', tenantId: 'demo', featureKey: 'ioc_management',
-    limitDaily: 10000, limitWeekly: null, limitMonthly: 100000, limitTotal: null,
-    reason: 'Sales deal — extended trial', grantedBy: 'admin@etip.io',
-    grantedAt: '2026-03-15T00:00:00Z', expiresAt: '2026-06-15T00:00:00Z',
-  },
-  {
-    id: 'ov-2', tenantId: 'demo', featureKey: 'ai_enrichment',
-    limitDaily: 2000, limitWeekly: null, limitMonthly: 20000, limitTotal: null,
-    reason: 'Beta access', grantedBy: 'admin@etip.io',
-    grantedAt: '2026-03-20T00:00:00Z', expiresAt: null,
-  },
-]
-
 // ─── Hook ───────────────────────────────────────────────────
 
 export function useTenantOverrides(tenantId: string | null) {
@@ -60,15 +42,13 @@ export function useTenantOverrides(tenantId: string | null) {
 
   const result = useQuery({
     queryKey: ['tenant-overrides', tenantId],
-    queryFn: () =>
-      api<TenantFeatureOverride[]>(`/admin/tenants/${tenantId}/overrides`)
-        .catch(err => notifyApiError(err, 'tenant overrides', DEMO_OVERRIDES)),
+    queryFn: () => api<TenantFeatureOverride[]>(`/admin/tenants/${tenantId}/overrides`),
     enabled: !!tenantId,
     staleTime: 60_000,
+    meta: { resource: 'tenant overrides' },
   })
 
-  const isDemo = !result.isLoading && !!tenantId && (result.data?.length ?? 0) === 0
-  const overrides = isDemo ? DEMO_OVERRIDES : (result.data ?? [])
+  const overrides = result.data ?? []
 
   // Backend (api-gateway/routes/overrides.ts POST/PUT) sends { data: override } single-wrapped;
   // api() already unwraps it — no consumer reads the mutation result today (RCA #45).
@@ -93,8 +73,9 @@ export function useTenantOverrides(tenantId: string | null) {
   return {
     overrides,
     isLoading: result.isLoading,
+    isError: result.isError,
     error: result.error,
-    isDemo,
+    refetch: result.refetch,
     createOverride: createMut.mutateAsync,
     isCreating: createMut.isPending,
     updateOverride: updateMut.mutateAsync,

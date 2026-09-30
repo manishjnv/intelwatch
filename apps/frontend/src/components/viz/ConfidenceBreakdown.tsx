@@ -2,7 +2,7 @@
  * @module components/viz/ConfidenceBreakdown
  * @description Expandable confidence score explainability panel.
  * Shows the weighted formula: feedReliability×35% + corroboration×35% + AI×30% − time decay.
- * Falls back to computed demo values when isDemo or fields are absent.
+ * Renders nothing when the backend hasn't sent the breakdown fields — no fabricated values.
  */
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
@@ -11,7 +11,6 @@ import type { IOCRecord } from '@/hooks/use-intel-data'
 
 interface ConfidenceBreakdownProps {
   record: IOCRecord
-  isDemo: boolean
 }
 
 /** Normalize corroboration count (0–∞) to a 0–100 score: 3 sources = 100 */
@@ -27,14 +26,14 @@ function computeDecay(lastSeen: string): { decayPct: number; daysSince: number }
   return { decayPct, daysSince }
 }
 
-export function ConfidenceBreakdown({ record, isDemo }: ConfidenceBreakdownProps) {
+export function ConfidenceBreakdown({ record }: ConfidenceBreakdownProps) {
   const [expanded, setExpanded] = useState(false)
 
   const breakdown = useMemo(() => {
-    // Use real values when available, otherwise compute demo estimates
-    const feedRel = record.feedReliability ?? (isDemo ? Math.round(record.confidence * 0.88 + 5) : null)
-    const corrCount = record.corroborationCount ?? (isDemo ? record.threatActors.length + record.malwareFamilies.length : null)
-    const aiConf = record.aiConfidence ?? (isDemo ? Math.round(record.confidence * 0.78 + 8) : null)
+    // Only render when the backend sent real formula inputs — never fabricate them.
+    const feedRel = record.feedReliability ?? null
+    const corrCount = record.corroborationCount ?? null
+    const aiConf = record.aiConfidence ?? null
 
     if (feedRel == null || corrCount == null || aiConf == null) return null
 
@@ -53,7 +52,7 @@ export function ConfidenceBreakdown({ record, isDemo }: ConfidenceBreakdownProps
       decayPct, daysSince,
       rawTotal, total,
     }
-  }, [record, isDemo])
+  }, [record])
 
   if (!breakdown || record.confidence <= 0) return null
 

@@ -41,7 +41,9 @@ vi.mock('@/hooks/use-global-ai-config', () => ({
       activePlan: 'teams',
     },
     isLoading: false,
-    isDemo: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
     setModel: mockSetModel,
     isSavingModel: false,
     applyPlan: mockApplyPlan,
@@ -208,17 +210,13 @@ describe('GlobalAiConfigPage', () => {
     expect(screen.getByTestId('cost-category-reporting')).toBeInTheDocument()
   })
 
-  it('demo fallback renders when API fails', () => {
+  it('shows an honest error banner with Retry when the config fails to load (DECISION-048)', () => {
     vi.mocked(useGlobalAiConfig).mockReturnValueOnce({
-      config: {
-        subtasks: DEMO_SUBTASKS,
-        confidenceModel: 'bayesian' as const,
-        costEstimate: { totalMonthly: 1020, byCategory: {} },
-        activePlan: null,
-      },
+      config: undefined,
       isLoading: false,
-      error: null,
-      isDemo: true,
+      error: new Error('boom'),
+      isError: true,
+      refetch: vi.fn(),
       setModel: mockSetModel,
       isSavingModel: false,
       applyPlan: mockApplyPlan,
@@ -232,7 +230,7 @@ describe('GlobalAiConfigPage', () => {
       presets: [],
     })
     render(<GlobalAiConfigPage />)
-    expect(screen.getByTestId('demo-badge')).toBeInTheDocument()
+    expect(screen.getByTestId('global-ai-config-error')).toBeInTheDocument()
   })
 
   it('non-admin sees unauthorized message', () => {
@@ -256,7 +254,8 @@ describe('GlobalAiConfigPage', () => {
       config: undefined,
       isLoading: true,
       error: null,
-      isDemo: false,
+      isError: false,
+      refetch: vi.fn(),
       setModel: vi.fn(),
       isSavingModel: false,
       applyPlan: vi.fn(),

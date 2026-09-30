@@ -7,7 +7,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { toast } from '@/components/ui/Toast'
-import { notifyApiError } from './useApiError'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -42,36 +41,19 @@ export interface SsoTestResult {
   entityId?: string
 }
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEMO_SSO_CONFIG: SsoConfig = {
-  provider: 'saml',
-  enabled: true,
-  entityId: 'https://idp.acme.com/metadata',
-  metadataUrl: 'https://idp.acme.com/saml2/metadata',
-  certificate: '',
-  approvedDomains: ['acme.com', 'acme.io'],
-  groupMappings: [
-    { groupName: 'IT-Admins', role: 'tenant_admin' },
-    { groupName: 'SOC-Analysts', role: 'analyst', designation: 'Senior Analyst' },
-  ],
-}
-
 // ─── Hooks ──────────────────────────────────────────────────
 
 /** Fetch current tenant's SSO config. */
 export function useSsoConfig() {
   const result = useQuery({
     queryKey: ['sso-config'],
-    queryFn: () =>
-      // SSO lives in user-management-service under /api/v1/users (S147; /settings/sso 404'd)
-      api<SsoConfig>('/users/sso')
-        .catch(err => notifyApiError(err, 'SSO config', null)),
+    // SSO lives in user-management-service under /api/v1/users (S147; /settings/sso 404'd)
+    queryFn: () => api<SsoConfig>('/users/sso'),
     staleTime: 60_000,
+    meta: { resource: 'SSO config' },
   })
 
-  const isDemo = !result.isLoading && !result.data
-  return { ...result, data: result.data ?? null, isDemo }
+  return { ...result, data: result.data ?? null }
 }
 
 /** Save (create or update) SSO config. */
@@ -128,13 +110,11 @@ export function useTestSsoConnection() {
 export function useAdminSsoConfig(tenantId: string | null) {
   const result = useQuery({
     queryKey: ['admin-sso-config', tenantId],
-    queryFn: () =>
-      api<SsoConfig>(`/admin/tenants/${tenantId}/sso`)
-        .catch(err => notifyApiError(err, 'tenant SSO config', null)),
+    queryFn: () => api<SsoConfig>(`/admin/tenants/${tenantId}/sso`),
     enabled: !!tenantId,
     staleTime: 60_000,
+    meta: { resource: 'tenant SSO config' },
   })
 
-  const isDemo = !result.isLoading && !result.data && !!tenantId
-  return { ...result, data: isDemo ? DEMO_SSO_CONFIG : result.data ?? null, isDemo }
+  return { ...result, data: result.data ?? null }
 }

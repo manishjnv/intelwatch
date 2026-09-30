@@ -140,18 +140,12 @@ describe('ThreatActorListPage', () => {
     expect(screen.getAllByText('CN').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows MITRE ATT&CK section with demo stubs when API returns no data', () => {
+  it('shows honest empty MITRE section when API returns no techniques (DECISION-048, no demo stubs)', () => {
     render(<ThreatActorListPage />)
     fireEvent.click(screen.getByText('APT-1'))
     expect(screen.getByTestId('mitre-section')).toBeInTheDocument()
-    const cells = screen.getAllByTestId('technique-cell')
-    expect(cells.length).toBeGreaterThan(0)
-  })
-
-  it('shows demo MITRE technique T1059', () => {
-    render(<ThreatActorListPage />)
-    fireEvent.click(screen.getByText('APT-1'))
-    expect(screen.getByText('T1059')).toBeInTheDocument()
+    expect(screen.queryAllByTestId('technique-cell')).toHaveLength(0)
+    expect(screen.getByTestId('attack-matrix-empty')).toBeInTheDocument()
   })
 
   it('shows MITRE techniques from API when available', () => {

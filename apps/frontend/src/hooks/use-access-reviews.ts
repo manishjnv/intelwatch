@@ -9,7 +9,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
 import { useAuthStore } from '@/stores/auth-store'
-import { notifyApiError } from './useApiError'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -63,22 +62,6 @@ interface ListResponse<T> {
   limit: number
 }
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEMO_STATS: AccessReviewStats = { pending: 5, autoDisabled: 2, confirmed: 18 }
-
-const DEMO_REVIEWS: AccessReview[] = [
-  { id: 'r1', userId: 'u1', userName: 'Stale Admin', userEmail: 'admin@old.com', orgName: 'ACME Corp', reviewType: 'stale_super_admin', status: 'pending', autoDisabled: false, createdAt: '2026-03-15T10:00:00Z', updatedAt: '2026-03-15T10:00:00Z' },
-  { id: 'r2', userId: 'u2', userName: 'Inactive User', userEmail: 'user@idle.com', orgName: 'ACME Corp', reviewType: 'stale_user', status: 'pending', autoDisabled: true, createdAt: '2026-03-10T08:00:00Z', updatedAt: '2026-03-24T00:00:00Z' },
-  { id: 'r3', userId: 'u3', userName: 'Active User', userEmail: 'active@corp.com', orgName: 'Beta Inc', reviewType: 'quarterly_review', status: 'confirmed', autoDisabled: false, createdAt: '2026-03-01T12:00:00Z', updatedAt: '2026-03-20T15:00:00Z', reviewedBy: 'admin@beta.com' },
-]
-
-const DEMO_QUARTERLY: QuarterlyReview = {
-  totalUsers: 48, activeUsers: 42, inactiveUsers: 6, mfaAdoptionPercent: 78,
-  ssoUsers: 15, roleBreakdown: { super_admin: 3, tenant_admin: 8, analyst: 25, viewer: 12 },
-  usersAddedThisQuarter: 7, usersRemovedThisQuarter: 2, staleAccounts: 4,
-}
-
 // Backend (apps/user-service/src/access-review-service.ts generateQuarterlyReview) sends
 // differently-named fields — map them so consumers (e.g. QuarterlySection dereferencing
 // q.roleBreakdown without a guard) don't crash on the real shape.
@@ -130,16 +113,14 @@ export function useAccessReviewStats() {
     queryKey: ['access-review-stats', isSuperAdmin],
     // NOTE (RCA #45 audit): backend has no /admin|settings/access-reviews/stats route
     // at all (only list, :reviewId, quarterly exist under apps/api-gateway/src/routes/access-review.ts).
-    // This always 404s and falls back to DEMO_STATS via .catch — same behavior pre/post this fix.
+    // This always 404s — surfaces as isError, honest per DECISION-048, until a real route exists.
     // BLOCKED: needs a real backend stats endpoint (out of scope, not one of this task's owned files).
-    queryFn: () =>
-      api<AccessReviewStats>(path)
-        .catch(err => notifyApiError(err, 'access review stats', DEMO_STATS)),
+    queryFn: () => api<AccessReviewStats>(path),
     staleTime: 60_000,
+    meta: { resource: 'access review stats' },
   })
 
-  const isDemo = !result.isLoading && !result.data
-  return { ...result, data: result.data ?? DEMO_STATS, isDemo }
+  return { ...result, data: result.data ?? null }
 }
 
 /** Fetch access reviews list with filters. */
@@ -153,18 +134,12 @@ export function useAccessReviews(filters: ReviewFilters = {}) {
 
   const result = useQuery({
     queryKey: ['access-reviews', isSuperAdmin, filters],
-    queryFn: () =>
-      apiList<AccessReview>(`${basePath}${query}`)
-        .catch(err => notifyApiError(err, 'access reviews', empty)),
+    queryFn: () => apiList<AccessReview>(`${basePath}${query}`),
     staleTime: 60_000,
+    meta: { resource: 'access reviews' },
   })
 
-  const isDemo = !result.isLoading && (result.data?.data?.length ?? 0) === 0
-  return {
-    ...result,
-    data: isDemo ? { data: DEMO_REVIEWS, total: DEMO_REVIEWS.length, page: 1, limit: 50 } : result.data ?? empty,
-    isDemo,
-  }
+  return { ...result, data: result.data ?? empty }
 }
 
 /** Confirm or disable a review. */
@@ -194,14 +169,13 @@ export function useQuarterlyReview() {
     queryKey: ['quarterly-review', isSuperAdmin],
     // Super-admin path requires ?tenantId=; without it the backend replies { data: [] }
     // (see apps/api-gateway/src/routes/access-review.ts) instead of a QuarterlyReview object.
-    // Guard against that array reply so mapQuarterly never dereferences a missing field.
+    // Guard against that array reply so mapQuarterly never dereferences a missing field —
+    // honest null (no tenant selected yet), not a fabricated summary.
     queryFn: () =>
-      api<BackendQuarterlyReview>(path)
-        .then(r => (r && !Array.isArray(r) ? mapQuarterly(r) : DEMO_QUARTERLY))
-        .catch(err => notifyApiError(err, 'quarterly review', DEMO_QUARTERLY)),
+      api<BackendQuarterlyReview>(path).then(r => (r && !Array.isArray(r) ? mapQuarterly(r) : null)),
     staleTime: 5 * 60_000,
+    meta: { resource: 'quarterly review' },
   })
 
-  const isDemo = !result.isLoading && !result.data
-  return { ...result, data: result.data ?? DEMO_QUARTERLY, isDemo }
+  return { ...result, data: result.data ?? null }
 }

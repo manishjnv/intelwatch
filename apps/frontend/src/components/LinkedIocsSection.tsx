@@ -66,7 +66,7 @@ export function LinkedIocsSection({
   defaultCollapsed = false,
 }: LinkedIocsSectionProps) {
   const {
-    iocs, totalCount, filteredCount, isLoading, isDemo,
+    iocs, totalCount, filteredCount, isLoading,
     typeFilter, setTypeFilter, sevFilter, setSevFilter,
     sortKey, setSortKey, hasMore, loadMore,
     typeBreakdown, sevBreakdown,
@@ -99,7 +99,6 @@ export function LinkedIocsSection({
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent font-medium tabular-nums">
             {totalCount}
           </span>
-          {isDemo && <span className="text-[10px] px-1 py-0.5 rounded bg-blue-400/10 text-blue-400">Demo</span>}
         </div>
         <a href="/iocs" onClick={e => e.stopPropagation()} className="text-[10px] text-accent hover:underline flex items-center gap-0.5">
           View all <ExternalLink className="w-2.5 h-2.5" />

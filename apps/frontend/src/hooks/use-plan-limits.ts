@@ -5,7 +5,6 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { notifyApiError } from './useApiError'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -19,35 +18,6 @@ export interface PlanTierConfig {
   aiEnabled: boolean
   dailyTokenBudget: number
 }
-
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEFAULT_PLANS: PlanTierConfig[] = [
-  {
-    id: 'free', planName: 'Free',
-    maxPrivateFeeds: 2, maxGlobalSubscriptions: 5,
-    minFetchIntervalMinutes: 240, retentionDays: 30,
-    aiEnabled: false, dailyTokenBudget: 0,
-  },
-  {
-    id: 'starter', planName: 'Starter',
-    maxPrivateFeeds: 10, maxGlobalSubscriptions: 20,
-    minFetchIntervalMinutes: 60, retentionDays: 90,
-    aiEnabled: true, dailyTokenBudget: 50000,
-  },
-  {
-    id: 'teams', planName: 'Teams',
-    maxPrivateFeeds: 50, maxGlobalSubscriptions: 100,
-    minFetchIntervalMinutes: 30, retentionDays: 365,
-    aiEnabled: true, dailyTokenBudget: 500000,
-  },
-  {
-    id: 'enterprise', planName: 'Enterprise',
-    maxPrivateFeeds: -1, maxGlobalSubscriptions: -1,
-    minFetchIntervalMinutes: 15, retentionDays: -1,
-    aiEnabled: true, dailyTokenBudget: -1,
-  },
-]
 
 // ─── Backend shape mapper ────────────────────────────────────
 // Backend (apps/customization/src/routes/plan-limits.ts) sends:
@@ -87,15 +57,12 @@ export function usePlanLimits() {
 
   const result = useQuery({
     queryKey: ['plan-limits'],
-    queryFn: () =>
-      api<BackendPlanTierConfig[]>('/customization/plans')
-        .then(r => (r ?? []).map(mapPlan))
-        .catch(err => notifyApiError(err, 'plan limits', DEFAULT_PLANS)),
+    queryFn: () => api<BackendPlanTierConfig[]>('/customization/plans').then(r => (r ?? []).map(mapPlan)),
     staleTime: 60_000,
+    meta: { resource: 'plan limits' },
   })
 
-  const isDemo = !result.isLoading && (result.data?.length ?? 0) === 0
-  const data = isDemo ? DEFAULT_PLANS : result.data
+  const data = result.data
 
   const updatePlanMut = useMutation({
     mutationFn: ({ planId, changes }: { planId: string; changes: Partial<PlanTierConfig> }) =>
@@ -112,12 +79,12 @@ export function usePlanLimits() {
   return {
     plans: data ?? [],
     isLoading: result.isLoading,
+    isError: result.isError,
     error: result.error,
-    isDemo,
+    refetch: result.refetch,
     updatePlan: updatePlanMut.mutate,
     isUpdating: updatePlanMut.isPending,
     resetPlan: resetPlanMut.mutate,
     isResetting: resetPlanMut.isPending,
-    defaults: DEFAULT_PLANS,
   }
 }

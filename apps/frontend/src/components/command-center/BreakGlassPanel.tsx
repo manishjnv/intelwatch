@@ -10,6 +10,7 @@ import {
   useRotateBreakGlassPassword, useForceTerminateBreakGlass,
   type AuditEventType,
 } from '@/hooks/use-break-glass'
+import { QueryStateView } from '@/components/ui/QueryStateView'
 import {
   Shield, ShieldAlert, X, Key, Trash2, Clock,
   AlertTriangle, Eye, Lock, LogOut, Activity,
@@ -122,7 +123,7 @@ function TerminateModal({ onConfirm, onCancel, isPending }: {
 // ─── Main Component ─────────────────────────────────────────
 
 export function BreakGlassPanel() {
-  const { data: status, isDemo: statusIsDemo } = useBreakGlassStatus()
+  const statusQuery = useBreakGlassStatus()
   const rotateMut = useRotateBreakGlassPassword()
   const terminateMut = useForceTerminateBreakGlass()
 
@@ -137,30 +138,27 @@ export function BreakGlassPanel() {
     ...(dateFilter ? { startDate: dateFilter } : {}),
   }), [auditPage, dateFilter])
 
-  const { data: auditData, isDemo: auditIsDemo } = useBreakGlassAudit(auditFilters)
-  const auditEntries = auditData.data
-  const totalPages = Math.max(1, Math.ceil(auditData.total / 10))
-
-  const isDemo = statusIsDemo || auditIsDemo
-
-  // Countdown for active session
-  const sessionRemaining = status.session
-    ? Math.max(0, Math.ceil((new Date(status.session.expiresAt).getTime() - Date.now()) / 60_000))
-    : 0
+  const auditQuery = useBreakGlassAudit(auditFilters)
 
   return (
     <div className="space-y-4" data-testid="break-glass-panel">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
-          <Shield className="w-4 h-4 text-sev-critical" /> Emergency Access
-        </h3>
-        {isDemo && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">Demo</span>
-        )}
-      </div>
+      <h3 className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+        <Shield className="w-4 h-4 text-sev-critical" /> Emergency Access
+      </h3>
 
-      {/* Status Card */}
+      <QueryStateView
+        query={statusQuery}
+        resource="break-glass status"
+        isEmpty={(d) => d === null}
+        empty={<p className="text-xs text-text-muted p-3 bg-bg-elevated rounded-lg border border-border">Status unavailable.</p>}
+      >
+        {(status) => {
+          if (!status) return null
+          const sessionRemaining = status.session
+            ? Math.max(0, Math.ceil((new Date(status.session.expiresAt).getTime() - Date.now()) / 60_000))
+            : 0
+          return (
       <div
         data-testid="break-glass-status-card"
         className={cn(
@@ -236,6 +234,9 @@ export function BreakGlassPanel() {
           )}
         </div>
       </div>
+          )
+        }}
+      </QueryStateView>
 
       {/* Audit Log */}
       <div className="space-y-2">
@@ -250,67 +251,80 @@ export function BreakGlassPanel() {
           />
         </div>
 
-        {auditEntries.length === 0 ? (
-          <p className="text-xs text-text-muted p-3 bg-bg-elevated rounded-lg border border-border text-center">
-            No audit events recorded.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs" data-testid="audit-table">
-              <thead>
-                <tr className="border-b border-border text-text-muted">
-                  <th className="text-left py-2 px-2 font-medium">Event</th>
-                  <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">IP</th>
-                  <th className="text-left py-2 px-2 font-medium hidden md:table-cell">Location</th>
-                  <th className="text-left py-2 px-2 font-medium">Time</th>
-                  <th className="text-left py-2 px-2 font-medium hidden lg:table-cell">Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditEntries.map(entry => {
-                  const badge = eventBadge(entry.event)
-                  const Icon = badge.icon
-                  return (
-                    <tr key={entry.id} className="border-b border-border/50">
-                      <td className="py-1.5 px-2">
-                        <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium', badge.color)}>
-                          <Icon className="w-3 h-3" /> {badge.label}
-                        </span>
-                      </td>
-                      <td className="py-1.5 px-2 text-text-primary hidden sm:table-cell">{entry.ip}</td>
-                      <td className="py-1.5 px-2 text-text-muted hidden md:table-cell">{entry.location}</td>
-                      <td className="py-1.5 px-2 text-text-muted">{fmtTime(entry.timestamp)}</td>
-                      <td className="py-1.5 px-2 text-text-muted hidden lg:table-cell">{entry.details ?? '—'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <QueryStateView
+          query={auditQuery}
+          resource="audit log"
+          isEmpty={(d) => d.data.length === 0}
+          empty={
+            <p className="text-xs text-text-muted p-3 bg-bg-elevated rounded-lg border border-border text-center">
+              No audit events recorded.
+            </p>
+          }
+        >
+          {(auditData) => {
+            const auditEntries = auditData.data
+            const totalPages = Math.max(1, Math.ceil(auditData.total / 10))
+            return (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs" data-testid="audit-table">
+                    <thead>
+                      <tr className="border-b border-border text-text-muted">
+                        <th className="text-left py-2 px-2 font-medium">Event</th>
+                        <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">IP</th>
+                        <th className="text-left py-2 px-2 font-medium hidden md:table-cell">Location</th>
+                        <th className="text-left py-2 px-2 font-medium">Time</th>
+                        <th className="text-left py-2 px-2 font-medium hidden lg:table-cell">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditEntries.map(entry => {
+                        const badge = eventBadge(entry.event)
+                        const Icon = badge.icon
+                        return (
+                          <tr key={entry.id} className="border-b border-border/50">
+                            <td className="py-1.5 px-2">
+                              <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium', badge.color)}>
+                                <Icon className="w-3 h-3" /> {badge.label}
+                              </span>
+                            </td>
+                            <td className="py-1.5 px-2 text-text-primary hidden sm:table-cell">{entry.ip}</td>
+                            <td className="py-1.5 px-2 text-text-muted hidden md:table-cell">{entry.location}</td>
+                            <td className="py-1.5 px-2 text-text-muted">{fmtTime(entry.timestamp)}</td>
+                            <td className="py-1.5 px-2 text-text-muted hidden lg:table-cell">{entry.details ?? '—'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between text-[10px] text-text-muted">
-            <span>Page {auditPage} of {totalPages}</span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setAuditPage(p => Math.max(1, p - 1))}
-                disabled={auditPage <= 1}
-                className="p-1 hover:text-text-primary disabled:opacity-40"
-              >
-                <ChevronLeft className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => setAuditPage(p => Math.min(totalPages, p + 1))}
-                disabled={auditPage >= totalPages}
-                className="p-1 hover:text-text-primary disabled:opacity-40"
-              >
-                <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        )}
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between text-[10px] text-text-muted">
+                    <span>Page {auditPage} of {totalPages}</span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setAuditPage(p => Math.max(1, p - 1))}
+                        disabled={auditPage <= 1}
+                        className="p-1 hover:text-text-primary disabled:opacity-40"
+                      >
+                        <ChevronLeft className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setAuditPage(p => Math.min(totalPages, p + 1))}
+                        disabled={auditPage >= totalPages}
+                        className="p-1 hover:text-text-primary disabled:opacity-40"
+                      >
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          }}
+        </QueryStateView>
       </div>
 
       {/* Modals */}

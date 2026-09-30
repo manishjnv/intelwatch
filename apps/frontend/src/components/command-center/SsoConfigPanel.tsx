@@ -15,6 +15,7 @@ import {
   Shield, Key, Globe, X, Plus, Trash2,
   CheckCircle, AlertTriangle, Loader2, Settings,
 } from 'lucide-react'
+import { classifyError } from '@/hooks/useApiError'
 
 // ─── SSO Status Badge ───────────────────────────────────────
 
@@ -160,10 +161,20 @@ function DeleteSsoModal({ onConfirm, onCancel, isPending }: {
 // ─── Read-Only Admin View ───────────────────────────────────
 
 export function AdminSsoView({ tenantId }: { tenantId: string }) {
-  const { data: config, isLoading, isDemo } = useAdminSsoConfig(tenantId)
+  const { data: config, isLoading, isError, error, refetch } = useAdminSsoConfig(tenantId)
 
   if (isLoading) {
     return <div className="h-20 bg-bg-elevated rounded animate-pulse" />
+  }
+
+  if (isError) {
+    return (
+      <div role="alert" className="text-xs p-3 bg-bg-elevated rounded-lg border border-border" data-testid="admin-sso-error">
+        <p className="text-text-primary font-medium">Couldn&apos;t load SSO config.</p>
+        <p className="text-text-muted mt-0.5">{classifyError(error)}.</p>
+        <button onClick={() => refetch()} className="mt-1.5 text-accent hover:underline">Retry</button>
+      </div>
+    )
   }
 
   if (!config) {
@@ -172,7 +183,6 @@ export function AdminSsoView({ tenantId }: { tenantId: string }) {
 
   return (
     <div className="space-y-3" data-testid="admin-sso-view">
-      {isDemo && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">Demo</span>}
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div><span className="text-text-muted">Provider:</span> <span className="text-text-primary">{config.provider.toUpperCase()}</span></div>
         <div><span className="text-text-muted">Enabled:</span> <span className={config.enabled ? 'text-sev-low' : 'text-sev-high'}>{config.enabled ? 'Yes' : 'No'}</span></div>
@@ -209,7 +219,7 @@ export function AdminSsoView({ tenantId }: { tenantId: string }) {
 // ─── Main SSO Config Panel ──────────────────────────────────
 
 export function SsoConfigPanel() {
-  const { data: existingConfig, isLoading } = useSsoConfig()
+  const { data: existingConfig, isLoading, isError, error, refetch } = useSsoConfig()
   const saveMut = useSaveSsoConfig()
   const deleteMut = useDeleteSsoConfig()
   const testMut = useTestSsoConnection()
@@ -281,6 +291,14 @@ export function SsoConfigPanel() {
 
   return (
     <div className="space-y-4 max-w-2xl" data-testid="sso-config-panel">
+      {isError && (
+        <div role="alert" className="text-xs p-2.5 rounded-lg border border-border bg-bg-elevated" data-testid="sso-config-error">
+          <span className="text-text-primary font-medium">Couldn&apos;t load existing SSO config.</span>{' '}
+          <span className="text-text-muted">{classifyError(error)}.</span>{' '}
+          <button onClick={() => refetch()} className="text-accent hover:underline">Retry</button>
+        </div>
+      )}
+
       {/* Status Badge */}
       <div className="flex items-center justify-between">
         <SsoStatusBadge config={existingConfig} />

@@ -13,8 +13,9 @@ import {
 import { toast } from '@/components/ui/Toast'
 import {
   Clock, UserCheck, UserX, AlertTriangle, CheckCircle, XCircle,
-  ShieldAlert, Users, Key, Shield, X,
+  ShieldAlert, Users, Key, Shield, X, RefreshCw,
 } from 'lucide-react'
+import { classifyError } from '@/hooks/useApiError'
 
 // ─── Badge Helpers ──────────────────────────────────────────
 
@@ -90,10 +91,24 @@ function StatsCards({ stats }: { stats: { pending: number; autoDisabled: number;
 
 // ─── Quarterly Summary ──────────────────────────────────────
 
+function ErrorNotice({ resource, error, onRetry }: { resource: string; error: unknown; onRetry: () => void }) {
+  return (
+    <div role="alert" className="p-3 rounded-lg border border-border bg-bg-primary text-xs">
+      <p className="text-text-primary font-medium">Couldn&apos;t load {resource}</p>
+      <p className="text-text-muted mt-0.5">{classifyError(error)}.</p>
+      <button onClick={onRetry} className="mt-1.5 flex items-center gap-1 text-text-secondary hover:text-text-primary">
+        <RefreshCw className="w-3 h-3" /> Retry
+      </button>
+    </div>
+  )
+}
+
 function QuarterlySection() {
-  const { data: q, isLoading } = useQuarterlyReview()
+  const { data: q, isLoading, isError, error, refetch } = useQuarterlyReview()
 
   if (isLoading) return <div className="animate-pulse h-32 bg-bg-secondary rounded-lg" />
+  if (isError) return <ErrorNotice resource="quarterly summary" error={error} onRetry={() => refetch()} />
+  if (!q) return <p className="text-xs text-text-muted p-3 bg-bg-secondary rounded-lg border border-border text-center">No quarterly summary available yet.</p>
 
   const roleEntries = Object.entries(q.roleBreakdown).sort((a, b) => b[1] - a[1])
   const maxRole = Math.max(...roleEntries.map(([, v]) => v), 1)
@@ -159,7 +174,7 @@ function QuarterlySection() {
 
 function ReviewTable({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [filters, setFilters] = useState<ReviewFilters>({ page: 1, limit: 50 })
-  const { data, isLoading } = useAccessReviews(filters)
+  const { data, isLoading, isError, error, refetch } = useAccessReviews(filters)
   const actionMut = useAccessReviewAction()
 
   const [confirmModal, setConfirmModal] = useState<AccessReview | null>(null)
@@ -215,6 +230,8 @@ function ReviewTable({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       {/* Table */}
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-bg-secondary rounded animate-pulse" />)}</div>
+      ) : isError ? (
+        <ErrorNotice resource="access reviews" error={error} onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs" data-testid="reviews-table">
@@ -336,7 +353,7 @@ interface AccessReviewPanelProps {
 }
 
 export function AccessReviewPanel({ isSuperAdmin }: AccessReviewPanelProps) {
-  const { data: stats, isLoading: statsLoading } = useAccessReviewStats()
+  const { data: stats, isLoading: statsLoading, isError: statsIsError, error: statsError, refetch: refetchStats } = useAccessReviewStats()
 
   return (
     <div className="space-y-4" data-testid="access-review-panel">
@@ -347,6 +364,8 @@ export function AccessReviewPanel({ isSuperAdmin }: AccessReviewPanelProps) {
 
       {statsLoading ? (
         <div className="grid grid-cols-3 gap-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 bg-bg-secondary rounded-lg animate-pulse" />)}</div>
+      ) : statsIsError || !stats ? (
+        <ErrorNotice resource="review stats" error={statsError} onRetry={() => refetchStats()} />
       ) : (
         <StatsCards stats={stats} />
       )}

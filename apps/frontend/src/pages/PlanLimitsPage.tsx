@@ -7,7 +7,8 @@ import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { usePlanLimits, type PlanTierConfig } from '@/hooks/use-plan-limits'
 import { cn } from '@/lib/utils'
-import { Settings, Save, RotateCcw } from 'lucide-react'
+import { classifyError } from '@/hooks/useApiError'
+import { Settings, Save, RotateCcw, AlertTriangle, RefreshCw } from 'lucide-react'
 
 const PLAN_COLORS: Record<string, string> = {
   Free: 'border-text-muted', Starter: 'border-sev-low',
@@ -34,7 +35,7 @@ function displayValue(val: number): string {
 export function PlanLimitsPage() {
   const user = useAuthStore(s => s.user)
   const isAdmin = user?.role === 'super_admin'
-  const { plans, isLoading, isDemo, updatePlan, isUpdating, resetPlan } = usePlanLimits()
+  const { plans, isLoading, isError, error, refetch, updatePlan, isUpdating, resetPlan } = usePlanLimits()
 
   const [edits, setEdits] = useState<Record<string, Partial<PlanTierConfig>>>({})
 
@@ -104,12 +105,24 @@ export function PlanLimitsPage() {
         <p className="text-text-muted mt-1">
           Configure resource limits for each subscription tier. Changes apply immediately to all tenants on that plan.
         </p>
-        {isDemo && (
-          <span data-testid="demo-badge" className="inline-block mt-2 px-2 py-0.5 bg-amber-400/20 text-amber-400 rounded text-xs font-medium">
-            DEMO MODE
-          </span>
-        )}
       </div>
+
+      {isError && (
+        <div role="alert" data-testid="plan-limits-error" className="flex items-start gap-3 p-4 border border-border rounded-xl bg-bg-primary">
+          <AlertTriangle className="w-4 h-4 text-sev-high shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-text-primary">Couldn&apos;t load plan limits</p>
+            <p className="text-xs text-text-muted mt-0.5">{classifyError(error)}.</p>
+          </div>
+          <button onClick={() => refetch()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-lg text-text-secondary hover:bg-bg-hover">
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        </div>
+      )}
+
+      {plans.length === 0 && !isError && (
+        <p className="text-text-muted text-sm" data-testid="plan-limits-empty">No plan tiers configured yet.</p>
+      )}
 
       {/* Plan Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" data-testid="plan-cards">

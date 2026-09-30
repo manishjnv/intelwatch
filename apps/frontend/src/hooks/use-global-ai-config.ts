@@ -5,7 +5,6 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { notifyApiError } from './useApiError'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -56,20 +55,6 @@ const RECOMMENDED_MODELS: Record<string, AiModel> = {
 const MODEL_COSTS: Record<AiModel, number> = { haiku: 0.80, sonnet: 3.00, opus: 15.00 }
 const MODEL_ACCURACY: Record<AiModel, number> = { haiku: 78, sonnet: 92, opus: 97 }
 
-function buildDemoSubtasks(): AiSubtaskConfig[] {
-  return Object.entries(RECOMMENDED_MODELS).map(([key, rec]) => {
-    const [category = '', subtask = ''] = key.split('.')
-    return {
-      category,
-      subtask,
-      model: rec,
-      recommended: rec,
-      accuracyPct: MODEL_ACCURACY[rec],
-      monthlyCostEstimate: MODEL_COSTS[rec] * 30,
-    }
-  })
-}
-
 function computeCost(subtasks: AiSubtaskConfig[]): CostEstimate {
   const byCategory: Record<string, number> = {}
   let totalMonthly = 0
@@ -81,14 +66,9 @@ function computeCost(subtasks: AiSubtaskConfig[]): CostEstimate {
   return { totalMonthly, byCategory }
 }
 
-const DEMO_CONFIG: GlobalAiConfigData = {
-  subtasks: buildDemoSubtasks(),
-  confidenceModel: 'bayesian',
-  costEstimate: computeCost(buildDemoSubtasks()),
-  activePlan: 'teams',
-}
-
 // ─── Plan Presets ──────────────────────────────────────────
+// Not demo data — these are the three real subscription-tier presets the
+// "Quick Apply" buttons always offer, independent of what's currently configured.
 
 export interface PlanPreset {
   id: string
@@ -98,9 +78,11 @@ export interface PlanPreset {
   monthlyCost: number
 }
 
+const RECOMMENDED_MONTHLY_COST = Object.values(RECOMMENDED_MODELS).reduce((sum, m) => sum + MODEL_COSTS[m] * 30, 0)
+
 export const PLAN_PRESETS: PlanPreset[] = [
   { id: 'starter', name: 'Starter (Budget)', description: 'All Haiku — lowest cost, good accuracy', tier: 'starter', monthlyCost: Object.keys(RECOMMENDED_MODELS).length * MODEL_COSTS.haiku * 30 },
-  { id: 'teams', name: 'Teams (Balanced)', description: 'Recommended mix — best accuracy/cost ratio', tier: 'teams', monthlyCost: computeCost(buildDemoSubtasks()).totalMonthly },
+  { id: 'teams', name: 'Teams (Balanced)', description: 'Recommended mix — best accuracy/cost ratio', tier: 'teams', monthlyCost: RECOMMENDED_MONTHLY_COST },
   { id: 'enterprise', name: 'Enterprise (Max Accuracy)', description: 'All Sonnet — highest accuracy', tier: 'enterprise', monthlyCost: Object.keys(RECOMMENDED_MODELS).length * MODEL_COSTS.sonnet * 30 },
 ]
 
@@ -120,13 +102,12 @@ export function useGlobalAiConfig() {
           confidenceModel: r?.confidenceModel ?? 'bayesian',
           costEstimate: computeCost(r?.subtasks ?? []),
           activePlan: r?.activePlan ?? null,
-        }))
-        .catch(err => notifyApiError(err, 'global AI config', DEMO_CONFIG)),
+        })),
     staleTime: 60_000,
+    meta: { resource: 'global AI config' },
   })
 
-  const isDemo = !result.isLoading && (!result.data?.subtasks || result.data.subtasks.length === 0)
-  const data = isDemo ? DEMO_CONFIG : result.data
+  const data = result.data
 
   const setModelMut = useMutation({
     mutationFn: ({ category, subtask, model }: { category: string; subtask: string; model: AiModel }) =>
@@ -149,8 +130,9 @@ export function useGlobalAiConfig() {
   return {
     config: data,
     isLoading: result.isLoading,
+    isError: result.isError,
     error: result.error,
-    isDemo,
+    refetch: result.refetch,
     setModel: setModelMut.mutate,
     isSavingModel: setModelMut.isPending,
     applyPlan: applyPlanMut.mutate,

@@ -16,10 +16,12 @@ const mockTestMutate = vi.fn()
 
 let mockSsoConfig: SsoConfig | null = null
 
+let mockSsoIsError = false
+
 vi.mock('@/hooks/use-sso', () => ({
   useSsoConfig: () => ({
     data: mockSsoConfig,
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: mockSsoIsError, error: mockSsoIsError ? new Error('boom') : null, refetch: vi.fn(),
   }),
   useSaveSsoConfig: () => ({
     mutate: mockSaveMutate,
@@ -40,7 +42,7 @@ vi.mock('@/hooks/use-sso', () => ({
       approvedDomains: ['acme.com'],
       groupMappings: [{ groupName: 'IT-Admins', role: 'tenant_admin' }],
     },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: false, error: null, refetch: vi.fn(),
   }),
 }))
 
@@ -79,9 +81,16 @@ describe('SsoStatusBadge', () => {
 describe('SsoConfigPanel', () => {
   beforeEach(() => {
     mockSsoConfig = null
+    mockSsoIsError = false
     mockSaveMutate.mockClear()
     mockDeleteMutate.mockClear()
     mockTestMutate.mockClear()
+  })
+
+  it('shows an honest error banner with Retry when the existing config fails to load (DECISION-048)', () => {
+    mockSsoIsError = true
+    render(<SsoConfigPanel />)
+    expect(screen.getByTestId('sso-config-error')).toBeInTheDocument()
   })
 
   it('renders provider selector with SAML and OIDC', () => {
