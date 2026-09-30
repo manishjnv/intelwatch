@@ -167,3 +167,100 @@ Redis: `etip-cache-invalidate` backlog 550,602 → 0 within ~10 min of deploy (c
 Security: codex:rescue verdict **ACCEPT**.
 
 **Next:** Step 3 row S159 hunting-service → Postgres (generic `hunting_docs` table, DECISION-051 pattern — NOT `RedisJsonStore`), then S159b–e.
+
+## Part 2 — S159, S159d, S159e (PR #70)
+
+**Branch:** `s177/hunting-persistence-s159`. Commits: `b99d98d` (schema + compose), `3e2c04b` (S159 hunting), `0f0d0c3` (S159d onboarding + baseline), `17a7737` (S159e purge). Restore tag `safe-point-2026-09-30-s159`.
+
+### What changed and why
+
+Continuing Step 3, this PR moves hunting-service off its remaining in-memory Maps and onto Postgres (following the DECISION-051 pattern from S157, not `RedisJsonStore` — see the S159 note in `docs/roadmap/STEP_03_PERSISTENCE.md` §5.4), persists onboarding's module readiness/checklist/demo/tour state to Redis (S159d), and widens the offboarding purge worker to cover every tenant table including the S177 Part 1 and S159 tables (S159e).
+
+### S159 — hunting-service → Postgres
+
+One generic table `hunting_docs`, keyed `(kind, id)` (id `varchar(100)`, tenant_id uuid) — the same DECISION-051 pattern used for `integration_docs`, **not** `RedisJsonStore`. 8 kinds: `hunt_session`, `hunt_template`, `correlation_lead`, `hunt_comment`, `hunt_share`, `hunt_evidence`, `hunt_hypothesis`, `playbook_execution`.
+
+- Playbook executions are persisted per tenant and hunt; the playbook start/step/progress routes resolve the hunt for the caller's tenant first.
+- Every save is `updateMany where {kind, id, tenant_id}` then create — a foreign id is a 409 CONFLICT, same convention as S154–S158.
+- Deleting a hunt cascades to its child docs.
+- Explicit saves were added where code used to mutate objects held by the old Maps directly: session timeline events, expired-session cleanup, template usage count, hypothesis verdict/evidence links, playbook step completion, comment edit.
+- Compose: `etip_hunting` gets `TI_DATABASE_URL` + `depends_on etip_postgres` (`service_healthy`); memory stays 512M.
+- `package.json`: `@prisma/client ^5.22.0` added to hunting-service.
+
+### S159d — onboarding → Redis
+
+Module readiness, checklist snapshots, demo-seeded flag, and tour-completed flag move to Redis via the existing WizardStore client: `etip:{tenantId}:modules` (enabled + configured modules), `etip:{tenantId}:checklist` (snapshots, max 10), `etip:{tenantId}:demo-seeded`, `etip:{tenantId}:tour-completed`. Falls back to memory only when no Redis client is configured (tests). Redis errors propagate — same policy as the wizard store. Integration test results stay in memory (cache).
+
+### S159e — offboarding purge widened
+
+`apps/user-management-service/src/services/offboarding-purge-worker.ts`: `purgeTenant()` now also deletes:
+
+- The 18 Step 3 tables: `integrations`, `integration_logs`, `integration_deliveries`, `integration_tickets`, `integration_docs`, `alert_rules`, `alert_channels`, `alert_escalation_policies`, `alert_maintenance_windows`, `alerts`, `alert_history`, `alert_groups`, `drp_assets`, `drp_alerts`, `drp_scans`, `drp_takedowns`, `drp_alert_feedback`, `hunting_docs`.
+- 8 older tenant tables the worker had missed: `webhook_subscriptions`, `tenant_feed_subscriptions`, `tenant_ioc_overlays`, `tenant_item_consumption`, `feed_quota_plan_assignments`, `access_reviews`, `compliance_reports`, `mfa_enforcement_policies` (the nullable-tenant tables match the tenant only).
+
+`ExternalPurger` also deletes Redis `etip:{tenantId}:*` and now rejects any tenant id that is not a UUID. First unit tests added for the purge worker.
+
+**Not changed:** nothing schedules the purge worker yet (S148 follow-up, still open) — see `docs/PENDING_WORK.md` §3.
+
+### Files touched
+
+- **hunting-service:** Prisma schema (`hunting_docs`), repository layer for the 8 kinds, session/template/lead/comment/share/evidence/hypothesis/playbook services converted to await the repo, `src/index.ts`, `src/config.ts`, compose, `package.json`.
+- **onboarding:** `services/module-readiness.ts`, `services/checklist-persistence.ts`, `services/demo-seeder.ts`, `services/welcome-dashboard.ts`, `src/index.ts`.
+- **user-management-service:** `src/services/offboarding-purge-worker.ts`, its `ExternalPurger` (Redis pattern-delete + UUID validation), first unit test file for the worker.
+
+### Tests
+
+| Service | Before | After |
+|---|---|---|
+| hunting-service | 222 | 251 |
+| onboarding | 267 | 276 |
+| user-management-service | 371 | 375 |
+
+Full local gate: 9,566 passed / 2 skipped / 0 failed.
+
+### CI guard
+
+`scripts/memory-store-baseline.txt`: 117 → 102 non-empty lines (8 hunting lines + 7 onboarding lines removed from the ratchet). Guard passes.
+
+### Security review
+
+codex:rescue adversarial review. **Verdict: REVISE.** Findings, both fixed in this PR:
+
+1. The offboarding purge missed the 8 older tenant tables listed above.
+2. `ExternalPurger` accepted non-UUID tenant ids — a `*` id could have widened the Redis pattern-delete beyond the intended tenant.
+
+Hunting by-id paths, the `hunting_docs` key, cascade delete, the onboarding Redis keys, and error paths across all three services were reviewed clean.
+
+### New backlog findings (added to `docs/PENDING_WORK.md` §3)
+
+- **Offboarding purge worker is never scheduled** — no daily job calls `runPurgeCheck`, `ExternalPurger.fromEnv` is never invoked, and `etip_user_management` lacks the Neo4j/ES env it would need. Offboarded tenants are never hard-deleted today. Wiring the scheduler is destructive and needs an owner go-ahead.
+- **Onboarding's "Seed Demo Data" button** (`apps/frontend/src/pages/OnboardingPage.tsx:257`, `POST /onboarding/welcome/seed-demo`) writes fabricated IOCs/actors/malware/vulnerabilities into the tenant's real stores — a DECISION-048 conflict. Owner decision needed: remove the button/route, or restrict to a demo tenant.
+- The "real" seeding path, `POST /welcome/seed-demo` (`apps/onboarding/src/routes/welcome.ts:62–64`), also seeds demo vulnerabilities.
+
+### Step 3 status after this PR
+
+Rows done: 154-0, 154, 155, 156, 157, 158a, 158b, 159, 159d, 159e. Remaining: 159b (caching-service archive rebuild from MinIO — archive is currently off), 159c (analytics tenant trends — grouped with the owner-scheduled security fix), and the backlog modules (reporting, customization, user-management in-memory stores, correlation-engine).
+
+### How to verify (VPS acceptance, spec §9)
+
+```bash
+docker exec etip_postgres psql -U etip_user -d etip -c "\dt hunting_docs"
+
+docker logs etip_hunting --since 1h 2>&1 | grep -ci "fall.*back\|in-memory"
+docker logs etip_onboarding --since 1h 2>&1 | grep -ci "fall.*back\|in-memory"
+# each → 0
+
+docker restart etip_hunting etip_onboarding
+# data created before restart is still there after
+
+bash scripts/check-memory-stores.sh && echo OK
+```
+
+### Rollback
+
+- **Local:** `git reset --hard safe-point-2026-09-30-s159`.
+- **VPS:** redeploy the previous image. `hunting_docs` is additive and can stay in Postgres — harmless if the app doesn't use it.
+
+### Deploy result
+
+TBD (post-deploy).

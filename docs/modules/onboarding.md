@@ -1,6 +1,10 @@
 # Onboarding Service (Module 18)
 
-**Port:** 3018 | **Status:** ✅ Deployed | **Tests:** 230 | **Endpoints:** 32
+**Port:** 3018 | **Status:** ✅ Deployed | **Tests:** 276 | **Endpoints:** 32
+
+## Persistence (S159d, PR #70 — deploy pending)
+
+Module readiness, checklist snapshots, demo-seeded flag, and tour-completed flag moved from in-process memory to Redis via the existing WizardStore client: `etip:{tenantId}:modules` (enabled + configured modules), `etip:{tenantId}:checklist` (snapshots, max 10), `etip:{tenantId}:demo-seeded`, `etip:{tenantId}:tour-completed`. Falls back to memory only when no Redis client is configured (tests). Redis errors propagate (same policy as the wizard store). Integration test results stay in memory (cache). Tests 267 → 276.
 
 ## Features
 
@@ -10,13 +14,13 @@
 | Service Client | `services/service-client.ts` | HTTP client for inter-service calls with service JWT auth |
 | Data Source Connectors | `services/connector-validator.ts` | 8 types (RSS, STIX/TAXII, REST, CSV, Splunk, Sentinel, Elastic, webhook) |
 | Pipeline Health Check | `services/health-checker.ts` | 6-stage pipeline monitoring (ingest → normalize → enrich → IOC → graph → correlate) |
-| Module Readiness | `services/module-readiness.ts` | 14-module dependency graph, enable/disable with validation |
+| Module Readiness | `services/module-readiness.ts` | 14-module dependency graph, enable/disable with validation. Persisted to Redis (S159d) |
 | Progress Tracker | `services/progress-tracker.ts` | 8 readiness checks, completion scoring |
 | Prerequisite Validation (P0) | `services/prerequisite-validator.ts` | Transitive dep chain, config prereqs |
-| Demo Data Seeding (P0) | `services/demo-seeder.ts` | 10 IOCs, 5 actors, 5 malware, 5 CVEs, 4 OSINT feeds via real API calls (tagged DEMO) |
+| Demo Data Seeding (P0) | `services/demo-seeder.ts` | 10 IOCs, 5 actors, 5 malware, 5 CVEs, 4 OSINT feeds via real API calls (tagged DEMO). Demo-seeded flag persisted to Redis (S159d) |
 | Integration Testing (P0) | `services/integration-tester.ts` | DNS → TCP → auth → data pull multi-step test |
-| Checklist Persistence (P0) | `services/checklist-persistence.ts` | Versioned snapshots (max 10), save/resume |
-| Welcome Dashboard (P0) | `services/welcome-dashboard.ts` | Quick actions, 6 guided tips, tour tracking |
+| Checklist Persistence (P0) | `services/checklist-persistence.ts` | Versioned snapshots (max 10), save/resume. Persisted to Redis (S159d) |
+| Welcome Dashboard (P0) | `services/welcome-dashboard.ts` | Quick actions, 6 guided tips, tour tracking. Tour-completed flag persisted to Redis (S159d) |
 
 ## API Endpoints
 

@@ -10,7 +10,7 @@
 |---|---|---|
 | 0, 0B, 2 | ✅ Done | — |
 | 1 · Stay up | ✅ Done | Off-site backup copy (rclone); failover option not chosen (`STEP_01_STAY_UP.md` §later) |
-| **3 · Persistence** | 🔨 In progress — rows 154-0 (S175), 154 (S176), and 155/156/157/158a/158b (S177) done and LIVE (PR #69, `e10897d`) | **NEXT = S159** hunting-service → Postgres (not RedisJsonStore — see DECISION-051) → S159b archive rebuild, S159c analytics tenant trends, S159d onboarding, S159e offboarding purge (must now also delete from the 12 new S177 tables plus the 4 S154 alert tables). Backlog: reporting, customization, user-management, correlation |
+| **3 · Persistence** | 🔨 In progress — rows 154-0 (S175), 154 (S176), 155/156/157/158a/158b (S177 PR #69), and 159/159d/159e (S177 part 2, PR #70) done — PR #70 deploy pending | **NEXT = S159b** caching-service archive rebuild from MinIO, then S159c analytics tenant trends (belongs with the owner-scheduled security fix). Backlog: reporting, customization, user-management, correlation |
 | 4 · DB roles + RLS | ⏳ Not started (after Step 3) | Sessions 160a–m; owner decisions E1–E7; must cover the new alert tables |
 | 5 · Honest UI | 🔨 Mostly done | S173 wiring fixes (see §3); real Clients tenant list; remaining `isDemo` hooks; SparklineCell fake trend (`generateStubTrend`); owner decisions O1–O4. Status line in the spec is stale |
 | 6 · Cleanup | 🔨 PR1 done (S171) | DECISION-032 proposal (not yet accepted); split files >400 lines as they are touched |
@@ -37,6 +37,8 @@
 
 ## 3. Standing backlog (outside the steps)
 
+- **Offboarding purge worker is never scheduled** (S177 part 2, PR #70 finding): `runPurgeCheck` exists but no daily job calls it, `ExternalPurger.fromEnv` is never invoked, and `etip_user_management` lacks the Neo4j/ES env it would need — offboarded tenants are never hard-deleted. Wire the scheduler + compose env; destructive, needs care and an owner go-ahead. Known gap since S148.
+- **Onboarding "Seed Demo Data" writes fabricated data into the tenant's real stores** (S177 part 2, PR #70 finding): the button (`apps/frontend/src/pages/OnboardingPage.tsx:257`, `POST /onboarding/welcome/seed-demo`) and the "real" path's `POST /welcome/seed-demo` (`apps/onboarding/src/routes/welcome.ts:62–64`) seed fabricated IOCs/actors/malware/vulnerabilities — conflicts with DECISION-048. Owner decision: remove the button/route, or restrict to a demo tenant.
 - **Wiring fixes from the S173 sweep:** `apiList` drops pagination totals; broken request bodies (correlation Create Ticket, DRP bulk triage + takedown, Jira/ServiceNow form); admin `TenantRecord` type vs real `/admin/tenants`; missing/mismatched routes (TAXII managed-collection list, global IOC stats, `/ingestion/catalog/subscription-stats`, `/analytics/feed-performance` shape, per-source enrichment breakdown, test-notification route).
 - **AI enrichment runner** (DECISION-045) — also replaces fake vendor verdicts; batch path needs a tenant-budget check and a per-IOC trigger cooldown before `TI_BATCH_ENABLED` is used (`docs/S164_AI_ENRICHMENT_AUTO_ENRICH.md`).
 - **Real user & tenant provisioning** — invite, SSO/JIT, Add-Client.
