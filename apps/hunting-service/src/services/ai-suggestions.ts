@@ -108,7 +108,7 @@ export class AISuggestions {
     tenantId: string,
     huntId: string,
   ): Promise<SuggestionResult> {
-    const session = this.requireHunt(tenantId, huntId);
+    const session = await this.requireHunt(tenantId, huntId);
 
     // Always generate heuristic suggestions (fast, free)
     const heuristic = this.generateHeuristicSuggestions(session);
@@ -205,8 +205,8 @@ export class AISuggestions {
     };
   }
 
-  private requireHunt(tenantId: string, huntId: string): HuntSession {
-    const session = this.store.getSession(tenantId, huntId);
+  private async requireHunt(tenantId: string, huntId: string): Promise<HuntSession> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }

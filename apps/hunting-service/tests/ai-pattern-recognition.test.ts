@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AIPatternRecognition } from '../src/services/ai-pattern-recognition.js';
 import { HuntingStore } from '../src/schemas/store.js';
-import type { HuntSession, HuntEntity } from '../src/schemas/hunting.js';
+import type { HuntEntity } from '../src/schemas/hunting.js';
 
 describe('Hunting Service — #11 AI Pattern Recognition', () => {
   let store: HuntingStore;
@@ -16,9 +16,9 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
     });
   });
 
-  function seedHunt(entities: Array<Partial<HuntEntity>>): void {
+  async function seedHunt(entities: Array<Partial<HuntEntity>>): Promise<void> {
     const now = new Date().toISOString();
-    store.setSession(tenantId, {
+    await store.setSession(tenantId, {
       id: huntId, tenantId, title: 'Test', hypothesis: 'Testing',
       status: 'active', severity: 'high', assignedTo: 'user-1', createdBy: 'user-1',
       entities: entities.map((e, i) => ({
@@ -31,20 +31,20 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
   }
 
   it('11.1. returns empty patterns for hunt with no entities', async () => {
-    seedHunt([]);
+    await seedHunt([]);
     const result = await recognizer.analyze(tenantId, huntId);
     expect(result.patterns).toHaveLength(0);
     expect(result.source).toBe('heuristic');
   });
 
   it('11.2. returns empty for single entity', async () => {
-    seedHunt([{ type: 'ip', value: '10.0.0.1' }]);
+    await seedHunt([{ type: 'ip', value: '10.0.0.1' }]);
     const result = await recognizer.analyze(tenantId, huntId);
     expect(result.patterns).toHaveLength(0);
   });
 
   it('11.3. detects phishing infrastructure pattern', async () => {
-    seedHunt([
+    await seedHunt([
       { type: 'email', value: 'attacker@evil.com' },
       { type: 'domain', value: 'evil.com' },
       { type: 'url', value: 'https://evil.com/payload' },
@@ -56,7 +56,7 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
   });
 
   it('11.4. detects C2 infrastructure pattern', async () => {
-    seedHunt([
+    await seedHunt([
       { type: 'ip', value: '10.0.0.1' },
       { type: 'domain', value: 'c2.evil.com' },
     ]);
@@ -66,7 +66,7 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
   });
 
   it('11.5. detects vulnerability exploitation pattern', async () => {
-    seedHunt([
+    await seedHunt([
       { type: 'cve', value: 'CVE-2024-1234' },
       { type: 'ip', value: '192.168.1.1' },
     ]);
@@ -77,7 +77,7 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
   });
 
   it('11.6. detects multiple patterns simultaneously', async () => {
-    seedHunt([
+    await seedHunt([
       { type: 'email', value: 'a@evil.com' },
       { type: 'domain', value: 'evil.com' },
       { type: 'url', value: 'https://evil.com/payload' },
@@ -88,7 +88,7 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
   });
 
   it('11.7. confidence increases with more matching entities', async () => {
-    seedHunt([
+    await seedHunt([
       { type: 'ip', value: '10.0.0.1' },
       { type: 'domain', value: 'evil.com' },
       { type: 'ip', value: '10.0.0.2' },
@@ -101,7 +101,7 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
   });
 
   it('11.8. patterns include entity roles', async () => {
-    seedHunt([
+    await seedHunt([
       { type: 'ip', value: '10.0.0.1' },
       { type: 'domain', value: 'c2.evil.com' },
     ]);
@@ -111,7 +111,7 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
   });
 
   it('11.9. patterns sorted by confidence (highest first)', async () => {
-    seedHunt([
+    await seedHunt([
       { type: 'email', value: 'a@evil.com' },
       { type: 'domain', value: 'evil.com' },
       { type: 'url', value: 'https://evil.com/x' },
@@ -125,7 +125,7 @@ describe('Hunting Service — #11 AI Pattern Recognition', () => {
   });
 
   it('11.10. includes analysis time and entity count', async () => {
-    seedHunt([{ type: 'ip', value: '10.0.0.1' }, { type: 'domain', value: 'a.com' }]);
+    await seedHunt([{ type: 'ip', value: '10.0.0.1' }, { type: 'domain', value: 'a.com' }]);
     const result = await recognizer.analyze(tenantId, huntId);
     expect(result.analysisTime).toBeGreaterThanOrEqual(0);
     expect(result.entityCount).toBe(2);

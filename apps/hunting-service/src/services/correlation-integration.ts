@@ -88,19 +88,19 @@ export class CorrelationIntegration {
   }
 
   /** Link a correlation result to a hunt session as a lead. */
-  linkCorrelationToHunt(
+  async linkCorrelationToHunt(
     tenantId: string,
     huntId: string,
     correlation: CorrelationResult,
-  ): CorrelationLead {
+  ): Promise<CorrelationLead> {
     // Verify hunt exists
-    const session = this.store.getSession(tenantId, huntId);
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }
 
     // Check if already linked
-    const existingLeads = this.store.getHuntLeads(tenantId, huntId);
+    const existingLeads = await this.store.getHuntLeads(tenantId, huntId);
     const alreadyLinked = existingLeads.find(
       (l) => l.correlationId === correlation.id,
     );
@@ -120,19 +120,19 @@ export class CorrelationIntegration {
       linkedAt: new Date().toISOString(),
     };
 
-    this.store.addLead(tenantId, huntId, lead);
+    await this.store.addLead(tenantId, huntId, lead);
 
     // Track the lead ID in the session
     session.correlationLeads.push(correlation.id);
     session.updatedAt = new Date().toISOString();
-    this.store.setSession(tenantId, session);
+    await this.store.setSession(tenantId, session);
 
     return lead;
   }
 
   /** Get all correlation leads for a hunt. */
-  getHuntLeads(tenantId: string, huntId: string): CorrelationLead[] {
-    const session = this.store.getSession(tenantId, huntId);
+  async getHuntLeads(tenantId: string, huntId: string): Promise<CorrelationLead[]> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }
@@ -144,7 +144,7 @@ export class CorrelationIntegration {
     tenantId: string,
     huntId: string,
   ): Promise<CorrelationLead[]> {
-    const session = this.store.getSession(tenantId, huntId);
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }
@@ -164,7 +164,7 @@ export class CorrelationIntegration {
       );
 
       if (hasOverlap) {
-        const lead = this.linkCorrelationToHunt(tenantId, huntId, correlation);
+        const lead = await this.linkCorrelationToHunt(tenantId, huntId, correlation);
         linked.push(lead);
       }
     }
@@ -173,13 +173,13 @@ export class CorrelationIntegration {
   }
 
   /** Get correlation lead statistics for a hunt. */
-  getLeadStats(tenantId: string, huntId: string): {
+  async getLeadStats(tenantId: string, huntId: string): Promise<{
     totalLeads: number;
     avgConfidence: number;
     byType: Record<string, number>;
     highConfidenceCount: number;
-  } {
-    const leads = this.getHuntLeads(tenantId, huntId);
+  }> {
+    const leads = await this.getHuntLeads(tenantId, huntId);
     const byType: Record<string, number> = {};
     let totalConfidence = 0;
     let highConfidenceCount = 0;

@@ -11,12 +11,12 @@ describe('Hunting Service — #14 Bulk Import', () => {
   const userId = 'user-1';
   let huntId: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     store = new HuntingStore();
     manager = new HuntSessionManager(store, { sessionTimeoutHours: 72, maxActiveSessions: 20 });
     importer = new BulkImport(manager);
 
-    const hunt = manager.create(tenantId, userId, {
+    const hunt = await manager.create(tenantId, userId, {
       title: 'Import Test',
       hypothesis: 'Testing bulk import',
     });
@@ -92,54 +92,54 @@ describe('Hunting Service — #14 Bulk Import', () => {
 
   // ─── Import Execution ─────────────────────────────────
 
-  it('14.8. imports valid entities', () => {
+  it('14.8. imports valid entities', async () => {
     const rows = [
       { type: 'ip', value: '10.0.0.1' },
       { type: 'domain', value: 'evil.com' },
     ];
-    const result = importer.importCsv(tenantId, huntId, userId, rows);
+    const result = await importer.importCsv(tenantId, huntId, userId, rows);
     expect(result.imported).toBe(2);
     expect(result.errors).toHaveLength(0);
   });
 
-  it('14.9. rejects invalid entity types', () => {
+  it('14.9. rejects invalid entity types', async () => {
     const rows = [
       { type: 'invalid_type', value: 'test' },
     ];
-    const result = importer.importCsv(tenantId, huntId, userId, rows);
+    const result = await importer.importCsv(tenantId, huntId, userId, rows);
     expect(result.skipped).toBe(1);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]!.error).toContain('Invalid entity type');
   });
 
-  it('14.10. rejects empty values', () => {
+  it('14.10. rejects empty values', async () => {
     const rows = [
       { type: 'ip', value: '' },
     ];
-    const result = importer.importCsv(tenantId, huntId, userId, rows);
+    const result = await importer.importCsv(tenantId, huntId, userId, rows);
     expect(result.skipped).toBe(1);
   });
 
-  it('14.11. reports mixed results', () => {
+  it('14.11. reports mixed results', async () => {
     const rows = [
       { type: 'ip', value: '10.0.0.1' },
       { type: 'bad', value: 'x' },
       { type: 'domain', value: 'evil.com' },
       { type: 'ip', value: '' },
     ];
-    const result = importer.importCsv(tenantId, huntId, userId, rows);
+    const result = await importer.importCsv(tenantId, huntId, userId, rows);
     expect(result.imported).toBe(2);
     expect(result.skipped).toBe(2);
     expect(result.errors).toHaveLength(2);
   });
 
-  it('14.12. end-to-end CSV parse + import', () => {
+  it('14.12. end-to-end CSV parse + import', async () => {
     const csv = 'type,value,notes\nip,10.0.0.1,C2\ndomain,evil.com,Phishing\ncve,CVE-2024-1234,Critical';
     const rows = importer.parseCsv(csv);
-    const result = importer.importCsv(tenantId, huntId, userId, rows);
+    const result = await importer.importCsv(tenantId, huntId, userId, rows);
     expect(result.imported).toBe(3);
 
-    const session = manager.get(tenantId, huntId);
+    const session = await manager.get(tenantId, huntId);
     expect(session.entities).toHaveLength(3);
   });
 });

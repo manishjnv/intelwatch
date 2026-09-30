@@ -109,7 +109,7 @@ export class AIPatternRecognition {
 
   /** Analyze a hunt for patterns. */
   async analyze(tenantId: string, huntId: string): Promise<PatternAnalysisResult> {
-    const session = this.requireHunt(tenantId, huntId);
+    const session = await this.requireHunt(tenantId, huntId);
     const startTime = Date.now();
 
     const patterns = this.detectHeuristicPatterns(session);
@@ -176,8 +176,8 @@ export class AIPatternRecognition {
     return roles[entityType]?.[patternType] ?? 'related';
   }
 
-  private requireHunt(tenantId: string, huntId: string): HuntSession {
-    const session = this.store.getSession(tenantId, huntId);
+  private async requireHunt(tenantId: string, huntId: string): Promise<HuntSession> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }

@@ -3,6 +3,7 @@ import { HuntPlaybooks } from '../src/services/hunt-playbooks.js';
 
 describe('Hunting Service — #12 Hunt Playbooks', () => {
   let playbooks: HuntPlaybooks;
+  const tenantId = 'tenant-1';
 
   beforeEach(() => {
     playbooks = new HuntPlaybooks();
@@ -36,46 +37,46 @@ describe('Hunting Service — #12 Hunt Playbooks', () => {
     }
   });
 
-  it('12.6. starts playbook execution', () => {
-    const execution = playbooks.startExecution('playbook-phishing', 'hunt-1');
+  it('12.6. starts playbook execution', async () => {
+    const execution = await playbooks.startExecution(tenantId, 'playbook-phishing', 'hunt-1');
     expect(execution.playbookId).toBe('playbook-phishing');
     expect(execution.huntId).toBe('hunt-1');
     expect(execution.completedSteps).toBe(0);
     expect(execution.totalSteps).toBeGreaterThan(0);
   });
 
-  it('12.7. throws on starting non-existent playbook', () => {
-    expect(() => playbooks.startExecution('nope', 'hunt-1')).toThrow('not found');
+  it('12.7. throws on starting non-existent playbook', async () => {
+    await expect(playbooks.startExecution(tenantId, 'nope', 'hunt-1')).rejects.toThrow('not found');
   });
 
-  it('12.8. completes a step', () => {
-    const execution = playbooks.startExecution('playbook-phishing', 'hunt-1');
+  it('12.8. completes a step', async () => {
+    const execution = await playbooks.startExecution(tenantId, 'playbook-phishing', 'hunt-1');
     const stepId = execution.steps[0]!.id;
-    const updated = playbooks.completeStep('hunt-1', stepId, 'Email headers collected');
+    const updated = await playbooks.completeStep(tenantId, 'hunt-1', stepId, 'Email headers collected');
     expect(updated.completedSteps).toBe(1);
     expect(updated.steps[0]!.completed).toBe(true);
     expect(updated.steps[0]!.result).toBe('Email headers collected');
   });
 
-  it('12.9. tracks progress percentage', () => {
-    const execution = playbooks.startExecution('playbook-phishing', 'hunt-1');
-    expect(playbooks.getProgress('hunt-1')).toBe(0);
+  it('12.9. tracks progress percentage', async () => {
+    const execution = await playbooks.startExecution(tenantId, 'playbook-phishing', 'hunt-1');
+    expect(await playbooks.getProgress(tenantId, 'hunt-1')).toBe(0);
 
-    playbooks.completeStep('hunt-1', execution.steps[0]!.id);
-    const progress = playbooks.getProgress('hunt-1');
+    await playbooks.completeStep(tenantId, 'hunt-1', execution.steps[0]!.id);
+    const progress = await playbooks.getProgress(tenantId, 'hunt-1');
     expect(progress).toBeGreaterThan(0);
     expect(progress).toBeLessThan(100);
   });
 
-  it('12.10. gets execution for a hunt', () => {
-    playbooks.startExecution('playbook-ransomware', 'hunt-1');
-    const execution = playbooks.getExecution('hunt-1');
+  it('12.10. gets execution for a hunt', async () => {
+    await playbooks.startExecution(tenantId, 'playbook-ransomware', 'hunt-1');
+    const execution = await playbooks.getExecution(tenantId, 'hunt-1');
     expect(execution).toBeDefined();
     expect(execution!.playbookId).toBe('playbook-ransomware');
   });
 
-  it('12.11. returns undefined execution for unstarted hunt', () => {
-    expect(playbooks.getExecution('nonexistent')).toBeUndefined();
+  it('12.11. returns undefined execution for unstarted hunt', async () => {
+    expect(await playbooks.getExecution(tenantId, 'nonexistent')).toBeUndefined();
   });
 
   it('12.12. playbooks have MITRE techniques', () => {
@@ -87,5 +88,10 @@ describe('Hunting Service — #12 Hunt Playbooks', () => {
     const pb = playbooks.getPlaybook('playbook-ransomware')!;
     expect(pb.severity).toBe('critical');
     expect(pb.estimatedMinutes).toBeGreaterThan(0);
+  });
+
+  it('12.14. tenant isolation — another tenant cannot read the execution', async () => {
+    await playbooks.startExecution(tenantId, 'playbook-phishing', 'hunt-1');
+    expect(await playbooks.getExecution('other-tenant', 'hunt-1')).toBeUndefined();
   });
 });

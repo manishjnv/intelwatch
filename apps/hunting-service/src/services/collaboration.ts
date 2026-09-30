@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { AppError } from '@etip/shared-utils';
 import type { HuntingStore } from '../schemas/store.js';
 import type { HuntSession } from '../schemas/hunting.js';
+import type { DocRepo } from '../doc-repo.js';
+import { MemoryDocRepo } from '../doc-repo.js';
 
 export interface HuntComment {
   id: string;
@@ -29,6 +31,22 @@ export interface CollaborationStats {
   lastActivity?: string;
 }
 
+/** Comments carry tenantId in storage only — never in the response shape. */
+export type CommentDoc = HuntComment & { tenantId: string };
+/** Shares carry a synthetic id + tenantId in storage only, dedupe key is (huntId, sharedWith). */
+export type ShareDoc = ShareEntry & { id: string; tenantId: string };
+
+/** Strips the storage-only id/tenantId fields before returning a ShareDoc to a caller. */
+function toShareEntry(doc: ShareDoc): ShareEntry {
+  return {
+    huntId: doc.huntId,
+    sharedWith: doc.sharedWith,
+    sharedBy: doc.sharedBy,
+    permission: doc.permission,
+    sharedAt: doc.sharedAt,
+  };
+}
+
 /**
  * #10 Hunt Collaboration — share hunts, comment threads, assignment handoff.
  *
@@ -36,38 +54,48 @@ export interface CollaborationStats {
  * and hunt assignment transfer between analysts.
  */
 export class Collaboration {
-  /** huntId → commentId → HuntComment */
-  private readonly comments = new Map<string, Map<string, HuntComment>>();
-  /** huntId → userId → ShareEntry */
-  private readonly shares = new Map<string, Map<string, ShareEntry>>();
   private readonly store: HuntingStore;
+  private readonly commentsRepo: DocRepo<CommentDoc>;
+  private readonly sharesRepo: DocRepo<ShareDoc>;
 
-  constructor(store: HuntingStore) {
+  constructor(
+    store: HuntingStore,
+    repos?: { comments?: DocRepo<CommentDoc>; shares?: DocRepo<ShareDoc> },
+  ) {
     this.store = store;
+    this.commentsRepo = repos?.comments ?? new MemoryDocRepo();
+    this.sharesRepo = repos?.shares ?? new MemoryDocRepo();
+    store.registerCascadeRepo({
+      deleteByParent: async (tenantId, huntId) => {
+        const a = await this.commentsRepo.deleteByParent(tenantId, huntId);
+        const b = await this.sharesRepo.deleteByParent(tenantId, huntId);
+        return a + b;
+      },
+    });
   }
 
   // ─── Comments ─────────────────────────────────────────────
 
   /** Add a comment to a hunt (supports threading via parentId). */
-  addComment(
+  async addComment(
     tenantId: string,
     huntId: string,
     userId: string,
     content: string,
     parentId?: string,
-  ): HuntComment {
-    this.requireHunt(tenantId, huntId);
+  ): Promise<HuntComment> {
+    await this.requireHunt(tenantId, huntId);
 
     // Validate parent exists if specified
     if (parentId) {
-      const parent = this.getHuntComments(huntId).get(parentId);
-      if (!parent) {
+      const parent = await this.commentsRepo.get(parentId, tenantId);
+      if (!parent || parent.huntId !== huntId) {
         throw new AppError(404, `Parent comment ${parentId} not found`, 'COMMENT_NOT_FOUND');
       }
     }
 
     const now = new Date().toISOString();
-    const comment: HuntComment = {
+    const comment: CommentDoc = {
       id: randomUUID(),
       huntId,
       userId,
@@ -76,23 +104,24 @@ export class Collaboration {
       createdAt: now,
       updatedAt: now,
       edited: false,
+      tenantId,
     };
 
-    this.getHuntComments(huntId).set(comment.id, comment);
+    await this.commentsRepo.save(comment, huntId);
     return comment;
   }
 
   /** Edit a comment (only by author). */
-  editComment(
+  async editComment(
     tenantId: string,
     huntId: string,
     commentId: string,
     userId: string,
     newContent: string,
-  ): HuntComment {
-    this.requireHunt(tenantId, huntId);
-    const comment = this.getHuntComments(huntId).get(commentId);
-    if (!comment) {
+  ): Promise<HuntComment> {
+    await this.requireHunt(tenantId, huntId);
+    const comment = await this.commentsRepo.get(commentId, tenantId);
+    if (!comment || comment.huntId !== huntId) {
       throw new AppError(404, `Comment ${commentId} not found`, 'COMMENT_NOT_FOUND');
     }
     if (comment.userId !== userId) {
@@ -101,41 +130,44 @@ export class Collaboration {
     comment.content = newContent;
     comment.updatedAt = new Date().toISOString();
     comment.edited = true;
+    await this.commentsRepo.save(comment, huntId);
     return comment;
   }
 
   /** Delete a comment (only by author). */
-  deleteComment(
+  async deleteComment(
     tenantId: string,
     huntId: string,
     commentId: string,
     userId: string,
-  ): void {
-    this.requireHunt(tenantId, huntId);
-    const map = this.getHuntComments(huntId);
-    const comment = map.get(commentId);
-    if (!comment) {
+  ): Promise<void> {
+    await this.requireHunt(tenantId, huntId);
+    const comment = await this.commentsRepo.get(commentId, tenantId);
+    if (!comment || comment.huntId !== huntId) {
       throw new AppError(404, `Comment ${commentId} not found`, 'COMMENT_NOT_FOUND');
     }
     if (comment.userId !== userId) {
       throw new AppError(403, 'Only the author can delete this comment', 'FORBIDDEN');
     }
-    map.delete(commentId);
+    await this.commentsRepo.delete(commentId, tenantId);
   }
 
   /** List comments for a hunt (chronological, with thread structure). */
-  listComments(tenantId: string, huntId: string): HuntComment[] {
-    this.requireHunt(tenantId, huntId);
-    return Array.from(this.getHuntComments(huntId).values())
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  async listComments(tenantId: string, huntId: string): Promise<HuntComment[]> {
+    await this.requireHunt(tenantId, huntId);
+    // repo.list() is newest-first (insertion order reversed); reverse it back to insertion
+    // order before the stable sort so two comments created in the same millisecond keep
+    // their creation order instead of being flipped.
+    const all = [...(await this.commentsRepo.list(tenantId, huntId))].reverse();
+    return all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   /** Get threaded comments (top-level with nested replies). */
-  getThreadedComments(tenantId: string, huntId: string): Array<{
+  async getThreadedComments(tenantId: string, huntId: string): Promise<Array<{
     comment: HuntComment;
     replies: HuntComment[];
-  }> {
-    const all = this.listComments(tenantId, huntId);
+  }>> {
+    const all = await this.listComments(tenantId, huntId);
     const topLevel = all.filter((c) => !c.parentId);
     return topLevel.map((comment) => ({
       comment,
@@ -145,110 +177,104 @@ export class Collaboration {
 
   // ─── Sharing ──────────────────────────────────────────────
 
-  /** Share a hunt with another user. */
-  share(
+  /** Share a hunt with another user. Re-sharing with the same user updates the existing entry. */
+  async share(
     tenantId: string,
     huntId: string,
     sharedBy: string,
     sharedWith: string,
     permission: 'view' | 'edit' = 'view',
-  ): ShareEntry {
-    this.requireHunt(tenantId, huntId);
+  ): Promise<ShareEntry> {
+    await this.requireHunt(tenantId, huntId);
 
     if (sharedBy === sharedWith) {
       throw new AppError(400, 'Cannot share a hunt with yourself', 'INVALID_SHARE');
     }
 
-    const entry: ShareEntry = {
+    const existing = await this.findShare(tenantId, huntId, sharedWith);
+    const entry: ShareDoc = {
+      id: existing?.id ?? randomUUID(),
       huntId,
       sharedWith,
       sharedBy,
       permission,
       sharedAt: new Date().toISOString(),
+      tenantId,
     };
 
-    this.getHuntShares(huntId).set(sharedWith, entry);
-    return entry;
+    await this.sharesRepo.save(entry, huntId);
+    return toShareEntry(entry);
   }
 
   /** Revoke sharing for a user. */
-  unshare(tenantId: string, huntId: string, userId: string): void {
-    this.requireHunt(tenantId, huntId);
-    this.getHuntShares(huntId).delete(userId);
+  async unshare(tenantId: string, huntId: string, userId: string): Promise<void> {
+    await this.requireHunt(tenantId, huntId);
+    const existing = await this.findShare(tenantId, huntId, userId);
+    if (existing) {
+      await this.sharesRepo.delete(existing.id, tenantId);
+    }
   }
 
   /** List all share entries for a hunt. */
-  listShares(tenantId: string, huntId: string): ShareEntry[] {
-    this.requireHunt(tenantId, huntId);
-    return Array.from(this.getHuntShares(huntId).values());
+  async listShares(tenantId: string, huntId: string): Promise<ShareEntry[]> {
+    await this.requireHunt(tenantId, huntId);
+    const all = await this.sharesRepo.list(tenantId, huntId);
+    return all.map(toShareEntry);
   }
 
   /** Check if a user has access to a hunt (owner or shared). */
-  hasAccess(tenantId: string, huntId: string, userId: string): boolean {
-    const session = this.store.getSession(tenantId, huntId);
+  async hasAccess(tenantId: string, huntId: string, userId: string): Promise<boolean> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) return false;
     if (session.assignedTo === userId || session.createdBy === userId) return true;
-    return this.getHuntShares(huntId).has(userId);
+    return !!(await this.findShare(tenantId, huntId, userId));
   }
 
   // ─── Assignment ───────────────────────────────────────────
 
   /** Transfer hunt assignment to another user. */
-  reassign(
+  async reassign(
     tenantId: string,
     huntId: string,
     newAssignee: string,
-  ): HuntSession {
-    const session = this.requireHunt(tenantId, huntId);
+  ): Promise<HuntSession> {
+    const session = await this.requireHunt(tenantId, huntId);
     session.assignedTo = newAssignee;
     session.updatedAt = new Date().toISOString();
-    this.store.setSession(tenantId, session);
+    await this.store.setSession(tenantId, session);
     return session;
   }
 
   // ─── Stats ────────────────────────────────────────────────
 
   /** Get collaboration statistics for a hunt. */
-  getStats(tenantId: string, huntId: string): CollaborationStats {
-    this.requireHunt(tenantId, huntId);
-    const comments = Array.from(this.getHuntComments(huntId).values());
-    const shares = this.getHuntShares(huntId);
+  async getStats(tenantId: string, huntId: string): Promise<CollaborationStats> {
+    await this.requireHunt(tenantId, huntId);
+    const comments = await this.commentsRepo.list(tenantId, huntId);
+    const shares = await this.sharesRepo.list(tenantId, huntId);
 
     const uniqueCommenters = new Set(comments.map((c) => c.userId));
-    const lastComment = comments.sort((a, b) =>
+    const lastComment = [...comments].sort((a, b) =>
       b.createdAt.localeCompare(a.createdAt),
     )[0];
 
     return {
       totalComments: comments.length,
       uniqueCommenters: uniqueCommenters.size,
-      sharedWith: shares.size,
+      sharedWith: shares.length,
       lastActivity: lastComment?.createdAt,
     };
   }
 
   // ─── Helpers ──────────────────────────────────────────────
 
-  private getHuntComments(huntId: string): Map<string, HuntComment> {
-    let map = this.comments.get(huntId);
-    if (!map) {
-      map = new Map();
-      this.comments.set(huntId, map);
-    }
-    return map;
+  private async findShare(tenantId: string, huntId: string, sharedWith: string): Promise<ShareDoc | undefined> {
+    const all = await this.sharesRepo.list(tenantId, huntId);
+    return all.find((s) => s.sharedWith === sharedWith);
   }
 
-  private getHuntShares(huntId: string): Map<string, ShareEntry> {
-    let map = this.shares.get(huntId);
-    if (!map) {
-      map = new Map();
-      this.shares.set(huntId, map);
-    }
-    return map;
-  }
-
-  private requireHunt(tenantId: string, huntId: string): HuntSession {
-    const session = this.store.getSession(tenantId, huntId);
+  private async requireHunt(tenantId: string, huntId: string): Promise<HuntSession> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }

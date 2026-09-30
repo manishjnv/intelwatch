@@ -32,7 +32,7 @@ describe('Hunting Service — #5 Correlation Integration', () => {
     });
   });
 
-  function createHunt(): HuntSession {
+  async function createHunt(): Promise<HuntSession> {
     const now = new Date().toISOString();
     const session: HuntSession = {
       id: 'hunt-1',
@@ -61,7 +61,7 @@ describe('Hunting Service — #5 Correlation Integration', () => {
       createdAt: now,
       updatedAt: now,
     };
-    store.setSession(tenantId, session);
+    await store.setSession(tenantId, session);
     return session;
   }
 
@@ -118,47 +118,47 @@ describe('Hunting Service — #5 Correlation Integration', () => {
 
   // ─── Link correlations ───────────────────────────────────
 
-  it('5.5. links a correlation to a hunt', () => {
-    createHunt();
+  it('5.5. links a correlation to a hunt', async () => {
+    await createHunt();
     const correlation = makeCorrelation('corr-1', [{ type: 'ip', value: '10.0.0.1' }]);
-    const lead = integration.linkCorrelationToHunt(tenantId, 'hunt-1', correlation);
+    const lead = await integration.linkCorrelationToHunt(tenantId, 'hunt-1', correlation);
 
     expect(lead.correlationId).toBe('corr-1');
     expect(lead.confidence).toBe(0.8);
     expect(lead.entities).toHaveLength(1);
   });
 
-  it('5.6. deduplicates already-linked correlations', () => {
-    createHunt();
+  it('5.6. deduplicates already-linked correlations', async () => {
+    await createHunt();
     const correlation = makeCorrelation('corr-1', [{ type: 'ip', value: '10.0.0.1' }]);
 
-    integration.linkCorrelationToHunt(tenantId, 'hunt-1', correlation);
-    const lead2 = integration.linkCorrelationToHunt(tenantId, 'hunt-1', correlation);
+    await integration.linkCorrelationToHunt(tenantId, 'hunt-1', correlation);
+    const lead2 = await integration.linkCorrelationToHunt(tenantId, 'hunt-1', correlation);
 
     expect(lead2.correlationId).toBe('corr-1');
-    const leads = integration.getHuntLeads(tenantId, 'hunt-1');
+    const leads = await integration.getHuntLeads(tenantId, 'hunt-1');
     expect(leads).toHaveLength(1);
   });
 
-  it('5.7. throws 404 for non-existent hunt', () => {
+  it('5.7. throws 404 for non-existent hunt', async () => {
     const correlation = makeCorrelation('corr-1', [{ type: 'ip', value: '10.0.0.1' }]);
-    expect(() => integration.linkCorrelationToHunt(tenantId, 'nope', correlation))
-      .toThrow('not found');
+    await expect(integration.linkCorrelationToHunt(tenantId, 'nope', correlation))
+      .rejects.toThrow('not found');
   });
 
-  it('5.8. updates session correlationLeads array', () => {
-    createHunt();
+  it('5.8. updates session correlationLeads array', async () => {
+    await createHunt();
     const correlation = makeCorrelation('corr-1', [{ type: 'ip', value: '10.0.0.1' }]);
-    integration.linkCorrelationToHunt(tenantId, 'hunt-1', correlation);
+    await integration.linkCorrelationToHunt(tenantId, 'hunt-1', correlation);
 
-    const session = store.getSession(tenantId, 'hunt-1')!;
+    const session = (await store.getSession(tenantId, 'hunt-1'))!;
     expect(session.correlationLeads).toContain('corr-1');
   });
 
   // ─── Auto-link ────────────────────────────────────────────
 
   it('5.9. auto-links correlations with matching entities', async () => {
-    createHunt();
+    await createHunt();
     mockCorrelationResponse([
       makeCorrelation('corr-match', [{ type: 'ip', value: '10.0.0.1' }], 0.9),
       makeCorrelation('corr-no-match', [{ type: 'ip', value: '99.99.99.99' }], 0.5),
@@ -171,7 +171,7 @@ describe('Hunting Service — #5 Correlation Integration', () => {
 
   it('5.10. returns empty when hunt has no entities', async () => {
     const now = new Date().toISOString();
-    store.setSession(tenantId, {
+    await store.setSession(tenantId, {
       id: 'empty-hunt',
       tenantId,
       title: 'Empty',
@@ -201,40 +201,40 @@ describe('Hunting Service — #5 Correlation Integration', () => {
 
   // ─── Get leads ────────────────────────────────────────────
 
-  it('5.12. returns all leads for a hunt', () => {
-    createHunt();
-    integration.linkCorrelationToHunt(tenantId, 'hunt-1',
+  it('5.12. returns all leads for a hunt', async () => {
+    await createHunt();
+    await integration.linkCorrelationToHunt(tenantId, 'hunt-1',
       makeCorrelation('corr-1', [{ type: 'ip', value: '10.0.0.1' }]));
-    integration.linkCorrelationToHunt(tenantId, 'hunt-1',
+    await integration.linkCorrelationToHunt(tenantId, 'hunt-1',
       makeCorrelation('corr-2', [{ type: 'domain', value: 'evil.com' }]));
 
-    const leads = integration.getHuntLeads(tenantId, 'hunt-1');
+    const leads = await integration.getHuntLeads(tenantId, 'hunt-1');
     expect(leads).toHaveLength(2);
   });
 
-  it('5.13. throws 404 for leads of non-existent hunt', () => {
-    expect(() => integration.getHuntLeads(tenantId, 'nope')).toThrow('not found');
+  it('5.13. throws 404 for leads of non-existent hunt', async () => {
+    await expect(integration.getHuntLeads(tenantId, 'nope')).rejects.toThrow('not found');
   });
 
   // ─── Stats ────────────────────────────────────────────────
 
-  it('5.14. returns lead stats', () => {
-    createHunt();
-    integration.linkCorrelationToHunt(tenantId, 'hunt-1',
+  it('5.14. returns lead stats', async () => {
+    await createHunt();
+    await integration.linkCorrelationToHunt(tenantId, 'hunt-1',
       makeCorrelation('corr-1', [{ type: 'ip', value: '10.0.0.1' }], 0.9));
-    integration.linkCorrelationToHunt(tenantId, 'hunt-1',
+    await integration.linkCorrelationToHunt(tenantId, 'hunt-1',
       makeCorrelation('corr-2', [{ type: 'domain', value: 'evil.com' }], 0.3));
 
-    const stats = integration.getLeadStats(tenantId, 'hunt-1');
+    const stats = await integration.getLeadStats(tenantId, 'hunt-1');
     expect(stats.totalLeads).toBe(2);
     expect(stats.avgConfidence).toBeCloseTo(0.6);
     expect(stats.highConfidenceCount).toBe(1);
     expect(stats.byType['co-occurrence']).toBe(2);
   });
 
-  it('5.15. returns zero stats for hunt with no leads', () => {
-    createHunt();
-    const stats = integration.getLeadStats(tenantId, 'hunt-1');
+  it('5.15. returns zero stats for hunt with no leads', async () => {
+    await createHunt();
+    const stats = await integration.getLeadStats(tenantId, 'hunt-1');
     expect(stats.totalLeads).toBe(0);
     expect(stats.avgConfidence).toBe(0);
   });

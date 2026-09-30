@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { AppError } from '@etip/shared-utils';
 import type { EntityType, HuntSeverity } from '../schemas/hunting.js';
+import type { DocRepo } from '../doc-repo.js';
+import { MemoryDocRepo } from '../doc-repo.js';
 
 export interface PlaybookStep {
   id: string;
@@ -34,6 +37,9 @@ export interface PlaybookExecution {
   totalSteps: number;
 }
 
+/** Execution rows are keyed by huntId (one active execution per hunt), scoped by tenant. */
+export type ExecutionDoc = PlaybookExecution & { id: string; tenantId: string };
+
 /**
  * #12 Hunt Playbook Templates — pre-built investigation workflows.
  *
@@ -43,11 +49,11 @@ export interface PlaybookExecution {
  */
 export class HuntPlaybooks {
   private readonly builtInPlaybooks: HuntPlaybook[];
-  /** huntId → PlaybookExecution */
-  private readonly executions = new Map<string, PlaybookExecution>();
+  private readonly repo: DocRepo<ExecutionDoc>;
 
-  constructor() {
+  constructor(repo: DocRepo<ExecutionDoc> = new MemoryDocRepo()) {
     this.builtInPlaybooks = this.createBuiltInPlaybooks();
+    this.repo = repo;
   }
 
   /** Get all available playbooks. */
@@ -64,13 +70,15 @@ export class HuntPlaybooks {
   }
 
   /** Start executing a playbook for a hunt. */
-  startExecution(playbookId: string, huntId: string): PlaybookExecution {
+  async startExecution(tenantId: string, playbookId: string, huntId: string): Promise<PlaybookExecution> {
     const playbook = this.getPlaybook(playbookId);
     if (!playbook) {
-      throw new Error(`Playbook ${playbookId} not found`);
+      throw new AppError(404, `Playbook ${playbookId} not found`, 'PLAYBOOK_NOT_FOUND');
     }
 
-    const execution: PlaybookExecution = {
+    const execution: ExecutionDoc = {
+      id: huntId,
+      tenantId,
       playbookId,
       huntId,
       steps: playbook.steps.map((s) => ({ ...s, completed: false })),
@@ -79,20 +87,20 @@ export class HuntPlaybooks {
       totalSteps: playbook.steps.length,
     };
 
-    this.executions.set(huntId, execution);
+    await this.repo.save(execution);
     return execution;
   }
 
   /** Mark a step as completed. */
-  completeStep(huntId: string, stepId: string, result?: string): PlaybookExecution {
-    const execution = this.executions.get(huntId);
+  async completeStep(tenantId: string, huntId: string, stepId: string, result?: string): Promise<PlaybookExecution> {
+    const execution = await this.repo.get(huntId, tenantId);
     if (!execution) {
-      throw new Error(`No playbook execution for hunt ${huntId}`);
+      throw new AppError(404, `No playbook execution for hunt ${huntId}`, 'EXECUTION_NOT_FOUND');
     }
 
     const step = execution.steps.find((s) => s.id === stepId);
     if (!step) {
-      throw new Error(`Step ${stepId} not found`);
+      throw new AppError(404, `Step ${stepId} not found`, 'STEP_NOT_FOUND');
     }
 
     step.completed = true;
@@ -100,17 +108,18 @@ export class HuntPlaybooks {
     step.result = result;
     execution.completedSteps = execution.steps.filter((s) => s.completed).length;
 
+    await this.repo.save(execution);
     return execution;
   }
 
   /** Get current execution for a hunt. */
-  getExecution(huntId: string): PlaybookExecution | undefined {
-    return this.executions.get(huntId);
+  async getExecution(tenantId: string, huntId: string): Promise<PlaybookExecution | undefined> {
+    return (await this.repo.get(huntId, tenantId)) ?? undefined;
   }
 
   /** Get execution progress as percentage. */
-  getProgress(huntId: string): number {
-    const execution = this.executions.get(huntId);
+  async getProgress(tenantId: string, huntId: string): Promise<number> {
+    const execution = await this.repo.get(huntId, tenantId);
     if (!execution || execution.totalSteps === 0) return 0;
     return Math.round((execution.completedSteps / execution.totalSteps) * 100);
   }

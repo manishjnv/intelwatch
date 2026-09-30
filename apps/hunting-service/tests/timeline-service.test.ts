@@ -19,12 +19,12 @@ describe('Hunting Service — #8 Timeline Service', () => {
     };
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
     store = new HuntingStore();
     timeline = new TimelineService(store);
 
     const now = new Date().toISOString();
-    store.setSession(tenantId, {
+    await store.setSession(tenantId, {
       id: huntId, tenantId, title: 'Test', hypothesis: 'Testing',
       status: 'active', severity: 'high', assignedTo: 'user-1', createdBy: 'user-1',
       entities: [], findings: '', tags: [], queryHistory: [], correlationLeads: [],
@@ -40,8 +40,8 @@ describe('Hunting Service — #8 Timeline Service', () => {
     });
   });
 
-  it('8.1. returns all timeline events sorted chronologically', () => {
-    const result = timeline.getTimeline(tenantId, huntId);
+  it('8.1. returns all timeline events sorted chronologically', async () => {
+    const result = await timeline.getTimeline(tenantId, huntId);
     expect(result.events).toHaveLength(6);
     // Oldest first
     for (let i = 1; i < result.events.length; i++) {
@@ -49,88 +49,88 @@ describe('Hunting Service — #8 Timeline Service', () => {
     }
   });
 
-  it('8.2. filters by event type', () => {
-    const result = timeline.getTimeline(tenantId, huntId, { types: ['entity_added'] });
+  it('8.2. filters by event type', async () => {
+    const result = await timeline.getTimeline(tenantId, huntId, { types: ['entity_added'] });
     expect(result.events).toHaveLength(1);
     expect(result.events[0]!.type).toBe('entity_added');
   });
 
-  it('8.3. filters by userId', () => {
-    const result = timeline.getTimeline(tenantId, huntId, { userId: 'user-2' });
+  it('8.3. filters by userId', async () => {
+    const result = await timeline.getTimeline(tenantId, huntId, { userId: 'user-2' });
     expect(result.events).toHaveLength(2);
     expect(result.events.every((e) => e.userId === 'user-2')).toBe(true);
   });
 
-  it('8.4. paginates results', () => {
-    const page1 = timeline.getTimeline(tenantId, huntId, undefined, 1, 3);
+  it('8.4. paginates results', async () => {
+    const page1 = await timeline.getTimeline(tenantId, huntId, undefined, 1, 3);
     expect(page1.events).toHaveLength(3);
     expect(page1.total).toBe(6);
     expect(page1.hasMore).toBe(true);
 
-    const page2 = timeline.getTimeline(tenantId, huntId, undefined, 2, 3);
+    const page2 = await timeline.getTimeline(tenantId, huntId, undefined, 2, 3);
     expect(page2.events).toHaveLength(3);
     expect(page2.hasMore).toBe(false);
   });
 
-  it('8.5. returns window start/end timestamps', () => {
-    const result = timeline.getTimeline(tenantId, huntId);
+  it('8.5. returns window start/end timestamps', async () => {
+    const result = await timeline.getTimeline(tenantId, huntId);
     expect(result.windowStart).toBeDefined();
     expect(result.windowEnd).toBeDefined();
     expect(result.windowStart <= result.windowEnd).toBe(true);
   });
 
-  it('8.6. returns stats with event counts by type', () => {
-    const stats = timeline.getStats(tenantId, huntId);
+  it('8.6. returns stats with event counts by type', async () => {
+    const stats = await timeline.getStats(tenantId, huntId);
     expect(stats.totalEvents).toBe(6);
     expect(stats.byType.entity_added).toBe(1);
     expect(stats.byType.status_changed).toBe(1);
   });
 
-  it('8.7. returns stats by user', () => {
-    const stats = timeline.getStats(tenantId, huntId);
+  it('8.7. returns stats by user', async () => {
+    const stats = await timeline.getStats(tenantId, huntId);
     expect(stats.byUser['user-1']).toBe(4);
     expect(stats.byUser['user-2']).toBe(2);
   });
 
-  it('8.8. returns first and last event timestamps', () => {
-    const stats = timeline.getStats(tenantId, huntId);
+  it('8.8. returns first and last event timestamps', async () => {
+    const stats = await timeline.getStats(tenantId, huntId);
     expect(stats.firstEvent).toBeDefined();
     expect(stats.lastEvent).toBeDefined();
     expect(stats.firstEvent! <= stats.lastEvent!).toBe(true);
   });
 
-  it('8.9. calculates average events per day', () => {
-    const stats = timeline.getStats(tenantId, huntId);
+  it('8.9. calculates average events per day', async () => {
+    const stats = await timeline.getStats(tenantId, huntId);
     expect(stats.avgEventsPerDay).toBeGreaterThan(0);
   });
 
-  it('8.10. returns activity heatmap', () => {
-    const heatmap = timeline.getActivityHeatmap(tenantId, huntId);
+  it('8.10. returns activity heatmap', async () => {
+    const heatmap = await timeline.getActivityHeatmap(tenantId, huntId);
     expect(Object.keys(heatmap)).toHaveLength(24);
     const total = Object.values(heatmap).reduce((sum, v) => sum + v, 0);
     expect(total).toBe(6);
   });
 
-  it('8.11. returns recent activity', () => {
-    const recent = timeline.getRecentActivity(tenantId, huntId, 3);
+  it('8.11. returns recent activity', async () => {
+    const recent = await timeline.getRecentActivity(tenantId, huntId, 3);
     expect(recent).toHaveLength(3);
     // Most recent first
     expect(recent[0]!.timestamp >= recent[1]!.timestamp).toBe(true);
   });
 
-  it('8.12. throws 404 for non-existent hunt', () => {
-    expect(() => timeline.getTimeline(tenantId, 'nope')).toThrow('not found');
+  it('8.12. throws 404 for non-existent hunt', async () => {
+    await expect(timeline.getTimeline(tenantId, 'nope')).rejects.toThrow('not found');
   });
 
-  it('8.13. handles empty timeline gracefully', () => {
+  it('8.13. handles empty timeline gracefully', async () => {
     const now = new Date().toISOString();
-    store.setSession(tenantId, {
+    await store.setSession(tenantId, {
       id: 'empty', tenantId, title: 'Empty', hypothesis: 'Test',
       status: 'draft', severity: 'low', assignedTo: 'user-1', createdBy: 'user-1',
       entities: [], timeline: [], findings: '', tags: [],
       queryHistory: [], correlationLeads: [], createdAt: now, updatedAt: now,
     });
-    const stats = timeline.getStats(tenantId, 'empty');
+    const stats = await timeline.getStats(tenantId, 'empty');
     expect(stats.totalEvents).toBe(0);
     expect(stats.avgEventsPerDay).toBe(0);
   });

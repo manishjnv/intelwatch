@@ -70,7 +70,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         const input = CreateHypothesisSchema.parse(req.body);
-        const h = hypothesisEngine.create(user.tenantId, huntId, user.userId, input);
+        const h = await hypothesisEngine.create(user.tenantId, huntId, user.userId, input);
         return reply.status(201).send({ data: h });
       },
     );
@@ -81,7 +81,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const list = hypothesisEngine.list(user.tenantId, huntId);
+        const list = await hypothesisEngine.list(user.tenantId, huntId);
         return reply.send({ data: list, total: list.length });
       },
     );
@@ -93,7 +93,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         const user = getUser(req);
         const { huntId, hypothesisId } = req.params as { huntId: string; hypothesisId: string };
         const { verdict } = SetVerdictSchema.parse(req.body);
-        const h = hypothesisEngine.setVerdict(user.tenantId, huntId, hypothesisId, user.userId, verdict);
+        const h = await hypothesisEngine.setVerdict(user.tenantId, huntId, hypothesisId, user.userId, verdict);
         return reply.send({ data: h });
       },
     );
@@ -106,7 +106,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         const { huntId, hypothesisId, evidenceId } = req.params as {
           huntId: string; hypothesisId: string; evidenceId: string;
         };
-        const h = hypothesisEngine.linkEvidence(user.tenantId, huntId, hypothesisId, evidenceId);
+        const h = await hypothesisEngine.linkEvidence(user.tenantId, huntId, hypothesisId, evidenceId);
         return reply.send({ data: h });
       },
     );
@@ -117,7 +117,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId, hypothesisId } = req.params as { huntId: string; hypothesisId: string };
-        hypothesisEngine.delete(user.tenantId, huntId, hypothesisId);
+        await hypothesisEngine.delete(user.tenantId, huntId, hypothesisId);
         return reply.status(204).send();
       },
     );
@@ -151,7 +151,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
           from: q.from,
           to: q.to,
         };
-        const result = timelineService.getTimeline(user.tenantId, huntId, filter, page, limit);
+        const result = await timelineService.getTimeline(user.tenantId, huntId, filter, page, limit);
         return reply.send({ data: result });
       },
     );
@@ -162,7 +162,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const stats = timelineService.getStats(user.tenantId, huntId);
+        const stats = await timelineService.getStats(user.tenantId, huntId);
         return reply.send({ data: stats });
       },
     );
@@ -176,7 +176,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         const input = AddEvidenceSchema.parse(req.body);
-        const item = evidenceCollection.add(user.tenantId, huntId, user.userId, input);
+        const item = await evidenceCollection.add(user.tenantId, huntId, user.userId, input);
         return reply.status(201).send({ data: item });
       },
     );
@@ -189,7 +189,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         const { huntId } = req.params as { huntId: string };
         const { page, limit } = PaginationSchema.parse(req.query);
         const typeFilter = (req.query as Record<string, string>).type as Parameters<typeof evidenceCollection.list>[2];
-        const result = evidenceCollection.list(user.tenantId, huntId, typeFilter, page, limit);
+        const result = await evidenceCollection.list(user.tenantId, huntId, typeFilter, page, limit);
         return reply.send(result);
       },
     );
@@ -200,7 +200,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const summary = evidenceCollection.getSummary(user.tenantId, huntId);
+        const summary = await evidenceCollection.getSummary(user.tenantId, huntId);
         return reply.send({ data: summary });
       },
     );
@@ -211,7 +211,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId, evidenceId } = req.params as { huntId: string; evidenceId: string };
-        evidenceCollection.delete(user.tenantId, huntId, evidenceId);
+        await evidenceCollection.delete(user.tenantId, huntId, evidenceId);
         return reply.status(204).send();
       },
     );
@@ -225,7 +225,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         const { content, parentId } = AddCommentSchema.parse(req.body);
-        const comment = collaboration.addComment(user.tenantId, huntId, user.userId, content, parentId);
+        const comment = await collaboration.addComment(user.tenantId, huntId, user.userId, content, parentId);
         return reply.status(201).send({ data: comment });
       },
     );
@@ -236,7 +236,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const threaded = collaboration.getThreadedComments(user.tenantId, huntId);
+        const threaded = await collaboration.getThreadedComments(user.tenantId, huntId);
         return reply.send({ data: threaded });
       },
     );
@@ -247,7 +247,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId, commentId } = req.params as { huntId: string; commentId: string };
-        collaboration.deleteComment(user.tenantId, huntId, commentId, user.userId);
+        await collaboration.deleteComment(user.tenantId, huntId, commentId, user.userId);
         return reply.status(204).send();
       },
     );
@@ -259,7 +259,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         const { userId: targetUserId, permission } = ShareSchema.parse(req.body);
-        const entry = collaboration.share(user.tenantId, huntId, user.userId, targetUserId, permission);
+        const entry = await collaboration.share(user.tenantId, huntId, user.userId, targetUserId, permission);
         return reply.status(201).send({ data: entry });
       },
     );
@@ -270,7 +270,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const shares = collaboration.listShares(user.tenantId, huntId);
+        const shares = await collaboration.listShares(user.tenantId, huntId);
         return reply.send({ data: shares, total: shares.length });
       },
     );
@@ -282,7 +282,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         const { userId: newAssignee } = ReassignSchema.parse(req.body);
-        const session = collaboration.reassign(user.tenantId, huntId, newAssignee);
+        const session = await collaboration.reassign(user.tenantId, huntId, newAssignee);
         return reply.send({ data: session });
       },
     );
@@ -293,7 +293,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const stats = collaboration.getStats(user.tenantId, huntId);
+        const stats = await collaboration.getStats(user.tenantId, huntId);
         return reply.send({ data: stats });
       },
     );

@@ -46,11 +46,11 @@ export function huntRoutes(deps: HuntRouteDeps) {
 
         let template;
         if (input.templateId) {
-          template = huntLibrary.get(user.tenantId, input.templateId);
-          huntLibrary.incrementUsage(user.tenantId, input.templateId);
+          template = await huntLibrary.get(user.tenantId, input.templateId);
+          await huntLibrary.incrementUsage(user.tenantId, input.templateId);
         }
 
-        const session = sessionManager.create(user.tenantId, user.userId, input, template);
+        const session = await sessionManager.create(user.tenantId, user.userId, input, template);
         return reply.status(201).send({ data: session });
       },
     );
@@ -62,7 +62,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
         const user = getUser(req);
         const { page, limit } = PaginationSchema.parse(req.query);
         const status = (req.query as Record<string, string>).status;
-        const result = sessionManager.list(user.tenantId, page, limit, status);
+        const result = await sessionManager.list(user.tenantId, page, limit, status);
         return reply.send(result);
       },
     );
@@ -72,7 +72,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
       { preHandler: [authenticate, rbac('alert:read')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
-        const stats = sessionManager.getStats(user.tenantId);
+        const stats = await sessionManager.getStats(user.tenantId);
         return reply.send({ data: stats });
       },
     );
@@ -83,7 +83,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const session = sessionManager.get(user.tenantId, huntId);
+        const session = await sessionManager.get(user.tenantId, huntId);
         return reply.send({ data: session });
       },
     );
@@ -95,7 +95,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         const updates = UpdateHuntSchema.parse(req.body);
-        const session = sessionManager.update(user.tenantId, huntId, user.userId, updates);
+        const session = await sessionManager.update(user.tenantId, huntId, user.userId, updates);
         return reply.send({ data: session });
       },
     );
@@ -107,7 +107,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         const { status } = ChangeStatusSchema.parse(req.body);
-        const session = sessionManager.changeStatus(user.tenantId, huntId, user.userId, status);
+        const session = await sessionManager.changeStatus(user.tenantId, huntId, user.userId, status);
         return reply.send({ data: session });
       },
     );
@@ -121,7 +121,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         const input = AddEntitySchema.parse(req.body);
-        const entity = sessionManager.addEntity(user.tenantId, huntId, user.userId, input);
+        const entity = await sessionManager.addEntity(user.tenantId, huntId, user.userId, input);
         return reply.status(201).send({ data: entity });
       },
     );
@@ -132,7 +132,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId, entityId } = req.params as { huntId: string; entityId: string };
-        sessionManager.removeEntity(user.tenantId, huntId, user.userId, entityId);
+        await sessionManager.removeEntity(user.tenantId, huntId, user.userId, entityId);
         return reply.status(204).send();
       },
     );
@@ -156,7 +156,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
 
         const dsl = queryBuilder.buildEsDsl(input.query, user.tenantId);
         const name = input.name ?? `Query ${new Date().toISOString()}`;
-        sessionManager.recordQuery(user.tenantId, huntId, input.query, name, 0);
+        await sessionManager.recordQuery(user.tenantId, huntId, input.query, name, 0);
 
         return reply.send({ data: { dsl, queryName: name } });
       },
@@ -171,7 +171,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
         // Verify hunt exists
-        sessionManager.get(user.tenantId, huntId);
+        await sessionManager.get(user.tenantId, huntId);
 
         const pivotReq = PivotRequestSchema.parse(req.body);
         const result = await pivotChains.executePivot(user.tenantId, pivotReq);
@@ -188,7 +188,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const leads = correlationIntegration.getHuntLeads(user.tenantId, huntId);
+        const leads = await correlationIntegration.getHuntLeads(user.tenantId, huntId);
         return reply.send({ data: leads, total: leads.length });
       },
     );
@@ -210,7 +210,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const stats = correlationIntegration.getLeadStats(user.tenantId, huntId);
+        const stats = await correlationIntegration.getLeadStats(user.tenantId, huntId);
         return reply.send({ data: stats });
       },
     );
@@ -223,7 +223,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = CreateTemplateSchema.parse(req.body);
-        const template = huntLibrary.create(user.tenantId, user.userId, input);
+        const template = await huntLibrary.create(user.tenantId, user.userId, input);
         return reply.status(201).send({ data: template });
       },
     );
@@ -235,7 +235,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
         const user = getUser(req);
         const { page, limit } = PaginationSchema.parse(req.query);
         const category = (req.query as Record<string, string>).category;
-        const result = huntLibrary.list(
+        const result = await huntLibrary.list(
           user.tenantId, page, limit,
           category as Parameters<typeof huntLibrary.list>[3],
         );
@@ -249,7 +249,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { templateId } = req.params as { templateId: string };
-        const template = huntLibrary.get(user.tenantId, templateId);
+        const template = await huntLibrary.get(user.tenantId, templateId);
         return reply.send({ data: template });
       },
     );
@@ -260,7 +260,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { templateId } = req.params as { templateId: string };
-        huntLibrary.delete(user.tenantId, templateId);
+        await huntLibrary.delete(user.tenantId, templateId);
         return reply.status(204).send();
       },
     );
@@ -277,7 +277,7 @@ export function huntRoutes(deps: HuntRouteDeps) {
             error: { code: 'VALIDATION_ERROR', message: 'name is required' },
           });
         }
-        const clone = huntLibrary.clone(user.tenantId, templateId, user.userId, name);
+        const clone = await huntLibrary.clone(user.tenantId, templateId, user.userId, name);
         return reply.status(201).send({ data: clone });
       },
     );

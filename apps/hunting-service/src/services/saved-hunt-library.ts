@@ -22,7 +22,7 @@ export class SavedHuntLibrary {
   }
 
   /** Create a new hunt template. */
-  create(
+  async create(
     tenantId: string,
     userId: string,
     input: {
@@ -35,9 +35,9 @@ export class SavedHuntLibrary {
       mitreTechniques?: string[];
       tags?: string[];
     },
-  ): HuntTemplate {
+  ): Promise<HuntTemplate> {
     // Check for duplicate name
-    const existing = this.findByName(tenantId, input.name);
+    const existing = await this.findByName(tenantId, input.name);
     if (existing) {
       throw new AppError(409, `Template "${input.name}" already exists`, 'TEMPLATE_EXISTS');
     }
@@ -60,13 +60,13 @@ export class SavedHuntLibrary {
       updatedAt: now,
     };
 
-    this.store.setTemplate(tenantId, template);
+    await this.store.setTemplate(tenantId, template);
     return template;
   }
 
   /** Get a template by ID. Throws 404 if not found. */
-  get(tenantId: string, templateId: string): HuntTemplate {
-    const template = this.store.getTemplate(tenantId, templateId);
+  async get(tenantId: string, templateId: string): Promise<HuntTemplate> {
+    const template = await this.store.getTemplate(tenantId, templateId);
     if (!template) {
       throw new AppError(404, `Template ${templateId} not found`, 'TEMPLATE_NOT_FOUND');
     }
@@ -74,7 +74,7 @@ export class SavedHuntLibrary {
   }
 
   /** Update a template. */
-  update(
+  async update(
     tenantId: string,
     templateId: string,
     updates: {
@@ -87,12 +87,12 @@ export class SavedHuntLibrary {
       mitreTechniques?: string[];
       tags?: string[];
     },
-  ): HuntTemplate {
-    const template = this.get(tenantId, templateId);
+  ): Promise<HuntTemplate> {
+    const template = await this.get(tenantId, templateId);
 
     // Check for name uniqueness if name is being changed
     if (updates.name && updates.name !== template.name) {
-      const existing = this.findByName(tenantId, updates.name);
+      const existing = await this.findByName(tenantId, updates.name);
       if (existing) {
         throw new AppError(409, `Template "${updates.name}" already exists`, 'TEMPLATE_EXISTS');
       }
@@ -108,22 +108,22 @@ export class SavedHuntLibrary {
     if (updates.tags !== undefined) template.tags = updates.tags;
     template.updatedAt = new Date().toISOString();
 
-    this.store.setTemplate(tenantId, template);
+    await this.store.setTemplate(tenantId, template);
     return template;
   }
 
   /** Delete a template. */
-  delete(tenantId: string, templateId: string): void {
-    const exists = this.store.getTemplate(tenantId, templateId);
+  async delete(tenantId: string, templateId: string): Promise<void> {
+    const exists = await this.store.getTemplate(tenantId, templateId);
     if (!exists) {
       throw new AppError(404, `Template ${templateId} not found`, 'TEMPLATE_NOT_FOUND');
     }
-    this.store.deleteTemplate(tenantId, templateId);
+    await this.store.deleteTemplate(tenantId, templateId);
   }
 
   /** Clone a template (create a copy with a new name). */
-  clone(tenantId: string, templateId: string, userId: string, newName: string): HuntTemplate {
-    const original = this.get(tenantId, templateId);
+  async clone(tenantId: string, templateId: string, userId: string, newName: string): Promise<HuntTemplate> {
+    const original = await this.get(tenantId, templateId);
 
     return this.create(tenantId, userId, {
       name: newName,
@@ -137,29 +137,36 @@ export class SavedHuntLibrary {
     });
   }
 
-  /** Increment usage count when a template is used to start a hunt. */
-  incrementUsage(tenantId: string, templateId: string): void {
-    const template = this.store.getTemplate(tenantId, templateId);
+  /**
+   * Increment usage count when a template is used to start a hunt.
+   * Step 3 S159 fix: the pre-migration version mutated `template.usageCount++` without
+   * calling `store.setTemplate` — it "worked" only because the in-memory Map returned
+   * the same live object. The doc-repo now returns clones, so the increment must be
+   * saved explicitly or it is silently lost.
+   */
+  async incrementUsage(tenantId: string, templateId: string): Promise<void> {
+    const template = await this.store.getTemplate(tenantId, templateId);
     if (template) {
       template.usageCount++;
       template.updatedAt = new Date().toISOString();
+      await this.store.setTemplate(tenantId, template);
     }
   }
 
   /** List templates with pagination and optional category filter. */
-  list(
+  async list(
     tenantId: string,
     page: number,
     limit: number,
     category?: TemplateCategory,
-  ): { data: HuntTemplate[]; total: number } {
+  ): Promise<{ data: HuntTemplate[]; total: number }> {
     return this.store.listTemplates(tenantId, page, limit, category);
   }
 
   /** Search templates by name or tag. */
-  search(tenantId: string, query: string): HuntTemplate[] {
+  async search(tenantId: string, query: string): Promise<HuntTemplate[]> {
     const lowerQuery = query.toLowerCase();
-    const all = Array.from(this.store.getTenantTemplates(tenantId).values());
+    const all = await this.store.listAllTemplates(tenantId);
     return all.filter(
       (t) =>
         t.name.toLowerCase().includes(lowerQuery) ||
@@ -170,11 +177,8 @@ export class SavedHuntLibrary {
   }
 
   /** Find template by exact name. */
-  private findByName(tenantId: string, name: string): HuntTemplate | undefined {
-    const all = this.store.getTenantTemplates(tenantId);
-    for (const t of all.values()) {
-      if (t.name === name) return t;
-    }
-    return undefined;
+  private async findByName(tenantId: string, name: string): Promise<HuntTemplate | undefined> {
+    const all = await this.store.listAllTemplates(tenantId);
+    return all.find((t) => t.name === name);
   }
 }

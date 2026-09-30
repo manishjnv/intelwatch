@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { AppError } from '@etip/shared-utils';
 import type { HuntingStore } from '../schemas/store.js';
 import type { HuntSession } from '../schemas/hunting.js';
+import type { DocRepo } from '../doc-repo.js';
+import { MemoryDocRepo } from '../doc-repo.js';
 
 export const HYPOTHESIS_VERDICTS = [
   'pending', 'confirmed', 'refuted', 'inconclusive',
@@ -24,6 +26,8 @@ export interface Hypothesis {
   verdictSetAt?: string;
 }
 
+export type HypothesisDoc = Hypothesis & { tenantId: string };
+
 /**
  * #6 Hunt Hypothesis Engine — structured hypothesis tracking with evidence linking.
  *
@@ -32,16 +36,17 @@ export interface Hypothesis {
  * based on linked evidence count and verdict.
  */
 export class HypothesisEngine {
-  /** huntId → hypothesisId → Hypothesis */
-  private readonly hypotheses = new Map<string, Map<string, Hypothesis>>();
   private readonly store: HuntingStore;
+  private readonly repo: DocRepo<HypothesisDoc>;
 
-  constructor(store: HuntingStore) {
+  constructor(store: HuntingStore, repo: DocRepo<HypothesisDoc> = new MemoryDocRepo()) {
     this.store = store;
+    this.repo = repo;
+    store.registerCascadeRepo({ deleteByParent: (t, h) => this.repo.deleteByParent(t, h) });
   }
 
   /** Create a new hypothesis for a hunt. */
-  create(
+  async create(
     tenantId: string,
     huntId: string,
     userId: string,
@@ -50,11 +55,11 @@ export class HypothesisEngine {
       rationale: string;
       mitreTechniques?: string[];
     },
-  ): Hypothesis {
-    this.requireHunt(tenantId, huntId);
+  ): Promise<Hypothesis> {
+    await this.requireHunt(tenantId, huntId);
 
     const now = new Date().toISOString();
-    const hypothesis: Hypothesis = {
+    const hypothesis: HypothesisDoc = {
       id: randomUUID(),
       huntId,
       statement: input.statement,
@@ -66,87 +71,91 @@ export class HypothesisEngine {
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
+      tenantId,
     };
 
-    this.getHuntHypotheses(huntId).set(hypothesis.id, hypothesis);
+    await this.repo.save(hypothesis, huntId);
     return hypothesis;
   }
 
   /** Get a hypothesis by ID. */
-  get(tenantId: string, huntId: string, hypothesisId: string): Hypothesis {
-    this.requireHunt(tenantId, huntId);
-    const h = this.getHuntHypotheses(huntId).get(hypothesisId);
-    if (!h) {
+  async get(tenantId: string, huntId: string, hypothesisId: string): Promise<Hypothesis> {
+    await this.requireHunt(tenantId, huntId);
+    const h = await this.repo.get(hypothesisId, tenantId);
+    if (!h || h.huntId !== huntId) {
       throw new AppError(404, `Hypothesis ${hypothesisId} not found`, 'HYPOTHESIS_NOT_FOUND');
     }
     return h;
   }
 
   /** List all hypotheses for a hunt. */
-  list(tenantId: string, huntId: string): Hypothesis[] {
-    this.requireHunt(tenantId, huntId);
-    return Array.from(this.getHuntHypotheses(huntId).values())
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  async list(tenantId: string, huntId: string): Promise<Hypothesis[]> {
+    await this.requireHunt(tenantId, huntId);
+    const all = await this.repo.list(tenantId, huntId);
+    return [...all].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
 
   /** Set the verdict on a hypothesis. */
-  setVerdict(
+  async setVerdict(
     tenantId: string,
     huntId: string,
     hypothesisId: string,
     userId: string,
     verdict: HypothesisVerdict,
-  ): Hypothesis {
-    const h = this.get(tenantId, huntId, hypothesisId);
+  ): Promise<Hypothesis> {
+    const h = await this.get(tenantId, huntId, hypothesisId);
     h.verdict = verdict;
     h.verdictSetBy = userId;
     h.verdictSetAt = new Date().toISOString();
     h.updatedAt = h.verdictSetAt;
     h.confidence = this.calculateConfidence(h);
+    await this.repo.save(h as HypothesisDoc, huntId);
     return h;
   }
 
   /** Link evidence to a hypothesis. */
-  linkEvidence(
+  async linkEvidence(
     tenantId: string,
     huntId: string,
     hypothesisId: string,
     evidenceId: string,
-  ): Hypothesis {
-    const h = this.get(tenantId, huntId, hypothesisId);
+  ): Promise<Hypothesis> {
+    const h = await this.get(tenantId, huntId, hypothesisId);
     if (!h.evidenceIds.includes(evidenceId)) {
       h.evidenceIds.push(evidenceId);
       h.updatedAt = new Date().toISOString();
       h.confidence = this.calculateConfidence(h);
+      await this.repo.save(h as HypothesisDoc, huntId);
     }
     return h;
   }
 
   /** Unlink evidence from a hypothesis. */
-  unlinkEvidence(
+  async unlinkEvidence(
     tenantId: string,
     huntId: string,
     hypothesisId: string,
     evidenceId: string,
-  ): Hypothesis {
-    const h = this.get(tenantId, huntId, hypothesisId);
+  ): Promise<Hypothesis> {
+    const h = await this.get(tenantId, huntId, hypothesisId);
     const idx = h.evidenceIds.indexOf(evidenceId);
     if (idx >= 0) {
       h.evidenceIds.splice(idx, 1);
       h.updatedAt = new Date().toISOString();
       h.confidence = this.calculateConfidence(h);
+      await this.repo.save(h as HypothesisDoc, huntId);
     }
     return h;
   }
 
   /** Delete a hypothesis. */
-  delete(tenantId: string, huntId: string, hypothesisId: string): void {
-    this.requireHunt(tenantId, huntId);
-    const map = this.getHuntHypotheses(huntId);
-    if (!map.has(hypothesisId)) {
+  async delete(tenantId: string, huntId: string, hypothesisId: string): Promise<void> {
+    await this.requireHunt(tenantId, huntId);
+    const h = await this.repo.get(hypothesisId, tenantId);
+    if (!h || h.huntId !== huntId) {
       throw new AppError(404, `Hypothesis ${hypothesisId} not found`, 'HYPOTHESIS_NOT_FOUND');
     }
-    map.delete(hypothesisId);
+    await this.repo.delete(hypothesisId, tenantId);
   }
 
   /** Calculate confidence based on evidence count and verdict. */
@@ -160,19 +169,9 @@ export class HypothesisEngine {
     return Math.round(evidenceScore * verdictMultiplier);
   }
 
-  /** Get or create the hypothesis map for a hunt. */
-  private getHuntHypotheses(huntId: string): Map<string, Hypothesis> {
-    let map = this.hypotheses.get(huntId);
-    if (!map) {
-      map = new Map();
-      this.hypotheses.set(huntId, map);
-    }
-    return map;
-  }
-
   /** Verify the hunt exists in the store. */
-  private requireHunt(tenantId: string, huntId: string): HuntSession {
-    const session = this.store.getSession(tenantId, huntId);
+  private async requireHunt(tenantId: string, huntId: string): Promise<HuntSession> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }
