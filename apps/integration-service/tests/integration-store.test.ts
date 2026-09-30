@@ -25,8 +25,8 @@ import { IntegrationStore } from '../src/services/integration-store.js';
 import { CredentialEncryption } from '../src/services/credential-encryption.js';
 import type { CreateIntegrationInput } from '../src/schemas/integration.js';
 
-const TENANT = 'tenant-1';
-const TENANT_B = 'tenant-2';
+const TENANT = '11111111-1111-1111-1111-111111111111';
+const TENANT_B = '22222222-2222-2222-2222-222222222222';
 
 const makeInput = (overrides: Partial<CreateIntegrationInput> = {}): CreateIntegrationInput => ({
   name: 'Test Splunk',
@@ -152,10 +152,10 @@ describe('IntegrationStore', () => {
 
   it('adds and lists logs', async () => {
     const int = await store.createIntegration(TENANT, makeInput());
-    store.addLog(int.id, TENANT, 'alert.created', 'success', { statusCode: 200 });
-    store.addLog(int.id, TENANT, 'alert.created', 'failure', { errorMessage: 'timeout' });
+    await store.addLog(int.id, TENANT, 'alert.created', 'success', { statusCode: 200 });
+    await store.addLog(int.id, TENANT, 'alert.created', 'failure', { errorMessage: 'timeout' });
 
-    const logs = store.listLogs(int.id, TENANT, { page: 1, limit: 50 });
+    const logs = await store.listLogs(int.id, TENANT, { page: 1, limit: 50 });
     expect(logs.total).toBe(2);
     const statuses = logs.data.map(l => l.status);
     expect(statuses).toContain('success');
@@ -164,8 +164,8 @@ describe('IntegrationStore', () => {
 
   // ─── DLQ ───────────────────────────────────────────────────
 
-  it('manages dead letter queue', () => {
-    const delivery = store.createDelivery({
+  it('manages dead letter queue', async () => {
+    const delivery = await store.createDelivery({
       integrationId: 'int-1',
       tenantId: TENANT,
       event: 'alert.created',
@@ -177,21 +177,21 @@ describe('IntegrationStore', () => {
       lastError: 'timeout',
     });
 
-    store.moveToDLQ(delivery.id);
-    const dlq = store.listDLQ(TENANT, { page: 1, limit: 50 });
+    await store.moveToDLQ(delivery.id);
+    const dlq = await store.listDLQ(TENANT, { page: 1, limit: 50 });
     expect(dlq.total).toBe(1);
     expect(dlq.data[0].status).toBe('dead_letter');
 
-    const retried = store.retryDLQ(delivery.id, TENANT);
+    const retried = await store.retryDLQ(delivery.id, TENANT);
     expect(retried?.status).toBe('retrying');
     expect(retried?.attempts).toBe(0);
 
-    const dlqAfter = store.listDLQ(TENANT, { page: 1, limit: 50 });
+    const dlqAfter = await store.listDLQ(TENANT, { page: 1, limit: 50 });
     expect(dlqAfter.total).toBe(0);
   });
 
-  it('returns undefined when retrying DLQ from wrong tenant', () => {
-    const delivery = store.createDelivery({
+  it('returns undefined when retrying DLQ from wrong tenant', async () => {
+    const delivery = await store.createDelivery({
       integrationId: 'int-1',
       tenantId: TENANT,
       event: 'alert.created',
@@ -202,14 +202,14 @@ describe('IntegrationStore', () => {
       status: 'failure',
       lastError: 'err',
     });
-    store.moveToDLQ(delivery.id);
-    expect(store.retryDLQ(delivery.id, TENANT_B)).toBeUndefined();
+    await store.moveToDLQ(delivery.id);
+    expect(await store.retryDLQ(delivery.id, TENANT_B)).toBeUndefined();
   });
 
   // ─── Tickets ───────────────────────────────────────────────
 
-  it('creates and lists tickets', () => {
-    store.createTicket({
+  it('creates and lists tickets', async () => {
+    await store.createTicket({
       integrationId: 'int-1',
       tenantId: TENANT,
       externalId: 'INC001',
@@ -220,13 +220,13 @@ describe('IntegrationStore', () => {
       priority: 'high',
     });
 
-    const result = store.listTickets(TENANT, { page: 1, limit: 50 });
+    const result = await store.listTickets(TENANT, { page: 1, limit: 50 });
     expect(result.total).toBe(1);
     expect(result.data[0].externalId).toBe('INC001');
   });
 
-  it('updates ticket status', () => {
-    const ticket = store.createTicket({
+  it('updates ticket status', async () => {
+    const ticket = await store.createTicket({
       integrationId: 'int-1',
       tenantId: TENANT,
       externalId: 'INC001',
@@ -237,7 +237,7 @@ describe('IntegrationStore', () => {
       priority: 'medium',
     });
 
-    const updated = store.updateTicketStatus(ticket.id, TENANT, 'resolved');
+    const updated = await store.updateTicketStatus(ticket.id, TENANT, 'resolved');
     expect(updated?.status).toBe('resolved');
   });
 
@@ -246,10 +246,10 @@ describe('IntegrationStore', () => {
   it('computes stats for a tenant', async () => {
     await store.createIntegration(TENANT, makeInput({ enabled: true }));
     await store.createIntegration(TENANT, makeInput({ name: 'Disabled', enabled: false }));
-    store.addLog('int-1', TENANT, 'alert.created', 'success', {});
-    store.addLog('int-1', TENANT, 'alert.created', 'failure', {});
+    await store.addLog('int-1', TENANT, 'alert.created', 'success', {});
+    await store.addLog('int-1', TENANT, 'alert.created', 'failure', {});
 
-    const stats = store.getStats(TENANT);
+    const stats = await store.getStats(TENANT);
     expect(stats.totalIntegrations).toBe(2);
     expect(stats.enabledIntegrations).toBe(1);
     expect(stats.totalLogs).toBe(2);

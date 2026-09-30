@@ -63,7 +63,7 @@ describe('Advanced routes — RBAC', () => {
         fieldMappingStore: new FieldMappingStore(),
         templateEngine: new TemplateEngine(),
         stixCollectionStore: new StixCollectionStore(),
-        exportScheduler: new ExportScheduler(new BulkExportService(stixExport)),
+        exportScheduler: new ExportScheduler(new BulkExportService(stixExport), async () => []),
       },
     });
     await app.ready();

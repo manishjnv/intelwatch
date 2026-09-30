@@ -28,16 +28,16 @@ describe('WebhookRetryEngine', () => {
 
   // ─── Config Management ─────────────────────────────────────
 
-  it('returns default config when none is set', () => {
-    const config = engine.getRetryConfig('any-id');
+  it('returns default config when none is set', async () => {
+    const config = await engine.getRetryConfig('any-id', TENANT);
     expect(config.maxRetries).toBe(5);
     expect(config.baseDelayMs).toBe(100);
     expect(config.maxDelayMs).toBe(5000);
     expect(config.jitterEnabled).toBe(true);
   });
 
-  it('allows setting custom retry config per integration', () => {
-    const config = engine.setRetryConfig(INT_ID, {
+  it('allows setting custom retry config per integration', async () => {
+    const config = await engine.setRetryConfig(INT_ID, TENANT, {
       maxRetries: 10,
       baseDelayMs: 500,
       maxDelayMs: 30000,
@@ -49,32 +49,32 @@ describe('WebhookRetryEngine', () => {
     expect(config.jitterEnabled).toBe(false);
   });
 
-  it('merges partial config with existing config', () => {
-    engine.setRetryConfig(INT_ID, { maxRetries: 10 });
-    const config = engine.setRetryConfig(INT_ID, { jitterEnabled: false });
+  it('merges partial config with existing config', async () => {
+    await engine.setRetryConfig(INT_ID, TENANT, { maxRetries: 10 });
+    const config = await engine.setRetryConfig(INT_ID, TENANT, { jitterEnabled: false });
     expect(config.maxRetries).toBe(10);
     expect(config.jitterEnabled).toBe(false);
     expect(config.baseDelayMs).toBe(100); // default preserved
   });
 
-  it('rejects baseDelayMs > maxDelayMs', () => {
-    expect(() => engine.setRetryConfig(INT_ID, {
+  it('rejects baseDelayMs > maxDelayMs', async () => {
+    await expect(engine.setRetryConfig(INT_ID, TENANT, {
       baseDelayMs: 60000,
       maxDelayMs: 1000,
-    })).toThrow('baseDelayMs cannot exceed maxDelayMs');
+    })).rejects.toThrow('baseDelayMs cannot exceed maxDelayMs');
   });
 
-  it('removeRetryConfig reverts to default', () => {
-    engine.setRetryConfig(INT_ID, { maxRetries: 20 });
-    engine.removeRetryConfig(INT_ID);
-    const config = engine.getRetryConfig(INT_ID);
+  it('removeRetryConfig reverts to default', async () => {
+    await engine.setRetryConfig(INT_ID, TENANT, { maxRetries: 20 });
+    await engine.removeRetryConfig(INT_ID, TENANT);
+    const config = await engine.getRetryConfig(INT_ID, TENANT);
     expect(config.maxRetries).toBe(5); // back to default
   });
 
   // ─── Retry State ───────────────────────────────────────────
 
-  it('returns clean retry state for unknown integration', () => {
-    const state = engine.getRetryState('unknown');
+  it('returns clean retry state for unknown integration', async () => {
+    const state = await engine.getRetryState('unknown', TENANT);
     expect(state.integrationId).toBe('unknown');
     expect(state.totalAttempts).toBe(0);
     expect(state.successfulRetries).toBe(0);
@@ -84,11 +84,11 @@ describe('WebhookRetryEngine', () => {
     expect(state.config).toBeDefined();
   });
 
-  it('resetStats clears retry statistics', () => {
+  it('resetStats clears retry statistics', async () => {
     // Manually set up some state by accessing internal method
-    engine.setRetryConfig(INT_ID, { maxRetries: 3 });
+    await engine.setRetryConfig(INT_ID, TENANT, { maxRetries: 3 });
     engine.resetStats(INT_ID);
-    const state = engine.getRetryState(INT_ID);
+    const state = await engine.getRetryState(INT_ID, TENANT);
     expect(state.totalAttempts).toBe(0);
   });
 
@@ -136,19 +136,19 @@ describe('WebhookRetryEngine', () => {
     expect(new Set(delays).size).toBeGreaterThan(1);
   });
 
-  it('returns state with correct config attached', () => {
-    engine.setRetryConfig(INT_ID, { maxRetries: 8 });
-    const state = engine.getRetryState(INT_ID);
+  it('returns state with correct config attached', async () => {
+    await engine.setRetryConfig(INT_ID, TENANT, { maxRetries: 8 });
+    const state = await engine.getRetryState(INT_ID, TENANT);
     expect(state.config.maxRetries).toBe(8);
   });
 
   // ─── Config per integration isolation ──────────────────────
 
-  it('maintains separate configs per integration', () => {
-    engine.setRetryConfig('int-a', { maxRetries: 3 });
-    engine.setRetryConfig('int-b', { maxRetries: 10 });
-    expect(engine.getRetryConfig('int-a').maxRetries).toBe(3);
-    expect(engine.getRetryConfig('int-b').maxRetries).toBe(10);
-    expect(engine.getRetryConfig('int-c').maxRetries).toBe(5); // default
+  it('maintains separate configs per integration', async () => {
+    await engine.setRetryConfig('int-a', TENANT, { maxRetries: 3 });
+    await engine.setRetryConfig('int-b', TENANT, { maxRetries: 10 });
+    expect((await engine.getRetryConfig('int-a', TENANT)).maxRetries).toBe(3);
+    expect((await engine.getRetryConfig('int-b', TENANT)).maxRetries).toBe(10);
+    expect((await engine.getRetryConfig('int-c', TENANT)).maxRetries).toBe(5); // default
   });
 });

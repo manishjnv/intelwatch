@@ -40,13 +40,13 @@ describe('HealthScoring', () => {
     scoring = new HealthScoring(store, limiter);
   });
 
-  it('returns null for nonexistent integration', () => {
-    expect(scoring.calculateScore('no-such', TENANT)).toBeNull();
+  it('returns null for nonexistent integration', async () => {
+    expect(await scoring.calculateScore('no-such', TENANT)).toBeNull();
   });
 
   it('calculates perfect score for integration with no logs', async () => {
     const int = await store.createIntegration(TENANT, makeInput());
-    const score = scoring.calculateScore(int.id, TENANT);
+    const score = await scoring.calculateScore(int.id, TENANT);
     expect(score).toBeDefined();
     expect(score!.score).toBeGreaterThanOrEqual(0);
     expect(score!.score).toBeLessThanOrEqual(100);
@@ -58,10 +58,10 @@ describe('HealthScoring', () => {
     const int = await store.createIntegration(TENANT, makeInput());
     // Add only success logs
     for (let i = 0; i < 10; i++) {
-      store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
+      await store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
     }
     store.touchIntegration(int.id);
-    const score = scoring.calculateScore(int.id, TENANT);
+    const score = await scoring.calculateScore(int.id, TENANT);
     expect(score!.score).toBeGreaterThanOrEqual(90);
     expect(score!.grade).toBe('A');
   });
@@ -69,27 +69,27 @@ describe('HealthScoring', () => {
   it('reduces score when failures present', async () => {
     const int = await store.createIntegration(TENANT, makeInput());
     for (let i = 0; i < 5; i++) {
-      store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
+      await store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
     }
     for (let i = 0; i < 5; i++) {
-      store.addLog(int.id, TENANT, 'alert.created', 'failure', { errorMessage: 'fail' });
+      await store.addLog(int.id, TENANT, 'alert.created', 'failure', { errorMessage: 'fail' });
     }
     store.touchIntegration(int.id);
-    const score = scoring.calculateScore(int.id, TENANT);
+    const score = await scoring.calculateScore(int.id, TENANT);
     expect(score!.score).toBeLessThan(90); // Not grade A
     expect(score!.components.errorRateScore).toBe(50); // 50% error rate
   });
 
   it('gives low syncAge score when never used', async () => {
     const int = await store.createIntegration(TENANT, makeInput());
-    const score = scoring.calculateScore(int.id, TENANT);
+    const score = await scoring.calculateScore(int.id, TENANT);
     expect(score!.components.syncAgeScore).toBe(0); // Never used
   });
 
   it('gives high syncAge score when recently used', async () => {
     const int = await store.createIntegration(TENANT, makeInput());
     store.touchIntegration(int.id); // Mark as just used
-    const score = scoring.calculateScore(int.id, TENANT);
+    const score = await scoring.calculateScore(int.id, TENANT);
     expect(score!.components.syncAgeScore).toBe(100); // Just used
   });
 
@@ -97,9 +97,9 @@ describe('HealthScoring', () => {
     const int = await store.createIntegration(TENANT, makeInput());
     store.touchIntegration(int.id);
     for (let i = 0; i < 10; i++) {
-      store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
+      await store.addLog(int.id, TENANT, 'alert.created', 'success', { attempt: 1 });
     }
-    const score = scoring.calculateScore(int.id, TENANT);
+    const score = await scoring.calculateScore(int.id, TENANT);
     // All components should be 100, composite = 100
     expect(score!.score).toBe(100);
     expect(score!.components.uptimeScore).toBe(100);
@@ -114,9 +114,9 @@ describe('HealthScoring', () => {
 
   it('records history on each score calculation', async () => {
     const int = await store.createIntegration(TENANT, makeInput());
-    scoring.calculateScore(int.id, TENANT);
-    scoring.calculateScore(int.id, TENANT);
-    scoring.calculateScore(int.id, TENANT);
+    await scoring.calculateScore(int.id, TENANT);
+    await scoring.calculateScore(int.id, TENANT);
+    await scoring.calculateScore(int.id, TENANT);
 
     const history = scoring.getHistory(int.id, TENANT);
     expect(history).toHaveLength(3);
@@ -127,7 +127,7 @@ describe('HealthScoring', () => {
   it('limits history to 30 points', async () => {
     const int = await store.createIntegration(TENANT, makeInput());
     for (let i = 0; i < 35; i++) {
-      scoring.calculateScore(int.id, TENANT);
+      await scoring.calculateScore(int.id, TENANT);
     }
     const history = scoring.getHistory(int.id, TENANT);
     expect(history).toHaveLength(30);
@@ -144,10 +144,10 @@ describe('HealthScoring', () => {
   it('maps dead_letter logs as failures', async () => {
     const int = await store.createIntegration(TENANT, makeInput());
     for (let i = 0; i < 10; i++) {
-      store.addLog(int.id, TENANT, 'alert.created', 'dead_letter', { errorMessage: 'dlq' });
+      await store.addLog(int.id, TENANT, 'alert.created', 'dead_letter', { errorMessage: 'dlq' });
     }
     store.touchIntegration(int.id);
-    const score = scoring.calculateScore(int.id, TENANT);
+    const score = await scoring.calculateScore(int.id, TENANT);
     expect(score!.components.errorRateScore).toBe(0); // All failures
   });
 });

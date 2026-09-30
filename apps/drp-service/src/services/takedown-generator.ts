@@ -92,14 +92,14 @@ export class TakedownGenerator {
   }
 
   /** Generate a takedown request document for an alert. */
-  generate(
+  async generate(
     tenantId: string,
     alert: DRPAlert,
     platform: string,
     contactOverride?: { email?: string; name?: string },
     includeEvidence: boolean = true,
     language: string = 'en',
-  ): TakedownRequest {
+  ): Promise<TakedownRequest> {
     const lang = TEMPLATES[language] ?? TEMPLATES['en']!;
     const template = lang[platform] ?? lang['registrar']!;
 
@@ -133,23 +133,22 @@ export class TakedownGenerator {
       updatedAt: new Date().toISOString(),
     };
 
-    this.store.setTakedown(tenantId, takedown);
+    await this.store.setTakedown(tenantId, takedown);
     return takedown;
   }
 
   /** List takedown requests for an alert. */
-  getByAlert(tenantId: string, alertId: string): TakedownRequest[] {
+  async getByAlert(tenantId: string, alertId: string): Promise<TakedownRequest[]> {
     return this.store.getTakedownsByAlert(tenantId, alertId);
   }
 
   /** Update takedown status. */
-  updateStatus(tenantId: string, takedownId: string, status: TakedownRequest['status']): TakedownRequest {
-    const map = this.store.getTenantTakedowns(tenantId);
-    const takedown = map.get(takedownId);
+  async updateStatus(tenantId: string, takedownId: string, status: TakedownRequest['status']): Promise<TakedownRequest> {
+    const takedown = await this.store.getTakedown(tenantId, takedownId);
     if (!takedown) throw new AppError(404, 'Takedown request not found', 'TAKEDOWN_NOT_FOUND');
     takedown.status = status;
     takedown.updatedAt = new Date().toISOString();
-    this.store.setTakedown(tenantId, takedown);
+    await this.store.setTakedown(tenantId, takedown);
     return takedown;
   }
 

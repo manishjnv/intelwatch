@@ -35,7 +35,7 @@ export class WebhookService {
     payload: Record<string, unknown>,
   ): Promise<{ deliveryId: string; success: boolean; error?: string }> {
     const logger = getLogger();
-    const delivery = this.store.createDelivery({
+    const delivery = await this.store.createDelivery({
       integrationId,
       tenantId,
       event,
@@ -52,11 +52,11 @@ export class WebhookService {
         const result = await this.executeWebhook(webhookConfig, event, payload);
 
         if (result.success) {
-          this.store.updateDelivery(delivery.id, {
+          await this.store.updateDelivery(delivery.id, {
             status: 'success',
             attempts: attempt,
           });
-          this.store.addLog(integrationId, tenantId, event, 'success', {
+          await this.store.addLog(integrationId, tenantId, event, 'success', {
             statusCode: result.statusCode,
             attempt,
             payload,
@@ -71,15 +71,15 @@ export class WebhookService {
         const errorMsg = err instanceof Error ? err.message : String(err);
         logger.warn({ integrationId, deliveryId: delivery.id, attempt, error: errorMsg }, 'Webhook delivery failed');
 
-        this.store.updateDelivery(delivery.id, {
+        await this.store.updateDelivery(delivery.id, {
           attempts: attempt,
           lastError: errorMsg,
         });
 
         if (attempt === this.maxAttempts) {
           // Move to dead letter queue
-          this.store.moveToDLQ(delivery.id);
-          this.store.addLog(integrationId, tenantId, event, 'dead_letter', {
+          await this.store.moveToDLQ(delivery.id);
+          await this.store.addLog(integrationId, tenantId, event, 'dead_letter', {
             errorMessage: `Exhausted ${this.maxAttempts} attempts: ${errorMsg}`,
             attempt,
             payload,
@@ -87,7 +87,7 @@ export class WebhookService {
           return { deliveryId: delivery.id, success: false, error: errorMsg };
         }
 
-        this.store.addLog(integrationId, tenantId, event, 'retrying', {
+        await this.store.addLog(integrationId, tenantId, event, 'retrying', {
           errorMessage: errorMsg,
           attempt,
           payload,
@@ -96,7 +96,7 @@ export class WebhookService {
         // Exponential backoff using configured base delay
         const backoff = this.retryBaseMs * Math.pow(2, attempt - 1);
         const nextRetry = new Date(Date.now() + backoff).toISOString();
-        this.store.updateDelivery(delivery.id, { nextRetryAt: nextRetry });
+        await this.store.updateDelivery(delivery.id, { nextRetryAt: nextRetry });
         await this.delay(backoff);
       }
     }

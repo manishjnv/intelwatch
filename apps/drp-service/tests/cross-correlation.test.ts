@@ -31,7 +31,7 @@ function createDeps() {
   return { store, alertManager, graphIntegration, correlation };
 }
 
-function createAlertDirect(store: DRPStore, overrides: Partial<DRPAlert>): DRPAlert {
+async function createAlertDirect(store: DRPStore, overrides: Partial<DRPAlert>): Promise<DRPAlert> {
   const id = overrides.id ?? `alert-${Math.random().toString(36).slice(2)}`;
   const alert: DRPAlert = {
     id,
@@ -56,7 +56,7 @@ function createAlertDirect(store: DRPStore, overrides: Partial<DRPAlert>): DRPAl
     updatedAt: new Date().toISOString(),
     ...overrides,
   };
-  store.setAlert(T, alert);
+  await store.setAlert(T, alert);
   return alert;
 }
 
@@ -70,13 +70,13 @@ describe('CrossAlertCorrelation (#15)', () => {
     store = deps.store;
   });
 
-  it('detects shared hosting infrastructure', () => {
+  it('detects shared hosting infrastructure', async () => {
     const ev: AlertEvidence = { id: 'e1', type: 'dns_record', title: 'DNS', data: { hostingProvider: 'Cloudflare' }, collectedAt: new Date().toISOString() };
-    createAlertDirect(store, { id: 'a1', evidence: [ev] });
-    createAlertDirect(store, { id: 'a2', evidence: [ev] });
-    createAlertDirect(store, { id: 'a3', evidence: [ev] });
+    await createAlertDirect(store, { id: 'a1', evidence: [ev] });
+    await createAlertDirect(store, { id: 'a2', evidence: [ev] });
+    await createAlertDirect(store, { id: 'a3', evidence: [ev] });
 
-    const result = correlation.correlate(T, undefined, true, 2, false);
+    const result = await correlation.correlate(T, undefined, true, 2, false);
     expect(result.clusters.length).toBeGreaterThan(0);
     const shared = result.clusters.find((c) => c.correlationType === 'shared_hosting');
     expect(shared).toBeDefined();
@@ -84,75 +84,75 @@ describe('CrossAlertCorrelation (#15)', () => {
     expect(shared!.sharedInfrastructure[0]!.value).toBe('Cloudflare');
   });
 
-  it('detects temporal clusters', () => {
+  it('detects temporal clusters', async () => {
     const now = new Date().toISOString();
-    createAlertDirect(store, { id: 'a1', createdAt: now });
-    createAlertDirect(store, { id: 'a2', createdAt: now });
-    createAlertDirect(store, { id: 'a3', createdAt: now });
+    await createAlertDirect(store, { id: 'a1', createdAt: now });
+    await createAlertDirect(store, { id: 'a2', createdAt: now });
+    await createAlertDirect(store, { id: 'a3', createdAt: now });
 
-    const result = correlation.correlate(T, undefined, true, 2, false);
+    const result = await correlation.correlate(T, undefined, true, 2, false);
     const temporal = result.clusters.find((c) => c.correlationType === 'temporal_cluster');
     expect(temporal).toBeDefined();
   });
 
-  it('detects multi-vector attacks on same asset', () => {
-    createAlertDirect(store, { id: 'a1', assetId: 'target.com', type: 'typosquatting' });
-    createAlertDirect(store, { id: 'a2', assetId: 'target.com', type: 'credential_leak' });
-    createAlertDirect(store, { id: 'a3', assetId: 'target.com', type: 'dark_web_mention' });
+  it('detects multi-vector attacks on same asset', async () => {
+    await createAlertDirect(store, { id: 'a1', assetId: 'target.com', type: 'typosquatting' });
+    await createAlertDirect(store, { id: 'a2', assetId: 'target.com', type: 'credential_leak' });
+    await createAlertDirect(store, { id: 'a3', assetId: 'target.com', type: 'dark_web_mention' });
 
-    const result = correlation.correlate(T, undefined, true, 2, false);
+    const result = await correlation.correlate(T, undefined, true, 2, false);
     const multiVector = result.clusters.find((c) => c.correlationType === 'multi_vector');
     expect(multiVector).toBeDefined();
     expect(multiVector!.alertIds.length).toBe(3);
   });
 
-  it('creates manual correlation from explicit alert IDs', () => {
-    createAlertDirect(store, { id: 'a1' });
-    createAlertDirect(store, { id: 'a2' });
+  it('creates manual correlation from explicit alert IDs', async () => {
+    await createAlertDirect(store, { id: 'a1' });
+    await createAlertDirect(store, { id: 'a2' });
 
-    const result = correlation.correlate(T, ['a1', 'a2'], false, 2, false);
+    const result = await correlation.correlate(T, ['a1', 'a2'], false, 2, false);
     expect(result.clusters.length).toBe(1);
     expect(result.clusters[0]!.alertIds).toContain('a1');
     expect(result.clusters[0]!.alertIds).toContain('a2');
   });
 
-  it('respects minClusterSize', () => {
-    createAlertDirect(store, { id: 'a1', assetId: 'x', type: 'typosquatting' });
-    createAlertDirect(store, { id: 'a2', assetId: 'x', type: 'credential_leak' });
+  it('respects minClusterSize', async () => {
+    await createAlertDirect(store, { id: 'a1', assetId: 'x', type: 'typosquatting' });
+    await createAlertDirect(store, { id: 'a2', assetId: 'x', type: 'credential_leak' });
 
     // Min 3 should not produce multi_vector cluster with 2 alerts
-    const result = correlation.correlate(T, undefined, true, 3, false);
+    const result = await correlation.correlate(T, undefined, true, 3, false);
     const multiVector = result.clusters.find((c) => c.correlationType === 'multi_vector');
     expect(multiVector).toBeUndefined();
   });
 
-  it('stores clusters in store', () => {
-    createAlertDirect(store, { id: 'a1' });
-    createAlertDirect(store, { id: 'a2' });
+  it('stores clusters in store', async () => {
+    await createAlertDirect(store, { id: 'a1' });
+    await createAlertDirect(store, { id: 'a2' });
 
-    correlation.correlate(T, ['a1', 'a2'], false, 2, false);
+    await correlation.correlate(T, ['a1', 'a2'], false, 2, false);
     const stored = correlation.getClusters(T);
     expect(stored.length).toBeGreaterThan(0);
   });
 
-  it('returns totalCorrelated count', () => {
+  it('returns totalCorrelated count', async () => {
     const ev: AlertEvidence = { id: 'e1', type: 'dns_record', title: 'DNS', data: { hostingProvider: 'AWS' }, collectedAt: new Date().toISOString() };
-    createAlertDirect(store, { id: 'a1', evidence: [ev] });
-    createAlertDirect(store, { id: 'a2', evidence: [ev] });
+    await createAlertDirect(store, { id: 'a1', evidence: [ev] });
+    await createAlertDirect(store, { id: 'a2', evidence: [ev] });
 
-    const result = correlation.correlate(T, undefined, true, 2, false);
+    const result = await correlation.correlate(T, undefined, true, 2, false);
     expect(result.totalCorrelated).toBeGreaterThanOrEqual(2);
   });
 
-  it('deduplicates overlapping clusters', () => {
+  it('deduplicates overlapping clusters', async () => {
     const now = new Date().toISOString();
     const ev: AlertEvidence = { id: 'e1', type: 'dns_record', title: 'DNS', data: { hostingProvider: 'OVH' }, collectedAt: now };
     // Same alerts would match both shared_hosting and temporal
-    createAlertDirect(store, { id: 'a1', evidence: [ev], createdAt: now });
-    createAlertDirect(store, { id: 'a2', evidence: [ev], createdAt: now });
-    createAlertDirect(store, { id: 'a3', evidence: [ev], createdAt: now });
+    await createAlertDirect(store, { id: 'a1', evidence: [ev], createdAt: now });
+    await createAlertDirect(store, { id: 'a2', evidence: [ev], createdAt: now });
+    await createAlertDirect(store, { id: 'a3', evidence: [ev], createdAt: now });
 
-    const result = correlation.correlate(T, undefined, true, 2, false);
+    const result = await correlation.correlate(T, undefined, true, 2, false);
     // Should not have fully redundant clusters (>80% overlap removed)
     for (let i = 0; i < result.clusters.length; i++) {
       for (let j = i + 1; j < result.clusters.length; j++) {
@@ -164,24 +164,24 @@ describe('CrossAlertCorrelation (#15)', () => {
     }
   });
 
-  it('returns empty clusters for no alerts', () => {
-    const result = correlation.correlate(T, undefined, true, 2, false);
+  it('returns empty clusters for no alerts', async () => {
+    const result = await correlation.correlate(T, undefined, true, 2, false);
     expect(result.clusters).toHaveLength(0);
     expect(result.totalCorrelated).toBe(0);
   });
 
-  it('handles single alert gracefully', () => {
-    createAlertDirect(store, { id: 'a1' });
-    const result = correlation.correlate(T, ['a1'], false, 2, false);
+  it('handles single alert gracefully', async () => {
+    await createAlertDirect(store, { id: 'a1' });
+    const result = await correlation.correlate(T, ['a1'], false, 2, false);
     expect(result.clusters).toHaveLength(0);
   });
 
-  it('clusters have confidence scores', () => {
+  it('clusters have confidence scores', async () => {
     const ev: AlertEvidence = { id: 'e1', type: 'dns_record', title: 'DNS', data: { hostingProvider: 'GCP' }, collectedAt: new Date().toISOString() };
-    createAlertDirect(store, { id: 'a1', evidence: [ev] });
-    createAlertDirect(store, { id: 'a2', evidence: [ev] });
+    await createAlertDirect(store, { id: 'a1', evidence: [ev] });
+    await createAlertDirect(store, { id: 'a2', evidence: [ev] });
 
-    const result = correlation.correlate(T, undefined, true, 2, false);
+    const result = await correlation.correlate(T, undefined, true, 2, false);
     for (const cluster of result.clusters) {
       expect(cluster.confidence).toBeGreaterThan(0);
       expect(cluster.confidence).toBeLessThanOrEqual(1);

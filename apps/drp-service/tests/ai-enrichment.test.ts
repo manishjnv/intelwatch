@@ -42,7 +42,7 @@ describe('AIAlertEnricher (#7)', () => {
   let enricher: AIAlertEnricher;
   let alert: DRPAlert;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     store = new DRPStore();
     enricher = new AIAlertEnricher(store, {
       enabled: true,
@@ -50,11 +50,11 @@ describe('AIAlertEnricher (#7)', () => {
       costPerCall: 0.01,
     });
     alert = createAlert();
-    store.setAlert(T, alert);
+    await store.setAlert(T, alert);
   });
 
-  it('enriches an alert with hosting provider and contacts', () => {
-    const result = enricher.enrich(T, alert, false);
+  it('enriches an alert with hosting provider and contacts', async () => {
+    const result = await enricher.enrich(T, alert, false);
     expect(result.alertId).toBe('alert-1');
     expect(result.hostingProvider).toBeDefined();
     expect(result.takedownContacts.length).toBeGreaterThan(0);
@@ -64,32 +64,32 @@ describe('AIAlertEnricher (#7)', () => {
     expect(result.cached).toBe(false);
   });
 
-  it('returns cached result on second call', () => {
-    enricher.enrich(T, alert, false);
-    const cached = enricher.enrich(T, alert, false);
+  it('returns cached result on second call', async () => {
+    await enricher.enrich(T, alert, false);
+    const cached = await enricher.enrich(T, alert, false);
     expect(cached.cached).toBe(true);
   });
 
-  it('force refresh bypasses cache', () => {
-    enricher.enrich(T, alert, false);
-    const refreshed = enricher.enrich(T, alert, true);
+  it('force refresh bypasses cache', async () => {
+    await enricher.enrich(T, alert, false);
+    const refreshed = await enricher.enrich(T, alert, true);
     expect(refreshed.cached).toBe(false);
   });
 
-  it('throws when AI is disabled', () => {
+  it('throws when AI is disabled', async () => {
     const disabled = new AIAlertEnricher(store, { enabled: false, maxBudgetPerDay: 1, costPerCall: 0.01 });
-    expect(() => disabled.enrich(T, alert, false)).toThrow('AI enrichment is disabled');
+    await expect(disabled.enrich(T, alert, false)).rejects.toThrow('AI enrichment is disabled');
   });
 
-  it('throws when daily budget is exceeded', () => {
+  it('throws when daily budget is exceeded', async () => {
     const tightBudget = new AIAlertEnricher(store, { enabled: true, maxBudgetPerDay: 0.02, costPerCall: 0.01 });
-    tightBudget.enrich(T, createAlert({ id: 'a1' }), false);
-    tightBudget.enrich(T, createAlert({ id: 'a2' }), false);
-    expect(() => tightBudget.enrich(T, createAlert({ id: 'a3' }), false)).toThrow('budget exceeded');
+    await tightBudget.enrich(T, createAlert({ id: 'a1' }), false);
+    await tightBudget.enrich(T, createAlert({ id: 'a2' }), false);
+    await expect(tightBudget.enrich(T, createAlert({ id: 'a3' }), false)).rejects.toThrow('budget exceeded');
   });
 
-  it('returns correct budget status', () => {
-    enricher.enrich(T, alert, false);
+  it('returns correct budget status', async () => {
+    await enricher.enrich(T, alert, false);
     const status = enricher.getBudgetStatus();
     expect(status.dailyCalls).toBe(1);
     expect(status.dailyCost).toBeCloseTo(0.01);
@@ -97,32 +97,32 @@ describe('AIAlertEnricher (#7)', () => {
     expect(status.maxBudget).toBe(1.0);
   });
 
-  it('generates different contacts for social_impersonation', () => {
+  it('generates different contacts for social_impersonation', async () => {
     const socialAlert = createAlert({ id: 'social-1', type: 'social_impersonation' });
-    const result = enricher.enrich(T, socialAlert, false);
+    const result = await enricher.enrich(T, socialAlert, false);
     expect(result.takedownContacts.some((c) => c.type === 'social_platform')).toBe(true);
   });
 
-  it('generates different contacts for rogue_app', () => {
+  it('generates different contacts for rogue_app', async () => {
     const appAlert = createAlert({ id: 'app-1', type: 'rogue_app' });
-    const result = enricher.enrich(T, appAlert, false);
+    const result = await enricher.enrich(T, appAlert, false);
     expect(result.takedownContacts.some((c) => c.type === 'app_store')).toBe(true);
   });
 
-  it('includes registrar for typosquatting alerts', () => {
-    const result = enricher.enrich(T, alert, false);
+  it('includes registrar for typosquatting alerts', async () => {
+    const result = await enricher.enrich(T, alert, false);
     expect(result.registrar).toBeDefined();
   });
 
-  it('recommended actions include credential-specific actions for credential_leak', () => {
+  it('recommended actions include credential-specific actions for credential_leak', async () => {
     const credAlert = createAlert({ id: 'cred-1', type: 'credential_leak', severity: 'critical' });
-    const result = enricher.enrich(T, credAlert, false);
+    const result = await enricher.enrich(T, credAlert, false);
     expect(result.recommendedActions.some((a) => a.includes('password reset'))).toBe(true);
   });
 
-  it('stores enrichment result', () => {
-    enricher.enrich(T, alert, false);
-    const stored = store.getAIEnrichment(T, alert.id);
+  it('stores enrichment result', async () => {
+    await enricher.enrich(T, alert, false);
+    const stored = await store.getAIEnrichment(T, alert.id);
     expect(stored).toBeDefined();
     expect(stored!.alertId).toBe(alert.id);
   });

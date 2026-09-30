@@ -15,12 +15,12 @@ export class RogueAppDetector {
   }
 
   /** Scan app stores for rogue apps impersonating the brand. */
-  scan(
+  async scan(
     tenantId: string,
     appName: string,
     packageName: string | undefined,
     stores: string[],
-  ): { apps: RogueApp[]; alertsCreated: number; scanId: string; durationMs: number } {
+  ): Promise<{ apps: RogueApp[]; alertsCreated: number; scanId: string; durationMs: number }> {
     const startTime = Date.now();
     const apps: RogueApp[] = [];
 
@@ -36,7 +36,7 @@ export class RogueAppDetector {
     let alertsCreated = 0;
     for (const app of apps.filter((a) => a.isSuspicious)) {
       const alertInput = this.appToAlertInput(appName, app);
-      const alert = this.alertManager.create(tenantId, alertInput);
+      const alert = await this.alertManager.create(tenantId, alertInput);
       if (alert) alertsCreated++;
     }
 
@@ -52,7 +52,7 @@ export class RogueAppDetector {
       completedAt: new Date().toISOString(),
       durationMs: Date.now() - startTime,
     };
-    this.store.setScan(tenantId, scan);
+    await this.store.setScan(tenantId, scan);
 
     return { apps, alertsCreated, scanId: scan.id, durationMs: scan.durationMs };
   }

@@ -13,49 +13,61 @@ import type {
   CorrelationCluster,
   AssetRiskScore,
 } from './p1-p2.js';
+import { MemoryDrpRepo, type DrpRepo } from '../repository.js';
 
-/** Multi-tenant in-memory store for all DRP entities (DECISION-013). */
+/** Newest signals kept per tenant before older ones are dropped (Step 3 S158). */
+const MAX_SIGNALS_PER_TENANT = 5000;
+
+/**
+ * Multi-tenant DRP store (Step 3 S158). Assets, alerts, scans, takedowns,
+ * feedback, AI enrichment and evidence chains are backed by `DrpRepo`
+ * (Postgres in production, in-memory for dev/test — Step 3 D3: no fallback).
+ * Signals, signal stats, correlation clusters and asset risk scores stay
+ * in process memory — they are caches/derived data, not business records.
+ */
 export class DRPStore {
-  readonly assets = new Map<string, Map<string, MonitoredAsset>>();
-  readonly alerts = new Map<string, Map<string, DRPAlert>>();
-  readonly scans = new Map<string, Map<string, ScanResult>>();
-  readonly signals = new Map<string, DetectionSignal[]>();
-  readonly signalStats = new Map<string, Map<string, SignalStats>>();
-  readonly evidenceChains = new Map<string, Map<string, EvidenceChain>>();
-  readonly feedback = new Map<string, AlertFeedback[]>();
+  private readonly repo: DrpRepo;
+
+  readonly signals = new Map<string, DetectionSignal[]>(); // memory-ok: buffer — capped at 5,000 newest per tenant (Step 3 S158)
+  readonly signalStats = new Map<string, Map<string, SignalStats>>(); // memory-ok: derived from signals
+  readonly correlations = new Map<string, Map<string, CorrelationCluster>>(); // memory-ok: derived — recomputed on request
+  readonly assetRiskScores = new Map<string, Map<string, AssetRiskScore>>(); // memory-ok: derived — recomputed on request
+
+  constructor(repo: DrpRepo = new MemoryDrpRepo()) {
+    this.repo = repo;
+  }
 
   // ─── Asset accessors ──────────────────────────────
 
-  getTenantAssets(tenantId: string): Map<string, MonitoredAsset> {
-    let map = this.assets.get(tenantId);
-    if (!map) {
-      map = new Map();
-      this.assets.set(tenantId, map);
-    }
-    return map;
+  async getAsset(tenantId: string, id: string): Promise<MonitoredAsset | null> {
+    return this.repo.getAsset(tenantId, id);
   }
 
-  getAsset(tenantId: string, id: string): MonitoredAsset | undefined {
-    return this.getTenantAssets(tenantId).get(id);
+  async setAsset(_tenantId: string, asset: MonitoredAsset): Promise<void> {
+    await this.repo.upsertAsset(asset);
   }
 
-  setAsset(tenantId: string, asset: MonitoredAsset): void {
-    this.getTenantAssets(tenantId).set(asset.id, asset);
+  async deleteAsset(tenantId: string, id: string): Promise<boolean> {
+    return this.repo.deleteAsset(tenantId, id);
   }
 
-  deleteAsset(tenantId: string, id: string): boolean {
-    return this.getTenantAssets(tenantId).delete(id);
+  async countAssets(tenantId: string): Promise<number> {
+    return this.repo.countAssets(tenantId);
   }
 
-  listAssets(
+  /** All assets of a tenant, newest-updated first. */
+  async listAllAssets(tenantId: string): Promise<MonitoredAsset[]> {
+    return this.repo.listAssets(tenantId);
+  }
+
+  async listAssets(
     tenantId: string,
     page: number,
     limit: number,
     type?: string,
-  ): { data: MonitoredAsset[]; total: number; page: number; limit: number } {
-    const all = Array.from(this.getTenantAssets(tenantId).values());
+  ): Promise<{ data: MonitoredAsset[]; total: number; page: number; limit: number }> {
+    const all = await this.repo.listAssets(tenantId);
     const filtered = type ? all.filter((a) => a.type === type) : all;
-    filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const total = filtered.length;
     const start = (page - 1) * limit;
     return { data: filtered.slice(start, start + limit), total, page, limit };
@@ -63,66 +75,55 @@ export class DRPStore {
 
   // ─── Alert accessors ──────────────────────────────
 
-  getTenantAlerts(tenantId: string): Map<string, DRPAlert> {
-    let map = this.alerts.get(tenantId);
-    if (!map) {
-      map = new Map();
-      this.alerts.set(tenantId, map);
-    }
-    return map;
+  async getAlert(tenantId: string, id: string): Promise<DRPAlert | null> {
+    return this.repo.getAlert(tenantId, id);
   }
 
-  getAlert(tenantId: string, id: string): DRPAlert | undefined {
-    return this.getTenantAlerts(tenantId).get(id);
+  async setAlert(_tenantId: string, alert: DRPAlert): Promise<void> {
+    await this.repo.upsertAlert(alert);
   }
 
-  setAlert(tenantId: string, alert: DRPAlert): void {
-    this.getTenantAlerts(tenantId).set(alert.id, alert);
+  /** All alerts of a tenant, newest-updated first. */
+  async listAllAlerts(tenantId: string): Promise<DRPAlert[]> {
+    return this.repo.listAlerts(tenantId);
   }
 
-  listAlerts(
+  async listAlerts(
     tenantId: string,
     page: number,
     limit: number,
     filters?: { type?: string; status?: string; severity?: string; assetId?: string },
-  ): { data: DRPAlert[]; total: number; page: number; limit: number } {
-    let all = Array.from(this.getTenantAlerts(tenantId).values());
+  ): Promise<{ data: DRPAlert[]; total: number; page: number; limit: number }> {
+    let all = await this.repo.listAlerts(tenantId);
     if (filters?.type) all = all.filter((a) => a.type === filters.type);
     if (filters?.status) all = all.filter((a) => a.status === filters.status);
     if (filters?.severity) all = all.filter((a) => a.severity === filters.severity);
     if (filters?.assetId) all = all.filter((a) => a.assetId === filters.assetId);
-    all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const total = all.length;
     const start = (page - 1) * limit;
     return { data: all.slice(start, start + limit), total, page, limit };
   }
 
-  getAlertsByAsset(tenantId: string, assetId: string): DRPAlert[] {
-    return Array.from(this.getTenantAlerts(tenantId).values()).filter(
-      (a) => a.assetId === assetId,
-    );
+  async getAlertsByAsset(tenantId: string, assetId: string): Promise<DRPAlert[]> {
+    return this.repo.listAlertsByAsset(tenantId, assetId);
   }
 
   // ─── Scan accessors ───────────────────────────────
 
-  getTenantScans(tenantId: string): Map<string, ScanResult> {
-    let map = this.scans.get(tenantId);
-    if (!map) {
-      map = new Map();
-      this.scans.set(tenantId, map);
-    }
-    return map;
+  async getScan(tenantId: string, id: string): Promise<ScanResult | null> {
+    return this.repo.getScan(tenantId, id);
   }
 
-  setScan(tenantId: string, scan: ScanResult): void {
-    this.getTenantScans(tenantId).set(scan.id, scan);
+  async setScan(_tenantId: string, scan: ScanResult): Promise<void> {
+    await this.repo.upsertScan(scan);
   }
 
-  getScan(tenantId: string, id: string): ScanResult | undefined {
-    return this.getTenantScans(tenantId).get(id);
+  /** All scans of a tenant. */
+  async listAllScans(tenantId: string): Promise<ScanResult[]> {
+    return this.repo.listScans(tenantId);
   }
 
-  // ─── Signal accessors (#2) ────────────────────────
+  // ─── Signal accessors (#2) — stays in memory ──────
 
   getTenantSignals(tenantId: string): DetectionSignal[] {
     let arr = this.signals.get(tenantId);
@@ -134,7 +135,11 @@ export class DRPStore {
   }
 
   addSignal(tenantId: string, signal: DetectionSignal): void {
-    this.getTenantSignals(tenantId).push(signal);
+    const arr = this.getTenantSignals(tenantId);
+    arr.push(signal);
+    if (arr.length > MAX_SIGNALS_PER_TENANT) {
+      arr.splice(0, arr.length - MAX_SIGNALS_PER_TENANT);
+    }
   }
 
   getTenantSignalStats(tenantId: string): Map<string, SignalStats> {
@@ -148,84 +153,60 @@ export class DRPStore {
 
   // ─── Evidence chain accessors (#3) ────────────────
 
-  getTenantEvidenceChains(tenantId: string): Map<string, EvidenceChain> {
-    let map = this.evidenceChains.get(tenantId);
-    if (!map) {
-      map = new Map();
-      this.evidenceChains.set(tenantId, map);
-    }
-    return map;
+  async setEvidenceChain(tenantId: string, chain: EvidenceChain): Promise<void> {
+    await this.repo.setEvidenceChain(tenantId, chain);
   }
 
-  setEvidenceChain(tenantId: string, chain: EvidenceChain): void {
-    this.getTenantEvidenceChains(tenantId).set(chain.alertId, chain);
+  async getEvidenceChain(tenantId: string, alertId: string): Promise<EvidenceChain | null> {
+    return this.repo.getEvidenceChain(tenantId, alertId);
   }
 
-  getEvidenceChain(tenantId: string, alertId: string): EvidenceChain | undefined {
-    return this.getTenantEvidenceChains(tenantId).get(alertId);
+  /** All evidence chains of a tenant. */
+  async listEvidenceChains(tenantId: string): Promise<EvidenceChain[]> {
+    return this.repo.listEvidenceChains(tenantId);
   }
 
   // ─── Feedback accessors ───────────────────────────
 
-  getTenantFeedback(tenantId: string): AlertFeedback[] {
-    let arr = this.feedback.get(tenantId);
-    if (!arr) {
-      arr = [];
-      this.feedback.set(tenantId, arr);
-    }
-    return arr;
+  async addFeedback(_tenantId: string, fb: AlertFeedback): Promise<void> {
+    await this.repo.addFeedback(fb);
   }
 
-  addFeedback(tenantId: string, fb: AlertFeedback): void {
-    this.getTenantFeedback(tenantId).push(fb);
+  /** All feedback of a tenant. */
+  async listFeedback(tenantId: string): Promise<AlertFeedback[]> {
+    return this.repo.listFeedback(tenantId);
   }
 
   // ─── AI Enrichment cache (#7) ───────────────────────
 
-  readonly aiEnrichments = new Map<string, Map<string, AIEnrichmentResult>>();
-
-  getTenantAIEnrichments(tenantId: string): Map<string, AIEnrichmentResult> {
-    let map = this.aiEnrichments.get(tenantId);
-    if (!map) {
-      map = new Map();
-      this.aiEnrichments.set(tenantId, map);
-    }
-    return map;
+  async setAIEnrichment(tenantId: string, alertId: string, result: AIEnrichmentResult): Promise<void> {
+    await this.repo.setAiEnrichment(tenantId, alertId, result);
   }
 
-  setAIEnrichment(tenantId: string, alertId: string, result: AIEnrichmentResult): void {
-    this.getTenantAIEnrichments(tenantId).set(alertId, result);
-  }
-
-  getAIEnrichment(tenantId: string, alertId: string): AIEnrichmentResult | undefined {
-    return this.getTenantAIEnrichments(tenantId).get(alertId);
+  async getAIEnrichment(tenantId: string, alertId: string): Promise<AIEnrichmentResult | null> {
+    return this.repo.getAiEnrichment(tenantId, alertId);
   }
 
   // ─── Takedown requests (#11) ────────────────────────
 
-  readonly takedowns = new Map<string, Map<string, TakedownRequest>>();
-
-  getTenantTakedowns(tenantId: string): Map<string, TakedownRequest> {
-    let map = this.takedowns.get(tenantId);
-    if (!map) {
-      map = new Map();
-      this.takedowns.set(tenantId, map);
-    }
-    return map;
+  async setTakedown(_tenantId: string, takedown: TakedownRequest): Promise<void> {
+    await this.repo.upsertTakedown(takedown);
   }
 
-  setTakedown(tenantId: string, takedown: TakedownRequest): void {
-    this.getTenantTakedowns(tenantId).set(takedown.id, takedown);
+  async getTakedown(tenantId: string, id: string): Promise<TakedownRequest | null> {
+    return this.repo.getTakedown(tenantId, id);
   }
 
-  getTakedownsByAlert(tenantId: string, alertId: string): TakedownRequest[] {
-    return Array.from(this.getTenantTakedowns(tenantId).values())
-      .filter((t) => t.alertId === alertId);
+  async getTakedownsByAlert(tenantId: string, alertId: string): Promise<TakedownRequest[]> {
+    return this.repo.listTakedownsByAlert(tenantId, alertId);
   }
 
-  // ─── Correlation clusters (#15) ─────────────────────
+  /** All takedown requests of a tenant. */
+  async listTakedowns(tenantId: string): Promise<TakedownRequest[]> {
+    return this.repo.listTakedowns(tenantId);
+  }
 
-  readonly correlations = new Map<string, Map<string, CorrelationCluster>>();
+  // ─── Correlation clusters (#15) — stays in memory ───
 
   getTenantCorrelations(tenantId: string): Map<string, CorrelationCluster> {
     let map = this.correlations.get(tenantId);
@@ -240,9 +221,7 @@ export class DRPStore {
     this.getTenantCorrelations(tenantId).set(cluster.id, cluster);
   }
 
-  // ─── Asset risk scores (#14) ────────────────────────
-
-  readonly assetRiskScores = new Map<string, Map<string, AssetRiskScore>>();
+  // ─── Asset risk scores (#14) — stays in memory ──────
 
   getTenantAssetRisks(tenantId: string): Map<string, AssetRiskScore> {
     let map = this.assetRiskScores.get(tenantId);

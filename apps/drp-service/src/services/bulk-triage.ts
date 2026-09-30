@@ -31,19 +31,19 @@ export class BulkTriageService {
   }
 
   /** Triage multiple alerts by explicit IDs or by filter. */
-  triage(
+  async triage(
     tenantId: string,
     alertIds: string[] | undefined,
     filter: BulkTriageFilter | undefined,
     action: BulkTriageAction,
-  ): BulkTriageResult {
-    const targetAlerts = this.resolveAlerts(tenantId, alertIds, filter);
+  ): Promise<BulkTriageResult> {
+    const targetAlerts = await this.resolveAlerts(tenantId, alertIds, filter);
     let succeeded = 0;
     const errors: Array<{ alertId: string; error: string }> = [];
 
     for (const alert of targetAlerts) {
       try {
-        this.applyAction(tenantId, alert, action);
+        await this.applyAction(tenantId, alert, action);
         succeeded++;
       } catch (err) {
         errors.push({
@@ -62,22 +62,22 @@ export class BulkTriageService {
   }
 
   /** Resolve target alerts from IDs or filter. */
-  private resolveAlerts(
+  private async resolveAlerts(
     tenantId: string,
     alertIds: string[] | undefined,
     filter: BulkTriageFilter | undefined,
-  ): DRPAlert[] {
+  ): Promise<DRPAlert[]> {
     if (alertIds && alertIds.length > 0) {
       const results: DRPAlert[] = [];
       for (const id of alertIds) {
-        const alert = this.store.getAlert(tenantId, id);
+        const alert = await this.store.getAlert(tenantId, id);
         if (alert) results.push(alert);
       }
       return results;
     }
 
     // Filter-based selection
-    let alerts = Array.from(this.store.getTenantAlerts(tenantId).values());
+    let alerts = await this.store.listAllAlerts(tenantId);
     if (filter) {
       if (filter.type) alerts = alerts.filter((a) => a.type === filter.type);
       if (filter.status) alerts = alerts.filter((a) => a.status === filter.status);
@@ -90,23 +90,23 @@ export class BulkTriageService {
   }
 
   /** Apply a triage action to a single alert. */
-  private applyAction(tenantId: string, alert: DRPAlert, action: BulkTriageAction): void {
+  private async applyAction(tenantId: string, alert: DRPAlert, action: BulkTriageAction): Promise<void> {
     if (action.status) {
-      this.alertManager.changeStatus(tenantId, alert.id, action.status, action.notes);
+      await this.alertManager.changeStatus(tenantId, alert.id, action.status, action.notes);
     }
     if (action.severity || action.notes || action.addTags) {
       const existingTags = alert.tags ?? [];
       const mergedTags = action.addTags
         ? [...new Set([...existingTags, ...action.addTags])]
         : undefined;
-      this.alertManager.triage(tenantId, alert.id, {
+      await this.alertManager.triage(tenantId, alert.id, {
         severity: action.severity,
         notes: action.notes,
         tags: mergedTags,
       });
     }
     if (action.assignTo) {
-      this.alertManager.assign(tenantId, alert.id, action.assignTo);
+      await this.alertManager.assign(tenantId, alert.id, action.assignTo);
     }
   }
 }

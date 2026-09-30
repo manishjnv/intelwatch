@@ -8,20 +8,22 @@ import type {
   DryRunResult,
   TriggerEvent,
 } from '../schemas/integration.js';
+import type { DocRepo } from './doc-repo.js';
+import { MemoryDocRepo } from './doc-repo.js';
 
 /**
  * P2 #15: Rule-based alert routing engine.
  * Evaluates conditions against incoming events and routes
  * to configured integrations. Supports CRUD, priority ordering,
- * and dry-run simulation.
+ * and dry-run simulation. Rules persist as `routing_rule` documents (Step 3 S157).
  */
 export class AlertRoutingEngine {
-  private rules = new Map<string, RoutingRule>();
+  constructor(private readonly repo: DocRepo<RoutingRule> = new MemoryDocRepo<RoutingRule>()) {}
 
   // ─── Rule CRUD ──────────────────────────────────────────────
 
   /** Create a new routing rule. */
-  createRule(tenantId: string, input: CreateRoutingRuleInput): RoutingRule {
+  async createRule(tenantId: string, input: CreateRoutingRuleInput): Promise<RoutingRule> {
     const now = new Date().toISOString();
     const rule: RoutingRule = {
       id: randomUUID(),
@@ -39,25 +41,20 @@ export class AlertRoutingEngine {
       createdAt: now,
       updatedAt: now,
     };
-    this.rules.set(rule.id, rule);
-    return rule;
+    return this.repo.save(rule);
   }
 
   /** Get a rule by ID, filtered by tenant. */
-  getRule(id: string, tenantId: string): RoutingRule | undefined {
-    const rule = this.rules.get(id);
-    if (!rule || rule.tenantId !== tenantId) return undefined;
-    return rule;
+  async getRule(id: string, tenantId: string): Promise<RoutingRule | undefined> {
+    return (await this.repo.get(id, tenantId)) ?? undefined;
   }
 
   /** List rules for a tenant, sorted by priority (ascending). */
-  listRules(
+  async listRules(
     tenantId: string,
     opts: { enabled?: boolean; page: number; limit: number },
-  ): { data: RoutingRule[]; total: number } {
-    let items = Array.from(this.rules.values()).filter(
-      (r) => r.tenantId === tenantId,
-    );
+  ): Promise<{ data: RoutingRule[]; total: number }> {
+    let items = await this.repo.list(tenantId);
     if (opts.enabled !== undefined) {
       items = items.filter((r) => r.enabled === opts.enabled);
     }
@@ -68,12 +65,12 @@ export class AlertRoutingEngine {
   }
 
   /** Update a rule. */
-  updateRule(
+  async updateRule(
     id: string,
     tenantId: string,
     input: UpdateRoutingRuleInput,
-  ): RoutingRule | undefined {
-    const existing = this.getRule(id, tenantId);
+  ): Promise<RoutingRule | undefined> {
+    const existing = await this.getRule(id, tenantId);
     if (!existing) return undefined;
 
     const updated: RoutingRule = {
@@ -88,29 +85,26 @@ export class AlertRoutingEngine {
       ...(input.triggerEvents !== undefined && { triggerEvents: input.triggerEvents }),
       updatedAt: new Date().toISOString(),
     };
-    this.rules.set(id, updated);
-    return updated;
+    return this.repo.save(updated);
   }
 
   /** Delete a rule. */
-  deleteRule(id: string, tenantId: string): boolean {
-    const existing = this.getRule(id, tenantId);
-    if (!existing) return false;
-    this.rules.delete(id);
-    return true;
+  async deleteRule(id: string, tenantId: string): Promise<boolean> {
+    return this.repo.delete(id, tenantId);
   }
 
   /** Reorder rules by setting new priorities. */
-  reorderRules(
+  async reorderRules(
     tenantId: string,
     ordering: Array<{ ruleId: string; priority: number }>,
-  ): RoutingRule[] {
+  ): Promise<RoutingRule[]> {
     const updated: RoutingRule[] = [];
     for (const { ruleId, priority } of ordering) {
-      const rule = this.getRule(ruleId, tenantId);
+      const rule = await this.getRule(ruleId, tenantId);
       if (rule) {
         rule.priority = priority;
         rule.updatedAt = new Date().toISOString();
+        await this.repo.save(rule);
         updated.push(rule);
       }
     }
@@ -123,14 +117,14 @@ export class AlertRoutingEngine {
    * Evaluate all enabled rules for a tenant against an event payload.
    * Returns matching rules and their actions, in priority order.
    */
-  evaluate(
+  async evaluate(
     tenantId: string,
     event: TriggerEvent,
     payload: Record<string, unknown>,
-  ): Array<{ rule: RoutingRule; actions: RoutingAction[] }> {
+  ): Promise<Array<{ rule: RoutingRule; actions: RoutingAction[] }>> {
     const matches: Array<{ rule: RoutingRule; actions: RoutingAction[] }> = [];
 
-    const { data: rules } = this.listRules(tenantId, { enabled: true, page: 1, limit: 500 });
+    const { data: rules } = await this.listRules(tenantId, { enabled: true, page: 1, limit: 500 });
 
     for (const rule of rules) {
       // Check if this rule handles this event type
@@ -148,6 +142,7 @@ export class AlertRoutingEngine {
       if (matched) {
         rule.matchCount++;
         rule.lastMatchedAt = new Date().toISOString();
+        await this.repo.save(rule);
         matches.push({ rule, actions: rule.actions });
       }
     }
@@ -159,12 +154,12 @@ export class AlertRoutingEngine {
    * Dry-run a rule against a test payload.
    * Returns detailed condition evaluation results without executing actions.
    */
-  dryRun(
+  async dryRun(
     ruleId: string,
     tenantId: string,
     payload: Record<string, unknown>,
-  ): DryRunResult | null {
-    const rule = this.getRule(ruleId, tenantId);
+  ): Promise<DryRunResult | null> {
+    const rule = await this.getRule(ruleId, tenantId);
     if (!rule) return null;
 
     const conditionResults = rule.conditions.map((c) => {

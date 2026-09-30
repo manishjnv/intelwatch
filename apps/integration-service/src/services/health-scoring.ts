@@ -12,7 +12,7 @@ import type { IntegrationRateLimiter } from './rate-limiter.js';
  * Maintains a rolling 30-point history per integration.
  */
 export class HealthScoring {
-  private history = new Map<string, HealthHistoryPoint[]>();
+  private history = new Map<string, HealthHistoryPoint[]>(); // memory-ok: derived — recomputed from logs each calculateScore() call, rolling cache only
   private readonly maxHistoryPoints = 30;
 
   constructor(
@@ -21,11 +21,11 @@ export class HealthScoring {
   ) {}
 
   /** Calculate composite health score for an integration. */
-  calculateScore(integrationId: string, tenantId: string): HealthScore | null {
+  async calculateScore(integrationId: string, tenantId: string): Promise<HealthScore | null> {
     const integration = this.store.getIntegration(integrationId, tenantId);
     if (!integration) return null;
 
-    const { data: logs } = this.store.listLogs(
+    const { data: logs } = await this.store.listLogs(
       integrationId, tenantId, { page: 1, limit: 1000 },
     );
 

@@ -30,8 +30,8 @@ describe('HealthDashboard', () => {
     dashboard = new HealthDashboard(store, rateLimiter);
   });
 
-  it('returns empty summary when no integrations', () => {
-    const summary = dashboard.getSummary(TENANT);
+  it('returns empty summary when no integrations', async () => {
+    const summary = await dashboard.getSummary(TENANT);
     expect(summary.totalIntegrations).toBe(0);
     expect(summary.overallSuccessRate).toBe(100);
     expect(summary.integrations).toEqual([]);
@@ -43,11 +43,11 @@ describe('HealthDashboard', () => {
       fieldMappings: [], credentials: {},
     });
 
-    store.addLog(int.id, TENANT, 'alert.created', 'success', { statusCode: 200 });
-    store.addLog(int.id, TENANT, 'alert.created', 'success', { statusCode: 200 });
-    store.addLog(int.id, TENANT, 'alert.created', 'failure', { errorMessage: 'timeout' });
+    await store.addLog(int.id, TENANT, 'alert.created', 'success', { statusCode: 200 });
+    await store.addLog(int.id, TENANT, 'alert.created', 'success', { statusCode: 200 });
+    await store.addLog(int.id, TENANT, 'alert.created', 'failure', { errorMessage: 'timeout' });
 
-    const summary = dashboard.getSummary(TENANT);
+    const summary = await dashboard.getSummary(TENANT);
     expect(summary.totalIntegrations).toBe(1);
     expect(summary.totalEvents).toBe(3);
     expect(summary.totalFailures).toBe(1);
@@ -66,7 +66,7 @@ describe('HealthDashboard', () => {
       fieldMappings: [], credentials: {},
     });
 
-    const summary = dashboard.getSummary(TENANT);
+    const summary = await dashboard.getSummary(TENANT);
     expect(summary.integrations[0].successRate).toBe(100);
     expect(summary.integrations[0].uptimePercent).toBe(100);
   });
@@ -80,25 +80,25 @@ describe('HealthDashboard', () => {
     rateLimiter.tryConsume(int.id);
     rateLimiter.tryConsume(int.id);
 
-    const summary = dashboard.getSummary(TENANT);
+    const summary = await dashboard.getSummary(TENANT);
     expect(summary.integrations[0].rateLimit.maxPerMinute).toBe(60);
     expect(summary.integrations[0].rateLimit.remainingTokens).toBe(58);
   });
 
-  it('includes DLQ size', () => {
-    const delivery = store.createDelivery({
+  it('includes DLQ size', async () => {
+    const delivery = await store.createDelivery({
       integrationId: 'int-1', tenantId: TENANT, event: 'alert.created',
       payload: {}, attempts: 3, maxAttempts: 3, nextRetryAt: null,
       status: 'failure', lastError: 'err',
     });
-    store.moveToDLQ(delivery.id);
+    await store.moveToDLQ(delivery.id);
 
-    const summary = dashboard.getSummary(TENANT);
+    const summary = await dashboard.getSummary(TENANT);
     expect(summary.dlqSize).toBe(1);
   });
 
-  it('getIntegrationHealth returns null for missing integration', () => {
-    expect(dashboard.getIntegrationHealth('no-id', TENANT)).toBeNull();
+  it('getIntegrationHealth returns null for missing integration', async () => {
+    expect(await dashboard.getIntegrationHealth('no-id', TENANT)).toBeNull();
   });
 
   it('getIntegrationHealth returns detailed health', async () => {
@@ -107,10 +107,10 @@ describe('HealthDashboard', () => {
       fieldMappings: [], credentials: {},
     });
 
-    store.addLog(int.id, TENANT, 'alert.created', 'success', {});
-    store.addLog(int.id, TENANT, 'alert.created', 'dead_letter', { errorMessage: 'exhausted' });
+    await store.addLog(int.id, TENANT, 'alert.created', 'success', {});
+    await store.addLog(int.id, TENANT, 'alert.created', 'dead_letter', { errorMessage: 'exhausted' });
 
-    const health = dashboard.getIntegrationHealth(int.id, TENANT);
+    const health = await dashboard.getIntegrationHealth(int.id, TENANT);
     expect(health).not.toBeNull();
     expect(health!.name).toBe('Detail');
     expect(health!.successCount).toBe(1);
@@ -128,7 +128,7 @@ describe('HealthDashboard', () => {
       fieldMappings: [], credentials: {},
     });
 
-    const summary = dashboard.getSummary(TENANT);
+    const summary = await dashboard.getSummary(TENANT);
     expect(summary.totalIntegrations).toBe(1);
     expect(summary.integrations[0].name).toBe('Tenant1');
   });

@@ -5,6 +5,8 @@ import type {
   CreateTicketTemplateInput,
   UpdateTicketTemplateInput,
 } from '../schemas/integration.js';
+import type { DocRepo } from './doc-repo.js';
+import { MemoryDocRepo } from './doc-repo.js';
 
 /** Variables available for ticket template rendering. */
 export interface TemplateVariables {
@@ -26,13 +28,15 @@ export interface TemplateVariables {
 /**
  * P1 #8: Handlebars-style template engine for ticket creation.
  * Renders templates with {{variable}} placeholders and manages
- * default + custom templates per ticketing system type.
+ * default + custom templates per ticketing system type. Custom templates
+ * persist as `ticket_template` documents (Step 3 S157); system defaults are
+ * a code constant (tenantId 'system'), never written to a tenant's row.
  */
 export class TemplateEngine {
-  private templates = new Map<string, TicketTemplate>();
+  private readonly defaults: TicketTemplate[]; // ponytail: fixed constant, not a mutable store — no memory-ok tag needed
 
-  constructor() {
-    this.seedDefaultTemplates();
+  constructor(private readonly repo: DocRepo<TicketTemplate> = new MemoryDocRepo<TicketTemplate>()) {
+    this.defaults = this.buildDefaultTemplates();
   }
 
   /** Render a template string by replacing {{variable}} placeholders. */
@@ -46,12 +50,12 @@ export class TemplateEngine {
   }
 
   /** Render a full ticket from a template + variables. */
-  renderTicket(
+  async renderTicket(
     templateId: string,
     tenantId: string,
     variables: TemplateVariables,
-  ): { title: string; body: string; priority: string; additionalFields: Record<string, string> } {
-    const template = this.getTemplate(templateId, tenantId);
+  ): Promise<{ title: string; body: string; priority: string; additionalFields: Record<string, string> }> {
+    const template = await this.getTemplate(templateId, tenantId);
     if (!template) {
       throw new AppError(404, 'Ticket template not found', 'TEMPLATE_NOT_FOUND');
     }
@@ -102,7 +106,7 @@ export class TemplateEngine {
   // ─── Template CRUD ────────────────────────────────────────────
 
   /** Create a custom ticket template. */
-  createTemplate(tenantId: string, input: CreateTicketTemplateInput): TicketTemplate {
+  async createTemplate(tenantId: string, input: CreateTicketTemplateInput): Promise<TicketTemplate> {
     // Validate templates
     const titleValidation = this.validateTemplate(input.titleTemplate);
     if (!titleValidation.valid) {
@@ -127,26 +131,23 @@ export class TemplateEngine {
       createdAt: now,
       updatedAt: now,
     };
-    this.templates.set(template.id, template);
-    return template;
+    return this.repo.save(template);
   }
 
   /** Get a template by ID. System defaults have tenantId = 'system'. */
-  getTemplate(id: string, tenantId: string): TicketTemplate | undefined {
-    const template = this.templates.get(id);
-    if (!template) return undefined;
-    if (template.tenantId !== tenantId && template.tenantId !== 'system') return undefined;
-    return template;
+  async getTemplate(id: string, tenantId: string): Promise<TicketTemplate | undefined> {
+    const builtin = this.defaults.find((t) => t.id === id);
+    if (builtin) return builtin;
+    return (await this.repo.get(id, tenantId)) ?? undefined;
   }
 
   /** List templates for a tenant (includes system defaults). */
-  listTemplates(
+  async listTemplates(
     tenantId: string,
     opts: { targetType?: 'servicenow' | 'jira'; page: number; limit: number },
-  ): { data: TicketTemplate[]; total: number } {
-    let items = Array.from(this.templates.values()).filter(
-      (t) => t.tenantId === tenantId || t.tenantId === 'system',
-    );
+  ): Promise<{ data: TicketTemplate[]; total: number }> {
+    const custom = await this.repo.list(tenantId);
+    let items = [...this.defaults, ...custom];
     if (opts.targetType) {
       items = items.filter((t) => t.targetType === opts.targetType);
     }
@@ -157,16 +158,16 @@ export class TemplateEngine {
   }
 
   /** Update a custom template (system defaults cannot be modified). */
-  updateTemplate(
+  async updateTemplate(
     id: string,
     tenantId: string,
     input: UpdateTicketTemplateInput,
-  ): TicketTemplate | undefined {
-    const existing = this.templates.get(id);
-    if (!existing || existing.tenantId !== tenantId) return undefined;
-    if (existing.tenantId === 'system') {
+  ): Promise<TicketTemplate | undefined> {
+    if (this.defaults.some((t) => t.id === id)) {
       throw new AppError(403, 'Cannot modify system default templates', 'SYSTEM_TEMPLATE');
     }
+    const existing = await this.repo.get(id, tenantId);
+    if (!existing) return undefined;
 
     if (input.titleTemplate) {
       const v = this.validateTemplate(input.titleTemplate);
@@ -185,23 +186,19 @@ export class TemplateEngine {
       createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };
-    this.templates.set(id, updated);
-    return updated;
+    return this.repo.save(updated);
   }
 
   /** Delete a custom template. */
-  deleteTemplate(id: string, tenantId: string): boolean {
-    const existing = this.templates.get(id);
-    if (!existing || existing.tenantId !== tenantId) return false;
-    if (existing.tenantId === 'system') return false;
-    this.templates.delete(id);
-    return true;
+  async deleteTemplate(id: string, tenantId: string): Promise<boolean> {
+    if (this.defaults.some((t) => t.id === id)) return false;
+    return this.repo.delete(id, tenantId);
   }
 
   // ─── Defaults ─────────────────────────────────────────────────
 
-  /** Seed system-level default templates. */
-  private seedDefaultTemplates(): void {
+  /** Build system-level default templates (fixed constant — not persisted). */
+  private buildDefaultTemplates(): TicketTemplate[] {
     const defaults: Array<Omit<TicketTemplate, 'id' | 'createdAt' | 'updatedAt'>> = [
       {
         tenantId: 'system',
@@ -262,15 +259,7 @@ export class TemplateEngine {
     ];
 
     const now = new Date().toISOString();
-    for (const d of defaults) {
-      const template: TicketTemplate = {
-        ...d,
-        id: randomUUID(),
-        createdAt: now,
-        updatedAt: now,
-      };
-      this.templates.set(template.id, template);
-    }
+    return defaults.map((d) => ({ ...d, id: randomUUID(), createdAt: now, updatedAt: now }));
   }
 
   /** Resolve a possibly nested variable from the context. */

@@ -35,8 +35,8 @@ describe('BatchTyposquatScanner (#6)', () => {
     store = deps.store;
   });
 
-  it('scans a single domain and returns report', () => {
-    const report = scanner.scan(T, ['example.com'], ['homoglyph', 'deletion'], 20, true);
+  it('scans a single domain and returns report', async () => {
+    const report = await scanner.scan(T, ['example.com'], ['homoglyph', 'deletion'], 20, true);
     expect(report.domains).toEqual(['example.com']);
     expect(report.scanId).toBeDefined();
     expect(report.totalCandidates).toBeGreaterThan(0);
@@ -45,46 +45,46 @@ describe('BatchTyposquatScanner (#6)', () => {
     expect(report.durationMs).toBeGreaterThanOrEqual(0);
   });
 
-  it('scans multiple domains', () => {
-    const report = scanner.scan(T, ['example.com', 'acme.org'], ['deletion'], 10, true);
+  it('scans multiple domains', async () => {
+    const report = await scanner.scan(T, ['example.com', 'acme.org'], ['deletion'], 10, true);
     expect(report.results).toHaveLength(2);
     expect(report.domains).toEqual(['example.com', 'acme.org']);
   });
 
-  it('deduplicates cross-domain candidates when dedup=true', () => {
-    const report = scanner.scan(T, ['test.com', 'test.com'], ['deletion'], 50, true);
+  it('deduplicates cross-domain candidates when dedup=true', async () => {
+    const report = await scanner.scan(T, ['test.com', 'test.com'], ['deletion'], 50, true);
     // Second domain should have 0 candidates (all already seen from first scan)
     expect(report.crossDomainDuplicates).toBeGreaterThan(0);
   });
 
-  it('does not deduplicate when dedup=false', () => {
-    const report = scanner.scan(T, ['test.com', 'test.com'], ['deletion'], 50, false);
+  it('does not deduplicate when dedup=false', async () => {
+    const report = await scanner.scan(T, ['test.com', 'test.com'], ['deletion'], 50, false);
     expect(report.crossDomainDuplicates).toBe(0);
   });
 
-  it('records scan in store', () => {
-    const report = scanner.scan(T, ['example.com'], ['homoglyph'], 10, true);
-    const scan = store.getScan(T, report.scanId);
+  it('records scan in store', async () => {
+    const report = await scanner.scan(T, ['example.com'], ['homoglyph'], 10, true);
+    const scan = await store.getScan(T, report.scanId);
     expect(scan).toBeDefined();
     expect(scan!.status).toBe('completed');
     expect(scan!.scanType).toBe('typosquatting');
   });
 
-  it('limits candidates per domain', () => {
-    const report = scanner.scan(T, ['example.com'], ['homoglyph', 'insertion', 'deletion', 'transposition', 'tld_variant'], 5, true);
+  it('limits candidates per domain', async () => {
+    const report = await scanner.scan(T, ['example.com'], ['homoglyph', 'insertion', 'deletion', 'transposition', 'tld_variant'], 5, true);
     expect(report.results[0]!.candidatesFound).toBeLessThanOrEqual(5);
   });
 
-  it('creates alerts for high-risk registered candidates', () => {
+  it('creates alerts for high-risk registered candidates', async () => {
     // Run scan with all methods to maximize chances of finding registered candidates
-    const report = scanner.scan(T, ['google.com'], ['homoglyph', 'insertion', 'deletion', 'transposition', 'tld_variant'], 100, true);
+    const report = await scanner.scan(T, ['google.com'], ['homoglyph', 'insertion', 'deletion', 'transposition', 'tld_variant'], 100, true);
     // totalAlerts may be 0 due to random registration simulation, but the report structure is correct
     expect(report.totalAlerts).toBeGreaterThanOrEqual(0);
     expect(typeof report.totalRegistered).toBe('number');
   });
 
-  it('returns topCandidates per domain result', () => {
-    const report = scanner.scan(T, ['example.com'], ['homoglyph'], 20, true);
+  it('returns topCandidates per domain result', async () => {
+    const report = await scanner.scan(T, ['example.com'], ['homoglyph'], 20, true);
     expect(report.results[0]!.topCandidates.length).toBeLessThanOrEqual(5);
     for (const c of report.results[0]!.topCandidates) {
       expect(c.domain).toBeDefined();
@@ -92,8 +92,8 @@ describe('BatchTyposquatScanner (#6)', () => {
     }
   });
 
-  it('handles empty domains array gracefully', () => {
-    const report = scanner.scan(T, [], ['homoglyph'], 10, true);
+  it('handles empty domains array gracefully', async () => {
+    const report = await scanner.scan(T, [], ['homoglyph'], 10, true);
     expect(report.results).toHaveLength(0);
     expect(report.totalCandidates).toBe(0);
   });

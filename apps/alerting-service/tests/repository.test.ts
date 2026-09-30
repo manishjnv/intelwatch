@@ -13,11 +13,19 @@ import type { AlertRule } from '../src/services/rule-store.js';
 import type { NotificationChannel } from '../src/services/channel-store.js';
 
 function createMockPrisma() {
+  const model = () => ({
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    updateMany: vi.fn(),
+    create: vi.fn(),
+    deleteMany: vi.fn(),
+  });
   return {
-    alertRule: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
-    alertChannel: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
-    alertEscalationPolicy: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
-    alertMaintenanceWindow: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
+    alertRule: model(),
+    alertChannel: model(),
+    alertEscalationPolicy: model(),
+    alertMaintenanceWindow: model(),
   };
 }
 
@@ -92,19 +100,51 @@ describe('rule repo', () => {
     expect(rule!.createdAt).toBe('2026-01-01T00:00:00.000Z');
   });
 
-  it('maps ISO strings to Date on save (upsert data)', async () => {
+  it('maps ISO strings to Date on save (create data, when updateMany finds no row)', async () => {
     const rule = makeRule({ lastTriggeredAt: '2026-02-01T00:00:00.000Z' });
-    db.alertRule.upsert.mockResolvedValue({ ...rule, lastTriggeredAt: new Date(rule.lastTriggeredAt!), createdAt: new Date(rule.createdAt), updatedAt: new Date(rule.updatedAt) });
+    db.alertRule.updateMany.mockResolvedValue({ count: 0 });
+    db.alertRule.create.mockResolvedValue({});
+    db.alertRule.findFirst.mockResolvedValue({ ...rule, lastTriggeredAt: new Date(rule.lastTriggeredAt!), createdAt: new Date(rule.createdAt), updatedAt: new Date(rule.updatedAt) });
     await repos.rules.save(rule);
-    const call = db.alertRule.upsert.mock.calls[0]![0];
-    expect(call.create.lastTriggeredAt).toBeInstanceOf(Date);
-    expect(call.create.lastTriggeredAt.toISOString()).toBe('2026-02-01T00:00:00.000Z');
+    const call = db.alertRule.create.mock.calls[0]![0];
+    expect(call.data.lastTriggeredAt).toBeInstanceOf(Date);
+    expect(call.data.lastTriggeredAt.toISOString()).toBe('2026-02-01T00:00:00.000Z');
+  });
+
+  it('save: updateMany is scoped to { id, tenantId } and its data omits id/tenantId', async () => {
+    const rule = makeRule();
+    db.alertRule.updateMany.mockResolvedValue({ count: 1 });
+    db.alertRule.findFirst.mockResolvedValue({ ...rule, lastTriggeredAt: null, createdAt: new Date(rule.createdAt), updatedAt: new Date(rule.updatedAt) });
+    await repos.rules.save(rule);
+    const call = db.alertRule.updateMany.mock.calls[0]![0];
+    expect(call.where).toEqual({ id: rule.id, tenantId: rule.tenantId });
+    expect(call.data).not.toHaveProperty('id');
+    expect(call.data).not.toHaveProperty('tenantId');
+    expect(call.data).not.toHaveProperty('createdAt');
+    expect(db.alertRule.create).not.toHaveBeenCalled();
+  });
+
+  it('save: updateMany count 0 triggers create', async () => {
+    const rule = makeRule();
+    db.alertRule.updateMany.mockResolvedValue({ count: 0 });
+    db.alertRule.create.mockResolvedValue({});
+    db.alertRule.findFirst.mockResolvedValue({ ...rule, lastTriggeredAt: null, createdAt: new Date(rule.createdAt), updatedAt: new Date(rule.updatedAt) });
+    await repos.rules.save(rule);
+    expect(db.alertRule.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('save: updateMany count 0 + create P2002 rejects with AppError 409 CONFLICT and no other write', async () => {
+    const rule = makeRule();
+    db.alertRule.updateMany.mockResolvedValue({ count: 0 });
+    db.alertRule.create.mockRejectedValue({ code: 'P2002' });
+    await expect(repos.rules.save(rule)).rejects.toMatchObject({ statusCode: 409, code: 'CONFLICT' });
+    expect(db.alertRule.findFirst).not.toHaveBeenCalled();
   });
 
   it('save with a non-UUID tenantId throws 400 VALIDATION_ERROR without calling Prisma', async () => {
     const rule = makeRule({ tenantId: 'default' });
     await expect(repos.rules.save(rule)).rejects.toMatchObject({ statusCode: 400, code: 'VALIDATION_ERROR' });
-    expect(db.alertRule.upsert).not.toHaveBeenCalled();
+    expect(db.alertRule.updateMany).not.toHaveBeenCalled();
   });
 
   it('Prisma rejecting maps to AppError 503 DB_UNAVAILABLE', async () => {
@@ -150,10 +190,12 @@ describe('channel repo (encryption)', () => {
     };
   }
 
-  it('save: the data handed to upsert has configEnc and no plaintext webhook URL anywhere', async () => {
+  it('save: the data handed to create has configEnc and no plaintext webhook URL anywhere', async () => {
     const channel = makeChannel();
     const crypto = new ChannelCrypto(KEY);
-    db.alertChannel.upsert.mockResolvedValue({
+    db.alertChannel.updateMany.mockResolvedValue({ count: 0 });
+    db.alertChannel.create.mockResolvedValue({});
+    db.alertChannel.findFirst.mockResolvedValue({
       ...channel,
       configEnc: crypto.encrypt(channel.config),
       createdAt: new Date(channel.createdAt),
@@ -161,11 +203,19 @@ describe('channel repo (encryption)', () => {
       lastTestedAt: null,
     });
     await repos.channels.save(channel);
-    const call = db.alertChannel.upsert.mock.calls[0]![0];
-    const serialized = JSON.stringify(call.create);
-    expect(call.create.configEnc).toBeDefined();
+    const call = db.alertChannel.create.mock.calls[0]![0];
+    const serialized = JSON.stringify(call.data);
+    expect(call.data.configEnc).toBeDefined();
     expect(serialized).not.toContain('super-secret');
     expect(serialized).not.toContain('hooks.slack.com/services');
+  });
+
+  it('save: updateMany count 0 + create P2002 rejects with AppError 409 CONFLICT', async () => {
+    const channel = makeChannel();
+    db.alertChannel.updateMany.mockResolvedValue({ count: 0 });
+    db.alertChannel.create.mockRejectedValue({ code: 'P2002' });
+    await expect(repos.channels.save(channel)).rejects.toMatchObject({ statusCode: 409, code: 'CONFLICT' });
+    expect(db.alertChannel.findFirst).not.toHaveBeenCalled();
   });
 
   it('get decrypts configEnc back to the original config', async () => {

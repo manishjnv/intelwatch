@@ -52,8 +52,34 @@ describe('EventListenerWorker', () => {
     expect(Worker).toHaveBeenCalledWith(
       'etip-cache-invalidate',
       expect.any(Function),
-      expect.objectContaining({ prefix: 'etip', concurrency: 10 }),
+      expect.objectContaining({ concurrency: 10, removeOnComplete: { count: 1000 }, removeOnFail: { count: 1000 } }),
     );
+    const { Worker: W } = await import('bullmq') as unknown as { Worker: ReturnType<typeof vi.fn> };
+    const opts = W.mock.calls[W.mock.calls.length - 1][2] as Record<string, unknown>;
+    expect(opts.prefix).toBeUndefined(); // producers use BullMQ's default 'bull' prefix (RCA #66)
+  });
+
+  it('passes the Redis password from the URL (RCA #66: was dropped → NOAUTH)', async () => {
+    const w = new EventListenerWorker({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cacheInvalidator: mockInvalidator as any,
+      redisUrl: 'redis://:p%40ss@etip_redis:6379/0',
+    });
+    w.start();
+    const { Worker } = await import('bullmq') as unknown as { Worker: ReturnType<typeof vi.fn> };
+    const lastCall = Worker.mock.calls[Worker.mock.calls.length - 1];
+    expect(lastCall[2].connection).toEqual({ host: 'etip_redis', port: 6379, password: 'p@ss', db: 0 });
+  });
+
+  it('skips events older than one hour (backlog drain)', async () => {
+    const { __getProcessor } = await import('bullmq') as unknown as { __getProcessor: () => (job: unknown) => Promise<void> };
+    worker.start();
+    const processor = __getProcessor();
+
+    await processor({ id: 'old', data: { tenantId: 'tenant-1', eventType: 'ioc.created' }, timestamp: Date.now() - 2 * 3600_000 });
+    expect(mockInvalidator.recordEvent).not.toHaveBeenCalled();
+    await processor({ id: 'new', data: { tenantId: 'tenant-1', eventType: 'ioc.created' }, timestamp: Date.now() });
+    expect(mockInvalidator.recordEvent).toHaveBeenCalledTimes(1);
   });
 
   it('forwards valid events to cacheInvalidator.recordEvent()', async () => {

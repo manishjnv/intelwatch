@@ -15,14 +15,14 @@ export class CrossAlertCorrelation {
   }
 
   /** Correlate alerts for shared infrastructure, temporal clusters, multi-vector attacks. */
-  correlate(
+  async correlate(
     tenantId: string,
     alertIds: string[] | undefined,
     autoDetect: boolean,
     minClusterSize: number,
     pushToGraph: boolean,
-  ): { clusters: CorrelationCluster[]; totalCorrelated: number } {
-    const alerts = this.resolveAlerts(tenantId, alertIds);
+  ): Promise<{ clusters: CorrelationCluster[]; totalCorrelated: number }> {
+    const alerts = await this.resolveAlerts(tenantId, alertIds);
     const clusters: CorrelationCluster[] = [];
 
     if (autoDetect) {
@@ -238,13 +238,12 @@ export class CrossAlertCorrelation {
     return result;
   }
 
-  private resolveAlerts(tenantId: string, alertIds: string[] | undefined): DRPAlert[] {
+  private async resolveAlerts(tenantId: string, alertIds: string[] | undefined): Promise<DRPAlert[]> {
     if (alertIds && alertIds.length > 0) {
-      return alertIds
-        .map((id) => this.store.getAlert(tenantId, id))
-        .filter((a): a is DRPAlert => a !== undefined);
+      const resolved = await Promise.all(alertIds.map((id) => this.store.getAlert(tenantId, id)));
+      return resolved.filter((a): a is DRPAlert => a !== null);
     }
-    return Array.from(this.store.getTenantAlerts(tenantId).values());
+    return this.store.listAllAlerts(tenantId);
   }
 
   /** Deduplicate clusters that share >80% of their alert IDs. */

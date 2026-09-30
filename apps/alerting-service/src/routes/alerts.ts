@@ -2,7 +2,6 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AppError } from '@etip/shared-utils';
 import type { AlertStore } from '../services/alert-store.js';
 import type { AlertHistory } from '../services/alert-history.js';
-import type { EscalationDispatcher } from '../services/escalation-dispatcher.js';
 import {
   ListAlertsQuerySchema,
   SuppressAlertSchema,
@@ -12,21 +11,21 @@ import {
   type BulkAlertIdsDto,
 } from '../schemas/alert.js';
 import { validate } from '../utils/validate.js';
+import { requestTenant } from '../plugins/tenant-guard.js';
 
 export interface AlertRouteDeps {
   alertStore: AlertStore;
   alertHistory?: AlertHistory;
-  escalationDispatcher?: EscalationDispatcher;
 }
 
 export function alertRoutes(deps: AlertRouteDeps) {
-  const { alertStore, alertHistory, escalationDispatcher } = deps;
+  const { alertStore, alertHistory } = deps;
 
   return async function (app: FastifyInstance): Promise<void> {
     // GET /api/v1/alerts — List alerts
     app.get('/', async (req: FastifyRequest<{ Querystring: ListAlertsQuery }>, reply: FastifyReply) => {
       const query = validate(ListAlertsQuerySchema, req.query);
-      const result = alertStore.list(query.tenantId, {
+      const result = await alertStore.list(query.tenantId, {
         severity: query.severity,
         status: query.status,
         ruleId: query.ruleId,
@@ -42,7 +41,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
 
     // GET /api/v1/alerts/:id — Get alert detail
     app.get('/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const alert = alertStore.getById(req.params.id);
+      const alert = await alertStore.getById(req.params.id, requestTenant(req));
       if (!alert) throw new AppError(404, `Alert not found: ${req.params.id}`, 'NOT_FOUND');
       return reply.send({ data: alert });
     });
@@ -52,13 +51,14 @@ export function alertRoutes(deps: AlertRouteDeps) {
       '/:id/acknowledge',
       async (req: FastifyRequest<{ Params: { id: string }; Body: { userId?: string } }>, reply: FastifyReply) => {
         const userId = req.body?.userId ?? 'system';
-        const prevStatus = alertStore.getById(req.params.id)?.status ?? 'open';
-        const alert = alertStore.acknowledge(req.params.id, userId);
-        alertHistory?.record({
-          alertId: alert.id, action: 'acknowledge', fromStatus: prevStatus,
+        const tenantId = requestTenant(req);
+        const before = await alertStore.getById(req.params.id, tenantId);
+        if (!before) throw new AppError(404, `Alert not found: ${req.params.id}`, 'NOT_FOUND');
+        const alert = await alertStore.acknowledge(req.params.id, userId, tenantId);
+        await alertHistory?.record({
+          tenantId: alert.tenantId, alertId: alert.id, action: 'acknowledge', fromStatus: before.status,
           toStatus: 'acknowledged', actor: userId,
         });
-        escalationDispatcher?.untrack(alert.id);
         return reply.send({ data: alert });
       },
     );
@@ -68,13 +68,14 @@ export function alertRoutes(deps: AlertRouteDeps) {
       '/:id/resolve',
       async (req: FastifyRequest<{ Params: { id: string }; Body: { userId?: string } }>, reply: FastifyReply) => {
         const userId = req.body?.userId ?? 'system';
-        const prevStatus = alertStore.getById(req.params.id)?.status ?? 'open';
-        const alert = alertStore.resolve(req.params.id, userId);
-        alertHistory?.record({
-          alertId: alert.id, action: 'resolve', fromStatus: prevStatus,
+        const tenantId = requestTenant(req);
+        const before = await alertStore.getById(req.params.id, tenantId);
+        if (!before) throw new AppError(404, `Alert not found: ${req.params.id}`, 'NOT_FOUND');
+        const alert = await alertStore.resolve(req.params.id, userId, tenantId);
+        await alertHistory?.record({
+          tenantId: alert.tenantId, alertId: alert.id, action: 'resolve', fromStatus: before.status,
           toStatus: 'resolved', actor: userId,
         });
-        escalationDispatcher?.untrack(alert.id);
         return reply.send({ data: alert });
       },
     );
@@ -84,10 +85,12 @@ export function alertRoutes(deps: AlertRouteDeps) {
       '/:id/suppress',
       async (req: FastifyRequest<{ Params: { id: string }; Body: SuppressAlertDto }>, reply: FastifyReply) => {
         const body = validate(SuppressAlertSchema, req.body);
-        const prevStatus = alertStore.getById(req.params.id)?.status ?? 'open';
-        const alert = alertStore.suppress(req.params.id, body.durationMinutes, body.reason);
-        alertHistory?.record({
-          alertId: alert.id, action: 'suppress', fromStatus: prevStatus,
+        const tenantId = requestTenant(req);
+        const before = await alertStore.getById(req.params.id, tenantId);
+        if (!before) throw new AppError(404, `Alert not found: ${req.params.id}`, 'NOT_FOUND');
+        const alert = await alertStore.suppress(req.params.id, body.durationMinutes, body.reason, tenantId);
+        await alertHistory?.record({
+          tenantId: alert.tenantId, alertId: alert.id, action: 'suppress', fromStatus: before.status,
           toStatus: 'suppressed', actor: 'system', reason: body.reason,
         });
         return reply.send({ data: alert });
@@ -98,10 +101,12 @@ export function alertRoutes(deps: AlertRouteDeps) {
     app.post(
       '/:id/escalate',
       async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const prevStatus = alertStore.getById(req.params.id)?.status ?? 'open';
-        const alert = alertStore.escalate(req.params.id);
-        alertHistory?.record({
-          alertId: alert.id, action: 'manual_escalate', fromStatus: prevStatus,
+        const tenantId = requestTenant(req);
+        const before = await alertStore.getById(req.params.id, tenantId);
+        if (!before) throw new AppError(404, `Alert not found: ${req.params.id}`, 'NOT_FOUND');
+        const alert = await alertStore.escalate(req.params.id, tenantId);
+        await alertHistory?.record({
+          tenantId: alert.tenantId, alertId: alert.id, action: 'manual_escalate', fromStatus: before.status,
           toStatus: 'escalated', actor: 'system',
         });
         return reply.send({ data: alert });
@@ -112,9 +117,9 @@ export function alertRoutes(deps: AlertRouteDeps) {
     app.get(
       '/:id/history',
       async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const alert = alertStore.getById(req.params.id);
+        const alert = await alertStore.getById(req.params.id, requestTenant(req));
         if (!alert) throw new AppError(404, `Alert not found: ${req.params.id}`, 'NOT_FOUND');
-        const timeline = alertHistory?.getTimeline(req.params.id) ?? [];
+        const timeline = (await alertHistory?.getTimeline(req.params.id)) ?? [];
         return reply.send({ data: timeline });
       },
     );
@@ -125,7 +130,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
       async (req: FastifyRequest<{ Body: BulkAlertIdsDto }>, reply: FastifyReply) => {
         const body = validate(BulkAlertIdsSchema, req.body);
         const userId = (req.body as Record<string, unknown>).userId as string | undefined ?? 'system';
-        const result = alertStore.bulkAcknowledge(body.ids, userId);
+        const result = await alertStore.bulkAcknowledge(body.ids, userId, requestTenant(req));
         return reply.send({ data: result });
       },
     );
@@ -136,7 +141,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
       async (req: FastifyRequest<{ Body: BulkAlertIdsDto }>, reply: FastifyReply) => {
         const body = validate(BulkAlertIdsSchema, req.body);
         const userId = (req.body as Record<string, unknown>).userId as string | undefined ?? 'system';
-        const result = alertStore.bulkResolve(body.ids, userId);
+        const result = await alertStore.bulkResolve(body.ids, userId, requestTenant(req));
         return reply.send({ data: result });
       },
     );
@@ -151,7 +156,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
         const page = parseInt(req.query.page || '1', 10);
         const limit = parseInt(req.query.limit || '20', 10);
 
-        const result = alertStore.search(tenantId, q, { page, limit });
+        const result = await alertStore.search(tenantId, q, { page, limit });
         return reply.send({
           data: result.data,
           meta: { total: result.total, page: result.page, limit: result.limit, totalPages: result.totalPages, query: q },

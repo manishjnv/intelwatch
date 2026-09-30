@@ -15,12 +15,12 @@ export class SocialImpersonationDetector {
   }
 
   /** Scan for social impersonation profiles across platforms. */
-  scan(
+  async scan(
     tenantId: string,
     brandName: string,
     handles: string[],
     platforms: string[],
-  ): { profiles: SocialProfile[]; alertsCreated: number; scanId: string; durationMs: number } {
+  ): Promise<{ profiles: SocialProfile[]; alertsCreated: number; scanId: string; durationMs: number }> {
     const startTime = Date.now();
     const profiles: SocialProfile[] = [];
 
@@ -36,7 +36,7 @@ export class SocialImpersonationDetector {
     let alertsCreated = 0;
     for (const profile of profiles.filter((p) => p.isSuspicious)) {
       const alertInput = this.profileToAlertInput(brandName, profile);
-      const alert = this.alertManager.create(tenantId, alertInput);
+      const alert = await this.alertManager.create(tenantId, alertInput);
       if (alert) alertsCreated++;
     }
 
@@ -53,7 +53,7 @@ export class SocialImpersonationDetector {
       completedAt: new Date().toISOString(),
       durationMs: Date.now() - startTime,
     };
-    this.store.setScan(tenantId, scan);
+    await this.store.setScan(tenantId, scan);
 
     return { profiles, alertsCreated, scanId: scan.id, durationMs: scan.durationMs };
   }

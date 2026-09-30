@@ -6,19 +6,20 @@ import type {
   UpdateFieldMappingPresetInput,
   IntegrationType,
 } from '../schemas/integration.js';
+import type { DocRepo } from './doc-repo.js';
+import { MemoryDocRepo } from './doc-repo.js';
 
 /**
- * P1 #7: In-memory store for reusable field mapping presets.
- * Allows users to create, manage, and apply mapping templates
- * across multiple integrations of the same type.
+ * P1 #7: Store for reusable field mapping presets. Persists as
+ * `field_mapping_preset` documents (Step 3 S157).
  */
 export class FieldMappingStore {
-  private presets = new Map<string, FieldMappingPreset>();
+  constructor(private readonly repo: DocRepo<FieldMappingPreset> = new MemoryDocRepo<FieldMappingPreset>()) {}
 
   /** Create a new field mapping preset. */
-  createPreset(tenantId: string, input: CreateFieldMappingPresetInput): FieldMappingPreset {
+  async createPreset(tenantId: string, input: CreateFieldMappingPresetInput): Promise<FieldMappingPreset> {
     // Check for duplicate names within tenant + target type
-    const existing = this.findByName(tenantId, input.name, input.targetType);
+    const existing = await this.findByName(tenantId, input.name, input.targetType);
     if (existing) {
       throw new AppError(409, `Preset "${input.name}" already exists for ${input.targetType}`, 'PRESET_DUPLICATE');
     }
@@ -34,25 +35,20 @@ export class FieldMappingStore {
       createdAt: now,
       updatedAt: now,
     };
-    this.presets.set(preset.id, preset);
-    return preset;
+    return this.repo.save(preset);
   }
 
   /** Get a preset by ID, filtered by tenant. */
-  getPreset(id: string, tenantId: string): FieldMappingPreset | undefined {
-    const preset = this.presets.get(id);
-    if (!preset || preset.tenantId !== tenantId) return undefined;
-    return preset;
+  async getPreset(id: string, tenantId: string): Promise<FieldMappingPreset | undefined> {
+    return (await this.repo.get(id, tenantId)) ?? undefined;
   }
 
   /** List presets for a tenant with optional type filter. */
-  listPresets(
+  async listPresets(
     tenantId: string,
     opts: { targetType?: IntegrationType; page: number; limit: number },
-  ): { data: FieldMappingPreset[]; total: number } {
-    let items = Array.from(this.presets.values()).filter(
-      (p) => p.tenantId === tenantId,
-    );
+  ): Promise<{ data: FieldMappingPreset[]; total: number }> {
+    let items = await this.repo.list(tenantId);
     if (opts.targetType) {
       items = items.filter((p) => p.targetType === opts.targetType);
     }
@@ -63,18 +59,18 @@ export class FieldMappingStore {
   }
 
   /** Update an existing preset. */
-  updatePreset(
+  async updatePreset(
     id: string,
     tenantId: string,
     input: UpdateFieldMappingPresetInput,
-  ): FieldMappingPreset | undefined {
-    const existing = this.getPreset(id, tenantId);
+  ): Promise<FieldMappingPreset | undefined> {
+    const existing = await this.getPreset(id, tenantId);
     if (!existing) return undefined;
 
     // Check name uniqueness if name is being changed
     if (input.name && input.name !== existing.name) {
       const targetType = input.targetType ?? existing.targetType;
-      const dupe = this.findByName(tenantId, input.name, targetType);
+      const dupe = await this.findByName(tenantId, input.name, targetType);
       if (dupe) {
         throw new AppError(409, `Preset "${input.name}" already exists for ${targetType}`, 'PRESET_DUPLICATE');
       }
@@ -88,22 +84,21 @@ export class FieldMappingStore {
       createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };
-    this.presets.set(id, updated);
-    return updated;
+    return this.repo.save(updated);
   }
 
   /** Delete a preset. */
-  deletePreset(id: string, tenantId: string): boolean {
-    const existing = this.getPreset(id, tenantId);
-    if (!existing) return false;
-    this.presets.delete(id);
-    return true;
+  async deletePreset(id: string, tenantId: string): Promise<boolean> {
+    return this.repo.delete(id, tenantId);
   }
 
   /** Find a preset by name + target type within a tenant. */
-  private findByName(tenantId: string, name: string, targetType: IntegrationType): FieldMappingPreset | undefined {
-    return Array.from(this.presets.values()).find(
-      (p) => p.tenantId === tenantId && p.name === name && p.targetType === targetType,
-    );
+  private async findByName(
+    tenantId: string,
+    name: string,
+    targetType: IntegrationType,
+  ): Promise<FieldMappingPreset | undefined> {
+    const items = await this.repo.list(tenantId);
+    return items.find((p) => p.name === name && p.targetType === targetType);
   }
 }

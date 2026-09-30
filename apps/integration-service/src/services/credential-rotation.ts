@@ -6,19 +6,20 @@ import type {
 } from '../schemas/integration.js';
 import type { IntegrationStore } from './integration-store.js';
 import type { CredentialEncryption } from './credential-encryption.js';
+import type { DocRepo } from './doc-repo.js';
+import { MemoryDocRepo } from './doc-repo.js';
 
 /**
  * P2 #14: Credential rotation with zero-downtime grace period.
  * Allows rotating API keys/tokens while maintaining a grace period
- * for the old credentials, with full rotation history.
+ * for the old credentials, with full rotation history. Records persist as
+ * `credential_rotation` documents keyed by integration id (Step 3 S157).
  */
 export class CredentialRotationService {
-  private rotations = new Map<string, CredentialRotationRecord>();
-  private rotationsByIntegration = new Map<string, string[]>(); // integrationId → rotationIds
-
   constructor(
     private readonly store: IntegrationStore,
     private readonly encryption: CredentialEncryption | null,
+    private readonly repo: DocRepo<CredentialRotationRecord> = new MemoryDocRepo<CredentialRotationRecord>(),
   ) {}
 
   /**
@@ -69,33 +70,24 @@ export class CredentialRotationService {
       status: input.gracePeriodMinutes > 0 ? 'grace_period' : 'expired',
     };
 
-    this.rotations.set(record.id, record);
-
-    // Track by integration
-    if (!this.rotationsByIntegration.has(integrationId)) {
-      this.rotationsByIntegration.set(integrationId, []);
-    }
-    this.rotationsByIntegration.get(integrationId)!.push(record.id);
-
+    await this.repo.save(record, integrationId);
     return record;
   }
 
   /** Get rotation history for an integration. */
-  getRotationHistory(
+  async getRotationHistory(
     integrationId: string,
     tenantId: string,
     opts: { page: number; limit: number },
-  ): { data: CredentialRotationRecord[]; total: number } {
-    const rotationIds = this.rotationsByIntegration.get(integrationId) ?? [];
-    let records = rotationIds
-      .map((id) => this.rotations.get(id))
-      .filter((r): r is CredentialRotationRecord => r !== undefined && r.tenantId === tenantId);
+  ): Promise<{ data: CredentialRotationRecord[]; total: number }> {
+    const records = await this.repo.list(tenantId, integrationId);
 
     // Update statuses based on grace period expiry
     const now = new Date().toISOString();
     for (const record of records) {
       if (record.status === 'grace_period' && record.graceExpiresAt <= now) {
         record.status = 'expired';
+        await this.repo.save(record, integrationId);
       }
     }
 
@@ -106,11 +98,8 @@ export class CredentialRotationService {
   }
 
   /** Get the latest rotation for an integration. */
-  getLatestRotation(integrationId: string, tenantId: string): CredentialRotationRecord | null {
-    const rotationIds = this.rotationsByIntegration.get(integrationId) ?? [];
-    const records = rotationIds
-      .map((id) => this.rotations.get(id))
-      .filter((r): r is CredentialRotationRecord => r !== undefined && r.tenantId === tenantId)
+  async getLatestRotation(integrationId: string, tenantId: string): Promise<CredentialRotationRecord | null> {
+    const records = (await this.repo.list(tenantId, integrationId))
       .sort((a, b) => b.rotatedAt.localeCompare(a.rotatedAt));
 
     if (records.length === 0) return null;
@@ -119,13 +108,14 @@ export class CredentialRotationService {
     // Update status
     if (latest.status === 'grace_period' && latest.graceExpiresAt <= new Date().toISOString()) {
       latest.status = 'expired';
+      await this.repo.save(latest, integrationId);
     }
     return latest;
   }
 
   /** Check if an integration is currently in a grace period. */
-  isInGracePeriod(integrationId: string, tenantId: string): boolean {
-    const latest = this.getLatestRotation(integrationId, tenantId);
+  async isInGracePeriod(integrationId: string, tenantId: string): Promise<boolean> {
+    const latest = await this.getLatestRotation(integrationId, tenantId);
     return latest?.status === 'grace_period';
   }
 

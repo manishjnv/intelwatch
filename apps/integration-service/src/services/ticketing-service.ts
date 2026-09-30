@@ -65,7 +65,7 @@ export class TicketingService {
     }
 
     // Store ticket locally for status tracking
-    const ticket = this.store.createTicket({
+    const ticket = await this.store.createTicket({
       integrationId,
       tenantId,
       externalId: result.externalId,
@@ -76,7 +76,7 @@ export class TicketingService {
       priority: input.priority,
     });
 
-    this.store.addLog(integrationId, tenantId, 'alert.created', 'success', {
+    await this.store.addLog(integrationId, tenantId, 'alert.created', 'success', {
       statusCode: 201,
       payload: { ticketId: ticket.id, externalId: result.externalId },
     });
@@ -91,7 +91,7 @@ export class TicketingService {
     tenantId: string,
     ticketingConfig: TicketingConfig,
   ): Promise<Ticket> {
-    const ticket = this.store.getTicket(ticketId, tenantId);
+    const ticket = await this.store.getTicket(ticketId, tenantId);
     if (!ticket) {
       throw new AppError(404, 'Ticket not found', 'TICKET_NOT_FOUND');
     }
@@ -113,7 +113,7 @@ export class TicketingService {
       throw new AppError(502, 'Status sync failed', 'STATUS_SYNC_FAILED');
     }
 
-    const updated = this.store.updateTicketStatus(ticketId, tenantId, externalStatus);
+    const updated = await this.store.updateTicketStatus(ticketId, tenantId, externalStatus);
     if (!updated) {
       throw new AppError(404, 'Ticket not found after update', 'TICKET_NOT_FOUND');
     }

@@ -33,7 +33,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
         const user = getUser(req);
         const filters = AlertFilterSchema.parse(req.query);
         const { page, limit, ...rest } = filters;
-        const result = alertManager.list(user.tenantId, page, limit, rest);
+        const result = await alertManager.list(user.tenantId, page, limit, rest);
         return reply.send(result);
       },
     );
@@ -44,7 +44,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
       { preHandler: [authenticate, rbac('alert:read')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
-        const stats = alertManager.getStats(user.tenantId);
+        const stats = await alertManager.getStats(user.tenantId);
         return reply.send({ data: stats });
       },
     );
@@ -56,7 +56,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { id } = req.params as { id: string };
-        const alert = alertManager.get(user.tenantId, id);
+        const alert = await alertManager.get(user.tenantId, id);
         return reply.send({ data: alert });
       },
     );
@@ -69,7 +69,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
         const user = getUser(req);
         const { id } = req.params as { id: string };
         const { status, notes } = ChangeAlertStatusSchema.parse(req.body);
-        const alert = alertManager.changeStatus(user.tenantId, id, status, notes);
+        const alert = await alertManager.changeStatus(user.tenantId, id, status, notes);
         return reply.send({ data: alert });
       },
     );
@@ -82,7 +82,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
         const user = getUser(req);
         const { id } = req.params as { id: string };
         const { userId } = AssignAlertSchema.parse(req.body);
-        const alert = alertManager.assign(user.tenantId, id, userId);
+        const alert = await alertManager.assign(user.tenantId, id, userId);
         return reply.send({ data: alert });
       },
     );
@@ -95,7 +95,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
         const user = getUser(req);
         const { id } = req.params as { id: string };
         const input = TriageAlertSchema.parse(req.body);
-        const alert = alertManager.triage(user.tenantId, id, input);
+        const alert = await alertManager.triage(user.tenantId, id, input);
         return reply.send({ data: alert });
       },
     );
@@ -110,7 +110,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
         const input = AlertFeedbackSchema.parse(req.body);
 
         // Verify alert exists
-        alertManager.get(user.tenantId, id);
+        await alertManager.get(user.tenantId, id);
 
         // Record feedback and update signal stats
         signalAggregator.recordFeedback(user.tenantId, id, input.verdict);
@@ -118,7 +118,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
         // If false_positive, transition alert status
         if (input.verdict === 'false_positive') {
           try {
-            alertManager.changeStatus(user.tenantId, id, 'false_positive', input.reason);
+            await alertManager.changeStatus(user.tenantId, id, 'false_positive', input.reason);
           } catch {
             // Transition may not be valid from current state — that's ok
           }
@@ -143,7 +143,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
       { preHandler: [authenticate, rbac('alert:read')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
-        const alertStats = alertManager.getStats(user.tenantId);
+        const alertStats = await alertManager.getStats(user.tenantId);
         return reply.send({ data: alertStats });
       },
     );
@@ -155,7 +155,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { alertId } = req.params as { alertId: string };
-        const alert = alertManager.get(user.tenantId, alertId);
+        const alert = await alertManager.get(user.tenantId, alertId);
         return reply.send({
           data: {
             alertId: alert.id,
@@ -184,7 +184,7 @@ export function alertRoutes(deps: AlertRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { alertId } = req.params as { alertId: string };
-        const chain = evidenceChain.getChain(user.tenantId, alertId);
+        const chain = await evidenceChain.getChain(user.tenantId, alertId);
         if (!chain) {
           return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Evidence chain not found' } });
         }

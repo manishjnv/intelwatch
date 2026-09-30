@@ -76,14 +76,14 @@ export function webhookRoutes(deps: WebhookRouteDeps) {
     app.get('/dlq', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = PaginationSchema.parse(req.query);
-      const result = store.listDLQ(tenantId, query);
+      const result = await store.listDLQ(tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
     app.post('/dlq/:id/retry', { preHandler: [auth, updateAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const delivery = store.retryDLQ(id, tenantId);
+      const delivery = await store.retryDLQ(id, tenantId);
       if (!delivery) throw new AppError(404, 'DLQ item not found', 'NOT_FOUND');
       return reply.send({ data: delivery });
     });

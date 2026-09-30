@@ -1,8 +1,11 @@
 import { loadConfig } from './config.js';
 import { initLogger } from './logger.js';
 import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
-import { disconnectPrisma } from './prisma.js';
+import { prisma, disconnectPrisma } from './prisma.js';
 import { IntegrationStore } from './services/integration-store.js';
+import { createPrismaRecordsRepo } from './services/records-repo-prisma.js';
+import { createPrismaDocRepo } from './services/doc-repo-prisma.js';
+import { createIocExportFetcher } from './services/ioc-client.js';
 import { FieldMapper } from './services/field-mapper.js';
 import { SiemAdapter } from './services/siem-adapter.js';
 import { WebhookService } from './services/webhook-service.js';
@@ -37,8 +40,9 @@ async function main(): Promise<void> {
   loadJwtConfig(env);
   loadServiceJwtSecret(env);
 
-  // 3. In-memory store + field mapper injection (P0 #2)
-  const store = new IntegrationStore();
+  // 3. Store (integrations cached + write-through; logs/deliveries/tickets go straight
+  // to Postgres via the records repo, Step 3 S156) + field mapper injection (P0 #2)
+  const store = new IntegrationStore(createPrismaRecordsRepo(prisma));
   const fieldMapper = new FieldMapper();
   store.setFieldMapper(fieldMapper);
 
@@ -54,25 +58,36 @@ async function main(): Promise<void> {
   const healthDashboard = new HealthDashboard(store, rateLimiter);
   const eventRouter = new EventRouter(store, siemAdapter, webhookService, config.TI_REDIS_URL);
 
-  // 6. P1 services
+  // 6. P1 services — config/audit stores persist as Postgres JSON documents (Step 3 S157, DECISION-051)
   const webhookRetryEngine = new WebhookRetryEngine(store, webhookService, {
     maxRetries: config.TI_INTEGRATION_WEBHOOK_MAX_RETRIES,
     baseDelayMs: config.TI_INTEGRATION_SIEM_RETRY_DELAY_MS,
     maxDelayMs: config.TI_INTEGRATION_WEBHOOK_MAX_DELAY_MS,
-  });
-  const fieldMappingStore = new FieldMappingStore();
-  const templateEngine = new TemplateEngine();
-  const stixCollectionStore = new StixCollectionStore();
-  const exportScheduler = new ExportScheduler(bulkExport);
+  }, createPrismaDocRepo(prisma, 'webhook_retry_config'));
+  const fieldMappingStore = new FieldMappingStore(createPrismaDocRepo(prisma, 'field_mapping_preset'));
+  const templateEngine = new TemplateEngine(createPrismaDocRepo(prisma, 'ticket_template'));
+  const stixCollectionStore = new StixCollectionStore(
+    createPrismaDocRepo(prisma, 'taxii_collection'),
+    createPrismaDocRepo(prisma, 'taxii_objects'),
+  );
+  const fetchExportRecords = createIocExportFetcher(config.TI_IOC_SERVICE_URL, logger);
+  const exportScheduler = new ExportScheduler(
+    bulkExport,
+    fetchExportRecords,
+    createPrismaDocRepo(prisma, 'export_schedule'),
+    createPrismaDocRepo(prisma, 'export_run'),
+  );
 
   // 7. P2 services
   const credentialEncryption = new CredentialEncryption(config.TI_INTEGRATION_ENCRYPTION_KEY);
   store.setCredentialEncryption(credentialEncryption);
   const healthScoring = new HealthScoring(store, rateLimiter);
-  const auditTrail = new AuditTrail();
+  const auditTrail = new AuditTrail(createPrismaDocRepo(prisma, 'audit_entry'));
   const rateLimitTracker = new RateLimitTracker(rateLimiter);
-  const credentialRotation = new CredentialRotationService(store, credentialEncryption);
-  const alertRoutingEngine = new AlertRoutingEngine();
+  const credentialRotation = new CredentialRotationService(
+    store, credentialEncryption, createPrismaDocRepo(prisma, 'credential_rotation'),
+  );
+  const alertRoutingEngine = new AlertRoutingEngine(createPrismaDocRepo(prisma, 'routing_rule'));
 
   // 7b. Load persisted integrations. Non-blocking (not awaited) — /health serves
   // immediately even if Postgres is still starting; retries with backoff in the background.
@@ -83,7 +98,7 @@ async function main(): Promise<void> {
     config,
     routeDeps: { store, siemAdapter, ticketingService, healthDashboard, rateLimiter, webhookRetryEngine, webhookService },
     webhookDeps: { store, webhookService },
-    exportDeps: { store, stixExport, bulkExport, ticketingService },
+    exportDeps: { store, stixExport, bulkExport, ticketingService, fetchRecords: fetchExportRecords },
     advancedDeps: { fieldMappingStore, templateEngine, stixCollectionStore, exportScheduler },
     p2Deps: { store, healthScoring, auditTrail, rateLimitTracker, credentialRotation, alertRoutingEngine },
   });
@@ -96,9 +111,18 @@ async function main(): Promise<void> {
     logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'EventRouter failed to start — service continues without queue worker');
   }
 
-  // 10. Graceful shutdown
+  // 10. Retention: purge old logs/successful deliveries daily (Step 3 S156).
+  const retentionInterval = setInterval(() => {
+    store.purgeOldRecords(30)
+      .then((n) => { if (n > 0) logger.info({ purged: n }, 'Integration records retention purge'); })
+      .catch((err: unknown) => logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Retention purge failed'));
+  }, 24 * 3600_000);
+  retentionInterval.unref();
+
+  // 11. Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down integration-service...');
+    clearInterval(retentionInterval);
     await eventRouter.stop();
     await app.close();
     await disconnectPrisma();
@@ -108,7 +132,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-  // 11. Start listening
+  // 12. Start listening
   await app.listen({ port: config.TI_INTEGRATION_PORT, host: config.TI_INTEGRATION_HOST });
   logger.info({ port: config.TI_INTEGRATION_PORT }, 'Integration service ready');
 }

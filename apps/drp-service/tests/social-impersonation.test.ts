@@ -33,22 +33,22 @@ describe('SocialImpersonationDetector (#10)', () => {
     store = deps.store;
   });
 
-  it('scans for impersonation profiles', () => {
-    const result = detector.scan(T, 'Acme Corp', ['acmecorp'], ['twitter']);
+  it('scans for impersonation profiles', async () => {
+    const result = await detector.scan(T, 'Acme Corp', ['acmecorp'], ['twitter']);
     expect(result.profiles.length).toBeGreaterThan(0);
     expect(result.scanId).toBeDefined();
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
-  it('generates profiles across multiple platforms', () => {
-    const result = detector.scan(T, 'TestBrand', [], ['twitter', 'linkedin']);
+  it('generates profiles across multiple platforms', async () => {
+    const result = await detector.scan(T, 'TestBrand', [], ['twitter', 'linkedin']);
     const platforms = new Set(result.profiles.map((p) => p.platform));
     expect(platforms.has('twitter')).toBe(true);
     expect(platforms.has('linkedin')).toBe(true);
   });
 
-  it('profiles have required fields', () => {
-    const result = detector.scan(T, 'Acme', ['acme'], ['twitter']);
+  it('profiles have required fields', async () => {
+    const result = await detector.scan(T, 'Acme', ['acme'], ['twitter']);
     for (const p of result.profiles) {
       expect(p.id).toBeDefined();
       expect(p.platform).toBe('twitter');
@@ -62,61 +62,61 @@ describe('SocialImpersonationDetector (#10)', () => {
     }
   });
 
-  it('creates alerts for suspicious profiles', () => {
-    const result = detector.scan(T, 'Acme Corp', ['acmecorp'], ['twitter', 'linkedin']);
+  it('creates alerts for suspicious profiles', async () => {
+    const result = await detector.scan(T, 'Acme Corp', ['acmecorp'], ['twitter', 'linkedin']);
     expect(result.alertsCreated).toBeGreaterThanOrEqual(0);
     // Verify alert type
-    const alerts = Array.from(store.getTenantAlerts(T).values());
+    const alerts = await store.listAllAlerts(T);
     for (const a of alerts) {
       expect(a.type).toBe('social_impersonation');
     }
   });
 
-  it('high-risk profiles are sorted first', () => {
-    const result = detector.scan(T, 'Acme', ['acme'], ['twitter']);
+  it('high-risk profiles are sorted first', async () => {
+    const result = await detector.scan(T, 'Acme', ['acme'], ['twitter']);
     for (let i = 1; i < result.profiles.length; i++) {
       expect(result.profiles[i]!.riskScore).toBeLessThanOrEqual(result.profiles[i - 1]!.riskScore);
     }
   });
 
-  it('verified profiles are marked as not suspicious', () => {
-    const result = detector.scan(T, 'Test', ['test'], ['twitter']);
+  it('verified profiles are marked as not suspicious', async () => {
+    const result = await detector.scan(T, 'Test', ['test'], ['twitter']);
     const verified = result.profiles.filter((p) => p.isVerified);
     for (const p of verified) {
       expect(p.isSuspicious).toBe(false);
     }
   });
 
-  it('generates handle variations based on brand name', () => {
-    const result = detector.scan(T, 'Acme Corp', [], ['twitter']);
+  it('generates handle variations based on brand name', async () => {
+    const result = await detector.scan(T, 'Acme Corp', [], ['twitter']);
     const handles = result.profiles.map((p) => p.handle);
     // Should include patterns like acmecorp_official, acmecorp_support, etc.
     expect(handles.some((h) => h.includes('acmecorp'))).toBe(true);
   });
 
-  it('records scan in store', () => {
-    const result = detector.scan(T, 'Test', [], ['twitter']);
-    const scan = store.getScan(T, result.scanId);
+  it('records scan in store', async () => {
+    const result = await detector.scan(T, 'Test', [], ['twitter']);
+    const scan = await store.getScan(T, result.scanId);
     expect(scan).toBeDefined();
     expect(scan!.scanType).toBe('social_impersonation');
     expect(scan!.status).toBe('completed');
   });
 
-  it('handles empty handles array', () => {
-    const result = detector.scan(T, 'Acme', [], ['twitter']);
+  it('handles empty handles array', async () => {
+    const result = await detector.scan(T, 'Acme', [], ['twitter']);
     expect(result.profiles.length).toBeGreaterThan(0);
   });
 
-  it('handle similarity is 0 when no official handles', () => {
-    const result = detector.scan(T, 'Acme', [], ['twitter']);
+  it('handle similarity is 0 when no official handles', async () => {
+    const result = await detector.scan(T, 'Acme', [], ['twitter']);
     for (const p of result.profiles) {
       // With no official handles, handleSimilarity should be 0
       expect(p.handleSimilarity).toBe(0);
     }
   });
 
-  it('calculates name similarity correctly', () => {
-    const result = detector.scan(T, 'Acme', ['acme'], ['twitter']);
+  it('calculates name similarity correctly', async () => {
+    const result = await detector.scan(T, 'Acme', ['acme'], ['twitter']);
     // Profiles with "acme" in the handle should have decent name similarity
     const relevantProfiles = result.profiles.filter((p) => p.handle.includes('acme'));
     for (const p of relevantProfiles) {

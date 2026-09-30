@@ -1085,7 +1085,79 @@ model Integration {
   @@map("integrations")
 }
 
-// ─── Alerting (Step 3 S154) ─────────────────────────────────────────
+// Step 3 S156 — integration logs, webhook deliveries + DLQ, tickets (were in-memory Maps).
+model IntegrationLog {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  integrationId String    @map("integration_id") @db.Uuid
+  event         String    @db.VarChar(50)
+  status        String    @db.VarChar(20)
+  statusCode    Int?      @map("status_code")
+  errorMessage  String?   @map("error_message")
+  attempt       Int       @default(1)
+  payload       Json
+  responseBody  String?   @map("response_body")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, integrationId, createdAt])
+  @@index([createdAt])
+  @@map("integration_logs")
+}
+
+model IntegrationDelivery {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  integrationId String    @map("integration_id") @db.Uuid
+  event         String    @db.VarChar(50)
+  payload       Json
+  attempts      Int       @default(0)
+  maxAttempts   Int       @map("max_attempts")
+  status        String    @db.VarChar(20)
+  nextRetryAt   DateTime? @map("next_retry_at")
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId, status, createdAt])
+  @@index([status, nextRetryAt])
+  @@map("integration_deliveries")
+}
+
+model IntegrationTicket {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  integrationId String    @map("integration_id") @db.Uuid
+  externalId    String    @map("external_id") @db.VarChar(100)
+  externalUrl   String    @map("external_url")
+  alertId       String    @map("alert_id") @db.VarChar(100)
+  title         String    @db.VarChar(255)
+  status        String    @db.VarChar(50)
+  priority      String    @db.VarChar(20)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId, alertId])
+  @@index([tenantId, integrationId])
+  @@map("integration_tickets")
+}
+
+// Step 3 S157 — integration config + audit records as JSON documents (DECISION-051).
+model IntegrationDoc {
+  id        String   @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  kind      String   @db.VarChar(40)
+  parentId  String?  @map("parent_id") @db.Uuid
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([kind, id])
+  @@index([tenantId, kind, createdAt])
+  @@index([kind, parentId, createdAt])
+  @@map("integration_docs")
+}
+
+// ─── Alerting (Step 3 S154 + S155) ───────────────────────────────────
 // No relation to Tenant on purpose (Tenant model untouched); offboarding purge deletes by tenant_id (S159e).
 // Additive-only from here on: deploy uses `prisma db push`.
 
@@ -1155,4 +1227,178 @@ model AlertMaintenanceWindow {
 
   @@index([tenantId, startAt, endAt])
   @@map("alert_maintenance_windows")
+}
+
+// ─── Alerting (Step 3 S155) ──────────────────────────────────────────
+
+model Alert {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  ruleId             String    @map("rule_id") @db.VarChar(100) // not uuid — global IOC alerts use 'global-ioc-critical'
+  ruleName           String    @db.VarChar(200) @map("rule_name")
+  severity           String    @db.VarChar(20)
+  status             String    @db.VarChar(20)
+  title              String
+  description        String    @default("")
+  source             Json
+  fingerprint        String?   @db.VarChar(16)
+  dedupCount         Int       @default(1) @map("dedup_count")
+  lastSeenAt         DateTime  @default(now()) @map("last_seen_at")
+  acknowledgedBy     String?   @map("acknowledged_by") @db.VarChar(100)
+  acknowledgedAt     DateTime? @map("acknowledged_at")
+  resolvedBy         String?   @map("resolved_by") @db.VarChar(100)
+  resolvedAt         DateTime? @map("resolved_at")
+  suppressedUntil    DateTime? @map("suppressed_until")
+  suppressReason     String?   @map("suppress_reason")
+  escalationLevel    Int       @default(0) @map("escalation_level")
+  escalatedAt        DateTime? @map("escalated_at")
+  escalationPolicyId String?   @map("escalation_policy_id")
+  escalationStep     Int       @default(0) @map("escalation_step")
+  nextEscalationAt   DateTime? @map("next_escalation_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, fingerprint, lastSeenAt])
+  @@index([status, suppressedUntil])
+  @@index([nextEscalationAt])
+  @@map("alerts")
+}
+
+model AlertHistoryEntry {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  alertId    String   @map("alert_id") @db.Uuid
+  action     String   @db.VarChar(50)
+  fromStatus String?  @map("from_status") @db.VarChar(20)
+  toStatus   String   @map("to_status") @db.VarChar(20)
+  actor      String   @db.VarChar(100)
+  reason     String?
+  metadata   Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([alertId, createdAt])
+  @@map("alert_history")
+}
+
+model AlertGroup {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  fingerprint  String   @db.VarChar(16)
+  ruleId       String   @map("rule_id") @db.VarChar(100)
+  severity     String   @db.VarChar(20)
+  title        String
+  alertIds     String[] @map("alert_ids")
+  firstAlertAt DateTime @map("first_alert_at")
+  lastAlertAt  DateTime @map("last_alert_at")
+  status       String   @db.VarChar(10)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId, fingerprint, status])
+  @@map("alert_groups")
+}
+
+// ─── DRP (Step 3 S158) ────────────────────────────────────────────────
+
+model DrpAsset {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  type               String    @db.VarChar(20)
+  value              String    @db.VarChar(500)
+  displayName        String    @map("display_name") @db.VarChar(200)
+  enabled            Boolean   @default(true)
+  scanFrequencyHours Int       @map("scan_frequency_hours")
+  lastScannedAt      DateTime? @map("last_scanned_at")
+  alertCount         Int       @default(0) @map("alert_count")
+  criticality        Float
+  tags               String[]
+  createdBy          String    @map("created_by") @db.VarChar(100)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, type, value])
+  @@index([tenantId, enabled])
+  @@map("drp_assets")
+}
+
+model DrpAlert {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  // Not @db.Uuid — callers routinely pass a raw domain/brand-name string as assetId
+  // (e.g. routes/detection.ts:60 `assetId: input.domain`), not the DrpAsset uuid.
+  assetId           String    @map("asset_id") @db.VarChar(500)
+  type              String    @db.VarChar(30)
+  severity          String    @db.VarChar(20)
+  status            String    @db.VarChar(20)
+  title             String
+  description       String    @default("")
+  evidence          Json
+  confidence        Float
+  confidenceReasons Json      @map("confidence_reasons")
+  signalIds         String[]  @map("signal_ids")
+  assignedTo        String?   @map("assigned_to") @db.VarChar(100)
+  triageNotes       String    @default("") @map("triage_notes")
+  tags              String[]
+  detectedValue     String    @map("detected_value")
+  sourceUrl         String?   @map("source_url")
+  resolvedAt        DateTime? @map("resolved_at")
+  // Replace the old in-memory aiEnrichments/evidenceChains Maps (Step 3 S158)
+  aiEnrichment      Json?     @map("ai_enrichment")
+  evidenceChain     Json?     @map("evidence_chain")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, assetId])
+  @@index([tenantId, type])
+  @@map("drp_alerts")
+}
+
+model DrpScan {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  // Not @db.Uuid — can be a domain, a brand name, or a comma-joined batch of domains.
+  assetId       String    @map("asset_id")
+  scanType      String    @map("scan_type") @db.VarChar(30)
+  status        String    @db.VarChar(20)
+  findingsCount Int       @map("findings_count")
+  alertsCreated Int       @map("alerts_created")
+  startedAt     DateTime  @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  durationMs    Int       @map("duration_ms")
+
+  @@index([tenantId, assetId, startedAt])
+  @@map("drp_scans")
+}
+
+model DrpTakedown {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  alertId       String   @map("alert_id") @db.Uuid
+  platform      String   @db.VarChar(20)
+  status        String   @db.VarChar(20)
+  subject       String
+  body          String
+  contactName   String   @map("contact_name") @db.VarChar(200)
+  contactEmail  String   @map("contact_email") @db.VarChar(320)
+  evidence      Json
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId, alertId])
+  @@map("drp_takedowns")
+}
+
+model DrpAlertFeedback {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  alertId   String   @map("alert_id") @db.Uuid
+  verdict   String   @db.VarChar(20)
+  reason    String   @default("")
+  userId    String   @map("user_id") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, alertId])
+  @@map("drp_alert_feedback")
 }

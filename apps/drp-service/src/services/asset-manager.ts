@@ -26,7 +26,7 @@ export class AssetManager {
   }
 
   /** Create a new monitored asset. */
-  create(
+  async create(
     tenantId: string,
     userId: string,
     input: {
@@ -37,9 +37,9 @@ export class AssetManager {
       scanFrequencyHours?: number;
       tags?: string[];
     },
-  ): MonitoredAsset {
-    const tenantAssets = this.store.getTenantAssets(tenantId);
-    if (tenantAssets.size >= this.config.maxAssetsPerTenant) {
+  ): Promise<MonitoredAsset> {
+    const tenantAssetCount = await this.store.countAssets(tenantId);
+    if (tenantAssetCount >= this.config.maxAssetsPerTenant) {
       throw new AppError(
         429,
         `Maximum assets per tenant (${this.config.maxAssetsPerTenant}) reached`,
@@ -54,7 +54,8 @@ export class AssetManager {
     }
 
     // Check for duplicate
-    for (const existing of tenantAssets.values()) {
+    const tenantAssets = await this.store.listAllAssets(tenantId);
+    for (const existing of tenantAssets) {
       if (existing.type === input.type && existing.value === normalizedValue) {
         throw new AppError(409, `Asset already exists: ${normalizedValue}`, 'ASSET_DUPLICATE');
       }
@@ -78,19 +79,19 @@ export class AssetManager {
       updatedAt: now,
     };
 
-    this.store.setAsset(tenantId, asset);
+    await this.store.setAsset(tenantId, asset);
     return asset;
   }
 
   /** Get an asset by ID or throw 404. */
-  get(tenantId: string, assetId: string): MonitoredAsset {
-    const asset = this.store.getAsset(tenantId, assetId);
+  async get(tenantId: string, assetId: string): Promise<MonitoredAsset> {
+    const asset = await this.store.getAsset(tenantId, assetId);
     if (!asset) throw new AppError(404, 'Asset not found', 'ASSET_NOT_FOUND');
     return asset;
   }
 
   /** Update an existing asset. */
-  update(
+  async update(
     tenantId: string,
     assetId: string,
     updates: {
@@ -100,8 +101,8 @@ export class AssetManager {
       scanFrequencyHours?: number;
       tags?: string[];
     },
-  ): MonitoredAsset {
-    const asset = this.get(tenantId, assetId);
+  ): Promise<MonitoredAsset> {
+    const asset = await this.get(tenantId, assetId);
     const updated: MonitoredAsset = {
       ...asset,
       ...(updates.displayName !== undefined && { displayName: updates.displayName }),
@@ -111,36 +112,36 @@ export class AssetManager {
       ...(updates.tags !== undefined && { tags: updates.tags }),
       updatedAt: new Date().toISOString(),
     };
-    this.store.setAsset(tenantId, updated);
+    await this.store.setAsset(tenantId, updated);
     return updated;
   }
 
   /** Delete an asset. */
-  delete(tenantId: string, assetId: string): void {
-    const exists = this.store.getAsset(tenantId, assetId);
+  async delete(tenantId: string, assetId: string): Promise<void> {
+    const exists = await this.store.getAsset(tenantId, assetId);
     if (!exists) throw new AppError(404, 'Asset not found', 'ASSET_NOT_FOUND');
-    this.store.deleteAsset(tenantId, assetId);
+    await this.store.deleteAsset(tenantId, assetId);
   }
 
   /** List assets with pagination and optional type filter. */
-  list(
+  async list(
     tenantId: string,
     page: number,
     limit: number,
     type?: string,
-  ): { data: MonitoredAsset[]; total: number; page: number; limit: number } {
+  ): Promise<{ data: MonitoredAsset[]; total: number; page: number; limit: number }> {
     return this.store.listAssets(tenantId, page, limit, type);
   }
 
   /** Get asset statistics. */
-  getStats(tenantId: string): {
+  async getStats(tenantId: string): Promise<{
     total: number;
     byType: Record<string, number>;
     enabled: number;
     disabled: number;
     totalAlerts: number;
-  } {
-    const assets = Array.from(this.store.getTenantAssets(tenantId).values());
+  }> {
+    const assets = await this.store.listAllAssets(tenantId);
     const byType: Record<string, number> = {};
     let enabled = 0;
     let disabled = 0;
@@ -155,19 +156,19 @@ export class AssetManager {
   }
 
   /** Mark asset as scanned now. */
-  markScanned(tenantId: string, assetId: string): void {
-    const asset = this.get(tenantId, assetId);
+  async markScanned(tenantId: string, assetId: string): Promise<void> {
+    const asset = await this.get(tenantId, assetId);
     asset.lastScannedAt = new Date().toISOString();
     asset.updatedAt = asset.lastScannedAt;
-    this.store.setAsset(tenantId, asset);
+    await this.store.setAsset(tenantId, asset);
   }
 
   /** Increment alert count for an asset. */
-  incrementAlertCount(tenantId: string, assetId: string): void {
-    const asset = this.store.getAsset(tenantId, assetId);
+  async incrementAlertCount(tenantId: string, assetId: string): Promise<void> {
+    const asset = await this.store.getAsset(tenantId, assetId);
     if (asset) {
       asset.alertCount++;
-      this.store.setAsset(tenantId, asset);
+      await this.store.setAsset(tenantId, asset);
     }
   }
 

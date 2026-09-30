@@ -25,14 +25,14 @@ export class AIAlertEnricher {
   }
 
   /** Enrich an alert with AI-derived hosting, contacts, and actions. */
-  enrich(tenantId: string, alert: DRPAlert, forceRefresh: boolean): AIEnrichmentResult {
+  async enrich(tenantId: string, alert: DRPAlert, forceRefresh: boolean): Promise<AIEnrichmentResult> {
     if (!this.config.enabled) {
       throw new AppError(503, 'AI enrichment is disabled', 'AI_DISABLED');
     }
 
     // Check cache
     if (!forceRefresh) {
-      const cached = this.store.getAIEnrichment(tenantId, alert.id);
+      const cached = await this.store.getAIEnrichment(tenantId, alert.id);
       if (cached) return { ...cached, cached: true };
     }
 
@@ -48,7 +48,7 @@ export class AIAlertEnricher {
     this.dailyCalls++;
 
     // Cache result
-    this.store.setAIEnrichment(tenantId, alert.id, result);
+    await this.store.setAIEnrichment(tenantId, alert.id, result);
     return result;
   }
 

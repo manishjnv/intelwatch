@@ -55,7 +55,7 @@ export function detectionRoutes(deps: DetectionRouteDeps) {
         let alertsCreated = 0;
         const riskyCandiates = candidates.filter((c) => c.riskScore >= 0.4 && c.isRegistered);
         for (const candidate of riskyCandiates) {
-          const alert = alertManager.create(user.tenantId, {
+          const alert = await alertManager.create(user.tenantId, {
             assetId: input.domain,
             type: 'typosquatting',
             title: `Typosquat detected: ${candidate.domain} (${candidate.method})`,
@@ -78,7 +78,7 @@ export function detectionRoutes(deps: DetectionRouteDeps) {
         }
 
         const scan = createScanResult(user.tenantId, input.domain, 'typosquatting', candidates.length, alertsCreated, startTime);
-        store.setScan(user.tenantId, scan);
+        await store.setScan(user.tenantId, scan);
 
         return reply.send({
           data: {
@@ -108,12 +108,12 @@ export function detectionRoutes(deps: DetectionRouteDeps) {
 
         let alertsCreated = 0;
         for (const alertInput of alertInputs) {
-          const alert = alertManager.create(user.tenantId, alertInput);
+          const alert = await alertManager.create(user.tenantId, alertInput);
           if (alert) alertsCreated++;
         }
 
         const scan = createScanResult(user.tenantId, input.keywords.join(','), 'dark_web_mention', mentions.length, alertsCreated, startTime);
-        store.setScan(user.tenantId, scan);
+        await store.setScan(user.tenantId, scan);
 
         return reply.send({
           data: {
@@ -145,12 +145,12 @@ export function detectionRoutes(deps: DetectionRouteDeps) {
 
         let alertsCreated = 0;
         for (const alertInput of alertInputs) {
-          const alert = alertManager.create(user.tenantId, alertInput);
+          const alert = await alertManager.create(user.tenantId, alertInput);
           if (alert) alertsCreated++;
         }
 
         const scan = createScanResult(user.tenantId, input.emailDomain, 'credential_leak', leaks.length, alertsCreated, startTime);
-        store.setScan(user.tenantId, scan);
+        await store.setScan(user.tenantId, scan);
 
         return reply.send({
           data: {
@@ -184,15 +184,16 @@ export function detectionRoutes(deps: DetectionRouteDeps) {
 
         let alertsCreated = 0;
         for (const alertInput of alertInputs) {
-          const alert = alertManager.create(user.tenantId, alertInput);
+          const alert = await alertManager.create(user.tenantId, alertInput);
           if (alert) alertsCreated++;
         }
 
         const scan = createScanResult(user.tenantId, input.domain, 'exposed_service', result.services.length, alertsCreated, startTime);
-        store.setScan(user.tenantId, scan);
+        await store.setScan(user.tenantId, scan);
 
         // Push to graph if enabled
-        const alerts = Array.from(store.getTenantAlerts(user.tenantId).values())
+        const allTenantAlerts = await store.listAllAlerts(user.tenantId);
+        const alerts = allTenantAlerts
           .filter((a) => a.type === 'exposed_service')
           .slice(-alertsCreated);
         if (alerts.length > 0) {
@@ -223,7 +224,7 @@ export function detectionRoutes(deps: DetectionRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { scanId } = req.params as { scanId: string };
-        const scan = store.getScan(user.tenantId, scanId);
+        const scan = await store.getScan(user.tenantId, scanId);
         if (!scan) {
           return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Scan not found' } });
         }

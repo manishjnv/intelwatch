@@ -1,11 +1,11 @@
 import { Worker, Queue, type Job } from 'bullmq';
+import { AppError } from '@etip/shared-utils';
 import { QUEUES } from '@etip/shared-utils';
 import type { RuleStore } from '../services/rule-store.js';
-import type { AlertStore, CreateAlertInput } from '../services/alert-store.js';
+import { alertFingerprint, type AlertStore, type CreateAlertInput } from '../services/alert-store.js';
 import type { ChannelStore } from '../services/channel-store.js';
 import type { RuleEngine, EvaluationEvent } from '../services/rule-engine.js';
 import type { Notifier } from '../services/notifier.js';
-import type { DedupStore } from '../services/dedup-store.js';
 import type { AlertHistory } from '../services/alert-history.js';
 import type { EscalationDispatcher } from '../services/escalation-dispatcher.js';
 import type { AlertGroupStore } from '../services/alert-group-store.js';
@@ -18,7 +18,6 @@ export interface AlertWorkerDeps {
   channelStore: ChannelStore;
   ruleEngine: RuleEngine;
   notifier: Notifier;
-  dedupStore: DedupStore;
   alertHistory: AlertHistory;
   escalationDispatcher: EscalationDispatcher;
   alertGroupStore: AlertGroupStore;
@@ -41,6 +40,10 @@ interface AlertEvaluatePayload {
  * BullMQ worker that processes alert evaluation jobs.
  * Listens on QUEUES.ALERT_EVALUATE, pushes events into the rule engine,
  * evaluates all enabled rules, and creates alerts + notifications for triggered rules.
+ *
+ * Step 3 S155: no `prefix: 'etip'` — the correlation-engine and normalization producers
+ * add jobs with BullMQ's default 'bull' prefix, so a worker on the 'etip' prefix never
+ * received them. This was a live wiring bug; removing it makes the queue actually flow.
  */
 export class AlertWorker {
   private worker: Worker | null = null;
@@ -53,7 +56,6 @@ export class AlertWorker {
     const redisOpts = this.parseRedisUrl(deps.redisUrl);
     this.queue = new Queue(QUEUES.ALERT_EVALUATE, {
       connection: redisOpts,
-      prefix: 'etip',
     });
 
     // Downstream: INTEGRATION_PUSH queue
@@ -77,7 +79,6 @@ export class AlertWorker {
       },
       {
         connection: redisOpts,
-        prefix: 'etip',
         concurrency: 5,
       },
     );
@@ -107,58 +108,62 @@ export class AlertWorker {
     const logger = getLogger();
     const payload = job.data;
 
-    // 1. Push event into rule engine buffer
-    const event: EvaluationEvent = {
-      tenantId: payload.tenantId,
-      eventType: payload.eventType,
-      metric: payload.metric,
-      value: payload.value,
-      field: payload.field,
-      fieldValue: payload.fieldValue,
-      timestamp: new Date().toISOString(),
-      source: payload.source,
-    };
-    this.deps.ruleEngine.pushEvent(event);
+    if (!payload || typeof payload.tenantId !== 'string' || payload.tenantId.length === 0
+      || typeof payload.eventType !== 'string' || payload.eventType.length === 0) {
+      logger.warn({ jobId: job.id }, 'Skipping malformed alert-evaluate job');
+      return;
+    }
 
-    // 2. Get all enabled rules for this tenant
-    const rules = await this.deps.ruleStore.getEnabledRules(payload.tenantId);
-
-    // 3. Evaluate each rule (skip if in maintenance window)
-    for (const rule of rules) {
-      if (await this.deps.ruleStore.isInCooldown(rule.id)) continue;
-      if (await this.deps.maintenanceStore.isRuleSuppressed(payload.tenantId, rule.id)) continue;
-
-      const result = this.deps.ruleEngine.evaluate(rule);
-      if (!result.triggered) continue;
-
-      // 4. Dedup check — skip if duplicate within window
-      const fingerprint = this.deps.dedupStore.fingerprint(rule.id, rule.severity, payload.source);
-      const dedupResult = this.deps.dedupStore.check(fingerprint);
-      if (dedupResult) {
-        // Duplicate — increment count but don't create new alert
-        this.deps.dedupStore.record(fingerprint, dedupResult.alertId, rule.id);
-        logger.debug({ ruleId: rule.id, fingerprint, count: dedupResult.count + 1 }, 'Alert deduplicated');
-        continue;
-      }
-
-      // 5. Create alert
-      const alertInput: CreateAlertInput = {
-        ruleId: rule.id,
-        ruleName: rule.name,
-        tenantId: rule.tenantId,
-        severity: rule.severity,
-        title: `[${rule.severity.toUpperCase()}] ${rule.name}`,
-        description: result.reason,
+    // A retry already pushed this event into the buffer — don't double-count it.
+    if (job.attemptsMade === 0) {
+      const event: EvaluationEvent = {
+        tenantId: payload.tenantId,
+        eventType: payload.eventType,
+        metric: payload.metric,
+        value: payload.value,
+        field: payload.field,
+        fieldValue: payload.fieldValue,
+        timestamp: new Date(job.timestamp || Date.now()).toISOString(),
         source: payload.source,
       };
+      this.deps.ruleEngine.pushEvent(event);
+    }
 
+    const rules = await this.deps.ruleStore.getEnabledRules(payload.tenantId);
+
+    for (const rule of rules) {
       try {
-        const alert = this.deps.alertStore.create(alertInput);
-        await this.deps.ruleStore.markTriggered(rule.id);
-        this.deps.dedupStore.record(fingerprint, alert.id, rule.id);
+        if (await this.deps.ruleStore.isInCooldown(rule.id)) continue;
+        if (await this.deps.maintenanceStore.isRuleSuppressed(payload.tenantId, rule.id)) continue;
 
-        // Record creation in history
-        this.deps.alertHistory.record({
+        const result = this.deps.ruleEngine.evaluate(rule);
+        if (!result.triggered) continue;
+
+        const fingerprint = alertFingerprint(rule.id, rule.severity, payload.source);
+        const dup = await this.deps.alertStore.findDuplicate(rule.tenantId, fingerprint);
+        if (dup) {
+          // A retry must not double-count a duplicate it already recorded.
+          if (job.attemptsMade === 0) await this.deps.alertStore.recordDuplicate(dup.id);
+          logger.debug({ ruleId: rule.id, fingerprint, alertId: dup.id }, 'Alert deduplicated');
+          continue;
+        }
+
+        const alertInput: CreateAlertInput = {
+          ruleId: rule.id,
+          ruleName: rule.name,
+          tenantId: rule.tenantId,
+          severity: rule.severity,
+          title: `[${rule.severity.toUpperCase()}] ${rule.name}`,
+          description: result.reason,
+          source: payload.source,
+          fingerprint,
+        };
+
+        const alert = await this.deps.alertStore.create(alertInput);
+        await this.deps.ruleStore.markTriggered(rule.id);
+
+        await this.deps.alertHistory.record({
+          tenantId: rule.tenantId,
           alertId: alert.id,
           action: 'created',
           fromStatus: null,
@@ -168,8 +173,7 @@ export class AlertWorker {
           metadata: { ruleId: rule.id, fingerprint },
         });
 
-        // Add alert to group
-        const groupResult = this.deps.alertGroupStore.addAlert({
+        const groupResult = await this.deps.alertGroupStore.addAlert({
           alertId: alert.id,
           ruleId: rule.id,
           tenantId: rule.tenantId,
@@ -185,12 +189,10 @@ export class AlertWorker {
           'Alert created from rule trigger',
         );
 
-        // 6. Track for escalation if rule has an escalation policy
         if (rule.escalationPolicyId) {
-          await this.deps.escalationDispatcher.track(alert.id, rule.escalationPolicyId);
+          await this.deps.escalationDispatcher.track(alert.id, rule.escalationPolicyId, rule.tenantId);
         }
 
-        // 7. Send notifications
         if (rule.channelIds.length > 0) {
           const channels = await this.deps.channelStore.getByIds(rule.channelIds, rule.tenantId);
           const results = await this.deps.notifier.notifyAll(channels, alert);
@@ -200,7 +202,6 @@ export class AlertWorker {
           }
         }
 
-        // 8. Push to integration service (fire-and-forget)
         // Shape must match IntegrationPushJob: { tenantId, event, payload }
         if (this.integrationQueue) {
           this.integrationQueue.add('integration-push', {
@@ -217,6 +218,8 @@ export class AlertWorker {
           }).catch((err) => logger.warn({ err: (err as Error).message, alertId: alert.id }, 'Failed to enqueue INTEGRATION_PUSH'));
         }
       } catch (err) {
+        // A down DB must fail (and retry) the whole job — Postgres dedup makes the retry safe.
+        if (err instanceof AppError && err.code === 'DB_UNAVAILABLE') throw err;
         logger.error({ ruleId: rule.id, err }, 'Failed to create alert for triggered rule');
       }
     }
@@ -235,10 +238,16 @@ export class AlertWorker {
     }
   }
 
-  private parseRedisUrl(url: string): { host: string; port: number } {
+  /** S177: the password was dropped here, so every BullMQ connection failed with NOAUTH in production (RCA #66). */
+  private parseRedisUrl(url: string): { host: string; port: number; password?: string; db?: number } {
     try {
       const parsed = new URL(url);
-      return { host: parsed.hostname || 'localhost', port: parseInt(parsed.port, 10) || 6379 };
+      return {
+        host: parsed.hostname || 'localhost',
+        port: parseInt(parsed.port, 10) || 6379,
+        password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+        db: parseInt(parsed.pathname.slice(1), 10) || 0,
+      };
     } catch {
       return { host: 'localhost', port: 6379 };
     }

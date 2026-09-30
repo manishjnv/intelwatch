@@ -23,9 +23,16 @@ export interface EventListenerDeps {
   concurrency?: number;
 }
 
+/** Events older than this are skipped: the caches they target have expired on their own TTLs. */
+const STALE_EVENT_MS = 60 * 60_000;
+
 /**
  * BullMQ worker listening on QUEUES.CACHE_INVALIDATE.
  * Forwards events to CacheInvalidator for debounced batch invalidation.
+ *
+ * S177 (RCA #66): this worker never connected in production — the Redis password was dropped
+ * (NOAUTH) and it used prefix 'etip' while the producer (ai-enrichment) uses BullMQ's default
+ * 'bull' prefix — so ~550k jobs piled up. Stale ones are skipped and finished jobs are trimmed.
  */
 export class EventListenerWorker {
   private worker: Worker | null = null;
@@ -48,14 +55,16 @@ export class EventListenerWorker {
           logger.warn({ jobId: job.id }, 'Invalid cache invalidation payload — missing tenantId or eventType');
           return;
         }
+        if (job.timestamp && Date.now() - job.timestamp > STALE_EVENT_MS) return;
         this.deps.cacheInvalidator.recordEvent(eventType, tenantId, {
           severity: job.data.severity,
         });
       },
       {
         connection: redisOpts,
-        prefix: 'etip',
         concurrency: this.deps.concurrency ?? 10,
+        removeOnComplete: { count: 1000 },
+        removeOnFail: { count: 1000 },
       },
     );
 
@@ -80,11 +89,12 @@ export class EventListenerWorker {
   }
 
   /** Parse Redis URL to ioredis connection options. */
-  private parseRedisUrl(url: string): { host: string; port: number; db?: number } {
+  private parseRedisUrl(url: string): { host: string; port: number; password?: string; db?: number } {
     const parsed = new URL(url);
     return {
       host: parsed.hostname,
       port: parseInt(parsed.port || '6379', 10),
+      password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
       db: parsed.pathname.length > 1 ? parseInt(parsed.pathname.slice(1), 10) : undefined,
     };
   }

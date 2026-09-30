@@ -1,6 +1,8 @@
 import { loadConfig } from './config.js';
 import { initLogger, getLogger } from './logger.js';
 import { DRPStore } from './schemas/store.js';
+import { prisma, disconnectPrisma } from './prisma.js';
+import { createPrismaDrpRepo } from './repository-prisma-alerts.js';
 import { AssetManager } from './services/asset-manager.js';
 import { AlertManager } from './services/alert-manager.js';
 import { TyposquatDetector } from './services/typosquat-detector.js';
@@ -40,8 +42,16 @@ async function main(): Promise<void> {
   loadJwtConfig(process.env as Record<string, string | undefined>);
   loadServiceJwtSecret(process.env as Record<string, string | undefined>);
 
-  // In-memory store (DECISION-013)
-  const store = new DRPStore();
+  // Step 3 S158: Postgres-backed store when TI_DATABASE_URL is set, else in-memory (dev only)
+  let store: DRPStore;
+  if (config.TI_DATABASE_URL) {
+    await prisma.$connect();
+    store = new DRPStore(createPrismaDrpRepo(prisma));
+    logger.info('DRP persistence: Postgres');
+  } else {
+    store = new DRPStore();
+    logger.warn('DRP persistence: memory (dev only, data lost on restart)');
+  }
 
   // P0 improvement services
   const confidenceScorer = new ConfidenceScorer();
@@ -142,6 +152,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down DRP service');
     await app.close();
+    if (config.TI_DATABASE_URL) await disconnectPrisma();
     process.exit(0);
   };
   process.on('SIGINT', () => shutdown('SIGINT'));

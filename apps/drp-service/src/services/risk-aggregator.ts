@@ -29,11 +29,11 @@ export class RiskAggregator {
   }
 
   /** Calculate composite risk score for an asset. */
-  calculate(tenantId: string, assetId: string): AssetRiskScore {
-    const asset = this.store.getAsset(tenantId, assetId);
+  async calculate(tenantId: string, assetId: string): Promise<AssetRiskScore> {
+    const asset = await this.store.getAsset(tenantId, assetId);
     if (!asset) throw new AppError(404, 'Asset not found', 'ASSET_NOT_FOUND');
 
-    const alerts = this.store.getAlertsByAsset(tenantId, assetId);
+    const alerts = await this.store.getAlertsByAsset(tenantId, assetId);
     const openAlerts = alerts.filter((a) => a.status === 'open' || a.status === 'investigating');
 
     const componentScores = this.computeComponentScores(openAlerts);
@@ -58,9 +58,9 @@ export class RiskAggregator {
   }
 
   /** Calculate risk for all assets in tenant. */
-  calculateAll(tenantId: string): AssetRiskScore[] {
-    const assets = Array.from(this.store.getTenantAssets(tenantId).values());
-    return assets.map((a) => this.calculate(tenantId, a.id));
+  async calculateAll(tenantId: string): Promise<AssetRiskScore[]> {
+    const assets = await this.store.listAllAssets(tenantId);
+    return Promise.all(assets.map((a) => this.calculate(tenantId, a.id)));
   }
 
   /** Compute per-type component scores from open alerts. */

@@ -1,6 +1,6 @@
 # Step 3 — No business data in memory (Phase 1, S154–S159)
 
-**Written:** 2026-09-25. **Status:** spec, not started — **unblocked 2026-09-29: owner accepted D1–D7 as recommended (DECISION-049); next functional work per DECISION-050.** Session labels S154–S159 below are the original plan numbers (those numbers were used by other sessions); run the rows in order from S175. Re-verify §3 against current code first (S168 added an `integrations` table). **S175 (2026-09-29): row 154-0 done — deploy ordering and D1 were already live (see docs/S175_STEP3_OPS_PREREQ.md); D4 archive off + CI guard added.** **Parent:** docs/ROADMAP_S149_PLUS.md §3 step 3, §4 Phase 1. **Follows:** DECISION-027 (Postgres for business entities, Redis JSON for config, memory only for caches). It ends DECISION-013 for the modules below. DECISION-022 (correlation-engine in memory + Redis checkpoint) stays, but depends on decision D1.
+**Written:** 2026-09-25. **Status:** spec, not started — **unblocked 2026-09-29: owner accepted D1–D7 as recommended (DECISION-049); next functional work per DECISION-050.** Session labels S154–S159 below are the original plan numbers (those numbers were used by other sessions); run the rows in order from S175. Re-verify §3 against current code first (S168 added an `integrations` table). **S175 (2026-09-29): row 154-0 done — deploy ordering and D1 were already live (see docs/S175_STEP3_OPS_PREREQ.md); D4 archive off + CI guard added.** **S177 (2026-09-30): rows 155, 156, 157, 158a, 158b done in one PR (see docs/S177_STEP3_PERSISTENCE_S155_S158.md).** **Parent:** docs/ROADMAP_S149_PLUS.md §3 step 3, §4 Phase 1. **Follows:** DECISION-027 (Postgres for business entities, Redis JSON for config, memory only for caches). It ends DECISION-013 for the modules below. DECISION-022 (correlation-engine in memory + Redis checkpoint) stays, but depends on decision D1.
 
 ---
 
@@ -56,6 +56,8 @@ Legend: **PG** = Postgres table · **RJ** = Redis JSON (config/state) · **MEM**
 Wiring: all created with `new` and no repo at `src/index.ts:31–41`. Store calls appear in 13 files (routes, worker, dispatcher, handler).
 
 **integration-service** (no DB today, stores are synchronous)
+
+Integrations themselves (the `Integration` records — SIEM/webhook/ticketing config, encrypted secrets) were already persisted by S166/S168 (table `integrations`, `enc:v1:`-encrypted secrets, masked in the API) before this section's S156 work; S156 covers the remaining stores below (logs, deliveries).
 
 | Store | File:line | What it holds | Class |
 |---|---|---|---|
@@ -214,6 +216,8 @@ There is no stored data to re-encrypt: today's data is lost on every restart any
 If D1 = **yes** (Redis `noeviction`): one `RedisJsonStore` per store with `ttlDays: 3650`, keys `etip:hunting:sessions`, `…:templates`, `…:leads`, `…:hypotheses`, `…:evidence`, `…:collab`, `…:playbook-runs`. `restore()` in `src/index.ts` before `listen`; `scheduleCheckpoint()` after each write in the 5 files above. Add `@etip/shared-persistence` to `package.json`.
 If D1 = **no**: Postgres like DRP (5 models: HuntSession, HuntTemplate, HuntEvidence, HuntComment, HuntHypothesis) — then this is L → 2.
 
+**Do not use `RedisJsonStore` as-is** — see DECISION-051 (S177): `restore()` swallows Redis errors and starts empty (next debounced save overwrites every tenant's data under that key), and `close()` drops up to 5 s of pending writes on every deploy. Use Postgres (the `integration_docs` generic-table pattern from S157) or fix the helper first.
+
 ### 5.5 Small ones (one S session each)
 
 | Module | Files | Change |
@@ -362,11 +366,11 @@ bash scripts/check-memory-stores.sh && echo OK
 |---|---|---|---|
 | 154-0 | ops | Deploy: schema push before app recreate, fail on push failure. Add guard + baseline | S ✅ S175 |
 | 154 | alerting-service | Models (4 of 7) + rules, channels (encrypted), escalations, maintenance → Postgres | L (≈12 files) ✅ S176, PR #68 |
-| 155 | alerting-service | Alerts, history, groups, dedup, dispatcher, worker → Postgres + models Alert, AlertHistoryEntry, AlertGroup | L (≈10 files) |
-| 156 | integration-service 🔒 | Models (6) + integrations, logs; encryption fixes; masking; compose key | L |
-| 157 | integration-service | Deliveries/DLQ, tickets, export schedules/runs, rotation, audit; Redis JSON for routing/mapping/templates | L |
-| 158a | drp-service | Models (5) + assets, alerts, scans | L |
-| 158b | drp-service | Takedowns, evidence, feedback, AI enrichment, export, bulk triage | M |
+| 155 | alerting-service | Alerts, history, groups, dedup, dispatcher, worker → Postgres + models Alert, AlertHistoryEntry, AlertGroup | L (≈10 files) ✅ S177 |
+| 156 | integration-service 🔒 | Models (6) + integrations, logs; encryption fixes; masking; compose key | L ✅ S177 |
+| 157 | integration-service | Deliveries/DLQ, tickets, export schedules/runs, rotation, audit; Redis JSON for routing/mapping/templates | L ✅ S177 (one generic `integration_docs` table, DECISION-051, instead of Redis JSON) |
+| 158a | drp-service | Models (5) + assets, alerts, scans | L ✅ S177 |
+| 158b | drp-service | Takedowns, evidence, feedback, AI enrichment, export, bulk triage | M ✅ S177 |
 | 159 | hunting-service | Redis JSON (D1 yes) or Postgres (D1 no) | M (or L) |
 | 159b | caching-service | Stop fake archive; rebuild index from MinIO | S |
 | 159c | analytics-service | Tenant-keyed trends (bug) + persistence | S |
@@ -386,7 +390,7 @@ bash scripts/check-memory-stores.sh && echo OK
 | D2 | Each migration session edits the shared `prisma/schema.prisma`. Allow that inside a module session (billing did)? | Yes, only additive models for that module |
 | D3 | On DB error: fail with 503 (recommended) or keep billing's silent fallback? | Fail. Later, fix billing the same way |
 | D4 | The caching archive writes fake records every night. Turn it off until it archives real data? | Yes, `TI_ARCHIVE_ENABLED=false` |
-| D5 | Is `StixCollectionStore` (integration) the data behind the public TAXII 2.1 server? | Check in S157; if yes, Postgres |
+| D5 | Is `StixCollectionStore` (integration) the data behind the public TAXII 2.1 server? | Check in S157; if yes, Postgres — **Answer (S177): No — the public TAXII 2.1 server (`apps/api-gateway/src/routes/public/taxii.ts`) builds virtual collections from IOCs in Postgres; `StixCollectionStore` is a separate admin feature, now persisted in `integration_docs`.** |
 | D6 | Add backlog items (reporting, customization, user-management) as Phase 1b before step 4, or after? | Reporting before step 4 (user-visible loss). Others after |
 | D7 | Users must re-enter integration credentials once after S156. OK? | Yes; nothing survives today anyway |
 
