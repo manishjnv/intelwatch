@@ -85,7 +85,7 @@ describe('WebhookService', () => {
       expect(safeFetch).toHaveBeenCalledTimes(3); // 3 max attempts
 
       // Verify DLQ
-      const dlq = store.listDLQ('tenant-1', { page: 1, limit: 50 });
+      const dlq = await store.listDLQ('tenant-1', { page: 1, limit: 50 });
       expect(dlq.total).toBe(1);
       expect(dlq.data[0].status).toBe('dead_letter');
     });
@@ -101,7 +101,7 @@ describe('WebhookService', () => {
       );
 
       // Should have retry log + success log
-      const logs = store.listLogs('int-1', 'tenant-1', { page: 1, limit: 50 });
+      const logs = await store.listLogs('int-1', 'tenant-1', { page: 1, limit: 50 });
       expect(logs.total).toBe(2);
     });
 

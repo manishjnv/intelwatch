@@ -53,9 +53,13 @@ describe('Export Routes', () => {
     const fieldMapper = new FieldMapper();
     const ticketingService = new TicketingService(store, fieldMapper);
 
+    const fetchRecords = async (_tenantId: string, _entityType: string, _filters: Record<string, unknown>, _limit: number) => [
+      { id: 'ioc-1', type: 'ip', value: '1.2.3.4', severity: 'high', confidence: 85, createdAt: new Date().toISOString() },
+    ];
+
     app = await buildApp({
       config: TEST_CONFIG,
-      exportDeps: { store, stixExport, bulkExport, ticketingService },
+      exportDeps: { store, stixExport, bulkExport, ticketingService, fetchRecords },
     });
     await app.ready();
   });
@@ -149,6 +153,22 @@ describe('Export Routes', () => {
     expect(res.headers['content-type']).toContain('stix');
     const bundle = JSON.parse(res.body);
     expect(bundle.type).toBe('bundle');
+  });
+
+  // Step 3 S157 / DECISION-048 — exports must come from the injected fetcher, never fabricated data.
+  it('POST /export and the TAXII objects route never return fabricated demo IOCs', async () => {
+    const exportRes = await app.inject({
+      method: 'POST', url: '/api/v1/integrations/export', headers: AUTH,
+      payload: { format: 'json', entityType: 'iocs' },
+    });
+    const taxiiRes = await app.inject({
+      method: 'GET', url: '/api/v1/integrations/taxii/collections/etip-iocs-tenant-1/objects', headers: AUTH,
+    });
+    for (const needle of ['example.com', '185.220.101.34', '10.0.0.1', 'demo-']) {
+      expect(exportRes.body).not.toContain(needle);
+      expect(taxiiRes.body).not.toContain(needle);
+    }
+    expect(JSON.parse(exportRes.body).data[0].id).toBe('ioc-1'); // came from the fake fetcher, not a demo array
   });
 
   it('POST /export — 401 without auth', async () => {

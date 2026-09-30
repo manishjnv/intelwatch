@@ -3,8 +3,16 @@ import { AppError } from '@etip/shared-utils';
 import type { WebhookRetryConfig, RetryState, TriggerEvent } from '../schemas/integration.js';
 import type { IntegrationStore } from './integration-store.js';
 import type { WebhookService } from './webhook-service.js';
+import type { DocRepo } from './doc-repo.js';
+import { MemoryDocRepo } from './doc-repo.js';
 import { getLogger } from '../logger.js';
 import { safeFetch } from '../utils/safe-fetch.js';
+
+/** Persisted retry config doc, keyed by integration id (Step 3 S157, kind `webhook_retry_config`). */
+interface RetryConfigDoc extends WebhookRetryConfig {
+  id: string; // = integration id
+  tenantId: string;
+}
 
 /**
  * P1 #6: Enhanced webhook retry engine with configurable exponential backoff,
@@ -12,8 +20,7 @@ import { safeFetch } from '../utils/safe-fetch.js';
  * Wraps WebhookService with per-integration retry configuration.
  */
 export class WebhookRetryEngine {
-  private readonly retryConfigs = new Map<string, WebhookRetryConfig>();
-  private readonly retryStats = new Map<string, {
+  private readonly retryStats = new Map<string, { // memory-ok: derived counters, rebuilt from delivery/log history if lost
     totalAttempts: number;
     successfulRetries: number;
     failedRetries: number;
@@ -26,6 +33,7 @@ export class WebhookRetryEngine {
     private readonly store: IntegrationStore,
     _webhookService: WebhookService,
     defaults: { maxRetries: number; baseDelayMs: number; maxDelayMs: number },
+    private readonly configs: DocRepo<RetryConfigDoc> = new MemoryDocRepo<RetryConfigDoc>(),
   ) {
     this.defaultConfig = {
       maxRetries: defaults.maxRetries,
@@ -36,26 +44,28 @@ export class WebhookRetryEngine {
   }
 
   /** Get retry config for an integration. Returns default if none set. */
-  getRetryConfig(integrationId: string): WebhookRetryConfig {
-    return this.retryConfigs.get(integrationId) ?? { ...this.defaultConfig };
+  async getRetryConfig(integrationId: string, tenantId: string): Promise<WebhookRetryConfig> {
+    const doc = await this.configs.get(integrationId, tenantId);
+    return doc ?? { ...this.defaultConfig };
   }
 
   /** Set custom retry config for an integration. Validates constraints. */
-  setRetryConfig(integrationId: string, config: Partial<WebhookRetryConfig>): WebhookRetryConfig {
-    const merged: WebhookRetryConfig = {
-      ...this.defaultConfig,
-      ...this.retryConfigs.get(integrationId),
-      ...config,
-    };
+  async setRetryConfig(
+    integrationId: string,
+    tenantId: string,
+    config: Partial<WebhookRetryConfig>,
+  ): Promise<WebhookRetryConfig> {
+    const existing = await this.configs.get(integrationId, tenantId);
+    const merged: WebhookRetryConfig = { ...this.defaultConfig, ...existing, ...config };
     if (merged.baseDelayMs > merged.maxDelayMs) {
       throw new AppError(400, 'baseDelayMs cannot exceed maxDelayMs', 'INVALID_RETRY_CONFIG');
     }
-    this.retryConfigs.set(integrationId, merged);
+    await this.configs.save({ id: integrationId, tenantId, ...merged });
     return merged;
   }
 
   /** Get retry state for an integration (attempts, successes, failures, DLQ count). */
-  getRetryState(integrationId: string): RetryState {
+  async getRetryState(integrationId: string, tenantId: string): Promise<RetryState> {
     const stats = this.retryStats.get(integrationId) ?? {
       totalAttempts: 0,
       successfulRetries: 0,
@@ -66,7 +76,7 @@ export class WebhookRetryEngine {
     return {
       integrationId,
       ...stats,
-      config: this.getRetryConfig(integrationId),
+      config: await this.getRetryConfig(integrationId, tenantId),
     };
   }
 
@@ -83,10 +93,10 @@ export class WebhookRetryEngine {
     payload: Record<string, unknown>,
   ): Promise<{ deliveryId: string; success: boolean; attempts: number; error?: string }> {
     const logger = getLogger();
-    const retryConfig = this.getRetryConfig(integrationId);
+    const retryConfig = await this.getRetryConfig(integrationId, tenantId);
 
     // Create delivery record
-    const delivery = this.store.createDelivery({
+    const delivery = await this.store.createDelivery({
       integrationId,
       tenantId,
       event,
@@ -120,11 +130,11 @@ export class WebhookRetryEngine {
         const result = await this.executeAttempt(webhookConfig, event, payload);
 
         if (result.success) {
-          this.store.updateDelivery(delivery.id, {
+          await this.store.updateDelivery(delivery.id, {
             status: 'success',
             attempts: attempt,
           });
-          this.store.addLog(integrationId, tenantId, event, 'success', {
+          await this.store.addLog(integrationId, tenantId, event, 'success', {
             statusCode: result.statusCode,
             attempt,
             payload,
@@ -141,7 +151,7 @@ export class WebhookRetryEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         logger.warn({ integrationId, deliveryId: delivery.id, attempt, maxRetries: retryConfig.maxRetries, error: errorMsg }, 'Webhook retry attempt failed');
 
-        this.store.updateDelivery(delivery.id, {
+        await this.store.updateDelivery(delivery.id, {
           attempts: attempt,
           lastError: errorMsg,
         });
@@ -150,8 +160,8 @@ export class WebhookRetryEngine {
           // Exhausted — move to DLQ
           stats.failedRetries++;
           stats.dlqCount++;
-          this.store.moveToDLQ(delivery.id);
-          this.store.addLog(integrationId, tenantId, event, 'dead_letter', {
+          await this.store.moveToDLQ(delivery.id);
+          await this.store.addLog(integrationId, tenantId, event, 'dead_letter', {
             errorMessage: `Exhausted ${retryConfig.maxRetries} attempts: ${errorMsg}`,
             attempt,
             payload,
@@ -159,7 +169,7 @@ export class WebhookRetryEngine {
           return { deliveryId: delivery.id, success: false, attempts: attempt, error: errorMsg };
         }
 
-        this.store.addLog(integrationId, tenantId, event, 'retrying', {
+        await this.store.addLog(integrationId, tenantId, event, 'retrying', {
           errorMessage: errorMsg,
           attempt,
           payload,
@@ -175,7 +185,7 @@ export class WebhookRetryEngine {
         }
 
         const nextRetry = new Date(Date.now() + delayMs).toISOString();
-        this.store.updateDelivery(delivery.id, { nextRetryAt: nextRetry });
+        await this.store.updateDelivery(delivery.id, { nextRetryAt: nextRetry });
         await this.delay(delayMs);
       }
     }
@@ -199,8 +209,8 @@ export class WebhookRetryEngine {
   }
 
   /** Remove retry config for an integration (reverts to default). */
-  removeRetryConfig(integrationId: string): void {
-    this.retryConfigs.delete(integrationId);
+  async removeRetryConfig(integrationId: string, tenantId: string): Promise<void> {
+    await this.configs.delete(integrationId, tenantId);
   }
 
   /** Execute a single webhook attempt. */

@@ -13,9 +13,9 @@ interface RateLimitEntry {
  * number of requests per minute.
  */
 export class IntegrationRateLimiter {
-  private readonly buckets = new Map<string, RateLimitEntry>();
+  private readonly buckets = new Map<string, RateLimitEntry>(); // memory-ok: rate-limit — token bucket, self-heals on restart
   private readonly defaultMaxPerMinute: number;
-  private readonly customLimits = new Map<string, number>();
+  private readonly customLimits = new Map<string, number>(); // memory-ok: rate-limit — per-integration override, not user-facing config today
 
   constructor(defaultMaxPerMinute: number = 60) {
     this.defaultMaxPerMinute = defaultMaxPerMinute;

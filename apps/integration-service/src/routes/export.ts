@@ -7,6 +7,7 @@ import type { IntegrationStore } from '../services/integration-store.js';
 import type { StixExportService } from '../services/stix-export.js';
 import type { BulkExportService } from '../services/bulk-export.js';
 import type { TicketingService } from '../services/ticketing-service.js';
+import type { ExportRecordFetcher } from '../services/ioc-client.js';
 import { requirePermission } from '../plugins/authz.js';
 
 export interface ExportRouteDeps {
@@ -14,12 +15,13 @@ export interface ExportRouteDeps {
   stixExport: StixExportService;
   bulkExport: BulkExportService;
   ticketingService: TicketingService;
+  fetchRecords: ExportRecordFetcher;
 }
 
 /** Build export + ticketing route handler. */
 export function exportRoutes(deps: ExportRouteDeps) {
   return async function (app: FastifyInstance): Promise<void> {
-    const { store, stixExport, bulkExport, ticketingService } = deps;
+    const { store, stixExport, bulkExport, ticketingService, fetchRecords } = deps;
 
     const auth = async (req: FastifyRequest, reply: FastifyReply) => {
       const header = req.headers.authorization;
@@ -69,17 +71,21 @@ export function exportRoutes(deps: ExportRouteDeps) {
 
     app.get('/taxii/collections/:collectionId/objects', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
-      // collectionId from params — used in production to filter by collection
+      // collectionId from params — the collection's entityFilter is applied in the advanced routes;
+      // this discovery endpoint exports the tenant's full IOC set (Step 3 S157, DECISION-048: real data only).
       void (req.params as { collectionId: string }).collectionId;
 
-      // Demo data — in production this queries the IOC/alert service using collectionId
-      const demoIocs = [
-        { id: 'demo-1', type: 'ip', value: '185.220.101.34', severity: 'high', confidence: 85, createdAt: new Date().toISOString() },
-        { id: 'demo-2', type: 'domain', value: 'evil-c2.example.com', severity: 'critical', confidence: 95, createdAt: new Date().toISOString() },
-        { id: 'demo-3', type: 'sha256', value: 'a'.repeat(64), severity: 'medium', confidence: 70, createdAt: new Date().toISOString() },
-      ];
-
-      const bundle = stixExport.iocToStixBundle(demoIocs, tenantId);
+      const records = await fetchRecords(tenantId, 'iocs', {}, 500);
+      const iocs = records.map((r) => ({
+        id: String(r.id ?? ''),
+        type: String(r.type ?? 'unknown'),
+        value: String(r.value ?? ''),
+        severity: r.severity as string | undefined,
+        confidence: typeof r.confidence === 'number' ? r.confidence : undefined,
+        createdAt: r.createdAt as string | undefined,
+        tags: Array.isArray(r.tags) ? (r.tags as string[]) : undefined,
+      }));
+      const bundle = stixExport.iocToStixBundle(iocs, tenantId);
       return reply
         .header('Content-Type', 'application/stix+json;version=2.1')
         .header('X-TAXII-Date-Added-First', bundle.objects[0]?.created ?? new Date().toISOString())
@@ -93,14 +99,9 @@ export function exportRoutes(deps: ExportRouteDeps) {
       const tenantId = getTenant(req);
       const request = BulkExportRequestSchema.parse(req.body);
 
-      // Demo data — in production this queries the relevant service
-      const demoData: Record<string, unknown>[] = [
-        { id: 'ioc-1', type: 'ip', value: '185.220.101.34', severity: 'high', confidence: 85, createdAt: new Date().toISOString() },
-        { id: 'ioc-2', type: 'domain', value: 'evil.example.com', severity: 'critical', confidence: 95, createdAt: new Date().toISOString() },
-        { id: 'ioc-3', type: 'sha256', value: 'a'.repeat(64), severity: 'medium', confidence: 70, createdAt: new Date().toISOString() },
-      ];
+      const data = await fetchRecords(tenantId, request.entityType, request.filters ?? {}, request.limit ?? 1000);
 
-      const result = await bulkExport.export(request, demoData, tenantId);
+      const result = await bulkExport.export(request, data, tenantId);
       return reply
         .header('Content-Type', result.contentType)
         .header('Content-Disposition', `attachment; filename="${result.filename}"`)
@@ -129,7 +130,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
       const query = PaginationSchema.extend({
         integrationId: z.string().uuid().optional(),
       }).parse(req.query);
-      const result = store.listTickets(tenantId, query);
+      const result = await store.listTickets(tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
@@ -137,7 +138,7 @@ export function exportRoutes(deps: ExportRouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
 
-      const ticket = store.getTicket(id, tenantId);
+      const ticket = await store.getTicket(id, tenantId);
       if (!ticket) throw new AppError(404, 'Ticket not found', 'NOT_FOUND');
 
       const integration = store.getIntegration(ticket.integrationId, tenantId);

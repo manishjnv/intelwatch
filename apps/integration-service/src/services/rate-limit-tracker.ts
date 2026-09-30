@@ -10,8 +10,8 @@ import type { IntegrationRateLimiter } from './rate-limiter.js';
  * for dashboard visualization.
  */
 export class RateLimitTracker {
-  private timeSeries = new Map<string, RateLimitDataPoint[]>();
-  private throttleCounts = new Map<string, number>();
+  private timeSeries = new Map<string, RateLimitDataPoint[]>(); // memory-ok: rate-limit — rolling 1h window, capped at maxDataPoints
+  private throttleCounts = new Map<string, number>(); // memory-ok: rate-limit — derived counter, resets on restart is acceptable
   private readonly maxDataPoints = 60; // Last 60 data points (1 per minute = 1 hour)
 
   constructor(private readonly rateLimiter: IntegrationRateLimiter) {}

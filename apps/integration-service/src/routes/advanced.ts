@@ -63,7 +63,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     app.post('/field-mapping-presets', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateFieldMappingPresetSchema.parse(req.body);
-      const preset = fieldMappingStore.createPreset(tenantId, input);
+      const preset = await fieldMappingStore.createPreset(tenantId, input);
       return reply.status(201).send({ data: preset });
     });
 
@@ -72,7 +72,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const query = PaginationSchema.extend({
         targetType: IntegrationTypeEnum.optional(),
       }).parse(req.query);
-      const result = fieldMappingStore.listPresets(tenantId, query);
+      const result = await fieldMappingStore.listPresets(tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
@@ -80,7 +80,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateFieldMappingPresetSchema.parse(req.body);
-      const updated = fieldMappingStore.updatePreset(id, tenantId, input);
+      const updated = await fieldMappingStore.updatePreset(id, tenantId, input);
       if (!updated) throw new AppError(404, 'Preset not found', 'NOT_FOUND');
       return reply.send({ data: updated });
     });
@@ -88,7 +88,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     app.delete('/field-mapping-presets/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const deleted = fieldMappingStore.deletePreset(id, tenantId);
+      const deleted = await fieldMappingStore.deletePreset(id, tenantId);
       if (!deleted) throw new AppError(404, 'Preset not found', 'NOT_FOUND');
       return reply.status(204).send();
     });
@@ -100,7 +100,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     app.post('/ticket-templates', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateTicketTemplateSchema.parse(req.body);
-      const template = templateEngine.createTemplate(tenantId, input);
+      const template = await templateEngine.createTemplate(tenantId, input);
       return reply.status(201).send({ data: template });
     });
 
@@ -109,7 +109,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const query = PaginationSchema.extend({
         targetType: z.enum(['servicenow', 'jira']).optional(),
       }).parse(req.query);
-      const result = templateEngine.listTemplates(tenantId, query);
+      const result = await templateEngine.listTemplates(tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
@@ -117,7 +117,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateTicketTemplateSchema.parse(req.body);
-      const updated = templateEngine.updateTemplate(id, tenantId, input);
+      const updated = await templateEngine.updateTemplate(id, tenantId, input);
       if (!updated) throw new AppError(404, 'Template not found', 'NOT_FOUND');
       return reply.send({ data: updated });
     });
@@ -125,7 +125,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     app.delete('/ticket-templates/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const deleted = templateEngine.deleteTemplate(id, tenantId);
+      const deleted = await templateEngine.deleteTemplate(id, tenantId);
       if (!deleted) throw new AppError(404, 'Template not found', 'NOT_FOUND');
       return reply.status(204).send();
     });
@@ -137,7 +137,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     app.post('/taxii/collections', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateTaxiiCollectionSchema.parse(req.body);
-      const collection = stixCollectionStore.createCollection(tenantId, input);
+      const collection = await stixCollectionStore.createCollection(tenantId, input);
       return reply.status(201).send({ data: collection });
     });
 
@@ -145,7 +145,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateTaxiiCollectionSchema.parse(req.body);
-      const updated = stixCollectionStore.updateCollection(id, tenantId, input);
+      const updated = await stixCollectionStore.updateCollection(id, tenantId, input);
       if (!updated) throw new AppError(404, 'Collection not found', 'NOT_FOUND');
       return reply.send({ data: updated });
     });
@@ -153,7 +153,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     app.delete('/taxii/collections/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const deleted = stixCollectionStore.deleteCollection(id, tenantId);
+      const deleted = await stixCollectionStore.deleteCollection(id, tenantId);
       if (!deleted) throw new AppError(404, 'Collection not found', 'NOT_FOUND');
       return reply.status(204).send();
     });
@@ -162,7 +162,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const query = PaginationSchema.parse(req.query);
-      const result = stixCollectionStore.getManifest(id, tenantId, query);
+      const result = await stixCollectionStore.getManifest(id, tenantId, query);
       return reply
         .header('Content-Type', 'application/taxii+json;version=2.1')
         .send({ objects: result.data, total: result.total });
@@ -175,7 +175,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     app.post('/export/schedules', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateExportScheduleSchema.parse(req.body);
-      const schedule = exportScheduler.createSchedule(tenantId, input);
+      const schedule = await exportScheduler.createSchedule(tenantId, input);
       return reply.status(201).send({ data: schedule });
     });
 
@@ -184,7 +184,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const query = PaginationSchema.extend({
         enabled: z.coerce.boolean().optional(),
       }).parse(req.query);
-      const result = exportScheduler.listSchedules(tenantId, query);
+      const result = await exportScheduler.listSchedules(tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
@@ -192,7 +192,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateExportScheduleSchema.parse(req.body);
-      const updated = exportScheduler.updateSchedule(id, tenantId, input);
+      const updated = await exportScheduler.updateSchedule(id, tenantId, input);
       if (!updated) throw new AppError(404, 'Schedule not found', 'NOT_FOUND');
       return reply.send({ data: updated });
     });
@@ -200,7 +200,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
     app.delete('/export/schedules/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const deleted = exportScheduler.deleteSchedule(id, tenantId);
+      const deleted = await exportScheduler.deleteSchedule(id, tenantId);
       if (!deleted) throw new AppError(404, 'Schedule not found', 'NOT_FOUND');
       return reply.status(204).send();
     });
@@ -220,7 +220,7 @@ export function advancedRoutes(deps: AdvancedRouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const query = PaginationSchema.parse(req.query);
-      const result = exportScheduler.getRunHistory(id, tenantId, query);
+      const result = await exportScheduler.getRunHistory(id, tenantId, query);
       if (!result) throw new AppError(404, 'Schedule not found', 'NOT_FOUND');
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });

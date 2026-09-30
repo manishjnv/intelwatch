@@ -6,18 +6,29 @@ import type {
   TaxiiManifestEntry,
   StixObject,
 } from '../schemas/integration.js';
+import type { DocRepo } from './doc-repo.js';
+import { MemoryDocRepo } from './doc-repo.js';
+
+/** One doc per collection holding its full object list (Step 3 S157, kind `taxii_objects`). */
+interface CollectionObjectsDoc {
+  id: string; // = collection id
+  tenantId: string;
+  objects: StixObject[];
+}
 
 /**
- * P1 #9: In-memory TAXII 2.1 collection management.
- * Provides CRUD for collections, manifest generation,
- * configurable polling intervals, and access control stubs.
+ * P1 #9: TAXII 2.1 collection management. Collections persist as
+ * `taxii_collection` documents; each collection's objects persist as a single
+ * `taxii_objects` document keyed by the collection id (parentId = collection id).
  */
 export class StixCollectionStore {
-  private collections = new Map<string, ManagedTaxiiCollection>();
-  private collectionObjects = new Map<string, StixObject[]>();
+  constructor(
+    private readonly collections: DocRepo<ManagedTaxiiCollection> = new MemoryDocRepo<ManagedTaxiiCollection>(),
+    private readonly objects: DocRepo<CollectionObjectsDoc> = new MemoryDocRepo<CollectionObjectsDoc>(),
+  ) {}
 
   /** Create a new TAXII collection. */
-  createCollection(tenantId: string, input: CreateTaxiiCollectionInput): ManagedTaxiiCollection {
+  async createCollection(tenantId: string, input: CreateTaxiiCollectionInput): Promise<ManagedTaxiiCollection> {
     const now = new Date().toISOString();
     const collection: ManagedTaxiiCollection = {
       id: randomUUID(),
@@ -34,25 +45,22 @@ export class StixCollectionStore {
       createdAt: now,
       updatedAt: now,
     };
-    this.collections.set(collection.id, collection);
-    this.collectionObjects.set(collection.id, []);
+    await this.collections.save(collection);
+    await this.objects.save({ id: collection.id, tenantId, objects: [] }, collection.id);
     return collection;
   }
 
   /** Get a collection by ID, filtered by tenant. */
-  getCollection(id: string, tenantId: string): ManagedTaxiiCollection | undefined {
-    const c = this.collections.get(id);
-    if (!c || c.tenantId !== tenantId) return undefined;
-    return c;
+  async getCollection(id: string, tenantId: string): Promise<ManagedTaxiiCollection | undefined> {
+    return (await this.collections.get(id, tenantId)) ?? undefined;
   }
 
   /** List collections for a tenant. */
-  listCollections(
+  async listCollections(
     tenantId: string,
     opts: { page: number; limit: number },
-  ): { data: ManagedTaxiiCollection[]; total: number } {
-    const items = Array.from(this.collections.values())
-      .filter((c) => c.tenantId === tenantId)
+  ): Promise<{ data: ManagedTaxiiCollection[]; total: number }> {
+    const items = (await this.collections.list(tenantId))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const total = items.length;
     const start = (opts.page - 1) * opts.limit;
@@ -60,12 +68,12 @@ export class StixCollectionStore {
   }
 
   /** Update a collection. */
-  updateCollection(
+  async updateCollection(
     id: string,
     tenantId: string,
     input: UpdateTaxiiCollectionInput,
-  ): ManagedTaxiiCollection | undefined {
-    const existing = this.getCollection(id, tenantId);
+  ): Promise<ManagedTaxiiCollection | undefined> {
+    const existing = await this.getCollection(id, tenantId);
     if (!existing) return undefined;
 
     const updated: ManagedTaxiiCollection = {
@@ -79,48 +87,49 @@ export class StixCollectionStore {
       ...(input.entityFilter !== undefined && { entityFilter: input.entityFilter }),
       updatedAt: new Date().toISOString(),
     };
-    this.collections.set(id, updated);
-    return updated;
+    return this.collections.save(updated);
   }
 
   /** Delete a collection and its objects. */
-  deleteCollection(id: string, tenantId: string): boolean {
-    const existing = this.getCollection(id, tenantId);
+  async deleteCollection(id: string, tenantId: string): Promise<boolean> {
+    const existing = await this.getCollection(id, tenantId);
     if (!existing) return false;
-    this.collections.delete(id);
-    this.collectionObjects.delete(id);
+    await this.collections.delete(id, tenantId);
+    await this.objects.delete(id, tenantId);
     return true;
   }
 
   /** Add STIX objects to a collection. */
-  addObjects(collectionId: string, tenantId: string, objects: StixObject[]): number {
-    const collection = this.getCollection(collectionId, tenantId);
+  async addObjects(collectionId: string, tenantId: string, objects: StixObject[]): Promise<number> {
+    const collection = await this.getCollection(collectionId, tenantId);
     if (!collection) return 0;
 
-    const existing = this.collectionObjects.get(collectionId) ?? [];
-    const existingIds = new Set(existing.map((o) => o.id));
+    const doc = (await this.objects.get(collectionId, tenantId)) ?? { id: collectionId, tenantId, objects: [] };
+    const existingIds = new Set(doc.objects.map((o) => o.id));
 
     // Deduplicate by STIX object ID
     const newObjects = objects.filter((o) => !existingIds.has(o.id));
-    existing.push(...newObjects);
-    this.collectionObjects.set(collectionId, existing);
+    doc.objects.push(...newObjects);
+    await this.objects.save(doc, collectionId);
 
-    collection.objectCount = existing.length;
+    collection.objectCount = doc.objects.length;
     collection.updatedAt = new Date().toISOString();
+    await this.collections.save(collection);
 
     return newObjects.length;
   }
 
   /** Get STIX objects from a collection with pagination. */
-  getObjects(
+  async getObjects(
     collectionId: string,
     tenantId: string,
     opts: { page: number; limit: number; addedAfter?: string },
-  ): { data: StixObject[]; total: number } {
-    const collection = this.getCollection(collectionId, tenantId);
+  ): Promise<{ data: StixObject[]; total: number }> {
+    const collection = await this.getCollection(collectionId, tenantId);
     if (!collection) return { data: [], total: 0 };
 
-    let objects = this.collectionObjects.get(collectionId) ?? [];
+    const doc = await this.objects.get(collectionId, tenantId);
+    let objects = doc?.objects ?? [];
 
     // Filter by addedAfter
     if (opts.addedAfter) {
@@ -133,16 +142,16 @@ export class StixCollectionStore {
   }
 
   /** Generate a TAXII manifest for a collection. */
-  getManifest(
+  async getManifest(
     collectionId: string,
     tenantId: string,
     opts: { page: number; limit: number },
-  ): { data: TaxiiManifestEntry[]; total: number } {
-    const collection = this.getCollection(collectionId, tenantId);
+  ): Promise<{ data: TaxiiManifestEntry[]; total: number }> {
+    const collection = await this.getCollection(collectionId, tenantId);
     if (!collection) return { data: [], total: 0 };
 
-    const objects = this.collectionObjects.get(collectionId) ?? [];
-    const entries: TaxiiManifestEntry[] = objects.map((obj) => ({
+    const doc = await this.objects.get(collectionId, tenantId);
+    const entries: TaxiiManifestEntry[] = (doc?.objects ?? []).map((obj) => ({
       id: obj.id,
       dateAdded: obj.created,
       version: obj.modified,
@@ -155,35 +164,34 @@ export class StixCollectionStore {
   }
 
   /** Mark a collection as polled (update lastPolledAt). */
-  markPolled(collectionId: string, tenantId: string): void {
-    const collection = this.getCollection(collectionId, tenantId);
+  async markPolled(collectionId: string, tenantId: string): Promise<void> {
+    const collection = await this.getCollection(collectionId, tenantId);
     if (collection) {
       collection.lastPolledAt = new Date().toISOString();
+      await this.collections.save(collection);
     }
   }
 
   /** Get collections due for polling based on their interval. */
-  getCollectionsDueForPolling(tenantId: string): ManagedTaxiiCollection[] {
+  async getCollectionsDueForPolling(tenantId: string): Promise<ManagedTaxiiCollection[]> {
     const now = Date.now();
-    return Array.from(this.collections.values())
-      .filter((c) => c.tenantId === tenantId)
-      .filter((c) => {
-        if (!c.lastPolledAt) return true;
-        const lastPolled = new Date(c.lastPolledAt).getTime();
-        const intervalMs = c.pollingIntervalMinutes * 60 * 1000;
-        return now - lastPolled >= intervalMs;
-      });
+    return (await this.collections.list(tenantId)).filter((c) => {
+      if (!c.lastPolledAt) return true;
+      const lastPolled = new Date(c.lastPolledAt).getTime();
+      const intervalMs = c.pollingIntervalMinutes * 60 * 1000;
+      return now - lastPolled >= intervalMs;
+    });
   }
 
   /** Check read access for a collection (stub for future RBAC). */
-  canRead(collectionId: string, _tenantId: string): boolean {
-    const collection = this.collections.get(collectionId);
+  async canRead(collectionId: string, tenantId: string): Promise<boolean> {
+    const collection = await this.collections.get(collectionId, tenantId);
     return collection?.canRead ?? false;
   }
 
   /** Check write access for a collection (stub for future RBAC). */
-  canWrite(collectionId: string, _tenantId: string): boolean {
-    const collection = this.collections.get(collectionId);
+  async canWrite(collectionId: string, tenantId: string): Promise<boolean> {
+    const collection = await this.collections.get(collectionId, tenantId);
     return collection?.canWrite ?? false;
   }
 }

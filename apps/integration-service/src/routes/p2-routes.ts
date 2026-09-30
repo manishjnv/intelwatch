@@ -67,7 +67,7 @@ export function p2Routes(deps: P2RouteDeps) {
     app.get('/:id/health-score', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const score = healthScoring.calculateScore(id, tenantId);
+      const score = await healthScoring.calculateScore(id, tenantId);
       if (!score) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       return reply.send({ data: score });
     });
@@ -87,7 +87,7 @@ export function p2Routes(deps: P2RouteDeps) {
     app.get('/audit-log', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const query = AuditQuerySchema.parse(req.query);
-      const result = auditTrail.query(tenantId, query);
+      const result = await auditTrail.query(tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
@@ -115,7 +115,7 @@ export function p2Routes(deps: P2RouteDeps) {
       const record = await credentialRotation.rotate(id, tenantId, input);
 
       // Audit log the rotation
-      auditTrail.record({
+      await auditTrail.record({
         tenantId,
         integrationId: id,
         action: 'credentials.rotated',
@@ -132,7 +132,7 @@ export function p2Routes(deps: P2RouteDeps) {
       const integration = store.getIntegration(id, tenantId);
       if (!integration) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       const query = PaginationSchema.parse(req.query);
-      const result = credentialRotation.getRotationHistory(id, tenantId, query);
+      const result = await credentialRotation.getRotationHistory(id, tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
@@ -143,9 +143,9 @@ export function p2Routes(deps: P2RouteDeps) {
     app.post('/routing-rules', { preHandler: [auth, createAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const input = CreateRoutingRuleSchema.parse(req.body);
-      const rule = alertRoutingEngine.createRule(tenantId, input);
+      const rule = await alertRoutingEngine.createRule(tenantId, input);
 
-      auditTrail.record({
+      await auditTrail.record({
         tenantId,
         integrationId: null,
         action: 'rule.created',
@@ -162,14 +162,14 @@ export function p2Routes(deps: P2RouteDeps) {
       const query = PaginationSchema.extend({
         enabled: z.coerce.boolean().optional(),
       }).parse(req.query);
-      const result = alertRoutingEngine.listRules(tenantId, query);
+      const result = await alertRoutingEngine.listRules(tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
     app.get('/routing-rules/:id', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const rule = alertRoutingEngine.getRule(id, tenantId);
+      const rule = await alertRoutingEngine.getRule(id, tenantId);
       if (!rule) throw new AppError(404, 'Routing rule not found', 'NOT_FOUND');
       return reply.send({ data: rule });
     });
@@ -178,10 +178,10 @@ export function p2Routes(deps: P2RouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       const input = UpdateRoutingRuleSchema.parse(req.body);
-      const updated = alertRoutingEngine.updateRule(id, tenantId, input);
+      const updated = await alertRoutingEngine.updateRule(id, tenantId, input);
       if (!updated) throw new AppError(404, 'Routing rule not found', 'NOT_FOUND');
 
-      auditTrail.record({
+      await auditTrail.record({
         tenantId,
         integrationId: null,
         action: 'rule.updated',
@@ -195,10 +195,10 @@ export function p2Routes(deps: P2RouteDeps) {
     app.delete('/routing-rules/:id', { preHandler: [auth, deleteAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
-      const deleted = alertRoutingEngine.deleteRule(id, tenantId);
+      const deleted = await alertRoutingEngine.deleteRule(id, tenantId);
       if (!deleted) throw new AppError(404, 'Routing rule not found', 'NOT_FOUND');
 
-      auditTrail.record({
+      await auditTrail.record({
         tenantId,
         integrationId: null,
         action: 'rule.deleted',
@@ -214,7 +214,7 @@ export function p2Routes(deps: P2RouteDeps) {
       const { id } = req.params as { id: string };
       const body = req.body as { payload: Record<string, unknown> };
       if (!body.payload) throw new AppError(400, 'Missing payload for dry-run', 'MISSING_PAYLOAD');
-      const result = alertRoutingEngine.dryRun(id, tenantId, body.payload);
+      const result = await alertRoutingEngine.dryRun(id, tenantId, body.payload);
       if (!result) throw new AppError(404, 'Routing rule not found', 'NOT_FOUND');
       return reply.send({ data: result });
     });
@@ -223,7 +223,7 @@ export function p2Routes(deps: P2RouteDeps) {
       const tenantId = getTenant(req);
       const body = req.body as { ordering: Array<{ ruleId: string; priority: number }> };
       if (!Array.isArray(body.ordering)) throw new AppError(400, 'Missing ordering array', 'MISSING_ORDERING');
-      const updated = alertRoutingEngine.reorderRules(tenantId, body.ordering);
+      const updated = await alertRoutingEngine.reorderRules(tenantId, body.ordering);
       return reply.send({ data: updated });
     });
   };

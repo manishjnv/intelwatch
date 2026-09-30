@@ -134,7 +134,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       if (!integration) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
 
       const query = PaginationSchema.parse(req.query);
-      const result = store.listLogs(id, tenantId, query);
+      const result = await store.listLogs(id, tenantId, query);
       return reply.send({ data: result.data, total: result.total, page: query.page, limit: query.limit });
     });
 
@@ -142,7 +142,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
 
     app.get('/stats', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
-      const stats = store.getStats(tenantId);
+      const stats = await store.getStats(tenantId);
       return reply.send({ data: stats });
     });
 
@@ -174,7 +174,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
     app.get('/health/dashboard', { preHandler: [auth, readAccess] }, async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = getTenant(req);
       if (!healthDashboard) throw new AppError(503, 'Health dashboard not available', 'NOT_AVAILABLE');
-      const summary = healthDashboard.getSummary(tenantId);
+      const summary = await healthDashboard.getSummary(tenantId);
       return reply.send({ data: summary });
     });
 
@@ -182,7 +182,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       const tenantId = getTenant(req);
       const { id } = req.params as { id: string };
       if (!healthDashboard) throw new AppError(503, 'Health dashboard not available', 'NOT_AVAILABLE');
-      const health = healthDashboard.getIntegrationHealth(id, tenantId);
+      const health = await healthDashboard.getIntegrationHealth(id, tenantId);
       if (!health) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       return reply.send({ data: health });
     });
@@ -195,7 +195,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       const integration = store.getIntegration(id, tenantId);
       if (!integration) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       if (!webhookRetryEngine) throw new AppError(503, 'Retry engine not available', 'NOT_AVAILABLE');
-      const state = webhookRetryEngine.getRetryState(id);
+      const state = await webhookRetryEngine.getRetryState(id, tenantId);
       return reply.send({ data: state });
     });
 
@@ -206,7 +206,7 @@ export function integrationRoutes(deps: IntegrationRouteDeps) {
       if (!integration) throw new AppError(404, 'Integration not found', 'NOT_FOUND');
       if (!webhookRetryEngine) throw new AppError(503, 'Retry engine not available', 'NOT_AVAILABLE');
       const input = WebhookRetryConfigSchema.parse(req.body);
-      const config = webhookRetryEngine.setRetryConfig(id, input);
+      const config = await webhookRetryEngine.setRetryConfig(id, tenantId, input);
       return reply.send({ data: config });
     });
   };

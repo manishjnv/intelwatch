@@ -16,21 +16,27 @@ import type {
 import type { FieldMapper } from './field-mapper.js';
 import type { CredentialEncryption } from './credential-encryption.js';
 import { toConfigJson, toRow, toUpdateRow, fromRow } from './integration-row.js';
+import type { IntegrationRecordsRepo } from './records-repo.js';
+import { MemoryRecordsRepo } from './records-repo.js';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (s: string): boolean => UUID_RE.test(s);
 
 /**
  * Store for integration entities. Write-through cache: the Map is the fast
  * synchronous read path; create/update/delete write to Postgres first and only
  * update the Map on success (DB failure throws — cache stays consistent with DB).
  * Call hydrate() at startup to load persisted rows into the cache.
+ *
+ * Logs/deliveries/DLQ/tickets (Step 3 S156) are NOT cached — they go straight through
+ * `records` (in-memory for dev/test, Prisma in production, see records-repo.ts).
  */
 export class IntegrationStore {
-  private integrations = new Map<string, Integration>();
-  private logs = new Map<string, IntegrationLog>();
-  private deliveries = new Map<string, WebhookDelivery>();
-  private tickets = new Map<string, Ticket>();
-  private deadLetterQueue = new Map<string, WebhookDelivery>();
+  private integrations = new Map<string, Integration>(); // memory-ok: derived — write-through cache of the integrations table (hydrate() at startup)
   private fieldMapper: FieldMapper | null = null;
   private encryption: CredentialEncryption | null = null;
+
+  constructor(private readonly records: IntegrationRecordsRepo = new MemoryRecordsRepo()) {}
 
   /** Inject field mapper for auto-populating default mappings on creation. */
   setFieldMapper(mapper: FieldMapper): void {
@@ -50,12 +56,32 @@ export class IntegrationStore {
     return this.encryption ? this.encryption.decryptSecretFields(integration) : integration;
   }
 
-  // ─── Integration CRUD ──────────────────────────────────────
+  /** Run a read (or admin write) against `records`. DB failure -> AppError(503) — no fallback to memory (Step 3 D3). */
+  private async dbRead<T>(fn: () => Promise<T>, message: string): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err instanceof AppError) throw err;
+      getLogger().error({ error: err instanceof Error ? err.message : String(err) }, message);
+      throw new AppError(503, message, 'DB_UNAVAILABLE');
+    }
+  }
 
   /**
-   * Load all persisted integrations from Postgres into the in-memory cache.
-   * Throws on DB failure — see hydrateWithRetry() for the startup-safe wrapper.
+   * Run a delivery-path write against `records`. These fire inside the webhook/SIEM send
+   * loops' try blocks — if they threw on a DB outage the loop would treat it as a failed
+   * push and re-send the webhook to the customer, so a DB hiccup here just logs and moves on.
    */
+  private async bestEffort(fn: () => Promise<void>, context: Record<string, unknown>, message: string): Promise<void> {
+    try {
+      await fn();
+    } catch (err) {
+      getLogger().error({ ...context, error: err instanceof Error ? err.message : String(err) }, message);
+    }
+  }
+
+  // ─── Integration CRUD ──────────────────────────────────────
+
   async hydrate(): Promise<void> {
     const rows = await prisma.integration.findMany();
     for (const row of rows) {
@@ -89,10 +115,8 @@ export class IntegrationStore {
     logger.error({}, 'IntegrationStore hydrate: giving up after max attempts — starting with an empty cache');
   }
 
-  /** Create a new integration config. Auto-populates default field mappings if none provided. */
   async createIntegration(tenantId: string, input: CreateIntegrationInput): Promise<Integration> {
     const now = new Date().toISOString();
-    // P0 #2: Auto-populate default field mappings when none provided
     const fieldMappings = (input.fieldMappings && input.fieldMappings.length > 0)
       ? input.fieldMappings
       : (this.fieldMapper?.getDefaultMappings(input.type) ?? []);
@@ -120,24 +144,20 @@ export class IntegrationStore {
       throw new AppError(503, 'Failed to persist integration', 'DB_UNAVAILABLE'); // ponytail: DB detail stays in server logs, never in the response
     }
     this.integrations.set(integration.id, stored);
-    return integration; // local var still holds plaintext — no decrypt round-trip needed
+    return integration;
   }
 
-  /** Get integration by ID, filtered by tenant. Secret fields are decrypted for the caller. */
   getIntegration(id: string, tenantId: string): Integration | undefined {
     const item = this.integrations.get(id);
     if (!item || item.tenantId !== tenantId) return undefined;
     return this.decryptOut(item);
   }
 
-  /** List integrations for a tenant with optional filters. Secret fields are decrypted for the caller. */
   listIntegrations(
     tenantId: string,
     opts: { type?: string; enabled?: boolean; page: number; limit: number },
   ): { data: Integration[]; total: number } {
-    let items = Array.from(this.integrations.values()).filter(
-      (i) => i.tenantId === tenantId,
-    );
+    let items = Array.from(this.integrations.values()).filter((i) => i.tenantId === tenantId);
     if (opts.type) items = items.filter((i) => i.type === opts.type);
     if (opts.enabled !== undefined) items = items.filter((i) => i.enabled === opts.enabled);
     const total = items.length;
@@ -145,7 +165,6 @@ export class IntegrationStore {
     return { data: items.slice(start, start + opts.limit).map((i) => this.decryptOut(i)), total };
   }
 
-  /** Update an existing integration. Secret fields in `input` are encrypted before storage. */
   async updateIntegration(
     id: string,
     tenantId: string,
@@ -172,7 +191,6 @@ export class IntegrationStore {
     return this.decryptOut(updated);
   }
 
-  /** Delete an integration and its logs. */
   async deleteIntegration(id: string, tenantId: string): Promise<boolean> {
     const existing = this.getIntegration(id, tenantId);
     if (!existing) return false;
@@ -183,14 +201,14 @@ export class IntegrationStore {
       throw new AppError(503, 'Failed to delete integration', 'DB_UNAVAILABLE'); // ponytail: DB detail stays in server logs, never in the response
     }
     this.integrations.delete(id);
-    // Clean up related logs
-    for (const [logId, log] of this.logs) {
-      if (log.integrationId === id) this.logs.delete(logId);
-    }
+    await this.bestEffort(
+      () => this.records.deleteLogsForIntegration(tenantId, id),
+      { integrationId: id },
+      'Failed to delete integration logs',
+    );
     return true;
   }
 
-  /** Get all enabled integrations for a tenant that match a trigger event. Secret fields are decrypted for the caller. */
   getEnabledForTrigger(tenantId: string, event: TriggerEvent): Integration[] {
     return Array.from(this.integrations.values())
       .filter((i) => i.tenantId === tenantId && i.enabled && i.triggers.includes(event))
@@ -222,16 +240,16 @@ export class IntegrationStore {
       });
   }
 
-  // ─── Logs ──────────────────────────────────────────────────
+  // ─── Logs (best-effort writes, throwing reads) ──────────────
 
-  /** Add an integration log entry. */
-  addLog(
+  /** Add an integration log entry. Best-effort — see bestEffort() doc. */
+  async addLog(
     integrationId: string,
     tenantId: string,
     event: TriggerEvent,
     status: LogStatus,
     details: { statusCode?: number; errorMessage?: string; attempt?: number; payload?: Record<string, unknown>; responseBody?: string },
-  ): IntegrationLog {
+  ): Promise<IntegrationLog> {
     const log: IntegrationLog = {
       id: randomUUID(),
       integrationId,
@@ -245,155 +263,135 @@ export class IntegrationStore {
       responseBody: details.responseBody ?? null,
       createdAt: new Date().toISOString(),
     };
-    this.logs.set(log.id, log);
+    await this.bestEffort(() => this.records.addLog(log), { integrationId, logId: log.id }, 'Failed to persist integration log'); // ponytail: best-effort — see bestEffort() doc
     return log;
   }
 
-  /** List logs for an integration. */
-  listLogs(
+  async listLogs(
     integrationId: string,
     tenantId: string,
     opts: { page: number; limit: number },
-  ): { data: IntegrationLog[]; total: number } {
-    const items = Array.from(this.logs.values())
-      .filter((l) => l.integrationId === integrationId && l.tenantId === tenantId)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const total = items.length;
-    const start = (opts.page - 1) * opts.limit;
-    return { data: items.slice(start, start + opts.limit), total };
+  ): Promise<{ data: IntegrationLog[]; total: number }> {
+    return this.dbRead(
+      () => this.records.listLogs(tenantId, integrationId, opts.page, opts.limit),
+      'Failed to list integration logs',
+    );
   }
 
-  // ─── Webhook Deliveries ────────────────────────────────────
+  // ─── Webhook Deliveries + DLQ ────────────────────────────────
 
-  /** Create a webhook delivery attempt. */
-  createDelivery(delivery: Omit<WebhookDelivery, 'id' | 'createdAt'>): WebhookDelivery {
-    const d: WebhookDelivery = {
-      ...delivery,
-      id: randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    this.deliveries.set(d.id, d);
+  /** Create a webhook delivery attempt. Best-effort — see bestEffort() doc. */
+  async createDelivery(delivery: Omit<WebhookDelivery, 'id' | 'createdAt'>): Promise<WebhookDelivery> {
+    const d: WebhookDelivery = { ...delivery, id: randomUUID(), createdAt: new Date().toISOString() };
+    await this.bestEffort(() => this.records.insertDelivery(d), { deliveryId: d.id }, 'Failed to persist webhook delivery'); // ponytail: best-effort — see bestEffort() doc
     return d;
   }
 
-  /** Update delivery status. */
-  updateDelivery(id: string, updates: Partial<WebhookDelivery>): WebhookDelivery | undefined {
-    const d = this.deliveries.get(id);
-    if (!d) return undefined;
-    Object.assign(d, updates);
-    return d;
+  /** Update delivery status. Best-effort — see bestEffort() doc. */
+  async updateDelivery(id: string, updates: Partial<WebhookDelivery>): Promise<WebhookDelivery | undefined> {
+    let result: WebhookDelivery | undefined;
+    await this.bestEffort(async () => { // ponytail: best-effort — see bestEffort() doc
+      result = (await this.records.updateDelivery(id, updates)) ?? undefined;
+    }, { deliveryId: id }, 'Failed to persist webhook delivery update');
+    return result;
   }
 
-  /** Move a failed delivery to the dead letter queue. */
-  moveToDLQ(deliveryId: string): boolean {
-    const d = this.deliveries.get(deliveryId);
-    if (!d) return false;
-    d.status = 'dead_letter';
-    this.deadLetterQueue.set(d.id, d);
-    this.deliveries.delete(deliveryId);
-    return true;
+  /** Move a failed delivery to the dead letter queue. Best-effort — see bestEffort() doc. */
+  async moveToDLQ(deliveryId: string): Promise<boolean> {
+    let moved = false;
+    await this.bestEffort(async () => { // ponytail: best-effort — see bestEffort() doc
+      const updated = await this.records.updateDelivery(deliveryId, { status: 'dead_letter' });
+      moved = updated !== null;
+    }, { deliveryId }, 'Failed to move delivery to dead letter queue');
+    return moved;
   }
 
-  /** List DLQ items for a tenant. */
-  listDLQ(
-    tenantId: string,
-    opts: { page: number; limit: number },
-  ): { data: WebhookDelivery[]; total: number } {
-    const items = Array.from(this.deadLetterQueue.values())
-      .filter((d) => d.tenantId === tenantId)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const total = items.length;
-    const start = (opts.page - 1) * opts.limit;
-    return { data: items.slice(start, start + opts.limit), total };
+  async listDLQ(tenantId: string, opts: { page: number; limit: number }): Promise<{ data: WebhookDelivery[]; total: number }> {
+    return this.dbRead(
+      () => this.records.listDeliveries(tenantId, 'dead_letter', opts.page, opts.limit),
+      'Failed to list dead letter queue',
+    );
   }
 
-  /** Retry a DLQ item (move back to deliveries). */
-  retryDLQ(id: string, tenantId: string): WebhookDelivery | undefined {
-    const d = this.deadLetterQueue.get(id);
-    if (!d || d.tenantId !== tenantId) return undefined;
-    d.status = 'retrying';
-    d.attempts = 0;
-    d.nextRetryAt = null;
-    d.lastError = null;
-    this.deliveries.set(d.id, d);
-    this.deadLetterQueue.delete(id);
-    return d;
+  /** Retry a DLQ item (admin action, not on the delivery hot path — throws on DB failure). */
+  async retryDLQ(id: string, tenantId: string): Promise<WebhookDelivery | undefined> {
+    return this.dbRead(async () => {
+      const existing = await this.records.getDelivery(id);
+      if (!existing || existing.tenantId !== tenantId || existing.status !== 'dead_letter') return undefined;
+      const updated = await this.records.updateDelivery(id, {
+        status: 'retrying', attempts: 0, nextRetryAt: null, lastError: null,
+      });
+      return updated ?? undefined;
+    }, 'Failed to retry dead letter queue item');
   }
 
-  // ─── Tickets ───────────────────────────────────────────────
+  // ─── Tickets (writes and reads throw on DB failure) ─────────
 
-  /** Store a ticket record. */
-  createTicket(ticket: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>): Ticket {
-    const t: Ticket = {
-      ...ticket,
-      id: randomUUID(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.tickets.set(t.id, t);
-    return t;
+  async createTicket(ticket: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>): Promise<Ticket> {
+    if (!isUuid(ticket.tenantId)) throw new AppError(400, 'tenantId must be a UUID', 'VALIDATION_ERROR');
+    const now = new Date().toISOString();
+    const t: Ticket = { ...ticket, id: randomUUID(), createdAt: now, updatedAt: now };
+    return this.dbRead(async () => {
+      await this.records.insertTicket(t);
+      return t;
+    }, 'Failed to persist ticket');
   }
 
-  /** Get ticket by ID, filtered by tenant. */
-  getTicket(id: string, tenantId: string): Ticket | undefined {
-    const t = this.tickets.get(id);
-    if (!t || t.tenantId !== tenantId) return undefined;
-    return t;
+  async getTicket(id: string, tenantId: string): Promise<Ticket | undefined> {
+    return this.dbRead(async () => {
+      const t = await this.records.getTicket(id);
+      return (t && t.tenantId === tenantId) ? t : undefined;
+    }, 'Failed to get ticket');
   }
 
-  /** Update ticket status (from external sync). */
-  updateTicketStatus(id: string, tenantId: string, status: string): Ticket | undefined {
-    const t = this.getTicket(id, tenantId);
-    if (!t) return undefined;
-    t.status = status;
-    t.updatedAt = new Date().toISOString();
-    return t;
+  async updateTicketStatus(id: string, tenantId: string, status: string): Promise<Ticket | undefined> {
+    return this.dbRead(async () => {
+      const existing = await this.records.getTicket(id);
+      if (!existing || existing.tenantId !== tenantId) return undefined;
+      const updated = await this.records.updateTicket(id, { status, updatedAt: new Date().toISOString() });
+      return updated ?? undefined;
+    }, 'Failed to update ticket status');
   }
 
-  /** List tickets for a tenant. */
-  listTickets(
+  async listTickets(
     tenantId: string,
     opts: { integrationId?: string; page: number; limit: number },
-  ): { data: Ticket[]; total: number } {
-    let items = Array.from(this.tickets.values()).filter(
-      (t) => t.tenantId === tenantId,
+  ): Promise<{ data: Ticket[]; total: number }> {
+    return this.dbRead(
+      () => this.records.listTickets(tenantId, opts.integrationId, opts.page, opts.limit),
+      'Failed to list tickets',
     );
-    if (opts.integrationId) items = items.filter((t) => t.integrationId === opts.integrationId);
-    const total = items.length;
-    const start = (opts.page - 1) * opts.limit;
-    return { data: items.slice(start, start + opts.limit), total };
   }
 
-  // ─── Stats ─────────────────────────────────────────────────
+  // ─── Stats + Retention ───────────────────────────────────────
 
-  /** Get integration stats for a tenant. */
-  getStats(tenantId: string): {
+  async getStats(tenantId: string): Promise<{
     totalIntegrations: number;
     enabledIntegrations: number;
     totalLogs: number;
     failedLogs: number;
     dlqSize: number;
     totalTickets: number;
-  } {
-    const integrations = Array.from(this.integrations.values()).filter(
-      (i) => i.tenantId === tenantId,
-    );
-    const logs = Array.from(this.logs.values()).filter(
-      (l) => l.tenantId === tenantId,
-    );
-    const dlq = Array.from(this.deadLetterQueue.values()).filter(
-      (d) => d.tenantId === tenantId,
-    );
-    const tickets = Array.from(this.tickets.values()).filter(
-      (t) => t.tenantId === tenantId,
-    );
-    return {
-      totalIntegrations: integrations.length,
-      enabledIntegrations: integrations.filter((i) => i.enabled).length,
-      totalLogs: logs.length,
-      failedLogs: logs.filter((l) => l.status === 'failure').length,
-      dlqSize: dlq.length,
-      totalTickets: tickets.length,
-    };
+  }> {
+    const integrations = Array.from(this.integrations.values()).filter((i) => i.tenantId === tenantId);
+    return this.dbRead(async () => {
+      const [totalLogs, failedLogs, dlqSize, totalTickets] = await Promise.all([
+        this.records.countLogs(tenantId),
+        this.records.countLogs(tenantId, 'failure'),
+        this.records.countDeliveries(tenantId, 'dead_letter'),
+        this.records.countTickets(tenantId),
+      ]);
+      return {
+        totalIntegrations: integrations.length,
+        enabledIntegrations: integrations.filter((i) => i.enabled).length,
+        totalLogs, failedLogs, dlqSize, totalTickets,
+      };
+    }, 'Failed to compute integration stats');
+  }
+
+  /** Retention: delete logs and successful deliveries older than `days`. Returns rows deleted. */
+  async purgeOldRecords(days = 30): Promise<number> {
+    const before = new Date(Date.now() - days * 86_400_000);
+    return this.dbRead(() => this.records.purgeOlderThan(before), 'Failed to purge old integration records');
   }
 }

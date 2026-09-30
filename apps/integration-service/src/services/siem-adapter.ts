@@ -46,7 +46,7 @@ export class SiemAdapter {
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         const result = await this.sendToSiem(siemConfig, mapped);
-        this.store.addLog(integrationId, tenantId, event, 'success', {
+        await this.store.addLog(integrationId, tenantId, event, 'success', {
           statusCode: result.statusCode,
           attempt,
           payload: mapped,
@@ -59,7 +59,7 @@ export class SiemAdapter {
         logger.warn({ integrationId, attempt, error: errorMsg }, 'SIEM push failed');
 
         if (attempt === this.maxRetries) {
-          this.store.addLog(integrationId, tenantId, event, 'failure', {
+          await this.store.addLog(integrationId, tenantId, event, 'failure', {
             errorMessage: errorMsg,
             attempt,
             payload: mapped,
@@ -67,7 +67,7 @@ export class SiemAdapter {
           return { success: false, statusCode: 0, responseBody: '', error: errorMsg };
         }
 
-        this.store.addLog(integrationId, tenantId, event, 'retrying', {
+        await this.store.addLog(integrationId, tenantId, event, 'retrying', {
           errorMessage: errorMsg,
           attempt,
           payload: mapped,

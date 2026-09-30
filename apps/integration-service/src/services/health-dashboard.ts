@@ -44,14 +44,14 @@ export class HealthDashboard {
   ) {}
 
   /** Get health summary for all integrations in a tenant. */
-  getSummary(tenantId: string): HealthSummary {
+  async getSummary(tenantId: string): Promise<HealthSummary> {
     const { data: integrations } = this.store.listIntegrations(tenantId, {
       page: 1,
       limit: 500,
     });
 
-    const healthList: IntegrationHealth[] = integrations.map((integration) => {
-      const { data: logs } = this.store.listLogs(
+    const healthList: IntegrationHealth[] = await Promise.all(integrations.map(async (integration) => {
+      const { data: logs } = await this.store.listLogs(
         integration.id, tenantId, { page: 1, limit: 1000 },
       );
 
@@ -87,7 +87,7 @@ export class HealthDashboard {
         uptimePercent,
         rateLimit: this.rateLimiter.getStatus(integration.id),
       };
-    });
+    }));
 
     const totalEvents = healthList.reduce((sum, h) => sum + h.totalCount, 0);
     const totalFailures = healthList.reduce((sum, h) => sum + h.failureCount, 0);
@@ -95,7 +95,7 @@ export class HealthDashboard {
       ? Math.round(((totalEvents - totalFailures) / totalEvents) * 100)
       : 100;
 
-    const dlq = this.store.listDLQ(tenantId, { page: 1, limit: 1 });
+    const dlq = await this.store.listDLQ(tenantId, { page: 1, limit: 1 });
 
     return {
       totalIntegrations: integrations.length,
@@ -109,11 +109,11 @@ export class HealthDashboard {
   }
 
   /** Get health for a single integration. */
-  getIntegrationHealth(integrationId: string, tenantId: string): IntegrationHealth | null {
+  async getIntegrationHealth(integrationId: string, tenantId: string): Promise<IntegrationHealth | null> {
     const integration = this.store.getIntegration(integrationId, tenantId);
     if (!integration) return null;
 
-    const { data: logs } = this.store.listLogs(
+    const { data: logs } = await this.store.listLogs(
       integrationId, tenantId, { page: 1, limit: 1000 },
     );
 
