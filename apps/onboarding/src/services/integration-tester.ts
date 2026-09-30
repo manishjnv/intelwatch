@@ -27,7 +27,7 @@ export interface IntegrationTestStep {
  */
 export class IntegrationTester {
   /** tenantId:sourceId → last test result */
-  private results = new Map<string, IntegrationTestResult>();
+  private results = new Map<string, IntegrationTestResult>(); // memory-ok: cache — last test result per integration, re-run on demand
 
   constructor(private wizardStore: WizardStore) {}
 

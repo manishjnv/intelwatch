@@ -41,14 +41,14 @@ export class TimelineService {
   }
 
   /** Get filtered timeline events for a hunt. */
-  getTimeline(
+  async getTimeline(
     tenantId: string,
     huntId: string,
     filter?: TimelineFilter,
     page: number = 1,
     limit: number = 50,
-  ): TimelineWindow {
-    const session = this.requireHunt(tenantId, huntId);
+  ): Promise<TimelineWindow> {
+    const session = await this.requireHunt(tenantId, huntId);
     let events = [...session.timeline];
 
     // Apply filters
@@ -85,8 +85,8 @@ export class TimelineService {
   }
 
   /** Get timeline statistics for a hunt. */
-  getStats(tenantId: string, huntId: string): TimelineStats {
-    const session = this.requireHunt(tenantId, huntId);
+  async getStats(tenantId: string, huntId: string): Promise<TimelineStats> {
+    const session = await this.requireHunt(tenantId, huntId);
     const events = session.timeline;
 
     if (events.length === 0) {
@@ -125,8 +125,8 @@ export class TimelineService {
   }
 
   /** Get activity heatmap (events per hour of day). */
-  getActivityHeatmap(tenantId: string, huntId: string): Record<number, number> {
-    const session = this.requireHunt(tenantId, huntId);
+  async getActivityHeatmap(tenantId: string, huntId: string): Promise<Record<number, number>> {
+    const session = await this.requireHunt(tenantId, huntId);
     const heatmap: Record<number, number> = {};
     for (let i = 0; i < 24; i++) heatmap[i] = 0;
 
@@ -138,15 +138,15 @@ export class TimelineService {
   }
 
   /** Get recent activity summary (last N events). */
-  getRecentActivity(tenantId: string, huntId: string, count: number = 10): TimelineEvent[] {
-    const session = this.requireHunt(tenantId, huntId);
+  async getRecentActivity(tenantId: string, huntId: string, count: number = 10): Promise<TimelineEvent[]> {
+    const session = await this.requireHunt(tenantId, huntId);
     return [...session.timeline]
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
       .slice(0, count);
   }
 
-  private requireHunt(tenantId: string, huntId: string): HuntSession {
-    const session = this.store.getSession(tenantId, huntId);
+  private async requireHunt(tenantId: string, huntId: string): Promise<HuntSession> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }

@@ -18,7 +18,7 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
     });
   });
 
-  function seedHunt(overrides: Partial<HuntSession> = {}): HuntSession {
+  async function seedHunt(overrides: Partial<HuntSession> = {}): Promise<HuntSession> {
     const now = new Date().toISOString();
     const session: HuntSession = {
       id: 'hunt-1', tenantId, title: 'Test', hypothesis: 'Testing',
@@ -27,12 +27,12 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
       queryHistory: [], correlationLeads: [], createdAt: now, updatedAt: now,
       ...overrides,
     };
-    store.setSession(tenantId, session);
+    await store.setSession(tenantId, session);
     return session;
   }
 
   it('7.1. returns heuristic suggestions for active hunt', async () => {
-    seedHunt();
+    await seedHunt();
     const result = await suggestions.getSuggestions(tenantId, 'hunt-1');
     expect(result.source).toBe('heuristic');
     expect(result.suggestions.length).toBeGreaterThan(0);
@@ -40,7 +40,7 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
   });
 
   it('7.2. suggests adding entities when hunt is empty', async () => {
-    seedHunt({ entities: [] });
+    await seedHunt({ entities: [] });
     const result = await suggestions.getSuggestions(tenantId, 'hunt-1');
     const hasEntitySuggestion = result.suggestions.some((s) =>
       s.action.toLowerCase().includes('entities') || s.action.toLowerCase().includes('seed'),
@@ -49,7 +49,7 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
   });
 
   it('7.3. provides entity-type-specific suggestions', async () => {
-    seedHunt({
+    await seedHunt({
       entities: [
         { id: 'e1', type: 'ip', value: '10.0.0.1', addedAt: '', addedBy: '', pivotDepth: 0 },
       ],
@@ -60,7 +60,7 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
   });
 
   it('7.4. provides suggestions for draft status', async () => {
-    seedHunt({ status: 'draft' });
+    await seedHunt({ status: 'draft' });
     const result = await suggestions.getSuggestions(tenantId, 'hunt-1');
     const hasDraftSuggestion = result.suggestions.some((s) =>
       s.rationale.includes('draft'),
@@ -69,7 +69,7 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
   });
 
   it('7.5. suggests documenting findings when entities exist but no findings', async () => {
-    seedHunt({
+    await seedHunt({
       entities: [
         { id: 'e1', type: 'domain', value: 'evil.com', addedAt: '', addedBy: '', pivotDepth: 0 },
       ],
@@ -83,7 +83,7 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
   });
 
   it('7.6. suggests auto-link when no correlations linked', async () => {
-    seedHunt({
+    await seedHunt({
       entities: [
         { id: 'e1', type: 'ip', value: '10.0.0.1', addedAt: '', addedBy: '', pivotDepth: 0 },
       ],
@@ -97,7 +97,7 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
   });
 
   it('7.7. caps suggestions at 5', async () => {
-    seedHunt({
+    await seedHunt({
       entities: [
         { id: 'e1', type: 'ip', value: '10.0.0.1', addedAt: '', addedBy: '', pivotDepth: 0 },
         { id: 'e2', type: 'domain', value: 'evil.com', addedAt: '', addedBy: '', pivotDepth: 0 },
@@ -121,14 +121,14 @@ describe('Hunting Service — #7 AI Next-Step Suggestions', () => {
   });
 
   it('7.10. includes generatedAt timestamp', async () => {
-    seedHunt();
+    await seedHunt();
     const result = await suggestions.getSuggestions(tenantId, 'hunt-1');
     expect(result.generatedAt).toBeDefined();
     expect(new Date(result.generatedAt).getTime()).toBeGreaterThan(0);
   });
 
   it('7.11. suggestions have priority field', async () => {
-    seedHunt();
+    await seedHunt();
     const result = await suggestions.getSuggestions(tenantId, 'hunt-1');
     for (const s of result.suggestions) {
       expect(['high', 'medium', 'low']).toContain(s.priority);

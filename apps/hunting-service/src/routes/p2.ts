@@ -6,6 +6,7 @@ import type { HuntPlaybooks } from '../services/hunt-playbooks.js';
 import type { HuntScoring } from '../services/hunt-scoring.js';
 import type { BulkImport } from '../services/bulk-import.js';
 import type { HuntExport } from '../services/hunt-export.js';
+import type { HuntSessionManager } from '../services/hunt-session-manager.js';
 
 export interface P2RouteDeps {
   patternRecognition: AIPatternRecognition;
@@ -13,6 +14,8 @@ export interface P2RouteDeps {
   huntScoring: HuntScoring;
   bulkImport: BulkImport;
   huntExport: HuntExport;
+  /** Used to verify the hunt belongs to the caller's tenant before playbook operations. */
+  sessionManager: HuntSessionManager;
 }
 
 const BulkImportSchema = z.object({
@@ -27,7 +30,7 @@ const CompleteStepSchema = z.object({
 
 /** P2 routes: pattern recognition, playbooks, scoring, import, export. */
 export function p2Routes(deps: P2RouteDeps) {
-  const { patternRecognition, playbooks, huntScoring, bulkImport, huntExport } = deps;
+  const { patternRecognition, playbooks, huntScoring, bulkImport, huntExport, sessionManager } = deps;
 
   return async function routes(app: FastifyInstance): Promise<void> {
     // ─── Pattern Recognition (#11) ────────────────────────
@@ -72,8 +75,10 @@ export function p2Routes(deps: P2RouteDeps) {
       '/:huntId/playbook/:playbookId/start',
       { preHandler: [authenticate, rbac('alert:create')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
+        const user = getUser(req);
         const { huntId, playbookId } = req.params as { huntId: string; playbookId: string };
-        const execution = playbooks.startExecution(playbookId, huntId);
+        await sessionManager.get(user.tenantId, huntId);
+        const execution = await playbooks.startExecution(user.tenantId, playbookId, huntId);
         return reply.status(201).send({ data: execution });
       },
     );
@@ -82,9 +87,11 @@ export function p2Routes(deps: P2RouteDeps) {
       '/:huntId/playbook/step',
       { preHandler: [authenticate, rbac('alert:update')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
+        const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
+        await sessionManager.get(user.tenantId, huntId);
         const { stepId, result } = CompleteStepSchema.parse(req.body);
-        const execution = playbooks.completeStep(huntId, stepId, result);
+        const execution = await playbooks.completeStep(user.tenantId, huntId, stepId, result);
         return reply.send({ data: execution });
       },
     );
@@ -93,9 +100,11 @@ export function p2Routes(deps: P2RouteDeps) {
       '/:huntId/playbook/progress',
       { preHandler: [authenticate, rbac('alert:read')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
+        const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const execution = playbooks.getExecution(huntId);
-        const progress = playbooks.getProgress(huntId);
+        await sessionManager.get(user.tenantId, huntId);
+        const execution = await playbooks.getExecution(user.tenantId, huntId);
+        const progress = await playbooks.getProgress(user.tenantId, huntId);
         return reply.send({ data: { execution, progress } });
       },
     );
@@ -108,7 +117,7 @@ export function p2Routes(deps: P2RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId } = req.params as { huntId: string };
-        const score = huntScoring.scoreHunt(user.tenantId, huntId);
+        const score = await huntScoring.scoreHunt(user.tenantId, huntId);
         return reply.send({ data: score });
       },
     );
@@ -118,7 +127,7 @@ export function p2Routes(deps: P2RouteDeps) {
       { preHandler: [authenticate, rbac('alert:read')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
-        const ranked = huntScoring.prioritize(user.tenantId);
+        const ranked = await huntScoring.prioritize(user.tenantId);
         return reply.send({ data: ranked, total: ranked.length });
       },
     );
@@ -140,7 +149,7 @@ export function p2Routes(deps: P2RouteDeps) {
           rows = bulkImport.parseStixIndicators(JSON.parse(content));
         }
 
-        const result = bulkImport.importCsv(user.tenantId, huntId, user.userId, rows);
+        const result = await bulkImport.importCsv(user.tenantId, huntId, user.userId, rows);
         return reply.send({ data: result });
       },
     );
@@ -153,7 +162,7 @@ export function p2Routes(deps: P2RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { huntId, format } = req.params as { huntId: string; format: string };
-        const result = huntExport.export(
+        const result = await huntExport.export(
           user.tenantId, huntId,
           format as Parameters<typeof huntExport.export>[2],
         );

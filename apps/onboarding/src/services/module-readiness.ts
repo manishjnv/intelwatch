@@ -4,6 +4,7 @@ import {
   type PlatformModule,
   type ModuleReadiness,
 } from '../schemas/onboarding.js';
+import type { Redis } from 'ioredis';
 
 /** Default enabled modules for new tenants. */
 const DEFAULT_ENABLED: PlatformModule[] = [
@@ -14,26 +15,48 @@ const DEFAULT_ENABLED: PlatformModule[] = [
   'vulnerability-intel',
 ];
 
+const KEY_PREFIX = 'etip:';
+const KEY_SUFFIX = ':modules';
+
+function redisKey(tenantId: string): string {
+  return `${KEY_PREFIX}${tenantId}${KEY_SUFFIX}`;
+}
+
+interface ModuleState {
+  enabled: string[];
+  configured: string[];
+}
+
 /**
  * Checks which modules are enabled, configured, and healthy.
- * Uses in-memory state (DECISION-013). In production, would query
- * customization-service and each module's health endpoint.
+ * Redis-backed (S159d) via the same client WizardStore uses; falls back to
+ * in-memory Maps only when no Redis client is injected (test mode).
  */
 export class ModuleReadinessChecker {
-  /** tenantId → set of enabled modules */
-  private enabledModules = new Map<string, Set<PlatformModule>>();
+  /** tenantId → set of enabled modules (in-memory cache) */
+  private enabledModules = new Map<string, Set<PlatformModule>>(); // memory-ok: cache — per-process copy of the tenant Redis key (Redis is the source of truth; memory-only when no Redis, i.e. tests)
   /** tenantId → set of configured modules (had their setup completed) */
-  private configuredModules = new Map<string, Set<PlatformModule>>();
+  private configuredModules = new Map<string, Set<PlatformModule>>(); // memory-ok: cache — per-process copy of the tenant Redis key (Redis is the source of truth; memory-only when no Redis, i.e. tests)
+  private redis: Redis | null;
+
+  constructor(redis?: Redis | null) {
+    this.redis = redis ?? null;
+  }
 
   /** Get readiness for all modules. */
-  checkAll(tenantId: string): ModuleReadiness[] {
-    this.ensureDefaults(tenantId);
-    return PLATFORM_MODULES.map((mod) => this.checkModule(tenantId, mod));
+  async checkAll(tenantId: string): Promise<ModuleReadiness[]> {
+    await this.ensureDefaults(tenantId);
+    return PLATFORM_MODULES.map((mod) => this.checkModuleSync(tenantId, mod));
   }
 
   /** Check a single module's readiness. */
-  checkModule(tenantId: string, module: PlatformModule): ModuleReadiness {
-    this.ensureDefaults(tenantId);
+  async checkModule(tenantId: string, module: PlatformModule): Promise<ModuleReadiness> {
+    await this.ensureDefaults(tenantId);
+    return this.checkModuleSync(tenantId, module);
+  }
+
+  /** Synchronous readiness computation once Maps are hydrated. */
+  private checkModuleSync(tenantId: string, module: PlatformModule): ModuleReadiness {
     const enabled = this.enabledModules.get(tenantId)!;
     const configured = this.configuredModules.get(tenantId)!;
     const deps = MODULE_DEPENDENCIES[module] ?? [];
@@ -62,41 +85,43 @@ export class ModuleReadinessChecker {
   }
 
   /** Enable a module for a tenant. */
-  enableModule(tenantId: string, module: PlatformModule): ModuleReadiness {
-    this.ensureDefaults(tenantId);
+  async enableModule(tenantId: string, module: PlatformModule): Promise<ModuleReadiness> {
+    await this.ensureDefaults(tenantId);
     this.enabledModules.get(tenantId)!.add(module);
-    return this.checkModule(tenantId, module);
+    await this.persist(tenantId);
+    return this.checkModuleSync(tenantId, module);
   }
 
   /** Disable a module for a tenant. */
-  disableModule(tenantId: string, module: PlatformModule): ModuleReadiness {
-    this.ensureDefaults(tenantId);
+  async disableModule(tenantId: string, module: PlatformModule): Promise<ModuleReadiness> {
+    await this.ensureDefaults(tenantId);
     this.enabledModules.get(tenantId)!.delete(module);
-    return this.checkModule(tenantId, module);
+    await this.persist(tenantId);
+    return this.checkModuleSync(tenantId, module);
   }
 
   /** Mark a module as configured. */
-  markConfigured(tenantId: string, module: PlatformModule): void {
-    this.ensureDefaults(tenantId);
+  async markConfigured(tenantId: string, module: PlatformModule): Promise<void> {
+    await this.ensureDefaults(tenantId);
     this.configuredModules.get(tenantId)!.add(module);
+    await this.persist(tenantId);
   }
 
   /** Get count of enabled modules. */
-  getEnabledCount(tenantId: string): number {
-    this.ensureDefaults(tenantId);
+  async getEnabledCount(tenantId: string): Promise<number> {
+    await this.ensureDefaults(tenantId);
     return this.enabledModules.get(tenantId)!.size;
   }
 
   /** Get modules that are ready. */
-  getReadyModules(tenantId: string): PlatformModule[] {
-    return this.checkAll(tenantId)
-      .filter((m) => m.status === 'ready')
-      .map((m) => m.module);
+  async getReadyModules(tenantId: string): Promise<PlatformModule[]> {
+    const all = await this.checkAll(tenantId);
+    return all.filter((m) => m.status === 'ready').map((m) => m.module);
   }
 
   /** Validate module dependencies before enabling. */
-  validateDependencies(tenantId: string, module: PlatformModule): { valid: boolean; missing: string[] } {
-    this.ensureDefaults(tenantId);
+  async validateDependencies(tenantId: string, module: PlatformModule): Promise<{ valid: boolean; missing: string[] }> {
+    await this.ensureDefaults(tenantId);
     const enabled = this.enabledModules.get(tenantId)!;
     const deps = MODULE_DEPENDENCIES[module] ?? [];
     const missing = deps.filter((d) => !enabled.has(d as PlatformModule));
@@ -105,13 +130,33 @@ export class ModuleReadinessChecker {
 
   // ─── Private ──────────────────────────────────────────
 
-  private ensureDefaults(tenantId: string): void {
-    if (!this.enabledModules.has(tenantId)) {
-      this.enabledModules.set(tenantId, new Set(DEFAULT_ENABLED));
+  /** Hydrate tenant state from cache, then Redis, then defaults (mirrors WizardStore). */
+  private async ensureDefaults(tenantId: string): Promise<void> {
+    if (this.enabledModules.has(tenantId)) return;
+
+    if (this.redis) {
+      const raw = await this.redis.get(redisKey(tenantId));
+      if (raw) {
+        const state = JSON.parse(raw) as ModuleState;
+        this.enabledModules.set(tenantId, new Set(state.enabled as PlatformModule[]));
+        this.configuredModules.set(tenantId, new Set(state.configured as PlatformModule[]));
+        return;
+      }
     }
-    if (!this.configuredModules.has(tenantId)) {
-      // Default modules are considered configured
-      this.configuredModules.set(tenantId, new Set(DEFAULT_ENABLED));
-    }
+
+    this.enabledModules.set(tenantId, new Set(DEFAULT_ENABLED));
+    // Default modules are considered configured
+    this.configuredModules.set(tenantId, new Set(DEFAULT_ENABLED));
+    await this.persist(tenantId);
+  }
+
+  /** Persist current state to Redis (if available). */
+  private async persist(tenantId: string): Promise<void> {
+    if (!this.redis) return;
+    const enabled = this.enabledModules.get(tenantId);
+    const configured = this.configuredModules.get(tenantId);
+    if (!enabled || !configured) return;
+    const state: ModuleState = { enabled: [...enabled], configured: [...configured] };
+    await this.redis.set(redisKey(tenantId), JSON.stringify(state));
   }
 }

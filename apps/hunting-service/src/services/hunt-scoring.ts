@@ -44,14 +44,14 @@ export class HuntScoring {
   }
 
   /** Score a single hunt. */
-  scoreHunt(tenantId: string, huntId: string): HuntScore {
-    const session = this.requireHunt(tenantId, huntId);
+  async scoreHunt(tenantId: string, huntId: string): Promise<HuntScore> {
+    const session = await this.requireHunt(tenantId, huntId);
     return this.calculateScore(session);
   }
 
   /** Score and rank all active hunts for a tenant. */
-  prioritize(tenantId: string): PrioritizedHunt[] {
-    const sessions = Array.from(this.store.getTenantSessions(tenantId).values());
+  async prioritize(tenantId: string): Promise<PrioritizedHunt[]> {
+    const sessions = await this.store.listAllSessions(tenantId);
     const active = sessions.filter(
       (s) => s.status === 'active' || s.status === 'draft' || s.status === 'paused',
     );
@@ -152,8 +152,8 @@ export class HuntScoring {
     return `Continue investigation — ${priority} priority based on current evidence`;
   }
 
-  private requireHunt(tenantId: string, huntId: string): HuntSession {
-    const session = this.store.getSession(tenantId, huntId);
+  private async requireHunt(tenantId: string, huntId: string): Promise<HuntSession> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }

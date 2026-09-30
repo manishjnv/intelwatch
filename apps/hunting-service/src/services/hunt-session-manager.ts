@@ -32,6 +32,13 @@ const VALID_TRANSITIONS: Record<HuntStatus, HuntStatus[]> = {
  *
  * Operations: create, update, transition status, add/remove entities,
  * record timeline events, execute queries, and cleanup expired sessions.
+ *
+ * Every timeline event is pushed onto the in-memory `session` object and saved
+ * exactly once at the end of each method (Step 3 S159 fix) — pre-migration this
+ * relied on `store.getSession` returning the same live Map object so a later,
+ * separate fetch-and-push inside a private helper still landed on disk; the
+ * doc-repo backing the store now returns clones, so a push that isn't part of
+ * the final `setSession` call would silently be lost.
  */
 export class HuntSessionManager {
   private readonly store: HuntingStore;
@@ -43,7 +50,7 @@ export class HuntSessionManager {
   }
 
   /** Create a new hunt session. Optionally initializes from a template. */
-  create(
+  async create(
     tenantId: string,
     userId: string,
     input: {
@@ -53,8 +60,8 @@ export class HuntSessionManager {
       tags?: string[];
     },
     template?: HuntTemplate,
-  ): HuntSession {
-    const activeCount = this.store.countActiveSessions(tenantId);
+  ): Promise<HuntSession> {
+    const activeCount = await this.store.countActiveSessions(tenantId);
     if (activeCount >= this.config.maxActiveSessions) {
       throw new AppError(
         429,
@@ -88,15 +95,15 @@ export class HuntSessionManager {
       session.tags = [...new Set([...session.tags, ...template.tags])];
     }
 
-    this.store.setSession(tenantId, session);
-    this.addTimelineEvent(tenantId, session.id, userId, 'status_changed', 'Hunt created with status: draft');
+    this.pushTimelineEvent(session, userId, 'status_changed', 'Hunt created with status: draft');
+    await this.store.setSession(tenantId, session);
 
     return session;
   }
 
   /** Get a session by ID. Throws 404 if not found. */
-  get(tenantId: string, huntId: string): HuntSession {
-    const session = this.store.getSession(tenantId, huntId);
+  async get(tenantId: string, huntId: string): Promise<HuntSession> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }
@@ -104,7 +111,7 @@ export class HuntSessionManager {
   }
 
   /** Update mutable fields on a hunt session. */
-  update(
+  async update(
     tenantId: string,
     huntId: string,
     userId: string,
@@ -115,8 +122,8 @@ export class HuntSessionManager {
       findings?: string;
       tags?: string[];
     },
-  ): HuntSession {
-    const session = this.get(tenantId, huntId);
+  ): Promise<HuntSession> {
+    const session = await this.get(tenantId, huntId);
 
     if (session.status === 'archived') {
       throw new AppError(400, 'Cannot update an archived hunt', 'HUNT_ARCHIVED');
@@ -128,22 +135,22 @@ export class HuntSessionManager {
     if (updates.tags !== undefined) session.tags = updates.tags;
     if (updates.findings !== undefined) {
       session.findings = updates.findings;
-      this.addTimelineEvent(tenantId, huntId, userId, 'finding_added', 'Findings updated');
+      this.pushTimelineEvent(session, userId, 'finding_added', 'Findings updated');
     }
 
     session.updatedAt = new Date().toISOString();
-    this.store.setSession(tenantId, session);
+    await this.store.setSession(tenantId, session);
     return session;
   }
 
   /** Transition hunt to a new status. Enforces state machine. */
-  changeStatus(
+  async changeStatus(
     tenantId: string,
     huntId: string,
     userId: string,
     newStatus: HuntStatus,
-  ): HuntSession {
-    const session = this.get(tenantId, huntId);
+  ): Promise<HuntSession> {
+    const session = await this.get(tenantId, huntId);
     const allowed = VALID_TRANSITIONS[session.status];
 
     if (!allowed || !allowed.includes(newStatus)) {
@@ -162,25 +169,25 @@ export class HuntSessionManager {
       session.completedAt = session.updatedAt;
     }
 
-    this.store.setSession(tenantId, session);
-    this.addTimelineEvent(
-      tenantId, huntId, userId, 'status_changed',
+    this.pushTimelineEvent(
+      session, userId, 'status_changed',
       `Status changed: ${oldStatus} → ${newStatus}`,
     );
+    await this.store.setSession(tenantId, session);
 
     return session;
   }
 
   /** Add an entity to a hunt session. */
-  addEntity(
+  async addEntity(
     tenantId: string,
     huntId: string,
     userId: string,
     input: { type: EntityType; value: string; notes?: string },
     pivotDepth: number = 0,
     sourceEntityId?: string,
-  ): HuntEntity {
-    const session = this.get(tenantId, huntId);
+  ): Promise<HuntEntity> {
+    const session = await this.get(tenantId, huntId);
 
     if (session.status === 'archived' || session.status === 'completed') {
       throw new AppError(400, 'Cannot add entities to a completed/archived hunt', 'HUNT_CLOSED');
@@ -207,20 +214,20 @@ export class HuntSessionManager {
 
     session.entities.push(entity);
     session.updatedAt = new Date().toISOString();
-    this.store.setSession(tenantId, session);
 
-    this.addTimelineEvent(
-      tenantId, huntId, userId, 'entity_added',
+    this.pushTimelineEvent(
+      session, userId, 'entity_added',
       `Added ${input.type}: ${input.value}`,
       { entityId: entity.id, pivotDepth },
     );
+    await this.store.setSession(tenantId, session);
 
     return entity;
   }
 
   /** Remove an entity from a hunt session. */
-  removeEntity(tenantId: string, huntId: string, userId: string, entityId: string): void {
-    const session = this.get(tenantId, huntId);
+  async removeEntity(tenantId: string, huntId: string, userId: string, entityId: string): Promise<void> {
+    const session = await this.get(tenantId, huntId);
     const idx = session.entities.findIndex((e) => e.id === entityId);
     if (idx === -1) {
       throw new AppError(404, 'Entity not found in hunt', 'ENTITY_NOT_FOUND');
@@ -228,33 +235,33 @@ export class HuntSessionManager {
 
     const removed = session.entities.splice(idx, 1)[0]!;
     session.updatedAt = new Date().toISOString();
-    this.store.setSession(tenantId, session);
 
-    this.addTimelineEvent(
-      tenantId, huntId, userId, 'entity_removed',
+    this.pushTimelineEvent(
+      session, userId, 'entity_removed',
       `Removed ${removed.type}: ${removed.value}`,
     );
+    await this.store.setSession(tenantId, session);
   }
 
   /** List sessions with pagination and optional status filter. */
-  list(
+  async list(
     tenantId: string,
     page: number,
     limit: number,
     status?: string,
-  ): { data: HuntSession[]; total: number } {
+  ): Promise<{ data: HuntSession[]; total: number }> {
     return this.store.listSessions(tenantId, page, limit, status);
   }
 
   /** Record a query execution in the hunt's history. */
-  recordQuery(
+  async recordQuery(
     tenantId: string,
     huntId: string,
     query: HuntQuery,
     name: string,
     resultCount: number,
-  ): SavedQuery {
-    const session = this.get(tenantId, huntId);
+  ): Promise<SavedQuery> {
+    const session = await this.get(tenantId, huntId);
     const savedQuery: SavedQuery = {
       id: randomUUID(),
       query,
@@ -265,22 +272,18 @@ export class HuntSessionManager {
 
     session.queryHistory.push(savedQuery);
     session.updatedAt = new Date().toISOString();
-    this.store.setSession(tenantId, session);
+    await this.store.setSession(tenantId, session);
     return savedQuery;
   }
 
-  /** Add a timeline event to a hunt. */
-  private addTimelineEvent(
-    tenantId: string,
-    huntId: string,
+  /** Push a timeline event onto an already-fetched session object. Caller saves once. */
+  private pushTimelineEvent(
+    session: HuntSession,
     userId: string,
     type: TimelineEvent['type'],
     description: string,
     metadata?: Record<string, unknown>,
   ): void {
-    const session = this.store.getSession(tenantId, huntId);
-    if (!session) return;
-
     session.timeline.push({
       id: randomUUID(),
       type,
@@ -292,13 +295,13 @@ export class HuntSessionManager {
   }
 
   /** Get hunt statistics for a tenant. */
-  getStats(tenantId: string): {
+  async getStats(tenantId: string): Promise<{
     total: number;
     byStatus: Record<string, number>;
     bySeverity: Record<string, number>;
     avgEntitiesPerHunt: number;
-  } {
-    const sessions = Array.from(this.store.getTenantSessions(tenantId).values());
+  }> {
+    const sessions = await this.store.listAllSessions(tenantId);
     const byStatus: Record<string, number> = {};
     const bySeverity: Record<string, number> = {};
     let totalEntities = 0;
@@ -318,18 +321,19 @@ export class HuntSessionManager {
   }
 
   /** Archive expired sessions (past timeout). */
-  cleanupExpired(tenantId: string): number {
+  async cleanupExpired(tenantId: string): Promise<number> {
     const cutoff = Date.now() - this.config.sessionTimeoutHours * 3600 * 1000;
-    const sessions = this.store.getTenantSessions(tenantId);
+    const sessions = await this.store.listAllSessions(tenantId);
     let archived = 0;
 
-    for (const session of sessions.values()) {
+    for (const session of sessions) {
       if (
         (session.status === 'draft' || session.status === 'paused') &&
         new Date(session.updatedAt).getTime() < cutoff
       ) {
         session.status = 'archived';
         session.updatedAt = new Date().toISOString();
+        await this.store.setSession(tenantId, session);
         archived++;
       }
     }

@@ -31,7 +31,7 @@ describe('ChecklistPersistence', () => {
       for (let i = 0; i < 15; i++) {
         await persistence.save('t1');
       }
-      const snapshots = persistence.listSnapshots('t1');
+      const snapshots = await persistence.listSnapshots('t1');
       expect(snapshots.length).toBeLessThanOrEqual(10);
     });
   });
@@ -40,18 +40,18 @@ describe('ChecklistPersistence', () => {
     it('returns latest snapshot', async () => {
       await wizardStore.completeStep('t1', 'welcome');
       await persistence.save('t1');
-      const snapshot = persistence.restore('t1');
+      const snapshot = await persistence.restore('t1');
       expect(snapshot.wizardState.steps.welcome).toBe('completed');
     });
 
-    it('throws when no saved state', () => {
-      expect(() => persistence.restore('t2')).toThrow('No saved onboarding state found');
+    it('throws when no saved state', async () => {
+      await expect(persistence.restore('t2')).rejects.toThrow('No saved onboarding state found');
     });
   });
 
   describe('listSnapshots', () => {
-    it('returns empty for new tenant', () => {
-      const snapshots = persistence.listSnapshots('t2');
+    it('returns empty for new tenant', async () => {
+      const snapshots = await persistence.listSnapshots('t2');
       expect(snapshots).toEqual([]);
     });
 
@@ -59,7 +59,7 @@ describe('ChecklistPersistence', () => {
       await persistence.save('t1');
       await persistence.save('t1');
       await persistence.save('t1');
-      const snapshots = persistence.listSnapshots('t1');
+      const snapshots = await persistence.listSnapshots('t1');
       expect(snapshots).toHaveLength(3);
       expect(snapshots[0].version).toBe(1);
       expect(snapshots[2].version).toBe(3);
@@ -70,17 +70,17 @@ describe('ChecklistPersistence', () => {
     it('returns specific snapshot version', async () => {
       await persistence.save('t1');
       await persistence.save('t1');
-      const snapshot = persistence.getVersion('t1', 1);
+      const snapshot = await persistence.getVersion('t1', 1);
       expect(snapshot.version).toBe(1);
     });
 
     it('throws for nonexistent version', async () => {
       await persistence.save('t1');
-      expect(() => persistence.getVersion('t1', 99)).toThrow('Snapshot version 99 not found');
+      await expect(persistence.getVersion('t1', 99)).rejects.toThrow('Snapshot version 99 not found');
     });
 
-    it('throws for tenant with no snapshots', () => {
-      expect(() => persistence.getVersion('t2', 1)).toThrow('No saved onboarding state found');
+    it('throws for tenant with no snapshots', async () => {
+      await expect(persistence.getVersion('t2', 1)).rejects.toThrow('No saved onboarding state found');
     });
   });
 
@@ -88,19 +88,19 @@ describe('ChecklistPersistence', () => {
     it('removes all snapshots', async () => {
       await persistence.save('t1');
       await persistence.save('t1');
-      persistence.clear('t1');
-      expect(persistence.hasSavedState('t1')).toBe(false);
+      await persistence.clear('t1');
+      expect(await persistence.hasSavedState('t1')).toBe(false);
     });
   });
 
   describe('hasSavedState', () => {
-    it('returns false for no snapshots', () => {
-      expect(persistence.hasSavedState('t1')).toBe(false);
+    it('returns false for no snapshots', async () => {
+      expect(await persistence.hasSavedState('t1')).toBe(false);
     });
 
     it('returns true after save', async () => {
       await persistence.save('t1');
-      expect(persistence.hasSavedState('t1')).toBe(true);
+      expect(await persistence.hasSavedState('t1')).toBe(true);
     });
   });
 });

@@ -15,7 +15,7 @@ export function moduleRoutes(deps: ModuleRouteDeps) {
     /** GET /modules — List all modules with readiness status. */
     app.get('/', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const modules = moduleReadiness.checkAll(tenantId);
+      const modules = await moduleReadiness.checkAll(tenantId);
       return reply.send({ data: modules, total: modules.length });
     });
 
@@ -23,7 +23,7 @@ export function moduleRoutes(deps: ModuleRouteDeps) {
     app.get('/:module', async (req: FastifyRequest<{ Params: { module: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const { module } = req.params;
-      const readiness = moduleReadiness.checkModule(tenantId, module as PlatformModule);
+      const readiness = await moduleReadiness.checkModule(tenantId, module as PlatformModule);
       return reply.send({ data: readiness });
     });
 
@@ -31,7 +31,7 @@ export function moduleRoutes(deps: ModuleRouteDeps) {
     app.post('/:module/enable', async (req: FastifyRequest<{ Params: { module: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const { module } = req.params;
-      const result = prerequisiteValidator.enableWithValidation(tenantId, module as PlatformModule);
+      const result = await prerequisiteValidator.enableWithValidation(tenantId, module as PlatformModule);
       const status = result.enabled ? 200 : 400;
       return reply.status(status).send({ data: result });
     });
@@ -40,7 +40,7 @@ export function moduleRoutes(deps: ModuleRouteDeps) {
     app.post('/:module/disable', async (req: FastifyRequest<{ Params: { module: string } }>, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const { module } = req.params;
-      const readiness = moduleReadiness.disableModule(tenantId, module as PlatformModule);
+      const readiness = await moduleReadiness.disableModule(tenantId, module as PlatformModule);
       return reply.send({ data: readiness });
     });
 

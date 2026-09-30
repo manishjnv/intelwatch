@@ -36,11 +36,11 @@ function mockEs(indexNames: string[]) {
 describe('ExternalPurger', () => {
   it('deletes redis keys, graph nodes, and es indices for a tenant', async () => {
     const redis = mockRedis({
-      'plan_cache:t1*': ['plan_cache:t1', 'plan_cache:t1:free'],
-      'quota:t1*': ['quota:t1:daily'],
+      'plan_cache:11111111-1111-4111-8111-111111111111*': ['plan_cache:11111111-1111-4111-8111-111111111111', 'plan_cache:11111111-1111-4111-8111-111111111111:free'],
+      'quota:11111111-1111-4111-8111-111111111111*': ['quota:11111111-1111-4111-8111-111111111111:daily'],
     });
     const { driver, session } = mockNeo4jDriver(7);
-    const es = mockEs(['etip_t1_iocs_ip', 'etip_t1_iocs_domain']);
+    const es = mockEs(['etip_11111111-1111-4111-8111-111111111111_iocs_ip', 'etip_11111111-1111-4111-8111-111111111111_iocs_domain']);
 
     const purger = new ExternalPurger({
       redis: redis as never,
@@ -48,7 +48,7 @@ describe('ExternalPurger', () => {
       esClient: es as never,
     });
 
-    const result = await purger.purge('t1');
+    const result = await purger.purge('11111111-1111-4111-8111-111111111111');
 
     expect(result.redisKeysDeleted).toBe(3);
     expect(result.graphNodesDeleted).toBe(7);
@@ -58,21 +58,35 @@ describe('ExternalPurger', () => {
     // Graph delete is tenant-scoped
     expect(session.run).toHaveBeenCalledWith(
       expect.stringContaining('DETACH DELETE'),
-      { tenantId: 't1' },
+      { tenantId: '11111111-1111-4111-8111-111111111111' },
     );
     // ES delete targets the tenant wildcard
     expect(es.indices.delete).toHaveBeenCalledWith(
-      expect.objectContaining({ index: 'etip_t1_iocs_*' }),
+      expect.objectContaining({ index: 'etip_11111111-1111-4111-8111-111111111111_iocs_*' }),
     );
   });
 
+  it('deletes etip:<tenant>:* keys for the tenant, leaves other tenants untouched', async () => {
+    const redis = mockRedis({
+      'etip:11111111-1111-4111-8111-111111111111:*': ['etip:11111111-1111-4111-8111-111111111111:onboarding', 'etip:11111111-1111-4111-8111-111111111111:wizard'],
+    });
+
+    const purger = new ExternalPurger({ redis: redis as never, neo4jDriver: null, esClient: null });
+    const result = await purger.purge('11111111-1111-4111-8111-111111111111');
+
+    expect(result.redisKeysDeleted).toBe(2);
+    expect(redis.keys).toHaveBeenCalledWith('etip:11111111-1111-4111-8111-111111111111:*');
+    // tenant 2's keys were never requested — the pattern is scoped to tenant 1 only.
+    expect(redis.keys).not.toHaveBeenCalledWith('etip:22222222-2222-4222-8222-222222222222:*');
+  });
+
   it('isolates a failing store — others still purge, error recorded', async () => {
-    const redis = mockRedis({ 'plan_cache:t2*': ['plan_cache:t2'] });
+    const redis = mockRedis({ 'plan_cache:22222222-2222-4222-8222-222222222222*': ['plan_cache:22222222-2222-4222-8222-222222222222'] });
     const { driver } = mockNeo4jDriver(0);
     driver.session = vi.fn(() => {
       throw new Error('neo4j down');
     }) as never;
-    const es = mockEs(['etip_t2_iocs_ip']);
+    const es = mockEs(['etip_22222222-2222-4222-8222-222222222222_iocs_ip']);
 
     const purger = new ExternalPurger({
       redis: redis as never,
@@ -80,7 +94,7 @@ describe('ExternalPurger', () => {
       esClient: es as never,
     });
 
-    const result = await purger.purge('t2');
+    const result = await purger.purge('22222222-2222-4222-8222-222222222222');
 
     expect(result.redisKeysDeleted).toBe(1);
     expect(result.esIndicesDeleted).toBe(1);
@@ -91,7 +105,7 @@ describe('ExternalPurger', () => {
 
   it('treats a null client as a no-op (store not configured)', async () => {
     const purger = new ExternalPurger({ redis: null, neo4jDriver: null, esClient: null });
-    const result = await purger.purge('t3');
+    const result = await purger.purge('33333333-3333-4333-8333-333333333333');
     expect(result).toEqual({
       redisKeysDeleted: 0,
       graphNodesDeleted: 0,
@@ -100,18 +114,19 @@ describe('ExternalPurger', () => {
     });
   });
 
-  it('rejects an empty tenantId before touching any store (no mass cache wipe)', async () => {
+  it('rejects an empty, wildcard or non-UUID tenantId before touching any store (no mass cache wipe)', async () => {
     const redis = mockRedis();
     const purger = new ExternalPurger({ redis: redis as never, neo4jDriver: null, esClient: null });
-    await expect(purger.purge('')).rejects.toThrow('tenantId is required');
-    await expect(purger.purge('   ')).rejects.toThrow('tenantId is required');
+    for (const bad of ['', '   ', '*', 'default', '11111111-1111-4111-8111-11111111111*']) {
+      await expect(purger.purge(bad)).rejects.toThrow('tenantId must be a UUID');
+    }
     expect(redis.keys).not.toHaveBeenCalled();
   });
 
   it('returns 0 es indices when none match', async () => {
     const es = mockEs([]);
     const purger = new ExternalPurger({ redis: null, neo4jDriver: null, esClient: es as never });
-    const result = await purger.purge('t4');
+    const result = await purger.purge('44444444-4444-4444-8444-444444444444');
     expect(result.esIndicesDeleted).toBe(0);
     expect(es.indices.delete).not.toHaveBeenCalled();
   });

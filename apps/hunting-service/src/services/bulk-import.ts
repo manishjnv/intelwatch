@@ -33,14 +33,14 @@ export class BulkImport {
   }
 
   /** Import entities from parsed CSV rows. */
-  importCsv(
+  async importCsv(
     tenantId: string,
     huntId: string,
     userId: string,
     rows: ImportRow[],
-  ): BulkImportResult {
+  ): Promise<BulkImportResult> {
     // Verify hunt exists and is open
-    this.sessionManager.get(tenantId, huntId);
+    await this.sessionManager.get(tenantId, huntId);
 
     let imported = 0;
     let skipped = 0;
@@ -65,12 +65,12 @@ export class BulkImport {
       }
 
       try {
-        const entity = this.sessionManager.addEntity(
+        const entity = await this.sessionManager.addEntity(
           tenantId, huntId, userId,
           { type: row.type as EntityType, value: row.value.trim(), notes: row.notes },
         );
         // addEntity returns existing entity if duplicate (same type+value)
-        const session = this.sessionManager.get(tenantId, huntId);
+        const session = await this.sessionManager.get(tenantId, huntId);
         const isNew = session.entities.find(
           (e) => e.id === entity.id && e.addedAt === entity.addedAt,
         );

@@ -2,18 +2,20 @@ import { loadConfig } from './config.js';
 import { initLogger } from './logger.js';
 import { loadJwtConfig, loadServiceJwtSecret } from '@etip/shared-auth';
 import { HuntingStore } from './schemas/store.js';
+import { prisma, disconnectPrisma } from './prisma.js';
+import { createPrismaDocRepo } from './doc-repo-prisma.js';
 import { HuntQueryBuilder } from './services/hunt-query-builder.js';
 import { HuntSessionManager } from './services/hunt-session-manager.js';
 import { IOCPivotChains } from './services/ioc-pivot-chains.js';
 import { SavedHuntLibrary } from './services/saved-hunt-library.js';
 import { CorrelationIntegration } from './services/correlation-integration.js';
-import { HypothesisEngine } from './services/hypothesis-engine.js';
+import { HypothesisEngine, type HypothesisDoc } from './services/hypothesis-engine.js';
 import { AISuggestions } from './services/ai-suggestions.js';
 import { TimelineService } from './services/timeline-service.js';
-import { EvidenceCollection } from './services/evidence-collection.js';
-import { Collaboration } from './services/collaboration.js';
+import { EvidenceCollection, type EvidenceDoc } from './services/evidence-collection.js';
+import { Collaboration, type CommentDoc, type ShareDoc } from './services/collaboration.js';
 import { AIPatternRecognition } from './services/ai-pattern-recognition.js';
-import { HuntPlaybooks } from './services/hunt-playbooks.js';
+import { HuntPlaybooks, type ExecutionDoc } from './services/hunt-playbooks.js';
 import { HuntScoring } from './services/hunt-scoring.js';
 import { BulkImport } from './services/bulk-import.js';
 import { HuntExport } from './services/hunt-export.js';
@@ -31,8 +33,30 @@ async function main(): Promise<void> {
   loadJwtConfig(env);
   loadServiceJwtSecret(env);
 
-  // 3. In-memory store
-  const store = new HuntingStore();
+  // 3. Store — Postgres-backed doc store when TI_DATABASE_URL is set, else in-memory (dev only)
+  // Step 3 S159, DECISION-051: one generic JSON-document table shared across kinds.
+  const usePostgres = !!config.TI_DATABASE_URL;
+  if (usePostgres) {
+    await prisma.$connect();
+    logger.info('Hunting persistence: Postgres');
+  } else {
+    logger.warn('Hunting persistence: memory (dev only, data lost on restart)');
+  }
+
+  const store = new HuntingStore(
+    usePostgres
+      ? {
+        sessions: createPrismaDocRepo(prisma, 'hunt_session'),
+        templates: createPrismaDocRepo(prisma, 'hunt_template'),
+        leads: createPrismaDocRepo(prisma, 'correlation_lead'),
+      }
+      : undefined,
+  );
+  const playbooksRepo = usePostgres ? createPrismaDocRepo<ExecutionDoc>(prisma, 'playbook_execution') : undefined;
+  const evidenceRepo = usePostgres ? createPrismaDocRepo<EvidenceDoc>(prisma, 'hunt_evidence') : undefined;
+  const hypothesisRepo = usePostgres ? createPrismaDocRepo<HypothesisDoc>(prisma, 'hunt_hypothesis') : undefined;
+  const commentsRepo = usePostgres ? createPrismaDocRepo<CommentDoc>(prisma, 'hunt_comment') : undefined;
+  const sharesRepo = usePostgres ? createPrismaDocRepo<ShareDoc>(prisma, 'hunt_share') : undefined;
 
   // 4. Domain services
   const queryBuilder = new HuntQueryBuilder({
@@ -59,7 +83,7 @@ async function main(): Promise<void> {
   });
 
   // 4b. P1 services
-  const hypothesisEngine = new HypothesisEngine(store);
+  const hypothesisEngine = new HypothesisEngine(store, hypothesisRepo);
   const aiSuggestions = new AISuggestions(store, {
     enabled: false,
     model: 'claude-haiku-4-5-20251001',
@@ -67,8 +91,8 @@ async function main(): Promise<void> {
     budgetCentsPerDay: 50,
   });
   const timelineService = new TimelineService(store);
-  const evidenceCollection = new EvidenceCollection(store);
-  const collaboration = new Collaboration(store);
+  const evidenceCollection = new EvidenceCollection(store, evidenceRepo);
+  const collaboration = new Collaboration(store, { comments: commentsRepo, shares: sharesRepo });
 
   // 4c. P2 services
   const patternRecognition = new AIPatternRecognition(store, {
@@ -77,7 +101,7 @@ async function main(): Promise<void> {
     maxTokens: 2048,
     budgetCentsPerDay: 100,
   });
-  const huntPlaybooks = new HuntPlaybooks();
+  const huntPlaybooks = new HuntPlaybooks(playbooksRepo);
   const huntScoring = new HuntScoring(store);
   const bulkImportService = new BulkImport(sessionManager);
   const huntExportService = new HuntExport(store);
@@ -105,6 +129,7 @@ async function main(): Promise<void> {
       huntScoring,
       bulkImport: bulkImportService,
       huntExport: huntExportService,
+      sessionManager,
     },
   });
 
@@ -112,6 +137,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down hunting-service...');
     await app.close();
+    if (config.TI_DATABASE_URL) await disconnectPrisma();
     process.exit(0);
   };
 

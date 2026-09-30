@@ -1,6 +1,6 @@
 # Step 3 — No business data in memory (Phase 1, S154–S159)
 
-**Written:** 2026-09-25. **Status:** spec, not started — **unblocked 2026-09-29: owner accepted D1–D7 as recommended (DECISION-049); next functional work per DECISION-050.** Session labels S154–S159 below are the original plan numbers (those numbers were used by other sessions); run the rows in order from S175. Re-verify §3 against current code first (S168 added an `integrations` table). **S175 (2026-09-29): row 154-0 done — deploy ordering and D1 were already live (see docs/S175_STEP3_OPS_PREREQ.md); D4 archive off + CI guard added.** **S177 (2026-09-30): rows 155, 156, 157, 158a, 158b done in one PR (see docs/S177_STEP3_PERSISTENCE_S155_S158.md).** **Parent:** docs/ROADMAP_S149_PLUS.md §3 step 3, §4 Phase 1. **Follows:** DECISION-027 (Postgres for business entities, Redis JSON for config, memory only for caches). It ends DECISION-013 for the modules below. DECISION-022 (correlation-engine in memory + Redis checkpoint) stays, but depends on decision D1.
+**Written:** 2026-09-25. **Status:** spec, not started — **unblocked 2026-09-29: owner accepted D1–D7 as recommended (DECISION-049); next functional work per DECISION-050.** Session labels S154–S159 below are the original plan numbers (those numbers were used by other sessions); run the rows in order from S175. Re-verify §3 against current code first (S168 added an `integrations` table). **S175 (2026-09-29): row 154-0 done — deploy ordering and D1 were already live (see docs/S175_STEP3_OPS_PREREQ.md); D4 archive off + CI guard added.** **S177 (2026-09-30): rows 155, 156, 157, 158a, 158b done in one PR (see docs/S177_STEP3_PERSISTENCE_S155_S158.md).** **S177 part 2 (PR #70): rows 159, 159d, 159e done.** **Parent:** docs/ROADMAP_S149_PLUS.md §3 step 3, §4 Phase 1. **Follows:** DECISION-027 (Postgres for business entities, Redis JSON for config, memory only for caches). It ends DECISION-013 for the modules below. DECISION-022 (correlation-engine in memory + Redis checkpoint) stays, but depends on decision D1.
 
 ---
 
@@ -218,6 +218,8 @@ If D1 = **no**: Postgres like DRP (5 models: HuntSession, HuntTemplate, HuntEvid
 
 **Do not use `RedisJsonStore` as-is** — see DECISION-051 (S177): `restore()` swallows Redis errors and starts empty (next debounced save overwrites every tenant's data under that key), and `close()` drops up to 5 s of pending writes on every deploy. Use Postgres (the `integration_docs` generic-table pattern from S157) or fix the helper first.
 
+**Done S177 part 2 (PR #70):** hunting-service uses the `integration_docs` pattern — one generic table `hunting_docs`, keyed `(kind, id)`, 8 kinds (`hunt_session`, `hunt_template`, `correlation_lead`, `hunt_comment`, `hunt_share`, `hunt_evidence`, `hunt_hypothesis`, `playbook_execution`). Playbook executions persisted per (tenant, hunt). See `docs/S177_STEP3_PERSISTENCE_S155_S158.md` Part 2.
+
 ### 5.5 Small ones (one S session each)
 
 | Module | Files | Change |
@@ -371,11 +373,11 @@ bash scripts/check-memory-stores.sh && echo OK
 | 157 | integration-service | Deliveries/DLQ, tickets, export schedules/runs, rotation, audit; Redis JSON for routing/mapping/templates | L ✅ S177 (one generic `integration_docs` table, DECISION-051, instead of Redis JSON) |
 | 158a | drp-service | Models (5) + assets, alerts, scans | L ✅ S177 |
 | 158b | drp-service | Takedowns, evidence, feedback, AI enrichment, export, bulk triage | M ✅ S177 |
-| 159 | hunting-service | Redis JSON (D1 yes) or Postgres (D1 no) | M (or L) |
+| 159 | hunting-service | Redis JSON (D1 yes) or Postgres (D1 no) | M (or L) ✅ S177 part 2, PR #70 (`hunting_docs`, `integration_docs` pattern) |
 | 159b | caching-service | Stop fake archive; rebuild index from MinIO | S |
 | 159c | analytics-service | Tenant-keyed trends (bug) + persistence | S |
-| 159d | onboarding | Module readiness, checklist, demo flag → Redis | S |
-| 159e | user-management-service | Add new tables to offboarding purge | S |
+| 159d | onboarding | Module readiness, checklist, demo flag → Redis | S ✅ S177 part 2, PR #70 |
+| 159e | user-management-service | Add new tables to offboarding purge | S ✅ S177 part 2, PR #70 (also caught 8 older tenant tables the purge had missed; scheduler still not wired — see backlog) |
 | backlog | reporting-service (M), customization (L), user-management-service (L, audit duplicates first), correlation-engine (after D1) | — | — |
 
 "L" here is above the CLAUDE.md M budget. Each is still one module. If the owner wants strict M, split S154/S155/S156/S157 in two again (store layer, then callers).

@@ -1,9 +1,15 @@
 # User Management Service
 
-**Port:** 3016 | **Status:** ✅ Deployed (FEATURE-COMPLETE) | **Tests:** 371
+**Port:** 3016 | **Status:** ✅ Deployed (FEATURE-COMPLETE) | **Tests:** 375
 
 ## What It Does
 Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, SOC2 audit logging, quarterly access review automation (I-17), compliance report generation (I-18), real user directory (S162), and API key management with server-side RBAC (S167). Mostly in-memory (DECISION-013 pattern) — the user directory and API keys read/write through Prisma.
+
+## Offboarding purge (S159e, PR #70 — deploy pending)
+
+`offboarding-purge-worker.ts`'s `purgeTenant()` now also deletes the 18 Step 3 tables (integrations, integration_logs, integration_deliveries, integration_tickets, integration_docs, alert_rules, alert_channels, alert_escalation_policies, alert_maintenance_windows, alerts, alert_history, alert_groups, drp_assets, drp_alerts, drp_scans, drp_takedowns, drp_alert_feedback, hunting_docs) and 8 older tenant tables it had previously missed (webhook_subscriptions, tenant_feed_subscriptions, tenant_ioc_overlays, tenant_item_consumption, feed_quota_plan_assignments, access_reviews, compliance_reports, mfa_enforcement_policies — nullable-tenant tables match the tenant only). `ExternalPurger` also deletes Redis `etip:{tenantId}:*` and now rejects any tenant id that is not a UUID. First unit tests added for the purge worker. Tests 371 → 375.
+
+**Not changed:** nothing schedules the purge worker yet (known gap since S148) — see `docs/PENDING_WORK.md` §3.
 
 ## Features
 | Feature | File | Description |

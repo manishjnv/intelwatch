@@ -6,6 +6,8 @@ const ConfigSchema = z.object({
   TI_HUNTING_PORT: z.coerce.number().int().min(1).max(65535).default(3014),
   TI_HUNTING_HOST: z.string().default('0.0.0.0'),
   TI_REDIS_URL: z.string().min(1),
+  // Step 3 S159: Postgres-backed hunting doc store (JSON documents, DECISION-051)
+  TI_DATABASE_URL: z.string().optional(),
   TI_JWT_SECRET: z.string().min(32),
   TI_JWT_REFRESH_SECRET: z.string().min(32).optional(),
   TI_SERVICE_JWT_SECRET: z.string().min(16),

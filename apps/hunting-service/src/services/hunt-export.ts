@@ -27,8 +27,8 @@ export class HuntExport {
   }
 
   /** Export a hunt in the specified format. */
-  export(tenantId: string, huntId: string, format: ExportFormat): ExportResult {
-    const session = this.requireHunt(tenantId, huntId);
+  async export(tenantId: string, huntId: string, format: ExportFormat): Promise<ExportResult> {
+    const session = await this.requireHunt(tenantId, huntId);
 
     switch (format) {
       case 'json':
@@ -186,8 +186,8 @@ export class HuntExport {
     return value;
   }
 
-  private requireHunt(tenantId: string, huntId: string): HuntSession {
-    const session = this.store.getSession(tenantId, huntId);
+  private async requireHunt(tenantId: string, huntId: string): Promise<HuntSession> {
+    const session = await this.store.getSession(tenantId, huntId);
     if (!session) {
       throw new AppError(404, `Hunt session ${huntId} not found`, 'HUNT_NOT_FOUND');
     }
