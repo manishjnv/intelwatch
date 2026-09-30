@@ -31,7 +31,7 @@ export async function offboardingGatewayRoutes(app: FastifyInstance) {
   const sessionManager = new SessionManagerClass();
   const ownershipTransfer = new OwnershipTransferService({ prisma, auditLogger });
   const offboardingService = new OffboardingService({
-    prisma, auditLogger, sessionManager, offboardingQueue: null,
+    prisma, auditLogger, sessionManager,
   });
   const retentionService = new RetentionService({ prisma, auditLogger });
 

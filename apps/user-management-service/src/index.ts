@@ -45,7 +45,7 @@ async function main(): Promise<void> {
   const scimUserService = new ScimUserService(sessionManager, ownershipTransfer);
   const scimGroupService = new ScimGroupService();
   const offboardingService = new OffboardingService({
-    prisma, auditLogger, sessionManager, offboardingQueue: null,
+    prisma, auditLogger, sessionManager,
   });
   const retentionService = new RetentionService({ prisma, auditLogger });
 

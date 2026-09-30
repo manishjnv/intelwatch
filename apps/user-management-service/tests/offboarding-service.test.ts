@@ -31,22 +31,15 @@ function mockSessionManager() {
   return { revokeAll: vi.fn().mockReturnValue(2) };
 }
 
-function mockOwnershipTransfer() {
-  return { transferOnDisable: vi.fn().mockResolvedValue(null) };
-}
-
 function createService(overrides: Partial<OffboardingDeps> = {}) {
   const prisma = mockPrisma();
   const auditLogger = mockAuditLogger();
   const sessionManager = mockSessionManager();
-  const ownershipTransfer = mockOwnershipTransfer();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const deps: OffboardingDeps = {
     prisma: prisma as any,
     auditLogger: auditLogger as any,
     sessionManager: sessionManager as any,
-    ownershipTransfer: ownershipTransfer as any,
-    offboardingQueue: null,
     ...overrides,
   };
   return { service: new OffboardingService(deps), prisma, auditLogger, sessionManager };
@@ -103,11 +96,14 @@ describe('OffboardingService (I-19)', () => {
       expect(result.tenantId).toBe('tenant-1');
       expect(result.offboardingStatus).toBe('offboarding');
       expect(result.offboardedBy).toBe('admin@super.com');
-      expect(result.purgeScheduledAt).toBeDefined();
-      expect(result.message).toContain('Offboarding initiated');
+      expect(result.message).toBe('Tenant deactivated. All data is retained; cancel offboarding to reactivate.');
+      expect(result.message).not.toMatch(/purge/i);
 
       // Verify steps executed
       expect(prisma.tenant.update).toHaveBeenCalledOnce();
+      expect(prisma.tenant.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ purgeScheduledAt: null }) }),
+      );
       expect(prisma.user.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { tenantId: 'tenant-1' }, data: { active: false } }),
       );
@@ -117,26 +113,22 @@ describe('OffboardingService (I-19)', () => {
       expect(prisma.ssoConfig.updateMany).toHaveBeenCalledOnce();
       expect(prisma.scimToken.updateMany).toHaveBeenCalledOnce();
       expect(auditLogger.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'offboarding.initiated', riskLevel: 'critical' }),
+        expect.objectContaining({
+          action: 'offboarding.initiated',
+          riskLevel: 'critical',
+          details: expect.objectContaining({ dataRetained: true }),
+        }),
       );
     });
 
-    it('queues archive job when queue is provided', async () => {
-      const mockQueue = { add: vi.fn().mockResolvedValue({}) };
-      const { service, prisma } = createService({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        offboardingQueue: mockQueue as any,
-      });
+    it('does not schedule a purge or queue an archive job', async () => {
+      const { service, prisma } = createService();
       prisma.tenant.findUnique.mockResolvedValue({ id: 'tenant-1', offboardingStatus: 'active' });
       prisma.tenant.update.mockResolvedValue({});
 
-      await service.initiateOffboarding('tenant-1', 'admin@super.com', 'super-tenant');
+      const result = await service.initiateOffboarding('tenant-1', 'admin@super.com', 'super-tenant');
 
-      expect(mockQueue.add).toHaveBeenCalledWith(
-        'archive-tenant-1',
-        expect.objectContaining({ tenantId: 'tenant-1', stage: 'archive' }),
-        expect.objectContaining({ attempts: 3 }),
-      );
+      expect(result.purgeScheduledAt).toBeNull();
     });
   });
 
@@ -205,19 +197,21 @@ describe('OffboardingService (I-19)', () => {
   });
 
   describe('listPipeline', () => {
-    it('returns offboarding pipeline sorted by purge date', async () => {
+    it('returns deactivated tenants with no purge date', async () => {
       const { service, prisma } = createService();
       const now = new Date();
       prisma.tenant.findMany.mockResolvedValue([
-        { id: 't1', name: 'A', offboardingStatus: 'offboarding', offboardedAt: now, purgeScheduledAt: new Date(now.getTime() + 30 * 86400000) },
-        { id: 't2', name: 'B', offboardingStatus: 'archived', offboardedAt: now, purgeScheduledAt: new Date(now.getTime() + 60 * 86400000) },
+        { id: 't1', name: 'A', offboardingStatus: 'offboarding', offboardedAt: now },
       ]);
 
       const result = await service.listPipeline();
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(1);
       expect(result[0]!.tenantId).toBe('t1');
-      expect(result[0]!.daysUntilPurge).toBeGreaterThan(0);
-      expect(result[1]!.offboardingStatus).toBe('archived');
+      expect(result[0]!.daysUntilPurge).toBeNull();
+      expect(result[0]!.purgeScheduledAt).toBeNull();
+      expect(prisma.tenant.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { offboardingStatus: 'offboarding' } }),
+      );
     });
   });
 });

@@ -23,7 +23,6 @@ interface AuditEntry { tenantId: string; action: string; riskLevel: string; deta
 
 const SYSTEM_TENANT = '00000000-0000-0000-0000-000000000000';
 const TENANT_A = '550e8400-e29b-41d4-a716-446655440001';
-const PURGE_DELAY_DAYS = 60;
 
 let users: MockUser[] = [];
 let tenants: MockTenant[] = [];
@@ -32,7 +31,6 @@ let apiKeys: MockApiKey[] = [];
 let ssoConfigs: MockSsoConfig[] = [];
 let scimTokens: MockScimToken[] = [];
 let auditLog: AuditEntry[] = [];
-let queuedJobs: Array<{ name: string; data: Record<string, unknown> }> = [];
 
 const mockAuditLogger = { log: (entry: AuditEntry) => { auditLog.push(entry); } };
 const mockSessionManager = {
@@ -42,9 +40,7 @@ const mockSessionManager = {
     return count;
   },
 };
-const mockQueue = { add: vi.fn(async (name: string, data: Record<string, unknown>) => { queuedJobs.push({ name, data }); }) };
-
-/** Simplified offboarding service for testing. */
+/** Simplified offboarding service for testing — deactivate + retain data forever, never purge. */
 async function initiateOffboarding(tenantId: string, actorEmail: string, actorTenantId: string) {
   if (tenantId === SYSTEM_TENANT) throw new AppError(403, 'Cannot offboard system tenant', 'SYSTEM_TENANT_PROTECTED');
   if (actorTenantId === tenantId) throw new AppError(403, 'Cannot offboard own org', 'SELF_ORG_OFFBOARD_DENIED');
@@ -55,14 +51,13 @@ async function initiateOffboarding(tenantId: string, actorEmail: string, actorTe
   if (tenant.offboardingStatus === 'offboarding') throw new AppError(409, 'Already offboarding', 'ALREADY_OFFBOARDING');
 
   const now = new Date();
-  const purgeDate = new Date(now.getTime() + PURGE_DELAY_DAYS * 24 * 60 * 60 * 1000);
 
-  // Step 1: Block tenant + users
+  // Step 1: Block tenant + users. purgeScheduledAt stays null — data is never purged.
   tenant.active = false;
   tenant.offboardingStatus = 'offboarding';
   tenant.offboardedAt = now;
   tenant.offboardedBy = actorEmail;
-  tenant.purgeScheduledAt = purgeDate;
+  tenant.purgeScheduledAt = null;
   users.filter((u) => u.tenantId === tenantId).forEach((u) => { u.active = false; });
 
   // Step 2: Terminate sessions
@@ -79,12 +74,12 @@ async function initiateOffboarding(tenantId: string, actorEmail: string, actorTe
   // Step 5: Revoke SCIM tokens
   scimTokens.filter((t) => t.tenantId === tenantId && !t.revoked).forEach((t) => { t.revoked = true; });
 
-  // Step 6: Queue archive job
-  await mockQueue.add(`archive-${tenantId}`, { tenantId, stage: 'archive', purgeScheduledAt: purgeDate.toISOString() });
+  mockAuditLogger.log({ tenantId, action: 'offboarding.initiated', riskLevel: 'critical', details: { offboardedBy: actorEmail, dataRetained: true, sessionsTerminated, apiKeysRevoked: revokedKeys.length } });
 
-  mockAuditLogger.log({ tenantId, action: 'offboarding.initiated', riskLevel: 'critical', details: { offboardedBy: actorEmail, sessionsTerminated, apiKeysRevoked: revokedKeys.length } });
-
-  return { tenantId, offboardingStatus: 'offboarding', purgeScheduledAt: purgeDate.toISOString() };
+  return {
+    tenantId, offboardingStatus: 'offboarding', purgeScheduledAt: null,
+    message: 'Tenant deactivated. All data is retained; cancel offboarding to reactivate.',
+  };
 }
 
 async function cancelOffboarding(tenantId: string, actorEmail: string) {
@@ -141,7 +136,6 @@ function seedTestData() {
   ssoConfigs = [{ id: 'sso-1', tenantId: TENANT_A, enabled: true }];
   scimTokens = [{ id: 'scim-1', tenantId: TENANT_A, revoked: false }];
   auditLog = [];
-  queuedJobs = [];
   vi.clearAllMocks();
 }
 
@@ -152,7 +146,10 @@ describe('Suite 6: Offboarding ↔ Retention ↔ Ownership Flow', () => {
     it('offboards tenant: disables users, terminates sessions, revokes keys', async () => {
       const result = await initiateOffboarding(TENANT_A, 'super@system.etip', SYSTEM_TENANT);
       expect(result.offboardingStatus).toBe('offboarding');
-      expect(result.purgeScheduledAt).toBeDefined();
+      expect(result.message).not.toMatch(/purge/i);
+
+      const tenant = tenants.find((t) => t.id === TENANT_A)!;
+      expect(tenant.purgeScheduledAt).toBeNull();
 
       // Verify all users disabled
       expect(users.filter((u) => u.tenantId === TENANT_A).every((u) => !u.active)).toBe(true);
@@ -166,18 +163,9 @@ describe('Suite 6: Offboarding ↔ Retention ↔ Ownership Flow', () => {
       expect(scimTokens.every((t) => t.revoked)).toBe(true);
     });
 
-    it('queues archive job after offboarding', async () => {
-      await initiateOffboarding(TENANT_A, 'super@system.etip', SYSTEM_TENANT);
-      expect(queuedJobs).toHaveLength(1);
-      expect(queuedJobs[0]!.data.stage).toBe('archive');
-    });
-
-    it('purge scheduled at now + 60 days', async () => {
+    it('never schedules a purge (owner decision: retain data forever)', async () => {
       const result = await initiateOffboarding(TENANT_A, 'super@system.etip', SYSTEM_TENANT);
-      const purgeDate = new Date(result.purgeScheduledAt);
-      const now = new Date();
-      const diffDays = Math.round((purgeDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
-      expect(diffDays).toBe(60);
+      expect(result.purgeScheduledAt).toBeNull();
     });
 
     it('cannot offboard system tenant', async () => {
@@ -188,11 +176,12 @@ describe('Suite 6: Offboarding ↔ Retention ↔ Ownership Flow', () => {
       await expect(initiateOffboarding(TENANT_A, 'admin@acme.com', TENANT_A)).rejects.toThrow('Cannot offboard own org');
     });
 
-    it('audit entry logged with critical severity', async () => {
+    it('audit entry logged with critical severity and dataRetained flag', async () => {
       await initiateOffboarding(TENANT_A, 'super@system.etip', SYSTEM_TENANT);
       const entry = auditLog.find((e) => e.action === 'offboarding.initiated');
       expect(entry).toBeDefined();
       expect(entry!.riskLevel).toBe('critical');
+      expect(entry!.details.dataRetained).toBe(true);
     });
   });
 

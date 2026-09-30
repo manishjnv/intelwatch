@@ -2,6 +2,9 @@
  * @module OffboardingService (user-service)
  * @description I-19 — Organization offboarding lifecycle.
  * Imported by API gateway for route handling.
+ * Owner decision 2026-09-30: offboarding = deactivate tenant, keep all data forever.
+ * No purge, ever. Disable → terminate sessions → revoke keys → disable SSO → revoke SCIM.
+ * Reactivation = cancelOffboarding.
  * Full implementation — identical to user-management-service version.
  */
 import { AppError } from '@etip/shared-utils';
@@ -12,33 +15,27 @@ import type {
   CancelOffboardResponse,
   OffboardStatusResponse,
   OffboardingPipelineItem,
-  OffboardingJobPayload,
 } from '@etip/shared-types';
 
 const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000000';
-const PURGE_DELAY_DAYS = 60;
 
 interface SessionManagerLike { revokeAll(userId: string, tenantId: string): number; }
-interface QueueLike<T> { add(name: string, data: T, opts?: Record<string, unknown>): Promise<unknown>; }
 
 export interface OffboardingDeps {
   prisma: PrismaClient;
   auditLogger: AuditLogger;
   sessionManager: SessionManagerLike;
-  offboardingQueue: QueueLike<OffboardingJobPayload> | null;
 }
 
 export class OffboardingService {
   private prisma: PrismaClient;
   private auditLogger: AuditLogger;
   private sessionManager: SessionManagerLike;
-  private offboardingQueue: QueueLike<OffboardingJobPayload> | null;
 
   constructor(deps: OffboardingDeps) {
     this.prisma = deps.prisma;
     this.auditLogger = deps.auditLogger;
     this.sessionManager = deps.sessionManager;
-    this.offboardingQueue = deps.offboardingQueue;
   }
 
   async initiateOffboarding(
@@ -59,12 +56,11 @@ export class OffboardingService {
     }
 
     const now = new Date();
-    const purgeDate = new Date(now.getTime() + PURGE_DELAY_DAYS * 24 * 60 * 60 * 1000);
 
-    // Step 1 — Block tenant + users
+    // Step 1 — Block tenant + users. purgeScheduledAt stays null — data is never purged.
     await this.prisma.tenant.update({
       where: { id: tenantId },
-      data: { active: false, offboardingStatus: 'offboarding', offboardedAt: now, offboardedBy: actorEmail, purgeScheduledAt: purgeDate },
+      data: { active: false, offboardingStatus: 'offboarding', offboardedAt: now, offboardedBy: actorEmail, purgeScheduledAt: null },
     });
     await this.prisma.user.updateMany({ where: { tenantId }, data: { active: false } });
 
@@ -83,22 +79,17 @@ export class OffboardingService {
     // Step 5 — Revoke SCIM tokens
     await this.prisma.scimToken.updateMany({ where: { tenantId, revoked: false }, data: { revoked: true } });
 
-    // Step 6 — Queue archive job
-    if (this.offboardingQueue) {
-      await this.offboardingQueue.add(`archive-${tenantId}`, {
-        tenantId, stage: 'archive', purgeScheduledAt: purgeDate.toISOString(),
-      }, { attempts: 3, backoff: { type: 'exponential', delay: 60000 } });
-    }
-
     this.auditLogger.log({
       tenantId, userId: null, action: 'offboarding.initiated', riskLevel: 'critical',
-      details: { offboardedBy: actorEmail, purgeScheduledAt: purgeDate.toISOString(), sessionsTerminated, apiKeysRevoked: apiKeyResult.count },
+      details: { offboardedBy: actorEmail, dataRetained: true, sessionsTerminated, apiKeysRevoked: apiKeyResult.count },
     });
 
     return {
       tenantId, offboardingStatus: 'offboarding', offboardedAt: now.toISOString(),
-      offboardedBy: actorEmail, purgeScheduledAt: purgeDate.toISOString(),
-      message: `Offboarding initiated. Data purge after ${purgeDate.toISOString().split('T')[0]}.`,
+      offboardedBy: actorEmail,
+      // No purge date: offboarding keeps all data (owner decision 2026-09-30).
+      purgeScheduledAt: null,
+      message: 'Tenant deactivated. All data is retained; cancel offboarding to reactivate.',
     };
   }
 
@@ -140,17 +131,18 @@ export class OffboardingService {
 
   async listPipeline(): Promise<OffboardingPipelineItem[]> {
     const tenants = await this.prisma.tenant.findMany({
-      where: { offboardingStatus: { in: ['offboarding', 'archived'] } },
-      select: { id: true, name: true, offboardingStatus: true, offboardedAt: true, purgeScheduledAt: true },
-      orderBy: { purgeScheduledAt: 'asc' },
+      where: { offboardingStatus: 'offboarding' },
+      select: { id: true, name: true, offboardingStatus: true, offboardedAt: true },
+      orderBy: { offboardedAt: 'asc' },
     });
-    const now = Date.now();
+    // Shape kept per shared-types (UI no longer shows purge fields); there is no purge date
+    // anymore, so purge fields are always null (data is kept).
     return tenants.map((t) => ({
       tenantId: t.id, tenantName: t.name,
       offboardingStatus: (t.offboardingStatus ?? 'offboarding') as OffboardingPipelineItem['offboardingStatus'],
       offboardedAt: t.offboardedAt?.toISOString() ?? new Date().toISOString(),
-      purgeScheduledAt: t.purgeScheduledAt?.toISOString() ?? new Date().toISOString(),
-      daysUntilPurge: t.purgeScheduledAt ? Math.max(0, Math.ceil((t.purgeScheduledAt.getTime() - now) / 86_400_000)) : 0,
+      purgeScheduledAt: null,
+      daysUntilPurge: null,
     }));
   }
 }
