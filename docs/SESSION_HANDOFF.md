@@ -1,88 +1,99 @@
 # SESSION HANDOFF DOCUMENT
 
-**Date:** 2026-09-29
-**Session:** 175
-**Session Summary:** Step 3 (persistence) row `154-0` is the ops prerequisite plus owner decisions D1 and D4 (DECISION-049). Re-verifying spec §3 against current code found two of the four items already done by earlier work: deploy ordering (`scripts/deploy-vps.sh`, S150) already pushes the schema before recreating app containers and fails the deploy if the push fails, and D1 (Redis `noeviction`) was already live from STEP_00B. Only D4 (archive off) and the CI memory-store guard needed new work this session. PR #67 turns off caching-service's archive cron/route by default (`TI_ARCHIVE_ENABLED=false`) so it stops writing sample records to MinIO, and wires a CI ratchet guard against new untagged in-memory stores.
+**Date:** 2026-09-30
+**Session:** 176
+**Session Summary:** Step 3 row **S154** done, deployed and verified — alerting-service rules, notification channels, escalation policies and maintenance windows moved from in-process Maps to Postgres (4 additive tables), channel config encrypted at rest and masked in API responses, by-id lookups tenant-scoped. Then a full `docs/` sweep produced one consolidated backlog, `docs/PENDING_WORK.md`.
 
-## ✅ Changes Made (Session 175)
+## ✅ Changes Made (Session 176)
 
 | Commit(s) | Description |
 |---|---|
-| `9c4e242` → merge `3de537f` | PR #67: `TI_ARCHIVE_ENABLED` defaults `false` in caching-service (`config.ts`, `index.ts`, `archive-engine.ts` — `runOnce()` returns `null`, `startCron()` logs and skips); `scripts/check-memory-stores.sh` + `scripts/memory-store-baseline.txt` (158-entry baseline) wired into `.github/workflows/deploy.yml` test job and `Makefile` `check` target; +4 archive-engine tests. |
+| `a653895` (38 files) | feat: Step 3 S154 — `prisma/schema.prisma` +4 models (`alert_rules`, `alert_channels`, `alert_escalation_policies`, `alert_maintenance_windows`); `src/repository.ts` (`Repo<T>`, `MemoryRepo`, `dbCall` → 503, `isUuid`) + `src/repository-prisma.ts`; `src/services/channel-crypto.ts` (AES-256-GCM, mask); 4 stores async + repo; routes/worker/dispatcher await; `requestTenant()`; config + index wiring; notifier logs URL origin only; compose `etip_alerting` DB URL + key + postgres dependency + 384M; baseline −4 lines; tests 329 → 377 |
+| `973d897` (2 files) | docs: `docs/S176_STEP3_ALERTING_S154.md` + `docs/modules/alerting-service.md` |
+| merge `3e2a73f` | PR #68 merged; CI/CD run 36617017423 all green (test, build, deploy) |
+| `6d4f42b` (7 files) | docs: post-deploy stats update — PROJECT_STATE, stats HTML, RCA #65, README badge, spec §10 row 154, S176 doc deploy result |
+| `ce3fad1` (2 files) | docs: consolidated backlog `docs/PENDING_WORK.md` (full docs sweep) + handoff pointer |
+| (this commit) | docs: session 176 end — handoff, PROJECT_STATE known issues |
 
-VPS HEAD `3de537f`, 32/32 `etip_` containers healthy. caching-service 112/112 (was 108). Real monorepo total 9,346 passed + 2 skipped, 0 failed, 33 packages (was 9,342 + 2). Full detail: `docs/S175_STEP3_OPS_PREREQ.md`.
+VPS HEAD `3e2a73f`, 32/32 `etip_` containers healthy. alerting-service 377/377. Real monorepo total **9,394 passed + 2 skipped, 0 failed, 33 packages** (CI run 36617017423; was 9,346 + 2).
 
-## 📁 Files / Documents Affected (Session 175)
+## 📁 Files / Documents Affected (Session 176)
 
-**New doc:** `docs/S175_STEP3_OPS_PREREQ.md`.
+**New:** `apps/alerting-service/src/repository.ts`, `src/repository-prisma.ts`, `src/services/channel-crypto.ts`, `tests/{channel-crypto,repository,persistence-restart,config}.test.ts`, `docs/S176_STEP3_ALERTING_S154.md`, `docs/PENDING_WORK.md`.
 
-**Code touched:** `apps/caching-service/src/config.ts`, `apps/caching-service/src/index.ts`, `apps/caching-service/src/services/archive-engine.ts`, `apps/caching-service/tests/archive-engine.test.ts`, `scripts/check-memory-stores.sh` (new), `scripts/memory-store-baseline.txt` (new), `.github/workflows/deploy.yml`, `Makefile`.
+**Modified (code):** `prisma/schema.prisma`, `pnpm-lock.yaml`, `docker-compose.etip.yml` (etip_alerting only), `scripts/memory-store-baseline.txt`, `apps/alerting-service/package.json`, `src/{config,index}.ts`, `src/plugins/tenant-guard.ts`, `src/routes/{rules,channels,escalations,maintenance,templates,stats}.ts`, `src/services/{rule,channel,escalation,maintenance}-store.ts`, `src/services/{escalation-dispatcher,notifier}.ts`, `src/workers/alert-worker.ts`, 9 existing test files.
 
-**Modified (docs):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md` (this file), `docs/DEPLOYMENT_RCA.md`, `docs/ETIP_Project_Stats.html`.
+**Modified (docs):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md`, `docs/DEPLOYMENT_RCA.md` (Issue 65 + S176 row), `docs/ETIP_Project_Stats.html`, `docs/modules/alerting-service.md`, `docs/roadmap/STEP_03_PERSISTENCE.md`, `README.md`.
 
-## 🔧 Decisions & Rationale (Session 175)
+## 🔧 Decisions & Rationale (Session 176)
 
-No new DECISION entries this session — DECISION-049 (Step 3 D1–D7 accepted as recommended, recorded in S174) is what this session executes for D1 and D4. No new decision was needed for the deploy-ordering re-verification or the CI guard: both are mechanical follow-through on the already-accepted spec.
+No new DECISION entry — the session executes DECISION-049 (D2 additive schema, D3 fail with 503). Deliberate deviations from the §6.1 sketch, recorded in the S176 doc: only 4 of 7 models (the S155 ones come with S155 — additive-only schema makes an unused table costly to reshape); no `configMasked`/`keyVersion` columns (mask computed on read, both addable later); no `src/prisma.ts`; id arrays are `text[]`; the channel key is 32 random bytes in base64 (not the integration helper's first-32-chars scheme).
 
-## 🧪 Deploy Verification Results (Session 175)
-
-```
-PR #67 → 3de537f : caching-service 112/112 (was 108).
-                    CI run 36606869933: Test, Build & Push Docker Images, Deploy to VPS all success.
-                    CI log: "memory-store guard: OK".
-VPS HEAD 3de537f, deploy status ok, log "schema unchanged, skipping push", 32/32 etip
-containers healthy. etip_caching log: "Archive disabled (TI_ARCHIVE_ENABLED=false) —
-cron not started". Redis maxmemory-policy noeviction. Local /health 200, public
-https://intelwatch.in/health 200, /login 200.
-Real monorepo test total: 9,346 passed + 2 skipped, 0 failed, 33 packages (was 9,342 + 2).
-Reviews: etip-reviewer PASS (non-blocking note: the guard only sees single-line field
-declarations). codex:rescue not run — not security-adjacent (config flag + CI script).
-No new RCA issues.
-```
-
-## ⚠️ Open Items / Next Steps (Session 175)
-
-> **S176 update (2026-09-30):** Step 3 row S154 is DONE and live (PR #68, merge `3e2a73f`) — next is **row S155**. The full consolidated backlog (roadmap steps, SEO + weekly brief track, standing backlog, owner inputs, stale docs) is in **`docs/PENDING_WORK.md`** — read it at session start.
-
-**Ordered task queue (one task per fresh session):**
-1. ~~Plan-enforcement gap~~ — DONE S174 (PR #66, owner browser check PASSED).
-2. **Step 3 — no business data in memory** (`docs/roadmap/STEP_03_PERSISTENCE.md`; D1–D7 accepted as recommended, DECISION-049). Run the §10 rows in order, one per session. ~~First session (S175): the `154-0` ops row~~ — **DONE this session** (D4 archive off + CI memory-store guard; deploy ordering and D1 were already live, no change needed). **Next: row S154 — alerting-service** (models (7) + rules, channels (encrypted), escalations, maintenance → Postgres; spec §5.1/§6.1). Then S155 alerting, S156/S157 integration, S158a/b DRP, S159 hunting, small ones.
-3. Wiring fixes found in the S173 sweep: `apiList` drops pagination totals; broken request bodies (correlation Create Ticket, DRP bulk triage + takedown, Jira/ServiceNow creation form); frontend admin `TenantRecord` type vs real `/admin/tenants` shape; missing/mismatched backend routes (TAXII managed-collection list, global IOC stats, `/ingestion/catalog/subscription-stats`, `/analytics/feed-performance` shape, per-source enrichment breakdown, test-notification route).
-4. AI enrichment runner (DECISION-045) — also replaces the fake vendor verdicts in `EnrichmentDetailPanel` / `InvestigationDrawer` with real ones.
-5. Graph visual redesign — needs owner reference designs; load the ui-design-workflow skill.
-6. Owner-scheduled security fix (includes private items — see private notes); needs owner go-ahead + adversarial review; before the first real customer.
-7. Folded into the tasks above, no own session: rest of old audit PR 3 (demo rows on IOC/malware/vuln/actor lists, fake MITRE IDs on actors, `PageStatsBar` Demo badge — shared-ui still needs owner approval), remaining `isDemo` hooks (access reviews, break-glass, campaigns; `useFeeds` swallows errors). Old audit PR 4 (dead demo code) waits until something needs it.
-8. Deferred from S174, tracked in `docs/S174_PLAN_FEATURE_GATE.md`: (a) daily/monthly usage counters not applied on nginx-proxied routes; (b) Command Center Alerts & Reports tab has no plan check (no impact today); (c) `apps/api-gateway/src/config/feature-routes.ts` stale entries (`/hunting`, `/correlation`, `/threat-actors`, `/integrations`→`api_access`).
-9. From S175: existing sample archive objects in the MinIO bucket `etip-archive` are not deleted by the D4 change — deleting them and rebuilding the index from real data is row S159b.
-
-**Owner actions:** none required this session (ops/config change, no user-facing behavior). Still open: graph reference designs (task 5), security-fix go-ahead (task 6), `PageStatsBar` OK (only if a task needs it).
-
-## 🔁 How to Resume (Session 176)
+## 🧪 Deploy Verification Results (Session 176)
 
 ```
-Run /session-start, then start Step 3 row S154 (alerting-service → Postgres, spec
-docs/roadmap/STEP_03_PERSISTENCE.md §5.1/§6.1). Module: alerting-service;
-prisma/schema.prisma additive models only (D2); fail with 503 on DB error (D3);
-delete alerting lines from scripts/memory-store-baseline.txt as they move.
+PR #68 → 3e2a73f : CI run 36617017423 — Test/Type-check/Lint & Audit success, Build & Push success, Deploy to VPS success.
+VPS HEAD 3e2a73f, 32/32 etip containers healthy.
+Tables: alert_channels, alert_escalation_policies, alert_maintenance_windows, alert_rules.
+etip_alerting log "Alerting persistence: Postgres" (1); "fall back"/"in-memory" lines: 0 (before and after restart).
+Created (internal 127.0.0.1:3023, real tenant uuid) a DISABLED test rule + test Slack channel:
+  create response masked (hooks.slack.com/****), token leaked: 0; DB config_enc prefix 'v1:', plaintext rows: 0
+  docker restart etip_alerting → health 200; rule GET 200 (name matches); channel listed, token leaked 0;
+  channel test route (decrypts) success; cleanup DELETE 204/204, leftover test rows 0.
+Memory guard OK. etip_alerting 43.34 MiB / 384 MiB (limit 402653184).
+Reviews: Opus diff review (+ escalation policy lookup scoped to the alert's tenant, + test);
+codex:rescue verdict REVISE — (1) webhook URL logged in full → FIXED (origin only);
+(2) worker swallows DB errors so the job isn't retried → DEFERRED to S155 (retry not idempotent yet).
+etip-reviewer PASS. RCA #65 recorded (alerting by-id lookups not tenant-filtered, fixed).
+```
+
+## ⚠️ Open Items / Next Steps (Session 176)
+
+**Full backlog: `docs/PENDING_WORK.md`** (all roadmap steps, SEO G1–G7 + weekly brief B1–B3, standing backlog, owner inputs, stale docs). Ordered queue (one task per fresh session):
+
+1. **Step 3 row S155** — alerting-service alerts, history, groups, dedup, escalation dispatcher `pending`, worker → Postgres; add models `Alert`, `AlertHistoryEntry`, `AlertGroup` (spec §5.1/§6.1); make `processJob` idempotent, then rethrow `DB_UNAVAILABLE` so BullMQ retries; delete the remaining 7 alerting lines from `scripts/memory-store-baseline.txt`; keep every by-id lookup tenant-scoped with a cross-tenant 404 test.
+2. Rest of Step 3: S156/S157 integration → S158a/b DRP → S159 hunting → S159b–e (archive rebuild incl. deleting MinIO sample objects, analytics tenant trends, onboarding, offboarding purge incl. the 4 new alert tables).
+3. Wiring fixes from the S173 sweep (see PENDING_WORK §3).
+4. AI enrichment runner (DECISION-045).
+5. Graph visual redesign — needs owner reference designs.
+6. Owner-scheduled security fix (includes private items — see private notes); owner go-ahead + adversarial review; before the first real customer.
+7. Folded in, no own session: audit PR 3 leftovers, remaining `isDemo` hooks, S174 plan-gate leftovers, alert notification delivery (log-only today).
+8. Parallel any time: SEO G1 (sitemap from routes + self-hosted fonts, small frontend task).
+
+**Owner actions:** none blocking. Key copies confirmed (VPS `.env`, local `.env`, owner offline backup). Still open: graph designs, security-fix go-ahead, `PageStatsBar` OK, Step 15 P2 decisions, DECISION-032, SEO O-S1, brief O-B1–B3.
+
+## 🔁 How to Resume (Session 177)
+
+```
+Run /session-start, then start Step 3 row S155 (alerting-service → Postgres, part 2:
+alerts, history, groups, dedup, escalation dispatcher, worker; spec
+docs/roadmap/STEP_03_PERSISTENCE.md §5.1/§6.1/§8). Module: alerting-service.
+Reuse the S154 layer: src/repository.ts (Repo<T>, MemoryRepo, dbCall → 503, isUuid) and
+src/repository-prisma.ts. prisma/schema.prisma additive models only (D2); DB error → 503,
+never a memory fallback (D3); by-id lookups tenant-scoped + cross-tenant 404 tests; make
+alert-worker processJob idempotent, then rethrow DB_UNAVAILABLE; delete the remaining alerting
+lines from scripts/memory-store-baseline.txt. Security-adjacent → codex:rescue before push.
 
 Frozen / do-not-touch without explicit instruction: shared-* packages (Tier 1, api-gateway
 included) — additive only, list every consumer before any change; shared-ui needs owner approval
 for any PageStatsBar change. intelwatch.in and ti-platform-* containers — never touch.
-nginx conf.d changes must pass `nginx -t` inside the live container before merge (deploy
-force-recreates etip_nginx; a bad config = outage) and must not add a server-level `set` for any
-variable read inside an auth_request location (RCA #64).
+nginx conf.d changes must pass `nginx -t` inside the live container before merge and must not
+add a server-level `set` for any variable read inside an auth_request location (RCA #64).
+Stage explicit paths only — private untracked .docx / AGENTS.md / setup-breakglass.sh live in the tree.
 ```
 
-## Agent Utilization (Session 175)
+## Agent Utilization (Session 176)
 
-- **Opus:** plan, spec §3 re-verification (found deploy ordering + D1 already live), guard script + CI/Makefile wiring, diff critique, VPS pre/post-deploy checks, PR/merge, memory.
-- **Sonnet:** 5 runs — context digest, D4 archive kill switch + tests, etip-reviewer (PASS), S175 change doc + spec update, post-deploy docs.
-- **Haiku:** n/a — VPS checks were two SSH one-liners, faster inline than a cold agent start.
-- **codex:rescue:** n/a — not security-adjacent (config flag + CI script).
+- **Opus:** plan + code reading, Sonnet contract, diff critique + 2 fixes (dispatcher tenant scope, notifier log mask), VPS key + verification script, PR/merge/deploy watch, docs review, memory.
+- **Sonnet:** 7 runs — S154 implementation, etip-reviewer (PASS), S176 docs, post-deploy docs, 3 docs-sweep agents (roadmap, state docs, other docs).
+- **Haiku:** 1 run — session-start context digest (two facts corrected by Opus: baseline count, invented index.ts lines).
+- **codex:rescue:** verdict REVISE — 1 fixed (webhook URL log), 1 deferred to S155 with reason (worker retry not idempotent yet).
 
 Routing telemetry:
-- sonnet · session-start context digest · reworked: N
-- sonnet · D4 archive flag + tests · reworked: N
+- haiku · session-start context digest · reworked: Y (invented 3 baseline lines, Opus re-grepped)
+- sonnet · S154 implementation (37 files) · reworked: N (Opus added 2 small fixes after review)
 - sonnet/etip-reviewer · pre-push review · reworked: N
-- sonnet · S175 change doc + spec · reworked: N (2 one-line Opus fixes: unauthenticated curl, missing index.ts row)
-- sonnet · post-deploy docs · reworked: N (left a duplicate "Last session outcome" line in PROJECT_STATE — fixed by Opus at session end)
+- sonnet · S176 change doc + module README · reworked: N
+- sonnet · post-deploy docs (7 files) · reworked: N (numbers verified against facts, no duplicates)
+- sonnet × 3 · full docs pending-work sweep · reworked: N
+- codex:rescue · adversarial security review · reworked: N
