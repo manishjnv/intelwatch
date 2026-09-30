@@ -349,6 +349,7 @@
 **Decision:** A real customer tenant never sees demo data. Every page shows real data or an honest empty state with a clear next step (e.g. "not available yet", "no data in this range"). Demo/sample content is only ever shown in an explicit demo tenant or demo mode, never blended into a real tenant's view.
 **Alternatives:** Label demo content "Demo data" until the tenant's first real data arrives (rejected — still shows fabricated numbers as if representative, and mislabeling risk on every future widget); a per-tenant sample-data toggle (rejected — adds a permanent config surface for a temporary onboarding gap; an honest empty state does the same job with no added surface).
 **Consequences:** A sweep is required across the paths `docs/S172_FABRICATED_DATA_AUDIT.md` identifies (5 PRs, `withDemoFallback` first since it affects the most hooks). Related to DECISION-035 (FeatureGate fails open, doesn't fabricate) and DECISION-036 (ship honest UI now, fix mismatches later) — this decision extends the same "no fake data in front of a real tenant" principle from UI-error states to UI-empty states and from the frontend to backend seeding.
+**2026-09-30:** onboarding demo/sample seeding and all remaining frontend isDemo fallbacks removed (PR #71).
 
 ### DECISION-049: Step 3 persistence — owner decisions D1–D7 accepted as recommended
 **Date:** 2026-09-29 (S174) | **Status:** Accepted (owner)
@@ -371,3 +372,11 @@
 **Alternatives:** Redis JSON via `@etip/shared-persistence`'s `RedisJsonStore` (rejected — it has two data-loss traps: `restore()` swallows Redis errors and starts empty, so the next debounced save overwrites every tenant's data under that key; `close()` clears the pending debounced save without writing it, so up to 5 s of writes are lost on every deploy; it also snapshots all tenants into one key). One table per store (rejected — 8 models plus mappers for what is config-sized data; DECISION-027 already puts integration in the Postgres lane).
 **Consequences:** Per-tenant reads filter `kind`/`tenant_id` in application code (fine at config volume). hunting-service (Step 3 S159, planned to use `RedisJsonStore`) must not use it until the two traps above are fixed — use the `integration_docs` pattern or fix the helper first.
 **S177 part 2:** hunting-service uses the same pattern (`hunting_docs`, id varchar(100)).
+
+### DECISION-052: Offboarding deactivates the tenant and keeps all data; no scheduled purge
+
+**Date:** 2026-09-30 (S177) | **Status:** Accepted (owner)
+**Context:** The offboarding purge worker (`purgeTenant()`, `ExternalPurger`) existed since S148 but was never scheduled — no daily job called it. The owner decided, 2026-09-30: (1) real tenants never get fabricated data (reaffirms DECISION-048), and (2) offboarding should just deactivate the tenant and keep its data.
+**Decision:** Offboarding blocks the tenant and its users, ends sessions, revokes API keys, disables SSO, and revokes SCIM tokens — it does not purge or archive any data. Reactivation uses the existing cancel flow.
+**Alternatives:** A 60-day scheduled purge (the original design this worker was built for) — rejected by the owner.
+**Consequences:** Tenant data is kept indefinitely after offboarding. A legal erasure request is handled as a manual, owner-approved one-off, not an automated job. The purge code (`offboarding-purge-worker.ts`, `external-purge.ts`, `offboarding-archive-worker.ts`) was deleted; the last version is recoverable from git commit `17a7737` if a one-off purge is ever needed. `@etip/shared-types` offboarding response/pipeline purge fields are now nullable and always null.

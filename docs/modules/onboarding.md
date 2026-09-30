@@ -1,6 +1,10 @@
 # Onboarding Service (Module 18)
 
-**Port:** 3018 | **Status:** ✅ Deployed | **Tests:** 276 | **Endpoints:** 32
+**Port:** 3018 | **Status:** ✅ Deployed | **Tests:** 219 | **Endpoints:** 32
+
+## Demo/sample seeding removed (S177, PR #71, DECISION-048)
+
+`DemoSeeder` and its catalog were deleted; `RealSeeder`'s sample IOC/actor/malware step was removed — real tenants never get fabricated data. `POST /welcome/seed-demo` is kept for compatibility but now only adds real starter feed subscriptions, and returns 503 `SEEDER_UNAVAILABLE` when the seeder is off (no demo fallback). `GET /welcome/demo-status`, `DELETE /welcome/demo-data`, and `GET /welcome/demo-available` were removed. Tests 276 → 219.
 
 ## Persistence (S159d, ✅ Deployed (S177, PR #70 `47201c0`))
 
@@ -17,7 +21,7 @@ Module readiness, checklist snapshots, demo-seeded flag, and tour-completed flag
 | Module Readiness | `services/module-readiness.ts` | 14-module dependency graph, enable/disable with validation. Persisted to Redis (S159d) |
 | Progress Tracker | `services/progress-tracker.ts` | 8 readiness checks, completion scoring |
 | Prerequisite Validation (P0) | `services/prerequisite-validator.ts` | Transitive dep chain, config prereqs |
-| Demo Data Seeding (P0) | `services/demo-seeder.ts` | 10 IOCs, 5 actors, 5 malware, 5 CVEs, 4 OSINT feeds via real API calls (tagged DEMO). Demo-seeded flag persisted to Redis (S159d) |
+| Starter Feed Subscriptions | `services/real-seeder.ts` | Subscribes the tenant to recommended public OSINT feeds only — no sample IOCs/actors/malware (demo seeder removed, S177 PR #71). Seeded flag persisted to Redis (S159d) |
 | Integration Testing (P0) | `services/integration-tester.ts` | DNS → TCP → auth → data pull multi-step test |
 | Checklist Persistence (P0) | `services/checklist-persistence.ts` | Versioned snapshots (max 10), save/resume. Persisted to Redis (S159d) |
 | Welcome Dashboard (P0) | `services/welcome-dashboard.ts` | Quick actions, 6 guided tips, tour tracking. Tour-completed flag persisted to Redis (S159d) |
@@ -54,10 +58,7 @@ Module readiness, checklist snapshots, demo-seeded flag, and tour-completed flag
 | GET | `/api/v1/onboarding/modules/:mod/dependencies` | Dependency chain |
 | GET | `/api/v1/onboarding/welcome` | Welcome dashboard |
 | GET | `/api/v1/onboarding/welcome/tips` | Guided tips |
-| POST | `/api/v1/onboarding/welcome/seed-demo` | Seed demo data |
-| GET | `/api/v1/onboarding/welcome/demo-status` | Demo seed status |
-| DELETE | `/api/v1/onboarding/welcome/demo-data` | Clear demo data |
-| GET | `/api/v1/onboarding/welcome/demo-available` | Available demo counts |
+| POST | `/api/v1/onboarding/welcome/seed-demo` | Add starter feed subscriptions (path kept for compatibility; no demo data) |
 | POST | `/api/v1/onboarding/welcome/tour-complete` | Mark tour done |
 | GET | `/api/v1/onboarding/welcome/should-show` | Show welcome? |
 | POST | `/api/v1/onboarding/welcome/save-state` | Save checklist |

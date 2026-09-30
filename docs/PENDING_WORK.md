@@ -10,9 +10,9 @@
 |---|---|---|
 | 0, 0B, 2 | ✅ Done | — |
 | 1 · Stay up | ✅ Done | Off-site backup copy (rclone); failover option not chosen (`STEP_01_STAY_UP.md` §later) |
-| **3 · Persistence** | 🔨 In progress — rows 154-0 (S175), 154 (S176), 155/156/157/158a/158b (S177 PR #69, `e10897d`), and 159/159d/159e (S177 part 2, PR #70, `47201c0`) done and live | **NEXT** = wire the offboarding purge scheduler (owner go-ahead needed — destructive), then owner decision on onboarding's "Seed Demo Data" button, then **S159b** caching-service archive rebuild from MinIO, then S159c analytics tenant trends (belongs with the owner-scheduled security fix). Backlog: reporting, customization, user-management, correlation |
+| **3 · Persistence** | 🔨 In progress — rows 154-0 (S175), 154 (S176), 155/156/157/158a/158b (S177 PR #69, `e10897d`), 159/159d/159e (S177 part 2, PR #70, `47201c0`), and the no-demo-data/offboarding-deactivate decision (S177, PR #71, DECISION-052) done and live | **NEXT** = **S159b** caching-service archive rebuild from MinIO, then S159c analytics tenant trends (belongs with the owner-scheduled security fix). Backlog: reporting, customization, user-management, correlation |
 | 4 · DB roles + RLS | ⏳ Not started (after Step 3) | Sessions 160a–m; owner decisions E1–E7; must cover the new alert tables |
-| 5 · Honest UI | 🔨 Mostly done | S173 wiring fixes (see §3); real Clients tenant list; remaining `isDemo` hooks; SparklineCell fake trend (`generateStubTrend`); owner decisions O1–O4. Status line in the spec is stale |
+| 5 · Honest UI | 🔨 Mostly done | S173 wiring fixes (see §3); real Clients tenant list; SparklineCell fake trend (`generateStubTrend`); owner decisions O1–O4. Status line in the spec is stale |
 | 6 · Cleanup | 🔨 PR1 done (S171) | DECISION-032 proposal (not yet accepted); split files >400 lines as they are touched |
 | 7 · Consolidate runtime | ⏳ Blocked on DECISION-032 | ~7 deployables, runtime-host pilot |
 | 8 · Observability | ⏳ Not started | 8a–e + per-service adoption; 6 owner decisions |
@@ -37,8 +37,10 @@
 
 ## 3. Standing backlog (outside the steps)
 
-- **Offboarding purge worker is never scheduled** (S177 part 2, PR #70 finding): `runPurgeCheck` exists but no daily job calls it, `ExternalPurger.fromEnv` is never invoked, and `etip_user_management` lacks the Neo4j/ES env it would need — offboarded tenants are never hard-deleted. Wire the scheduler + compose env; destructive, needs care and an owner go-ahead. Known gap since S148.
-- **Onboarding "Seed Demo Data" writes fabricated data into the tenant's real stores** (S177 part 2, PR #70 finding): the button (`apps/frontend/src/pages/OnboardingPage.tsx:257`, `POST /onboarding/welcome/seed-demo`) and the "real" path's `POST /welcome/seed-demo` (`apps/onboarding/src/routes/welcome.ts:62–64`) seed fabricated IOCs/actors/malware/vulnerabilities — conflicts with DECISION-048. Owner decision: remove the button/route, or restrict to a demo tenant.
+- **No backend route for access-review stats** (S177, PR #71 finding): `/settings|admin/access-reviews/stats` has no backend route — the stats cards show an honest error card instead of data.
+- **No backend route for the super-admin tenant SSO view** (S177, PR #71 finding): `/admin/tenants/:tenantId/sso` has no backend route — shows an honest error card.
+- **onboarding-service error handler plugin not applied repo-wide** (S177, PR #71 finding): `errorHandlerPlugin` is registered without `fastify-plugin`, so its `{error:{…}}` response format never applies outside its own encapsulation context — other routes return Fastify's default error shape.
+- **Cosmetic rename:** `apps/frontend/src/hooks/*-demo-data.ts` files now only hold TypeScript types (their demo data was removed, PR #71) — rename to `*-types.ts`.
 - **Wiring fixes from the S173 sweep:** `apiList` drops pagination totals; broken request bodies (correlation Create Ticket, DRP bulk triage + takedown, Jira/ServiceNow form); admin `TenantRecord` type vs real `/admin/tenants`; missing/mismatched routes (TAXII managed-collection list, global IOC stats, `/ingestion/catalog/subscription-stats`, `/analytics/feed-performance` shape, per-source enrichment breakdown, test-notification route).
 - **AI enrichment runner** (DECISION-045) — also replaces fake vendor verdicts; batch path needs a tenant-budget check and a per-IOC trigger cooldown before `TI_BATCH_ENABLED` is used (`docs/S164_AI_ENRICHMENT_AUTO_ENRICH.md`).
 - **Real user & tenant provisioning** — invite, SSO/JIT, Add-Client.

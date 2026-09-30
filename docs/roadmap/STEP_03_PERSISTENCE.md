@@ -377,7 +377,7 @@ bash scripts/check-memory-stores.sh && echo OK
 | 159b | caching-service | Stop fake archive; rebuild index from MinIO | S |
 | 159c | analytics-service | Tenant-keyed trends (bug) + persistence | S |
 | 159d | onboarding | Module readiness, checklist, demo flag → Redis | S ✅ S177 part 2, PR #70 |
-| 159e | user-management-service | Add new tables to offboarding purge | S ✅ S177 part 2, PR #70 (also caught 8 older tenant tables the purge had missed; scheduler still not wired — see backlog) |
+| 159e | user-management-service | Add new tables to offboarding purge | S ✅ S177 part 2, PR #70 (also caught 8 older tenant tables the purge had missed); purge removed — owner decision DECISION-052: offboarding keeps data (S177, PR #71) |
 | backlog | reporting-service (M), customization (L), user-management-service (L, audit duplicates first), correlation-engine (after D1) | — | — |
 
 "L" here is above the CLAUDE.md M budget. Each is still one module. If the owner wants strict M, split S154/S155/S156/S157 in two again (store layer, then callers).
