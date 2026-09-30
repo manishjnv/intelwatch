@@ -42,6 +42,8 @@ No new RCA issues.
 
 ## ⚠️ Open Items / Next Steps (Session 175)
 
+> **S176 update (2026-09-30):** Step 3 row S154 is DONE and live (PR #68, merge `3e2a73f`) — next is **row S155**. The full consolidated backlog (roadmap steps, SEO + weekly brief track, standing backlog, owner inputs, stale docs) is in **`docs/PENDING_WORK.md`** — read it at session start.
+
 **Ordered task queue (one task per fresh session):**
 1. ~~Plan-enforcement gap~~ — DONE S174 (PR #66, owner browser check PASSED).
 2. **Step 3 — no business data in memory** (`docs/roadmap/STEP_03_PERSISTENCE.md`; D1–D7 accepted as recommended, DECISION-049). Run the §10 rows in order, one per session. ~~First session (S175): the `154-0` ops row~~ — **DONE this session** (D4 archive off + CI memory-store guard; deploy ordering and D1 were already live, no change needed). **Next: row S154 — alerting-service** (models (7) + rules, channels (encrypted), escalations, maintenance → Postgres; spec §5.1/§6.1). Then S155 alerting, S156/S157 integration, S158a/b DRP, S159 hunting, small ones.
