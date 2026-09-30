@@ -58,7 +58,7 @@ export class ProgressTracker {
     });
 
     // 5. Core modules enabled
-    const enabledCount = this.moduleReadiness.getEnabledCount(tenantId);
+    const enabledCount = await this.moduleReadiness.getEnabledCount(tenantId);
     checks.push({
       name: 'modules_enabled',
       passed: enabledCount >= 3,
@@ -113,7 +113,7 @@ export class ProgressTracker {
       feedsActive: activeSources.length,
       iocsIngested: activeSources.length > 0 ? 150 : 0, // Demo estimate
       teamMembers: wizard.teamInvites.length,
-      modulesEnabled: this.moduleReadiness.getEnabledCount(tenantId),
+      modulesEnabled: await this.moduleReadiness.getEnabledCount(tenantId),
     };
   }
 

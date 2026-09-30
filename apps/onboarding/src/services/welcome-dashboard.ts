@@ -7,6 +7,14 @@ import type {
 import type { WizardStore } from './wizard-store.js';
 import type { ProgressTracker } from './progress-tracker.js';
 import type { DemoSeeder } from './demo-seeder.js';
+import type { Redis } from 'ioredis';
+
+const KEY_PREFIX = 'etip:';
+const KEY_SUFFIX = ':tour-completed';
+
+function redisKey(tenantId: string): string {
+  return `${KEY_PREFIX}${tenantId}${KEY_SUFFIX}`;
+}
 
 /** Quick actions shown on first-login dashboard. */
 const QUICK_ACTIONS: QuickAction[] = [
@@ -103,11 +111,17 @@ const GUIDED_TIPS: GuidedTip[] = [
  * Shows onboarding progress, quick actions, and tips.
  */
 export class WelcomeDashboardService {
+  private tourCompleted = new Set<string>(); // memory-ok: cache — per-process copy of the tenant Redis key (Redis is the source of truth; memory-only when no Redis, i.e. tests)
+  private redis: Redis | null;
+
   constructor(
     private wizardStore: WizardStore,
     private progressTracker: ProgressTracker,
     _demoSeeder: DemoSeeder,
-  ) {}
+    redis?: Redis | null,
+  ) {
+    this.redis = redis ?? null;
+  }
 
   /** Get the welcome dashboard for a tenant. */
   async getDashboard(tenantId: string): Promise<WelcomeDashboard> {
@@ -158,13 +172,22 @@ export class WelcomeDashboardService {
   }
 
   /** Mark guided tour as completed (track per-tenant). */
-  private tourCompleted = new Set<string>();
-
-  markTourCompleted(tenantId: string): void {
+  async markTourCompleted(tenantId: string): Promise<void> {
     this.tourCompleted.add(tenantId);
+    if (this.redis) {
+      await this.redis.set(redisKey(tenantId), JSON.stringify(true));
+    }
   }
 
-  isTourCompleted(tenantId: string): boolean {
-    return this.tourCompleted.has(tenantId);
+  async isTourCompleted(tenantId: string): Promise<boolean> {
+    if (this.tourCompleted.has(tenantId)) return true;
+    if (this.redis) {
+      const raw = await this.redis.get(redisKey(tenantId));
+      if (raw) {
+        this.tourCompleted.add(tenantId);
+        return true;
+      }
+    }
+    return false;
   }
 }

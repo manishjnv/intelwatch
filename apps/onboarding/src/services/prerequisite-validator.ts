@@ -28,16 +28,16 @@ export class PrerequisiteValidator {
   constructor(private moduleReadiness: ModuleReadinessChecker) {}
 
   /** Validate all prerequisites for enabling a module. */
-  validate(tenantId: string, module: PlatformModule): {
+  async validate(tenantId: string, module: PlatformModule): Promise<{
     canEnable: boolean;
     blockers: string[];
     warnings: string[];
-  } {
+  }> {
     const blockers: string[] = [];
     const warnings: string[] = [];
 
     // Check module dependency chain
-    const depResult = this.moduleReadiness.validateDependencies(tenantId, module);
+    const depResult = await this.moduleReadiness.validateDependencies(tenantId, module);
     if (!depResult.valid) {
       for (const missing of depResult.missing) {
         blockers.push(`Required module '${missing}' is not enabled`);
@@ -46,7 +46,7 @@ export class PrerequisiteValidator {
 
     // Check transitive dependencies (deps of deps)
     const transitive = this.getTransitiveDeps(module);
-    const allReadiness = this.moduleReadiness.checkAll(tenantId);
+    const allReadiness = await this.moduleReadiness.checkAll(tenantId);
     for (const dep of transitive) {
       const readiness = allReadiness.find((m) => m.module === dep);
       if (readiness && !readiness.enabled) {
@@ -80,16 +80,16 @@ export class PrerequisiteValidator {
   }
 
   /** Try to enable a module with prerequisite validation. */
-  enableWithValidation(tenantId: string, module: PlatformModule): {
+  async enableWithValidation(tenantId: string, module: PlatformModule): Promise<{
     enabled: boolean;
     blockers: string[];
     warnings: string[];
-  } {
-    const result = this.validate(tenantId, module);
+  }> {
+    const result = await this.validate(tenantId, module);
     if (!result.canEnable) {
       return { enabled: false, blockers: result.blockers, warnings: result.warnings };
     }
-    this.moduleReadiness.enableModule(tenantId, module);
+    await this.moduleReadiness.enableModule(tenantId, module);
     return { enabled: true, blockers: [], warnings: result.warnings };
   }
 

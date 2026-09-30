@@ -107,8 +107,8 @@ describe('DemoSeeder — Feed Seeding (B2)', () => {
 
   it('clearDemoData resets feed seeding', async () => {
     await seeder.seed('tenant-1', ['feeds']);
-    seeder.clearDemoData('tenant-1');
-    expect(seeder.isSeeded('tenant-1')).toBe(false);
+    await seeder.clearDemoData('tenant-1');
+    expect(await seeder.isSeeded('tenant-1')).toBe(false);
 
     // Re-seed should call API again
     await seeder.seed('tenant-1', ['feeds']);

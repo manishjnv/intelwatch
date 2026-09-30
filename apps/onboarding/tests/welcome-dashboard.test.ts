@@ -116,19 +116,19 @@ describe('WelcomeDashboardService', () => {
   });
 
   describe('markTourCompleted / isTourCompleted', () => {
-    it('returns false by default', () => {
-      expect(welcome.isTourCompleted('t1')).toBe(false);
+    it('returns false by default', async () => {
+      expect(await welcome.isTourCompleted('t1')).toBe(false);
     });
 
-    it('returns true after marking', () => {
-      welcome.markTourCompleted('t1');
-      expect(welcome.isTourCompleted('t1')).toBe(true);
+    it('returns true after marking', async () => {
+      await welcome.markTourCompleted('t1');
+      expect(await welcome.isTourCompleted('t1')).toBe(true);
     });
 
-    it('per-tenant isolation', () => {
-      welcome.markTourCompleted('t1');
-      expect(welcome.isTourCompleted('t1')).toBe(true);
-      expect(welcome.isTourCompleted('t2')).toBe(false);
+    it('per-tenant isolation', async () => {
+      await welcome.markTourCompleted('t1');
+      expect(await welcome.isTourCompleted('t1')).toBe(true);
+      expect(await welcome.isTourCompleted('t2')).toBe(false);
     });
   });
 });

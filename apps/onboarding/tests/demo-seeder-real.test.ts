@@ -93,7 +93,7 @@ describe('DemoSeeder — Real API Calls (B1)', () => {
 
   it('clearDemoData allows re-seeding', async () => {
     await seeder.seed('tenant-1');
-    seeder.clearDemoData('tenant-1');
-    expect(seeder.isSeeded('tenant-1')).toBe(false);
+    await seeder.clearDemoData('tenant-1');
+    expect(await seeder.isSeeded('tenant-1')).toBe(false);
   });
 });

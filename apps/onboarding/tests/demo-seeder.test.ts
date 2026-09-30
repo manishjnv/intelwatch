@@ -42,30 +42,30 @@ describe('DemoSeeder', () => {
     it('seeds separate data per tenant', async () => {
       await seeder.seed('t1');
       await seeder.seed('t2');
-      expect(seeder.isSeeded('t1')).toBe(true);
-      expect(seeder.isSeeded('t2')).toBe(true);
+      expect(await seeder.isSeeded('t1')).toBe(true);
+      expect(await seeder.isSeeded('t2')).toBe(true);
     });
   });
 
   describe('isSeeded', () => {
-    it('returns false for unseeded tenant', () => {
-      expect(seeder.isSeeded('t1')).toBe(false);
+    it('returns false for unseeded tenant', async () => {
+      expect(await seeder.isSeeded('t1')).toBe(false);
     });
 
     it('returns true after seeding', async () => {
       await seeder.seed('t1');
-      expect(seeder.isSeeded('t1')).toBe(true);
+      expect(await seeder.isSeeded('t1')).toBe(true);
     });
   });
 
   describe('getSeedResult', () => {
-    it('returns null for unseeded tenant', () => {
-      expect(seeder.getSeedResult('t1')).toBeNull();
+    it('returns null for unseeded tenant', async () => {
+      expect(await seeder.getSeedResult('t1')).toBeNull();
     });
 
     it('returns result after seeding', async () => {
       await seeder.seed('t1');
-      const result = seeder.getSeedResult('t1');
+      const result = await seeder.getSeedResult('t1');
       expect(result).not.toBeNull();
       expect(result?.seeded).toBe(true);
     });
@@ -85,20 +85,20 @@ describe('DemoSeeder', () => {
   describe('clearDemoData', () => {
     it('clears seeded flag', async () => {
       await seeder.seed('t1');
-      expect(seeder.isSeeded('t1')).toBe(true);
-      seeder.clearDemoData('t1');
-      expect(seeder.isSeeded('t1')).toBe(false);
+      expect(await seeder.isSeeded('t1')).toBe(true);
+      await seeder.clearDemoData('t1');
+      expect(await seeder.isSeeded('t1')).toBe(false);
     });
 
     it('clears result', async () => {
       await seeder.seed('t1');
-      seeder.clearDemoData('t1');
-      expect(seeder.getSeedResult('t1')).toBeNull();
+      await seeder.clearDemoData('t1');
+      expect(await seeder.getSeedResult('t1')).toBeNull();
     });
 
     it('allows re-seeding after clear', async () => {
       await seeder.seed('t1');
-      seeder.clearDemoData('t1');
+      await seeder.clearDemoData('t1');
       const result = await seeder.seed('t1');
       expect(result.seeded).toBe(true);
     });

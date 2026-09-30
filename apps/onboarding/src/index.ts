@@ -39,7 +39,7 @@ async function main(): Promise<void> {
   // 4. Core services
   const wizardStore = new WizardStore(redis);
   const healthChecker = new HealthChecker();
-  const moduleReadiness = new ModuleReadinessChecker();
+  const moduleReadiness = new ModuleReadinessChecker(redis);
   const progressTracker = new ProgressTracker(wizardStore, moduleReadiness, healthChecker);
 
   // 4. Connector services
@@ -48,7 +48,7 @@ async function main(): Promise<void> {
 
   // 5. P0 services
   const prerequisiteValidator = new PrerequisiteValidator(moduleReadiness);
-  const demoSeeder = new DemoSeeder();
+  const demoSeeder = new DemoSeeder(redis);
   demoSeeder.setClients({
     iocClient: new ServiceClient({ baseUrl: config.TI_IOC_SERVICE_URL, targetService: 'ioc-intelligence' }),
     actorClient: new ServiceClient({ baseUrl: config.TI_ACTOR_SERVICE_URL, targetService: 'threat-actor-intel' }),
@@ -63,8 +63,8 @@ async function main(): Promise<void> {
     actorClient: new ServiceClient({ baseUrl: config.TI_ACTOR_SERVICE_URL, targetService: 'threat-actor-intel' }),
     malwareClient: new ServiceClient({ baseUrl: config.TI_MALWARE_SERVICE_URL, targetService: 'malware-intel' }),
   });
-  const checklistPersistence = new ChecklistPersistence(wizardStore);
-  const welcomeDashboard = new WelcomeDashboardService(wizardStore, progressTracker, demoSeeder);
+  const checklistPersistence = new ChecklistPersistence(wizardStore, redis);
+  const welcomeDashboard = new WelcomeDashboardService(wizardStore, progressTracker, demoSeeder, redis);
 
   // 6. Build Fastify app
   const app = await buildApp({

@@ -76,15 +76,15 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
     /** GET /welcome/demo-status — Check if demo data has been seeded. */
     app.get('/demo-status', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const seeded = demoSeeder.isSeeded(tenantId);
-      const result = demoSeeder.getSeedResult(tenantId);
+      const seeded = await demoSeeder.isSeeded(tenantId);
+      const result = await demoSeeder.getSeedResult(tenantId);
       return reply.send({ data: { seeded, result } });
     });
 
     /** DELETE /welcome/demo-data — Clear demo data. */
     app.delete('/demo-data', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      demoSeeder.clearDemoData(tenantId);
+      await demoSeeder.clearDemoData(tenantId);
       return reply.status(204).send();
     });
 
@@ -97,7 +97,7 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
     /** POST /welcome/tour-complete — Mark guided tour as completed. */
     app.post('/tour-complete', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      welcomeDashboard.markTourCompleted(tenantId);
+      await welcomeDashboard.markTourCompleted(tenantId);
       return reply.send({ data: { completed: true } });
     });
 
@@ -105,7 +105,7 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
     app.get('/should-show', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
       const show = welcomeDashboard.shouldShowWelcome(tenantId);
-      const tourDone = welcomeDashboard.isTourCompleted(tenantId);
+      const tourDone = await welcomeDashboard.isTourCompleted(tenantId);
       return reply.send({ data: { showWelcome: show, tourCompleted: tourDone } });
     });
 
@@ -119,11 +119,11 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
     /** GET /welcome/saved-state — Get saved onboarding state. */
     app.get('/saved-state', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const hasSaved = checklistPersistence.hasSavedState(tenantId);
+      const hasSaved = await checklistPersistence.hasSavedState(tenantId);
       if (!hasSaved) {
         return reply.send({ data: null });
       }
-      const snapshot = checklistPersistence.restore(tenantId);
+      const snapshot = await checklistPersistence.restore(tenantId);
       return reply.send({ data: snapshot });
     });
   };
