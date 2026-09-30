@@ -1,10 +1,60 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-09-30
-**Session:** 177
-**Session Summary:** Step 3 rows **S155–S158b** done, deployed and verified — alerting-service alerts/history/groups (dedup + escalation state as columns), integration-service logs/deliveries/tickets + generic `integration_docs` config/audit table, and drp-service assets/alerts/scans/takedowns/feedback all moved off in-process memory onto Postgres (12 new additive tables). Found and fixed the same session: alerting-service worker and caching-service cache-invalidation listener both dropped the Redis password and used the wrong BullMQ prefix (RCA #66), integration exports sent hard-coded demo IOCs (RCA #67), `integration_docs`'s first-cut primary key would have let two doc kinds collide (RCA #68, caught in review).
+**Session:** 177 part 2
+**Session Summary:** Step 3 rows **S159/S159d/S159e** done, deployed and verified — hunting-service moved off its remaining in-memory Maps onto Postgres (one generic `hunting_docs` table, key `(kind, id)`, 8 kinds, DECISION-051 pattern, not `RedisJsonStore`), onboarding's module readiness/checklist/demo/tour state moved to Redis, and the offboarding purge worker widened to cover every tenant table plus Redis `etip:{tenantId}:*`. codex:rescue found 2 gaps (purge missed 8 older tenant tables; `ExternalPurger` accepted non-UUID tenant ids) — both fixed before merge. PR #70 merged `47201c0`, CI/CD run 36688149148 green. VPS HEAD `47201c0`, 32/32 healthy. hunting-service 251/251, onboarding 276/276, user-management-service 375/375. Real monorepo total **9,566 passed, 2 skipped, 0 failed, 33 packages** (was 9,524).
 
-## ✅ Changes Made (Session 177)
+Previous (Session 177 part 1): Step 3 rows **S155–S158b** done, deployed and verified — alerting-service alerts/history/groups (dedup + escalation state as columns), integration-service logs/deliveries/tickets + generic `integration_docs` config/audit table, and drp-service assets/alerts/scans/takedowns/feedback all moved off in-process memory onto Postgres (12 new additive tables). Found and fixed the same session: alerting-service worker and caching-service cache-invalidation listener both dropped the Redis password and used the wrong BullMQ prefix (RCA #66), integration exports sent hard-coded demo IOCs (RCA #67), `integration_docs`'s first-cut primary key would have let two doc kinds collide (RCA #68, caught in review). PR #69 merged `e10897d`.
+
+## ✅ Changes Made (Session 177 part 2)
+
+| Commit(s) | Description |
+|---|---|
+| `b99d98d` | feat: Step 3 S159 schema (`hunting_docs`, key `(kind, id)`) + `etip_hunting` DB wiring |
+| `3e2c04b` | feat: Step 3 S159 hunting-service → Postgres (`hunting_docs`) |
+| `0f0d0c3` | feat: Step 3 S159d onboarding module readiness/checklist/demo/tour state → Redis |
+| `17a7737` | feat: Step 3 S159e offboarding purge covers every tenant table + tenant Redis keys |
+| `ffa77d4` | docs: S177 part 2 (S159/S159d/S159e) session doc, spec, backlog + VPS acceptance scripts |
+| merge (PR #70 → `47201c0`) | PR #70 merged; CI/CD run 36688149148 green (Test, Build & Push, Deploy to VPS) |
+| (this commit) | docs: post-deploy stats update — PROJECT_STATE, stats HTML, RCA row, README badge, module docs, PENDING_WORK, handoff |
+
+VPS HEAD `47201c0`, 32/32 `etip_` containers healthy. hunting-service 251/251, onboarding 276/276, user-management-service 375/375. Real monorepo total **9,566 passed, 2 skipped, 0 failed, 33 packages** (CI run 36688149148; was 9,524).
+
+## 📁 Files / Documents Affected (Session 177 part 2)
+
+**New:** `apps/hunting-service/src/{doc-repo,doc-repo-prisma,prisma}.ts`, `apps/hunting-service/tests/{doc-repo-prisma,cross-tenant-routes,persistence-restart}.test.ts`, `apps/onboarding/src/services/demo-seed-data.ts`, `apps/onboarding/tests/redis-persistence.test.ts`, `apps/user-management-service/tests/offboarding-purge-worker.test.ts`, `scripts/vps-acceptance/s177-{hunting,onboarding}.mjs`, `docs/S177_STEP3_PERSISTENCE_S155_S158.md` (Part 2 section).
+
+**Modified (code):** `prisma/schema.prisma` (+`hunting_docs`), `docker-compose.etip.yml` (`etip_hunting` DB URL + depends_on), `scripts/memory-store-baseline.txt` (117 → 102), `apps/hunting-service/src/{index,config,routes/*,services/*}.ts` (8 services converted to await the repo), `apps/onboarding/src/{index,services/module-readiness,services/checklist-persistence,services/demo-seeder,services/welcome-dashboard,routes/modules,routes/welcome}.ts`, `apps/user-management-service/src/services/{offboarding-purge-worker,external-purge}.ts`, `apps/hunting-service/package.json` (`@prisma/client`).
+
+**Modified (docs):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md`, `docs/DEPLOYMENT_RCA.md` (S177 part 2 deploy-log row), `docs/ETIP_Project_Stats.html`, `docs/PENDING_WORK.md`, `README.md`, `docs/modules/{onboarding,user-management-service}.md`, `docs/roadmap/STEP_03_PERSISTENCE.md`.
+
+## 🧪 Deploy Verification Results (Session 177 part 2)
+
+```
+PR #70 → 47201c0 : CI run 36688149148 — Test ✓, Build & Push ✓, Deploy to VPS ✓.
+VPS HEAD 47201c0, 32/32 etip_ containers healthy.
+Table: hunting_docs (confirmed).
+Logs: etip_hunting "Hunting persistence: Postgres". NOAUTH count = 0 and 0
+  fallback/in-memory lines across etip_hunting, etip_onboarding,
+  etip_user_management, etip_alerting, etip_caching.
+VPS acceptance (throwaway tenant, rows/keys deleted after):
+  hunting — a session doc and a playbook_execution doc with the same id both
+    intact, 1 evidence doc, foreign-tenant read -> null, foreign-tenant save
+    -> 409 CONFLICT, all still there after docker restart etip_hunting
+    etip_onboarding.
+  onboarding — module state written to etip:{tenantId}:modules and read back
+    by a fresh ModuleReadinessChecker after the restart.
+Tests: hunting-service 222->251, onboarding 267->276,
+  user-management-service 371->375. Real monorepo total 9,566 passed,
+  2 skipped, 0 failed, 33 packages (was 9,524).
+Security: codex:rescue verdict REVISE -> 2 findings, both fixed before merge
+  (offboarding purge missed 8 older tenant tables; ExternalPurger accepted
+  non-UUID tenant ids).
+```
+
+## Session 177 part 1 — original content below
+
+## ✅ Changes Made (Session 177 part 1)
 
 | Commit(s) | Description |
 |---|---|
@@ -61,34 +111,33 @@ Security: codex:rescue verdict ACCEPT (all by-id paths, save helpers, integratio
   IOC export fetch, cross-tenant background jobs, error paths across all 3 services).
 ```
 
-## ⚠️ Open Items / Next Steps (Session 177)
+## ⚠️ Open Items / Next Steps (Session 177 part 2)
 
 **Full backlog: `docs/PENDING_WORK.md`** (all roadmap steps, SEO G1–G7 + weekly brief B1–B3, standing backlog, owner inputs, stale docs). Ordered queue (one task per fresh session):
 
-1. **Step 3 row S159** — hunting-service → Postgres. Use a generic `hunting_docs` table like `integration_docs` (DECISION-051 pattern), **not** `RedisJsonStore` as-is. Persist hunt playbook executions keyed by (tenant, hunt). Delete the 8 remaining hunting lines from `scripts/memory-store-baseline.txt`.
-2. Rest of Step 3: S159b archive rebuild (incl. deleting MinIO sample objects), S159c analytics tenant trends, S159d onboarding, S159e offboarding purge (must now also delete from the 12 new S177 tables plus the 4 S154 alert tables).
-3. Wiring fixes from the S173 sweep (see PENDING_WORK §3); S177 follow-ups (admin-service raw-LPUSH producer, api-gateway quota-enforcement raw-LPUSH, ALERT_EVALUATE producers missing retry/backoff, integration DLQ "retry" doesn't resend, exports support only `iocs`, `RedisJsonStore` data-loss traps, alert worker concurrency-5 dedup race, escalation dispatcher single-instance assumption, `integration-store.ts` at 397/400 lines).
-4. AI enrichment runner (DECISION-045).
-5. Graph visual redesign — needs owner reference designs.
-6. Owner-scheduled security fix (includes private items — see private notes); owner go-ahead + adversarial review; before the first real customer.
-7. Folded in, no own session: audit PR 3 leftovers, remaining `isDemo` hooks, S174 plan-gate leftovers, alert notification delivery (log-only today).
-8. Parallel any time: SEO G1 (sitemap from routes + self-hosted fonts, small frontend task).
+1. **Wire the offboarding purge scheduler** — `runPurgeCheck` exists but no daily job calls it, `ExternalPurger.fromEnv` is never invoked, and `etip_user_management` lacks the Neo4j/ES env it would need. Destructive; needs an owner go-ahead first.
+2. Owner decision on onboarding's "Seed Demo Data" button (`apps/frontend/src/pages/OnboardingPage.tsx:257`, `POST /onboarding/welcome/seed-demo`) — it writes fabricated IOCs/actors/malware/vulnerabilities into the tenant's real stores (DECISION-048 conflict). Remove the button/route, or restrict to a demo tenant.
+3. **Step 3 row S159b** — caching-service archive rebuild from MinIO (archive is currently off), then S159c analytics tenant trends (grouped with the owner-scheduled security fix). Backlog modules: reporting, customization, user-management in-memory stores, correlation-engine.
+4. Wiring fixes from the S173 sweep (see PENDING_WORK §3); S177 follow-ups (admin-service raw-LPUSH producer, api-gateway quota-enforcement raw-LPUSH, ALERT_EVALUATE producers missing retry/backoff, integration DLQ "retry" doesn't resend, exports support only `iocs`, `RedisJsonStore` data-loss traps, alert worker concurrency-5 dedup race, escalation dispatcher single-instance assumption, `integration-store.ts` at 397/400 lines).
+5. AI enrichment runner (DECISION-045).
+6. Graph visual redesign — needs owner reference designs.
+7. Owner-scheduled security fix (includes private items — see private notes); owner go-ahead + adversarial review; before the first real customer.
+8. Folded in, no own session: audit PR 3 leftovers, remaining `isDemo` hooks, S174 plan-gate leftovers, alert notification delivery (log-only today).
+9. Parallel any time: SEO G1 (sitemap from routes + self-hosted fonts, small frontend task).
 
-**Owner actions:** none blocking. Still open: graph designs, security-fix go-ahead, `PageStatsBar` OK, Step 15 P2 decisions, DECISION-032, SEO O-S1, brief O-B1–B3.
+**Owner actions:** offboarding purge scheduler go-ahead (destructive), "Seed Demo Data" decision. Still open: graph designs, security-fix go-ahead, `PageStatsBar` OK, Step 15 P2 decisions, DECISION-032, SEO O-S1, brief O-B1–B3.
 
 ## 🔁 How to Resume (Session 178)
 
 ```
-Run /session-start, then start Step 3 row S159 (hunting-service → Postgres:
-spec docs/roadmap/STEP_03_PERSISTENCE.md). Module: hunting-service.
-Follow the DECISION-051 pattern from S157 (a single generic table, `hunting_docs`,
-primary key (kind, id), not RedisJsonStore) for hunting's config/audit-style stores;
-reuse the Repo<T>/MemoryRepo/dbCall pattern from src/repository.ts in alerting-service/
-drp-service for anything that needs a dedicated table. prisma/schema.prisma additive
-models only (D2); DB error → 503, never a memory fallback (D3); by-id lookups
-tenant-scoped + cross-tenant 404 tests; persist playbook executions keyed by
-(tenant, hunt); delete the remaining 8 hunting lines from
-scripts/memory-store-baseline.txt. Security-adjacent → codex:rescue before push.
+Run /session-start. Next task needs an owner go-ahead first: wire the offboarding
+purge scheduler (runPurgeCheck is never called by a daily job, ExternalPurger.fromEnv
+is never invoked, and etip_user_management lacks the Neo4j/ES env it would need —
+this is destructive). If the owner has not yet approved, move to the next queue item:
+the owner decision on onboarding's "Seed Demo Data" button (DECISION-048 conflict),
+then Step 3 row S159b (caching-service archive rebuild from MinIO — spec
+docs/roadmap/STEP_03_PERSISTENCE.md). Module: user-management-service (purge) or
+caching-service (S159b) depending on which is unblocked.
 
 Frozen / do-not-touch without explicit instruction: shared-* packages (Tier 1, api-gateway
 included) — additive only, list every consumer before any change; shared-ui needs owner approval
@@ -98,7 +147,22 @@ add a server-level `set` for any variable read inside an auth_request location (
 Stage explicit paths only — private untracked .docx / AGENTS.md / setup-breakglass.sh live in the tree.
 ```
 
-## Agent Utilization (Session 177)
+## Agent Utilization (Session 177 part 2)
+
+- **Opus:** plan + code reading, Sonnet contract, diff critique, VPS acceptance verification, PR/merge/deploy watch, docs review, memory.
+- **Sonnet:** S159 hunting implementation, S159d onboarding implementation, S159e purge-widening implementation, S177 part 2 change doc + module docs, post-deploy docs sweep.
+- **codex:rescue:** verdict REVISE — 2 findings (purge missed 8 older tenant tables; `ExternalPurger` accepted non-UUID tenant ids), both fixed pre-merge.
+
+Routing telemetry:
+- sonnet · S159 hunting-service implementation · reworked: N
+- sonnet · S159d onboarding Redis persistence · reworked: N
+- sonnet · S159e offboarding purge widening · reworked: Y (codex:rescue REVISE, 2 findings fixed same PR)
+- sonnet · S177 part 2 docs + post-deploy docs sweep · reworked: N
+- codex:rescue · adversarial security review · reworked: N
+
+---
+
+## Session 177 part 1 — Agent Utilization (superseded, kept for history)
 
 - **Opus:** plan + code reading, Sonnet contract, diff critique, VPS acceptance verification, PR/merge/deploy watch, docs review, memory.
 - **Sonnet:** S155/S156-S157/S158 implementation, RCA #66 fix (alerting + caching listener), S177 change doc + module docs, post-deploy docs sweep.

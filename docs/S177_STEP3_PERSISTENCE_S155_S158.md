@@ -263,4 +263,18 @@ bash scripts/check-memory-stores.sh && echo OK
 
 ### Deploy result
 
-TBD (post-deploy).
+PR #70 merged as `47201c0` (merge commit "Merge pull request #70 from manishjnv/s177/hunting-persistence-s159"). CI/CD run 36688149148: Test ✓, Build & Push ✓, Deploy to VPS ✓.
+
+VPS HEAD `47201c0`, **32/32** `etip_*` containers healthy.
+
+Tests: hunting-service 222 → 251, onboarding 267 → 276, user-management-service 371 → 375. Real monorepo total **9,566 passed, 2 skipped, 0 failed, 33 packages** (was 9,524 after PR #69).
+
+Post-deploy: `hunting_docs` table exists; `etip_hunting` logs "Hunting persistence: Postgres"; `NOAUTH` count = 0 and 0 fallback/in-memory lines across `etip_hunting`, `etip_onboarding`, `etip_user_management`, `etip_alerting`, `etip_caching`.
+
+VPS acceptance (`scripts/vps-acceptance/s177-hunting.mjs`, `s177-onboarding.mjs`, run inside the containers against real Postgres/Redis, throwaway tenant, rows/keys deleted after):
+- **hunting** — a session doc and a playbook_execution doc with the same id both intact, 1 evidence doc, foreign-tenant read → null, foreign-tenant save → 409 CONFLICT, all still there after `docker restart etip_hunting etip_onboarding`.
+- **onboarding** — module state written to `etip:{tenantId}:modules` and read back by a fresh `ModuleReadinessChecker` after the restart.
+
+Security: codex:rescue verdict **REVISE** — 2 findings, both fixed before merge (see "Security review" above).
+
+**Next:** wire the offboarding purge scheduler (owner go-ahead needed — destructive; `ExternalPurger.fromEnv` needs Neo4j/ES env on `etip_user_management`), then the owner decision on onboarding's "Seed Demo Data" button, then S159b (caching archive rebuild) / backlog modules / wiring fixes / AI runner / graph redesign / security fix. SEO G1 in parallel. Full list: `docs/PENDING_WORK.md`.

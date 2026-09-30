@@ -2,7 +2,7 @@
 
 **Port:** 3018 | **Status:** ✅ Deployed | **Tests:** 276 | **Endpoints:** 32
 
-## Persistence (S159d, PR #70 — deploy pending)
+## Persistence (S159d, ✅ Deployed (S177, PR #70 `47201c0`))
 
 Module readiness, checklist snapshots, demo-seeded flag, and tour-completed flag moved from in-process memory to Redis via the existing WizardStore client: `etip:{tenantId}:modules` (enabled + configured modules), `etip:{tenantId}:checklist` (snapshots, max 10), `etip:{tenantId}:demo-seeded`, `etip:{tenantId}:tour-completed`. Falls back to memory only when no Redis client is configured (tests). Redis errors propagate (same policy as the wizard store). Integration test results stay in memory (cache). Tests 267 → 276.
 

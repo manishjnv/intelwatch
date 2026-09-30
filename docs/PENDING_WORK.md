@@ -1,6 +1,6 @@
 # Pending work — consolidated backlog
 
-**Last reviewed:** 2026-09-30, session 177 (after Step 3 rows S155–S158b went live, PR #69, `e10897d`). Built from a full sweep of `docs/` (roadmap specs, PROJECT_STATE, SESSION_HANDOFF, DECISIONS_LOG, stats page, session docs, module docs, runbooks, architecture docs) with code spot-checks.
+**Last reviewed:** 2026-09-30, session 177 part 2 (after Step 3 rows S159/S159d/S159e went live, PR #70, `47201c0`). Built from a full sweep of `docs/` (roadmap specs, PROJECT_STATE, SESSION_HANDOFF, DECISIONS_LOG, stats page, session docs, module docs, runbooks, architecture docs) with code spot-checks.
 
 **How to use:** the session task queue in `docs/SESSION_HANDOFF.md` says what is *next*; this file is the full list behind it. When an item closes, mark it here in the same commit. Self-serve payments are deliberately left out (owner-deferred).
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | 0, 0B, 2 | ✅ Done | — |
 | 1 · Stay up | ✅ Done | Off-site backup copy (rclone); failover option not chosen (`STEP_01_STAY_UP.md` §later) |
-| **3 · Persistence** | 🔨 In progress — rows 154-0 (S175), 154 (S176), 155/156/157/158a/158b (S177 PR #69), and 159/159d/159e (S177 part 2, PR #70) done — PR #70 deploy pending | **NEXT = S159b** caching-service archive rebuild from MinIO, then S159c analytics tenant trends (belongs with the owner-scheduled security fix). Backlog: reporting, customization, user-management, correlation |
+| **3 · Persistence** | 🔨 In progress — rows 154-0 (S175), 154 (S176), 155/156/157/158a/158b (S177 PR #69, `e10897d`), and 159/159d/159e (S177 part 2, PR #70, `47201c0`) done and live | **NEXT** = wire the offboarding purge scheduler (owner go-ahead needed — destructive), then owner decision on onboarding's "Seed Demo Data" button, then **S159b** caching-service archive rebuild from MinIO, then S159c analytics tenant trends (belongs with the owner-scheduled security fix). Backlog: reporting, customization, user-management, correlation |
 | 4 · DB roles + RLS | ⏳ Not started (after Step 3) | Sessions 160a–m; owner decisions E1–E7; must cover the new alert tables |
 | 5 · Honest UI | 🔨 Mostly done | S173 wiring fixes (see §3); real Clients tenant list; remaining `isDemo` hooks; SparklineCell fake trend (`generateStubTrend`); owner decisions O1–O4. Status line in the spec is stale |
 | 6 · Cleanup | 🔨 PR1 done (S171) | DECISION-032 proposal (not yet accepted); split files >400 lines as they are touched |
