@@ -55,8 +55,9 @@ export class ExternalPurger {
   async purge(tenantId: string): Promise<ExternalPurgeResult> {
     // Trust-boundary guard: an empty id would make the KEYS globs `plan_cache:*`/`quota:*`
     // and wipe EVERY tenant's cache, plus a Neo4j match on all null-tenant nodes.
-    if (!tenantId || tenantId.trim() === '') {
-      throw new Error('ExternalPurger.purge: tenantId is required');
+    // Tenant ids are UUIDs; anything else (e.g. '*') could widen `etip:${tenantId}:*` to every tenant.
+    if (!tenantId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId)) {
+      throw new Error('ExternalPurger.purge: tenantId must be a UUID');
     }
 
     const errors: string[] = [];
@@ -91,7 +92,7 @@ export class ExternalPurger {
     // switch to SCAN if the cache keyspace ever grows large enough to block Redis.
     // Tenant IDs are fixed-length UUIDs, so `<prefix>:<id>*` cannot collide with another tenant.
     let deleted = 0;
-    for (const pattern of [`plan_cache:${tenantId}*`, `quota:${tenantId}*`]) {
+    for (const pattern of [`plan_cache:${tenantId}*`, `quota:${tenantId}*`, `etip:${tenantId}:*`]) {
       const keys = await redis.keys(pattern);
       if (keys.length > 0) deleted += await redis.del(...keys);
     }
