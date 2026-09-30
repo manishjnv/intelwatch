@@ -8,7 +8,6 @@ import { HealthChecker } from './services/health-checker.js';
 import { ModuleReadinessChecker } from './services/module-readiness.js';
 import { ProgressTracker } from './services/progress-tracker.js';
 import { PrerequisiteValidator } from './services/prerequisite-validator.js';
-import { DemoSeeder } from './services/demo-seeder.js';
 import { RealSeeder } from './services/real-seeder.js';
 import { ServiceClient } from './services/service-client.js';
 import { IntegrationTester } from './services/integration-tester.js';
@@ -48,23 +47,12 @@ async function main(): Promise<void> {
 
   // 5. P0 services
   const prerequisiteValidator = new PrerequisiteValidator(moduleReadiness);
-  const demoSeeder = new DemoSeeder(redis);
-  demoSeeder.setClients({
-    iocClient: new ServiceClient({ baseUrl: config.TI_IOC_SERVICE_URL, targetService: 'ioc-intelligence' }),
-    actorClient: new ServiceClient({ baseUrl: config.TI_ACTOR_SERVICE_URL, targetService: 'threat-actor-intel' }),
-    malwareClient: new ServiceClient({ baseUrl: config.TI_MALWARE_SERVICE_URL, targetService: 'malware-intel' }),
-    vulnClient: new ServiceClient({ baseUrl: config.TI_VULN_SERVICE_URL, targetService: 'vulnerability-intel' }),
-    ingestionClient: new ServiceClient({ baseUrl: config.TI_INGESTION_SERVICE_URL, targetService: 'ingestion' }),
-  });
   const realSeeder = new RealSeeder();
   realSeeder.setClients({
     ingestionClient: new ServiceClient({ baseUrl: config.TI_INGESTION_SERVICE_URL, targetService: 'ingestion' }),
-    iocClient: new ServiceClient({ baseUrl: config.TI_IOC_SERVICE_URL, targetService: 'ioc-intelligence' }),
-    actorClient: new ServiceClient({ baseUrl: config.TI_ACTOR_SERVICE_URL, targetService: 'threat-actor-intel' }),
-    malwareClient: new ServiceClient({ baseUrl: config.TI_MALWARE_SERVICE_URL, targetService: 'malware-intel' }),
   });
   const checklistPersistence = new ChecklistPersistence(wizardStore, redis);
-  const welcomeDashboard = new WelcomeDashboardService(wizardStore, progressTracker, demoSeeder, redis);
+  const welcomeDashboard = new WelcomeDashboardService(wizardStore, progressTracker, redis);
 
   // 6. Build Fastify app
   const app = await buildApp({
@@ -73,7 +61,7 @@ async function main(): Promise<void> {
     connectorDeps: { connectorValidator, integrationTester },
     pipelineDeps: { healthChecker, progressTracker },
     moduleDeps: { moduleReadiness, prerequisiteValidator },
-    welcomeDeps: { welcomeDashboard, demoSeeder, realSeeder, checklistPersistence },
+    welcomeDeps: { welcomeDashboard, realSeeder, checklistPersistence },
   });
 
   // 7. Graceful shutdown

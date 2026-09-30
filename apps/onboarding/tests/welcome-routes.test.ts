@@ -4,7 +4,6 @@ import { WizardStore } from '../src/services/wizard-store.js';
 import { ModuleReadinessChecker } from '../src/services/module-readiness.js';
 import { HealthChecker } from '../src/services/health-checker.js';
 import { ProgressTracker } from '../src/services/progress-tracker.js';
-import { DemoSeeder } from '../src/services/demo-seeder.js';
 import { ChecklistPersistence } from '../src/services/checklist-persistence.js';
 import { WelcomeDashboardService } from '../src/services/welcome-dashboard.js';
 import type { FastifyInstance } from 'fastify';
@@ -30,12 +29,11 @@ describe('Welcome Routes', () => {
     const moduleReadiness = new ModuleReadinessChecker();
     const healthChecker = new HealthChecker();
     const progressTracker = new ProgressTracker(wizardStore, moduleReadiness, healthChecker);
-    const demoSeeder = new DemoSeeder();
     const checklistPersistence = new ChecklistPersistence(wizardStore);
-    const welcomeDashboard = new WelcomeDashboardService(wizardStore, progressTracker, demoSeeder);
+    const welcomeDashboard = new WelcomeDashboardService(wizardStore, progressTracker);
     app = await buildApp({
       config: TEST_CONFIG,
-      welcomeDeps: { welcomeDashboard, demoSeeder, checklistPersistence },
+      welcomeDeps: { welcomeDashboard, checklistPersistence },
     });
     await app.ready();
   });
@@ -70,82 +68,16 @@ describe('Welcome Routes', () => {
     expect(res.json().data.every((t: { category: string }) => t.category === 'getting_started')).toBe(true);
   });
 
-  it('POST /welcome/seed-demo — seeds demo data', async () => {
+  it('POST /welcome/seed-demo — returns 503 when RealSeeder is not wired', async () => {
+    // welcomeDeps above has no realSeeder — route must reject, never fall back to fabricated data.
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/onboarding/welcome/seed-demo',
       headers: { 'x-tenant-id': 'demo-tenant' },
       payload: {},
     });
-    expect(res.statusCode).toBe(201);
-    const body = res.json();
-    expect(body.data.seeded).toBe(true);
-    expect(body.data.tag).toBe('DEMO');
-    expect(body.data.counts.iocs).toBe(10);
-  });
-
-  it('POST /welcome/seed-demo — is idempotent', async () => {
-    const res1 = await app.inject({
-      method: 'POST',
-      url: '/api/v1/onboarding/welcome/seed-demo',
-      headers: { 'x-tenant-id': 'idem-tenant' },
-      payload: {},
-    });
-    const res2 = await app.inject({
-      method: 'POST',
-      url: '/api/v1/onboarding/welcome/seed-demo',
-      headers: { 'x-tenant-id': 'idem-tenant' },
-      payload: {},
-    });
-    expect(res1.json().data.counts).toEqual(res2.json().data.counts);
-  });
-
-  it('GET /welcome/demo-status — returns seeded status', async () => {
-    // Seed first
-    await app.inject({
-      method: 'POST',
-      url: '/api/v1/onboarding/welcome/seed-demo',
-      headers: { 'x-tenant-id': 'status-tenant' },
-      payload: {},
-    });
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/v1/onboarding/welcome/demo-status',
-      headers: { 'x-tenant-id': 'status-tenant' },
-    });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().data.seeded).toBe(true);
-  });
-
-  it('GET /welcome/demo-status — not seeded for fresh tenant', async () => {
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/v1/onboarding/welcome/demo-status',
-      headers: { 'x-tenant-id': 'fresh-tenant' },
-    });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().data.seeded).toBe(false);
-  });
-
-  it('DELETE /welcome/demo-data — clears demo data', async () => {
-    await app.inject({
-      method: 'POST',
-      url: '/api/v1/onboarding/welcome/seed-demo',
-      headers: { 'x-tenant-id': 'clear-tenant' },
-      payload: {},
-    });
-    const res = await app.inject({
-      method: 'DELETE',
-      url: '/api/v1/onboarding/welcome/demo-data',
-      headers: { 'x-tenant-id': 'clear-tenant' },
-    });
-    expect(res.statusCode).toBe(204);
-  });
-
-  it('GET /welcome/demo-available — returns available counts', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/v1/onboarding/welcome/demo-available' });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().data.iocs).toBe(10);
+    expect(res.statusCode).toBe(503);
+    expect(res.json().code).toBe('SEEDER_UNAVAILABLE');
   });
 
   it('POST /welcome/tour-complete — marks tour complete', async () => {

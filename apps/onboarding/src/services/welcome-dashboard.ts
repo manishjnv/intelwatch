@@ -6,7 +6,6 @@ import type {
 } from '../schemas/onboarding.js';
 import type { WizardStore } from './wizard-store.js';
 import type { ProgressTracker } from './progress-tracker.js';
-import type { DemoSeeder } from './demo-seeder.js';
 import type { Redis } from 'ioredis';
 
 const KEY_PREFIX = 'etip:';
@@ -117,7 +116,6 @@ export class WelcomeDashboardService {
   constructor(
     private wizardStore: WizardStore,
     private progressTracker: ProgressTracker,
-    _demoSeeder: DemoSeeder,
     redis?: Redis | null,
   ) {
     this.redis = redis ?? null;

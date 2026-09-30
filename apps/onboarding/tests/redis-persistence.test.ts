@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ModuleReadinessChecker } from '../src/services/module-readiness.js';
 import { ChecklistPersistence } from '../src/services/checklist-persistence.js';
-import { DemoSeeder } from '../src/services/demo-seeder.js';
 import { WelcomeDashboardService } from '../src/services/welcome-dashboard.js';
 import { WizardStore } from '../src/services/wizard-store.js';
 import { ProgressTracker } from '../src/services/progress-tracker.js';
@@ -86,29 +85,6 @@ describe('S159d Redis persistence — onboarding', () => {
     });
   });
 
-  describe('DemoSeeder', () => {
-    it('isSeeded is true on a new instance (no double seed)', async () => {
-      const redis = createMockRedis();
-      const seederA = new DemoSeeder(redis as never);
-      await seederA.seed('t1');
-
-      const seederB = new DemoSeeder(redis as never);
-      expect(await seederB.isSeeded('t1')).toBe(true);
-      // getSeedResult on the new instance also restores the same result, not a re-seed
-      const result = await seederB.getSeedResult('t1');
-      expect(result?.tag).toBe('DEMO');
-    });
-
-    it('tenant isolation — tenant B is not seeded', async () => {
-      const redis = createMockRedis();
-      const seederA = new DemoSeeder(redis as never);
-      await seederA.seed('tenant-a');
-
-      const seederB = new DemoSeeder(redis as never);
-      expect(await seederB.isSeeded('tenant-b')).toBe(false);
-    });
-  });
-
   describe('WelcomeDashboardService — tour-completed', () => {
     it('tour-completed survives a new instance', async () => {
       const redis = createMockRedis();
@@ -117,10 +93,10 @@ describe('S159d Redis persistence — onboarding', () => {
       const healthChecker = new HealthChecker();
       const progressTracker = new ProgressTracker(wizardStore, moduleReadiness, healthChecker);
 
-      const welcomeA = new WelcomeDashboardService(wizardStore, progressTracker, undefined as never, redis as never);
+      const welcomeA = new WelcomeDashboardService(wizardStore, progressTracker, redis as never);
       await welcomeA.markTourCompleted('t1');
 
-      const welcomeB = new WelcomeDashboardService(wizardStore, progressTracker, undefined as never, redis as never);
+      const welcomeB = new WelcomeDashboardService(wizardStore, progressTracker, redis as never);
       expect(await welcomeB.isTourCompleted('t1')).toBe(true);
     });
 
@@ -131,10 +107,10 @@ describe('S159d Redis persistence — onboarding', () => {
       const healthChecker = new HealthChecker();
       const progressTracker = new ProgressTracker(wizardStore, moduleReadiness, healthChecker);
 
-      const welcomeA = new WelcomeDashboardService(wizardStore, progressTracker, undefined as never, redis as never);
+      const welcomeA = new WelcomeDashboardService(wizardStore, progressTracker, redis as never);
       await welcomeA.markTourCompleted('tenant-a');
 
-      const welcomeB = new WelcomeDashboardService(wizardStore, progressTracker, undefined as never, redis as never);
+      const welcomeB = new WelcomeDashboardService(wizardStore, progressTracker, redis as never);
       expect(await welcomeB.isTourCompleted('tenant-b')).toBe(false);
     });
   });

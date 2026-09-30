@@ -1,32 +1,17 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { ZodType } from 'zod';
 import { AppError } from '@etip/shared-utils';
-import { SeedDemoSchema } from '../schemas/onboarding.js';
 import type { WelcomeDashboardService } from '../services/welcome-dashboard.js';
-import type { DemoSeeder } from '../services/demo-seeder.js';
 import type { RealSeeder } from '../services/real-seeder.js';
 import type { ChecklistPersistence } from '../services/checklist-persistence.js';
-import { getLogger } from '../logger.js';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function validate<S extends ZodType<any, any, any>>(schema: S, data: unknown): ReturnType<S['parse']> {
-  const result = schema.safeParse(data);
-  if (!result.success) {
-    const details = result.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message }));
-    throw new AppError(400, 'Request validation failed', 'VALIDATION_ERROR', details);
-  }
-  return result.data;
-}
 
 export interface WelcomeRouteDeps {
   welcomeDashboard: WelcomeDashboardService;
-  demoSeeder: DemoSeeder;
   realSeeder?: RealSeeder;
   checklistPersistence: ChecklistPersistence;
 }
 
 export function welcomeRoutes(deps: WelcomeRouteDeps) {
-  const { welcomeDashboard, demoSeeder, realSeeder, checklistPersistence } = deps;
+  const { welcomeDashboard, realSeeder, checklistPersistence } = deps;
 
   return async function (app: FastifyInstance): Promise<void> {
     /** GET /welcome — Get personalized welcome dashboard. */
@@ -43,55 +28,19 @@ export function welcomeRoutes(deps: WelcomeRouteDeps) {
       return reply.send({ data: tips, total: tips.length });
     });
 
-    /** POST /welcome/seed-demo — Seed data for first-time users.
-     * Tries RealSeeder (global catalog subscriptions + pipeline flow) first.
-     * Falls back to DemoSeeder on failure. Feature flag: TI_REAL_SEEDER_ENABLED. */
+    /** POST /welcome/seed-demo — Subscribe tenant to starter feeds via RealSeeder.
+     * No fabricated data (DECISION-048). Feature flag: TI_REAL_SEEDER_ENABLED. */
     app.post('/seed-demo', async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const input = validate(SeedDemoSchema, req.body ?? {});
       const planTier = ((req.body as Record<string, unknown>)?.planTier as string) || 'free';
-      const logger = getLogger();
 
       const realEnabled = process.env.TI_REAL_SEEDER_ENABLED !== 'false';
-
-      // Try RealSeeder first (if available and enabled)
-      if (realEnabled && realSeeder) {
-        try {
-          const realResult = await realSeeder.seedTenant(tenantId, planTier);
-          // Also seed demo entities if RealSeeder didn't create enough
-          if (!input.categories) {
-            await demoSeeder.seed(tenantId, ['vulnerabilities']);
-          }
-          return reply.status(201).send({ data: { ...realResult, seederUsed: 'real' as const } });
-        } catch (err) {
-          logger.warn({ tenantId, err: (err as Error).message }, 'RealSeeder failed, falling back to DemoSeeder');
-        }
+      if (!realEnabled || !realSeeder) {
+        throw new AppError(503, 'Starter feed setup is unavailable', 'SEEDER_UNAVAILABLE');
       }
 
-      // Fallback to DemoSeeder
-      const result = await demoSeeder.seed(tenantId, input.categories);
-      return reply.status(201).send({ data: { ...result, seederUsed: 'demo' as const } });
-    });
-
-    /** GET /welcome/demo-status — Check if demo data has been seeded. */
-    app.get('/demo-status', async (req: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      const seeded = await demoSeeder.isSeeded(tenantId);
-      const result = await demoSeeder.getSeedResult(tenantId);
-      return reply.send({ data: { seeded, result } });
-    });
-
-    /** DELETE /welcome/demo-data — Clear demo data. */
-    app.delete('/demo-data', async (req: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (req.headers['x-tenant-id'] as string) || 'default';
-      await demoSeeder.clearDemoData(tenantId);
-      return reply.status(204).send();
-    });
-
-    /** GET /welcome/demo-available — Get available demo data counts. */
-    app.get('/demo-available', async (_req: FastifyRequest, reply: FastifyReply) => {
-      const counts = demoSeeder.getAvailableDemoData();
-      return reply.send({ data: counts });
+      const result = await realSeeder.seedTenant(tenantId, planTier);
+      return reply.status(201).send({ data: { ...result, seederUsed: 'real' as const } });
     });
 
     /** POST /welcome/tour-complete — Mark guided tour as completed. */

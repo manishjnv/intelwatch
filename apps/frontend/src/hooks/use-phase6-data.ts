@@ -456,11 +456,19 @@ export function useSkipStep() {
   })
 }
 
-export function useSeedDemo() {
+export interface StarterFeedSeedResult {
+  seederUsed: 'real'
+  globalSubscriptions: number
+  privateFeeds: number
+  fetchesTriggered: number
+  errors: string[]
+}
+
+export function useAddStarterFeeds() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { categories?: string[] }) =>
-      api<{ seeded: boolean; counts: Record<string, number> }>('/onboarding/welcome/seed-demo', {
+    mutationFn: (body: { planTier?: string } = {}) =>
+      api<StarterFeedSeedResult>('/onboarding/welcome/seed-demo', {
         method: 'POST',
         body: JSON.stringify(body),
       }),
