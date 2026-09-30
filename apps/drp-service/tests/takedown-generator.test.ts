@@ -42,15 +42,15 @@ describe('TakedownGenerator (#11)', () => {
   let generator: TakedownGenerator;
   let alert: DRPAlert;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     store = new DRPStore();
     generator = new TakedownGenerator(store);
     alert = createAlert();
-    store.setAlert(T, alert);
+    await store.setAlert(T, alert);
   });
 
-  it('generates a registrar takedown request', () => {
-    const td = generator.generate(T, alert, 'registrar');
+  it('generates a registrar takedown request', async () => {
+    const td = await generator.generate(T, alert, 'registrar');
     expect(td.id).toBeDefined();
     expect(td.alertId).toBe('alert-td-1');
     expect(td.tenantId).toBe(T);
@@ -62,75 +62,75 @@ describe('TakedownGenerator (#11)', () => {
     expect(td.evidence.length).toBe(1);
   });
 
-  it('generates a hosting takedown request', () => {
-    const td = generator.generate(T, alert, 'hosting');
+  it('generates a hosting takedown request', async () => {
+    const td = await generator.generate(T, alert, 'hosting');
     expect(td.subject).toContain('Abuse Report');
     expect(td.body).toContain('examp1e.com');
   });
 
-  it('generates a social platform takedown request', () => {
+  it('generates a social platform takedown request', async () => {
     const socialAlert = createAlert({ id: 'social-td', type: 'social_impersonation', detectedValue: '@fakebrand' });
-    const td = generator.generate(T, socialAlert, 'social');
+    const td = await generator.generate(T, socialAlert, 'social');
     expect(td.subject).toContain('Impersonation');
     expect(td.body).toContain('@fakebrand');
   });
 
-  it('generates an app store takedown request', () => {
+  it('generates an app store takedown request', async () => {
     const appAlert = createAlert({ id: 'app-td', type: 'rogue_app', detectedValue: 'com.fake.app' });
-    const td = generator.generate(T, appAlert, 'app_store');
+    const td = await generator.generate(T, appAlert, 'app_store');
     expect(td.subject).toContain('Rogue App');
     expect(td.body).toContain('com.fake.app');
   });
 
-  it('uses contact override when provided', () => {
-    const td = generator.generate(T, alert, 'registrar', { email: 'custom@abuse.com', name: 'Custom Team' });
+  it('uses contact override when provided', async () => {
+    const td = await generator.generate(T, alert, 'registrar', { email: 'custom@abuse.com', name: 'Custom Team' });
     expect(td.contactEmail).toBe('custom@abuse.com');
     expect(td.contactName).toBe('Custom Team');
   });
 
-  it('excludes evidence when includeEvidence=false', () => {
-    const td = generator.generate(T, alert, 'registrar', undefined, false);
+  it('excludes evidence when includeEvidence=false', async () => {
+    const td = await generator.generate(T, alert, 'registrar', undefined, false);
     expect(td.body).toContain('available upon request');
   });
 
-  it('includes evidence by default', () => {
-    const td = generator.generate(T, alert, 'registrar');
+  it('includes evidence by default', async () => {
+    const td = await generator.generate(T, alert, 'registrar');
     expect(td.body).toContain('DNS lookup');
   });
 
-  it('stores takedown in store', () => {
-    const td = generator.generate(T, alert, 'registrar');
-    const stored = store.getTenantTakedowns(T).get(td.id);
+  it('stores takedown in store', async () => {
+    const td = await generator.generate(T, alert, 'registrar');
+    const stored = await store.getTakedown(T, td.id);
     expect(stored).toBeDefined();
     expect(stored!.alertId).toBe(alert.id);
   });
 
-  it('retrieves takedowns by alert', () => {
-    generator.generate(T, alert, 'registrar');
-    generator.generate(T, alert, 'hosting');
-    const takedowns = generator.getByAlert(T, alert.id);
+  it('retrieves takedowns by alert', async () => {
+    await generator.generate(T, alert, 'registrar');
+    await generator.generate(T, alert, 'hosting');
+    const takedowns = await generator.getByAlert(T, alert.id);
     expect(takedowns).toHaveLength(2);
   });
 
-  it('updates takedown status', () => {
-    const td = generator.generate(T, alert, 'registrar');
-    const updated = generator.updateStatus(T, td.id, 'sent');
+  it('updates takedown status', async () => {
+    const td = await generator.generate(T, alert, 'registrar');
+    const updated = await generator.updateStatus(T, td.id, 'sent');
     expect(updated.status).toBe('sent');
     expect(updated.updatedAt).toBeDefined();
   });
 
-  it('throws when updating nonexistent takedown', () => {
-    expect(() => generator.updateStatus(T, 'fake-id', 'sent')).toThrow('Takedown request not found');
+  it('throws when updating nonexistent takedown', async () => {
+    await expect(generator.updateStatus(T, 'fake-id', 'sent')).rejects.toThrow('Takedown request not found');
   });
 
-  it('body includes severity and confidence', () => {
-    const td = generator.generate(T, alert, 'registrar');
+  it('body includes severity and confidence', async () => {
+    const td = await generator.generate(T, alert, 'registrar');
     expect(td.body).toContain('HIGH');
     expect(td.body).toContain('85');
   });
 
-  it('defaults to registrar template for unknown platform', () => {
-    const td = generator.generate(T, alert, 'unknown' as string);
+  it('defaults to registrar template for unknown platform', async () => {
+    const td = await generator.generate(T, alert, 'unknown' as string);
     expect(td.subject).toContain('Takedown');
   });
 });

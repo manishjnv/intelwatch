@@ -73,8 +73,8 @@ export class SeverityClassifier {
   }
 
   /** Check if this is a repeat detection for the same asset and type. */
-  isRepeat(tenantId: string, assetId: string, alertType: DRPAlertType): boolean {
-    const alerts = this.store.getAlertsByAsset(tenantId, assetId);
+  async isRepeat(tenantId: string, assetId: string, alertType: DRPAlertType): Promise<boolean> {
+    const alerts = await this.store.getAlertsByAsset(tenantId, assetId);
     return alerts.some(
       (a) => a.type === alertType && (a.status === 'open' || a.status === 'investigating'),
     );

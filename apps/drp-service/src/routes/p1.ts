@@ -36,7 +36,7 @@ export function p1Routes(deps: P1RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = BatchTyposquatSchema.parse(req.body);
-        const report = batchTyposquat.scan(
+        const report = await batchTyposquat.scan(
           user.tenantId,
           input.domains,
           input.methods,
@@ -55,8 +55,8 @@ export function p1Routes(deps: P1RouteDeps) {
         const user = getUser(req);
         const { id } = req.params as { id: string };
         const { forceRefresh } = AIEnrichAlertSchema.parse(req.body ?? {});
-        const alert = alertManager.get(user.tenantId, id);
-        const result = aiEnricher.enrich(user.tenantId, alert, forceRefresh);
+        const alert = await alertManager.get(user.tenantId, id);
+        const result = await aiEnricher.enrich(user.tenantId, alert, forceRefresh);
         return reply.send({ data: result });
       },
     );
@@ -68,7 +68,7 @@ export function p1Routes(deps: P1RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = BulkTriageSchema.parse(req.body);
-        const result = bulkTriage.triage(
+        const result = await bulkTriage.triage(
           user.tenantId,
           input.alertIds,
           input.filter,
@@ -85,7 +85,7 @@ export function p1Routes(deps: P1RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = TrendingQuerySchema.parse(req.query);
-        const analysis = trendingAnalysis.analyze(
+        const analysis = await trendingAnalysis.analyze(
           user.tenantId,
           input.period,
           input.granularity,
@@ -103,7 +103,7 @@ export function p1Routes(deps: P1RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = SocialScanSchema.parse(req.body);
-        const result = socialDetector.scan(
+        const result = await socialDetector.scan(
           user.tenantId,
           input.brandName,
           input.handles,

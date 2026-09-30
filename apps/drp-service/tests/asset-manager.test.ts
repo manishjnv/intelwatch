@@ -13,7 +13,7 @@ describe('DRP Service — #1 Asset Manager', () => {
     manager = new AssetManager(store, { maxAssetsPerTenant: 5 });
   });
 
-  function createAsset(value = 'example.com') {
+  async function createAsset(value = 'example.com') {
     return manager.create(tenantId, userId, {
       type: 'domain',
       value,
@@ -23,8 +23,8 @@ describe('DRP Service — #1 Asset Manager', () => {
   }
 
   // 1.1 creates asset with correct fields
-  it('1.1 creates asset with correct fields', () => {
-    const asset = createAsset();
+  it('1.1 creates asset with correct fields', async () => {
+    const asset = await createAsset();
     expect(asset.id).toBeDefined();
     expect(asset.tenantId).toBe(tenantId);
     expect(asset.type).toBe('domain');
@@ -42,20 +42,20 @@ describe('DRP Service — #1 Asset Manager', () => {
   });
 
   // 1.2 normalizes domain to lowercase
-  it('1.2 normalizes domain to lowercase', () => {
-    const asset = createAsset('EXAMPLE.COM');
+  it('1.2 normalizes domain to lowercase', async () => {
+    const asset = await createAsset('EXAMPLE.COM');
     expect(asset.value).toBe('example.com');
   });
 
   // 1.3 strips trailing dot from domain
-  it('1.3 strips trailing dot from domain', () => {
-    const asset = createAsset('example.com.');
+  it('1.3 strips trailing dot from domain', async () => {
+    const asset = await createAsset('example.com.');
     expect(asset.value).toBe('example.com');
   });
 
   // 1.4 strips @ from social handle
-  it('1.4 strips @ from social handle', () => {
-    const asset = manager.create(tenantId, userId, {
+  it('1.4 strips @ from social handle', async () => {
+    const asset = await manager.create(tenantId, userId, {
       type: 'social_handle',
       value: '@myhandle',
       displayName: 'My Handle',
@@ -64,62 +64,62 @@ describe('DRP Service — #1 Asset Manager', () => {
   });
 
   // 1.5 generates unique IDs
-  it('1.5 generates unique IDs', () => {
-    const a1 = createAsset('one.com');
-    const a2 = createAsset('two.com');
+  it('1.5 generates unique IDs', async () => {
+    const a1 = await createAsset('one.com');
+    const a2 = await createAsset('two.com');
     expect(a1.id).not.toBe(a2.id);
   });
 
   // 1.6 rejects duplicate asset
-  it('1.6 rejects duplicate asset', () => {
-    createAsset('example.com');
-    expect(() => createAsset('example.com')).toThrow('Asset already exists');
+  it('1.6 rejects duplicate asset', async () => {
+    await createAsset('example.com');
+    await expect(createAsset('example.com')).rejects.toThrow('Asset already exists');
   });
 
   // 1.7 validates domain format
-  it('1.7 validates domain format', () => {
-    const asset = createAsset('valid-domain.co.uk');
+  it('1.7 validates domain format', async () => {
+    const asset = await createAsset('valid-domain.co.uk');
     expect(asset.value).toBe('valid-domain.co.uk');
   });
 
   // 1.8 rejects invalid domain
-  it('1.8 rejects invalid domain', () => {
-    expect(() => createAsset('not a domain!')).toThrow('Invalid domain');
+  it('1.8 rejects invalid domain', async () => {
+    await expect(createAsset('not a domain!')).rejects.toThrow('Invalid domain');
   });
 
   // 1.9 enforces max assets per tenant
-  it('1.9 enforces max assets per tenant', () => {
-    createAsset('a.com');
-    createAsset('b.com');
-    createAsset('c.com');
-    createAsset('d.com');
-    createAsset('e.com');
-    expect(() => createAsset('f.com')).toThrow('Maximum assets per tenant');
+  it('1.9 enforces max assets per tenant', async () => {
+    await createAsset('a.com');
+    await createAsset('b.com');
+    await createAsset('c.com');
+    await createAsset('d.com');
+    await createAsset('e.com');
+    await expect(createAsset('f.com')).rejects.toThrow('Maximum assets per tenant');
   });
 
   // 1.10 gets asset by ID
-  it('1.10 gets asset by ID', () => {
-    const created = createAsset();
-    const fetched = manager.get(tenantId, created.id);
+  it('1.10 gets asset by ID', async () => {
+    const created = await createAsset();
+    const fetched = await manager.get(tenantId, created.id);
     expect(fetched.id).toBe(created.id);
     expect(fetched.value).toBe('example.com');
   });
 
   // 1.11 throws 404 for non-existent asset
-  it('1.11 throws 404 for non-existent asset', () => {
-    expect(() => manager.get(tenantId, 'nonexistent-id')).toThrow('Asset not found');
+  it('1.11 throws 404 for non-existent asset', async () => {
+    await expect(manager.get(tenantId, 'nonexistent-id')).rejects.toThrow('Asset not found');
   });
 
   // 1.12 tenant isolation — different tenant cannot access
-  it('1.12 tenant isolation — different tenant cannot access', () => {
-    const asset = createAsset();
-    expect(() => manager.get('tenant-other', asset.id)).toThrow('Asset not found');
+  it('1.12 tenant isolation — different tenant cannot access', async () => {
+    const asset = await createAsset();
+    await expect(manager.get('tenant-other', asset.id)).rejects.toThrow('Asset not found');
   });
 
   // 1.13 updates asset fields
-  it('1.13 updates asset fields', () => {
-    const asset = createAsset();
-    const updated = manager.update(tenantId, asset.id, {
+  it('1.13 updates asset fields', async () => {
+    const asset = await createAsset();
+    const updated = await manager.update(tenantId, asset.id, {
       displayName: 'Updated Name',
       enabled: false,
       criticality: 0.9,
@@ -137,26 +137,26 @@ describe('DRP Service — #1 Asset Manager', () => {
   });
 
   // 1.14 deletes asset
-  it('1.14 deletes asset', () => {
-    const asset = createAsset();
-    manager.delete(tenantId, asset.id);
-    expect(() => manager.get(tenantId, asset.id)).toThrow('Asset not found');
+  it('1.14 deletes asset', async () => {
+    const asset = await createAsset();
+    await manager.delete(tenantId, asset.id);
+    await expect(manager.get(tenantId, asset.id)).rejects.toThrow('Asset not found');
   });
 
   // 1.15 getStats returns correct counts
-  it('1.15 getStats returns correct counts', () => {
-    createAsset('one.com');
-    createAsset('two.com');
-    manager.create(tenantId, userId, {
+  it('1.15 getStats returns correct counts', async () => {
+    await createAsset('one.com');
+    await createAsset('two.com');
+    await manager.create(tenantId, userId, {
       type: 'brand_name',
       value: 'MyBrand',
       displayName: 'My Brand',
     });
     // Disable one asset
-    const assets = Array.from(store.getTenantAssets(tenantId).values());
-    manager.update(tenantId, assets[0]!.id, { enabled: false });
+    const assets = await store.listAllAssets(tenantId);
+    await manager.update(tenantId, assets[0]!.id, { enabled: false });
 
-    const stats = manager.getStats(tenantId);
+    const stats = await manager.getStats(tenantId);
     expect(stats.total).toBe(3);
     expect(stats.byType['domain']).toBe(2);
     expect(stats.byType['brand_name']).toBe(1);

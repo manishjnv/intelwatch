@@ -5,7 +5,7 @@ import type { DRPAlert } from '../src/schemas/drp.js';
 
 const T = 'tenant-export-1';
 
-function seedAlerts(store: DRPStore, count: number) {
+async function seedAlerts(store: DRPStore, count: number) {
   for (let i = 0; i < count; i++) {
     const alert: DRPAlert = {
       id: `alert-${i}`,
@@ -35,7 +35,7 @@ function seedAlerts(store: DRPStore, count: number) {
       createdAt: new Date(Date.now() - i * 86400000).toISOString(),
       updatedAt: new Date(Date.now() - i * 86400000).toISOString(),
     };
-    store.setAlert(T, alert);
+    await store.setAlert(T, alert);
   }
 }
 
@@ -43,15 +43,15 @@ describe('AlertExporter (#12)', () => {
   let store: DRPStore;
   let exporter: AlertExporter;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     store = new DRPStore();
     exporter = new AlertExporter(store);
-    seedAlerts(store, 5);
+    await seedAlerts(store, 5);
   });
 
   // CSV export
-  it('exports alerts as CSV', () => {
-    const result = exporter.export(T, 'csv');
+  it('exports alerts as CSV', async () => {
+    const result = await exporter.export(T, 'csv');
     expect(result.contentType).toBe('text/csv');
     expect(result.filename).toContain('.csv');
     expect(result.recordCount).toBe(5);
@@ -60,17 +60,17 @@ describe('AlertExporter (#12)', () => {
     expect(lines.length).toBe(6); // header + 5 rows
   });
 
-  it('CSV escapes quotes in title', () => {
-    const alert = store.getAlert(T, 'alert-0')!;
+  it('CSV escapes quotes in title', async () => {
+    const alert = (await store.getAlert(T, 'alert-0'))!;
     alert.title = 'Title with "quotes"';
-    store.setAlert(T, alert);
-    const result = exporter.export(T, 'csv');
+    await store.setAlert(T, alert);
+    const result = await exporter.export(T, 'csv');
     expect(result.content).toContain('""quotes""');
   });
 
   // JSON export
-  it('exports alerts as JSON', () => {
-    const result = exporter.export(T, 'json');
+  it('exports alerts as JSON', async () => {
+    const result = await exporter.export(T, 'json');
     expect(result.contentType).toBe('application/json');
     expect(result.filename).toContain('.json');
     const parsed = JSON.parse(result.content);
@@ -79,8 +79,8 @@ describe('AlertExporter (#12)', () => {
     expect(parsed.exportedAt).toBeDefined();
   });
 
-  it('JSON includes all required fields', () => {
-    const result = exporter.export(T, 'json');
+  it('JSON includes all required fields', async () => {
+    const result = await exporter.export(T, 'json');
     const parsed = JSON.parse(result.content);
     const alert = parsed.alerts[0];
     expect(alert.id).toBeDefined();
@@ -91,8 +91,8 @@ describe('AlertExporter (#12)', () => {
   });
 
   // STIX export
-  it('exports alerts as STIX bundle', () => {
-    const result = exporter.export(T, 'stix');
+  it('exports alerts as STIX bundle', async () => {
+    const result = await exporter.export(T, 'stix');
     expect(result.contentType).toBe('application/stix+json');
     expect(result.filename).toContain('.stix.json');
     const bundle = JSON.parse(result.content);
@@ -100,16 +100,16 @@ describe('AlertExporter (#12)', () => {
     expect(bundle.objects.length).toBeGreaterThan(5); // identity + indicators
   });
 
-  it('STIX includes identity object', () => {
-    const result = exporter.export(T, 'stix');
+  it('STIX includes identity object', async () => {
+    const result = await exporter.export(T, 'stix');
     const bundle = JSON.parse(result.content);
     const identities = bundle.objects.filter((o: Record<string, unknown>) => o.type === 'identity');
     expect(identities).toHaveLength(1);
     expect(identities[0].identity_class).toBe('organization');
   });
 
-  it('STIX indicators have correct pattern', () => {
-    const result = exporter.export(T, 'stix');
+  it('STIX indicators have correct pattern', async () => {
+    const result = await exporter.export(T, 'stix');
     const bundle = JSON.parse(result.content);
     const indicators = bundle.objects.filter((o: Record<string, unknown>) => o.type === 'indicator');
     expect(indicators.length).toBe(5);
@@ -121,26 +121,26 @@ describe('AlertExporter (#12)', () => {
   });
 
   // Filters
-  it('filters by type', () => {
-    const result = exporter.export(T, 'json', { type: 'typosquatting' });
+  it('filters by type', async () => {
+    const result = await exporter.export(T, 'json', { type: 'typosquatting' });
     const parsed = JSON.parse(result.content);
     expect(parsed.recordCount).toBe(3); // 0, 2, 4
   });
 
-  it('filters by severity', () => {
-    const result = exporter.export(T, 'json', { severity: 'critical' });
+  it('filters by severity', async () => {
+    const result = await exporter.export(T, 'json', { severity: 'critical' });
     const parsed = JSON.parse(result.content);
     expect(parsed.recordCount).toBe(2); // 0, 3
   });
 
-  it('limits max records', () => {
-    const result = exporter.export(T, 'json', undefined, 2);
+  it('limits max records', async () => {
+    const result = await exporter.export(T, 'json', undefined, 2);
     const parsed = JSON.parse(result.content);
     expect(parsed.recordCount).toBe(2);
   });
 
-  it('filters by date range', () => {
-    const result = exporter.export(T, 'json', {
+  it('filters by date range', async () => {
+    const result = await exporter.export(T, 'json', {
       fromDate: new Date(Date.now() - 2 * 86400000).toISOString(),
       toDate: new Date().toISOString(),
     });
@@ -149,8 +149,8 @@ describe('AlertExporter (#12)', () => {
     expect(parsed.recordCount).toBeGreaterThan(0);
   });
 
-  it('returns empty export for no matching alerts', () => {
-    const result = exporter.export(T, 'json', { assetId: 'nonexistent.com' });
+  it('returns empty export for no matching alerts', async () => {
+    const result = await exporter.export(T, 'json', { assetId: 'nonexistent.com' });
     const parsed = JSON.parse(result.content);
     expect(parsed.recordCount).toBe(0);
   });

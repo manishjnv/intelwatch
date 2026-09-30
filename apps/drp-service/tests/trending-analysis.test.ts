@@ -24,7 +24,7 @@ function createDeps() {
   return { store, alertManager, trending };
 }
 
-function seedAlertsAtTimes(store: DRPStore, times: number[]) {
+async function seedAlertsAtTimes(store: DRPStore, times: number[]) {
   for (let i = 0; i < times.length; i++) {
     const now = new Date(times[i]!).toISOString();
     const alert: DRPAlert = {
@@ -49,7 +49,7 @@ function seedAlertsAtTimes(store: DRPStore, times: number[]) {
       createdAt: now,
       updatedAt: now,
     };
-    store.setAlert(T, alert);
+    await store.setAlert(T, alert);
   }
 }
 
@@ -63,8 +63,8 @@ describe('TrendingAnalysisService (#9)', () => {
     store = deps.store;
   });
 
-  it('returns empty analysis for no alerts', () => {
-    const result = trending.analyze(T, '7d', 'day');
+  it('returns empty analysis for no alerts', async () => {
+    const result = await trending.analyze(T, '7d', 'day');
     expect(result.totalAlerts).toBe(0);
     expect(result.dataPoints.length).toBeGreaterThan(0);
     expect(result.rollingAverage).toBe(0);
@@ -73,38 +73,38 @@ describe('TrendingAnalysisService (#9)', () => {
     expect(result.peakTimestamp).toBeNull();
   });
 
-  it('bins alerts into daily buckets', () => {
+  it('bins alerts into daily buckets', async () => {
     const now = Date.now();
-    seedAlertsAtTimes(store, [
+    await seedAlertsAtTimes(store, [
       now - 1 * 86400000,
       now - 1 * 86400000 + 1000,
       now - 2 * 86400000,
     ]);
-    const result = trending.analyze(T, '7d', 'day');
+    const result = await trending.analyze(T, '7d', 'day');
     expect(result.totalAlerts).toBe(3);
     expect(result.dataPoints.some((dp) => dp.count > 0)).toBe(true);
   });
 
-  it('bins alerts into hourly buckets', () => {
+  it('bins alerts into hourly buckets', async () => {
     const now = Date.now();
-    seedAlertsAtTimes(store, [now - 3600000, now - 7200000]);
-    const result = trending.analyze(T, '24h', 'hour');
+    await seedAlertsAtTimes(store, [now - 3600000, now - 7200000]);
+    const result = await trending.analyze(T, '24h', 'hour');
     expect(result.granularity).toBe('hour');
     expect(result.totalAlerts).toBe(2);
   });
 
-  it('computes rolling average', () => {
+  it('computes rolling average', async () => {
     const now = Date.now();
-    seedAlertsAtTimes(store, [
+    await seedAlertsAtTimes(store, [
       now - 86400000 * 1,
       now - 86400000 * 1 + 100,
       now - 86400000 * 2,
     ]);
-    const result = trending.analyze(T, '7d', 'day');
+    const result = await trending.analyze(T, '7d', 'day');
     expect(result.rollingAverage).toBeGreaterThan(0);
   });
 
-  it('detects anomaly when z-score exceeds 2', () => {
+  it('detects anomaly when z-score exceeds 2', async () => {
     const now = Date.now();
     // Create a spike: 20 alerts in one bucket, 1 in others
     const times: number[] = [];
@@ -114,14 +114,14 @@ describe('TrendingAnalysisService (#9)', () => {
     for (let d = 2; d <= 6; d++) {
       times.push(now - d * 86400000); // 1 alert per day for other days
     }
-    seedAlertsAtTimes(store, times);
-    const result = trending.analyze(T, '7d', 'day');
+    await seedAlertsAtTimes(store, times);
+    const result = await trending.analyze(T, '7d', 'day');
     // Z-score may or may not exceed 2 depending on which bucket is "last"
     expect(typeof result.isAnomaly).toBe('boolean');
     expect(typeof result.zScore).toBe('number');
   });
 
-  it('detects increasing trend', () => {
+  it('detects increasing trend', async () => {
     const now = Date.now();
     const times: number[] = [];
     // 1 alert per day in first half, 5 per day in second half
@@ -133,38 +133,38 @@ describe('TrendingAnalysisService (#9)', () => {
         times.push(now - d * 86400000 + i * 1000);
       }
     }
-    seedAlertsAtTimes(store, times);
-    const result = trending.analyze(T, '7d', 'day');
+    await seedAlertsAtTimes(store, times);
+    const result = await trending.analyze(T, '7d', 'day');
     expect(result.trend).toBe('increasing');
   });
 
-  it('filters by alert type', () => {
+  it('filters by alert type', async () => {
     const now = Date.now();
-    seedAlertsAtTimes(store, [now - 86400000, now - 86400000 + 1, now - 86400000 + 2, now - 86400000 + 3]);
-    const result = trending.analyze(T, '7d', 'day', 'typosquatting');
+    await seedAlertsAtTimes(store, [now - 86400000, now - 86400000 + 1, now - 86400000 + 2, now - 86400000 + 3]);
+    const result = await trending.analyze(T, '7d', 'day', 'typosquatting');
     // Only even-indexed alerts are typosquatting
     expect(result.totalAlerts).toBe(2);
   });
 
-  it('filters by asset ID', () => {
+  it('filters by asset ID', async () => {
     const now = Date.now();
-    seedAlertsAtTimes(store, [now - 86400000]);
-    const result = trending.analyze(T, '7d', 'day', undefined, 'example.com');
+    await seedAlertsAtTimes(store, [now - 86400000]);
+    const result = await trending.analyze(T, '7d', 'day', undefined, 'example.com');
     expect(result.totalAlerts).toBe(1);
   });
 
-  it('finds peak timestamp', () => {
+  it('finds peak timestamp', async () => {
     const now = Date.now();
     const peak = now - 2 * 86400000;
-    seedAlertsAtTimes(store, [peak, peak + 100, peak + 200, now - 86400000]);
-    const result = trending.analyze(T, '7d', 'day');
+    await seedAlertsAtTimes(store, [peak, peak + 100, peak + 200, now - 86400000]);
+    const result = await trending.analyze(T, '7d', 'day');
     expect(result.peakTimestamp).toBeDefined();
   });
 
-  it('includes bySeverity and byType in data points', () => {
+  it('includes bySeverity and byType in data points', async () => {
     const now = Date.now();
-    seedAlertsAtTimes(store, [now - 86400000, now - 86400000 + 1]);
-    const result = trending.analyze(T, '7d', 'day');
+    await seedAlertsAtTimes(store, [now - 86400000, now - 86400000 + 1]);
+    const result = await trending.analyze(T, '7d', 'day');
     const nonEmpty = result.dataPoints.filter((dp) => dp.count > 0);
     expect(nonEmpty.length).toBeGreaterThan(0);
     for (const dp of nonEmpty) {
@@ -173,14 +173,14 @@ describe('TrendingAnalysisService (#9)', () => {
     }
   });
 
-  it('handles 30d period', () => {
-    const result = trending.analyze(T, '30d', 'day');
+  it('handles 30d period', async () => {
+    const result = await trending.analyze(T, '30d', 'day');
     expect(result.period).toBe('30d');
     expect(result.dataPoints.length).toBe(30);
   });
 
-  it('handles 90d period with weekly granularity', () => {
-    const result = trending.analyze(T, '90d', 'week');
+  it('handles 90d period with weekly granularity', async () => {
+    const result = await trending.analyze(T, '90d', 'week');
     expect(result.period).toBe('90d');
     expect(result.granularity).toBe('week');
     expect(result.dataPoints.length).toBeGreaterThan(10);

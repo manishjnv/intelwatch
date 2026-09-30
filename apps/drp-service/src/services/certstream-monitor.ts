@@ -51,7 +51,7 @@ export interface CertStreamMonitorConfig {
 export class CertStreamMonitor {
   private readonly config: CertStreamMonitorConfig;
   readonly enricher: DomainEnricher;
-  private monitoredAssets: string[] = [];
+  private monitoredAssets: string[] = []; // memory-ok: derived — rebuilt from drp_assets
   private stats: CertStreamStats;
   private hourlyMatchCount = 0;
   private hourResetInterval: ReturnType<typeof setInterval> | null = null;

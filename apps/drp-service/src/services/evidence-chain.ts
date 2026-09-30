@@ -16,7 +16,7 @@ export class EvidenceChainBuilder {
   }
 
   /** Build a complete evidence chain for an alert. */
-  buildChain(
+  async buildChain(
     tenantId: string,
     alertId: string,
     context: {
@@ -26,7 +26,7 @@ export class EvidenceChainBuilder {
       severity: DRPSeverity;
       deduped: boolean;
     },
-  ): EvidenceChain {
+  ): Promise<EvidenceChain> {
     const now = new Date().toISOString();
     const steps: EvidenceStep[] = [];
     let order = 1;
@@ -99,23 +99,23 @@ export class EvidenceChainBuilder {
       createdAt: now,
     };
 
-    this.store.setEvidenceChain(tenantId, chain);
+    await this.store.setEvidenceChain(tenantId, chain);
     return chain;
   }
 
   /** Get the evidence chain for an alert. */
-  getChain(tenantId: string, alertId: string): EvidenceChain | undefined {
+  async getChain(tenantId: string, alertId: string): Promise<EvidenceChain | null> {
     return this.store.getEvidenceChain(tenantId, alertId);
   }
 
   /** Add a step to an existing evidence chain. */
-  addStep(
+  async addStep(
     tenantId: string,
     alertId: string,
     step: Omit<EvidenceStep, 'order' | 'timestamp'>,
-  ): EvidenceChain | undefined {
-    const chain = this.store.getEvidenceChain(tenantId, alertId);
-    if (!chain) return undefined;
+  ): Promise<EvidenceChain | null> {
+    const chain = await this.store.getEvidenceChain(tenantId, alertId);
+    if (!chain) return null;
 
     chain.steps.push({
       ...step,
@@ -123,7 +123,7 @@ export class EvidenceChainBuilder {
       timestamp: new Date().toISOString(),
     });
 
-    this.store.setEvidenceChain(tenantId, chain);
+    await this.store.setEvidenceChain(tenantId, chain);
     return chain;
   }
 }

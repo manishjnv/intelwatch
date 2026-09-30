@@ -18,13 +18,13 @@ export class BatchTyposquatScanner {
   }
 
   /** Scan multiple domains, deduplicate cross-domain, produce consolidated report. */
-  scan(
+  async scan(
     tenantId: string,
     domains: string[],
     methods: TyposquatMethod[],
     maxPerDomain: number,
     dedup: boolean,
-  ): BatchTyposquatReport {
+  ): Promise<BatchTyposquatReport> {
     const startTime = Date.now();
     const globalSeen = new Set<string>();
     let crossDomainDuplicates = 0;
@@ -43,7 +43,7 @@ export class BatchTyposquatScanner {
       // Create alerts for high-risk registered candidates
       let alertsCreated = 0;
       for (const c of limited.filter((c) => c.riskScore >= 0.4 && c.isRegistered)) {
-        const alert = this.alertManager.create(tenantId, {
+        const alert = await this.alertManager.create(tenantId, {
           assetId: domain,
           type: 'typosquatting',
           title: `Batch typosquat: ${c.domain} (${c.method})`,
@@ -91,7 +91,7 @@ export class BatchTyposquatScanner {
       completedAt: new Date().toISOString(),
       durationMs: Date.now() - startTime,
     };
-    this.store.setScan(tenantId, scan);
+    await this.store.setScan(tenantId, scan);
 
     return {
       scanId: scan.id,

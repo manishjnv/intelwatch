@@ -29,13 +29,13 @@ export class AlertDeduplication {
    * Find an existing alert that matches the new detection.
    * Returns the duplicate if found, null otherwise.
    */
-  findDuplicate(
+  async findDuplicate(
     tenantId: string,
     assetId: string,
     type: DRPAlertType,
     detectedValue: string,
-  ): DRPAlert | null {
-    const alerts = this.store.getAlertsByAsset(tenantId, assetId);
+  ): Promise<DRPAlert | null> {
+    const alerts = await this.store.getAlertsByAsset(tenantId, assetId);
     const threshold = SIMILARITY_THRESHOLDS[type] ?? 1.0;
 
     for (const alert of alerts) {
@@ -55,12 +55,12 @@ export class AlertDeduplication {
    * Merge new evidence into an existing alert and boost confidence.
    * Corroboration from multiple detection runs increases reliability.
    */
-  mergeIntoExisting(
+  async mergeIntoExisting(
     tenantId: string,
     alertId: string,
     newEvidence: AlertEvidence[],
-  ): DRPAlert {
-    const alert = this.store.getAlert(tenantId, alertId);
+  ): Promise<DRPAlert> {
+    const alert = await this.store.getAlert(tenantId, alertId);
     if (!alert) {
       throw new Error(`Alert ${alertId} not found for merge`);
     }
@@ -83,7 +83,7 @@ export class AlertDeduplication {
     });
 
     alert.updatedAt = new Date().toISOString();
-    this.store.setAlert(tenantId, alert);
+    await this.store.setAlert(tenantId, alert);
     return alert;
   }
 

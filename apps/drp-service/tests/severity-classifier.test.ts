@@ -178,9 +178,9 @@ describe('DRP Service — P0#5 Severity Classifier', () => {
   });
 
   // P5.10 isRepeat detects existing open alerts
-  it('P5.10 isRepeat detects existing open alerts', () => {
+  it('P5.10 isRepeat detects existing open alerts', async () => {
     // No alerts → not a repeat
-    expect(classifier.isRepeat('tenant-1', 'asset-1', 'typosquatting')).toBe(false);
+    expect(await classifier.isRepeat('tenant-1', 'asset-1', 'typosquatting')).toBe(false);
 
     // Add an open alert for this asset and type
     const now = new Date().toISOString();
@@ -206,22 +206,22 @@ describe('DRP Service — P0#5 Severity Classifier', () => {
       createdAt: now,
       updatedAt: now,
     };
-    store.setAlert('tenant-1', alert);
+    await store.setAlert('tenant-1', alert);
 
     // Now it should detect as repeat
-    expect(classifier.isRepeat('tenant-1', 'asset-1', 'typosquatting')).toBe(true);
+    expect(await classifier.isRepeat('tenant-1', 'asset-1', 'typosquatting')).toBe(true);
 
     // Different type should not match
-    expect(classifier.isRepeat('tenant-1', 'asset-1', 'credential_leak')).toBe(false);
+    expect(await classifier.isRepeat('tenant-1', 'asset-1', 'credential_leak')).toBe(false);
 
     // Investigating status should also count
     alert.status = 'investigating';
-    store.setAlert('tenant-1', alert);
-    expect(classifier.isRepeat('tenant-1', 'asset-1', 'typosquatting')).toBe(true);
+    await store.setAlert('tenant-1', alert);
+    expect(await classifier.isRepeat('tenant-1', 'asset-1', 'typosquatting')).toBe(true);
 
     // Resolved status should not count
     alert.status = 'resolved';
-    store.setAlert('tenant-1', alert);
-    expect(classifier.isRepeat('tenant-1', 'asset-1', 'typosquatting')).toBe(false);
+    await store.setAlert('tenant-1', alert);
+    expect(await classifier.isRepeat('tenant-1', 'asset-1', 'typosquatting')).toBe(false);
   });
 });

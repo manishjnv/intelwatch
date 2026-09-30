@@ -20,13 +20,13 @@ export class AlertExporter {
   }
 
   /** Export alerts in the requested format. */
-  export(
+  async export(
     tenantId: string,
     format: ExportFormat,
     filter?: ExportFilter,
     maxRecords: number = 1000,
-  ): { content: string; contentType: string; filename: string; recordCount: number } {
-    const alerts = this.getFilteredAlerts(tenantId, filter, maxRecords);
+  ): Promise<{ content: string; contentType: string; filename: string; recordCount: number }> {
+    const alerts = await this.getFilteredAlerts(tenantId, filter, maxRecords);
 
     switch (format) {
       case 'csv': return this.toCSV(alerts);
@@ -35,8 +35,8 @@ export class AlertExporter {
     }
   }
 
-  private getFilteredAlerts(tenantId: string, filter?: ExportFilter, max: number = 1000): DRPAlert[] {
-    let alerts = Array.from(this.store.getTenantAlerts(tenantId).values());
+  private async getFilteredAlerts(tenantId: string, filter?: ExportFilter, max: number = 1000): Promise<DRPAlert[]> {
+    let alerts = await this.store.listAllAlerts(tenantId);
 
     if (filter) {
       if (filter.type) alerts = alerts.filter((a) => a.type === filter.type);

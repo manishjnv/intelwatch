@@ -23,21 +23,21 @@ export class TrendingAnalysisService {
   }
 
   /** Analyze alert trends over a time period. */
-  analyze(
+  async analyze(
     tenantId: string,
     period: string,
     granularity: string,
     alertType?: string,
     assetId?: string,
-  ): TrendingAnalysis {
+  ): Promise<TrendingAnalysis> {
     const periodMs = PERIOD_MS[period] ?? PERIOD_MS['7d']!;
     const granMs = GRANULARITY_MS[granularity] ?? GRANULARITY_MS['day']!;
     const now = Date.now();
     const start = now - periodMs;
 
     // Get alerts in time window
-    let alerts = Array.from(this.store.getTenantAlerts(tenantId).values())
-      .filter((a) => new Date(a.createdAt).getTime() >= start);
+    const allAlerts = await this.store.listAllAlerts(tenantId);
+    let alerts = allAlerts.filter((a) => new Date(a.createdAt).getTime() >= start);
 
     if (alertType) alerts = alerts.filter((a) => a.type === alertType);
     if (assetId) alerts = alerts.filter((a) => a.assetId === assetId);

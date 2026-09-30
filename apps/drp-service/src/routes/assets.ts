@@ -20,7 +20,7 @@ export function assetRoutes(deps: AssetRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = CreateAssetSchema.parse(req.body);
-        const asset = assetManager.create(user.tenantId, user.userId, input);
+        const asset = await assetManager.create(user.tenantId, user.userId, input);
         return reply.status(201).send({ data: asset });
       },
     );
@@ -34,7 +34,7 @@ export function assetRoutes(deps: AssetRouteDeps) {
         const query = req.query as Record<string, string>;
         const { page, limit } = PaginationSchema.parse(query);
         const type = query.type;
-        const result = assetManager.list(user.tenantId, page, limit, type);
+        const result = await assetManager.list(user.tenantId, page, limit, type);
         return reply.send(result);
       },
     );
@@ -45,7 +45,7 @@ export function assetRoutes(deps: AssetRouteDeps) {
       { preHandler: [authenticate, rbac('alert:read')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
-        const stats = assetManager.getStats(user.tenantId);
+        const stats = await assetManager.getStats(user.tenantId);
         return reply.send({ data: stats });
       },
     );
@@ -57,7 +57,7 @@ export function assetRoutes(deps: AssetRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { id } = req.params as { id: string };
-        const asset = assetManager.get(user.tenantId, id);
+        const asset = await assetManager.get(user.tenantId, id);
         return reply.send({ data: asset });
       },
     );
@@ -70,7 +70,7 @@ export function assetRoutes(deps: AssetRouteDeps) {
         const user = getUser(req);
         const { id } = req.params as { id: string };
         const updates = UpdateAssetSchema.parse(req.body);
-        const asset = assetManager.update(user.tenantId, id, updates);
+        const asset = await assetManager.update(user.tenantId, id, updates);
         return reply.send({ data: asset });
       },
     );
@@ -82,7 +82,7 @@ export function assetRoutes(deps: AssetRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { id } = req.params as { id: string };
-        assetManager.delete(user.tenantId, id);
+        await assetManager.delete(user.tenantId, id);
         return reply.status(204).send();
       },
     );
@@ -94,8 +94,8 @@ export function assetRoutes(deps: AssetRouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { id } = req.params as { id: string };
-        const asset = assetManager.get(user.tenantId, id);
-        assetManager.markScanned(user.tenantId, id);
+        const asset = await assetManager.get(user.tenantId, id);
+        await assetManager.markScanned(user.tenantId, id);
         return reply.send({ data: { assetId: asset.id, status: 'scan_triggered', triggeredAt: new Date().toISOString() } });
       },
     );
@@ -106,10 +106,10 @@ export function assetRoutes(deps: AssetRouteDeps) {
       { preHandler: [authenticate, rbac('alert:create')] },
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
-        const { data: assets } = assetManager.list(user.tenantId, 1, 500);
+        const { data: assets } = await assetManager.list(user.tenantId, 1, 500);
         const enabled = assets.filter((a) => a.enabled);
         for (const a of enabled) {
-          assetManager.markScanned(user.tenantId, a.id);
+          await assetManager.markScanned(user.tenantId, a.id);
         }
         return reply.send({ data: { scanned: enabled.length, total: assets.length, triggeredAt: new Date().toISOString() } });
       },

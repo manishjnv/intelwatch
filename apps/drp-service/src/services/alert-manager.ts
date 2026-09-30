@@ -52,9 +52,9 @@ export class AlertManager {
   }
 
   /** Create a new DRP alert with confidence scoring and dedup check. */
-  create(tenantId: string, input: CreateAlertInput): DRPAlert | null {
+  async create(tenantId: string, input: CreateAlertInput): Promise<DRPAlert | null> {
     // #4 Dedup: check for existing match
-    const existing = this.deps.deduplication.findDuplicate(
+    const existing = await this.deps.deduplication.findDuplicate(
       tenantId,
       input.assetId,
       input.type,
@@ -63,7 +63,7 @@ export class AlertManager {
 
     if (existing) {
       // Merge evidence into existing alert, boost confidence
-      const merged = this.deps.deduplication.mergeIntoExisting(
+      const merged = await this.deps.deduplication.mergeIntoExisting(
         tenantId,
         existing.id,
         input.evidence ?? [],
@@ -119,7 +119,7 @@ export class AlertManager {
       updatedAt: now,
     };
 
-    this.store.setAlert(tenantId, alert);
+    await this.store.setAlert(tenantId, alert);
 
     // Update signal alertIds
     for (const sigId of signalIds) {
@@ -127,7 +127,7 @@ export class AlertManager {
     }
 
     // #3 Build evidence chain
-    this.deps.evidenceChain.buildChain(tenantId, alert.id, {
+    await this.deps.evidenceChain.buildChain(tenantId, alert.id, {
       signals,
       confidence,
       reasons,
@@ -139,20 +139,20 @@ export class AlertManager {
   }
 
   /** Get an alert by ID or throw 404. */
-  get(tenantId: string, alertId: string): DRPAlert {
-    const alert = this.store.getAlert(tenantId, alertId);
+  async get(tenantId: string, alertId: string): Promise<DRPAlert> {
+    const alert = await this.store.getAlert(tenantId, alertId);
     if (!alert) throw new AppError(404, 'Alert not found', 'ALERT_NOT_FOUND');
     return alert;
   }
 
   /** Change alert status with transition validation. */
-  changeStatus(
+  async changeStatus(
     tenantId: string,
     alertId: string,
     newStatus: DRPAlertStatus,
     notes?: string,
-  ): DRPAlert {
-    const alert = this.get(tenantId, alertId);
+  ): Promise<DRPAlert> {
+    const alert = await this.get(tenantId, alertId);
     const allowed = VALID_TRANSITIONS[alert.status];
     if (!allowed.includes(newStatus)) {
       throw new AppError(
@@ -167,54 +167,54 @@ export class AlertManager {
     if (notes) alert.triageNotes = `${alert.triageNotes}\n[${alert.updatedAt}] ${notes}`.trim();
     if (newStatus === 'resolved') alert.resolvedAt = alert.updatedAt;
 
-    this.store.setAlert(tenantId, alert);
+    await this.store.setAlert(tenantId, alert);
     return alert;
   }
 
   /** Assign alert to a user. */
-  assign(tenantId: string, alertId: string, userId: string): DRPAlert {
-    const alert = this.get(tenantId, alertId);
+  async assign(tenantId: string, alertId: string, userId: string): Promise<DRPAlert> {
+    const alert = await this.get(tenantId, alertId);
     alert.assignedTo = userId;
     alert.updatedAt = new Date().toISOString();
-    this.store.setAlert(tenantId, alert);
+    await this.store.setAlert(tenantId, alert);
     return alert;
   }
 
   /** Triage an alert — update severity, notes, tags. */
-  triage(
+  async triage(
     tenantId: string,
     alertId: string,
     input: { severity?: DRPSeverity; notes?: string; tags?: string[] },
-  ): DRPAlert {
-    const alert = this.get(tenantId, alertId);
+  ): Promise<DRPAlert> {
+    const alert = await this.get(tenantId, alertId);
     if (input.severity) alert.severity = input.severity;
     if (input.notes) alert.triageNotes = `${alert.triageNotes}\n[${new Date().toISOString()}] ${input.notes}`.trim();
     if (input.tags) alert.tags = input.tags;
     alert.updatedAt = new Date().toISOString();
-    this.store.setAlert(tenantId, alert);
+    await this.store.setAlert(tenantId, alert);
     return alert;
   }
 
   /** List alerts with pagination and filters. */
-  list(
+  async list(
     tenantId: string,
     page: number,
     limit: number,
     filters?: { type?: string; status?: string; severity?: string; assetId?: string },
-  ): { data: DRPAlert[]; total: number; page: number; limit: number } {
+  ): Promise<{ data: DRPAlert[]; total: number; page: number; limit: number }> {
     return this.store.listAlerts(tenantId, page, limit, filters);
   }
 
   /** Get alert statistics. */
-  getStats(tenantId: string): {
+  async getStats(tenantId: string): Promise<{
     total: number;
     byType: Record<string, number>;
     byStatus: Record<string, number>;
     bySeverity: Record<string, number>;
     avgConfidence: number;
     resolutionRate: number;
-  } {
-    const alerts = Array.from(this.store.getTenantAlerts(tenantId).values());
+  }> {
+    const alerts = await this.store.listAllAlerts(tenantId);
     const byType: Record<string, number> = {};
     const byStatus: Record<string, number> = {};
     const bySeverity: Record<string, number> = {};
@@ -240,11 +240,11 @@ export class AlertManager {
   }
 
   /** Add evidence to an existing alert. */
-  addEvidence(tenantId: string, alertId: string, evidence: AlertEvidence): DRPAlert {
-    const alert = this.get(tenantId, alertId);
+  async addEvidence(tenantId: string, alertId: string, evidence: AlertEvidence): Promise<DRPAlert> {
+    const alert = await this.get(tenantId, alertId);
     alert.evidence.push(evidence);
     alert.updatedAt = new Date().toISOString();
-    this.store.setAlert(tenantId, alert);
+    await this.store.setAlert(tenantId, alert);
     return alert;
   }
 }

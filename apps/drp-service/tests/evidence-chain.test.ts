@@ -12,7 +12,7 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
     builder = new EvidenceChainBuilder(store);
   });
 
-  function buildDefaultChain(alertId = 'alert-1') {
+  async function buildDefaultChain(alertId = 'alert-1') {
     return builder.buildChain(tenantId, alertId, {
       signals: [
         { signalType: 'domain_similarity', rawValue: 0.95, description: 'High similarity' },
@@ -29,16 +29,16 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
   }
 
   // P3.1 buildChain creates a chain with correct alertId
-  it('P3.1 buildChain creates a chain with correct alertId', () => {
-    const chain = buildDefaultChain('alert-42');
+  it('P3.1 buildChain creates a chain with correct alertId', async () => {
+    const chain = await buildDefaultChain('alert-42');
     expect(chain.alertId).toBe('alert-42');
     expect(chain.tenantId).toBe(tenantId);
     expect(chain.createdAt).toBeDefined();
   });
 
   // P3.2 chain has detection steps for each signal
-  it('P3.2 chain has detection steps for each signal', () => {
-    const chain = buildDefaultChain();
+  it('P3.2 chain has detection steps for each signal', async () => {
+    const chain = await buildDefaultChain();
     const detectionSteps = chain.steps.filter((s) => s.type === 'detection');
     expect(detectionSteps).toHaveLength(2);
     expect(detectionSteps[0]!.description).toContain('domain_similarity');
@@ -48,8 +48,8 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
   });
 
   // P3.3 chain has scoring step with confidence
-  it('P3.3 chain has scoring step with confidence', () => {
-    const chain = buildDefaultChain();
+  it('P3.3 chain has scoring step with confidence', async () => {
+    const chain = await buildDefaultChain();
     const scoringStep = chain.steps.find((s) => s.type === 'scoring');
     expect(scoringStep).toBeDefined();
     expect(scoringStep!.description).toContain('85.0%');
@@ -58,15 +58,15 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
   });
 
   // P3.4 chain has dedup step
-  it('P3.4 chain has dedup step', () => {
-    const chain = buildDefaultChain();
+  it('P3.4 chain has dedup step', async () => {
+    const chain = await buildDefaultChain();
     const dedupStep = chain.steps.find((s) => s.type === 'dedup');
     expect(dedupStep).toBeDefined();
     expect(dedupStep!.description).toContain('No duplicate found');
     expect(dedupStep!.data['deduped']).toBe(false);
 
     // Also verify deduped = true case
-    const dedupedChain = builder.buildChain(tenantId, 'alert-dup', {
+    const dedupedChain = await builder.buildChain(tenantId, 'alert-dup', {
       signals: [{ signalType: 'sim', rawValue: 0.9, description: 'd' }],
       confidence: 0.7,
       reasons: [],
@@ -78,8 +78,8 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
   });
 
   // P3.5 chain has classification step with severity
-  it('P3.5 chain has classification step with severity', () => {
-    const chain = buildDefaultChain();
+  it('P3.5 chain has classification step with severity', async () => {
+    const chain = await buildDefaultChain();
     const classStep = chain.steps.find((s) => s.type === 'classification');
     expect(classStep).toBeDefined();
     expect(classStep!.description).toContain('high');
@@ -88,8 +88,8 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
   });
 
   // P3.6 chain has alert_created step
-  it('P3.6 chain has alert_created step', () => {
-    const chain = buildDefaultChain('alert-99');
+  it('P3.6 chain has alert_created step', async () => {
+    const chain = await buildDefaultChain('alert-99');
     const createdStep = chain.steps.find((s) => s.type === 'alert_created');
     expect(createdStep).toBeDefined();
     expect(createdStep!.description).toContain('high severity');
@@ -100,8 +100,8 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
   });
 
   // P3.7 steps are ordered sequentially
-  it('P3.7 steps are ordered sequentially', () => {
-    const chain = buildDefaultChain();
+  it('P3.7 steps are ordered sequentially', async () => {
+    const chain = await buildDefaultChain();
     // 2 detection + scoring + dedup + classification + alert_created = 6 steps
     expect(chain.steps).toHaveLength(6);
     for (let i = 0; i < chain.steps.length; i++) {
@@ -117,24 +117,24 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
   });
 
   // P3.8 getChain returns stored chain
-  it('P3.8 getChain returns stored chain', () => {
-    buildDefaultChain('alert-stored');
-    const retrieved = builder.getChain(tenantId, 'alert-stored');
+  it('P3.8 getChain returns stored chain', async () => {
+    await buildDefaultChain('alert-stored');
+    const retrieved = await builder.getChain(tenantId, 'alert-stored');
     expect(retrieved).toBeDefined();
     expect(retrieved!.alertId).toBe('alert-stored');
     expect(retrieved!.steps).toHaveLength(6);
   });
 
   // P3.9 getChain returns undefined for non-existent alert
-  it('P3.9 getChain returns undefined for non-existent alert', () => {
-    const result = builder.getChain(tenantId, 'nonexistent-alert');
-    expect(result).toBeUndefined();
+  it('P3.9 getChain returns undefined for non-existent alert', async () => {
+    const result = await builder.getChain(tenantId, 'nonexistent-alert');
+    expect(result).toBeNull();
   });
 
   // P3.10 addStep appends to existing chain
-  it('P3.10 addStep appends to existing chain', () => {
-    buildDefaultChain('alert-extend');
-    const updated = builder.addStep(tenantId, 'alert-extend', {
+  it('P3.10 addStep appends to existing chain', async () => {
+    await buildDefaultChain('alert-extend');
+    const updated = await builder.addStep(tenantId, 'alert-extend', {
       type: 'scoring',
       description: 'Re-scored after corroboration',
       data: { newConfidence: 0.92 },
@@ -149,11 +149,11 @@ describe('DRP Service — P0#3 Evidence Chain', () => {
     expect(lastStep.timestamp).toBeDefined();
 
     // addStep on non-existent chain returns undefined
-    const missing = builder.addStep(tenantId, 'no-such-alert', {
+    const missing = await builder.addStep(tenantId, 'no-such-alert', {
       type: 'detection',
       description: 'nope',
       data: {},
     });
-    expect(missing).toBeUndefined();
+    expect(missing).toBeNull();
   });
 });

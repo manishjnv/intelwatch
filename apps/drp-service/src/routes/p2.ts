@@ -36,8 +36,8 @@ export function p2Routes(deps: P2RouteDeps) {
         const user = getUser(req);
         const { id } = req.params as { id: string };
         const input = TakedownRequestSchema.parse(req.body);
-        const alert = alertManager.get(user.tenantId, id);
-        const takedown = takedownGenerator.generate(
+        const alert = await alertManager.get(user.tenantId, id);
+        const takedown = await takedownGenerator.generate(
           user.tenantId,
           alert,
           input.platform,
@@ -56,7 +56,7 @@ export function p2Routes(deps: P2RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = AlertExportSchema.parse(req.query);
-        const result = alertExporter.export(
+        const result = await alertExporter.export(
           user.tenantId,
           input.format,
           input.filter,
@@ -76,7 +76,7 @@ export function p2Routes(deps: P2RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = RogueAppScanSchema.parse(req.body);
-        const result = rogueAppDetector.scan(
+        const result = await rogueAppDetector.scan(
           user.tenantId,
           input.appName,
           input.packageName,
@@ -93,7 +93,7 @@ export function p2Routes(deps: P2RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const { id } = req.params as { id: string };
-        const risk = riskAggregator.calculate(user.tenantId, id);
+        const risk = await riskAggregator.calculate(user.tenantId, id);
         return reply.send({ data: risk });
       },
     );
@@ -105,7 +105,7 @@ export function p2Routes(deps: P2RouteDeps) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const user = getUser(req);
         const input = CorrelateAlertsSchema.parse(req.body);
-        const result = crossCorrelation.correlate(
+        const result = await crossCorrelation.correlate(
           user.tenantId,
           input.alertIds,
           input.autoDetect,

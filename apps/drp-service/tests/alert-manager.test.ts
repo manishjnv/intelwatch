@@ -23,7 +23,7 @@ describe('DRP Service — #2 Alert Manager', () => {
     });
   });
 
-  function createAlert(detectedValue = 'evil-example.com') {
+  async function createAlert(detectedValue = 'evil-example.com') {
     return manager.create(tenantId, {
       assetId: 'asset-1',
       type: 'typosquatting',
@@ -39,28 +39,28 @@ describe('DRP Service — #2 Alert Manager', () => {
   }
 
   // 2.1 creates alert with computed confidence
-  it('2.1 creates alert with computed confidence', () => {
-    const alert = createAlert()!;
+  it('2.1 creates alert with computed confidence', async () => {
+    const alert = (await createAlert())!;
     expect(alert).not.toBeNull();
     expect(alert.confidence).toBeGreaterThan(0);
     expect(alert.confidence).toBeLessThanOrEqual(1);
   });
 
   // 2.2 creates alert with correct severity
-  it('2.2 creates alert with correct severity', () => {
-    const alert = createAlert()!;
+  it('2.2 creates alert with correct severity', async () => {
+    const alert = (await createAlert())!;
     expect(['critical', 'high', 'medium', 'low', 'info']).toContain(alert.severity);
   });
 
   // 2.3 new alert has status 'open'
-  it('2.3 new alert has status open', () => {
-    const alert = createAlert()!;
+  it('2.3 new alert has status open', async () => {
+    const alert = (await createAlert())!;
     expect(alert.status).toBe('open');
   });
 
   // 2.4 confidence reasons are populated
-  it('2.4 confidence reasons are populated', () => {
-    const alert = createAlert()!;
+  it('2.4 confidence reasons are populated', async () => {
+    const alert = (await createAlert())!;
     expect(alert.confidenceReasons.length).toBeGreaterThan(0);
     for (const reason of alert.confidenceReasons) {
       expect(reason.signal).toBeDefined();
@@ -71,8 +71,8 @@ describe('DRP Service — #2 Alert Manager', () => {
   });
 
   // 2.5 signal IDs are recorded
-  it('2.5 signal IDs are recorded', () => {
-    const alert = createAlert()!;
+  it('2.5 signal IDs are recorded', async () => {
+    const alert = (await createAlert())!;
     expect(alert.signalIds.length).toBe(2);
     for (const id of alert.signalIds) {
       expect(typeof id).toBe('string');
@@ -81,9 +81,9 @@ describe('DRP Service — #2 Alert Manager', () => {
   });
 
   // 2.6 dedup returns merged alert for same detected value
-  it('2.6 dedup returns merged alert for same detected value', () => {
-    const first = createAlert('dup-domain.com')!;
-    const second = manager.create(tenantId, {
+  it('2.6 dedup returns merged alert for same detected value', async () => {
+    const first = (await createAlert('dup-domain.com'))!;
+    const second = await manager.create(tenantId, {
       assetId: 'asset-1',
       type: 'typosquatting',
       title: 'Duplicate alert',
@@ -102,64 +102,64 @@ describe('DRP Service — #2 Alert Manager', () => {
   });
 
   // 2.7 gets alert by ID
-  it('2.7 gets alert by ID', () => {
-    const created = createAlert()!;
-    const fetched = manager.get(tenantId, created.id);
+  it('2.7 gets alert by ID', async () => {
+    const created = (await createAlert())!;
+    const fetched = await manager.get(tenantId, created.id);
     expect(fetched.id).toBe(created.id);
     expect(fetched.title).toBe('Test alert');
   });
 
   // 2.8 throws 404 for non-existent alert
-  it('2.8 throws 404 for non-existent alert', () => {
-    expect(() => manager.get(tenantId, 'nonexistent-id')).toThrow('Alert not found');
+  it('2.8 throws 404 for non-existent alert', async () => {
+    await expect(manager.get(tenantId, 'nonexistent-id')).rejects.toThrow('Alert not found');
   });
 
   // 2.9 tenant isolation
-  it('2.9 tenant isolation', () => {
-    const alert = createAlert()!;
-    expect(() => manager.get('tenant-other', alert.id)).toThrow('Alert not found');
+  it('2.9 tenant isolation', async () => {
+    const alert = (await createAlert())!;
+    await expect(manager.get('tenant-other', alert.id)).rejects.toThrow('Alert not found');
   });
 
   // 2.10 changes status open→investigating
-  it('2.10 changes status open to investigating', () => {
-    const alert = createAlert()!;
-    const updated = manager.changeStatus(tenantId, alert.id, 'investigating', 'Starting investigation');
+  it('2.10 changes status open to investigating', async () => {
+    const alert = (await createAlert())!;
+    const updated = await manager.changeStatus(tenantId, alert.id, 'investigating', 'Starting investigation');
     expect(updated.status).toBe('investigating');
     expect(updated.triageNotes).toContain('Starting investigation');
   });
 
   // 2.11 changes status investigating→resolved
-  it('2.11 changes status investigating to resolved', () => {
-    const alert = createAlert()!;
-    manager.changeStatus(tenantId, alert.id, 'investigating');
-    const resolved = manager.changeStatus(tenantId, alert.id, 'resolved', 'Issue resolved');
+  it('2.11 changes status investigating to resolved', async () => {
+    const alert = (await createAlert())!;
+    await manager.changeStatus(tenantId, alert.id, 'investigating');
+    const resolved = await manager.changeStatus(tenantId, alert.id, 'resolved', 'Issue resolved');
     expect(resolved.status).toBe('resolved');
     expect(resolved.resolvedAt).toBeDefined();
     expect(resolved.resolvedAt).not.toBeNull();
   });
 
   // 2.12 rejects invalid transition resolved→investigating
-  it('2.12 rejects invalid transition resolved to investigating', () => {
-    const alert = createAlert()!;
-    manager.changeStatus(tenantId, alert.id, 'investigating');
-    manager.changeStatus(tenantId, alert.id, 'resolved');
+  it('2.12 rejects invalid transition resolved to investigating', async () => {
+    const alert = (await createAlert())!;
+    await manager.changeStatus(tenantId, alert.id, 'investigating');
+    await manager.changeStatus(tenantId, alert.id, 'resolved');
     // resolved can only go to 'open', not 'investigating'
-    expect(() => manager.changeStatus(tenantId, alert.id, 'investigating')).toThrow(
+    await expect(manager.changeStatus(tenantId, alert.id, 'investigating')).rejects.toThrow(
       'Cannot transition from resolved to investigating',
     );
   });
 
   // 2.13 assigns alert to user
-  it('2.13 assigns alert to user', () => {
-    const alert = createAlert()!;
-    const assigned = manager.assign(tenantId, alert.id, 'analyst-1');
+  it('2.13 assigns alert to user', async () => {
+    const alert = (await createAlert())!;
+    const assigned = await manager.assign(tenantId, alert.id, 'analyst-1');
     expect(assigned.assignedTo).toBe('analyst-1');
   });
 
   // 2.14 triages alert (set severity, notes)
-  it('2.14 triages alert with severity and notes', () => {
-    const alert = createAlert()!;
-    const triaged = manager.triage(tenantId, alert.id, {
+  it('2.14 triages alert with severity and notes', async () => {
+    const alert = (await createAlert())!;
+    const triaged = await manager.triage(tenantId, alert.id, {
       severity: 'critical',
       notes: 'Escalated to critical after manual review',
       tags: ['escalated', 'manual-review'],
@@ -170,26 +170,26 @@ describe('DRP Service — #2 Alert Manager', () => {
   });
 
   // 2.15 list returns paginated results
-  it('2.15 list returns paginated results', () => {
-    createAlert('evil1.com');
-    createAlert('evil2.com');
-    createAlert('evil3.com');
+  it('2.15 list returns paginated results', async () => {
+    await createAlert('evil1.com');
+    await createAlert('evil2.com');
+    await createAlert('evil3.com');
 
-    const page1 = manager.list(tenantId, 1, 2);
+    const page1 = await manager.list(tenantId, 1, 2);
     expect(page1.data.length).toBe(2);
     expect(page1.total).toBe(3);
     expect(page1.page).toBe(1);
     expect(page1.limit).toBe(2);
 
-    const page2 = manager.list(tenantId, 2, 2);
+    const page2 = await manager.list(tenantId, 2, 2);
     expect(page2.data.length).toBe(1);
   });
 
   // 2.16 list filters by type
-  it('2.16 list filters by type', () => {
-    createAlert('evil1.com');
+  it('2.16 list filters by type', async () => {
+    await createAlert('evil1.com');
     // Create a different-type alert directly in store to test filter
-    manager.create(tenantId, {
+    await manager.create(tenantId, {
       assetId: 'asset-1',
       type: 'credential_leak',
       title: 'Credential leak',
@@ -198,38 +198,38 @@ describe('DRP Service — #2 Alert Manager', () => {
       signals: [{ signalType: 'breach_severity', rawValue: 0.8, description: 'Breach detected' }],
     });
 
-    const typoOnly = manager.list(tenantId, 1, 50, { type: 'typosquatting' });
+    const typoOnly = await manager.list(tenantId, 1, 50, { type: 'typosquatting' });
     expect(typoOnly.data.every((a) => a.type === 'typosquatting')).toBe(true);
     expect(typoOnly.total).toBe(1);
 
-    const credOnly = manager.list(tenantId, 1, 50, { type: 'credential_leak' });
+    const credOnly = await manager.list(tenantId, 1, 50, { type: 'credential_leak' });
     expect(credOnly.data.every((a) => a.type === 'credential_leak')).toBe(true);
     expect(credOnly.total).toBe(1);
   });
 
   // 2.17 list filters by status
-  it('2.17 list filters by status', () => {
-    const a1 = createAlert('evil1.com')!;
-    createAlert('evil2.com');
-    manager.changeStatus(tenantId, a1.id, 'investigating');
+  it('2.17 list filters by status', async () => {
+    const a1 = (await createAlert('evil1.com'))!;
+    await createAlert('evil2.com');
+    await manager.changeStatus(tenantId, a1.id, 'investigating');
 
-    const openOnly = manager.list(tenantId, 1, 50, { status: 'open' });
+    const openOnly = await manager.list(tenantId, 1, 50, { status: 'open' });
     expect(openOnly.data.every((a) => a.status === 'open')).toBe(true);
     expect(openOnly.total).toBe(1);
 
-    const investOnly = manager.list(tenantId, 1, 50, { status: 'investigating' });
+    const investOnly = await manager.list(tenantId, 1, 50, { status: 'investigating' });
     expect(investOnly.data.every((a) => a.status === 'investigating')).toBe(true);
     expect(investOnly.total).toBe(1);
   });
 
   // 2.18 getStats returns correct aggregation
-  it('2.18 getStats returns correct aggregation', () => {
-    const a1 = createAlert('evil1.com')!;
-    createAlert('evil2.com');
-    createAlert('evil3.com');
-    manager.changeStatus(tenantId, a1.id, 'resolved');
+  it('2.18 getStats returns correct aggregation', async () => {
+    const a1 = (await createAlert('evil1.com'))!;
+    await createAlert('evil2.com');
+    await createAlert('evil3.com');
+    await manager.changeStatus(tenantId, a1.id, 'resolved');
 
-    const stats = manager.getStats(tenantId);
+    const stats = await manager.getStats(tenantId);
     expect(stats.total).toBe(3);
     expect(stats.byType['typosquatting']).toBe(3);
     expect(stats.byStatus['open']).toBe(2);
