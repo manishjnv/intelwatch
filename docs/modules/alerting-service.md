@@ -1,6 +1,6 @@
 # Alerting Service (Module 23)
 
-**Port:** 3023 | **Status:** ✅ Deployed (S176, `3e2a73f`) | **Tests:** 377 (29 files) | **Endpoints:** 35
+**Port:** 3023 | **Status:** ✅ Deployed (S177, deploy pending — TBD (post-deploy)) | **Tests:** 416 | **Endpoints:** 35
 
 Real-time alert rule engine with notification channels, escalation policies, and alert lifecycle management.
 
@@ -9,17 +9,18 @@ Real-time alert rule engine with notification channels, escalation policies, and
 | Feature | File | Description |
 |---------|------|-------------|
 | Alert Rules | services/rule-store.ts | CRUD + toggle, 5 types (threshold/pattern/anomaly/absence/composite); Postgres-backed (S154), tenant-scoped by-id lookups |
-| Alert Lifecycle | services/alert-store.ts | FSM: open→ack→resolve/suppress/escalate, bulk ops; in-memory (Postgres in S155) |
+| Alert Lifecycle | services/alert-store.ts | FSM: open→ack→resolve/suppress/escalate, bulk ops; Postgres-backed (S155), tenant-scoped by-id lookups, status changes conditional on current status (concurrent change → 409 CONFLICT) |
 | Notification Channels | services/channel-store.ts | Email, Slack, webhook with HMAC-SHA256 signing; Postgres-backed (S154), tenant-scoped by-id lookups |
 | Channel encryption | services/channel-crypto.ts | AES-256-GCM at rest (`'v1:' + base64(iv‖ciphertext‖tag)`); API responses return a masked config (webhook/Slack URLs → `https://host/****`, secrets/header values → `****`) |
-| Postgres persistence | repository.ts, repository-prisma.ts | `Repo<T>` interface + `MemoryRepo` (dev/tests) + 4 Prisma repos for rules/channels/escalations/maintenance windows; DB errors surface as `AppError` 503 `DB_UNAVAILABLE`, never a silent fallback to memory |
+| Postgres persistence | repository.ts, repository-prisma.ts, repository-prisma-alerts.ts | `Repo<T>` interface + `MemoryRepo` (dev/tests) + Prisma repos for rules/channels/escalations/maintenance windows (S154) and alerts/alert history/alert groups (S155); DB errors surface as `AppError` 503 `DB_UNAVAILABLE`, never a silent fallback to memory; every by-id write is `updateMany where {id, tenant_id}` then create — a foreign id → 409 CONFLICT, never an overwrite |
 | Escalation Policies | services/escalation-store.ts | Multi-step auto-escalate with repeat; Postgres-backed (S154), tenant-scoped by-id lookups |
-| Rule Engine | services/rule-engine.ts | Event buffer, 5 condition types, composite AND/OR |
-| Deduplication | services/dedup-store.ts | SHA-256 fingerprint, 5-min dedup window; in-memory (Postgres in S155) |
-| Alert History | services/alert-history.ts | Immutable audit trail per alert; in-memory (Postgres in S155) |
-| Alert Grouping | services/alert-group-store.ts | Incident fingerprint, 30-min group window; in-memory (Postgres in S155) |
+| Rule Engine | services/rule-engine.ts | Event buffer, 5 condition types, composite AND/OR; event buffer stays in memory (`memory-ok: buffer`) |
+| Deduplication | services/alert-store.ts | SHA-256 fingerprint, 5-min dedup window; Postgres-backed (S155) as `fingerprint`/`dedup_count`/`last_seen_at` columns on `alerts` (standalone `DedupStore` class deleted) |
+| Alert History | services/alert-history.ts | Immutable audit trail per alert; Postgres-backed (S155) |
+| Alert Grouping | services/alert-group-store.ts | Incident fingerprint, 30-min group window; Postgres-backed (S155); group membership is an `alert_ids` array on `alert_groups`, not a `groupId` column on alerts |
 | Rule Templates | services/rule-templates.ts | 6 built-in templates (IOC rate, feed absence, APT, anomaly, CVE, DRP) |
 | Maintenance Windows | services/maintenance-store.ts | Suppress rules during scheduled windows; Postgres-backed (S154), tenant-scoped by-id lookups |
+| Escalation state | services/escalation-dispatcher.ts | Postgres-backed (S155) as `escalation_policy_id`/`escalation_step`/`next_escalation_at` columns on `alerts` (in-memory pending map deleted); interval now catches errors so a rejection cannot crash the process |
 | Notification Retry | services/notifier.ts | Exponential backoff (1s/4s/16s), 3 retries; logs webhook URL origin only, not the full URL; Slack/webhook/email delivery itself is log-only, not yet wired to a real send |
 | Alert Search | services/alert-store.ts | Full-text across title/description/ruleName |
 | BullMQ Worker | workers/alert-worker.ts | Consumes etip-alert-evaluate queue |

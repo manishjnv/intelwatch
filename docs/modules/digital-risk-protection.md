@@ -1,10 +1,11 @@
 # Digital Risk Protection Service (Module 11)
-**Port:** 3011 | **Status:** 🔨 FEATURE-COMPLETE (15/15 improvements + accuracy) | **Tests:** 310
+**Port:** 3011 | **Status:** 🔨 FEATURE-COMPLETE (15/15 improvements + accuracy) | **Tests:** 351
 
 ## Features
 
 | Feature | File | Description |
 |---------|------|-------------|
+| Postgres persistence | `src/prisma.ts`, `src/repository.ts`, `src/repository-prisma.ts`, `src/repository-prisma-alerts.ts` | Assets, alerts (incl. AI enrichment + evidence chain as JSON columns), scans, takedowns, feedback → Postgres (S177, Step 3 rows 158a/158b); DB errors surface as `AppError` 503 `DB_UNAVAILABLE`, never a silent fallback to memory; signals, signal stats, correlations, and asset risk scores stay in memory as derived/rebuildable data |
 | Asset Management | `services/asset-manager.ts` | CRUD, validation, normalization, lifecycle for monitored assets (domain, brand, email, social, app) |
 | Alert Management | `services/alert-manager.ts` | CRUD, status transitions (open→investigating→resolved/false_positive), triage, assignment |
 | Typosquatting Detection | `services/typosquat-detector.ts` | 12 algorithms: homoglyph, insertion, deletion, transposition, TLD variant, combosquatting, bitsquatting, keyboard proximity, vowel-swap, repetition, hyphenation, subdomain |
