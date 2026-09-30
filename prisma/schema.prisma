@@ -1402,3 +1402,19 @@ model DrpAlertFeedback {
   @@index([tenantId, alertId])
   @@map("drp_alert_feedback")
 }
+
+// ─── Hunting (Step 3 S159) — JSON documents, DECISION-051 ───
+model HuntingDoc {
+  id        String   @db.VarChar(100)
+  tenantId  String   @map("tenant_id") @db.Uuid
+  kind      String   @db.VarChar(40)
+  parentId  String?  @map("parent_id") @db.VarChar(100)
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([kind, id])
+  @@index([tenantId, kind, createdAt])
+  @@index([kind, parentId, createdAt])
+  @@map("hunting_docs")
+}
