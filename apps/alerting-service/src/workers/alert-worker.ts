@@ -238,10 +238,16 @@ export class AlertWorker {
     }
   }
 
-  private parseRedisUrl(url: string): { host: string; port: number } {
+  /** S177: the password was dropped here, so every BullMQ connection failed with NOAUTH in production (RCA #66). */
+  private parseRedisUrl(url: string): { host: string; port: number; password?: string; db?: number } {
     try {
       const parsed = new URL(url);
-      return { host: parsed.hostname || 'localhost', port: parseInt(parsed.port, 10) || 6379 };
+      return {
+        host: parsed.hostname || 'localhost',
+        port: parseInt(parsed.port, 10) || 6379,
+        password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+        db: parseInt(parsed.pathname.slice(1), 10) || 0,
+      };
     } catch {
       return { host: 'localhost', port: 6379 };
     }

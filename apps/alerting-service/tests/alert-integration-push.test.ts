@@ -104,6 +104,20 @@ describe('AlertWorker — Integration Push (A3)', () => {
     );
   });
 
+  it('passes the Redis password and db from the URL to every BullMQ connection (RCA #66)', async () => {
+    const deps = createMockDeps({ redisUrl: 'redis://:s3cr%40t@etip_redis:6380/2' });
+    const worker = new AlertWorker(deps);
+    worker.start();
+
+    const { Queue, Worker } = await import('bullmq') as unknown as { Queue: ReturnType<typeof vi.fn>; Worker: ReturnType<typeof vi.fn> };
+    const expected = { host: 'etip_redis', port: 6380, password: 's3cr@t', db: 2 };
+    for (const call of [...Queue.mock.calls, ...Worker.mock.calls]) {
+      const opts = call[call.length - 1] as { connection: unknown };
+      expect(opts.connection).toEqual(expected);
+    }
+    expect(Queue.mock.calls.length + Worker.mock.calls.length).toBe(3);
+  });
+
   it('does NOT create integration queue when disabled', async () => {
     const deps = createMockDeps({ integrationPushEnabled: false });
     const worker = new AlertWorker(deps);

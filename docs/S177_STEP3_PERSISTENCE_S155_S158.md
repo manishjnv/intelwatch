@@ -82,7 +82,7 @@ All new models follow the Step 3 convention: `id uuid` default-generated, `tenan
 
 See `docs/DEPLOYMENT_RCA.md` Issues 66–68:
 
-- **Issue 66** — alerting-service worker never received a single ALERT_EVALUATE job (BullMQ queue prefix mismatch between producers and the worker).
+- **Issue 66** — alerting-service worker never received a single ALERT_EVALUATE job: BullMQ queue prefix mismatch between producers and the worker, AND its `parseRedisUrl()` dropped the Redis password (8,180 `NOAUTH` errors in 72 h). The caching-service cache-invalidation listener had the same two bugs (4,084 `NOAUTH` in 72 h, 550,602 jobs queued) — fixed in the same PR (`apps/caching-service/src/workers/event-listener.ts`: password + db passed, no prefix, events older than 1 h skipped, finished jobs trimmed to 1,000). Found while writing the VPS acceptance test. caching-service tests 112 → 114; alerting-service 416 → 417.
 - **Issue 67** — integration exports sent hard-coded demo IOCs to real tenants (DECISION-048 violation, server-side, invisible to the frontend honest-empty sweeps).
 - **Issue 68** — `integration_docs`'s first-cut primary key (`id` alone) would have let a TAXII collection doc and its objects doc silently overwrite each other; caught in review before deploy, fixed with a composite `(kind, id)` key.
 
