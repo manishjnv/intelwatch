@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useOnboardingWizard, useWelcomeDashboard, usePipelineHealth,
-  useModuleReadiness, useReadinessCheck, useCompleteStep, useSkipStep, useSeedDemo,
+  useModuleReadiness, useReadinessCheck, useCompleteStep, useSkipStep, useAddStarterFeeds,
   type OnboardingWizard, type PipelineHealth, type ModuleStatus,
 } from '@/hooks/use-phase6-data'
 import { FeedSelectionStep } from '@/components/FeedSelectionStep'
@@ -203,7 +203,7 @@ function ModulesTab({ modules }: { modules: ModuleStatus[] }) {
 
 function QuickStartTab() {
   const welcomeQuery = useWelcomeDashboard()
-  const seedDemo = useSeedDemo()
+  const addStarterFeeds = useAddStarterFeeds()
 
   return (
     <QueryStateView query={welcomeQuery} resource="quick start dashboard">
@@ -252,13 +252,16 @@ function QuickStartTab() {
               </div>
             )}
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-end gap-3">
+              <p className="text-[11px] text-text-muted">
+                Subscribes you to recommended public threat feeds. No sample data is added.
+              </p>
               <button
-                onClick={() => seedDemo.mutate({})}
-                disabled={seedDemo.isPending}
-                className="px-4 py-2 text-xs font-medium bg-teal-400/15 text-teal-400 border border-teal-400/30 rounded-lg hover:bg-teal-400/25 disabled:opacity-50 transition-colors"
+                onClick={() => addStarterFeeds.mutate({})}
+                disabled={addStarterFeeds.isPending}
+                className="px-4 py-2 text-xs font-medium bg-teal-400/15 text-teal-400 border border-teal-400/30 rounded-lg hover:bg-teal-400/25 disabled:opacity-50 transition-colors whitespace-nowrap"
               >
-                {seedDemo.isPending ? 'Seeding…' : 'Seed Demo Data'}
+                {addStarterFeeds.isPending ? 'Adding feeds…' : 'Add starter feeds'}
               </button>
             </div>
           </div>

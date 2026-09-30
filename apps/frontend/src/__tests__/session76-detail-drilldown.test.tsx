@@ -130,11 +130,6 @@ vi.mock('@/components/viz/ConfidenceBreakdown', () => ({
   ConfidenceBreakdown: () => <div data-testid="confidence-breakdown" />,
 }))
 
-vi.mock('@/hooks/demo-data', () => ({
-  DEMO_ENRICHMENT_RESULT: { enrichmentStatus: 'enriched', enrichedAt: null, haikuResult: null, vtResult: null, abuseipdbResult: null, geolocation: null, externalRiskScore: null, enrichmentQuality: null, failureReason: null },
-  DEMO_IOC_COST: { totalCostUsd: 0, totalTokens: 0, providers: [] },
-}))
-
 // Import AFTER mocks
 import { VulnerabilityListPage } from '@/pages/VulnerabilityListPage'
 import { SearchPage } from '@/pages/SearchPage'
@@ -176,7 +171,7 @@ describe('VulnerabilityListPage detail panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseVulnerabilities.mockReturnValue({
-      data: MOCK_VULN_LIST, isLoading: false, isDemo: true,
+      data: MOCK_VULN_LIST, isLoading: false,
     })
   })
 
@@ -265,7 +260,7 @@ describe('SearchPage drill-down', () => {
       pageSize: 50, setPageSize: vi.fn(),
       results: [MOCK_ES_RESULT], totalCount: 1,
       facets: { byType: [], bySeverity: [], byTlp: [] },
-      isLoading: false, isDemo: false, error: null, searchTimeMs: 5,
+      isLoading: false, error: null, searchTimeMs: 5,
       clearAll: vi.fn(), exportResults: vi.fn(),
       selectedIds: new Set(), toggleSelection: vi.fn(), clearSelection: vi.fn(),
       toggleSelectAll: vi.fn(), bulkSearch: vi.fn(),
@@ -294,7 +289,7 @@ describe('SearchPage drill-down', () => {
 describe('IocListPage enrichment tab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseIOCs.mockReturnValue({ data: MOCK_IOC_LIST, isLoading: false, isDemo: true })
+    mockUseIOCs.mockReturnValue({ data: MOCK_IOC_LIST, isLoading: false, })
     mockUseIOCStats.mockReturnValue({ data: { total: 1, bySeverity: {}, byLifecycle: {} } })
     mockUseIOCPivot.mockReturnValue({ data: null, isLoading: false })
     mockUseIOCTimeline.mockReturnValue({ data: null, isLoading: false })
@@ -329,7 +324,7 @@ describe('IocListPage enrichment tab', () => {
 describe('IocListPage relations tab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseIOCs.mockReturnValue({ data: MOCK_IOC_LIST, isLoading: false, isDemo: false })
+    mockUseIOCs.mockReturnValue({ data: MOCK_IOC_LIST, isLoading: false, })
     mockUseIOCStats.mockReturnValue({ data: { total: 1, bySeverity: {}, byLifecycle: {} } })
     mockUseIOCPivot.mockReturnValue({ data: null, isLoading: false })
     mockUseIOCTimeline.mockReturnValue({ data: null, isLoading: false })
@@ -377,7 +372,7 @@ describe('VulnerabilityListPage filter and sort', () => {
     const vulnHigh = { ...MOCK_VULN, id: 'v2', cveId: 'CVE-2024-0001', cvssV3Severity: 'high', cvssV3Score: 7.5, priorityScore: 60 }
     mockUseVulnerabilities.mockReturnValue({
       data: { data: [MOCK_VULN, vulnHigh], total: 2, page: 1, limit: 50 },
-      isLoading: false, isDemo: true,
+      isLoading: false,
     })
   })
 
@@ -387,14 +382,13 @@ describe('VulnerabilityListPage filter and sort', () => {
     expect(screen.getByText('CVE-2024-0001')).toBeTruthy()
   })
 
-  it('searches by CVE ID', () => {
+  it('passes the debounced search term to the hook (backend does the filtering)', () => {
     vi.useFakeTimers()
     render(<VulnerabilityListPage />)
     const searchInput = screen.getByPlaceholderText(/Search CVEs/i)
     fireEvent.change(searchInput, { target: { value: '3400' } })
     act(() => { vi.advanceTimersByTime(300) }) // wait for debounce
-    expect(screen.getByText('CVE-2024-3400')).toBeTruthy()
-    expect(screen.queryByText('CVE-2024-0001')).toBeNull()
+    expect(mockUseVulnerabilities).toHaveBeenLastCalledWith(expect.objectContaining({ q: '3400' }))
     vi.useRealTimers()
   })
 })

@@ -111,7 +111,7 @@ export function GlobalCatalogPage() {
   const user = useAuthStore(s => s.user)
   const isAdmin = user?.role === 'super_admin' || user?.role === 'admin'
 
-  const { data: feeds, isLoading: feedsLoading, isDemo } = useGlobalCatalog()
+  const { data: feeds, isLoading: feedsLoading } = useGlobalCatalog()
   const { data: subs, subscribe, unsubscribe, isSubscribing } = useMySubscriptions()
   const { data: health, isLoading: healthLoading } = useGlobalPipelineHealth()
 
@@ -206,7 +206,6 @@ export function GlobalCatalogPage() {
           <h1 className="text-xl font-bold text-text-primary">Global Feed Catalog</h1>
           <p className="text-sm text-text-muted">Browse and subscribe to curated threat intelligence feeds</p>
         </div>
-        {isDemo && <span className="ml-auto px-2 py-0.5 rounded bg-amber-400/10 text-amber-400 text-xs">Demo Data</span>}
       </div>
 
       {/* Stats Bar */}

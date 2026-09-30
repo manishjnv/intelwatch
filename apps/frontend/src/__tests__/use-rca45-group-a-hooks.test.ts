@@ -43,7 +43,6 @@ describe('useQuarterlyReview — real api() return shape', () => {
     })
     const { result } = renderHook(() => useQuarterlyReview(), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data).toEqual({
       totalUsers: 10, activeUsers: 8, inactiveUsers: 2,
       mfaAdoptionPercent: 62.5, ssoUsers: 4,
@@ -52,13 +51,12 @@ describe('useQuarterlyReview — real api() return shape', () => {
     })
   })
 
-  it('falls back to demo (not a crash) when super-admin hits the tenantId-less array reply', async () => {
+  it('returns an honest null (not a crash) when super-admin hits the tenantId-less array reply', async () => {
     const { useQuarterlyReview } = await import('@/hooks/use-access-reviews')
     mockApi.mockResolvedValueOnce([]) // real /admin/access-reviews/quarterly shape without ?tenantId=
     const { result } = renderHook(() => useQuarterlyReview(), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(() => result.current.data.roleBreakdown).not.toThrow()
-    expect(Object.entries(result.current.data.roleBreakdown)).toBeDefined()
+    expect(result.current.data).toBeNull()
   })
 })
 
@@ -75,7 +73,6 @@ describe('useComplianceReport — real api() return shape', () => {
     mockApi.mockResolvedValueOnce(report)
     const { result } = renderHook(() => useComplianceReport('cr9'), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data).toEqual(report)
   })
 })
@@ -111,7 +108,6 @@ describe('use-global-iocs — real api() return shapes', () => {
     mockApi.mockResolvedValueOnce(iocs)
     const { result } = renderHook(() => useGlobalIocs(), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.data).toEqual(iocs)
   })
 
@@ -163,7 +159,6 @@ describe('usePlanLimits — real api() return shape', () => {
     ])
     const { result } = renderHook(() => usePlanLimits(), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.plans).toEqual([
       { id: 'free', planName: 'Free', maxPrivateFeeds: 3, maxGlobalSubscriptions: 5, minFetchIntervalMinutes: 240, retentionDays: 7, aiEnabled: false, dailyTokenBudget: 0 },
       { id: 'teams', planName: 'Teams', maxPrivateFeeds: 25, maxGlobalSubscriptions: 50, minFetchIntervalMinutes: 30, retentionDays: 90, aiEnabled: true, dailyTokenBudget: 100000 },
@@ -184,7 +179,6 @@ describe('useTenantOverrides — real api() return shape', () => {
     mockApi.mockResolvedValueOnce(overrides)
     const { result } = renderHook(() => useTenantOverrides('t1'), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isDemo).toBe(false)
     expect(result.current.overrides).toEqual(overrides)
   })
 })

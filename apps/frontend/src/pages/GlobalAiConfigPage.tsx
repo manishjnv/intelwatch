@@ -11,7 +11,8 @@ import {
   type AiModel, type AiSubtaskConfig, type ConfidenceModel,
 } from '@/hooks/use-global-ai-config'
 import { cn } from '@/lib/utils'
-import { Brain, Zap, Shield, RotateCcw, Save, Check } from 'lucide-react'
+import { classifyError } from '@/hooks/useApiError'
+import { Brain, Zap, Shield, RotateCcw, Save, Check, AlertTriangle, RefreshCw } from 'lucide-react'
 
 const MODEL_OPTIONS: AiModel[] = ['haiku', 'sonnet', 'opus']
 
@@ -41,7 +42,7 @@ export function GlobalAiConfigPage() {
   const isAdmin = user?.role === 'super_admin'
 
   const {
-    config, isLoading, isDemo, setModel, isSavingModel,
+    config, isLoading, isError, error, refetch, setModel, isSavingModel,
     applyPlan, isApplyingPlan, confidenceModel, setConfidenceModel,
     isSavingConfidence, modelCosts, presets,
   } = useGlobalAiConfig()
@@ -115,12 +116,20 @@ export function GlobalAiConfigPage() {
         <p className="text-text-muted mt-1">
           Control which AI models power each pipeline subtask. Changes affect all tenants using the global processing pipeline.
         </p>
-        {isDemo && (
-          <span data-testid="demo-badge" className="inline-block mt-2 px-2 py-0.5 bg-amber-400/20 text-amber-400 rounded text-xs font-medium">
-            DEMO MODE
-          </span>
-        )}
       </div>
+
+      {isError && (
+        <div role="alert" data-testid="global-ai-config-error" className="flex items-start gap-3 p-4 border border-border rounded-xl bg-bg-primary">
+          <AlertTriangle className="w-4 h-4 text-sev-high shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-text-primary">Couldn&apos;t load global AI configuration</p>
+            <p className="text-xs text-text-muted mt-0.5">{classifyError(error)}.</p>
+          </div>
+          <button onClick={() => refetch()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-lg text-text-secondary hover:bg-bg-hover">
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        </div>
+      )}
 
       {/* Section 1: Model Assignment Table */}
       <section data-testid="model-table-section">

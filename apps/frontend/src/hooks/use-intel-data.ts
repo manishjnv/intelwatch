@@ -58,7 +58,7 @@ export function useIOCs(params: QueryParams = {}) {
     queryFn: () => apiList<IOCRecord>(`/iocs${query}`).then(r => r ?? empty).catch(err => notifyApiError(err, 'IOCs', empty)),
     staleTime: 60_000,
   })
-  return { ...result, isDemo: false }
+  return result
 }
 
 export function useIOCStats() {
@@ -68,7 +68,7 @@ export function useIOCStats() {
     queryFn: () => api<{ total: number; byType: Record<string, number>; bySeverity: Record<string, number>; byLifecycle: Record<string, number> }>('/iocs/stats').catch(() => empty),
     staleTime: 5 * 60_000,
   })
-  return { ...result, isDemo: false }
+  return result
 }
 
 // ─── IOC Pivot + Timeline hooks ──────────────────────────────────
@@ -169,7 +169,7 @@ export function useFeeds(params: QueryParams = {}) {
     queryFn: () => apiList<FeedRecord>(`/feeds${query}`).then(r => r ?? empty).catch(err => notifyApiError(err, 'feeds', empty)),
     staleTime: 60_000,
   })
-  return { ...result, isDemo: false }
+  return result
 }
 
 // ─── Feed Quota ─────────────────────────────────────────────────
@@ -280,7 +280,7 @@ export function useActors(params: QueryParams = {}) {
     queryFn: () => apiList<ActorRecord>(`/actors${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
-  return { ...result, isDemo: false }
+  return result
 }
 
 // ─── Malware types ──────────────────────────────────────────────
@@ -300,7 +300,7 @@ export function useMalware(params: QueryParams = {}) {
     queryFn: () => apiList<MalwareRecord>(`/malware${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
-  return { ...result, isDemo: false }
+  return result
 }
 
 // ─── Actor/Malware detail + linked IOC hooks ────────────────────
@@ -355,7 +355,7 @@ export function useVulnerabilities(params: QueryParams = {}) {
     queryFn: () => apiList<VulnRecord>(`/vulnerabilities${query}`).then(r => r ?? empty).catch(() => empty),
     staleTime: 60_000,
   })
-  return { ...result, isDemo: false }
+  return result
 }
 
 // ─── Dashboard stats ────────────────────────────────────────────
@@ -386,7 +386,7 @@ export function useDashboardStats() {
     },
     staleTime: 30_000,
   })
-  return { ...result, isDemo: false }
+  return result
 }
 
 /** G3b: IOC lifecycle state transitions */

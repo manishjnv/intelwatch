@@ -15,7 +15,7 @@ export const OffboardTenantResponseSchema = z.object({
   offboardingStatus: OffboardingStatusSchema,
   offboardedAt: z.string().datetime(),
   offboardedBy: z.string(),
-  purgeScheduledAt: z.string().datetime(),
+  purgeScheduledAt: z.string().datetime().nullable(), // null: offboarding keeps data, nothing is purged (2026-09-30 owner decision)
   message: z.string(),
 });
 export type OffboardTenantResponse = z.infer<typeof OffboardTenantResponseSchema>;
@@ -44,8 +44,8 @@ export const OffboardingPipelineItemSchema = z.object({
   tenantName: z.string(),
   offboardingStatus: OffboardingStatusSchema,
   offboardedAt: z.string().datetime(),
-  purgeScheduledAt: z.string().datetime(),
-  daysUntilPurge: z.number(),
+  purgeScheduledAt: z.string().datetime().nullable(),
+  daysUntilPurge: z.number().nullable(),
 });
 export type OffboardingPipelineItem = z.infer<typeof OffboardingPipelineItemSchema>;
 

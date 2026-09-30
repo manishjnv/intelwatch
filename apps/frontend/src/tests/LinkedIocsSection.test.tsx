@@ -17,7 +17,6 @@ const defaultReturn = {
   totalCount: 3,
   filteredCount: 3,
   isLoading: false,
-  isDemo: true,
   typeFilter: 'all',
   setTypeFilter: vi.fn(),
   sevFilter: 'all',
@@ -101,8 +100,8 @@ describe('LinkedIocsSection', () => {
     expect(header).toHaveTextContent('3')
   })
 
-  it('demo fallback renders with Demo badge', () => {
+  it('never renders a Demo badge (DECISION-048, no demo fallback)', () => {
     render(<LinkedIocsSection entityId="a1" entityType="actor" entityName="APT29" />)
-    expect(screen.getByText('Demo')).toBeInTheDocument()
+    expect(screen.queryByText('Demo')).not.toBeInTheDocument()
   })
 })

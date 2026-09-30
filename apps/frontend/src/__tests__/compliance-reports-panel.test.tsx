@@ -11,18 +11,22 @@ import { ComplianceReportsList, DsarPanel } from '@/components/command-center/Co
 const mockGenerateMutate = vi.fn()
 const mockDeleteMutate = vi.fn()
 const mockDsarMutate = vi.fn()
+const mockRefetch = vi.fn()
+
+let mockReportsIsError = false
+let mockDsarIsError = false
 
 vi.mock('@/hooks/use-compliance-reports', () => ({
   useComplianceReports: () => ({
     data: {
-      data: [
+      data: mockReportsIsError ? [] : [
         { id: 'cr1', type: 'soc2_access_review', periodStart: '2026-01-01', periodEnd: '2026-03-31', scope: 'Platform-wide', status: 'completed', generatedBy: 'admin@etip.io', createdAt: '2026-03-28T10:00:00Z', sizeBytes: 145200, data: { summary: { totalUsers: 48, active: 42, inactive: 6, period: 'Q1 2026' } } },
         { id: 'cr2', type: 'privileged_access', periodStart: '2026-01-01', periodEnd: '2026-03-31', scope: 'Platform-wide', status: 'completed', generatedBy: 'admin@etip.io', createdAt: '2026-03-27T14:00:00Z', sizeBytes: 89100 },
         { id: 'cr3', type: 'gdpr_dsar', periodStart: '2026-01-01', periodEnd: '2026-03-31', scope: 'user@example.com', status: 'generating', generatedBy: 'admin@acme.com', createdAt: '2026-03-30T12:00:00Z' },
       ],
-      total: 3, page: 1, limit: 50,
+      total: mockReportsIsError ? 0 : 3, page: 1, limit: 50,
     },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: mockReportsIsError, error: mockReportsIsError ? new Error('boom') : null, refetch: mockRefetch,
   }),
   useGenerateReport: () => ({ mutate: mockGenerateMutate, isPending: false }),
   useComplianceReport: (_id: string) => ({
@@ -35,21 +39,21 @@ vi.mock('@/hooks/use-compliance-reports', () => ({
         mfaAdoption: { enabledPercent: 78, total: 48, enabled: 37 },
       },
     },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: false, error: null, refetch: mockRefetch,
   }),
   useDeleteReport: () => ({ mutate: mockDeleteMutate, isPending: false }),
   useDsarExports: () => ({
     data: {
-      data: [
+      data: mockDsarIsError ? [] : [
         { id: 'd1', userId: 'u10', userName: 'Employee A', status: 'completed', requestedAt: '2026-03-25T10:00:00Z', sizeBytes: 52300 },
         { id: 'd2', userId: 'u11', userName: 'Employee B', status: 'generating', requestedAt: '2026-03-30T14:00:00Z' },
       ],
-      total: 2, page: 1, limit: 50,
+      total: mockDsarIsError ? 0 : 2, page: 1, limit: 50,
     },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: mockDsarIsError, error: mockDsarIsError ? new Error('boom') : null, refetch: mockRefetch,
   }),
   useGenerateDsar: () => ({ mutate: mockDsarMutate, isPending: false }),
-  useDsarExport: () => ({ data: null, isLoading: false }),
+  useDsarExport: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: mockRefetch }),
 }))
 
 const USERS_OK = {

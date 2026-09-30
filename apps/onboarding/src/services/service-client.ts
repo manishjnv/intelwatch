@@ -1,7 +1,7 @@
 /**
  * @module services/service-client
  * @description HTTP client for inter-service communication with service JWT auth.
- * Used by DemoSeeder to POST real data to downstream services.
+ * Used by RealSeeder to POST/GET real data to/from downstream services.
  */
 import { signServiceToken } from '@etip/shared-auth';
 import { getLogger } from '../logger.js';

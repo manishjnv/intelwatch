@@ -7,7 +7,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
-import { notifyApiError } from './useApiError'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -81,57 +80,6 @@ export interface ReportFilters {
   status?: ReportStatus | 'all'
 }
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEMO_REPORTS: ComplianceReport[] = [
-  {
-    id: 'cr1', type: 'soc2_access_review', periodStart: '2026-01-01', periodEnd: '2026-03-31',
-    scope: 'Platform-wide', status: 'completed', generatedBy: 'admin@etip.io',
-    createdAt: '2026-03-28T10:00:00Z', sizeBytes: 145200,
-    data: {
-      summary: { totalUsers: 48, active: 42, inactive: 6, period: 'Q1 2026' },
-      roleDistribution: { super_admin: 3, tenant_admin: 8, analyst: 25, viewer: 12 },
-      mfaAdoption: { enabledPercent: 78, total: 48, enabled: 37 },
-      authMethods: { sso: 15, local: 33 },
-      accessChanges: [
-        { user: 'alice@corp.com', changeType: 'added', date: '2026-01-15', details: 'Onboarded as analyst' },
-        { user: 'bob@corp.com', changeType: 'disabled', date: '2026-02-20', details: 'Stale 90+ days' },
-      ],
-      staleAccounts: [
-        { user: 'idle@corp.com', lastActivity: '2025-12-01', daysSinceActive: 120 },
-      ],
-      reviewActions: [
-        { review: 'Quarterly Q1', action: 'confirmed', reviewedBy: 'admin@etip.io', date: '2026-03-20' },
-      ],
-    },
-  },
-  {
-    id: 'cr2', type: 'privileged_access', periodStart: '2026-01-01', periodEnd: '2026-03-31',
-    scope: 'Platform-wide', status: 'completed', generatedBy: 'admin@etip.io',
-    createdAt: '2026-03-27T14:00:00Z', sizeBytes: 89100,
-    data: {
-      superAdmins: [
-        { email: 'root@etip.io', lastLogin: '2026-03-30T09:00:00Z', sessions: 45, mfa: true, geoLocations: ['Mumbai, IN'] },
-      ],
-      tenantAdmins: [
-        { email: 'admin@acme.com', org: 'ACME Corp', lastLogin: '2026-03-29T08:00:00Z', mfa: true },
-      ],
-      apiKeysSummary: { total: 12, byTenant: { 'ACME Corp': 5, 'Beta Inc': 4, 'Gamma LLC': 3 } },
-      scimTokensSummary: { total: 3, byTenant: { 'ACME Corp': 2, 'Beta Inc': 1 } },
-    },
-  },
-  {
-    id: 'cr3', type: 'gdpr_dsar', periodStart: '2026-01-01', periodEnd: '2026-03-31',
-    scope: 'user@example.com', status: 'generating', generatedBy: 'admin@acme.com',
-    createdAt: '2026-03-30T12:00:00Z',
-  },
-]
-
-const DEMO_DSARS: DsarExport[] = [
-  { id: 'd1', userId: 'u10', userName: 'Employee A', status: 'completed', requestedAt: '2026-03-25T10:00:00Z', sizeBytes: 52300 },
-  { id: 'd2', userId: 'u11', userName: 'Employee B', status: 'generating', requestedAt: '2026-03-30T14:00:00Z' },
-]
-
 // ─── Helper ─────────────────────────────────────────────────
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
@@ -151,18 +99,12 @@ export function useComplianceReports(filters: ReportFilters = {}) {
 
   const result = useQuery({
     queryKey: ['compliance-reports', filters],
-    queryFn: () =>
-      apiList<ComplianceReport>(`/admin/compliance/reports${query}`)
-        .catch(err => notifyApiError(err, 'compliance reports', empty)),
+    queryFn: () => apiList<ComplianceReport>(`/admin/compliance/reports${query}`),
     staleTime: 60_000,
+    meta: { resource: 'compliance reports' },
   })
 
-  const isDemo = !result.isLoading && (result.data?.data?.length ?? 0) === 0
-  return {
-    ...result,
-    data: isDemo ? { data: DEMO_REPORTS, total: DEMO_REPORTS.length, page: 1, limit: 50 } : result.data ?? empty,
-    isDemo,
-  }
+  return { ...result, data: result.data ?? empty }
 }
 
 /** Generate a compliance report (super admin). */
@@ -183,16 +125,13 @@ export function useGenerateReport() {
 export function useComplianceReport(id: string | null) {
   const result = useQuery({
     queryKey: ['compliance-report', id],
-    queryFn: () =>
-      api<ComplianceReport>(`/admin/compliance/reports/${id}`)
-        .catch(err => notifyApiError(err, 'compliance report', null)),
+    queryFn: () => api<ComplianceReport>(`/admin/compliance/reports/${id}`),
     enabled: !!id,
     staleTime: 60_000,
+    meta: { resource: 'compliance report' },
   })
 
-  const isDemo = !result.isLoading && !result.data && !!id
-  const demoReport = DEMO_REPORTS.find(r => r.id === id) ?? DEMO_REPORTS[0]
-  return { ...result, data: isDemo ? demoReport : result.data, isDemo }
+  return { ...result, data: result.data ?? null }
 }
 
 /** Delete a compliance report (super admin). */
@@ -215,18 +154,12 @@ export function useDsarExports() {
 
   const result = useQuery({
     queryKey: ['dsar-exports'],
-    queryFn: () =>
-      apiList<DsarExport>('/settings/compliance/dsar')
-        .catch(err => notifyApiError(err, 'DSAR exports', empty)),
+    queryFn: () => apiList<DsarExport>('/settings/compliance/dsar'),
     staleTime: 60_000,
+    meta: { resource: 'DSAR exports' },
   })
 
-  const isDemo = !result.isLoading && (result.data?.data?.length ?? 0) === 0
-  return {
-    ...result,
-    data: isDemo ? { data: DEMO_DSARS, total: DEMO_DSARS.length, page: 1, limit: 50 } : result.data ?? empty,
-    isDemo,
-  }
+  return { ...result, data: result.data ?? empty }
 }
 
 /** Generate a DSAR export (tenant admin). */
@@ -256,10 +189,9 @@ export function useGenerateDsar() {
 export function useDsarExport(id: string | null) {
   return useQuery({
     queryKey: ['dsar-export', id],
-    queryFn: () =>
-      api<ComplianceReport>(`/settings/compliance/dsar/${id}`)
-        .catch(err => notifyApiError(err, 'DSAR export', null)),
+    queryFn: () => api<ComplianceReport>(`/settings/compliance/dsar/${id}`),
     enabled: !!id,
     staleTime: 60_000,
+    meta: { resource: 'DSAR export' },
   })
 }

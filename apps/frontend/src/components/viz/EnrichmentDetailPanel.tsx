@@ -9,8 +9,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useIOCCost, useTriggerEnrichment } from '@/hooks/use-enrichment-data'
-import type { EnrichmentResult, IOCCostBreakdown } from '@/hooks/use-enrichment-data'
-import { DEMO_ENRICHMENT_RESULT, DEMO_IOC_COST } from '@/hooks/demo-data'
+import type { EnrichmentResult } from '@/hooks/use-enrichment-data'
 import {
   ChevronDown, Shield, AlertTriangle, CheckCircle, XCircle,
   Zap, Globe, Brain, Target, ExternalLink, RefreshCw,
@@ -120,9 +119,33 @@ export function EnrichmentDetailPanel({ iocId, iocType, enrichment, className }:
   const { data: costData } = useIOCCost(enrichment?.enrichmentStatus === 'enriched' ? iocId : null)
   const triggerMutation = useTriggerEnrichment()
 
-  // Use demo data when no real enrichment data exists
-  const e = enrichment ?? DEMO_ENRICHMENT_RESULT
-  const cost: IOCCostBreakdown | undefined = costData ?? (enrichment ? undefined : DEMO_IOC_COST)
+  if (!enrichment) {
+    return (
+      <div className={cn('space-y-2', className)}>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-bg-elevated text-text-muted">
+            not enriched
+          </span>
+          <button
+            onClick={() => triggerMutation.mutate(iocId)}
+            disabled={triggerMutation.isPending}
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={cn('w-3 h-3', triggerMutation.isPending && 'animate-spin')} />
+            Enrich now
+          </button>
+        </div>
+        <div className="p-4 text-center text-text-muted text-xs">
+          <Brain className="w-6 h-6 mx-auto mb-2 opacity-50" />
+          <p>Not enriched yet.</p>
+          <p className="mt-1 opacity-70">Click &quot;Enrich now&quot; to queue enrichment.</p>
+        </div>
+      </div>
+    )
+  }
+
+  const e = enrichment
+  const cost = costData
   const h = e.haikuResult
   const vt = e.vtResult
   const abuse = e.abuseipdbResult

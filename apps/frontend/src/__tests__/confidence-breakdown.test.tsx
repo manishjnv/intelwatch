@@ -1,10 +1,10 @@
 /**
  * @module tests/confidence-breakdown
- * @description Tests for ConfidenceBreakdown component:
- *   - Renders breakdown when confidence > 0
+ * @description Tests for ConfidenceBreakdown component (DECISION-048 honest UI):
+ *   - Renders nothing when the backend hasn't sent real formula inputs (no fabricated values)
+ *   - Renders breakdown when real feedReliability/corroborationCount/aiConfidence are present
  *   - Shows time decay label when lastSeen > 0 days ago
  *   - Collapses/expands on toggle
- *   - Demo fallback renders correctly
  */
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
@@ -22,21 +22,29 @@ function makeRecord(overrides: Partial<IOCRecord> = {}): IOCRecord {
   }
 }
 
+/** Real backend formula inputs — without these the component must render nothing. */
+const REAL_FORMULA_FIELDS = { feedReliability: 75, corroborationCount: 3, aiConfidence: 68 }
+
 describe('ConfidenceBreakdown', () => {
-  it('renders breakdown toggle when confidence > 0 and isDemo', () => {
-    render(<ConfidenceBreakdown record={makeRecord()} isDemo={true} />)
+  it('renders nothing when the backend has not sent real formula inputs (no fabricated values)', () => {
+    render(<ConfidenceBreakdown record={makeRecord()} />)
+    expect(screen.queryByTestId('confidence-breakdown')).toBeNull()
+  })
+
+  it('does not render when confidence is 0, even with real formula inputs', () => {
+    render(<ConfidenceBreakdown record={makeRecord({ confidence: 0, ...REAL_FORMULA_FIELDS })} />)
+    expect(screen.queryByTestId('confidence-breakdown')).toBeNull()
+  })
+
+  it('renders breakdown toggle when real formula inputs are present', () => {
+    render(<ConfidenceBreakdown record={makeRecord(REAL_FORMULA_FIELDS)} />)
     expect(screen.getByTestId('confidence-breakdown')).toBeTruthy()
     expect(screen.getByTestId('confidence-breakdown-toggle')).toBeTruthy()
     expect(screen.getByText('Confidence Score')).toBeTruthy()
   })
 
-  it('does not render when confidence is 0', () => {
-    render(<ConfidenceBreakdown record={makeRecord({ confidence: 0 })} isDemo={true} />)
-    expect(screen.queryByTestId('confidence-breakdown')).toBeNull()
-  })
-
   it('expands and shows breakdown rows on toggle click', () => {
-    render(<ConfidenceBreakdown record={makeRecord()} isDemo={true} />)
+    render(<ConfidenceBreakdown record={makeRecord(REAL_FORMULA_FIELDS)} />)
     // Initially collapsed — body not visible
     expect(screen.queryByTestId('confidence-breakdown-body')).toBeNull()
 
@@ -52,7 +60,7 @@ describe('ConfidenceBreakdown', () => {
   })
 
   it('collapses on second toggle click', () => {
-    render(<ConfidenceBreakdown record={makeRecord()} isDemo={true} />)
+    render(<ConfidenceBreakdown record={makeRecord(REAL_FORMULA_FIELDS)} />)
     const toggle = screen.getByTestId('confidence-breakdown-toggle')
 
     fireEvent.click(toggle) // expand
@@ -63,15 +71,15 @@ describe('ConfidenceBreakdown', () => {
   })
 
   it('shows time decay label when lastSeen > 0 days ago', () => {
-    render(<ConfidenceBreakdown record={makeRecord()} isDemo={true} />)
+    render(<ConfidenceBreakdown record={makeRecord(REAL_FORMULA_FIELDS)} />)
     fireEvent.click(screen.getByTestId('confidence-breakdown-toggle'))
     expect(screen.getByText(/Time Decay/)).toBeTruthy()
     expect(screen.getByText(/14d old/)).toBeTruthy()
   })
 
   it('does not show time decay when lastSeen is today', () => {
-    const record = makeRecord({ lastSeen: new Date().toISOString() })
-    render(<ConfidenceBreakdown record={record} isDemo={true} />)
+    const record = makeRecord({ lastSeen: new Date().toISOString(), ...REAL_FORMULA_FIELDS })
+    render(<ConfidenceBreakdown record={record} />)
     fireEvent.click(screen.getByTestId('confidence-breakdown-toggle'))
     expect(screen.queryByText(/Time Decay/)).toBeNull()
   })
@@ -82,7 +90,7 @@ describe('ConfidenceBreakdown', () => {
       corroborationCount: 3,
       aiConfidence: 68,
     })
-    render(<ConfidenceBreakdown record={record} isDemo={false} />)
+    render(<ConfidenceBreakdown record={record} />)
     fireEvent.click(screen.getByTestId('confidence-breakdown-toggle'))
 
     // Feed: 0.75 × 35% = 26%
@@ -93,14 +101,8 @@ describe('ConfidenceBreakdown', () => {
     expect(screen.getByText(/3 sources/)).toBeTruthy()
   })
 
-  it('demo fallback computes reasonable values from confidence', () => {
-    const record = makeRecord({ confidence: 82 })
-    render(<ConfidenceBreakdown record={record} isDemo={true} />)
-    fireEvent.click(screen.getByTestId('confidence-breakdown-toggle'))
-
-    // Should show some breakdown values (demo-computed)
-    const body = screen.getByTestId('confidence-breakdown-body')
-    expect(body.textContent).toContain('35%')
-    expect(body.textContent).toContain('30%')
+  it('renders nothing when only some real formula fields are present (partial data is not enough)', () => {
+    render(<ConfidenceBreakdown record={makeRecord({ feedReliability: 75 })} />)
+    expect(screen.queryByTestId('confidence-breakdown')).toBeNull()
   })
 })

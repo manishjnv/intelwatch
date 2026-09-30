@@ -10,11 +10,12 @@ import { AccessReviewPanel } from '@/components/command-center/AccessReviewPanel
 // ─── Mock hooks ──────────────────────────────────────────────
 
 const mockMutate = vi.fn()
+const mockRefetch = vi.fn()
 
 vi.mock('@/hooks/use-access-reviews', () => ({
   useAccessReviewStats: () => ({
     data: { pending: 5, autoDisabled: 2, confirmed: 18 },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: false, error: null, refetch: mockRefetch,
   }),
   useAccessReviews: (_filters: any) => ({
     data: {
@@ -25,7 +26,7 @@ vi.mock('@/hooks/use-access-reviews', () => ({
       ],
       total: 3, page: 1, limit: 50,
     },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: false, error: null, refetch: mockRefetch,
   }),
   useAccessReviewAction: () => ({
     mutate: mockMutate,
@@ -37,7 +38,7 @@ vi.mock('@/hooks/use-access-reviews', () => ({
       ssoUsers: 15, roleBreakdown: { super_admin: 3, tenant_admin: 8, analyst: 25, viewer: 12 },
       usersAddedThisQuarter: 7, usersRemovedThisQuarter: 2, staleAccounts: 4,
     },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: false, error: null, refetch: mockRefetch,
   }),
 }))
 

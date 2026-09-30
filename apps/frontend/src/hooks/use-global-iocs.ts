@@ -51,60 +51,6 @@ export interface OverlayInput {
   customNotes?: string
 }
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-function daysAgo(n: number): string {
-  return new Date(Date.now() - n * 86_400_000).toISOString()
-}
-
-const DEMO_GLOBAL_IOCS: GlobalIocRecord[] = [
-  {
-    id: 'gioc-1', iocType: 'ip', value: '185.220.101.34', normalizedValue: '185.220.101.34',
-    dedupeHash: 'abc123', confidence: 92, severity: 'critical', stixConfidenceTier: 'High',
-    lifecycle: 'active', crossFeedCorroboration: 4, sightingSources: ['gf-1', 'gf-2', 'gf-3', 'gf-4'],
-    firstSeen: daysAgo(28), lastSeen: daysAgo(0), enrichmentQuality: 85, warninglistMatch: null,
-    enrichmentData: {
-      shodan: { org: 'Tor Exit Node', isp: 'OVH', country: 'FR', ports: [22, 80, 443], riskScore: 95 },
-      greynoise: { classification: 'malicious', noise: true, riot: false },
-    },
-    attackTechniques: ['T1071.001', 'T1566.001'],
-  },
-  {
-    id: 'gioc-2', iocType: 'domain', value: 'evil-payload.darknet.ru', normalizedValue: 'evil-payload.darknet.ru',
-    dedupeHash: 'def456', confidence: 88, severity: 'high', stixConfidenceTier: 'High',
-    lifecycle: 'active', crossFeedCorroboration: 3, sightingSources: ['gf-1', 'gf-3', 'gf-5'],
-    firstSeen: daysAgo(14), lastSeen: daysAgo(1), enrichmentQuality: 70, warninglistMatch: null,
-    enrichmentData: {
-      greynoise: { classification: 'malicious', noise: false, riot: false },
-    },
-  },
-  {
-    id: 'gioc-3', iocType: 'cve', value: 'CVE-2024-21887', normalizedValue: 'CVE-2024-21887',
-    dedupeHash: 'ghi789', confidence: 95, severity: 'critical', stixConfidenceTier: 'High',
-    lifecycle: 'active', crossFeedCorroboration: 5, sightingSources: ['gf-2', 'gf-4'],
-    firstSeen: daysAgo(30), lastSeen: daysAgo(0), enrichmentQuality: 90, warninglistMatch: null,
-    enrichmentData: {
-      epss: { probability: 0.95, percentile: 99 },
-    },
-    affectedCpes: ['cpe:2.3:a:ivanti:connect_secure:*:*:*:*:*:*:*:*'],
-  },
-  {
-    id: 'gioc-4', iocType: 'hash', value: 'a1b2c3d4e5f6...', normalizedValue: 'a1b2c3d4e5f67890',
-    dedupeHash: 'jkl012', confidence: 65, severity: 'medium', stixConfidenceTier: 'Med',
-    lifecycle: 'new', crossFeedCorroboration: 2, sightingSources: ['gf-3'],
-    firstSeen: daysAgo(3), lastSeen: daysAgo(2), enrichmentQuality: 40, warninglistMatch: null,
-    enrichmentData: {},
-  },
-  {
-    id: 'gioc-5', iocType: 'ip', value: '198.51.100.23', normalizedValue: '198.51.100.23',
-    dedupeHash: 'mno345', confidence: 30, severity: 'info', stixConfidenceTier: 'Low',
-    lifecycle: 'aging', crossFeedCorroboration: 1, sightingSources: ['gf-1'],
-    firstSeen: daysAgo(45), lastSeen: daysAgo(15), enrichmentQuality: 20,
-    warninglistMatch: 'IANA Reserved',
-    enrichmentData: {},
-  },
-]
-
 // ─── Hooks ──────────────────────────────────────────────────
 
 export function useGlobalIocs(filters?: Record<string, string | number | undefined>) {
@@ -112,15 +58,13 @@ export function useGlobalIocs(filters?: Record<string, string | number | undefin
   const params = filters
     ? '?' + Object.entries(filters).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')
     : ''
-  const result = useQuery({
+  return useQuery({
     queryKey: ['global-iocs', filters],
     queryFn: () =>
       api<GlobalIocRecord[]>(`/normalization/global-iocs${params}`)
         .catch(err => notifyApiError(err, 'global IOCs', empty)),
     staleTime: 60_000,
   })
-  const isDemo = !result.isLoading && (result.data?.length ?? 0) === 0
-  return { ...result, data: isDemo ? DEMO_GLOBAL_IOCS : result.data, isDemo }
 }
 
 export function useGlobalIocDetail(iocId: string | null) {
@@ -128,7 +72,7 @@ export function useGlobalIocDetail(iocId: string | null) {
     queryKey: ['global-ioc-detail', iocId],
     queryFn: () =>
       api<GlobalIocRecord>(`/normalization/global-iocs/${iocId}`)
-        .catch(() => DEMO_GLOBAL_IOCS[0]),
+        .catch(() => null),
     enabled: !!iocId,
     staleTime: 60_000,
   })

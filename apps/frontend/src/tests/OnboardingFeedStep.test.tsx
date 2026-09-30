@@ -9,7 +9,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 const mockCompleteStep = { mutate: vi.fn(), isPending: false }
 const mockSkipStep = { mutate: vi.fn(), isPending: false }
-const mockSeedDemo = { mutate: vi.fn(), isPending: false }
+const mockAddStarterFeeds = { mutate: vi.fn(), isPending: false }
 
 const mockCatalogFeeds = [
   { id: 'f1', name: 'CISA KEV', feedType: 'rest', minPlanTier: 'free', enabled: true, sourceReliability: 'B' },
@@ -52,7 +52,7 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useReadinessCheck: vi.fn(() => ({ data: null })),
   useCompleteStep: vi.fn(() => mockCompleteStep),
   useSkipStep: vi.fn(() => mockSkipStep),
-  useSeedDemo: vi.fn(() => mockSeedDemo),
+  useAddStarterFeeds: vi.fn(() => mockAddStarterFeeds),
 }))
 
 vi.mock('@/hooks/use-onboarding-feeds', () => ({

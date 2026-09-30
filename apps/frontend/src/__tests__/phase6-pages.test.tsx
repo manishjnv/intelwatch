@@ -34,7 +34,7 @@ const mockUseModuleReadiness = vi.fn()
 const mockUseReadinessCheck = vi.fn()
 const mockUseCompleteStep = vi.fn()
 const mockUseSkipStep = vi.fn()
-const mockUseSeedDemo = vi.fn()
+const mockUseAddStarterFeeds = vi.fn()
 
 vi.mock('@/hooks/use-phase6-data', () => ({
   useBillingPlans:         () => mockUseBillingPlans(),
@@ -68,7 +68,7 @@ vi.mock('@/hooks/use-phase6-data', () => ({
   useReadinessCheck:       () => mockUseReadinessCheck(),
   useCompleteStep:         () => mockUseCompleteStep(),
   useSkipStep:             () => mockUseSkipStep(),
-  useSeedDemo:             () => mockUseSeedDemo(),
+  useAddStarterFeeds:      () => mockUseAddStarterFeeds(),
 }))
 
 // Mock FeedSelectionStep component (Session 100 — extracted to own file)
@@ -740,7 +740,7 @@ describe('OnboardingPage', () => {
     mockUseReadinessCheck.mockReturnValue(mockQuery(READINESS_DATA))
     mockUseCompleteStep.mockReturnValue(mockMutation())
     mockUseSkipStep.mockReturnValue(mockMutation())
-    mockUseSeedDemo.mockReturnValue(mockMutation())
+    mockUseAddStarterFeeds.mockReturnValue(mockMutation())
   })
 
   it('renders page stats bar', async () => {
@@ -937,20 +937,20 @@ describe('OnboardingPage', () => {
     expect(screen.getByText('Configure AI enrichment')).toBeInTheDocument()
   })
 
-  it('shows Seed Demo Data button on Quick Start tab', async () => {
+  it('shows Add starter feeds button on Quick Start tab', async () => {
     const { OnboardingPage } = await import('@/pages/OnboardingPage')
     render(<OnboardingPage />)
     fireEvent.click(screen.getByText('Quick Start'))
-    expect(screen.getByRole('button', { name: /Seed Demo Data/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Add starter feeds/ })).toBeInTheDocument()
   })
 
-  it('Seed Demo Data button calls mutation', async () => {
+  it('Add starter feeds button calls mutation', async () => {
     const mutate = vi.fn()
-    mockUseSeedDemo.mockReturnValue({ mutate, isPending: false })
+    mockUseAddStarterFeeds.mockReturnValue({ mutate, isPending: false })
     const { OnboardingPage } = await import('@/pages/OnboardingPage')
     render(<OnboardingPage />)
     fireEvent.click(screen.getByText('Quick Start'))
-    fireEvent.click(screen.getByRole('button', { name: /Seed Demo Data/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Add starter feeds/ }))
     expect(mutate).toHaveBeenCalledWith({})
   })
 

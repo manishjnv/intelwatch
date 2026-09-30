@@ -298,7 +298,7 @@ export function SearchPage() {
                 )}
               </div>
             }
-            right={selectedRecord ? <IocDetailPanel record={selectedRecord} isDemo={false} /> : null}
+            right={selectedRecord ? <IocDetailPanel record={selectedRecord} /> : null}
             showRight={!!selectedRecord}
           />
         </div>

@@ -1,15 +1,13 @@
 # User Management Service
 
-**Port:** 3016 | **Status:** ✅ Deployed (FEATURE-COMPLETE) | **Tests:** 375
+**Port:** 3016 | **Status:** ✅ Deployed (FEATURE-COMPLETE) | **Tests:** 366
 
 ## What It Does
 Fine-grained RBAC, team management, SSO configuration (SAML 2.0 + OIDC), MFA (TOTP + backup codes), break-glass emergency access, session management, password policy enforcement, SOC2 audit logging, quarterly access review automation (I-17), compliance report generation (I-18), real user directory (S162), and API key management with server-side RBAC (S167). Mostly in-memory (DECISION-013 pattern) — the user directory and API keys read/write through Prisma.
 
-## Offboarding purge (S159e, ✅ Deployed (S177, PR #70 `47201c0`))
+## Offboarding: deactivate, keep all data (S177, PR #71, DECISION-052)
 
-`offboarding-purge-worker.ts`'s `purgeTenant()` now also deletes the 18 Step 3 tables (integrations, integration_logs, integration_deliveries, integration_tickets, integration_docs, alert_rules, alert_channels, alert_escalation_policies, alert_maintenance_windows, alerts, alert_history, alert_groups, drp_assets, drp_alerts, drp_scans, drp_takedowns, drp_alert_feedback, hunting_docs) and 8 older tenant tables it had previously missed (webhook_subscriptions, tenant_feed_subscriptions, tenant_ioc_overlays, tenant_item_consumption, feed_quota_plan_assignments, access_reviews, compliance_reports, mfa_enforcement_policies — nullable-tenant tables match the tenant only). `ExternalPurger` also deletes Redis `etip:{tenantId}:*` and now rejects any tenant id that is not a UUID. First unit tests added for the purge worker. Tests 371 → 375.
-
-**Not changed:** nothing schedules the purge worker yet (known gap since S148) — see `docs/PENDING_WORK.md` §3.
+Offboarding blocks the tenant and its users, ends sessions, revokes API keys, disables SSO, and revokes SCIM tokens — it does not purge or archive any data. There is no purge date and no archive job; reactivation uses the existing cancel flow. The `offboarding-purge-worker.ts` and `external-purge.ts` files (never scheduled, known gap since S148) were deleted — the last version is recoverable from git commit `17a7737` if a legal erasure request ever needs a manual one-off purge. `@etip/shared-types` offboarding response/pipeline purge fields are now nullable and always null.
 
 ## Features
 | Feature | File | Description |

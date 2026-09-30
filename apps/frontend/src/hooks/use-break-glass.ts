@@ -8,7 +8,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { apiList } from '@/lib/api-list'
 import { toast } from '@/components/ui/Toast'
-import { notifyApiError } from './useApiError'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -46,49 +45,19 @@ export interface AuditFilters {
   endDate?: string
 }
 
-// ─── Demo Data ──────────────────────────────────────────────
-
-const DEMO_STATUS: BreakGlassStatus = {
-  activeSession: false,
-  lastUsed: '2026-03-25T03:15:00Z',
-  useCount: 2,
-}
-
-const DEMO_STATUS_ACTIVE: BreakGlassStatus = {
-  activeSession: true,
-  lastUsed: '2026-03-30T01:00:00Z',
-  useCount: 3,
-  session: {
-    ip: '203.0.113.42',
-    geo: 'Mumbai, IN',
-    startedAt: '2026-03-30T01:00:00Z',
-    expiresAt: '2026-03-30T01:15:00Z',
-  },
-}
-
-const DEMO_AUDIT: BreakGlassAuditEntry[] = [
-  { id: 'a1', event: 'login.success', ip: '203.0.113.42', location: 'Mumbai, IN', timestamp: '2026-03-25T03:15:00Z', details: null, riskLevel: 'critical' },
-  { id: 'a2', event: 'action.GET /admin/tenants', ip: '203.0.113.42', location: 'Mumbai, IN', timestamp: '2026-03-25T03:15:30Z', details: 'Listed all tenants', riskLevel: 'critical' },
-  { id: 'a3', event: 'session_expired', ip: '203.0.113.42', location: 'Mumbai, IN', timestamp: '2026-03-25T03:30:00Z', details: 'Session TTL exceeded', riskLevel: 'critical' },
-  { id: 'a4', event: 'login.failed', ip: '198.51.100.10', location: 'Unknown', timestamp: '2026-03-20T22:10:00Z', details: 'Invalid password', riskLevel: 'critical' },
-  { id: 'a5', event: 'login.locked', ip: '198.51.100.10', location: 'Unknown', timestamp: '2026-03-20T22:12:00Z', details: 'Locked after 5 failed attempts', riskLevel: 'critical' },
-]
-
 // ─── Hooks ──────────────────────────────────────────────────
 
 /** Fetch break-glass system status. */
 export function useBreakGlassStatus() {
   const result = useQuery({
     queryKey: ['break-glass-status'],
-    queryFn: () =>
-      api<BreakGlassStatus>('/admin/break-glass/status')
-        .catch(err => notifyApiError(err, 'break-glass status', null)),
+    queryFn: () => api<BreakGlassStatus>('/admin/break-glass/status'),
     staleTime: 10_000,
     refetchInterval: 30_000,
+    meta: { resource: 'break-glass status' },
   })
 
-  const isDemo = !result.isLoading && !result.data
-  return { ...result, data: result.data ?? DEMO_STATUS, isDemo, DEMO_STATUS_ACTIVE }
+  return { ...result, data: result.data ?? null }
 }
 
 // user-service returns raw Prisma AuditLog rows ({ action: 'break_glass.login.success', ipAddress, createdAt,
@@ -123,20 +92,14 @@ export function useBreakGlassAudit(filters: AuditFilters = {}) {
     queryKey: ['break-glass-audit', filters],
     // apiList, not api<{data,total}>: api() already unwraps the gateway's { data: entries, total }, so the
     // old shape made auditData.data undefined and crashed the panel on any successful response (RCA #45 class).
-    // ponytail: demo fallback on error stays until S161b converts this hook to honest UI.
     queryFn: () =>
       apiList<AuditLogRow>(`/admin/break-glass/audit${qs ? `?${qs}` : ''}`)
-        .then(env => ({ ...env, data: env.data.map(toBreakGlassAuditEntry) }))
-        .catch(err => notifyApiError(err, 'break-glass audit', null)),
+        .then(env => ({ ...env, data: env.data.map(toBreakGlassAuditEntry) })),
     staleTime: 30_000,
+    meta: { resource: 'break-glass audit' },
   })
 
-  const isDemo = !result.isLoading && !result.data
-  return {
-    ...result,
-    data: isDemo ? { data: DEMO_AUDIT, total: DEMO_AUDIT.length } : result.data ?? { data: [], total: 0 },
-    isDemo,
-  }
+  return { ...result, data: result.data ?? { data: [], total: 0 } }
 }
 
 /** Rotate break-glass password. */

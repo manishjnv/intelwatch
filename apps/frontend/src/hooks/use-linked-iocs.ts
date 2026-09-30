@@ -29,16 +29,6 @@ interface ListResponse {
   total?: number
 }
 
-// ─── Demo Data ──────────────────────────────────────────────────
-
-const DEMO_LINKED_IOCS: LinkedIoc[] = [
-  { id: 'li-1', iocType: 'ip', normalizedValue: '185.220.101.1', severity: 'critical', confidence: 88, relationship: 'attributed', lastSeen: '2025-03-20T00:00:00Z', source: 'global' },
-  { id: 'li-2', iocType: 'domain', normalizedValue: 'evil-c2.net', severity: 'high', confidence: 75, relationship: 'used_by', lastSeen: '2025-03-18T00:00:00Z', source: 'global' },
-  { id: 'li-3', iocType: 'hash_sha256', normalizedValue: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2', severity: 'high', confidence: 82, relationship: 'drops', lastSeen: '2025-03-15T00:00:00Z', source: 'private' },
-  { id: 'li-4', iocType: 'url', normalizedValue: 'http://malware-cdn.ru/payload.exe', severity: 'medium', confidence: 60, relationship: 'contacts', lastSeen: '2025-03-10T00:00:00Z', source: 'global' },
-  { id: 'li-5', iocType: 'cve', normalizedValue: 'CVE-2024-3400', severity: 'critical', confidence: 95, relationship: 'exploits', lastSeen: '2025-03-22T00:00:00Z', source: 'global' },
-]
-
 // ─── Endpoint mapping ───────────────────────────────────────────
 
 function getEndpoint(entityType: EntityType, entityId: string): string {
@@ -80,8 +70,7 @@ export function useLinkedIocs(entityId: string | null, entityType: EntityType) {
     staleTime: 60_000,
   })
 
-  const raw = result.data && result.data.length > 0 ? result.data : DEMO_LINKED_IOCS
-  const isDemo = !result.isLoading && (!result.data || result.data.length === 0)
+  const raw = result.data ?? []
 
   const filtered = useMemo(() => {
     let items = [...raw]
@@ -116,7 +105,6 @@ export function useLinkedIocs(entityId: string | null, entityType: EntityType) {
     totalCount: raw.length,
     filteredCount: filtered.length,
     isLoading: result.isLoading,
-    isDemo,
     typeFilter, setTypeFilter,
     sevFilter, setSevFilter,
     sortKey, setSortKey,

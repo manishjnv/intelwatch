@@ -43,12 +43,11 @@ let currentStatus: any = INACTIVE_STATUS
 vi.mock('@/hooks/use-break-glass', () => ({
   useBreakGlassStatus: () => ({
     data: currentStatus,
-    isLoading: false, isDemo: false,
-    DEMO_STATUS_ACTIVE: ACTIVE_STATUS,
+    isLoading: false, isError: false, error: null, refetch: vi.fn(),
   }),
   useBreakGlassAudit: () => ({
     data: { data: DEMO_AUDIT, total: DEMO_AUDIT.length },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: false, error: null, refetch: vi.fn(),
   }),
   useRotateBreakGlassPassword: () => ({
     mutate: mockRotateMutate,

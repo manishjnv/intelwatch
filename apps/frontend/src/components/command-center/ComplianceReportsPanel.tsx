@@ -19,7 +19,7 @@ import { apiDownload } from '@/lib/api'
 import {
   Download, Eye, Trash2, Plus, X, Loader2,
   Shield, CheckCircle, XCircle,
-  Globe,
+  Globe, RefreshCw,
 } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -288,6 +288,18 @@ function DsarReportView({ data: d }: { data: ComplianceReportData }) {
 
 // ─── Shared UI Helpers ──────────────────────────────────────
 
+function ErrorNotice({ resource, error, onRetry }: { resource: string; error: unknown; onRetry: () => void }) {
+  return (
+    <div role="alert" className="p-3 rounded-lg border border-border bg-bg-secondary text-xs">
+      <p className="text-text-primary font-medium">Couldn&apos;t load {resource}</p>
+      <p className="text-text-muted mt-0.5">{classifyError(error)}.</p>
+      <button onClick={onRetry} className="mt-1.5 flex items-center gap-1 text-text-secondary hover:text-text-primary">
+        <RefreshCw className="w-3 h-3" /> Retry
+      </button>
+    </div>
+  )
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-bg-secondary border border-border rounded-lg p-3">
@@ -380,7 +392,7 @@ function getDefaultStart(): string {
 
 export function ComplianceReportsList() {
   const [filters, setFilters] = useState<ReportFilters>({ page: 1, limit: 50 })
-  const { data, isLoading } = useComplianceReports(filters)
+  const { data, isLoading, isError, error, refetch } = useComplianceReports(filters)
   const deleteMut = useDeleteReport()
   const [showGenerate, setShowGenerate] = useState(false)
   const [viewReport, setViewReport] = useState<ComplianceReport | null>(null)
@@ -426,6 +438,8 @@ export function ComplianceReportsList() {
       {/* Table */}
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 bg-bg-secondary rounded animate-pulse" />)}</div>
+      ) : isError ? (
+        <ErrorNotice resource="compliance reports" error={error} onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs" data-testid="reports-table">
@@ -495,7 +509,7 @@ export function ComplianceReportsList() {
 // ─── Tenant Admin: DSAR Panel ───────────────────────────────
 
 export function DsarPanel() {
-  const { data, isLoading } = useDsarExports()
+  const { data, isLoading, isError, error, refetch } = useDsarExports()
   const { data: usersData, isError: usersError, error: usersErr } = useUsers()
   const genMut = useGenerateDsar()
   const [showGenerate, setShowGenerate] = useState(false)
@@ -526,6 +540,8 @@ export function DsarPanel() {
 
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-10 bg-bg-secondary rounded animate-pulse" />)}</div>
+      ) : isError ? (
+        <ErrorNotice resource="DSAR exports" error={error} onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs" data-testid="dsar-table">

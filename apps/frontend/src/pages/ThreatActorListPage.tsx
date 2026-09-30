@@ -46,8 +46,6 @@ const SOPH_COLORS: Record<string, string> = {
   minimal: 'text-sev-low', none: 'text-text-muted',
 }
 
-const DEMO_MITRE = ['T1059', 'T1078', 'T1190']
-
 function ConfidenceBar({ value }: { value: number }) {
   const color = value >= 70 ? 'bg-sev-low' : value >= 40 ? 'bg-sev-medium' : 'bg-sev-critical'
   return (
@@ -63,7 +61,7 @@ function ConfidenceBar({ value }: { value: number }) {
 function ActorDetailPanel({ actor }: { actor: ActorRecord }) {
   const { data: detail } = useActorDetail(actor.id)
 
-  const mitre = (detail?.mitreTechniques?.length ?? 0) > 0 ? detail!.mitreTechniques! : DEMO_MITRE
+  const mitre = (detail?.mitreTechniques?.length ?? 0) > 0 ? detail!.mitreTechniques! : (actor.mitreTechniques ?? [])
 
   const tlpColors: Record<string, string> = {
     red: 'text-sev-critical', amber: 'text-sev-medium',
@@ -136,29 +134,10 @@ export function ThreatActorListPage() {
     ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
   }), [page, debouncedSearch, sortBy, sortOrder, filters])
 
-  const { data, isLoading, isDemo } = useActors(queryParams)
+  const { data, isLoading } = useActors(queryParams)
 
-  const rows = useMemo(() => {
-    let items = data?.data ?? []
-    if (!isDemo || items.length === 0) return items
-    if (debouncedSearch) {
-      const q = debouncedSearch.toLowerCase()
-      items = items.filter(r =>
-        r.name.toLowerCase().includes(q) ||
-        r.aliases.some(a => a.toLowerCase().includes(q)) ||
-        (r.country ?? '').toLowerCase().includes(q)
-      )
-    }
-    if (filters.actorType) items = items.filter(r => r.actorType === filters.actorType)
-    if (filters.motivation) items = items.filter(r => r.motivation === filters.motivation)
-    if (filters.sophistication) items = items.filter(r => r.sophistication === filters.sophistication)
-    return [...items].sort((a, b) => {
-      const av = (a[sortBy as keyof ActorRecord] ?? '') as string | number
-      const bv = (b[sortBy as keyof ActorRecord] ?? '') as string | number
-      const cmp = av < bv ? -1 : av > bv ? 1 : 0
-      return sortOrder === 'asc' ? cmp : -cmp
-    })
-  }, [data, isDemo, sortBy, sortOrder, debouncedSearch, filters])
+  // Backend already applies search/filters/sort via queryParams
+  const rows = useMemo(() => data?.data ?? [], [data])
 
   const selectedActor = useMemo(
     () => rows.find(r => r.id === selectedActorId) ?? null,

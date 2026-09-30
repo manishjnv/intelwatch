@@ -88,8 +88,8 @@ describe('EnrichmentDetailPanel', () => {
     expect(screen.queryByText('Not enriched yet.')).not.toBeInTheDocument()
   })
 
-  it('does not crash when enrichment is null (falls back to demo data)', () => {
+  it('shows an honest not-enriched state when enrichment is null (DECISION-048: no demo fallback)', () => {
     render(<EnrichmentDetailPanel iocId="ioc-1" iocType="ip" enrichment={null} />)
-    expect(screen.getByText(/enriched|partial|pending|failed|skipped|not_selected/)).toBeInTheDocument()
+    expect(screen.getByText('Not enriched yet.')).toBeInTheDocument()
   })
 })

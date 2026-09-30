@@ -18,17 +18,19 @@ const MOCK_PLANS = [
   { id: 'enterprise', planName: 'Enterprise', maxPrivateFeeds: -1, maxGlobalSubscriptions: -1, minFetchIntervalMinutes: 15, retentionDays: -1, aiEnabled: true, dailyTokenBudget: -1 },
 ]
 
+const mockRefetch = vi.fn()
+
 vi.mock('@/hooks/use-plan-limits', () => ({
   usePlanLimits: vi.fn(() => ({
     plans: MOCK_PLANS,
     isLoading: false,
-    isDemo: false,
+    isError: false,
     error: null,
+    refetch: mockRefetch,
     updatePlan: mockUpdatePlan,
     isUpdating: false,
     resetPlan: mockResetPlan,
     isResetting: false,
-    defaults: MOCK_PLANS,
   })),
 }))
 
@@ -129,20 +131,36 @@ describe('PlanLimitsPage', () => {
     expect(table.textContent).toContain('Enterprise')
   })
 
-  it('demo fallback renders default values', () => {
+  it('shows an honest error banner with Retry when plan limits fail to load (DECISION-048)', () => {
     vi.mocked(usePlanLimits).mockReturnValueOnce({
-      plans: MOCK_PLANS,
+      plans: [],
       isLoading: false,
-      isDemo: true,
-      error: null,
+      isError: true,
+      error: new Error('boom'),
+      refetch: mockRefetch,
       updatePlan: mockUpdatePlan,
       isUpdating: false,
       resetPlan: mockResetPlan,
       isResetting: false,
-      defaults: MOCK_PLANS,
     })
     render(<PlanLimitsPage />)
-    expect(screen.getByTestId('demo-badge')).toBeInTheDocument()
+    expect(screen.getByTestId('plan-limits-error')).toBeInTheDocument()
+  })
+
+  it('shows an honest empty state when no plan tiers are configured yet', () => {
+    vi.mocked(usePlanLimits).mockReturnValueOnce({
+      plans: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: mockRefetch,
+      updatePlan: mockUpdatePlan,
+      isUpdating: false,
+      resetPlan: mockResetPlan,
+      isResetting: false,
+    })
+    render(<PlanLimitsPage />)
+    expect(screen.getByTestId('plan-limits-empty')).toBeInTheDocument()
   })
 
   it('mobile responsive: cards stack vertically', () => {

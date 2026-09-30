@@ -1,7 +1,8 @@
 /**
  * @module __tests__/offboarding-panel.test
- * @description Tests for OffboardingPanel — pipeline view, offboard trigger,
- * cancel offboarding, status detail timeline, purge countdown.
+ * @description Tests for OffboardingPanel — deactivated-tenant list, offboard trigger,
+ * reactivate action, status detail timeline, and honest empty/error states.
+ * Owner decision 2026-09-30: offboarding = deactivate + retain data forever, no purge.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@/test/test-utils'
@@ -11,27 +12,22 @@ import { OffboardingPanel } from '@/components/command-center/OffboardingPanel'
 
 const mockOffboardMutate = vi.fn()
 const mockCancelMutate = vi.fn()
+const mockRefetch = vi.fn()
+
+const PIPELINE_DATA = [
+  {
+    tenantId: 't1', orgName: 'Sunset Corp', status: 'offboarding',
+    offboardedBy: 'admin@system.local', offboardedAt: '2026-03-28T14:00:00Z',
+  },
+  {
+    tenantId: 't2', orgName: 'Legacy Inc', status: 'offboarding',
+    offboardedBy: 'admin@system.local', offboardedAt: '2026-03-10T09:00:00Z',
+  },
+]
 
 vi.mock('@/hooks/use-offboarding', () => ({
   useOffboardingPipeline: () => ({
-    data: [
-      {
-        tenantId: 't1', orgName: 'Sunset Corp', status: 'offboarding',
-        offboardedBy: 'admin@system.local', offboardedAt: '2026-03-28T14:00:00Z',
-        purgeScheduledAt: '2026-05-27T14:00:00Z', purgedAt: null,
-      },
-      {
-        tenantId: 't2', orgName: 'Legacy Inc', status: 'archived',
-        offboardedBy: 'admin@system.local', offboardedAt: '2026-03-10T09:00:00Z',
-        purgeScheduledAt: '2026-05-09T09:00:00Z', purgedAt: null,
-      },
-      {
-        tenantId: 't3', orgName: 'Old Systems Ltd', status: 'purged',
-        offboardedBy: 'admin@system.local', offboardedAt: '2026-01-15T12:00:00Z',
-        purgeScheduledAt: '2026-03-16T12:00:00Z', purgedAt: '2026-03-16T12:05:00Z',
-      },
-    ],
-    isLoading: false, isDemo: false,
+    data: PIPELINE_DATA, isLoading: false, isError: false, error: null, refetch: mockRefetch,
   }),
   useOffboardTenant: () => ({
     mutate: mockOffboardMutate,
@@ -49,12 +45,9 @@ vi.mock('@/hooks/use-offboarding', () => ({
         { label: 'Sessions terminated', completed: true, count: 8 },
         { label: 'API keys revoked', completed: true, count: 3 },
         { label: 'SSO disabled', completed: true },
-        { label: 'Archive to S3', completed: false },
-        { label: 'Data purge', completed: false },
       ],
-      archivePath: null,
     },
-    isLoading: false, isDemo: false,
+    isLoading: false, isError: false, error: null, refetch: mockRefetch,
   }),
 }))
 
@@ -72,35 +65,24 @@ describe('OffboardingPanel', () => {
     mockCancelMutate.mockClear()
   })
 
-  it('renders pipeline list with correct status badges', () => {
+  it('renders deactivated organizations with "Deactivated · data retained" status', () => {
     render(<OffboardingPanel />)
     expect(screen.getByTestId('offboard-pipeline-list')).toBeInTheDocument()
     expect(screen.getByText('Sunset Corp')).toBeInTheDocument()
     expect(screen.getByText('Legacy Inc')).toBeInTheDocument()
-    expect(screen.getByText('Old Systems Ltd')).toBeInTheDocument()
-    expect(screen.getByText('Offboarding In Progress')).toBeInTheDocument()
-    expect(screen.getByText(/Archived/)).toBeInTheDocument()
-    expect(screen.getByText('Purged')).toBeInTheDocument()
+    expect(screen.getAllByText('Deactivated · data retained')).toHaveLength(2)
   })
 
-  it('shows purge countdown for non-purged entries', () => {
-    // Fixture purge dates are fixed (May 2026) — pin "now" before them or the countdown disappears
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-04-01T00:00:00Z') })
-    try {
-      render(<OffboardingPanel />)
-      // Both offboarding and archived entries show purge countdown
-      const countdowns = screen.getAllByText(/Purges in \d+ day/)
-      expect(countdowns.length).toBeGreaterThanOrEqual(1)
-    } finally {
-      vi.useRealTimers()
-    }
+  it('never shows purge wording', () => {
+    render(<OffboardingPanel />)
+    expect(screen.queryByText(/purge/i)).not.toBeInTheDocument()
   })
 
-  it('shows cancel button for offboarding and archived, hidden for purged', () => {
+  it('shows a Reactivate button for every entry', () => {
     render(<OffboardingPanel />)
     expect(screen.getByTestId('cancel-offboard-t1')).toBeInTheDocument()
+    expect(screen.getByTestId('cancel-offboard-t1')).toHaveTextContent('Reactivate')
     expect(screen.getByTestId('cancel-offboard-t2')).toBeInTheDocument()
-    expect(screen.queryByTestId('cancel-offboard-t3')).not.toBeInTheDocument()
   })
 
   it('shows offboard trigger button when triggerForTenant is provided', () => {
@@ -108,10 +90,14 @@ describe('OffboardingPanel', () => {
     expect(screen.getByTestId('offboard-trigger-btn')).toBeInTheDocument()
   })
 
-  it('opens offboard confirm modal and requires name match', () => {
+  it('opens offboard confirm modal, requires name match, and confirm copy says data is kept', () => {
     render(<OffboardingPanel triggerForTenant={{ tenantId: 'tx', orgName: 'Test Org' }} />)
     fireEvent.click(screen.getByTestId('offboard-trigger-btn'))
-    expect(screen.getByTestId('offboard-confirm-modal')).toBeInTheDocument()
+    const modal = screen.getByTestId('offboard-confirm-modal')
+    expect(modal).toBeInTheDocument()
+    expect(modal.textContent).toMatch(/all its users/i)
+    expect(modal.textContent).toMatch(/data is kept/i)
+    expect(modal.textContent).not.toMatch(/purge/i)
 
     // Submit should be disabled
     const confirmBtn = screen.getByTestId('offboard-confirm-btn')
@@ -142,10 +128,13 @@ describe('OffboardingPanel', () => {
     expect(mockOffboardMutate).not.toHaveBeenCalled()
   })
 
-  it('opens cancel offboarding modal and calls mutation', () => {
+  it('opens reactivate modal and calls mutation, with no purge wording', () => {
     render(<OffboardingPanel />)
     fireEvent.click(screen.getByTestId('cancel-offboard-t1'))
-    expect(screen.getByTestId('cancel-offboard-modal')).toBeInTheDocument()
+    const modal = screen.getByTestId('cancel-offboard-modal')
+    expect(modal).toBeInTheDocument()
+    expect(modal.textContent).toMatch(/Reactivate/)
+    expect(modal.textContent).not.toMatch(/purge/i)
     fireEvent.click(screen.getByTestId('cancel-offboard-confirm-btn'))
     expect(mockCancelMutate).toHaveBeenCalled()
   })
@@ -157,13 +146,14 @@ describe('OffboardingPanel', () => {
     expect(screen.getByTestId('offboard-timeline')).toBeInTheDocument()
   })
 
-  it('status detail timeline shows completed and pending steps', () => {
+  it('status detail timeline shows completed and pending steps, no purge wording', () => {
     render(<OffboardingPanel />)
     fireEvent.click(screen.getByTestId('view-detail-t1'))
     const timeline = screen.getByTestId('offboard-timeline')
     expect(timeline.textContent).toContain('Users disabled')
     expect(timeline.textContent).toContain('(12)')
-    expect(timeline.textContent).toContain('Archive to S3')
+    expect(timeline.textContent).not.toMatch(/purge/i)
+    expect(timeline.textContent).not.toMatch(/archive/i)
   })
 })
 
@@ -172,19 +162,35 @@ describe('OffboardingPanel — empty state', () => {
     vi.resetModules()
   })
 
-  it('renders empty state when no pipeline entries', async () => {
+  it('renders honest empty state when no deactivated tenants', async () => {
     vi.doMock('@/hooks/use-offboarding', () => ({
       useOffboardingPipeline: () => ({
-        data: [], isLoading: false, isDemo: false,
+        data: [], isLoading: false, isError: false, error: null, refetch: vi.fn(),
       }),
       useOffboardTenant: () => ({ mutate: vi.fn(), isPending: false }),
       useCancelOffboard: () => ({ mutate: vi.fn(), isPending: false }),
-      useOffboardStatus: () => ({ data: null, isLoading: false, isDemo: false }),
+      useOffboardStatus: () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
     }))
 
     const { OffboardingPanel: FreshPanel } = await import('@/components/command-center/OffboardingPanel')
     render(<FreshPanel />)
     expect(screen.getByTestId('offboard-empty')).toBeInTheDocument()
-    expect(screen.getByText(/No organizations in the offboarding pipeline/)).toBeInTheDocument()
+    expect(screen.getByText(/No organizations are deactivated/)).toBeInTheDocument()
+  })
+
+  it('renders honest error state with retry when the pipeline fetch fails', async () => {
+    vi.doMock('@/hooks/use-offboarding', () => ({
+      useOffboardingPipeline: () => ({
+        data: undefined, isLoading: false, isError: true, error: new Error('network down'), refetch: vi.fn(),
+      }),
+      useOffboardTenant: () => ({ mutate: vi.fn(), isPending: false }),
+      useCancelOffboard: () => ({ mutate: vi.fn(), isPending: false }),
+      useOffboardStatus: () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+    }))
+
+    const { OffboardingPanel: FreshPanel } = await import('@/components/command-center/OffboardingPanel')
+    render(<FreshPanel />)
+    expect(screen.getByTestId('query-error')).toBeInTheDocument()
+    expect(screen.queryByTestId('offboard-empty')).not.toBeInTheDocument()
   })
 })

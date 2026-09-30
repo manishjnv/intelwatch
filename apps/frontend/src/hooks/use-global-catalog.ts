@@ -61,20 +61,17 @@ export interface PipelineHealth {
   }
 }
 
-// Demo fallback removed — no fake data
-
 // ─── Hooks ──────────────────────────────────────────────────
 
 export function useGlobalCatalog() {
   const empty: GlobalCatalogFeed[] = []
-  const result = useQuery({
+  return useQuery({
     queryKey: ['global-catalog'],
     queryFn: () =>
       api<GlobalCatalogFeed[]>('/ingestion/catalog')
         .catch(err => notifyApiError(err, 'global catalog', empty)),
     staleTime: 60_000,
   })
-  return { ...result, isDemo: false }
 }
 
 export function useMySubscriptions() {
@@ -105,7 +102,7 @@ export function useMySubscriptions() {
   })
 
   return {
-    ...result, isDemo: false as const,
+    ...result,
     subscribe: subscribeMut.mutate,
     unsubscribe: unsubscribeMut.mutate,
     isSubscribing: subscribeMut.isPending,
@@ -121,5 +118,5 @@ export function useGlobalPipelineHealth() {
         .catch(() => null),
     staleTime: 30_000,
   })
-  return { ...result, data: result.data ?? null, isDemo: false }
+  return { ...result, data: result.data ?? null }
 }

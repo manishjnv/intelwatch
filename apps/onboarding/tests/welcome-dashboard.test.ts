@@ -3,13 +3,11 @@ import { WizardStore } from '../src/services/wizard-store.js';
 import { ModuleReadinessChecker } from '../src/services/module-readiness.js';
 import { HealthChecker } from '../src/services/health-checker.js';
 import { ProgressTracker } from '../src/services/progress-tracker.js';
-import { DemoSeeder } from '../src/services/demo-seeder.js';
 import { WelcomeDashboardService } from '../src/services/welcome-dashboard.js';
 
 describe('WelcomeDashboardService', () => {
   let wizardStore: WizardStore;
   let progressTracker: ProgressTracker;
-  let demoSeeder: DemoSeeder;
   let welcome: WelcomeDashboardService;
 
   beforeEach(() => {
@@ -17,8 +15,7 @@ describe('WelcomeDashboardService', () => {
     const moduleReadiness = new ModuleReadinessChecker();
     const healthChecker = new HealthChecker();
     progressTracker = new ProgressTracker(wizardStore, moduleReadiness, healthChecker);
-    demoSeeder = new DemoSeeder();
-    welcome = new WelcomeDashboardService(wizardStore, progressTracker, demoSeeder);
+    welcome = new WelcomeDashboardService(wizardStore, progressTracker);
   });
 
   describe('getDashboard', () => {

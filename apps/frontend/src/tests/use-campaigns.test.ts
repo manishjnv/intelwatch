@@ -30,12 +30,11 @@ describe('use-campaigns', () => {
     expect(mockApi).toHaveBeenCalledWith(expect.stringContaining('/ioc/campaigns'))
   })
 
-  it('useCampaigns returns demo fallback on API failure', async () => {
+  it('useCampaigns returns an honest empty list on API failure (no demo fallback)', async () => {
     mockApi.mockRejectedValueOnce(new Error('Network error'))
     const { result } = renderHook(() => useCampaigns(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    // notifyApiError returns the demo fallback, so data is present
-    expect(result.current.data?.data.length).toBeGreaterThan(0)
+    expect(result.current.data).toEqual({ data: [], total: 0 })
   })
 
   it('useCampaignsForIoc fetches campaigns for IOC via pivot', async () => {

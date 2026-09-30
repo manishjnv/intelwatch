@@ -33,18 +33,6 @@ function makeMockClients() {
       get: vi.fn().mockResolvedValue({ data: CATALOG_FEEDS }),
       post: vi.fn().mockResolvedValue({ data: { id: 'new-feed-id' } }),
     },
-    iocClient: {
-      get: vi.fn().mockResolvedValue({ data: [], total: 0 }),
-      post: vi.fn().mockResolvedValue({ data: { id: 'ioc-1' } }),
-    },
-    actorClient: {
-      get: vi.fn(),
-      post: vi.fn().mockResolvedValue({ data: { id: 'actor-1' } }),
-    },
-    malwareClient: {
-      get: vi.fn(),
-      post: vi.fn().mockResolvedValue({ data: { id: 'malware-1' } }),
-    },
   };
 }
 
@@ -113,36 +101,6 @@ describe('RealSeeder', () => {
     });
   });
 
-  describe('seedTenant — sample IOCs', () => {
-    it('creates 5 sample IOCs when no global IOCs exist', async () => {
-      mockClients.iocClient.get.mockResolvedValueOnce({ data: [], total: 0 });
-      const result = await seeder.seedTenant('t1', 'free');
-      expect(result.sampleIocs).toBe(5);
-      expect(mockClients.iocClient.post).toHaveBeenCalledTimes(5);
-    });
-
-    it('skips IOC seeding when global IOCs already present', async () => {
-      mockClients.iocClient.get.mockResolvedValueOnce({ data: [{ id: 'existing' }], total: 100 });
-      const result = await seeder.seedTenant('t1', 'free');
-      expect(result.sampleIocs).toBe(0);
-      expect(mockClients.iocClient.post).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('seedTenant — sample actors and malware', () => {
-    it('creates 3 sample actors', async () => {
-      const result = await seeder.seedTenant('t1', 'free');
-      expect(result.sampleActors).toBe(3);
-      expect(mockClients.actorClient.post).toHaveBeenCalledTimes(3);
-    });
-
-    it('creates 3 sample malware entries', async () => {
-      const result = await seeder.seedTenant('t1', 'free');
-      expect(result.sampleMalware).toBe(3);
-      expect(mockClients.malwareClient.post).toHaveBeenCalledTimes(3);
-    });
-  });
-
   describe('seedTenant — headers', () => {
     it('all HTTP calls include x-tenant-id header', async () => {
       await seeder.seedTenant('tenant-abc', 'free');
@@ -150,43 +108,39 @@ describe('RealSeeder', () => {
       expect(mockClients.ingestionClient.get).toHaveBeenCalledWith(
         '/api/v1/catalog', { 'x-tenant-id': 'tenant-abc' },
       );
-      // Check IOC GET
-      expect(mockClients.iocClient.get).toHaveBeenCalledWith(
-        '/api/v1/iocs?limit=1', { 'x-tenant-id': 'tenant-abc' },
-      );
-      // Check actor POST
-      expect(mockClients.actorClient.post).toHaveBeenCalledWith(
-        '/api/v1/actors',
-        expect.objectContaining({ name: 'APT29' }),
+      // Check private feed POST
+      expect(mockClients.ingestionClient.post).toHaveBeenCalledWith(
+        '/api/v1/feeds',
+        expect.objectContaining({ name: 'My RSS Feed - The Hacker News' }),
         { 'x-tenant-id': 'tenant-abc' },
       );
     });
   });
 
   describe('seedTenant — partial failure', () => {
-    it('captures errors from individual failures without throwing', async () => {
-      // Make some actor calls fail
-      mockClients.actorClient.post
-        .mockResolvedValueOnce({ data: { id: 'a1' } })
-        .mockResolvedValueOnce(null) // fails
-        .mockResolvedValueOnce({ data: { id: 'a3' } });
+    it('captures errors from individual private-feed failures without throwing', async () => {
+      mockClients.ingestionClient.post
+        .mockImplementation((path: string) => {
+          if (path === '/api/v1/feeds') return Promise.resolve(null);
+          return Promise.resolve({ data: { id: 'ok' } });
+        });
       const result = await seeder.seedTenant('t1', 'free');
-      expect(result.sampleActors).toBe(2);
-      expect(result.errors).toContain('Failed to seed actor: Lazarus Group');
+      expect(result.privateFeeds).toBe(0);
+      expect(result.errors).toContain('Failed to create private feed: My RSS Feed - The Hacker News');
       // Other seeding still completed
-      expect(result.privateFeeds).toBe(2);
+      expect(result.globalSubscriptions).toBe(5);
     });
 
-    it('returns combined SeedResult with all counts', async () => {
+    it('returns combined SeedResult with all counts, no sample fields', async () => {
       const result = await seeder.seedTenant('t1', 'starter');
       expect(result.seederUsed).toBe('real');
       expect(typeof result.globalSubscriptions).toBe('number');
       expect(typeof result.privateFeeds).toBe('number');
       expect(typeof result.fetchesTriggered).toBe('number');
-      expect(typeof result.sampleIocs).toBe('number');
-      expect(typeof result.sampleActors).toBe('number');
-      expect(typeof result.sampleMalware).toBe('number');
       expect(Array.isArray(result.errors)).toBe(true);
+      expect(result).not.toHaveProperty('sampleIocs');
+      expect(result).not.toHaveProperty('sampleActors');
+      expect(result).not.toHaveProperty('sampleMalware');
     });
   });
 

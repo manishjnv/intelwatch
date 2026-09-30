@@ -16,7 +16,6 @@ import { MitreDetailSection } from '@/components/ioc/MitreDetailSection'
 import { useIOCPivot, useIOCTimeline, useUpdateIOCLifecycle, type IOCRecord, type IOCPivotResult, type IOCTimelineEvent } from '@/hooks/use-intel-data'
 import { useIOCEnrichment } from '@/hooks/use-enrichment-data'
 import { useNodeNeighbors } from '@/hooks/use-phase4-data'
-import type { GraphNode as RGNode, GraphEdge as RGEdge } from '@/components/viz/RelationshipGraph'
 
 const LazyRelationshipGraph = lazy(() =>
   import('@/components/viz/RelationshipGraph').then(m => ({ default: m.RelationshipGraph }))
@@ -33,32 +32,13 @@ const LIFECYCLE_TRANSITIONS: Record<string, string[]> = {
   watchlisted:    ['active', 'revoked'],
 }
 
-function generateStubRelations(record: { id: string; normalizedValue: string; iocType: string; threatActors: string[]; malwareFamilies: string[] }): { nodes: RGNode[]; edges: RGEdge[] } {
-  const nodes: RGNode[] = [
-    { id: record.id, type: record.iocType, label: record.normalizedValue, primary: true },
-  ]
-  const edges: RGEdge[] = []
-  record.threatActors.slice(0, 3).forEach((actor, i) => {
-    const nodeId = `actor-${i}`
-    nodes.push({ id: nodeId, type: 'actor', label: actor })
-    edges.push({ source: record.id, target: nodeId, label: 'attributed' })
-  })
-  record.malwareFamilies.slice(0, 3).forEach((mal, i) => {
-    const nodeId = `malware-${i}`
-    nodes.push({ id: nodeId, type: 'malware', label: mal })
-    edges.push({ source: record.id, target: nodeId, label: 'delivers' })
-  })
-  return { nodes, edges }
-}
-
 type DetailTab = 'enrichment' | 'details' | 'relations' | 'pivot' | 'timeline'
 
 interface IocDetailPanelProps {
   record: IOCRecord
-  isDemo: boolean
 }
 
-export function IocDetailPanel({ record, isDemo }: IocDetailPanelProps) {
+export function IocDetailPanel({ record }: IocDetailPanelProps) {
   const [detailTab, setDetailTab] = useState<DetailTab>('enrichment')
 
   const { data: pivotData, isLoading: pivotLoading } = useIOCPivot(record.id)
@@ -85,8 +65,8 @@ export function IocDetailPanel({ record, isDemo }: IocDetailPanelProps) {
         })),
       }
     }
-    return isDemo ? generateStubRelations(record) : null
-  }, [record, graphData, isDemo])
+    return null
+  }, [record, graphData])
 
   return (
     <div className="h-full flex flex-col">
@@ -101,7 +81,7 @@ export function IocDetailPanel({ record, isDemo }: IocDetailPanelProps) {
           <span>Conf: <span className="text-text-primary tabular-nums">{record.confidence}%</span></span>
           <span className="uppercase">{record.tlp}</span>
           <span className="capitalize font-medium text-text-primary">{record.lifecycle}</span>
-          {(LIFECYCLE_TRANSITIONS[record.lifecycle] ?? []).length > 0 && !isDemo && (
+          {(LIFECYCLE_TRANSITIONS[record.lifecycle] ?? []).length > 0 && (
             <div className="flex items-center gap-1 ml-1">
               {(LIFECYCLE_TRANSITIONS[record.lifecycle] ?? []).map(nextState => (
                 <button
@@ -126,7 +106,7 @@ export function IocDetailPanel({ record, isDemo }: IocDetailPanelProps) {
       </div>
 
       <div className="shrink-0 px-3 py-2 space-y-2">
-        <ConfidenceBreakdown record={record} isDemo={isDemo} />
+        <ConfidenceBreakdown record={record} />
         <ConfidenceDecayChart
           confidence={record.confidence}
           iocType={record.iocType}

@@ -55,7 +55,7 @@ export function IocListPage() {
     ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
   }), [page, debouncedSearch, sortBy, sortOrder, filters])
 
-  const { data, isLoading, isDemo } = useIOCs(queryParams)
+  const { data, isLoading } = useIOCs(queryParams)
   const { data: stats } = useIOCStats()
   const { data: feedsData, isLoading: feedsLoading } = useFeeds({ limit: 100 })
   const activeFeedCount = feedsData?.data.filter(f => f.status === 'active').length
@@ -69,26 +69,8 @@ export function IocListPage() {
     return map
   }, [campaignData])
 
-  // Client-side filter + sort for demo data
-  const rows = useMemo(() => {
-    let items = data?.data ?? []
-    if (!isDemo || items.length === 0) return items
-    if (search) {
-      const q = search.toLowerCase()
-      items = items.filter(r => r.normalizedValue.toLowerCase().includes(q) || r.iocType.includes(q) || r.tags.some(t => t.toLowerCase().includes(q)))
-    }
-    if (filters.iocType) items = items.filter(r => r.iocType === filters.iocType)
-    if (filters.severity) items = items.filter(r => r.severity === filters.severity)
-    if (filters.lifecycle) items = items.filter(r => r.lifecycle === filters.lifecycle)
-    if (filters.source) items = items.filter(r => (r as any).source === filters.source)
-    if (filters.hasCampaign === 'true') items = items.filter(r => r.campaignId != null && r.campaignId !== '')
-    return [...items].sort((a, b) => {
-      const av = a[sortBy as keyof IOCRecord] ?? ''
-      const bv = b[sortBy as keyof IOCRecord] ?? ''
-      const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
-      return sortOrder === 'asc' ? cmp : -cmp
-    })
-  }, [data, isDemo, sortBy, sortOrder, search, filters])
+  // Backend already applies search/filters/sort via queryParams
+  const rows = useMemo(() => data?.data ?? [], [data])
 
   const rowIds = useMemo(() => rows.map(r => r.id), [rows])
   const { selectedIds, toggle, selectAllOnPage, clear: clearSelection, selectAllState } = useMultiSelect(rowIds)
@@ -246,11 +228,11 @@ export function IocListPage() {
             emptyMessage="No IOCs found. Activate a feed to start ingesting threat intelligence."
           />
         )}
-        right={selectedRecord ? <IocDetailPanel record={selectedRecord} isDemo={isDemo} /> : null}
+        right={selectedRecord ? <IocDetailPanel record={selectedRecord} /> : null}
         showRight={!!selectedId}
       />
 
-      <Pagination page={page} limit={50} total={isDemo ? rows.length : (data?.total ?? 0)}
+      <Pagination page={page} limit={50} total={data?.total ?? 0}
         onPageChange={setPage} density={density} onDensityChange={setDensity} />
 
       {/* Campaign detail overlay */}
