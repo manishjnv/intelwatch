@@ -1,6 +1,6 @@
 # Alerting Service (Module 23)
 
-**Port:** 3023 | **Status:** ✅ Deployed (S177, deploy pending — TBD (post-deploy)) | **Tests:** 416 | **Endpoints:** 35
+**Port:** 3023 | **Status:** ✅ Deployed (S177, PR #69 `e10897d`, VPS 32/32 healthy) | **Tests:** 417 | **Endpoints:** 35
 
 Real-time alert rule engine with notification channels, escalation policies, and alert lifecycle management.
 

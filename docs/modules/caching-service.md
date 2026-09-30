@@ -1,6 +1,6 @@
 # Caching & Archival Service (Module 25)
 
-**Port:** 3025 | **Status:** ✅ Deployed | **Tests:** 112 | **Session:** 58 (archive off by default since S175, D4)
+**Port:** 3025 | **Status:** ✅ Deployed (S177, PR #69 `e10897d`, VPS 32/32 healthy) | **Tests:** 114 | **Session:** 58 (archive off by default since S175, D4)
 
 ## Features
 
@@ -14,7 +14,7 @@
 | Archive Store | services/archive-store.ts | In-memory manifest store (DECISION-013) |
 | Archive Restore | services/archive-engine.ts | On-demand restore from MinIO to hot storage |
 | MinIO Client | services/minio-client.ts | S3-compatible storage: upload, download, list, metadata |
-| Event Listener | workers/event-listener.ts | BullMQ listener for cache invalidation events |
+| Event Listener | workers/event-listener.ts | BullMQ listener for cache invalidation events. **S177 (RCA #66):** fixed `parseRedisUrl()` dropping the Redis password (NOAUTH) and a BullMQ queue-prefix mismatch — 4,084 NOAUTH errors in 72h, 550,602 jobs stuck waiting; now passes the password + db, uses the correct prefix, skips events older than 1h, and trims finished jobs to 1,000 |
 
 ## API Endpoints
 

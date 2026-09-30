@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml/badge.svg)](https://github.com/manishjnv/intelwatch/actions/workflows/deploy.yml)
 ![Version](https://img.shields.io/badge/version-4.0.0-00ff88)
 ![Phase](https://img.shields.io/badge/phase-12%20command%20center%20v2.1-00ff88)
-![Tests](https://img.shields.io/badge/tests-9394%20passing-00ff88)
+![Tests](https://img.shields.io/badge/tests-9524%20passing-00ff88)
 ![Containers](https://img.shields.io/badge/containers-33-00bfff)
 
 **Live API**: https://intelwatch.in/health
@@ -28,8 +28,8 @@
 | Threat Graph Service (Neo4j knowledge graph, 20 improvements, 35 endpoints, real STIX-aligned data pipeline synced from ioc-intelligence with periodic reconciliation — 12,171 nodes, 26,804 relationships in prod) | ✅ Live on VPS | 399 |
 | Correlation Engine (15 improvements, AI patterns, rule templates, graph integration) | 🔨 Feature-complete (15/15) | 166 |
 | Threat Hunting Service (47 endpoints, 15 improvements, hunt workspace) | 🔨 Feature-complete (15/15) | 222 |
-| DRP Service (4 detection engines, 12 typosquat algos, CertStream, 36 endpoints) | 🔨 Feature-complete (15/15 + accuracy) | 310 |
-| Enterprise Integration Service (SIEM, webhooks, ticketing, STIX/TAXII, 24 endpoints, safeFetch SSRF guard, encrypted credentials, Postgres-persisted connectors, server-side RBAC) | ✅ Live on VPS | 458 |
+| DRP Service (4 detection engines, 12 typosquat algos, CertStream, 36 endpoints, Postgres-persisted assets/alerts/scans/takedowns/feedback) | ✅ Live on VPS | 351 |
+| Enterprise Integration Service (SIEM, webhooks, ticketing, STIX/TAXII, 24 endpoints, safeFetch SSRF guard, encrypted credentials, Postgres-persisted connectors + logs/deliveries/tickets/config, server-side RBAC) | ✅ Live on VPS | 505 |
 | User Management Service (RBAC, teams, SSO, MFA, break-glass, user directory, API keys, 64 endpoints) | ✅ Live on VPS | 371 |
 | Customization Service (module toggles, AI config, risk weights, Prisma persistence, global AI config, 58 endpoints) | ✅ Complete | 319 |
 | Onboarding Service (8-step wizard, connectors, health checks, 32 endpoints) | ✅ Deployed | 190 |

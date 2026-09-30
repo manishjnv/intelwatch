@@ -1,6 +1,6 @@
 # Enterprise Integration Service (Module 15)
 
-**Port:** 3015 | **Queue:** `etip-integration-push` | **Status:** 🔨 WIP | **Tests:** 505
+**Port:** 3015 | **Queue:** `etip-integration-push` | **Status:** ✅ Deployed (S177, PR #69 `e10897d`, VPS 32/32 healthy) | **Tests:** 505
 
 ## What It Does
 Connects ETIP to external enterprise systems — SIEM (Splunk HEC, Sentinel, Elastic), SOAR webhooks, ticketing (ServiceNow, Jira), and STIX/TAXII 2.1 export. Pushes alerts/IOCs outbound and pulls events inbound for correlation.

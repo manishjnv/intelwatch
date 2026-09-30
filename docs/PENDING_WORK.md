@@ -1,6 +1,6 @@
 # Pending work — consolidated backlog
 
-**Last reviewed:** 2026-09-30, session 176 (after Step 3 row S154 went live, PR #68). Built from a full sweep of `docs/` (roadmap specs, PROJECT_STATE, SESSION_HANDOFF, DECISIONS_LOG, stats page, session docs, module docs, runbooks, architecture docs) with code spot-checks.
+**Last reviewed:** 2026-09-30, session 177 (after Step 3 rows S155–S158b went live, PR #69, `e10897d`). Built from a full sweep of `docs/` (roadmap specs, PROJECT_STATE, SESSION_HANDOFF, DECISIONS_LOG, stats page, session docs, module docs, runbooks, architecture docs) with code spot-checks.
 
 **How to use:** the session task queue in `docs/SESSION_HANDOFF.md` says what is *next*; this file is the full list behind it. When an item closes, mark it here in the same commit. Self-serve payments are deliberately left out (owner-deferred).
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | 0, 0B, 2 | ✅ Done | — |
 | 1 · Stay up | ✅ Done | Off-site backup copy (rclone); failover option not chosen (`STEP_01_STAY_UP.md` §later) |
-| **3 · Persistence** | 🔨 In progress — rows 154-0 (S175), 154 (S176), and 155/156/157/158a/158b (S177) done, deploy pending | **NEXT = S159** hunting-service → Postgres (not RedisJsonStore — see DECISION-051) → S159b archive rebuild, S159c analytics tenant trends, S159d onboarding, S159e offboarding purge (must now also delete from the 12 new S177 tables plus the 4 S154 alert tables). Backlog: reporting, customization, user-management, correlation |
+| **3 · Persistence** | 🔨 In progress — rows 154-0 (S175), 154 (S176), and 155/156/157/158a/158b (S177) done and LIVE (PR #69, `e10897d`) | **NEXT = S159** hunting-service → Postgres (not RedisJsonStore — see DECISION-051) → S159b archive rebuild, S159c analytics tenant trends, S159d onboarding, S159e offboarding purge (must now also delete from the 12 new S177 tables plus the 4 S154 alert tables). Backlog: reporting, customization, user-management, correlation |
 | 4 · DB roles + RLS | ⏳ Not started (after Step 3) | Sessions 160a–m; owner decisions E1–E7; must cover the new alert tables |
 | 5 · Honest UI | 🔨 Mostly done | S173 wiring fixes (see §3); real Clients tenant list; remaining `isDemo` hooks; SparklineCell fake trend (`generateStubTrend`); owner decisions O1–O4. Status line in the spec is stale |
 | 6 · Cleanup | 🔨 PR1 done (S171) | DECISION-032 proposal (not yet accepted); split files >400 lines as they are touched |
@@ -48,7 +48,7 @@
 - **Quality:** check other services' error handlers for 4xx masked as 500 (RCA #49 pattern); route-permission coverage test.
 - **Ops:** Shodan/GreyNoise API keys not set on VPS; GitHub Actions Node 20 → 24 migration.
 - **UI polish** (`docs/FUTURE_IMPROVEMENTS.md`): timeline animation, graph node click-through/hover, EntityChip/SeverityBadge case convention.
-- **S177 follow-ups (Step 3 persistence, RCA #66–#68):** admin-service `queue-alert-evaluator.ts:210` LPUSHes raw JSON into `bull:etip-alert-evaluate:wait` — should use `Queue.add`; api-gateway `plugins/quota-enforcement.ts:200` `lpush(QUEUES.ALERT_EVALUATE, …)` onto a plain Redis list nobody consumes; ALERT_EVALUATE producers (correlation-engine, normalization) set no `attempts`/backoff, so a job failed by `DB_UNAVAILABLE` is not retried; integration DLQ "retry" only flips status to `retrying` — nothing re-sends; exports support only `iocs` — other entity types return 400; Redis queue `etip-cache-invalidate` had 550,602 waiting jobs on 2026-09-30 — consumer fixed in S177 (RCA #66: dropped Redis password + wrong prefix); confirm the backlog drained after deploy; `@etip/shared-persistence` `RedisJsonStore` data-loss traps (DECISION-051) — fix or retire before any app uses it; alert worker concurrency 5 — a burst can race dedup/cooldown and create a duplicate alert; escalation dispatcher assumes one alerting instance; `apps/integration-service/src/services/integration-store.ts` is at 397/400 lines — split before the next change.
+- **S177 follow-ups (Step 3 persistence, RCA #66–#68):** admin-service `queue-alert-evaluator.ts:210` LPUSHes raw JSON into `bull:etip-alert-evaluate:wait` — should use `Queue.add`; api-gateway `plugins/quota-enforcement.ts:200` `lpush(QUEUES.ALERT_EVALUATE, …)` onto a plain Redis list nobody consumes; ALERT_EVALUATE producers (correlation-engine, normalization) set no `attempts`/backoff, so a job failed by `DB_UNAVAILABLE` is not retried; integration DLQ "retry" only flips status to `retrying` — nothing re-sends; exports support only `iocs` — other entity types return 400; Redis queue `etip-cache-invalidate` had 550,602 waiting jobs on 2026-09-30 — consumer fixed in S177 (RCA #66: dropped Redis password + wrong prefix); backlog confirmed drained 550,602 → 0 within ~10 min of the S177 deploy; `@etip/shared-persistence` `RedisJsonStore` data-loss traps (DECISION-051) — fix or retire before any app uses it; alert worker concurrency 5 — a burst can race dedup/cooldown and create a duplicate alert; escalation dispatcher assumes one alerting instance; `apps/integration-service/src/services/integration-store.ts` is at 397/400 lines — split before the next change.
 
 ## 4. Owner inputs pending
 

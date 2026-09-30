@@ -1,78 +1,94 @@
 # SESSION HANDOFF DOCUMENT
 
 **Date:** 2026-09-30
-**Session:** 176
-**Session Summary:** Step 3 row **S154** done, deployed and verified — alerting-service rules, notification channels, escalation policies and maintenance windows moved from in-process Maps to Postgres (4 additive tables), channel config encrypted at rest and masked in API responses, by-id lookups tenant-scoped. Then a full `docs/` sweep produced one consolidated backlog, `docs/PENDING_WORK.md`.
+**Session:** 177
+**Session Summary:** Step 3 rows **S155–S158b** done, deployed and verified — alerting-service alerts/history/groups (dedup + escalation state as columns), integration-service logs/deliveries/tickets + generic `integration_docs` config/audit table, and drp-service assets/alerts/scans/takedowns/feedback all moved off in-process memory onto Postgres (12 new additive tables). Found and fixed the same session: alerting-service worker and caching-service cache-invalidation listener both dropped the Redis password and used the wrong BullMQ prefix (RCA #66), integration exports sent hard-coded demo IOCs (RCA #67), `integration_docs`'s first-cut primary key would have let two doc kinds collide (RCA #68, caught in review).
 
-## ✅ Changes Made (Session 176)
+## ✅ Changes Made (Session 177)
 
 | Commit(s) | Description |
 |---|---|
-| `a653895` (38 files) | feat: Step 3 S154 — `prisma/schema.prisma` +4 models (`alert_rules`, `alert_channels`, `alert_escalation_policies`, `alert_maintenance_windows`); `src/repository.ts` (`Repo<T>`, `MemoryRepo`, `dbCall` → 503, `isUuid`) + `src/repository-prisma.ts`; `src/services/channel-crypto.ts` (AES-256-GCM, mask); 4 stores async + repo; routes/worker/dispatcher await; `requestTenant()`; config + index wiring; notifier logs URL origin only; compose `etip_alerting` DB URL + key + postgres dependency + 384M; baseline −4 lines; tests 329 → 377 |
-| `973d897` (2 files) | docs: `docs/S176_STEP3_ALERTING_S154.md` + `docs/modules/alerting-service.md` |
-| merge `3e2a73f` | PR #68 merged; CI/CD run 36617017423 all green (test, build, deploy) |
-| `6d4f42b` (7 files) | docs: post-deploy stats update — PROJECT_STATE, stats HTML, RCA #65, README badge, spec §10 row 154, S176 doc deploy result |
-| `ce3fad1` (2 files) | docs: consolidated backlog `docs/PENDING_WORK.md` (full docs sweep) + handoff pointer |
-| (this commit) | docs: session 176 end — handoff, PROJECT_STATE known issues |
+| `1cbe235` | feat: Step 3 S155 alerting alerts/history/groups/dedup/escalation → Postgres |
+| `1117349` | feat: Step 3 S156+S157 integration records + config → Postgres, real-data exports |
+| `a33934c` | feat: Step 3 S158 drp assets/alerts/scans/takedowns/feedback → Postgres |
+| `914274e` | fix: BullMQ workers dropped the Redis password (NOAUTH) — alerting + caching listener (RCA #66) |
+| `36911c6` | docs: S177 Step 3 S155-S158 session doc, RCA #66-68, DECISION-051, spec + backlog |
+| merge (PR #69 → `e10897d`) | PR #69 merged; CI/CD run 36680150769 all green (Test/Type-check/Lint/Audit, Build & Push, Deploy to VPS 7m50s, E2E pipeline smoke tests) |
+| (this commit) | docs: post-deploy stats update — PROJECT_STATE, stats HTML, RCA row, README badge, module docs, PENDING_WORK, handoff |
 
-VPS HEAD `3e2a73f`, 32/32 `etip_` containers healthy. alerting-service 377/377. Real monorepo total **9,394 passed + 2 skipped, 0 failed, 33 packages** (CI run 36617017423; was 9,346 + 2).
+VPS HEAD `e10897d`, 32/32 `etip_` containers healthy. alerting-service 417/417, integration-service 505/505, drp-service 351/351, caching-service 114/114. Real monorepo total **9,524 passed + 2 skipped, 0 failed, 33 packages** (CI run 36680150769; was 9,394 + 2).
 
-## 📁 Files / Documents Affected (Session 176)
+## 📁 Files / Documents Affected (Session 177)
 
-**New:** `apps/alerting-service/src/repository.ts`, `src/repository-prisma.ts`, `src/services/channel-crypto.ts`, `tests/{channel-crypto,repository,persistence-restart,config}.test.ts`, `docs/S176_STEP3_ALERTING_S154.md`, `docs/PENDING_WORK.md`.
+**New:** `apps/alerting-service/src/repository-prisma-alerts.ts`, `apps/drp-service/src/{prisma,repository,repository-prisma,repository-prisma-alerts}.ts`, `apps/integration-service/src/services/{doc-repo,doc-repo-prisma,records-repo,records-repo-prisma,ioc-client}.ts`, matching test files, `docs/S177_STEP3_PERSISTENCE_S155_S158.md`.
 
-**Modified (code):** `prisma/schema.prisma`, `pnpm-lock.yaml`, `docker-compose.etip.yml` (etip_alerting only), `scripts/memory-store-baseline.txt`, `apps/alerting-service/package.json`, `src/{config,index}.ts`, `src/plugins/tenant-guard.ts`, `src/routes/{rules,channels,escalations,maintenance,templates,stats}.ts`, `src/services/{rule,channel,escalation,maintenance}-store.ts`, `src/services/{escalation-dispatcher,notifier}.ts`, `src/workers/alert-worker.ts`, 9 existing test files.
+**Modified (code):** `prisma/schema.prisma` (+12 additive models), `pnpm-lock.yaml`, `docker-compose.etip.yml` (`etip_drp` DB URL + depends_on + memory limit, `etip_ioc_intelligence` caller allowlist), `scripts/memory-store-baseline.txt` (158 → 117), `apps/alerting-service/src/{repository,index}.ts` + routes/services/worker/handler, `apps/integration-service/src/{index,routes/*,services/*}.ts`, `apps/drp-service/src/{index,config,schemas/store}.ts` + 16 services + 5 routes, `apps/caching-service/src/workers/event-listener.ts` (RCA #66 fix), `apps/alerting-service/src/workers/alert-worker.ts` (rethrows `DB_UNAVAILABLE`). Deleted: `apps/alerting-service/src/services/dedup-store.ts`.
 
-**Modified (docs):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md`, `docs/DEPLOYMENT_RCA.md` (Issue 65 + S176 row), `docs/ETIP_Project_Stats.html`, `docs/modules/alerting-service.md`, `docs/roadmap/STEP_03_PERSISTENCE.md`, `README.md`.
+**Modified (docs):** `docs/PROJECT_STATE.md`, `docs/SESSION_HANDOFF.md`, `docs/DEPLOYMENT_RCA.md` (Issues 66–68 + S177 row), `docs/ETIP_Project_Stats.html`, `docs/PENDING_WORK.md`, `README.md`, `docs/modules/{alerting-service,digital-risk-protection,caching-service}.md`, `apps/integration-service/README.md`, `docs/roadmap/STEP_03_PERSISTENCE.md`, `docs/DECISIONS_LOG.md` (DECISION-051).
 
-## 🔧 Decisions & Rationale (Session 176)
+## 🔧 Decisions & Rationale (Session 177)
 
-No new DECISION entry — the session executes DECISION-049 (D2 additive schema, D3 fail with 503). Deliberate deviations from the §6.1 sketch, recorded in the S176 doc: only 4 of 7 models (the S155 ones come with S155 — additive-only schema makes an unused table costly to reshape); no `configMasked`/`keyVersion` columns (mask computed on read, both addable later); no `src/prisma.ts`; id arrays are `text[]`; the channel key is 32 random bytes in base64 (not the integration helper's first-32-chars scheme).
+**DECISION-051** — one generic `integration_docs` table (primary key `(kind, id)`) instead of Redis JSON or eight bespoke Prisma models for S157's config/audit stores (routing rules, field-mapping presets, ticket templates, TAXII collections + objects, export schedules + runs, credential rotations, audit entries, webhook retry configs). This pattern is now the template for S159 hunting-service — **not** `RedisJsonStore` as-is.
 
-## 🧪 Deploy Verification Results (Session 176)
+## 🧪 Deploy Verification Results (Session 177)
 
 ```
-PR #68 → 3e2a73f : CI run 36617017423 — Test/Type-check/Lint & Audit success, Build & Push success, Deploy to VPS success.
-VPS HEAD 3e2a73f, 32/32 etip containers healthy.
-Tables: alert_channels, alert_escalation_policies, alert_maintenance_windows, alert_rules.
-etip_alerting log "Alerting persistence: Postgres" (1); "fall back"/"in-memory" lines: 0 (before and after restart).
-Created (internal 127.0.0.1:3023, real tenant uuid) a DISABLED test rule + test Slack channel:
-  create response masked (hooks.slack.com/****), token leaked: 0; DB config_enc prefix 'v1:', plaintext rows: 0
-  docker restart etip_alerting → health 200; rule GET 200 (name matches); channel listed, token leaked 0;
-  channel test route (decrypts) success; cleanup DELETE 204/204, leftover test rows 0.
-Memory guard OK. etip_alerting 43.34 MiB / 384 MiB (limit 402653184).
-Reviews: Opus diff review (+ escalation policy lookup scoped to the alert's tenant, + test);
-codex:rescue verdict REVISE — (1) webhook URL logged in full → FIXED (origin only);
-(2) worker swallows DB errors so the job isn't retried → DEFERRED to S155 (retry not idempotent yet).
-etip-reviewer PASS. RCA #65 recorded (alerting by-id lookups not tenant-filtered, fixed).
+PR #69 → e10897d : CI run 36680150769 — Test/Type-check/Lint/Audit ✓, Build & Push ✓,
+Deploy to VPS ✓ (7m50s), E2E pipeline smoke tests ✓.
+VPS HEAD e10897d, 32/32 etip_ containers healthy.
+Tables: alerts, alert_history, alert_groups, integration_logs, integration_deliveries,
+integration_tickets, integration_docs, drp_assets, drp_alerts, drp_scans, drp_takedowns,
+drp_alert_feedback (12, all confirmed).
+Logs: etip_alerting "Alerting persistence: Postgres", etip_drp "DRP persistence: Postgres",
+etip_integration "IntegrationStore hydrated from DB". NOAUTH count = 0 in etip_alerting,
+etip_integration, etip_drp, etip_caching since deploy. 0 "fall back"/"in-memory" lines.
+VPS acceptance (throwaway tenant, rows deleted after):
+  alerting — 2 jobs through the real bull queue → worker → 1 alert (dedup_count 2),
+    1 history row, 1 group.
+  integration — TAXII collection doc + its objects doc (same id) both intact (RCA #68
+    regression check); foreign-tenant save → 409 CONFLICT, log row persisted; export of a
+    real tenant → 25 real IOC records, no demo values (RCA #67 check).
+  drp — asset persisted; foreign-tenant read → null; foreign-tenant save → 409.
+  docker restart etip_alerting etip_integration etip_drp → all data still there, alert/group
+    served by the alerting API afterward.
+Redis: etip-cache-invalidate backlog 550,602 → 0 within ~10 min of deploy (completed set
+  capped at 1,000); used memory 139.00M → 95.33M; 12 stale raw entries in
+  bull:etip-alert-evaluate:wait deleted before deploy (RCA #66 leftovers, not real jobs).
+Tests: alerting-service 377→417, integration-service 458→505, drp-service 310→351,
+  caching-service 112→114. Real monorepo total 9,524 passed + 2 skipped, 0 failed,
+  33 packages (was 9,394 + 2).
+Security: codex:rescue verdict ACCEPT (all by-id paths, save helpers, integration_docs key,
+  IOC export fetch, cross-tenant background jobs, error paths across all 3 services).
 ```
 
-## ⚠️ Open Items / Next Steps (Session 176)
+## ⚠️ Open Items / Next Steps (Session 177)
 
 **Full backlog: `docs/PENDING_WORK.md`** (all roadmap steps, SEO G1–G7 + weekly brief B1–B3, standing backlog, owner inputs, stale docs). Ordered queue (one task per fresh session):
 
-1. **Step 3 row S155** — alerting-service alerts, history, groups, dedup, escalation dispatcher `pending`, worker → Postgres; add models `Alert`, `AlertHistoryEntry`, `AlertGroup` (spec §5.1/§6.1); make `processJob` idempotent, then rethrow `DB_UNAVAILABLE` so BullMQ retries; delete the remaining 7 alerting lines from `scripts/memory-store-baseline.txt`; keep every by-id lookup tenant-scoped with a cross-tenant 404 test.
-2. Rest of Step 3: S156/S157 integration → S158a/b DRP → S159 hunting → S159b–e (archive rebuild incl. deleting MinIO sample objects, analytics tenant trends, onboarding, offboarding purge incl. the 4 new alert tables).
-3. Wiring fixes from the S173 sweep (see PENDING_WORK §3).
+1. **Step 3 row S159** — hunting-service → Postgres. Use a generic `hunting_docs` table like `integration_docs` (DECISION-051 pattern), **not** `RedisJsonStore` as-is. Persist hunt playbook executions keyed by (tenant, hunt). Delete the 8 remaining hunting lines from `scripts/memory-store-baseline.txt`.
+2. Rest of Step 3: S159b archive rebuild (incl. deleting MinIO sample objects), S159c analytics tenant trends, S159d onboarding, S159e offboarding purge (must now also delete from the 12 new S177 tables plus the 4 S154 alert tables).
+3. Wiring fixes from the S173 sweep (see PENDING_WORK §3); S177 follow-ups (admin-service raw-LPUSH producer, api-gateway quota-enforcement raw-LPUSH, ALERT_EVALUATE producers missing retry/backoff, integration DLQ "retry" doesn't resend, exports support only `iocs`, `RedisJsonStore` data-loss traps, alert worker concurrency-5 dedup race, escalation dispatcher single-instance assumption, `integration-store.ts` at 397/400 lines).
 4. AI enrichment runner (DECISION-045).
 5. Graph visual redesign — needs owner reference designs.
 6. Owner-scheduled security fix (includes private items — see private notes); owner go-ahead + adversarial review; before the first real customer.
 7. Folded in, no own session: audit PR 3 leftovers, remaining `isDemo` hooks, S174 plan-gate leftovers, alert notification delivery (log-only today).
 8. Parallel any time: SEO G1 (sitemap from routes + self-hosted fonts, small frontend task).
 
-**Owner actions:** none blocking. Key copies confirmed (VPS `.env`, local `.env`, owner offline backup). Still open: graph designs, security-fix go-ahead, `PageStatsBar` OK, Step 15 P2 decisions, DECISION-032, SEO O-S1, brief O-B1–B3.
+**Owner actions:** none blocking. Still open: graph designs, security-fix go-ahead, `PageStatsBar` OK, Step 15 P2 decisions, DECISION-032, SEO O-S1, brief O-B1–B3.
 
-## 🔁 How to Resume (Session 177)
+## 🔁 How to Resume (Session 178)
 
 ```
-Run /session-start, then start Step 3 row S155 (alerting-service → Postgres, part 2:
-alerts, history, groups, dedup, escalation dispatcher, worker; spec
-docs/roadmap/STEP_03_PERSISTENCE.md §5.1/§6.1/§8). Module: alerting-service.
-Reuse the S154 layer: src/repository.ts (Repo<T>, MemoryRepo, dbCall → 503, isUuid) and
-src/repository-prisma.ts. prisma/schema.prisma additive models only (D2); DB error → 503,
-never a memory fallback (D3); by-id lookups tenant-scoped + cross-tenant 404 tests; make
-alert-worker processJob idempotent, then rethrow DB_UNAVAILABLE; delete the remaining alerting
-lines from scripts/memory-store-baseline.txt. Security-adjacent → codex:rescue before push.
+Run /session-start, then start Step 3 row S159 (hunting-service → Postgres:
+spec docs/roadmap/STEP_03_PERSISTENCE.md). Module: hunting-service.
+Follow the DECISION-051 pattern from S157 (a single generic table, `hunting_docs`,
+primary key (kind, id), not RedisJsonStore) for hunting's config/audit-style stores;
+reuse the Repo<T>/MemoryRepo/dbCall pattern from src/repository.ts in alerting-service/
+drp-service for anything that needs a dedicated table. prisma/schema.prisma additive
+models only (D2); DB error → 503, never a memory fallback (D3); by-id lookups
+tenant-scoped + cross-tenant 404 tests; persist playbook executions keyed by
+(tenant, hunt); delete the remaining 8 hunting lines from
+scripts/memory-store-baseline.txt. Security-adjacent → codex:rescue before push.
 
 Frozen / do-not-touch without explicit instruction: shared-* packages (Tier 1, api-gateway
 included) — additive only, list every consumer before any change; shared-ui needs owner approval
@@ -82,18 +98,16 @@ add a server-level `set` for any variable read inside an auth_request location (
 Stage explicit paths only — private untracked .docx / AGENTS.md / setup-breakglass.sh live in the tree.
 ```
 
-## Agent Utilization (Session 176)
+## Agent Utilization (Session 177)
 
-- **Opus:** plan + code reading, Sonnet contract, diff critique + 2 fixes (dispatcher tenant scope, notifier log mask), VPS key + verification script, PR/merge/deploy watch, docs review, memory.
-- **Sonnet:** 7 runs — S154 implementation, etip-reviewer (PASS), S176 docs, post-deploy docs, 3 docs-sweep agents (roadmap, state docs, other docs).
-- **Haiku:** 1 run — session-start context digest (two facts corrected by Opus: baseline count, invented index.ts lines).
-- **codex:rescue:** verdict REVISE — 1 fixed (webhook URL log), 1 deferred to S155 with reason (worker retry not idempotent yet).
+- **Opus:** plan + code reading, Sonnet contract, diff critique, VPS acceptance verification, PR/merge/deploy watch, docs review, memory.
+- **Sonnet:** S155/S156-S157/S158 implementation, RCA #66 fix (alerting + caching listener), S177 change doc + module docs, post-deploy docs sweep.
+- **codex:rescue:** verdict ACCEPT (all by-id paths, save helpers, `integration_docs` key, IOC export fetch, cross-tenant background jobs, error paths).
 
 Routing telemetry:
-- haiku · session-start context digest · reworked: Y (invented 3 baseline lines, Opus re-grepped)
-- sonnet · S154 implementation (37 files) · reworked: N (Opus added 2 small fixes after review)
-- sonnet/etip-reviewer · pre-push review · reworked: N
-- sonnet · S176 change doc + module README · reworked: N
-- sonnet · post-deploy docs (7 files) · reworked: N (numbers verified against facts, no duplicates)
-- sonnet × 3 · full docs pending-work sweep · reworked: N
+- sonnet · S155 alerting implementation · reworked: N
+- sonnet · S156+S157 integration implementation · reworked: N
+- sonnet · S158 drp implementation · reworked: N
+- sonnet · RCA #66 BullMQ password/prefix fix (alerting + caching) · reworked: N
+- sonnet · S177 docs + post-deploy docs sweep · reworked: N
 - codex:rescue · adversarial security review · reworked: N

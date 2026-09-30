@@ -98,11 +98,12 @@ codex:rescue adversarial review of all by-id paths, the save helpers, the `integ
 
 | Service | Before | After |
 |---|---|---|
-| alerting-service | 377 | 416 |
+| alerting-service | 377 | 417 |
 | integration-service | 458 | 505 |
 | drp-service | 310 | 351 |
+| caching-service | 112 | 114 |
 
-Monorepo total: TBD (post-deploy, from CI).
+Monorepo total: **9,524 passed, 2 skipped, 0 failed, 33 packages** (was 9,394 passed + 2 skipped at S176).
 
 ## CI guard
 
@@ -149,4 +150,20 @@ bash scripts/check-memory-stores.sh && echo OK
 
 ## Deploy result
 
-TBD (post-deploy).
+PR #69 merged as `e10897d` (merge commit "Merge pull request #69 from manishjnv/s177/step3-persistence"). CI/CD run 36680150769: Test/Type-check/Lint/Audit ✓, Build & Push ✓, Deploy to VPS ✓ (7m50s), E2E pipeline smoke tests ✓.
+
+VPS HEAD `e10897d`, **32/32** `etip_*` containers healthy.
+
+Post-deploy logs: `etip_alerting` logs "Alerting persistence: Postgres", `etip_drp` logs "DRP persistence: Postgres", `etip_integration` logs "IntegrationStore hydrated from DB"; `NOAUTH` count = 0 in `etip_alerting`, `etip_integration`, `etip_drp`, `etip_caching` since deploy; 0 "fall back"/"in-memory" lines across all four.
+
+VPS acceptance (run inside each container against real Postgres, throwaway tenant, rows deleted after):
+- **alerting** — two jobs pushed through the real `bull` queue → worker → 1 alert with `dedup_count` 2, 1 history row, 1 group.
+- **integration** — a TAXII collection doc and its objects doc (same id) both intact (RCA #68 regression check); foreign-tenant save → 409 CONFLICT, log row persisted; export of a real tenant → 25 real IOC records, no demo values (RCA #67 check).
+- **drp** — asset persisted; foreign-tenant read → null; foreign-tenant save → 409.
+- After `docker restart etip_alerting etip_integration etip_drp`, all data was still there and the alert/group was served by the alerting API.
+
+Redis: `etip-cache-invalidate` backlog 550,602 → 0 within ~10 min of deploy (completed set capped at 1,000); Redis used memory 139.00M → 95.33M; 12 stale raw entries in `bull:etip-alert-evaluate:wait` were deleted before deploy (see "Pre-deploy VPS operation" above).
+
+Security: codex:rescue verdict **ACCEPT**.
+
+**Next:** Step 3 row S159 hunting-service → Postgres (generic `hunting_docs` table, DECISION-051 pattern — NOT `RedisJsonStore`), then S159b–e.
